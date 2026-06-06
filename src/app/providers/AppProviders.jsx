@@ -1,3 +1,5 @@
+import { ToastProvider } from '../../shared/components/ui'
+
 export function AppProviders({ children }) {
-  return children
+  return <ToastProvider>{children}</ToastProvider>
 }

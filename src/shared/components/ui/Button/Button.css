@@ -1,4 +1,4 @@
-.slp-button {
+.button {
   --button-bg: #2563eb;
   --button-color: #ffffff;
   --button-border: transparent;
@@ -25,93 +25,93 @@
     transform 0.1s ease;
 }
 
-.slp-button:hover:not(:disabled) {
+.button:hover:not(:disabled) {
   background: var(--button-hover-bg);
 }
 
-.slp-button:active:not(:disabled) {
+.button:active:not(:disabled) {
   transform: translateY(1px);
 }
 
-.slp-button:focus-visible {
+.button:focus-visible {
   outline: 3px solid rgba(37, 99, 235, 0.25);
   outline-offset: 2px;
 }
 
-.slp-button:disabled {
+.button:disabled {
   cursor: not-allowed;
   opacity: 0.65;
 }
 
-.slp-button--sm {
+.button--sm {
   min-height: 34px;
   padding: 0 12px;
   font-size: 14px;
 }
 
-.slp-button--md {
+.button--md {
   min-height: 42px;
   padding: 0 16px;
   font-size: 15px;
 }
 
-.slp-button--lg {
+.button--lg {
   min-height: 50px;
   padding: 0 20px;
   font-size: 16px;
 }
 
-.slp-button--full {
+.button--full {
   width: 100%;
 }
 
-.slp-button--primary {
+.button--primary {
   --button-bg: #2563eb;
   --button-color: #ffffff;
   --button-hover-bg: #1d4ed8;
 }
 
-.slp-button--secondary {
+.button--secondary {
   --button-bg: #f3f4f6;
   --button-color: #111827;
   --button-hover-bg: #e5e7eb;
 }
 
-.slp-button--outline {
+.button--outline {
   --button-bg: transparent;
   --button-color: #2563eb;
   --button-border: #2563eb;
   --button-hover-bg: rgba(37, 99, 235, 0.08);
 }
 
-.slp-button--ghost {
+.button--ghost {
   --button-bg: transparent;
   --button-color: #374151;
   --button-hover-bg: #f3f4f6;
 }
 
-.slp-button--danger {
+.button--danger {
   --button-bg: #dc2626;
   --button-color: #ffffff;
   --button-hover-bg: #b91c1c;
 }
 
-.slp-button__icon {
+.button__icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
 }
 
-.slp-button__spinner {
+.button__spinner {
   width: 16px;
   height: 16px;
   border: 2px solid currentColor;
   border-top-color: transparent;
   border-radius: 999px;
-  animation: slp-button-spin 0.7s linear infinite;
+  animation: button-spin 0.7s linear infinite;
 }
 
-@keyframes slp-button-spin {
+@keyframes button-spin {
   to {
     transform: rotate(360deg);
   }
