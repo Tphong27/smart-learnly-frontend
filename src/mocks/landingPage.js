@@ -1,0 +1,32 @@
+export const featuredCourses = [
+  {
+    category: 'Technology',
+    title: 'Frontend Development Foundations',
+    description: 'Build responsive interfaces with modern HTML, CSS, and JavaScript.',
+    level: 'Beginner',
+    lessons: 24,
+    duration: '8 weeks',
+    rating: '4.9',
+    accent: 'blue',
+  },
+  {
+    category: 'Data & Analytics',
+    title: 'Data Analytics for Business',
+    description: 'Turn raw business data into decisions with practical analysis skills.',
+    level: 'Intermediate',
+    lessons: 18,
+    duration: '6 weeks',
+    rating: '4.8',
+    accent: 'violet',
+  },
+  {
+    category: 'Professional Skills',
+    title: 'Leadership & Team Management',
+    description: 'Lead with clarity, coach effectively, and build resilient teams.',
+    level: 'All levels',
+    lessons: 16,
+    duration: '5 weeks',
+    rating: '4.9',
+    accent: 'teal',
+  },
+]
