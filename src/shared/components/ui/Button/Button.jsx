@@ -14,10 +14,10 @@ export function Button({
   ...props
 }) {
   const buttonClassName = [
-    'slp-button',
-    `slp-button--${variant}`,
-    `slp-button--${size}`,
-    fullWidth ? 'slp-button--full' : '',
+    'button',
+    `button--${variant}`,
+    `button--${size}`,
+    fullWidth ? 'button--full' : '',
     className,
   ]
     .filter(Boolean)
@@ -32,15 +32,15 @@ export function Button({
       {...props}
     >
       {loading ? (
-        <span className="slp-button__spinner" aria-hidden="true" />
+        <span className="button__spinner" aria-hidden="true" />
       ) : (
-        leftIcon && <span className="slp-button__icon">{leftIcon}</span>
+        leftIcon && <span className="button__icon">{leftIcon}</span>
       )}
 
       <span>{loading ? 'Đang xử lý...' : children}</span>
 
       {!loading && rightIcon && (
-        <span className="slp-button__icon">{rightIcon}</span>
+        <span className="button__icon">{rightIcon}</span>
       )}
     </button>
   )
