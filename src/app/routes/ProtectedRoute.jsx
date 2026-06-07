@@ -1,9 +1,5 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom'
-
-function getAccessToken() {
-  return localStorage.getItem('accessToken')
-  //const { isAuthenticated, isLoading } = useAuthStore()
-}
+import { getAccessToken } from '@/services'
 
 export function ProtectedRoute() {
   const location = useLocation()

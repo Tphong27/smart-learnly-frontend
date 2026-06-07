@@ -1,16 +1,5 @@
 import { Navigate, Outlet } from 'react-router-dom'
-
-function getCurrentUser() {
-  const rawUser = localStorage.getItem('user')
-
-  if (!rawUser) return null
-
-  try {
-    return JSON.parse(rawUser)
-  } catch {
-    return null
-  }
-}
+import { getCurrentUser } from '@/services'
 
 export function RoleGuard({ allowedRoles = [] }) {
   const user = getCurrentUser()
