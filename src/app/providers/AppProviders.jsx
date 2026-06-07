@@ -1,4 +1,4 @@
-import { ToastProvider } from '@/shared/components/ui/Toast'
+import { ToastProvider } from '@/shared/components/ui/Toast/index'
 
 export function AppProviders({ children }) {
   return <ToastProvider>{children}</ToastProvider>
