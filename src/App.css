@@ -120,6 +120,16 @@
   color: #33425d;
 }
 
+.nav-actions .button-ghost,
+.nav-actions .button-ghost:hover {
+  --button-bg: transparent;
+  --button-hover-bg: transparent;
+  --button-border: transparent;
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+
 .button-small {
   min-height: 40px;
   padding: 0 16px;
