@@ -1,0 +1,19 @@
+.auth-page { display:grid; min-height:100vh; place-items:center; padding:40px 20px; background:radial-gradient(circle at top,#edf4ff,#f8fafc 45%); }
+.auth-card,.account-panel { width:min(100%,520px); border:1px solid #e2e8f0; border-radius:20px; padding:34px; background:#fff; box-shadow:0 24px 60px rgba(30,64,120,.1); }
+.auth-card h1,.account-panel h1 { margin:20px 0 8px; font-family:Manrope,sans-serif; }
+.auth-brand,.auth-footer a,.auth-inline-link { color:#2563eb; font-weight:700; }
+.auth-description,.account-panel p { color:#64748b; line-height:1.6; }
+.auth-footer { margin-top:24px; color:#64748b; text-align:center; }
+.auth-inline-link { align-self:flex-end; font-size:14px; }
+.auth-alert { margin:18px 0; border-radius:10px; padding:12px 14px; font-size:14px; }
+.auth-alert--error { color:#991b1b; background:#fef2f2; }
+.auth-alert--success { color:#166534; background:#f0fdf4; }
+.auth-status { padding:20px 0; color:#64748b; text-align:center; }
+.auth-textarea-label { display:grid; gap:6px; color:#111827; font-size:14px; font-weight:600; }
+.auth-textarea { min-height:120px; resize:vertical; border:1px solid #d1d5db; border-radius:10px; padding:12px; }
+.account-panel { width:min(100%,720px); }
+.account-eyebrow { color:#2563eb!important; font-size:12px; font-weight:800; letter-spacing:.12em; text-transform:uppercase; }
+.auth-divider { display:flex; align-items:center; gap:12px; margin:22px 0; color:#94a3b8; font-size:12px; }
+.auth-divider::before,.auth-divider::after { height:1px; flex:1; background:#e2e8f0; content:''; }
+.google-login-button { min-height:44px; }
+@media (max-width:560px) { .auth-card,.account-panel { padding:24px; } }

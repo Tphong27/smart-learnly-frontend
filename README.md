@@ -1,16 +1,33 @@
-# React + Vite
+# Smart Learnly Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+React and Vite frontend for Smart Learnly Platform.
 
-Currently, two official plugins are available:
+## Local setup
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+Create a local `.env.local` when custom values are needed:
 
-## React Compiler
+```text
+VITE_API_BASE_URL=http://localhost:8080/api/v1
+VITE_GOOGLE_CLIENT_ID=your-google-web-client-id.apps.googleusercontent.com
+```
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+`VITE_GOOGLE_CLIENT_ID` is a public browser client identifier, not a secret. It
+must match the backend `GOOGLE_CLIENT_ID`.
 
-## Expanding the ESLint configuration
+## Auth assumptions
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+- Access tokens are held in memory only.
+- The backend owns the rotating HttpOnly refresh cookie.
+- API requests always include credentials.
+- A `401` triggers one refresh attempt and retries the original request once.
+- Auth responses use the backend `ApiResponse` envelope and validation errors
+  use the `errors: [{ field, message }]` shape.
+
+## Commands
+
+```powershell
+npm run dev
+npm run lint
+npm test
+npm run build
+```
