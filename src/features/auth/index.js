@@ -1,4 +1,4 @@
 export const authFeature = {
   name: 'Authentication',
-  routeBase: '/login',
+  routeBase: '/auth',
 }
