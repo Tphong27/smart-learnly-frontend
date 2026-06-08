@@ -1,8 +1,9 @@
 import { ArrowRight, BookOpen, Clock3 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { CourseCatalogSection } from '@/features/course/CourseCatalogSection'
-import { getAllDemoEnrollments, getCourseProgress } from '@/data/demo/demoRuntime'
+import { getCourseProgress, getEnrollmentsByUser } from '@/data/demo/demoRuntime'
 import { getLifecycleCourseById } from '@/data/demo/courseLifecycleRuntime'
+import { getCurrentUser } from '@/services'
 import { PageState } from '@/shared/components/PageState'
 import { ProgressBar } from '@/shared/components/ProgressBar'
 import { StatusBadge } from '@/shared/components/StatusBadge'
@@ -14,7 +15,9 @@ export function MyCoursesPage() {
 
   const { loading, error } = useDemoPageState()
 
-  const enrollments = getAllDemoEnrollments()
+  const currentUser = getCurrentUser()
+  const traineeId = currentUser?.id || 'trainee-minh'
+  const enrollments = getEnrollmentsByUser(traineeId)
 
   const enrolledCourses = enrollments
     .map((enrollment) => ({
@@ -82,7 +85,7 @@ export function MyCoursesPage() {
               <p>{enrolledCourses[0].course.shortDescription}</p>
             </div>
             <ProgressBar
-              value={getCourseProgress(enrolledCourses[0].course.id)}
+              value={getCourseProgress(enrolledCourses[0].course.id, traineeId)}
               label="Course progress"
             />
             <Link
@@ -110,7 +113,7 @@ export function MyCoursesPage() {
             {enrolledCourses.map(({ course, enrollment }) => {
               const progress = Math.max(
                 enrollment.progress,
-                getCourseProgress(course.id),
+                getCourseProgress(course.id, traineeId),
               )
 
               return (

@@ -1,6 +1,6 @@
 import { ArrowRight, ClipboardCheck, Clock3, Target } from 'lucide-react'
 import { Link } from 'react-router-dom'
-import { getAllDemoEnrollments } from '@/data/demo/demoRuntime'
+import { getEnrollmentsByUser } from '@/data/demo/demoRuntime'
 import {
   getAllLifecycleTests,
   getLifecycleCourseById,
@@ -9,12 +9,14 @@ import { PageState } from '@/shared/components/PageState'
 import { StatusBadge } from '@/shared/components/StatusBadge'
 import { useDemoPageState } from '@/shared/hooks/useDemoPageState'
 import { useDocumentTitle } from '@/shared/hooks/useDocumentTitle'
+import { getCurrentUser } from '@/services'
 
 export function TestListPage() {
   useDocumentTitle('Tests and practice')
 
   const { loading, error } = useDemoPageState()
-  const enrolledCourseIds = new Set(getAllDemoEnrollments().map((enrollment) => enrollment.courseId))
+  const traineeId = getCurrentUser()?.id || 'trainee-minh'
+  const enrolledCourseIds = new Set(getEnrollmentsByUser(traineeId).map((enrollment) => enrollment.courseId))
   const availableTests = getAllLifecycleTests().filter((test) => test.status === 'published' && enrolledCourseIds.has(test.courseId))
 
   if (loading) {

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import {
   ArrowRight,
   CheckCircle2,
@@ -10,10 +10,10 @@ import {
 } from 'lucide-react'
 import { Link, Navigate, useParams } from 'react-router-dom'
 import {
-  getAllDemoEnrollments,
   getCompletedLessonIds,
   getCourseProgress,
   getDemoEnrollmentByCourse,
+  getEnrollmentsByUser,
   markDemoLessonCompleted,
 } from '@/data/demo/demoRuntime'
 import {
@@ -27,11 +27,14 @@ import {
   getLifecycleModules,
   saveLessonNote,
 } from '@/data/demo/courseLifecycleRuntime'
+import { COURSE_STATUSES } from '@/data/demo/courseLifecycle'
 import { PageState } from '@/shared/components/PageState'
 import { ProgressBar } from '@/shared/components/ProgressBar'
 import { StatusBadge } from '@/shared/components/StatusBadge'
+import { WorkspaceHeaderController } from '@/app/layouts/WorkspaceLayout'
 import { useDemoPageState } from '@/shared/hooks/useDemoPageState'
 import { useDocumentTitle } from '@/shared/hooks/useDocumentTitle'
+import { getCurrentUser } from '@/services'
 
 function getFirstLessonId(modules) {
   return modules.flatMap((module) => module.lessons)[0]?.id || ''
@@ -53,7 +56,7 @@ function CourseOutlinePanel({ course, modules, completedLessonIds, currentLesson
             <div>
               {module.lessons.map((lesson) => {
                 const completed = completedLessonIds.includes(lesson.id)
-                const locked = module.status !== 'published' || lesson.status !== 'published'
+                const locked = course.status !== COURSE_STATUSES.PUBLISHED
 
                 return (
                   <Link
@@ -263,19 +266,39 @@ function AIStudyToolsPanel({ courseId, lessonId, resources, onGenerated }) {
 export function LearningWorkspacePage() {
   const { courseId, lessonId } = useParams()
   const { loading, error } = useDemoPageState()
-  const enrollments = getAllDemoEnrollments()
+  const currentUser = getCurrentUser()
+  const traineeId = currentUser?.id || 'trainee-minh'
+  const enrollments = getEnrollmentsByUser(traineeId)
   const resolvedCourseId = courseId || enrollments[0]?.courseId
   const course = getLifecycleCourseById(resolvedCourseId)
-  const enrollment = getDemoEnrollmentByCourse(resolvedCourseId)
+  const enrollment = getDemoEnrollmentByCourse(resolvedCourseId, traineeId)
   const modules = getLifecycleModules(resolvedCourseId)
   const firstLessonId = getFirstLessonId(modules)
   const resolvedLessonId = lessonId || firstLessonId
-  const [completedLessonIds, setCompletedLessonIds] = useState(() => getCompletedLessonIds(resolvedCourseId))
+  const [completedLessonIds, setCompletedLessonIds] = useState(() => getCompletedLessonIds(resolvedCourseId, traineeId))
   const [resources, setResources] = useState(() => getGeneratedResources({ courseId: resolvedCourseId }))
 
   const flatLessons = modules.flatMap((module) => module.lessons)
   const currentLesson = flatLessons.find((lesson) => lesson.id === resolvedLessonId)
   const isCompleted = completedLessonIds.includes(resolvedLessonId)
+  const progressValue = course ? getCourseProgress(course.id, traineeId) || enrollment?.progress || 0 : 0
+  const courseTitle = course?.title || 'Learning Workspace'
+  const currentLessonTitle = currentLesson?.title || ''
+  const hasEnrollment = Boolean(enrollment)
+  const workspaceHeader = useMemo(() => ({
+    backTo: '/my-courses',
+    backLabel: 'Back to My Courses',
+    contextLabel: 'Learning Workspace',
+    title: courseTitle,
+    subtitle: currentLessonTitle ? `Current lesson: ${currentLessonTitle}` : 'Choose a lesson to continue learning',
+    statusNode: (
+      <div className="workspace-progress-status">
+        <strong>{progressValue}%</strong>
+        <span>Course progress</span>
+      </div>
+    ),
+    saveStatus: hasEnrollment ? 'Progress synced' : '',
+  }), [courseTitle, currentLessonTitle, hasEnrollment, progressValue])
 
   useDocumentTitle(course ? `${course.title} learning` : 'Learning workspace')
 
@@ -315,7 +338,7 @@ export function LearningWorkspacePage() {
   }
 
   const handleComplete = () => {
-    setCompletedLessonIds(markDemoLessonCompleted(course.id, resolvedLessonId))
+    setCompletedLessonIds(markDemoLessonCompleted(course.id, resolvedLessonId, traineeId))
   }
 
   const refreshResources = () => {
@@ -324,18 +347,7 @@ export function LearningWorkspacePage() {
 
   return (
     <main className="demo-page learning-workspace-page">
-      <section className="learning-header">
-        <div>
-          <span className="demo-kicker">Learning workspace</span>
-          <h1>{course.title}</h1>
-          <p>{course.shortDescription}</p>
-        </div>
-        <aside className="demo-card learning-summary">
-          <StatusBadge status={enrollment.status} />
-          <ProgressBar value={getCourseProgress(course.id) || enrollment.progress} label="Course progress" />
-          <Link className="demo-secondary-action" to="/tests">View tests</Link>
-        </aside>
-      </section>
+      <WorkspaceHeaderController header={workspaceHeader} />
 
       <section className="learning-workspace-layout">
         <CourseOutlinePanel

@@ -16,6 +16,7 @@ const LOCAL_MODULES_KEY = 'slp.courseflow.modules'
 const GENERATED_RESOURCES_KEY = 'slp.courseflow.generatedResources'
 const GENERATED_TESTS_KEY = 'slp.courseflow.generatedTests'
 const LESSON_NOTES_KEY = 'slp.courseflow.lessonNotes'
+const QUESTION_BANK_KEY = 'slp.courseflow.questionBank'
 
 function readJson(key, fallback) {
   if (typeof window === 'undefined') return fallback
@@ -219,6 +220,22 @@ export function updateCourseStatus(courseId, status, extras = {}) {
   })
 }
 
+function markCourseContentEditing(courseId) {
+  const course = getLifecycleCourseById(courseId)
+  if (!course) return null
+
+  const lockedStatuses = [
+    COURSE_STATUSES.SUBMITTED_FOR_REVIEW,
+    COURSE_STATUSES.VERIFIED,
+    COURSE_STATUSES.PUBLISHED,
+    COURSE_STATUSES.UNPUBLISHED,
+  ]
+
+  if (lockedStatuses.includes(course.status)) return course
+
+  return updateCourseStatus(courseId, COURSE_STATUSES.CONTENT_EDITING)
+}
+
 export function assignCourseToSme(courseId, smeId) {
   const course = getLifecycleCourseById(courseId)
   if (!course) return null
@@ -365,6 +382,35 @@ function setLocalModules(modules) {
   writeJson(LOCAL_MODULES_KEY, modules)
 }
 
+function syncCourseStructureCounts(courseId) {
+  const course = getLifecycleCourseById(courseId)
+  if (!course) return null
+
+  const modules = getLifecycleModules(courseId)
+  const lessonCount = modules.reduce((sum, module) => sum + module.lessons.length, 0)
+
+  return saveLifecycleCourse({
+    ...course,
+    moduleCount: modules.length,
+    modules: modules.length,
+    lessonCount,
+    lessons: lessonCount,
+  })
+}
+
+function upsertLocalModule(courseId, module) {
+  const localModules = getLocalModules()
+  const index = localModules.findIndex((item) => item.id === module.id && item.courseId === courseId)
+
+  if (index >= 0) {
+    setLocalModules(localModules.map((item, itemIndex) => (itemIndex === index ? module : item)))
+    return module
+  }
+
+  setLocalModules([...localModules, module])
+  return module
+}
+
 export function saveLessonDraft(courseId, lessonId, draft) {
   const drafts = getLessonDrafts()
   const key = `${courseId}:${lessonId}`
@@ -378,7 +424,7 @@ export function saveLessonDraft(courseId, lessonId, draft) {
     },
   })
 
-  updateCourseStatus(courseId, COURSE_STATUSES.CONTENT_EDITING)
+  markCourseContentEditing(courseId)
   return getLifecycleLesson(courseId, lessonId)
 }
 
@@ -388,12 +434,14 @@ export function getLifecycleModules(courseId) {
   const localModuleById = new Map(localModules.map((module) => [module.id, module]))
   const baseModules = demoModules.filter((module) => module.courseId === courseId)
   const baseModuleIds = new Set(baseModules.map((module) => module.id))
-  const localOnlyModules = localModules.filter((module) => !baseModuleIds.has(module.id))
+  const localOnlyModules = localModules.filter((module) => !baseModuleIds.has(module.id) && !module.deleted)
   const mergedModules = [
-    ...baseModules.map((module) => ({
-      ...module,
-      ...(localModuleById.get(module.id) || {}),
-    })),
+    ...baseModules
+      .map((module) => ({
+        ...module,
+        ...(localModuleById.get(module.id) || {}),
+      }))
+      .filter((module) => !module.deleted),
     ...localOnlyModules,
   ]
 
@@ -401,7 +449,7 @@ export function getLifecycleModules(courseId) {
     .sort((a, b) => a.order - b.order)
     .map((module) => ({
       ...module,
-      lessons: module.lessons.map((lesson) => ({
+      lessons: (module.lessons || []).filter((lesson) => !lesson.deleted).map((lesson) => ({
         ...lesson,
         ...(drafts[`${courseId}:${lesson.id}`] || {}),
       })),
@@ -420,17 +468,39 @@ export function addMockCourseModule(courseId, title) {
   }
 
   setLocalModules([...getLocalModules(), module])
-  updateCourseStatus(courseId, COURSE_STATUSES.CONTENT_EDITING)
+  markCourseContentEditing(courseId)
+  syncCourseStructureCounts(courseId)
 
-  const course = getLifecycleCourseById(courseId)
-  if (course) {
-    saveLifecycleCourse({
-      ...course,
-      moduleCount: currentModules.length + 1,
-      modules: currentModules.length + 1,
-    })
+  return module
+}
+
+export function updateCourseModule(courseId, moduleId, updates = {}) {
+  const module = getLifecycleModules(courseId).find((item) => item.id === moduleId)
+  if (!module) return null
+
+  const nextModule = {
+    ...module,
+    ...updates,
+    updatedAt: nowIso(),
   }
 
+  upsertLocalModule(courseId, nextModule)
+  markCourseContentEditing(courseId)
+  syncCourseStructureCounts(courseId)
+  return nextModule
+}
+
+export function deleteCourseModule(courseId, moduleId) {
+  const module = getLifecycleModules(courseId).find((item) => item.id === moduleId)
+  if (!module) return null
+
+  upsertLocalModule(courseId, {
+    ...module,
+    deleted: true,
+    updatedAt: nowIso(),
+  })
+  markCourseContentEditing(courseId)
+  syncCourseStructureCounts(courseId)
   return module
 }
 
@@ -452,6 +522,7 @@ export function addMockCourseLesson(courseId, moduleId, payload = {}) {
     status: 'draft',
     completed: false,
     summary: payload.summary || 'Draft lesson summary.',
+    shortDescription: payload.shortDescription || payload.summary || '',
     content: payload.content || '',
     videoUrl: '',
     uploadedVideos: [],
@@ -477,23 +548,51 @@ export function addMockCourseLesson(courseId, moduleId, payload = {}) {
     setLocalModules([...localModules, moduleClone])
   }
 
-  updateCourseStatus(courseId, COURSE_STATUSES.CONTENT_EDITING)
+  markCourseContentEditing(courseId)
 
-  const course = getLifecycleCourseById(courseId)
-  if (course) {
-    const nextLessonCount = getLifecycleModules(courseId).reduce(
-      (sum, module) => sum + module.lessons.length,
-      0,
-    )
-
-    saveLifecycleCourse({
-      ...course,
-      lessonCount: nextLessonCount,
-      lessons: nextLessonCount,
-    })
-  }
+  syncCourseStructureCounts(courseId)
 
   return lesson
+}
+
+export function updateCourseLesson(courseId, moduleId, lessonId, updates = {}) {
+  const modules = getLifecycleModules(courseId)
+  const targetModule = modules.find((module) => module.id === moduleId)
+    || modules.find((module) => module.lessons.some((lesson) => lesson.id === lessonId))
+
+  if (!targetModule) return null
+
+  const nextModule = {
+    ...targetModule,
+    lessons: targetModule.lessons.map((lesson) =>
+      lesson.id === lessonId
+        ? { ...lesson, ...updates, updatedAt: nowIso() }
+        : lesson,
+    ),
+  }
+
+  upsertLocalModule(courseId, nextModule)
+  saveLessonDraft(courseId, lessonId, updates)
+  syncCourseStructureCounts(courseId)
+  return getLifecycleLesson(courseId, lessonId)
+}
+
+export function deleteCourseLesson(courseId, moduleId, lessonId) {
+  const modules = getLifecycleModules(courseId)
+  const targetModule = modules.find((module) => module.id === moduleId)
+    || modules.find((module) => module.lessons.some((lesson) => lesson.id === lessonId))
+
+  if (!targetModule) return null
+
+  const nextModule = {
+    ...targetModule,
+    lessons: targetModule.lessons.filter((lesson) => lesson.id !== lessonId),
+  }
+
+  upsertLocalModule(courseId, nextModule)
+  markCourseContentEditing(courseId)
+  syncCourseStructureCounts(courseId)
+  return targetModule
 }
 
 export function addMockLessonVideo(courseId, lessonId, video = {}) {
@@ -526,6 +625,14 @@ export function addMockLessonMaterial(courseId, lessonId, material = {}) {
   return saveLessonDraft(courseId, lessonId, { materials })
 }
 
+export function removeMockLessonMaterial(courseId, lessonId, materialId) {
+  const lesson = getLifecycleLesson(courseId, lessonId)
+  const materials = (Array.isArray(lesson?.materials) ? lesson.materials : [])
+    .filter((material) => material.id !== materialId)
+
+  return saveLessonDraft(courseId, lessonId, { materials })
+}
+
 export function getLifecycleLesson(courseId, lessonId) {
   return getLifecycleModules(courseId)
     .flatMap((module) => module.lessons)
@@ -543,10 +650,61 @@ export function getGeneratedResources(filters = {}) {
   })
 }
 
-function saveGeneratedResource(resource) {
+export function saveGeneratedResource(resource) {
   const resources = readJson(GENERATED_RESOURCES_KEY, [])
-  writeJson(GENERATED_RESOURCES_KEY, [resource, ...resources])
-  return resource
+  const nextResource = {
+    saved: true,
+    savedAt: nowIso(),
+    ...resource,
+  }
+
+  writeJson(GENERATED_RESOURCES_KEY, [
+    nextResource,
+    ...resources.filter((item) => item.id !== resource.id),
+  ])
+  return nextResource
+}
+
+export function deleteGeneratedResource(resourceId) {
+  const resources = readJson(GENERATED_RESOURCES_KEY, [])
+  writeJson(GENERATED_RESOURCES_KEY, resources.filter((resource) => resource.id !== resourceId))
+}
+
+export function getGeneratedResourcesByLesson(courseId, lessonId) {
+  return getGeneratedResources({ courseId, lessonId })
+}
+
+export function saveGeneratedQuestionsToQuestionBank(courseId, lessonId) {
+  const resources = getGeneratedResources({ courseId, lessonId })
+    .filter((resource) => ['questions', 'test'].includes(resource.type))
+  const existing = readJson(QUESTION_BANK_KEY, [])
+  const entries = resources.flatMap((resource) => {
+    if (resource.type === 'test') {
+      return (resource.content?.questions || []).map((question) => ({
+        ...question,
+        id: `bank-${question.id}-${Date.now()}`,
+        resourceId: resource.id,
+        courseId,
+        lessonId,
+        status: 'draft',
+        savedAt: nowIso(),
+      }))
+    }
+
+    return (resource.content || []).map((question, index) => ({
+      id: `bank-${resource.id}-${index}-${Date.now()}`,
+      resourceId: resource.id,
+      courseId,
+      lessonId,
+      question: question.question,
+      answer: question.answer,
+      status: 'draft',
+      savedAt: nowIso(),
+    }))
+  })
+
+  writeJson(QUESTION_BANK_KEY, [...entries, ...existing])
+  return entries
 }
 
 function getLessonTopic(lesson) {
@@ -793,3 +951,33 @@ export function getLessonNotes(courseId, lessonId) {
     (note) => note.courseId === courseId && note.lessonId === lessonId,
   )
 }
+
+export const getCourses = getAllLifecycleCourses
+export const getCourseById = getLifecycleCourseById
+export const createCourse = createLifecycleCourse
+
+export function updateCourse(courseId, updates) {
+  const course = getLifecycleCourseById(courseId)
+  if (!course) return null
+
+  return saveLifecycleCourse({
+    ...course,
+    ...updates,
+  })
+}
+
+export const assignSme = assignCourseToSme
+export const verifyCourse = verifyCourseContent
+export const requestRevision = requestCourseRevision
+export const addModule = addMockCourseModule
+export const updateModule = updateCourseModule
+export const deleteModule = deleteCourseModule
+export const addLesson = addMockCourseLesson
+export const updateLesson = updateCourseLesson
+export const deleteLesson = deleteCourseLesson
+export const addMockVideo = addMockLessonVideo
+export const addMockMaterial = addMockLessonMaterial
+export const removeMockMaterial = removeMockLessonMaterial
+export const generateLessonSummary = generateSummaryForLesson
+export const generateLessonFlashcards = generateFlashcardsForLesson
+export const generateLessonTest = generatePracticeTestForLesson

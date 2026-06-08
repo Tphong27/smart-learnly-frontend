@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, CheckCircle2, FileQuestion, Layers3, MessageSquare, XCircle } from 'lucide-react'
 import { DataState } from '@/shared/components/ui/DataState'
@@ -54,6 +54,12 @@ function CurriculumReviewPreview({ course, modules, resources }) {
                     <span key={lesson.id}>
                       {lesson.title}
                       <small>{lesson.type} | {lesson.durationMinutes} min | {lesson.status}</small>
+                      {(lesson.uploadedVideos || []).map((video) => (
+                        <small key={video.id}>Video: {video.name}</small>
+                      ))}
+                      {(lesson.materials || []).map((material) => (
+                        <small key={material.id}>Material: {material.name}</small>
+                      ))}
                     </span>
                   ))}
                 </div>
@@ -120,6 +126,7 @@ function RevisionReasonModal({ open, reason, onChange, onClose, onSubmit }) {
         <span>Revision reason</span>
         <textarea rows="5" value={reason} onChange={(event) => onChange(event.target.value)} />
       </label>
+      {!reason.trim() ? <p className="demo-form-error">Revision reason is required.</p> : null}
     </Modal>
   )
 }
@@ -167,10 +174,6 @@ export function TmoCourseReviewPage() {
   const [revisionOpen, setRevisionOpen] = useState(false)
   const [revisionReason, setRevisionReason] = useState('')
 
-  const defaultRevisionReason = useMemo(() => {
-    return 'Please complete missing lesson materials, review AI-generated resources, and resubmit for TMO verification.'
-  }, [])
-
   if (!course) {
     return (
       <section>
@@ -194,7 +197,9 @@ export function TmoCourseReviewPage() {
   }
 
   const handleRevisionSubmit = () => {
-    requestCourseRevision(course.id, revisionReason || defaultRevisionReason)
+    if (!revisionReason.trim()) return
+
+    requestCourseRevision(course.id, revisionReason.trim())
     setRevisionOpen(false)
     navigate(`/tmo/courses/${course.id}`)
   }
@@ -221,7 +226,7 @@ export function TmoCourseReviewPage() {
           onCommentChange={setComment}
           onVerify={handleVerify}
           onRequestRevision={() => {
-            setRevisionReason(defaultRevisionReason)
+            setRevisionReason('')
             setRevisionOpen(true)
           }}
         />
@@ -242,4 +247,3 @@ export function TmoCourseReviewPage() {
     </section>
   )
 }
-

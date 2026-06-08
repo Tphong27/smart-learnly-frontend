@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { ArrowRight, BookOpen, ClipboardCheck, Eye, Search, Send, UploadCloud } from 'lucide-react'
 import { KpiCard } from '@/shared/components/ui/KpiCard'
 import { PageHeader } from '@/shared/components/ui/PageHeader'
@@ -161,6 +161,7 @@ function CourseTable({ courses, onAssign, onPublish, onUnpublish }) {
 
 export function TmoCourseManagementPage() {
   const navigate = useNavigate()
+  const location = useLocation()
   const [searchParams] = useSearchParams()
   const initialStatus = searchParams.get('status') || 'All statuses'
   const [courses, setCourses] = useState(() => getAllLifecycleCourses())
@@ -231,6 +232,12 @@ export function TmoCourseManagementPage() {
         }
       />
 
+      {location.state?.successMessage ? (
+        <div className="demo-inline-alert">
+          {location.state.successMessage}
+        </div>
+      ) : null}
+
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <KpiCard title="Total Courses" value={counts.total} icon={BookOpen} />
         <KpiCard title="Draft Courses" value={counts.draft} icon={BookOpen} />
@@ -285,4 +292,3 @@ export function TmoCourseManagementPage() {
     </section>
   )
 }
-

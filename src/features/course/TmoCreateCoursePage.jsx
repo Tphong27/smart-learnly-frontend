@@ -167,13 +167,40 @@ export function TmoCreateCoursePage() {
   const handleSave = (status) => {
     setFormError('')
 
-    if (!form.title.trim() || !form.shortDescription.trim()) {
-      setFormError('Course title and short description are required.')
+    if (!form.title.trim()) {
+      setFormError('Course title is required.')
+      return
+    }
+
+    if (!form.category.trim()) {
+      setFormError('Category is required.')
+      return
+    }
+
+    if (!form.level.trim()) {
+      setFormError('Level is required.')
+      return
+    }
+
+    if (form.price && Number(form.price) < 0) {
+      setFormError('Price must be a valid positive number.')
+      return
+    }
+
+    if (status === COURSE_STATUSES.ASSIGNED_TO_SME && !form.assignedSmeId) {
+      setFormError('Assigned SME is required when saving and assigning to SME.')
       return
     }
 
     createLifecycleCourse(buildPayload(), status)
-    navigate('/tmo/courses')
+    navigate('/tmo/courses', {
+      state: {
+        successMessage:
+          status === COURSE_STATUSES.DRAFT
+            ? 'Course draft created.'
+            : 'Course created and assigned to SME.',
+      },
+    })
   }
 
   return (
@@ -228,4 +255,3 @@ export function TmoCreateCoursePage() {
     </section>
   )
 }
-

@@ -23,6 +23,7 @@ import { isCoursePublished } from '@/data/demo/courseLifecycle'
 import { PageState } from '@/shared/components/PageState'
 import { ProgressBar } from '@/shared/components/ProgressBar'
 import { StatusBadge } from '@/shared/components/StatusBadge'
+import { getCurrentUser } from '@/services'
 import { useDemoPageState } from '@/shared/hooks/useDemoPageState'
 import { useDocumentTitle } from '@/shared/hooks/useDocumentTitle'
 
@@ -192,7 +193,8 @@ export function CourseDetailPage() {
 
   const course = getLifecycleCourseById(courseId)
   const modules = getLifecycleModules(courseId)
-  const enrollment = getDemoEnrollmentByCourse(courseId)
+  const currentUser = getCurrentUser()
+  const enrollment = currentUser ? getDemoEnrollmentByCourse(courseId, currentUser.id) : null
 
   const classes = demoClasses.filter(
     (classItem) => classItem.courseId === courseId,

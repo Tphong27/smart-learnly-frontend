@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Plus, RotateCcw, Sparkles } from 'lucide-react'
-import { getAllDemoEnrollments } from '@/data/demo/demoRuntime'
+import { getEnrollmentsByUser } from '@/data/demo/demoRuntime'
 import {
   createManualFlashcard,
   getGeneratedResources,
@@ -9,6 +9,7 @@ import {
 } from '@/data/demo/courseLifecycleRuntime'
 import { PageState } from '@/shared/components/PageState'
 import { useDocumentTitle } from '@/shared/hooks/useDocumentTitle'
+import { getCurrentUser } from '@/services'
 
 function flattenFlashcards(resources) {
   return resources
@@ -78,7 +79,8 @@ function FlashcardStudyMode({ cards }) {
 export function FlashcardsPage() {
   useDocumentTitle('Flashcards')
 
-  const enrollments = getAllDemoEnrollments()
+  const traineeId = getCurrentUser()?.id || 'trainee-minh'
+  const enrollments = getEnrollmentsByUser(traineeId)
   const enrolledCourses = enrollments
     .map((enrollment) => getLifecycleCourseById(enrollment.courseId))
     .filter(Boolean)
