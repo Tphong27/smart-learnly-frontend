@@ -7,47 +7,56 @@ import {
   Clock3,
   GraduationCap,
   Layers3,
+  Send,
   Star,
   Users,
-} from 'lucide-react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
-import { demoClasses, demoCourseFeedback } from '@/data/demo'
+} from "lucide-react";
+import { useState } from "react";
 import {
-  getDemoEnrollmentByCourse,
-} from '@/data/demo/demoRuntime'
+  addCourseFeedback,
+  getCourseFeedbackWithLocal,
+} from "@/data/demo/demoTraineeRuntime";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import { demoClasses } from "@/data/demo";
+import { getDemoEnrollmentByCourse } from "@/data/demo/demoRuntime";
 import {
   getLifecycleCourseById,
   getLifecycleModules,
-} from '@/data/demo/courseLifecycleRuntime'
-import { isCoursePublished } from '@/data/demo/courseLifecycle'
-import { PageState } from '@/shared/components/PageState'
-import { ProgressBar } from '@/shared/components/ProgressBar'
-import { StatusBadge } from '@/shared/components/StatusBadge'
-import { useDemoPageState } from '@/shared/hooks/useDemoPageState'
-import { useDocumentTitle } from '@/shared/hooks/useDocumentTitle'
+} from "@/data/demo/courseLifecycleRuntime";
+import { isCoursePublished } from "@/data/demo/courseLifecycle";
+import { PageState } from "@/shared/components/PageState";
+import { ProgressBar } from "@/shared/components/ProgressBar";
+import { StatusBadge } from "@/shared/components/StatusBadge";
+import { useDemoPageState } from "@/shared/hooks/useDemoPageState";
+import { useDocumentTitle } from "@/shared/hooks/useDocumentTitle";
 
 function formatPrice(course) {
-  if (!course?.price) return 'Free'
+  if (!course?.price) return "Free";
 
-  return new Intl.NumberFormat('vi-VN').format(course.price) + ' ' + course.currency
+  return (
+    new Intl.NumberFormat("vi-VN").format(course.price) + " " + course.currency
+  );
 }
 
 function formatDate(value) {
-  if (!value) return 'Not scheduled'
+  if (!value) return "Not scheduled";
 
-  return new Intl.DateTimeFormat('vi-VN', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  }).format(new Date(value))
+  return new Intl.DateTimeFormat("vi-VN", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  }).format(new Date(value));
 }
 
 function getAverageRating(feedbackList, fallbackRating) {
-  if (feedbackList.length === 0) return fallbackRating || null
+  if (feedbackList.length === 0) return fallbackRating || null;
 
-  const total = feedbackList.reduce((sum, feedback) => sum + feedback.rating, 0)
+  const total = feedbackList.reduce(
+    (sum, feedback) => sum + feedback.rating,
+    0,
+  );
 
-  return Number((total / feedbackList.length).toFixed(1))
+  return Number((total / feedbackList.length).toFixed(1));
 }
 
 function CourseClassList({ classes }) {
@@ -76,7 +85,8 @@ function CourseClassList({ classes }) {
                 <strong>{classItem.name}</strong>
                 <small>Trainer: {classItem.trainerName}</small>
                 <small>
-                  {formatDate(classItem.startDate)} - {formatDate(classItem.endDate)}
+                  {formatDate(classItem.startDate)} -{" "}
+                  {formatDate(classItem.endDate)}
                 </small>
                 <small>{classItem.traineeCount} trainees</small>
               </div>
@@ -87,10 +97,27 @@ function CourseClassList({ classes }) {
         </div>
       )}
     </aside>
-  )
+  );
 }
 
-function FeedbackSection({ feedbackList, averageRating }) {
+function FeedbackSection({ courseId, feedbackList, averageRating, onCreated }) {
+  const [rating, setRating] = useState(5);
+  const [comment, setComment] = useState("");
+
+  const handleSubmit = () => {
+    if (!comment.trim()) return;
+
+    addCourseFeedback({
+      courseId,
+      rating,
+      comment: comment.trim(),
+    });
+
+    setComment("");
+    setRating(5);
+    onCreated();
+  };
+
   return (
     <section className="demo-card">
       <div className="demo-row demo-row--between">
@@ -101,9 +128,46 @@ function FeedbackSection({ feedbackList, averageRating }) {
 
         <span className="demo-rating demo-rating--large">
           <Star size={17} />
-          {averageRating || 'New'}
+          {averageRating || "New"}
         </span>
       </div>
+
+      <section className="course-flow-form-section">
+        <div className="course-flow-form-grid course-flow-form-grid--compact">
+          <label className="course-flow-field">
+            <span>Your rating</span>
+            <select
+              value={rating}
+              onChange={(event) => setRating(Number(event.target.value))}
+            >
+              <option value={5}>5 - Excellent</option>
+              <option value={4}>4 - Good</option>
+              <option value={3}>3 - Average</option>
+              <option value={2}>2 - Needs improvement</option>
+              <option value={1}>1 - Poor</option>
+            </select>
+          </label>
+        </div>
+
+        <label className="course-flow-field">
+          <span>Your feedback</span>
+          <textarea
+            rows="4"
+            value={comment}
+            placeholder="Share your learning experience..."
+            onChange={(event) => setComment(event.target.value)}
+          />
+        </label>
+
+        <button
+          type="button"
+          className="demo-primary-action"
+          onClick={handleSubmit}
+        >
+          <Send size={16} />
+          Submit feedback
+        </button>
+      </section>
 
       {feedbackList.length === 0 ? (
         <PageState
@@ -130,7 +194,7 @@ function FeedbackSection({ feedbackList, averageRating }) {
         </div>
       )}
     </section>
-  )
+  );
 }
 
 function ModuleSection({ modules }) {
@@ -182,40 +246,40 @@ function ModuleSection({ modules }) {
         </div>
       )}
     </section>
-  )
+  );
 }
 
 export function CourseDetailPage() {
-  const { courseId } = useParams()
-  const navigate = useNavigate()
-  const { loading, error } = useDemoPageState()
+  const { courseId } = useParams();
+  const navigate = useNavigate();
+  const { loading, error } = useDemoPageState();
 
-  const course = getLifecycleCourseById(courseId)
-  const modules = getLifecycleModules(courseId)
-  const enrollment = getDemoEnrollmentByCourse(courseId)
+  const course = getLifecycleCourseById(courseId);
+  const modules = getLifecycleModules(courseId);
+  const enrollment = getDemoEnrollmentByCourse(courseId);
 
   const classes = demoClasses.filter(
     (classItem) => classItem.courseId === courseId,
-  )
+  );
 
-  const feedbackList = demoCourseFeedback.filter(
-    (feedback) => feedback.courseId === courseId,
-  )
+  const [, setFeedbackVersion] = useState(0);
 
-  const averageRating = getAverageRating(feedbackList, course?.rating)
+  const feedbackList = getCourseFeedbackWithLocal(courseId);
 
-  useDocumentTitle(course ? course.title : 'Course detail')
+  const averageRating = getAverageRating(feedbackList, course?.rating);
+
+  useDocumentTitle(course ? course.title : "Course detail");
 
   const handleBackToCatalog = () => {
-    navigate('/')
+    navigate("/");
 
     window.setTimeout(() => {
-      document.getElementById('courses')?.scrollIntoView({
-        behavior: 'smooth',
-        block: 'start',
-      })
-    }, 0)
-  }
+      document.getElementById("courses")?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }, 0);
+  };
 
   if (loading) {
     return (
@@ -224,7 +288,7 @@ export function CourseDetailPage() {
         title="Loading course detail"
         description="Checking course modules, classes, feedback, and enrollment state."
       />
-    )
+    );
   }
 
   if (error) {
@@ -234,7 +298,7 @@ export function CourseDetailPage() {
         title="Course unavailable"
         description={error.message}
       />
-    )
+    );
   }
 
   if (!course || !isCoursePublished(course)) {
@@ -244,7 +308,7 @@ export function CourseDetailPage() {
         title="Course not found"
         description="This course is not published or does not exist in demo data."
       />
-    )
+    );
   }
 
   return (
@@ -270,11 +334,13 @@ export function CourseDetailPage() {
             </span>
 
             <span>
-              <Layers3 size={16} /> {course.moduleCount || course.modules || 0} modules
+              <Layers3 size={16} /> {course.moduleCount || course.modules || 0}{" "}
+              modules
             </span>
 
             <span>
-              <BookOpen size={16} /> {course.lessonCount || course.lessons || 0} lessons
+              <BookOpen size={16} /> {course.lessonCount || course.lessons || 0}{" "}
+              lessons
             </span>
 
             <span>
@@ -282,15 +348,15 @@ export function CourseDetailPage() {
             </span>
 
             <span>
-              <Star size={16} /> {averageRating || 'New'}
+              <Star size={16} /> {averageRating || "New"}
             </span>
           </div>
         </div>
 
         <aside className="demo-card course-detail-panel">
           <StatusBadge
-            status={enrollment?.status || 'not enrolled'}
-            tone={enrollment ? enrollment.status : 'not-enrolled'}
+            status={enrollment?.status || "not enrolled"}
+            tone={enrollment ? enrollment.status : "not-enrolled"}
           />
 
           <span className="demo-kicker">Course price</span>
@@ -352,11 +418,13 @@ export function CourseDetailPage() {
             <h2>Learning outcomes</h2>
 
             <ul className="demo-check-list">
-              {(course.learningOutcomes || course.outcomes || []).map((outcome) => (
-                <li key={outcome}>
-                  <CheckCircle2 size={17} /> {outcome}
-                </li>
-              ))}
+              {(course.learningOutcomes || course.outcomes || []).map(
+                (outcome) => (
+                  <li key={outcome}>
+                    <CheckCircle2 size={17} /> {outcome}
+                  </li>
+                ),
+              )}
             </ul>
           </section>
 
@@ -386,13 +454,15 @@ export function CourseDetailPage() {
           </section>
 
           <FeedbackSection
+            courseId={course.id}
             feedbackList={feedbackList}
             averageRating={averageRating}
+            onCreated={() => setFeedbackVersion((current) => current + 1)}
           />
         </div>
 
         <CourseClassList classes={classes} />
       </section>
     </main>
-  )
+  );
 }

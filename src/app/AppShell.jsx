@@ -31,6 +31,8 @@ import { ClassDetailPage } from "../features/classroom/ClassDetailPage";
 import { UsersRolesPage } from "../features/admin/UsersRolesPage";
 import { SystemSettingsPage } from "../features/admin/SystemSettingsPage";
 import { FlashcardsPage } from "../features/flashcard/FlashcardsPage";
+import { TraineeMyClassesPage } from "../features/classroom/TraineeMyClassesPage";
+import { PaymentHistoryPage } from "../features/payment/PaymentHistoryPage";
 import { ROLES } from "@/shared/constants/roles";
 
 function PlaceholderPage({ title }) {
@@ -121,6 +123,8 @@ export function AppShell() {
                 element={<PaymentSimulationPage />}
               />
               <Route path="/my-courses" element={<MyCoursesPage />} />
+              <Route path="/my-classes" element={<TraineeMyClassesPage />} />
+              <Route path="/payments" element={<PaymentHistoryPage />} />
               <Route path="/learning" element={<LearningWorkspacePage />} />
               <Route
                 path="/learning/:courseId"
@@ -156,10 +160,22 @@ export function AppShell() {
             <Route
               element={<RoleGuard allowedRoles={[ROLES.TMO, ROLES.ADMIN]} />}
             >
-              <Route path="/tmo/courses" element={<TmoCourseManagementPage />} />
-              <Route path="/tmo/courses/create" element={<TmoCreateCoursePage />} />
-              <Route path="/tmo/courses/:courseId" element={<TmoCourseDetailPage />} />
-              <Route path="/tmo/courses/:courseId/review" element={<TmoCourseReviewPage />} />
+              <Route
+                path="/tmo/courses"
+                element={<TmoCourseManagementPage />}
+              />
+              <Route
+                path="/tmo/courses/create"
+                element={<TmoCreateCoursePage />}
+              />
+              <Route
+                path="/tmo/courses/:courseId"
+                element={<TmoCourseDetailPage />}
+              />
+              <Route
+                path="/tmo/courses/:courseId/review"
+                element={<TmoCourseReviewPage />}
+              />
             </Route>
 
             <Route element={<RoleGuard allowedRoles={[ROLES.ADMIN]} />}>
@@ -185,7 +201,10 @@ export function AppShell() {
               }
             >
               <Route path="/trainer/classes" element={<TrainerClassesPage />} />
-              <Route path="/trainer/classes/:classId" element={<ClassDetailPage />}/>
+              <Route
+                path="/trainer/classes/:classId"
+                element={<ClassDetailPage />}
+              />
             </Route>
           </Route>
         </Route>

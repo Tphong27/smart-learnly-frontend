@@ -1,7 +1,9 @@
 import {
   BarChart3,
   BookOpen,
+  CalendarDays,
   ClipboardCheck,
+  CreditCard,
   FileQuestion,
   GraduationCap,
   Home,
@@ -11,122 +13,137 @@ import {
   Users,
   X,
   Zap,
-} from 'lucide-react'
-import { NavLink } from 'react-router-dom'
-import { ROLES } from '@/shared/constants/roles'
+} from "lucide-react";
+import { NavLink } from "react-router-dom";
+import { ROLES } from "@/shared/constants/roles";
 
 const navItems = [
   {
-    label: 'Dashboard',
-    path: '/dashboard',
+    label: "Dashboard",
+    path: "/dashboard",
     icon: Home,
     roles: [ROLES.TRAINEE, ROLES.TRAINER, ROLES.TMO, ROLES.SME, ROLES.ADMIN],
   },
   {
-    label: 'My Courses',
-    path: '/my-courses',
+    label: "My Courses",
+    path: "/my-courses",
     icon: GraduationCap,
     roles: [ROLES.TRAINEE],
   },
   {
-    label: 'Learning',
-    path: '/learning',
+    label: "My Classes",
+    path: "/my-classes",
+    icon: CalendarDays,
+    roles: [ROLES.TRAINEE],
+  },
+  {
+    label: "Learning",
+    path: "/learning",
     icon: BookOpen,
     roles: [ROLES.TRAINEE],
   },
   {
-    label: 'Tests',
-    path: '/tests',
+    label: "Tests",
+    path: "/tests",
     icon: ClipboardCheck,
     roles: [ROLES.TRAINEE],
   },
   {
-    label: 'Flashcards',
-    path: '/flashcards',
+    label: "Flashcards",
+    path: "/flashcards",
     icon: Layers3,
     roles: [ROLES.TRAINEE],
   },
   {
-    label: 'My Progress',
-    path: '/analytics/me',
+    label: "Payments",
+    path: "/payments",
+    icon: CreditCard,
+    roles: [ROLES.TRAINEE],
+  },
+  {
+    label: "My Progress",
+    path: "/analytics/me",
     icon: BarChart3,
     roles: [ROLES.TRAINEE],
   },
   {
-    label: 'Classes',
-    path: '/trainer/classes',
+    label: "Classes",
+    path: "/trainer/classes",
     icon: Users,
     roles: [ROLES.TRAINER, ROLES.TMO],
   },
   {
-    label: 'Course Management',
-    path: '/tmo/courses',
+    label: "Course Management",
+    path: "/tmo/courses",
     icon: BookOpen,
     roles: [ROLES.TMO, ROLES.ADMIN],
   },
   {
-    label: 'Course Review',
-    path: '/tmo/courses?status=Submitted%20for%20Review',
+    label: "Course Review",
+    path: "/tmo/courses?status=Submitted%20for%20Review",
     icon: ClipboardCheck,
     roles: [ROLES.TMO],
   },
   {
-    label: 'Assigned Courses',
-    path: '/sme/courses',
+    label: "Assigned Courses",
+    path: "/sme/courses",
     icon: BookOpen,
     roles: [ROLES.SME],
   },
   {
-    label: 'Course Content',
-    path: '/sme/content',
+    label: "Course Content",
+    path: "/sme/content",
     icon: Layers3,
     roles: [ROLES.SME, ROLES.ADMIN],
   },
   {
-    label: 'Question Bank',
-    path: '/sme/questions',
+    label: "Question Bank",
+    path: "/sme/questions",
     icon: FileQuestion,
     roles: [ROLES.SME, ROLES.ADMIN],
   },
   {
-    label: 'Users & Roles',
-    path: '/admin/users',
+    label: "Users & Roles",
+    path: "/admin/users",
     icon: ShieldCheck,
     roles: [ROLES.ADMIN],
   },
   {
-    label: 'Reports',
-    path: '/reports',
+    label: "Reports",
+    path: "/reports",
     icon: BarChart3,
     roles: [ROLES.TMO, ROLES.ADMIN],
   },
   {
-    label: 'Settings',
-    path: '/settings',
+    label: "Settings",
+    path: "/settings",
     icon: Settings,
     roles: [ROLES.ADMIN],
   },
-]
+];
 
 export function Sidebar({ userRole, open, onClose = () => {} }) {
-  const visibleItems = navItems.filter((item) => item.roles.includes(userRole))
+  const visibleItems = navItems.filter((item) => item.roles.includes(userRole));
 
   return (
     <>
       <div
         className={`fixed inset-0 z-40 bg-slate-900/40 transition lg:hidden ${
-          open ? 'block' : 'hidden'
+          open ? "block" : "hidden"
         }`}
         onClick={onClose}
       />
 
       <aside
         className={`app-sidebar fixed left-0 top-0 z-50 flex h-screen w-72 flex-col border-r border-slate-200 bg-white transition-transform lg:sticky lg:z-20 lg:translate-x-0 ${
-          open ? 'translate-x-0' : '-translate-x-full'
+          open ? "translate-x-0" : "-translate-x-full"
         }`}
       >
         <div className="app-sidebar__brand-row flex h-16 items-center justify-between border-b border-slate-200 px-5">
-          <a href="/dashboard" className="app-sidebar__brand flex items-center gap-2 font-bold text-slate-900">
+          <a
+            href="/dashboard"
+            className="app-sidebar__brand flex items-center gap-2 font-bold text-slate-900"
+          >
             <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-600 text-white">
               <Zap size={18} />
             </span>
@@ -151,11 +168,11 @@ export function Sidebar({ userRole, open, onClose = () => {} }) {
               onClick={onClose}
               className={({ isActive }) =>
                 [
-                  'app-sidebar__link flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition',
+                  "app-sidebar__link flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition",
                   isActive
-                    ? 'bg-blue-50 text-blue-700'
-                    : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900',
-                ].join(' ')
+                    ? "bg-blue-50 text-blue-700"
+                    : "text-slate-600 hover:bg-slate-50 hover:text-slate-900",
+                ].join(" ")
               }
             >
               <Icon size={18} />
@@ -168,11 +185,11 @@ export function Sidebar({ userRole, open, onClose = () => {} }) {
           <div className="rounded-2xl bg-slate-50 p-4">
             <p className="text-sm font-semibold text-slate-800">SLP</p>
             <p className="mt-1 text-xs text-slate-500">
-                A learning management system for the SLP program at Accenture.
+              A learning management system for the SLP program at Accenture.
             </p>
           </div>
         </div>
       </aside>
     </>
-  )
+  );
 }

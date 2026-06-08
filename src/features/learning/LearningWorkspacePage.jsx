@@ -32,6 +32,7 @@ import { ProgressBar } from '@/shared/components/ProgressBar'
 import { StatusBadge } from '@/shared/components/StatusBadge'
 import { useDemoPageState } from '@/shared/hooks/useDemoPageState'
 import { useDocumentTitle } from '@/shared/hooks/useDocumentTitle'
+import { DiscussionPanel } from './DiscussionPanel'
 
 function getFirstLessonId(modules) {
   return modules.flatMap((module) => module.lessons)[0]?.id || ''
@@ -197,6 +198,7 @@ function LessonContentPanel({ course, lesson, completed, onComplete }) {
 
       <AIAssistantBox lesson={lesson} />
       <LessonNotesBox courseId={course.id} lessonId={lesson.id} />
+      <DiscussionPanel courseId={course.id} lessonId={lesson.id} />
     </main>
   )
 }
