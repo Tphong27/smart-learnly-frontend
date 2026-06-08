@@ -4,27 +4,62 @@ import { KpiCard } from '@/shared/components/ui/KpiCard'
 import { PageHeader } from '@/shared/components/ui/PageHeader'
 import { ProgressBar } from '@/shared/components/ui/ProgressBar'
 import { StatusBadge } from '@/shared/components/ui/StatusBadge'
+import { DataState } from '@/shared/components/ui/DataState'
 import { demoClasses } from '@/data/demo/demoClasses'
 
 export function TrainerClassesPage() {
-  const runningClasses = demoClasses.filter((item) => item.status === 'running')
-  const totalAtRisk = demoClasses.reduce((sum, item) => sum + item.atRiskCount, 0)
+  const classes = demoClasses
+  const isLoading = false
+  const error = null
+  const runningClasses = classes.filter((item) => item.status === 'running')
+  const totalAtRisk = classes.reduce((sum, item) => sum + item.atRiskCount, 0)
+
+  const header = (
+    <PageHeader
+      title="Trainer Classes"
+      description="Monitor assigned classes, progress, weak topics, and trainees who need intervention."
+    />
+  )
+
+  if (isLoading) {
+    return (
+      <section>
+        {header}
+        <DataState type="loading" title="Loading classes" description="Fetching assigned class data." />
+      </section>
+    )
+  }
+
+  if (error) {
+    return (
+      <section>
+        {header}
+        <DataState type="error" title="Classes unavailable" description={error} />
+      </section>
+    )
+  }
+
+  if (classes.length === 0) {
+    return (
+      <section>
+        {header}
+        <DataState type="empty" title="No assigned classes" description="There are no classes assigned to this role yet." />
+      </section>
+    )
+  }
 
   return (
     <section>
-      <PageHeader
-        title="Trainer Classes"
-        description="Monitor assigned classes, progress, weak topics, and trainees who need intervention."
-      />
+      {header}
 
       <div className="mb-6 grid gap-4 md:grid-cols-3">
-        <KpiCard title="Assigned Classes" value={demoClasses.length} icon={Users} />
+        <KpiCard title="Assigned Classes" value={classes.length} icon={Users} />
         <KpiCard title="Running Classes" value={runningClasses.length} icon={BarChart3} />
         <KpiCard title="At-risk Trainees" value={totalAtRisk} icon={AlertTriangle} />
       </div>
 
       <div className="grid gap-4 xl:grid-cols-2">
-        {demoClasses.map((item) => (
+        {classes.map((item) => (
           <Link
             key={item.id}
             to={`/trainer/classes/${item.id}`}

@@ -2,28 +2,65 @@ import { BookOpen, FileText, Layers3, Upload } from 'lucide-react'
 import { PageHeader } from '@/shared/components/ui/PageHeader'
 import { ProgressBar } from '@/shared/components/ui/ProgressBar'
 import { StatusBadge } from '@/shared/components/ui/StatusBadge'
+import { DataState } from '@/shared/components/ui/DataState'
 import { demoCourses, demoModules } from '@/data/demo/demoCourses'
 
 export function CourseContentPage() {
+  const courses = demoCourses
+  const modules = demoModules
+  const isLoading = false
+  const error = null
+
+  const header = (
+    <PageHeader
+      title="Course Content"
+      description="Organize modules, lessons, materials, and publishing status for assigned courses."
+      action={
+        <button className="dev2-primary-button">
+          <Upload size={16} />
+          Upload Material
+        </button>
+      }
+    />
+  )
+
+  if (isLoading) {
+    return (
+      <section>
+        {header}
+        <DataState type="loading" title="Loading content workspace" description="Fetching assigned courses and modules." />
+      </section>
+    )
+  }
+
+  if (error) {
+    return (
+      <section>
+        {header}
+        <DataState type="error" title="Content workspace unavailable" description={error} />
+      </section>
+    )
+  }
+
+  if (courses.length === 0) {
+    return (
+      <section>
+        {header}
+        <DataState type="empty" title="No assigned courses" description="There are no courses assigned for content management yet." />
+      </section>
+    )
+  }
+
   return (
     <section>
-      <PageHeader
-        title="Course Content"
-        description="Organize modules, lessons, materials, and publishing status for assigned courses."
-        action={
-          <button className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700">
-            <Upload size={16} />
-            Upload Material
-          </button>
-        }
-      />
+      {header}
 
       <div className="grid gap-6 xl:grid-cols-[320px_1fr]">
         <aside className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <h2 className="text-lg font-bold text-slate-900">Assigned Courses</h2>
 
           <div className="mt-4 space-y-3">
-            {demoCourses.map((course) => (
+            {courses.map((course) => (
               <div key={course.id} className="rounded-xl border border-slate-100 p-4 hover:bg-slate-50">
                 <div className="flex items-start justify-between gap-3">
                   <div>
@@ -58,7 +95,7 @@ export function CourseContentPage() {
           </div>
 
           <div className="space-y-4">
-            {demoModules.map((module) => (
+            {modules.length > 0 ? modules.map((module) => (
               <div key={module.id} className="rounded-2xl border border-slate-100 p-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
@@ -94,7 +131,9 @@ export function CourseContentPage() {
                   ))}
                 </div>
               </div>
-            ))}
+            )) : (
+              <DataState type="empty" title="No modules" description="Create a module before adding lessons and materials." />
+            )}
           </div>
         </main>
       </div>

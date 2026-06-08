@@ -56,19 +56,19 @@ const navItems = [
     label: 'Course Content',
     path: '/sme/content',
     icon: Layers3,
-    roles: [ROLES.SME, ROLES.ADMIN, ROLES.TRAINER, ROLES.TMO],
+    roles: [ROLES.SME, ROLES.ADMIN],
   },
   {
     label: 'Question Bank',
     path: '/sme/questions',
     icon: FileQuestion,
-    roles: [ROLES.SME, ROLES.ADMIN, ROLES.TRAINER, ROLES.TMO],
+    roles: [ROLES.SME, ROLES.ADMIN],
   },
   {
     label: 'Course Management',
     path: '/admin/courses',
     icon: BookOpen,
-    roles: [ROLES.ADMIN, ROLES.TMO, ROLES.TRAINER, ROLES.SME],
+    roles: [ROLES.ADMIN],
   },
   {
     label: 'Users & Roles',
@@ -80,7 +80,7 @@ const navItems = [
     label: 'Reports',
     path: '/reports',
     icon: BarChart3,
-    roles: [ROLES.TMO, ROLES.ADMIN, ROLES.TRAINER, ROLES.SME],
+    roles: [ROLES.TMO, ROLES.ADMIN],
   },
   {
     label: 'Settings',

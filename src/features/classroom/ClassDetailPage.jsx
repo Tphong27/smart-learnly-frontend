@@ -4,17 +4,51 @@ import { KpiCard } from '@/shared/components/ui/KpiCard'
 import { PageHeader } from '@/shared/components/ui/PageHeader'
 import { ProgressBar } from '@/shared/components/ui/ProgressBar'
 import { StatusBadge } from '@/shared/components/ui/StatusBadge'
+import { DataState } from '@/shared/components/ui/DataState'
 import { demoClasses, demoClassTrainees } from '@/data/demo/demoClasses'
 
 export function ClassDetailPage() {
   const { classId } = useParams()
-  const currentClass = demoClasses.find((item) => item.id === classId) || demoClasses[0]
+  const isLoading = false
+  const error = null
+  const currentClass = demoClasses.find((item) => item.id === classId)
+
+  if (isLoading) {
+    return (
+      <section>
+        <PageHeader title="Class Detail" description="Loading class monitoring data." />
+        <DataState type="loading" title="Loading class" description="Fetching trainees, progress, and risk signals." />
+      </section>
+    )
+  }
+
+  if (error) {
+    return (
+      <section>
+        <PageHeader title="Class Detail" description="Class monitoring is temporarily unavailable." />
+        <DataState type="error" title="Class detail unavailable" description={error} />
+      </section>
+    )
+  }
+
+  if (!currentClass) {
+    return (
+      <section>
+        <PageHeader title="Class Detail" description="No matching class was found." />
+        <DataState
+          type="empty"
+          title="Class not found"
+          description="Check that the class route uses a valid class id from the assigned class list."
+        />
+      </section>
+    )
+  }
 
   return (
     <section>
       <PageHeader
         title={currentClass.name}
-        description={`${currentClass.course} — Trainer: ${currentClass.trainer}`}
+        description={`${currentClass.course} - Trainer: ${currentClass.trainer}`}
         action={<StatusBadge status={currentClass.status} />}
       />
 
@@ -47,24 +81,36 @@ export function ClassDetailPage() {
                 </thead>
 
                 <tbody className="divide-y divide-slate-100">
-                  {demoClassTrainees.map((item) => (
-                    <tr key={item.id} className="hover:bg-slate-50">
-                      <td className="px-4 py-4 font-medium text-slate-900">{item.name}</td>
-                      <td className="px-4 py-4">
-                        <div className="w-36">
-                          <ProgressBar value={item.progress} />
-                        </div>
-                      </td>
-                      <td className="px-4 py-4 text-slate-700">{item.score}%</td>
-                      <td className="px-4 py-4 text-slate-700">
-                        {item.lastLoginDays} day(s) ago
-                      </td>
-                      <td className="px-4 py-4 text-slate-700">{item.weakTopic}</td>
-                      <td className="px-4 py-4">
-                        <StatusBadge status={item.risk} />
+                  {demoClassTrainees.length > 0 ? (
+                    demoClassTrainees.map((item) => (
+                      <tr key={item.id} className="hover:bg-slate-50">
+                        <td className="px-4 py-4 font-medium text-slate-900">{item.name}</td>
+                        <td className="px-4 py-4">
+                          <div className="w-36">
+                            <ProgressBar value={item.progress} />
+                          </div>
+                        </td>
+                        <td className="px-4 py-4 text-slate-700">{item.score}%</td>
+                        <td className="px-4 py-4 text-slate-700">
+                          {item.lastLoginDays} day(s) ago
+                        </td>
+                        <td className="px-4 py-4 text-slate-700">{item.weakTopic}</td>
+                        <td className="px-4 py-4">
+                          <StatusBadge status={item.risk} />
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan="6">
+                        <DataState
+                          type="empty"
+                          title="No trainee data"
+                          description="Trainee monitoring data has not been synced for this class."
+                        />
                       </td>
                     </tr>
-                  ))}
+                  )}
                 </tbody>
               </table>
             </div>

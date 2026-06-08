@@ -2,10 +2,13 @@ import { Brain, CheckCircle2, Filter, XCircle } from 'lucide-react'
 import { useState } from 'react'
 import { PageHeader } from '@/shared/components/ui/PageHeader'
 import { StatusBadge } from '@/shared/components/ui/StatusBadge'
+import { DataState } from '@/shared/components/ui/DataState'
 import { demoQuestions } from '@/data/demo/demoQuestions'
 
 export function QuestionBankPage() {
   const [questions, setQuestions] = useState(demoQuestions)
+  const isLoading = false
+  const error = null
 
   const handleApprove = (questionId) => {
     setQuestions((current) =>
@@ -23,18 +26,53 @@ export function QuestionBankPage() {
     )
   }
 
+  const header = (
+    <PageHeader
+      title="Question Bank"
+      description="Review official questions and AI-generated drafts before publishing them to tests."
+      action={
+        <button className="dev2-primary-button">
+          <Brain size={16} />
+          Generate AI Draft
+        </button>
+      }
+    />
+  )
+
+  if (isLoading) {
+    return (
+      <section>
+        {header}
+        <DataState type="loading" title="Loading questions" description="Preparing the question bank." />
+      </section>
+    )
+  }
+
+  if (error) {
+    return (
+      <section>
+        {header}
+        <DataState type="error" title="Question bank unavailable" description={error} />
+      </section>
+    )
+  }
+
+  if (questions.length === 0) {
+    return (
+      <section>
+        {header}
+        <DataState
+          type="empty"
+          title="No questions found"
+          description="Create or generate a draft question before publishing tests."
+        />
+      </section>
+    )
+  }
+
   return (
     <section>
-      <PageHeader
-        title="Question Bank"
-        description="Review official questions and AI-generated drafts before publishing them to tests."
-        action={
-          <button className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700">
-            <Brain size={16} />
-            Generate AI Draft
-          </button>
-        }
-      />
+      {header}
 
       <div className="mb-4 flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm md:flex-row md:items-center md:justify-between">
         <div className="flex items-center gap-2 text-sm text-slate-600">
@@ -72,7 +110,7 @@ export function QuestionBankPage() {
                     <p className="font-medium text-slate-900">{item.question}</p>
                     {item.isAiGenerated ? (
                       <p className="mt-1 text-xs font-medium text-purple-600">
-                        AI-generated draft — SME review required
+                        AI-generated draft - SME review required
                       </p>
                     ) : null}
                   </td>

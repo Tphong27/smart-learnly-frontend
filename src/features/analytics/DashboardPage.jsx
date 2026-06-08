@@ -3,6 +3,7 @@ import { KpiCard } from '@/shared/components/ui/KpiCard'
 import { PageHeader } from '@/shared/components/ui/PageHeader'
 import { ProgressBar } from '@/shared/components/ui/ProgressBar'
 import { StatusBadge } from '@/shared/components/ui/StatusBadge'
+import { DataState } from '@/shared/components/ui/DataState'
 import { demoClasses } from '@/data/demo/demoClasses'
 import { demoOperationalMetrics, demoWeakTopics } from '@/data/demo/demoAnalytics'
 import { getCurrentUser } from '@/services'
@@ -11,6 +12,26 @@ import { ROLES } from '@/shared/constants/roles'
 export function DashboardPage() {
   const user = getCurrentUser()
   const role = user?.role || ROLES.ADMIN
+  const isLoading = false
+  const error = null
+
+  if (isLoading) {
+    return (
+      <section>
+        <PageHeader title="Dashboard" description="Loading dashboard data." />
+        <DataState type="loading" title="Loading dashboard" description="Fetching role-specific metrics." />
+      </section>
+    )
+  }
+
+  if (error) {
+    return (
+      <section>
+        <PageHeader title="Dashboard" description="Dashboard data is temporarily unavailable." />
+        <DataState type="error" title="Dashboard unavailable" description={error} />
+      </section>
+    )
+  }
 
   if (role === ROLES.SME) return <SmeDashboard />
   if (role === ROLES.TRAINER) return <TrainerDashboard />
@@ -20,6 +41,9 @@ export function DashboardPage() {
 }
 
 function OperationsDashboard() {
+  const hasClassData = demoClasses.length > 0
+  const hasWeakTopicData = demoWeakTopics.length > 0
+
   return (
     <section>
       <PageHeader
@@ -39,21 +63,25 @@ function OperationsDashboard() {
           <h2 className="text-lg font-bold text-slate-900">Class Performance</h2>
 
           <div className="mt-4 space-y-4">
-            {demoClasses.map((item) => (
-              <div key={item.id} className="rounded-xl border border-slate-100 p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-semibold text-slate-900">{item.name}</p>
-                    <p className="text-sm text-slate-500">{item.course}</p>
+            {hasClassData ? (
+              demoClasses.map((item) => (
+                <div key={item.id} className="rounded-xl border border-slate-100 p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-semibold text-slate-900">{item.name}</p>
+                      <p className="text-sm text-slate-500">{item.course}</p>
+                    </div>
+                    <StatusBadge status={item.status} />
                   </div>
-                  <StatusBadge status={item.status} />
-                </div>
 
-                <div className="mt-4">
-                  <ProgressBar value={item.averageProgress} label="Average progress" />
+                  <div className="mt-4">
+                    <ProgressBar value={item.averageProgress} label="Average progress" />
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))
+            ) : (
+              <DataState type="empty" title="No class performance data" description="Class metrics have not been synced yet." />
+            )}
           </div>
         </div>
 
@@ -61,20 +89,24 @@ function OperationsDashboard() {
           <h2 className="text-lg font-bold text-slate-900">Weak Topic Signals</h2>
 
           <div className="mt-4 space-y-3">
-            {demoWeakTopics.map((item) => (
-              <div key={item.topic} className="flex items-center justify-between rounded-xl bg-slate-50 p-4">
-                <div>
-                  <p className="font-semibold text-slate-900">{item.topic}</p>
-                  <p className="text-sm text-slate-500">
-                    {item.affectedTrainees} trainees affected
-                  </p>
-                </div>
+            {hasWeakTopicData ? (
+              demoWeakTopics.map((item) => (
+                <div key={item.topic} className="flex items-center justify-between rounded-xl bg-slate-50 p-4">
+                  <div>
+                    <p className="font-semibold text-slate-900">{item.topic}</p>
+                    <p className="text-sm text-slate-500">
+                      {item.affectedTrainees} trainees affected
+                    </p>
+                  </div>
 
-                <span className="text-sm font-bold text-slate-900">
-                  {item.averageScore}%
-                </span>
-              </div>
-            ))}
+                  <span className="text-sm font-bold text-slate-900">
+                    {item.averageScore}%
+                  </span>
+                </div>
+              ))
+            ) : (
+              <DataState type="empty" title="No weak topic data" description="Weak topic signals are not available yet." />
+            )}
           </div>
         </div>
       </div>
@@ -110,6 +142,8 @@ function SmeDashboard() {
 }
 
 function TrainerDashboard() {
+  const hasClasses = demoClasses.length > 0
+
   return (
     <section>
       <PageHeader
@@ -127,21 +161,25 @@ function TrainerDashboard() {
         <h2 className="text-lg font-bold text-slate-900">Assigned Classes</h2>
 
         <div className="mt-4 space-y-4">
-          {demoClasses.map((item) => (
-            <div key={item.id} className="rounded-xl border border-slate-100 p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-semibold text-slate-900">{item.name}</p>
-                  <p className="text-sm text-slate-500">{item.course}</p>
+          {hasClasses ? (
+            demoClasses.map((item) => (
+              <div key={item.id} className="rounded-xl border border-slate-100 p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-semibold text-slate-900">{item.name}</p>
+                    <p className="text-sm text-slate-500">{item.course}</p>
+                  </div>
+                  <StatusBadge status={item.status} />
                 </div>
-                <StatusBadge status={item.status} />
-              </div>
 
-              <div className="mt-4">
-                <ProgressBar value={item.averageProgress} label="Average progress" />
+                <div className="mt-4">
+                  <ProgressBar value={item.averageProgress} label="Average progress" />
+                </div>
               </div>
-            </div>
-          ))}
+            ))
+          ) : (
+            <DataState type="empty" title="No assigned classes" description="There are no classes assigned to this trainer yet." />
+          )}
         </div>
       </div>
     </section>

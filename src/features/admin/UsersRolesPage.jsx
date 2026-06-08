@@ -2,6 +2,7 @@ import { ShieldCheck, UserCheck, UserX } from 'lucide-react'
 import { KpiCard } from '@/shared/components/ui/KpiCard'
 import { PageHeader } from '@/shared/components/ui/PageHeader'
 import { StatusBadge } from '@/shared/components/ui/StatusBadge'
+import { DataState } from '@/shared/components/ui/DataState'
 
 const users = [
   { id: 1, name: 'Linh Do', email: 'linh.admin@slp.vn', role: 'admin', status: 'active' },
@@ -11,12 +12,46 @@ const users = [
 ]
 
 export function UsersRolesPage() {
+  const isLoading = false
+  const error = null
+
+  const header = (
+    <PageHeader
+      title="Users & Roles"
+      description="Admin mock screen for account status and role assignment management."
+    />
+  )
+
+  if (isLoading) {
+    return (
+      <section>
+        {header}
+        <DataState type="loading" title="Loading users" description="Fetching accounts and role assignments." />
+      </section>
+    )
+  }
+
+  if (error) {
+    return (
+      <section>
+        {header}
+        <DataState type="error" title="Users unavailable" description={error} />
+      </section>
+    )
+  }
+
+  if (users.length === 0) {
+    return (
+      <section>
+        {header}
+        <DataState type="empty" title="No users found" description="No accounts are available for role assignment." />
+      </section>
+    )
+  }
+
   return (
     <section>
-      <PageHeader
-        title="Users & Roles"
-        description="Admin mock screen for account status and role assignment management."
-      />
+      {header}
 
       <div className="mb-6 grid gap-4 md:grid-cols-3">
         <KpiCard title="Total Users" value={users.length} icon={ShieldCheck} />

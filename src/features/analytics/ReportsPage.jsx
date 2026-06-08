@@ -2,21 +2,58 @@ import { AlertTriangle, BarChart3, CreditCard, Users } from 'lucide-react'
 import { KpiCard } from '@/shared/components/ui/KpiCard'
 import { PageHeader } from '@/shared/components/ui/PageHeader'
 import { StatusBadge } from '@/shared/components/ui/StatusBadge'
+import { DataState } from '@/shared/components/ui/DataState'
 import { demoClasses } from '@/data/demo/demoClasses'
 import { demoOperationalMetrics, demoWeakTopics } from '@/data/demo/demoAnalytics'
 
 export function ReportsPage() {
+  const classes = demoClasses
+  const weakTopics = demoWeakTopics
+  const isLoading = false
+  const error = null
+
+  const header = (
+    <PageHeader
+      title="Reports & Operational Insights"
+      description="TMO/Admin view for enrollment, payment, class performance, and churn risk monitoring."
+      action={
+        <button className="dev2-secondary-button">
+          Export Mock Report
+        </button>
+      }
+    />
+  )
+
+  if (isLoading) {
+    return (
+      <section>
+        {header}
+        <DataState type="loading" title="Loading reports" description="Preparing operational metrics and reports." />
+      </section>
+    )
+  }
+
+  if (error) {
+    return (
+      <section>
+        {header}
+        <DataState type="error" title="Reports unavailable" description={error} />
+      </section>
+    )
+  }
+
+  if (!demoOperationalMetrics || classes.length === 0) {
+    return (
+      <section>
+        {header}
+        <DataState type="empty" title="No report data" description="There is no operational data available for the selected demo role." />
+      </section>
+    )
+  }
+
   return (
     <section>
-      <PageHeader
-        title="Reports & Operational Insights"
-        description="TMO/Admin view for enrollment, payment, class performance, and churn risk monitoring."
-        action={
-          <button className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">
-            Export Mock Report
-          </button>
-        }
-      />
+      {header}
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <KpiCard title="Active Trainees" value={demoOperationalMetrics.activeTrainees} icon={Users} />
@@ -30,7 +67,7 @@ export function ReportsPage() {
           <h2 className="text-lg font-bold text-slate-900">Class Report</h2>
 
           <div className="mt-4 space-y-3">
-            {demoClasses.map((item) => (
+            {classes.map((item) => (
               <div key={item.id} className="rounded-xl border border-slate-100 p-4">
                 <div className="flex items-center justify-between">
                   <div>
@@ -57,7 +94,7 @@ export function ReportsPage() {
           </div>
 
           <div className="mt-4 space-y-3">
-            {demoWeakTopics.map((item) => (
+            {weakTopics.length > 0 ? weakTopics.map((item) => (
               <div key={item.topic} className="rounded-xl bg-slate-50 p-4">
                 <div className="flex items-center justify-between">
                   <div>
@@ -70,7 +107,9 @@ export function ReportsPage() {
                   <p className="text-xl font-bold text-slate-900">{item.averageScore}%</p>
                 </div>
               </div>
-            ))}
+            )) : (
+              <DataState type="empty" title="No weak topic signals" description="Weak topic analytics have not produced any records yet." />
+            )}
           </div>
         </div>
       </div>

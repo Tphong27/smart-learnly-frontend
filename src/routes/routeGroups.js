@@ -4,13 +4,14 @@ export const routeGroups = [
     routes: [
       { path: '/', label: 'Home' },
       { path: '/courses', label: 'Course Catalog' },
-      { path: '/classes', label: 'Class Catalog' },
+      { path: '/login', label: 'Login' },
     ],
   },
   {
     title: 'Trainee',
     routes: [
       { path: '/learning', label: 'Learning Workspace' },
+      { path: '/my-courses', label: 'My Courses' },
       { path: '/tests', label: 'Tests & Practice' },
       { path: '/analytics/me', label: 'My Analytics' },
     ],
@@ -18,18 +19,19 @@ export const routeGroups = [
   {
     title: 'Staff',
     routes: [
-      { path: '/staff/courses', label: 'Content Workspace' },
-      { path: '/staff/classes', label: 'Class Operations' },
-      { path: '/staff/assignments', label: 'Assignment Review' },
-      { path: '/staff/questions', label: 'Question Bank' },
+      { path: '/dashboard', label: 'Dashboard' },
+      { path: '/sme/content', label: 'Content Workspace' },
+      { path: '/sme/questions', label: 'Question Bank' },
+      { path: '/trainer/classes', label: 'Class Operations' },
+      { path: '/reports', label: 'Reports' },
     ],
   },
   {
     title: 'Admin',
     routes: [
       { path: '/admin/users', label: 'Users & Roles' },
-      { path: '/admin/configuration', label: 'System Configuration' },
-      { path: '/admin/audit', label: 'Audit Logs' },
+      { path: '/admin/courses', label: 'Course Management' },
+      { path: '/settings', label: 'System Settings' },
     ],
   },
 ]

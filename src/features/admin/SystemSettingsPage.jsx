@@ -1,6 +1,7 @@
 import { Brain, CreditCard, Mail, ShieldCheck } from 'lucide-react'
 import { PageHeader } from '@/shared/components/ui/PageHeader'
 import { StatusBadge } from '@/shared/components/ui/StatusBadge'
+import { DataState } from '@/shared/components/ui/DataState'
 
 const settings = [
   {
@@ -30,12 +31,46 @@ const settings = [
 ]
 
 export function SystemSettingsPage() {
+  const isLoading = false
+  const error = null
+
+  const header = (
+    <PageHeader
+      title="System Settings"
+      description="Admin mock screen for AI, payment, email, and access-control configuration."
+    />
+  )
+
+  if (isLoading) {
+    return (
+      <section>
+        {header}
+        <DataState type="loading" title="Loading settings" description="Fetching system configuration categories." />
+      </section>
+    )
+  }
+
+  if (error) {
+    return (
+      <section>
+        {header}
+        <DataState type="error" title="Settings unavailable" description={error} />
+      </section>
+    )
+  }
+
+  if (settings.length === 0) {
+    return (
+      <section>
+        {header}
+        <DataState type="empty" title="No settings found" description="System configuration categories have not been loaded." />
+      </section>
+    )
+  }
+
   return (
     <section>
-      <PageHeader
-        title="System Settings"
-        description="Admin mock screen for AI, payment, email, and access-control configuration."
-      />
+      {header}
 
       <div className="grid gap-4 md:grid-cols-2">
         {settings.map((item) => {
