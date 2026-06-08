@@ -1,7 +1,21 @@
-import { ArrowRight, BookOpen, CheckCircle2, Clock3, GraduationCap, Star } from 'lucide-react'
-import { Link, useParams } from 'react-router-dom'
-import { demoCourses } from '@/data/demo'
-import { getDemoCourseModules, getDemoEnrollmentByCourse } from '@/data/demo/demoRuntime'
+import {
+  ArrowLeft,
+  ArrowRight,
+  BookOpen,
+  CalendarDays,
+  CheckCircle2,
+  Clock3,
+  GraduationCap,
+  Layers3,
+  Star,
+  Users,
+} from 'lucide-react'
+import { Link, useNavigate, useParams } from 'react-router-dom'
+import { demoClasses, demoCourseFeedback, demoCourses } from '@/data/demo'
+import {
+  getDemoCourseModules,
+  getDemoEnrollmentByCourse,
+} from '@/data/demo/demoRuntime'
 import { PageState } from '@/shared/components/PageState'
 import { ProgressBar } from '@/shared/components/ProgressBar'
 import { StatusBadge } from '@/shared/components/StatusBadge'
@@ -9,51 +23,298 @@ import { useDemoPageState } from '@/shared/hooks/useDemoPageState'
 import { useDocumentTitle } from '@/shared/hooks/useDocumentTitle'
 
 function formatPrice(course) {
+  if (!course?.price) return 'Free'
+
   return new Intl.NumberFormat('vi-VN').format(course.price) + ' ' + course.currency
+}
+
+function formatDate(value) {
+  if (!value) return 'Not scheduled'
+
+  return new Intl.DateTimeFormat('vi-VN', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  }).format(new Date(value))
+}
+
+function getAverageRating(feedbackList, fallbackRating) {
+  if (feedbackList.length === 0) return fallbackRating || null
+
+  const total = feedbackList.reduce((sum, feedback) => sum + feedback.rating, 0)
+
+  return Number((total / feedbackList.length).toFixed(1))
+}
+
+function CourseClassList({ classes }) {
+  return (
+    <aside className="demo-card course-detail-side-panel">
+      <div className="demo-row demo-row--between">
+        <div>
+          <span className="demo-kicker">Available classes</span>
+          <h2>Class schedule</h2>
+        </div>
+
+        <span className="demo-count-badge">{classes.length}</span>
+      </div>
+
+      {classes.length === 0 ? (
+        <PageState
+          state="empty"
+          title="No classes yet"
+          description="This course has no scheduled class in demo data."
+        />
+      ) : (
+        <div className="demo-list">
+          {classes.map((classItem) => (
+            <article key={classItem.id} className="demo-list-item">
+              <div>
+                <strong>{classItem.name}</strong>
+                <small>Trainer: {classItem.trainerName}</small>
+                <small>
+                  {formatDate(classItem.startDate)} - {formatDate(classItem.endDate)}
+                </small>
+                <small>{classItem.traineeCount} trainees</small>
+              </div>
+
+              <StatusBadge status={classItem.status} />
+            </article>
+          ))}
+        </div>
+      )}
+    </aside>
+  )
+}
+
+function FeedbackSection({ feedbackList, averageRating }) {
+  return (
+    <section className="demo-card">
+      <div className="demo-row demo-row--between">
+        <div>
+          <span className="demo-kicker">Learner feedback</span>
+          <h2>Feedback and rating</h2>
+        </div>
+
+        <span className="demo-rating demo-rating--large">
+          <Star size={17} />
+          {averageRating || 'New'}
+        </span>
+      </div>
+
+      {feedbackList.length === 0 ? (
+        <PageState
+          state="empty"
+          title="No feedback yet"
+          description="Learner feedback will appear here after the course has reviews."
+        />
+      ) : (
+        <div className="demo-list">
+          {feedbackList.map((feedback) => (
+            <article key={feedback.id} className="demo-list-item">
+              <div>
+                <strong>{feedback.learnerName}</strong>
+                <small>{formatDate(feedback.createdAt)}</small>
+                <p>{feedback.comment}</p>
+              </div>
+
+              <span className="demo-rating">
+                <Star size={14} />
+                {feedback.rating}
+              </span>
+            </article>
+          ))}
+        </div>
+      )}
+    </section>
+  )
+}
+
+function ModuleSection({ modules }) {
+  return (
+    <section className="demo-card">
+      <div>
+        <span className="demo-kicker">Course content</span>
+        <h2>Modules and lessons</h2>
+      </div>
+
+      {modules.length === 0 ? (
+        <PageState
+          state="empty"
+          title="No modules yet"
+          description="Published course modules will appear here."
+        />
+      ) : (
+        <div className="course-module-list">
+          {modules.map((module) => (
+            <article key={module.id} className="course-module-card">
+              <div className="demo-row demo-row--between">
+                <div>
+                  <strong>{module.title}</strong>
+                  <small>{module.lessons.length} lessons</small>
+                </div>
+
+                <StatusBadge status={module.status} />
+              </div>
+
+              <div className="course-lesson-list">
+                {module.lessons.map((lesson) => (
+                  <div key={lesson.id} className="course-lesson-item">
+                    <span>
+                      <BookOpen size={15} />
+                    </span>
+
+                    <div>
+                      <strong>{lesson.title}</strong>
+                      <small>
+                        {lesson.type} · {lesson.durationMinutes} minutes
+                      </small>
+                      <p>{lesson.summary}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </article>
+          ))}
+        </div>
+      )}
+    </section>
+  )
 }
 
 export function CourseDetailPage() {
   const { courseId } = useParams()
+  const navigate = useNavigate()
   const { loading, error } = useDemoPageState()
+
   const course = demoCourses.find((item) => item.id === courseId)
   const modules = getDemoCourseModules(courseId)
   const enrollment = getDemoEnrollmentByCourse(courseId)
 
+  const classes = demoClasses.filter(
+    (classItem) => classItem.courseId === courseId,
+  )
+
+  const feedbackList = demoCourseFeedback.filter(
+    (feedback) => feedback.courseId === courseId,
+  )
+
+  const averageRating = getAverageRating(feedbackList, course?.rating)
+
   useDocumentTitle(course ? course.title : 'Course detail')
 
+  const handleBackToCatalog = () => {
+    navigate('/')
+
+    window.setTimeout(() => {
+      document.getElementById('courses')?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start',
+      })
+    }, 0)
+  }
+
   if (loading) {
-    return <PageState state="loading" title="Loading course detail" description="Checking course modules and enrollment state." />
+    return (
+      <PageState
+        state="loading"
+        title="Loading course detail"
+        description="Checking course modules, classes, feedback, and enrollment state."
+      />
+    )
   }
 
   if (error) {
-    return <PageState state="error" title="Course unavailable" description={error.message} />
+    return (
+      <PageState
+        state="error"
+        title="Course unavailable"
+        description={error.message}
+      />
+    )
   }
 
   if (!course || course.status !== 'published') {
-    return <PageState state="empty" title="Course not found" description="This course is not published or does not exist in demo data." />
+    return (
+      <PageState
+        state="empty"
+        title="Course not found"
+        description="This course is not published or does not exist in demo data."
+      />
+    )
   }
 
   return (
     <main className="demo-page">
+      <button
+        type="button"
+        className="demo-link-button"
+        onClick={handleBackToCatalog}
+      >
+        <ArrowLeft size={16} />
+        Back to catalog
+      </button>
+
       <section className="course-detail-hero">
         <div>
           <span className="demo-kicker">{course.category}</span>
           <h1>{course.title}</h1>
           <p>{course.shortDescription}</p>
+
           <div className="demo-meta-grid demo-meta-grid--wide">
-            <span><GraduationCap size={16} /> {course.level}</span>
-            <span><BookOpen size={16} /> {course.lessonCount} lessons</span>
-            <span><Clock3 size={16} /> {course.duration}</span>
-            <span><Star size={16} /> {course.rating}</span>
+            <span>
+              <GraduationCap size={16} /> {course.level}
+            </span>
+
+            <span>
+              <Layers3 size={16} /> {course.moduleCount} modules
+            </span>
+
+            <span>
+              <BookOpen size={16} /> {course.lessonCount} lessons
+            </span>
+
+            <span>
+              <Clock3 size={16} /> {course.duration}
+            </span>
+
+            <span>
+              <Star size={16} /> {averageRating || 'New'}
+            </span>
           </div>
         </div>
+
         <aside className="demo-card course-detail-panel">
-          <StatusBadge status={enrollment?.status || 'not enrolled'} tone={enrollment ? enrollment.status : 'not-enrolled'} />
+          <StatusBadge
+            status={enrollment?.status || 'not enrolled'}
+            tone={enrollment ? enrollment.status : 'not-enrolled'}
+          />
+
+          <span className="demo-kicker">Course price</span>
           <strong>{formatPrice(course)}</strong>
+
+          <div className="course-detail-price-meta">
+            <span>
+              <Users size={15} />
+              {course.enrolledCount} enrolled learners
+            </span>
+
+            <span>
+              <CalendarDays size={15} />
+              Updated {formatDate(course.updatedAt)}
+            </span>
+          </div>
+
           {enrollment ? (
             <>
-              <ProgressBar value={enrollment.progress} label="Course progress" />
-              <Link className="demo-primary-action" to={`/learning/${course.id}`}>
+              <ProgressBar
+                value={enrollment.progress}
+                label="Course progress"
+              />
+
+              <Link
+                className="demo-primary-action"
+                to={`/learning/${course.id}`}
+              >
                 Continue learning <ArrowRight size={16} />
               </Link>
             </>
@@ -65,33 +326,30 @@ export function CourseDetailPage() {
         </aside>
       </section>
 
-      <section className="demo-two-column">
-        <div className="demo-card">
-          <h2>Learning outcomes</h2>
-          <ul className="demo-check-list">
-            {course.outcomes.map((outcome) => (
-              <li key={outcome}><CheckCircle2 size={17} /> {outcome}</li>
-            ))}
-          </ul>
-        </div>
-        <div className="demo-card">
-          <h2>Course modules</h2>
-          {modules.length === 0 ? (
-            <PageState state="empty" title="No modules yet" description="Published course modules will appear here." />
-          ) : (
-            <div className="demo-list">
-              {modules.map((module) => (
-                <article key={module.id} className="demo-list-item">
-                  <div>
-                    <strong>{module.title}</strong>
-                    <small>{module.lessons.length} lessons</small>
-                  </div>
-                  <StatusBadge status={module.status} />
-                </article>
+      <section className="course-detail-layout">
+        <div className="course-detail-main">
+          <section className="demo-card">
+            <span className="demo-kicker">What you will achieve</span>
+            <h2>Learning outcomes</h2>
+
+            <ul className="demo-check-list">
+              {course.outcomes.map((outcome) => (
+                <li key={outcome}>
+                  <CheckCircle2 size={17} /> {outcome}
+                </li>
               ))}
-            </div>
-          )}
+            </ul>
+          </section>
+
+          <ModuleSection modules={modules} />
+
+          <FeedbackSection
+            feedbackList={feedbackList}
+            averageRating={averageRating}
+          />
         </div>
+
+        <CourseClassList classes={classes} />
       </section>
     </main>
   )
