@@ -17,6 +17,14 @@ import { LearningWorkspacePage } from "../features/learning/LearningWorkspacePag
 import { LessonDetailPage } from "../features/learning/LessonDetailPage";
 import { CheckoutPage } from "../features/payment/CheckoutPage";
 import { PaymentSimulationPage } from "../features/payment/PaymentSimulationPage";
+import { DashboardPage } from "../features/analytics/DashboardPage";
+import { ReportsPage } from "../features/analytics/ReportsPage";
+import { CourseContentPage } from "../features/course/CourseContentPage";
+import { QuestionBankPage } from "../features/assessment/QuestionBankPage";
+import { TrainerClassesPage } from "../features/classroom/TrainerClassesPage";
+import { ClassDetailPage } from "../features/classroom/ClassDetailPage";
+import { UsersRolesPage } from "../features/admin/UsersRolesPage";
+import { SystemSettingsPage } from "../features/admin/SystemSettingsPage";
 import { ROLES } from "@/shared/constants/roles";
 
 function PlaceholderPage({ title }) {
@@ -94,10 +102,7 @@ export function AppShell() {
 
         <Route element={<ProtectedRoute />}>
           <Route element={<AppLayout />}>
-            <Route
-              path="/dashboard"
-              element={<PlaceholderPage title="Dashboard" />}
-            />
+            <Route path="/dashboard" element={<DashboardPage />} />
             <Route
               path="/profile"
               element={<PlaceholderPage title="Profile" />}
@@ -129,14 +134,8 @@ export function AppShell() {
             <Route
               element={<RoleGuard allowedRoles={[ROLES.ADMIN, ROLES.SME]} />}
             >
-              <Route
-                path="/sme/content"
-                element={<PlaceholderPage title="Course Content" />}
-              />
-              <Route
-                path="/sme/questions"
-                element={<PlaceholderPage title="Question Bank" />}
-              />
+              <Route path="/sme/content" element={<CourseContentPage />} />
+              <Route path="/sme/questions" element={<QuestionBankPage />} />
             </Route>
 
             <Route element={<RoleGuard allowedRoles={[ROLES.ADMIN]} />}>
@@ -144,30 +143,25 @@ export function AppShell() {
                 path="/admin/courses"
                 element={<PlaceholderPage title="Admin Course Management" />}
               />
-              <Route
-                path="/admin/users"
-                element={<PlaceholderPage title="Users & Roles" />}
-              />
-              <Route
-                path="/settings"
-                element={<PlaceholderPage title="System Settings" />}
-              />
+              <Route path="/admin/users" element={<UsersRolesPage />} />
+              <Route path="/settings" element={<SystemSettingsPage />} />
             </Route>
 
             <Route
               element={<RoleGuard allowedRoles={[ROLES.TMO, ROLES.ADMIN]} />}
             >
-              <Route
-                path="/reports"
-                element={<PlaceholderPage title="Reports" />}
-              />
+              <Route path="/reports" element={<ReportsPage />} />
             </Route>
 
-            <Route element={<RoleGuard allowedRoles={[ROLES.TRAINER]} />}>
-              <Route
-                path="/trainer/classes"
-                element={<PlaceholderPage title="Trainer Classes" />}
-              />
+            <Route
+              element={
+                <RoleGuard
+                  allowedRoles={[ROLES.TRAINER, ROLES.TMO, ROLES.ADMIN]}
+                />
+              }
+            >
+              <Route path="/trainer/classes" element={<TrainerClassesPage />} />
+              <Route path="/trainer/classes/:classId" element={<ClassDetailPage />}/>
             </Route>
           </Route>
         </Route>
