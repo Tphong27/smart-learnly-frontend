@@ -2298,3 +2298,208 @@
     justify-content: center;
   }
 }
+
+/* Course Catalog Controls on HomePage */
+.course-catalog-controls {
+  display: grid;
+  grid-template-columns: minmax(280px, 1.4fr) minmax(190px, 0.65fr) minmax(170px, 0.55fr);
+  gap: 14px;
+  align-items: end;
+  margin: -12px 0 30px;
+  border: 1px solid #e2e8f2;
+  border-radius: 18px;
+  padding: 18px;
+  background: #ffffff;
+  box-shadow: 0 14px 34px rgba(34, 54, 91, 0.06);
+}
+
+.course-search,
+.course-filter {
+  display: grid;
+  gap: 7px;
+}
+
+.course-search {
+  position: relative;
+}
+
+.course-search svg {
+  position: absolute;
+  top: 50%;
+  left: 14px;
+  color: #8a96aa;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+.course-search input {
+  width: 100%;
+  min-height: 46px;
+  border: 1px solid #dfe6f1;
+  border-radius: 12px;
+  padding: 0 14px 0 42px;
+  outline: 0;
+  color: #263653;
+  background: #f8faff;
+  font-size: 14px;
+  transition: border-color 160ms ease, box-shadow 160ms ease, background 160ms ease;
+}
+
+.course-search input::placeholder {
+  color: #97a3b5;
+}
+
+.course-filter span {
+  color: #64708a;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.course-filter select {
+  width: 100%;
+  min-height: 46px;
+  border: 1px solid #dfe6f1;
+  border-radius: 12px;
+  padding: 0 38px 0 13px;
+  outline: 0;
+  color: #263653;
+  background: #f8faff;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: border-color 160ms ease, box-shadow 160ms ease, background 160ms ease;
+}
+
+.course-search input:focus,
+.course-filter select:focus {
+  border-color: #7ca5f8;
+  background: #ffffff;
+  box-shadow: 0 0 0 4px rgba(39, 104, 238, 0.12);
+}
+
+.course-result-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  border-radius: 999px;
+  padding: 0 13px;
+  color: #52627b;
+  background: #edf4ff;
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+/* HomePage Course Pagination */
+.course-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  margin-top: 32px;
+}
+
+.course-pagination-pages {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.course-pagination-button,
+.course-pagination-page {
+  display: inline-flex;
+  min-height: 38px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #dfe6f1;
+  border-radius: 10px;
+  padding: 0 14px;
+  color: #33425d;
+  background: #ffffff;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: border-color 160ms ease, color 160ms ease, background 160ms ease, transform 160ms ease;
+}
+
+.course-pagination-button:hover:not(:disabled),
+.course-pagination-page:hover {
+  border-color: #9bb9f7;
+  color: #2563eb;
+  transform: translateY(-1px);
+}
+
+.course-pagination-page {
+  width: 38px;
+  padding: 0;
+}
+
+.course-pagination-page.active {
+  border-color: #2563eb;
+  color: #ffffff;
+  background: #2563eb;
+}
+
+.course-pagination-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+/* Course card footer, because View detail and price also need layout */
+.course-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.course-card-footer strong {
+  color: #263653;
+  font-size: 13px;
+}
+
+.course-card-footer a {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #2e68d8;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.course-rating-muted {
+  color: #8793a6;
+}
+
+/* Responsive */
+@media (max-width: 900px) {
+  .course-catalog-controls {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .course-search {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 640px) {
+  .course-catalog-controls {
+    grid-template-columns: 1fr;
+    padding: 14px;
+  }
+
+  .course-pagination {
+    flex-direction: column;
+  }
+
+  .course-pagination-pages {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .course-card-footer {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
