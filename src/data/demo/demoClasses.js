@@ -1,0 +1,56 @@
+export const demoClasses = [
+  {
+    id: 'class-aws-01',
+    name: 'AWS-CP-2026-01',
+    course: 'AWS Cloud Practitioner Foundation',
+    trainer: 'An Tran',
+    status: 'running',
+    trainees: 32,
+    averageProgress: 68,
+    averageScore: 74,
+    weakestTopic: 'Cloud Pricing Models',
+    atRiskCount: 5,
+  },
+  {
+    id: 'class-data-01',
+    name: 'DMBS-2026-01',
+    course: 'Data Modeling for Business Systems',
+    trainer: 'An Tran',
+    status: 'upcoming',
+    trainees: 24,
+    averageProgress: 0,
+    averageScore: 0,
+    weakestTopic: 'Not enough data',
+    atRiskCount: 0,
+  },
+]
+
+export const demoClassTrainees = [
+  {
+    id: 'trainee-01',
+    name: 'Minh Nguyen',
+    progress: 72,
+    score: 78,
+    lastLoginDays: 1,
+    risk: 'low',
+    weakTopic: 'Pricing Models',
+  },
+  {
+    id: 'trainee-02',
+    name: 'Huyen Tran',
+    progress: 28,
+    score: 49,
+    lastLoginDays: 8,
+    risk: 'high',
+    weakTopic: 'Security & Compliance',
+  },
+  {
+    id: 'trainee-03',
+    name: 'Bao Le',
+    progress: 44,
+    score: 58,
+    lastLoginDays: 5,
+    risk: 'medium',
+    weakTopic: 'Shared Responsibility Model',
+  },
+]
