@@ -5,15 +5,29 @@ import { CourseCard } from './CourseCard'
 
 const PAGE_SIZE = 3
 
-export function CourseCatalogSection() {
+export function CourseCatalogSection({
+  id = 'courses',
+  title = 'Find the next course for your learning path',
+  description = 'Search and filter published SLP courses. Draft courses remain hidden from the public catalog.',
+  eyebrow = 'Course catalog',
+  excludeCourseIds = [],
+  className = '',
+  embedded = false,
+}) {
   const [courseQuery, setCourseQuery] = useState('')
   const [courseCategory, setCourseCategory] = useState('all')
   const [courseLevel, setCourseLevel] = useState('all')
   const [currentPage, setCurrentPage] = useState(1)
 
+  const excludedIds = useMemo(() => {
+    return new Set(excludeCourseIds)
+  }, [excludeCourseIds])
+
   const publishedCourses = useMemo(() => {
-    return demoCourses.filter((course) => course.status === 'published')
-  }, [])
+    return demoCourses.filter((course) => {
+      return course.status === 'published' && !excludedIds.has(course.id)
+    })
+  }, [excludedIds])
 
   const courseCategories = useMemo(() => {
     return ['all', ...new Set(publishedCourses.map((course) => course.category))]
@@ -79,17 +93,18 @@ export function CourseCatalogSection() {
     setCurrentPage((page) => Math.min(totalPages, page + 1))
   }
 
+  const sectionClassName = embedded
+    ? `courses-section courses-section--embedded ${className}`.trim()
+    : `courses-section section ${className}`.trim()
+
   return (
-    <section className="courses-section section" id="courses">
-      <div className="container">
+    <section className={sectionClassName} id={id}>
+      <div className={embedded ? undefined : 'container'}>
         <div className="courses-heading">
           <div className="section-heading align-left">
-            <span className="eyebrow">Course catalog</span>
-            <h2>Find the next course for your learning path</h2>
-            <p>
-              Search and filter published SLP courses. Draft courses remain
-              hidden from the public catalog.
-            </p>
+            <span className="eyebrow">{eyebrow}</span>
+            <h2>{title}</h2>
+            <p>{description}</p>
           </div>
 
           <span className="course-result-count">
@@ -139,7 +154,7 @@ export function CourseCatalogSection() {
         {filteredCourses.length === 0 ? (
           <div className="course-empty-state">
             <SlidersHorizontal size={28} />
-            <h3>No courses found</h3>
+            <h3>No available courses found</h3>
             <p>Try another keyword, category, or level.</p>
           </div>
         ) : (

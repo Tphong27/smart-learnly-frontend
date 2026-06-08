@@ -2503,3 +2503,61 @@
     flex-direction: column;
   }
 }
+
+.my-courses-section {
+  display: grid;
+  gap: 22px;
+  margin-bottom: 42px;
+}
+
+.my-courses-section__heading {
+  align-items: flex-end;
+}
+
+.my-courses-section__heading h2 {
+  margin: 8px 0 8px;
+  color: #17233e;
+  font-family: 'Manrope', sans-serif;
+  font-size: clamp(26px, 3vw, 34px);
+  letter-spacing: -1px;
+}
+
+.my-courses-section__heading p {
+  max-width: 720px;
+  margin: 0;
+  color: #64708a;
+  font-size: 15px;
+  line-height: 1.65;
+}
+
+.courses-section--embedded {
+  display: grid;
+  gap: 22px;
+  margin-top: 34px;
+  padding: 0;
+  background: transparent;
+}
+
+.courses-section--embedded .courses-heading {
+  align-items: flex-end;
+}
+
+.courses-section--embedded .section-heading {
+  margin-bottom: 0;
+}
+
+.courses-section--embedded .section-heading h2 {
+  font-size: clamp(26px, 3vw, 34px);
+}
+
+.courses-section--embedded .course-catalog-controls {
+  margin-top: 0;
+}
+
+@media (max-width: 760px) {
+  .my-courses-section__heading,
+  .courses-section--embedded .courses-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
