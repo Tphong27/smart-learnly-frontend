@@ -27,22 +27,22 @@ export function AppLayout() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <div className="flex">
+    <div className="app-layout-shell">
+      <div className="app-layout-shell__inner">
         <Sidebar
           userRole={user.role}
           open={sidebarOpen}
           onClose={() => setSidebarOpen(false)}
         />
 
-        <div className="min-w-0 flex-1">
+        <div className="app-layout-shell__main">
           <Header
             user={user}
             onToggleSidebar={() => setSidebarOpen(true)}
             onLogout={handleLogout}
           />
 
-          <main className="p-4 lg:p-6">
+          <main className="app-layout-shell__content">
             <Outlet />
           </main>
         </div>
