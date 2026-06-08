@@ -50,7 +50,7 @@ const navItems = [
     label: 'Classes',
     path: '/trainer/classes',
     icon: Users,
-    roles: [ROLES.TRAINER, ROLES.SME, ROLES.ADMIN, ROLES.TMO],
+    roles: [ROLES.TRAINER, ROLES.ADMIN, ROLES.TMO],
   },
   {
     label: 'Course Content',
@@ -90,7 +90,7 @@ const navItems = [
   },
 ]
 
-export function Sidebar({ userRole, open, onClose }) {
+export function Sidebar({ userRole, open, onClose = () => {} }) {
   const visibleItems = navItems.filter((item) => item.roles.includes(userRole))
 
   return (
