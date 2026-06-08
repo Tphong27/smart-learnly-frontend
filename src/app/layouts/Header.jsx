@@ -115,9 +115,5 @@ export function Header({ user, onToggleSidebar, onLogout, onRoleChange }) {
         </div>
       </div>
     </header>
-<<<<<<< Updated upstream
   )
-=======
-  );
->>>>>>> Stashed changes
 }
