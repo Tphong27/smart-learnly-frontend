@@ -4,11 +4,14 @@ import {
   ClipboardCheck,
   Clock3,
   Edit3,
+  Grid2X2,
+  List as ListIcon,
   Plus,
   Sparkles,
   Target,
   Trash2,
   Upload,
+  X,
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { getAllDemoEnrollments } from '@/data/demo/demoRuntime'
@@ -41,7 +44,38 @@ const emptyForm = {
   passingScore: 70,
 }
 
-function TestFormModal({ open, mode, form, onChange, onClose, onSubmit }) {
+function getInitialForm() {
+  const firstCourse = getTraineeCourseOptions()[0]
+
+  return {
+    ...emptyForm,
+    courseId: firstCourse?.id || '',
+  }
+}
+
+function getSourceSummary(test) {
+  if (test.sourceType === 'upload') {
+    return test.uploadedFileName || 'Uploaded document mock'
+  }
+
+  const selectedCount = Array.isArray(test.selectedModuleIds)
+    ? test.selectedModuleIds.length
+    : 0
+
+  if (selectedCount === 0) return 'Course module source'
+
+  return `${selectedCount} selected module${selectedCount > 1 ? 's' : ''}`
+}
+
+function TestFormModal({
+  open,
+  mode,
+  form,
+  formError,
+  onChange,
+  onClose,
+  onSubmit,
+}) {
   const modules = form.courseId ? getModulesForTraineeTest(form.courseId) : []
 
   if (!open) return null
@@ -66,8 +100,8 @@ function TestFormModal({ open, mode, form, onChange, onClose, onSubmit }) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
-      <section className="demo-card w-full max-w-3xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
+      <section className="demo-card w-full max-w-4xl max-h-[92vh] overflow-y-auto">
         <div className="demo-row demo-row--between">
           <div>
             <span className="demo-kicker">
@@ -78,9 +112,20 @@ function TestFormModal({ open, mode, form, onChange, onClose, onSubmit }) {
                 ? 'Generate personal practice test'
                 : 'Update your personal test'}
             </h2>
+            <p className="demo-muted">
+              Choose an enrolled course, then generate a test from selected
+              modules or an uploaded document mock.
+            </p>
           </div>
 
-          <Sparkles size={24} />
+          <button
+            type="button"
+            className="demo-secondary-action"
+            onClick={onClose}
+          >
+            <X size={16} />
+            Close
+          </button>
         </div>
 
         <div className="course-flow-form-section">
@@ -131,6 +176,7 @@ function TestFormModal({ open, mode, form, onChange, onClose, onSubmit }) {
               <span>Questions</span>
               <input
                 type="number"
+                min="1"
                 value={form.totalQuestions}
                 onChange={(event) =>
                   updateField('totalQuestions', event.target.value)
@@ -142,6 +188,7 @@ function TestFormModal({ open, mode, form, onChange, onClose, onSubmit }) {
               <span>Duration minutes</span>
               <input
                 type="number"
+                min="1"
                 value={form.durationMinutes}
                 onChange={(event) =>
                   updateField('durationMinutes', event.target.value)
@@ -153,6 +200,8 @@ function TestFormModal({ open, mode, form, onChange, onClose, onSubmit }) {
               <span>Passing score</span>
               <input
                 type="number"
+                min="1"
+                max="100"
                 value={form.passingScore}
                 onChange={(event) =>
                   updateField('passingScore', event.target.value)
@@ -195,20 +244,26 @@ function TestFormModal({ open, mode, form, onChange, onClose, onSubmit }) {
 
             {form.sourceType === 'modules' ? (
               <div className="demo-list">
-                {modules.map((module) => (
-                  <label key={module.id} className="demo-list-item">
-                    <div>
-                      <strong>{module.title}</strong>
-                      <small>{module.lessons.length} lessons</small>
-                    </div>
+                {modules.length === 0 ? (
+                  <p className="demo-muted">
+                    Select a course to show available modules.
+                  </p>
+                ) : (
+                  modules.map((module) => (
+                    <label key={module.id} className="demo-list-item">
+                      <div>
+                        <strong>{module.title}</strong>
+                        <small>{module.lessons.length} lessons</small>
+                      </div>
 
-                    <input
-                      type="checkbox"
-                      checked={form.selectedModuleIds.includes(module.id)}
-                      onChange={() => toggleModule(module.id)}
-                    />
-                  </label>
-                ))}
+                      <input
+                        type="checkbox"
+                        checked={form.selectedModuleIds.includes(module.id)}
+                        onChange={() => toggleModule(module.id)}
+                      />
+                    </label>
+                  ))
+                )}
               </div>
             ) : (
               <label className="course-flow-field">
@@ -225,12 +280,22 @@ function TestFormModal({ open, mode, form, onChange, onClose, onSubmit }) {
           </section>
         </div>
 
+        {formError ? <p className="demo-form-error">{formError}</p> : null}
+
         <div className="demo-actions">
-          <button type="button" className="demo-secondary-action" onClick={onClose}>
+          <button
+            type="button"
+            className="demo-secondary-action"
+            onClick={onClose}
+          >
             Cancel
           </button>
 
-          <button type="button" className="demo-primary-action" onClick={onSubmit}>
+          <button
+            type="button"
+            className="demo-primary-action"
+            onClick={onSubmit}
+          >
             <Sparkles size={16} />
             {mode === 'create' ? 'Create AI test' : 'Save changes'}
           </button>
@@ -240,7 +305,7 @@ function TestFormModal({ open, mode, form, onChange, onClose, onSubmit }) {
   )
 }
 
-function TestCard({ test, personal, onEdit, onDelete }) {
+function TestCard({ test, personal = false, onEdit, onDelete }) {
   const course = getLifecycleCourseById(test.courseId)
 
   return (
@@ -255,7 +320,8 @@ function TestCard({ test, personal, onEdit, onDelete }) {
       <div className="demo-chip-list">
         <span>{test.type || 'Module Test'}</span>
         <span>{test.testStatus || 'Not Started'}</span>
-        {personal && <span>Created by me</span>}
+        <span>{getSourceSummary(test)}</span>
+        {personal ? <span>Created by me</span> : null}
       </div>
 
       <h2>{test.title}</h2>
@@ -274,13 +340,13 @@ function TestCard({ test, personal, onEdit, onDelete }) {
       </div>
 
       <div className="demo-actions">
-        {!personal && (
+        {!personal ? (
           <Link className="demo-primary-action" to={`/tests/${test.id}`}>
             View test <ArrowRight size={16} />
           </Link>
-        )}
+        ) : null}
 
-        {personal && (
+        {personal ? (
           <>
             <button
               type="button"
@@ -300,9 +366,103 @@ function TestCard({ test, personal, onEdit, onDelete }) {
               Delete
             </button>
           </>
-        )}
+        ) : null}
       </div>
     </article>
+  )
+}
+
+function TestListRow({ test, personal = false, onEdit, onDelete }) {
+  const course = getLifecycleCourseById(test.courseId)
+
+  return (
+    <article className="demo-list-item">
+      <div>
+        <div className="demo-row">
+          <StatusBadge status={test.status} />
+          {personal ? (
+            <span className="demo-count-badge">Created by me</span>
+          ) : null}
+        </div>
+
+        <strong>{test.title}</strong>
+        <small>{test.courseTitle || course?.title}</small>
+        <small>
+          {test.type || 'Module Test'} · {test.testStatus || 'Not Started'} ·{' '}
+          {getSourceSummary(test)}
+        </small>
+        <p>{test.description}</p>
+      </div>
+
+      <div className="demo-actions">
+        <span className="demo-muted">
+          {test.totalQuestions} questions · {test.durationMinutes} min ·{' '}
+          {test.passingScore}% pass
+        </span>
+
+        {!personal ? (
+          <Link className="demo-primary-action" to={`/tests/${test.id}`}>
+            View test <ArrowRight size={16} />
+          </Link>
+        ) : null}
+
+        {personal ? (
+          <>
+            <button
+              type="button"
+              className="demo-secondary-action"
+              onClick={() => onEdit(test)}
+            >
+              <Edit3 size={16} />
+              Update
+            </button>
+
+            <button
+              type="button"
+              className="demo-secondary-action"
+              onClick={() => onDelete(test.id)}
+            >
+              <Trash2 size={16} />
+              Delete
+            </button>
+          </>
+        ) : null}
+      </div>
+    </article>
+  )
+}
+
+function TestCollection({ tests, viewMode, personal = false, onEdit, onDelete }) {
+  if (tests.length === 0) return null
+
+  if (viewMode === 'list') {
+    return (
+      <section className="demo-list">
+        {tests.map((test) => (
+          <TestListRow
+            key={test.id}
+            test={test}
+            personal={personal}
+            onEdit={onEdit}
+            onDelete={onDelete}
+          />
+        ))}
+      </section>
+    )
+  }
+
+  return (
+    <section className="demo-card-grid">
+      {tests.map((test) => (
+        <TestCard
+          key={test.id}
+          test={test}
+          personal={personal}
+          onEdit={onEdit}
+          onDelete={onDelete}
+        />
+      ))}
+    </section>
   )
 }
 
@@ -311,16 +471,20 @@ export function TestListPage() {
 
   const { loading, error } = useDemoPageState()
   const [activeTab, setActiveTab] = useState('available')
+  const [viewMode, setViewMode] = useState('grid')
   const [personalTests, setPersonalTests] = useState(() =>
     getTraineeCreatedTests(),
   )
   const [modalOpen, setModalOpen] = useState(false)
   const [modalMode, setModalMode] = useState('create')
   const [editingTestId, setEditingTestId] = useState(null)
-  const [form, setForm] = useState(emptyForm)
+  const [form, setForm] = useState(getInitialForm)
+  const [formError, setFormError] = useState('')
 
-  const enrolledCourseIds = new Set(
-    getAllDemoEnrollments().map((enrollment) => enrollment.courseId),
+  const enrolledCourseIds = useMemo(
+    () =>
+      new Set(getAllDemoEnrollments().map((enrollment) => enrollment.courseId)),
+    [],
   )
 
   const availableTests = useMemo(() => {
@@ -328,21 +492,24 @@ export function TestListPage() {
       (test) =>
         test.status === 'published' && enrolledCourseIds.has(test.courseId),
     )
-  }, [])
+  }, [enrolledCourseIds])
 
   const completedTests = availableTests.filter(
     (test) => test.testStatus === 'Completed' || test.bestScore,
   )
 
-  const openCreateModal = () => {
-    const firstCourse = getTraineeCourseOptions()[0]
+  const currentTests =
+    activeTab === 'personal'
+      ? personalTests
+      : activeTab === 'completed'
+        ? completedTests
+        : availableTests
 
+  const openCreateModal = () => {
     setModalMode('create')
     setEditingTestId(null)
-    setForm({
-      ...emptyForm,
-      courseId: firstCourse?.id || '',
-    })
+    setForm(getInitialForm())
+    setFormError('')
     setModalOpen(true)
   }
 
@@ -360,20 +527,55 @@ export function TestListPage() {
       durationMinutes: test.durationMinutes,
       passingScore: test.passingScore,
     })
+    setFormError('')
     setModalOpen(true)
   }
 
+  const validateForm = () => {
+    if (!form.title.trim()) return 'Please enter a test title.'
+    if (!form.courseId) return 'Please select an enrolled course.'
+
+    if (form.sourceType === 'modules' && form.selectedModuleIds.length === 0) {
+      return 'Please select at least one module for AI generation.'
+    }
+
+    if (form.sourceType === 'upload' && !form.uploadedFileName.trim()) {
+      return 'Please enter an uploaded file name mock.'
+    }
+
+    if (Number(form.totalQuestions) <= 0) {
+      return 'Questions must be greater than 0.'
+    }
+
+    if (Number(form.durationMinutes) <= 0) {
+      return 'Duration must be greater than 0.'
+    }
+
+    if (Number(form.passingScore) <= 0 || Number(form.passingScore) > 100) {
+      return 'Passing score must be between 1 and 100.'
+    }
+
+    return ''
+  }
+
   const handleSubmit = () => {
-    if (!form.title.trim() || !form.courseId) return
+    const validationError = validateForm()
+
+    if (validationError) {
+      setFormError(validationError)
+      return
+    }
 
     if (modalMode === 'create') {
       createTraineeTest(form)
+      setActiveTab('personal')
     } else {
       updateTraineeTest(editingTestId, form)
     }
 
     setPersonalTests(getTraineeCreatedTests())
     setModalOpen(false)
+    setFormError('')
   }
 
   const handleDelete = (testId) => {
@@ -409,11 +611,16 @@ export function TestListPage() {
           <h1>Practice from your enrolled courses</h1>
           <p>
             View assigned tests, create AI-generated personal tests, update your
-            own tests, and delete tests created by you.
+            own tests, delete tests created by you, and switch between grid/list
+            presentation.
           </p>
         </div>
 
-        <button type="button" className="demo-primary-action" onClick={openCreateModal}>
+        <button
+          type="button"
+          className="demo-primary-action"
+          onClick={openCreateModal}
+        >
           <Plus size={16} />
           Create AI Test
         </button>
@@ -430,7 +637,7 @@ export function TestListPage() {
             }
             onClick={() => setActiveTab('available')}
           >
-            Assigned tests
+            Assigned tests ({availableTests.length})
           </button>
 
           <button
@@ -442,7 +649,7 @@ export function TestListPage() {
             }
             onClick={() => setActiveTab('personal')}
           >
-            My generated tests
+            My generated tests ({personalTests.length})
           </button>
 
           <button
@@ -454,18 +661,62 @@ export function TestListPage() {
             }
             onClick={() => setActiveTab('completed')}
           >
-            Completed
+            Completed ({completedTests.length})
+          </button>
+        </div>
+
+        <div className="demo-actions">
+          <button
+            type="button"
+            className={
+              viewMode === 'grid'
+                ? 'demo-primary-action'
+                : 'demo-secondary-action'
+            }
+            onClick={() => setViewMode('grid')}
+            aria-label="Show tests as grid"
+          >
+            <Grid2X2 size={16} />
+            Grid
+          </button>
+
+          <button
+            type="button"
+            className={
+              viewMode === 'list'
+                ? 'demo-primary-action'
+                : 'demo-secondary-action'
+            }
+            onClick={() => setViewMode('list')}
+            aria-label="Show tests as list"
+          >
+            <ListIcon size={16} />
+            List
           </button>
         </div>
       </section>
 
-      {activeTab === 'available' && (
-        <section className="demo-card-grid">
-          {availableTests.map((test) => (
-            <TestCard key={test.id} test={test} />
-          ))}
-        </section>
-      )}
+      <div className="demo-result-summary">
+        Showing <strong>{currentTests.length}</strong>{' '}
+        test{currentTests.length === 1 ? '' : 's'} in{' '}
+        <strong>{viewMode}</strong> view
+      </div>
+
+      {activeTab === 'available' &&
+        (availableTests.length === 0 ? (
+          <PageState
+            state="empty"
+            title="No assigned tests available"
+            description="Enroll in a course with a published test to start practice."
+            action={
+              <Link className="demo-primary-action" to="/courses">
+                Explore courses <ArrowRight size={16} />
+              </Link>
+            }
+          />
+        ) : (
+          <TestCollection tests={availableTests} viewMode={viewMode} />
+        ))}
 
       {activeTab === 'personal' &&
         (personalTests.length === 0 ? (
@@ -485,17 +736,13 @@ export function TestListPage() {
             }
           />
         ) : (
-          <section className="demo-card-grid">
-            {personalTests.map((test) => (
-              <TestCard
-                key={test.id}
-                test={test}
-                personal
-                onEdit={openUpdateModal}
-                onDelete={handleDelete}
-              />
-            ))}
-          </section>
+          <TestCollection
+            tests={personalTests}
+            viewMode={viewMode}
+            personal
+            onEdit={openUpdateModal}
+            onDelete={handleDelete}
+          />
         ))}
 
       {activeTab === 'completed' &&
@@ -506,17 +753,14 @@ export function TestListPage() {
             description="Completed test attempts will appear here after practice."
           />
         ) : (
-          <section className="demo-card-grid">
-            {completedTests.map((test) => (
-              <TestCard key={test.id} test={test} />
-            ))}
-          </section>
+          <TestCollection tests={completedTests} viewMode={viewMode} />
         ))}
 
       <TestFormModal
         open={modalOpen}
         mode={modalMode}
         form={form}
+        formError={formError}
         onChange={setForm}
         onClose={() => setModalOpen(false)}
         onSubmit={handleSubmit}
