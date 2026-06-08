@@ -1,16 +1,25 @@
-import { Bell, Menu, Search, User, LogOut } from 'lucide-react'
+import { Bell, Menu, Search, User, LogOut } from "lucide-react";
+import { ROLES } from "@/shared/constants/roles";
 
-export function Header({ user, onToggleSidebar, onLogout }) {
+const demoRoles = [
+  ROLES.TRAINEE,
+  ROLES.SME,
+  ROLES.TRAINER,
+  ROLES.TMO,
+  ROLES.ADMIN,
+];
+
+export function Header({ user, onToggleSidebar, onLogout, onRoleChange }) {
   const displayName = user?.firstName
-    ? `${user.firstName} ${user.lastName || ''}`.trim()
-    : user?.email || 'User'
+    ? `${user.firstName} ${user.lastName || ""}`.trim()
+    : user?.email || "User";
 
   const initials = displayName
-    .split(' ')
+    .split(" ")
     .map((word) => word[0])
-    .join('')
+    .join("")
     .slice(0, 2)
-    .toUpperCase()
+    .toUpperCase();
 
   return (
     <header className="app-header sticky top-0 z-30 border-b border-slate-200 bg-white/90 backdrop-blur">
@@ -36,6 +45,18 @@ export function Header({ user, onToggleSidebar, onLogout }) {
         </div>
 
         <div className="flex items-center gap-3">
+          <select
+            value={user?.role || ROLES.ADMIN}
+            onChange={(event) => onRoleChange?.(event.target.value)}
+            className="hidden rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 outline-none hover:bg-slate-50 md:block"
+            title="Demo role switcher"
+          >
+            {demoRoles.map((role) => (
+              <option key={role} value={role}>
+                Demo as {role.toUpperCase()}
+              </option>
+            ))}
+          </select>
           <button
             type="button"
             className="app-icon-button relative inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50"
@@ -67,7 +88,7 @@ export function Header({ user, onToggleSidebar, onLogout }) {
                   {displayName}
                 </span>
                 <span className="block text-xs capitalize text-slate-500">
-                  {user?.role || 'user'}
+                  {user?.role || "user"}
                 </span>
               </span>
             </button>
@@ -94,5 +115,9 @@ export function Header({ user, onToggleSidebar, onLogout }) {
         </div>
       </div>
     </header>
+<<<<<<< Updated upstream
   )
+=======
+  );
+>>>>>>> Stashed changes
 }
