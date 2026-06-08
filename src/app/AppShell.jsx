@@ -33,6 +33,8 @@ import { SystemSettingsPage } from "../features/admin/SystemSettingsPage";
 import { FlashcardsPage } from "../features/flashcard/FlashcardsPage";
 import { TraineeMyClassesPage } from "../features/classroom/TraineeMyClassesPage";
 import { PaymentHistoryPage } from "../features/payment/PaymentHistoryPage";
+import { TmoClassManagementPage } from "../features/classroom/TmoClassManagementPage";
+import { TmoPaymentManagementPage } from "../features/payment/TmoPaymentManagementPage";
 import { ROLES } from "@/shared/constants/roles";
 
 function PlaceholderPage({ title }) {
@@ -175,6 +177,11 @@ export function AppShell() {
               <Route
                 path="/tmo/courses/:courseId/review"
                 element={<TmoCourseReviewPage />}
+              />
+              <Route path="/tmo/classes" element={<TmoClassManagementPage />} />
+              <Route
+                path="/tmo/payments"
+                element={<TmoPaymentManagementPage />}
               />
             </Route>
 

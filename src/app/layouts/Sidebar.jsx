@@ -67,10 +67,16 @@ const navItems = [
     roles: [ROLES.TRAINEE],
   },
   {
-    label: "Classes",
+    label: "Trainer Classes",
     path: "/trainer/classes",
     icon: Users,
-    roles: [ROLES.TRAINER, ROLES.TMO],
+    roles: [ROLES.TRAINER],
+  },
+  {
+    label: "Class Management",
+    path: "/tmo/classes",
+    icon: CalendarDays,
+    roles: [ROLES.TMO, ROLES.ADMIN],
   },
   {
     label: "Course Management",
@@ -83,6 +89,12 @@ const navItems = [
     path: "/tmo/courses?status=Submitted%20for%20Review",
     icon: ClipboardCheck,
     roles: [ROLES.TMO],
+  },
+  {
+    label: "Payment Management",
+    path: "/tmo/payments",
+    icon: CreditCard,
+    roles: [ROLES.TMO, ROLES.ADMIN],
   },
   {
     label: "Assigned Courses",

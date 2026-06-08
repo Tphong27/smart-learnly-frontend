@@ -496,6 +496,110 @@ export function addMockCourseLesson(courseId, moduleId, payload = {}) {
   return lesson
 }
 
+export function updateMockCourseModule(courseId, moduleId, payload = {}) {
+  const localModules = getLocalModules()
+  const modules = getLifecycleModules(courseId)
+  const targetModule = modules.find((module) => module.id === moduleId)
+
+  if (!targetModule) return null
+
+  const updatedModule = {
+    ...targetModule,
+    ...payload,
+    title: payload.title || targetModule.title,
+    status: payload.status || targetModule.status,
+  }
+
+  const existsInLocal = localModules.some((module) => module.id === moduleId)
+
+  if (existsInLocal) {
+    setLocalModules(
+      localModules.map((module) =>
+        module.id === moduleId ? updatedModule : module,
+      ),
+    )
+  } else {
+    setLocalModules([...localModules, updatedModule])
+  }
+
+  updateCourseStatus(courseId, COURSE_STATUSES.CONTENT_EDITING)
+
+  return updatedModule
+}
+
+export function deleteMockCourseModule(courseId, moduleId) {
+  const modules = getLifecycleModules(courseId)
+  const localModules = getLocalModules()
+  const nextModules = modules.filter((module) => module.id !== moduleId)
+
+  setLocalModules([
+    ...localModules.filter((module) => module.courseId !== courseId),
+    ...nextModules.map((module, index) => ({
+      ...module,
+      order: index + 1,
+    })),
+  ])
+
+  updateCourseStatus(courseId, COURSE_STATUSES.CONTENT_EDITING)
+
+  const course = getLifecycleCourseById(courseId)
+
+  if (course) {
+    const nextLessonCount = nextModules.reduce(
+      (sum, module) => sum + module.lessons.length,
+      0,
+    )
+
+    saveLifecycleCourse({
+      ...course,
+      moduleCount: nextModules.length,
+      modules: nextModules.length,
+      lessonCount: nextLessonCount,
+      lessons: nextLessonCount,
+    })
+  }
+
+  return nextModules
+}
+
+export function deleteMockCourseLesson(courseId, moduleId, lessonId) {
+  const modules = getLifecycleModules(courseId)
+  const localModules = getLocalModules()
+
+  const nextModules = modules.map((module) =>
+    module.id === moduleId
+      ? {
+          ...module,
+          lessons: module.lessons.filter((lesson) => lesson.id !== lessonId),
+        }
+      : module,
+  )
+
+  setLocalModules([
+    ...localModules.filter((module) => module.courseId !== courseId),
+    ...nextModules,
+  ])
+
+  updateCourseStatus(courseId, COURSE_STATUSES.CONTENT_EDITING)
+
+  const course = getLifecycleCourseById(courseId)
+
+  if (course) {
+    const nextLessonCount = nextModules.reduce(
+      (sum, module) => sum + module.lessons.length,
+      0,
+    )
+
+    saveLifecycleCourse({
+      ...course,
+      lessonCount: nextLessonCount,
+      lessons: nextLessonCount,
+    })
+  }
+
+  return nextModules
+}
+
 export function addMockLessonVideo(courseId, lessonId, video = {}) {
   const lesson = getLifecycleLesson(courseId, lessonId)
   const uploadedVideos = [

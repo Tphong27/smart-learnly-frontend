@@ -1,6 +1,12 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { AlertTriangle, BookOpen, ClipboardCheck, Layers3, Search } from 'lucide-react'
+import {
+  AlertTriangle,
+  BookOpen,
+  ClipboardCheck,
+  Layers3,
+  Search,
+} from 'lucide-react'
 import { KpiCard } from '@/shared/components/ui/KpiCard'
 import { PageHeader } from '@/shared/components/ui/PageHeader'
 import { DataState } from '@/shared/components/ui/DataState'
@@ -13,9 +19,15 @@ import { CourseStatusBadge } from './CourseStatusBadge'
 function getCounts(courses) {
   return {
     assigned: courses.length,
-    editing: courses.filter((course) => course.status === COURSE_STATUSES.CONTENT_EDITING).length,
-    waiting: courses.filter((course) => course.status === COURSE_STATUSES.SUBMITTED_FOR_REVIEW).length,
-    revision: courses.filter((course) => course.status === COURSE_STATUSES.REVISION_REQUIRED).length,
+    editing: courses.filter(
+      (course) => course.status === COURSE_STATUSES.CONTENT_EDITING,
+    ).length,
+    waiting: courses.filter(
+      (course) => course.status === COURSE_STATUSES.SUBMITTED_FOR_REVIEW,
+    ).length,
+    revision: courses.filter(
+      (course) => course.status === COURSE_STATUSES.REVISION_REQUIRED,
+    ).length,
   }
 }
 
@@ -37,16 +49,44 @@ function AssignedCourseCard({ course }) {
         <span className="demo-kicker">{course.category}</span>
         <CourseStatusBadge status={course.status} />
       </div>
+
       <h2>{course.title}</h2>
       <p>{course.shortDescription}</p>
-      <RevisionNoteCard note={course.status === COURSE_STATUSES.REVISION_REQUIRED ? course.revisionReason : ''} />
+
+      <RevisionNoteCard
+        note={
+          course.status === COURSE_STATUSES.REVISION_REQUIRED
+            ? course.revisionReason
+            : ''
+        }
+      />
+
       <dl className="course-flow-mini-grid">
-        <div><dt>Assigned by TMO</dt><dd>{course.createdByTmoName}</dd></div>
-        <div><dt>Modules</dt><dd>{course.moduleCount || course.modules || 0}</dd></div>
-        <div><dt>Lessons</dt><dd>{course.lessonCount || course.lessons || 0}</dd></div>
-        <div><dt>Last updated</dt><dd>{course.updatedAt}</dd></div>
+        <div>
+          <dt>Assigned by TMO</dt>
+          <dd>{course.createdByTmoName}</dd>
+        </div>
+
+        <div>
+          <dt>Modules</dt>
+          <dd>{course.moduleCount || course.modules || 0}</dd>
+        </div>
+
+        <div>
+          <dt>Lessons</dt>
+          <dd>{course.lessonCount || course.lessons || 0}</dd>
+        </div>
+
+        <div>
+          <dt>Last updated</dt>
+          <dd>{course.updatedAt}</dd>
+        </div>
       </dl>
-      <Link className="demo-primary-action" to={`/sme/courses/${course.id}/edit`}>
+
+      <Link
+        className="demo-primary-action"
+        to={`/sme/courses/${course.id}/edit`}
+      >
         Edit Content
       </Link>
     </article>
@@ -56,22 +96,37 @@ function AssignedCourseCard({ course }) {
 export function SmeAssignedCoursesPage() {
   const currentUser = getCurrentUser()
   const [keyword, setKeyword] = useState('')
-  const allCourses = getAllLifecycleCourses()
+  const [statusFilter, setStatusFilter] = useState('all')
+
+  const allCourses = useMemo(() => getAllLifecycleCourses(), [])
 
   const assignedCourses = useMemo(() => {
     const smeId = currentUser?.role === ROLES.ADMIN ? null : currentUser?.id
+    const normalizedKeyword = keyword.trim().toLowerCase()
 
     return allCourses.filter((course) => {
       const assignedToCurrentSme = !smeId || course.assignedSmeId === smeId
-      const operationalStatus = course.status !== COURSE_STATUSES.PUBLISHED && course.status !== COURSE_STATUSES.UNPUBLISHED
+
+      const operationalStatus =
+        course.status !== COURSE_STATUSES.PUBLISHED &&
+        course.status !== COURSE_STATUSES.UNPUBLISHED
+
       const matchesKeyword = [course.title, course.category, course.status]
         .join(' ')
         .toLowerCase()
-        .includes(keyword.trim().toLowerCase())
+        .includes(normalizedKeyword)
 
-      return assignedToCurrentSme && operationalStatus && matchesKeyword
+      const matchesStatus =
+        statusFilter === 'all' || course.status === statusFilter
+
+      return (
+        assignedToCurrentSme &&
+        operationalStatus &&
+        matchesKeyword &&
+        matchesStatus
+      )
     })
-  }, [allCourses, currentUser, keyword])
+  }, [allCourses, currentUser, keyword, statusFilter])
 
   const counts = getCounts(assignedCourses)
 
@@ -83,13 +138,32 @@ export function SmeAssignedCoursesPage() {
       />
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <KpiCard title="Assigned Courses" value={counts.assigned} icon={BookOpen} />
-        <KpiCard title="In Editing" value={counts.editing} icon={Layers3} />
-        <KpiCard title="Waiting for TMO Review" value={counts.waiting} icon={ClipboardCheck} />
-        <KpiCard title="Revision Required" value={counts.revision} icon={AlertTriangle} />
+        <KpiCard
+          title="Assigned Courses"
+          value={counts.assigned}
+          icon={BookOpen}
+        />
+
+        <KpiCard
+          title="In Editing"
+          value={counts.editing}
+          icon={Layers3}
+        />
+
+        <KpiCard
+          title="Waiting for TMO Review"
+          value={counts.waiting}
+          icon={ClipboardCheck}
+        />
+
+        <KpiCard
+          title="Revision Required"
+          value={counts.revision}
+          icon={AlertTriangle}
+        />
       </div>
 
-      <div className="course-flow-filter-card course-flow-filter-card--single">
+      <div className="course-flow-filter-card">
         <label className="course-flow-search">
           <Search size={17} />
           <input
@@ -97,6 +171,29 @@ export function SmeAssignedCoursesPage() {
             placeholder="Search assigned courses"
             onChange={(event) => setKeyword(event.target.value)}
           />
+        </label>
+
+        <label className="course-flow-field">
+          <span>Status</span>
+          <select
+            value={statusFilter}
+            onChange={(event) => setStatusFilter(event.target.value)}
+          >
+            <option value="all">All status</option>
+            <option value={COURSE_STATUSES.ASSIGNED_TO_SME}>
+              Assigned to SME
+            </option>
+            <option value={COURSE_STATUSES.CONTENT_EDITING}>
+              Content Editing
+            </option>
+            <option value={COURSE_STATUSES.SUBMITTED_FOR_REVIEW}>
+              Submitted for Review
+            </option>
+            <option value={COURSE_STATUSES.REVISION_REQUIRED}>
+              Revision Required
+            </option>
+            <option value={COURSE_STATUSES.VERIFIED}>Verified</option>
+          </select>
         </label>
       </div>
 
@@ -116,4 +213,3 @@ export function SmeAssignedCoursesPage() {
     </section>
   )
 }
-
