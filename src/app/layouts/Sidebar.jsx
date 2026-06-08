@@ -82,7 +82,13 @@ const navItems = [
     label: "Course Management",
     path: "/tmo/courses",
     icon: BookOpen,
-    roles: [ROLES.TMO, ROLES.ADMIN],
+    roles: [ROLES.TMO],
+  },
+  {
+    label: "Admin Courses",
+    path: "/admin/courses",
+    icon: BookOpen,
+    roles: [ROLES.ADMIN],
   },
   {
     label: "Course Review",
@@ -127,7 +133,7 @@ const navItems = [
     roles: [ROLES.TMO, ROLES.ADMIN],
   },
   {
-    label: "Settings",
+    label: "System Config",
     path: "/settings",
     icon: Settings,
     roles: [ROLES.ADMIN],

@@ -188,7 +188,7 @@ export function AppShell() {
             <Route element={<RoleGuard allowedRoles={[ROLES.ADMIN]} />}>
               <Route
                 path="/admin/courses"
-                element={<PlaceholderPage title="Admin Course Management" />}
+                element={<TmoCourseManagementPage />}
               />
               <Route path="/admin/users" element={<UsersRolesPage />} />
               <Route path="/settings" element={<SystemSettingsPage />} />
