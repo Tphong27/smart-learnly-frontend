@@ -26,7 +26,7 @@ const navItems = [
     label: 'My Courses',
     path: '/my-courses',
     icon: GraduationCap,
-    roles: [ROLES.TRAINEE, ROLES.TRAINER, ROLES.SME, ROLES.ADMIN, ROLES.TMO],
+    roles: [ROLES.TRAINEE],
   },
   {
     label: 'Learning',
@@ -38,10 +38,16 @@ const navItems = [
     label: 'Tests',
     path: '/tests',
     icon: ClipboardCheck,
-    roles: [ROLES.TRAINEE, ROLES.TRAINER, ROLES.SME, ROLES.ADMIN, ROLES.TMO],
+    roles: [ROLES.TRAINEE],
   },
   {
-    label: 'My Analytics',
+    label: 'Flashcards',
+    path: '/flashcards',
+    icon: Layers3,
+    roles: [ROLES.TRAINEE],
+  },
+  {
+    label: 'My Progress',
     path: '/analytics/me',
     icon: BarChart3,
     roles: [ROLES.TRAINEE],
@@ -50,7 +56,25 @@ const navItems = [
     label: 'Classes',
     path: '/trainer/classes',
     icon: Users,
-    roles: [ROLES.TRAINER, ROLES.ADMIN, ROLES.TMO, ROLES.TRAINEE],
+    roles: [ROLES.TRAINER, ROLES.TMO],
+  },
+  {
+    label: 'Course Management',
+    path: '/tmo/courses',
+    icon: BookOpen,
+    roles: [ROLES.TMO, ROLES.ADMIN],
+  },
+  {
+    label: 'Course Review',
+    path: '/tmo/courses?status=Submitted%20for%20Review',
+    icon: ClipboardCheck,
+    roles: [ROLES.TMO],
+  },
+  {
+    label: 'Assigned Courses',
+    path: '/sme/courses',
+    icon: BookOpen,
+    roles: [ROLES.SME],
   },
   {
     label: 'Course Content',
@@ -63,12 +87,6 @@ const navItems = [
     path: '/sme/questions',
     icon: FileQuestion,
     roles: [ROLES.SME, ROLES.ADMIN],
-  },
-  {
-    label: 'Course Management',
-    path: '/admin/courses',
-    icon: BookOpen,
-    roles: [ROLES.ADMIN],
   },
   {
     label: 'Users & Roles',

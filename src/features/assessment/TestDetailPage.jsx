@@ -1,7 +1,10 @@
 import { ArrowRight, ClipboardCheck, Clock3, ShieldCheck, Target } from 'lucide-react'
 import { Link, useParams } from 'react-router-dom'
-import { demoCourses, demoTests } from '@/data/demo'
 import { getDemoEnrollmentByCourse } from '@/data/demo/demoRuntime'
+import {
+  getLifecycleCourseById,
+  getLifecycleTestById,
+} from '@/data/demo/courseLifecycleRuntime'
 import { PageState } from '@/shared/components/PageState'
 import { StatusBadge } from '@/shared/components/StatusBadge'
 import { useDemoPageState } from '@/shared/hooks/useDemoPageState'
@@ -10,8 +13,8 @@ import { useDocumentTitle } from '@/shared/hooks/useDocumentTitle'
 export function TestDetailPage() {
   const { testId } = useParams()
   const { loading, error } = useDemoPageState()
-  const test = demoTests.find((item) => item.id === testId)
-  const course = demoCourses.find((item) => item.id === test?.courseId)
+  const test = getLifecycleTestById(testId)
+  const course = getLifecycleCourseById(test?.courseId)
   const enrollment = getDemoEnrollmentByCourse(test?.courseId)
 
   useDocumentTitle(test ? test.title : 'Test detail')
@@ -53,6 +56,8 @@ export function TestDetailPage() {
           <span><ShieldCheck size={16} /> Auto-scored mock</span>
         </div>
         <div className="demo-chip-list">
+          <span>{test.type || 'Module Test'}</span>
+          <span>{test.testStatus || 'Not Started'}</span>
           {test.topicTags.map((topic) => <span key={topic}>{topic}</span>)}
         </div>
         <div className="demo-actions">

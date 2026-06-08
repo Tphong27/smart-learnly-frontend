@@ -1,7 +1,10 @@
 import { useMemo, useState } from 'react'
 import { AlertCircle, ArrowRight, ClipboardCheck } from 'lucide-react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { demoQuestions, demoTests } from '@/data/demo'
+import {
+  getLifecycleQuestionsForTest,
+  getLifecycleTestById,
+} from '@/data/demo/courseLifecycleRuntime'
 import { PageState } from '@/shared/components/PageState'
 import { useDemoPageState } from '@/shared/hooks/useDemoPageState'
 import { useDocumentTitle } from '@/shared/hooks/useDocumentTitle'
@@ -27,12 +30,10 @@ export function TakeTestPage() {
   const { testId } = useParams()
   const navigate = useNavigate()
   const { loading, error } = useDemoPageState()
-  const test = demoTests.find((item) => item.id === testId)
+  const test = getLifecycleTestById(testId)
   const questions = useMemo(() => {
     if (!test) return []
-    return test.questionIds
-      .map((questionId) => demoQuestions.find((question) => question.id === questionId))
-      .filter((question) => question && question.status === 'published')
+    return getLifecycleQuestionsForTest(test).filter((question) => question.status === 'published')
   }, [test])
   const [answers, setAnswers] = useState({})
   const [formError, setFormError] = useState('')

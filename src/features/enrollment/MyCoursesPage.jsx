@@ -1,8 +1,8 @@
 import { ArrowRight, BookOpen, Clock3 } from 'lucide-react'
 import { Link } from 'react-router-dom'
-import { demoCourses } from '@/data/demo'
 import { CourseCatalogSection } from '@/features/course/CourseCatalogSection'
 import { getAllDemoEnrollments, getCourseProgress } from '@/data/demo/demoRuntime'
+import { getLifecycleCourseById } from '@/data/demo/courseLifecycleRuntime'
 import { PageState } from '@/shared/components/PageState'
 import { ProgressBar } from '@/shared/components/ProgressBar'
 import { StatusBadge } from '@/shared/components/StatusBadge'
@@ -19,7 +19,7 @@ export function MyCoursesPage() {
   const enrolledCourses = enrollments
     .map((enrollment) => ({
       enrollment,
-      course: demoCourses.find((course) => course.id === enrollment.courseId),
+      course: getLifecycleCourseById(enrollment.courseId),
     }))
     .filter((item) => item.course)
 
@@ -74,6 +74,26 @@ export function MyCoursesPage() {
           </span>
         </div>
 
+        {enrolledCourses.length > 0 && (
+          <article className="demo-card continue-learning-card">
+            <div>
+              <span className="demo-kicker">Continue learning</span>
+              <h2>{enrolledCourses[0].course.title}</h2>
+              <p>{enrolledCourses[0].course.shortDescription}</p>
+            </div>
+            <ProgressBar
+              value={getCourseProgress(enrolledCourses[0].course.id)}
+              label="Course progress"
+            />
+            <Link
+              className="demo-primary-action"
+              to={`/learning/${enrolledCourses[0].course.id}`}
+            >
+              Continue Learning <ArrowRight size={16} />
+            </Link>
+          </article>
+        )}
+
         {enrolledCourses.length === 0 ? (
           <PageState
             state="empty"
@@ -105,7 +125,7 @@ export function MyCoursesPage() {
 
                   <div className="demo-meta-grid">
                     <span>
-                      <BookOpen size={15} /> {course.lessonCount} lessons
+                    <BookOpen size={15} /> {course.lessonCount || course.lessons || 0} lessons
                     </span>
                     <span>
                       <Clock3 size={15} /> {course.duration}

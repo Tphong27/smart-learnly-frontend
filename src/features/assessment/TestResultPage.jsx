@@ -1,6 +1,10 @@
 import { ArrowRight, CheckCircle2, RotateCcw, Target, XCircle } from 'lucide-react'
 import { Link, useParams } from 'react-router-dom'
-import { demoAttempts, demoQuestions, demoTests, demoTraineeWeaknessAnalysis } from '@/data/demo'
+import { demoAttempts, demoTraineeWeaknessAnalysis } from '@/data/demo'
+import {
+  getLifecycleQuestionsForTest,
+  getLifecycleTestById,
+} from '@/data/demo/courseLifecycleRuntime'
 import { PageState } from '@/shared/components/PageState'
 import { ProgressBar } from '@/shared/components/ProgressBar'
 import { StatusBadge } from '@/shared/components/StatusBadge'
@@ -21,16 +25,12 @@ function getLiveResult(testId) {
 export function TestResultPage() {
   const { testId, attemptId } = useParams()
   const { loading, error } = useDemoPageState()
-  const test = demoTests.find((item) => item.id === testId)
+  const test = getLifecycleTestById(testId)
   const liveResult = attemptId === 'demo-live-attempt' ? getLiveResult(testId) : null
   const savedAttempt = demoAttempts.find((attempt) => attempt.id === attemptId) || demoAttempts.find((attempt) => attempt.testId === testId)
   const result = liveResult || savedAttempt
   const weaknessItems = demoTraineeWeaknessAnalysis.filter((item) => item.testId === testId)
-  const questions = test
-    ? test.questionIds
-      .map((questionId) => demoQuestions.find((question) => question.id === questionId))
-      .filter(Boolean)
-    : []
+  const questions = getLifecycleQuestionsForTest(test)
 
   useDocumentTitle(test ? `${test.title} result` : 'Test result')
 
@@ -97,13 +97,19 @@ export function TestResultPage() {
       <section className="demo-card">
         <div className="demo-row demo-row--between">
           <div>
-            <h2>Weakness analysis</h2>
+        <h2>Weakness analysis</h2>
             <p className="demo-muted">Recommendations are draft study suggestions until reviewed or published by staff.</p>
           </div>
           <Target size={24} />
         </div>
         {weaknessItems.length === 0 ? (
-          <PageState state="empty" title="No weakness detected" description="Your latest result does not contain weak topics in demo data." />
+          <div className="weakness-grid">
+            <article className="weakness-card">
+              <StatusBadge status="draft" />
+              <h3>AI feedback</h3>
+              <p>Review the lesson summary and retry the generated practice questions to strengthen recall.</p>
+            </article>
+          </div>
         ) : (
           <div className="weakness-grid">
             {weaknessItems.map((item) => (

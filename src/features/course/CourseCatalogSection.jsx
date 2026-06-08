@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Search, SlidersHorizontal } from 'lucide-react'
-import { demoCourses } from '@/data/demo'
+import { getPublishedLifecycleCourses } from '@/data/demo/courseLifecycleRuntime'
 import { CourseCard } from './CourseCard'
 
 const PAGE_SIZE = 3
@@ -24,8 +24,8 @@ export function CourseCatalogSection({
   }, [excludeCourseIds])
 
   const publishedCourses = useMemo(() => {
-    return demoCourses.filter((course) => {
-      return course.status === 'published' && !excludedIds.has(course.id)
+    return getPublishedLifecycleCourses().filter((course) => {
+      return !excludedIds.has(course.id)
     })
   }, [excludedIds])
 
@@ -46,7 +46,7 @@ export function CourseCatalogSection({
         course.category,
         course.level,
         course.shortDescription,
-        ...(course.outcomes || []),
+        ...(course.learningOutcomes || course.outcomes || []),
       ]
         .join(' ')
         .toLowerCase()

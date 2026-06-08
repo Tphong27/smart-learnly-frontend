@@ -1,7 +1,10 @@
 import { ArrowRight, ClipboardCheck, Clock3, Target } from 'lucide-react'
 import { Link } from 'react-router-dom'
-import { demoCourses, demoTests } from '@/data/demo'
 import { getAllDemoEnrollments } from '@/data/demo/demoRuntime'
+import {
+  getAllLifecycleTests,
+  getLifecycleCourseById,
+} from '@/data/demo/courseLifecycleRuntime'
 import { PageState } from '@/shared/components/PageState'
 import { StatusBadge } from '@/shared/components/StatusBadge'
 import { useDemoPageState } from '@/shared/hooks/useDemoPageState'
@@ -12,7 +15,7 @@ export function TestListPage() {
 
   const { loading, error } = useDemoPageState()
   const enrolledCourseIds = new Set(getAllDemoEnrollments().map((enrollment) => enrollment.courseId))
-  const availableTests = demoTests.filter((test) => test.status === 'published' && enrolledCourseIds.has(test.courseId))
+  const availableTests = getAllLifecycleTests().filter((test) => test.status === 'published' && enrolledCourseIds.has(test.courseId))
 
   if (loading) {
     return <PageState state="loading" title="Loading tests" description="Checking published tests for enrolled courses." />
@@ -42,13 +45,17 @@ export function TestListPage() {
       ) : (
         <section className="demo-card-grid">
           {availableTests.map((test) => {
-            const course = demoCourses.find((item) => item.id === test.courseId)
+            const course = getLifecycleCourseById(test.courseId)
 
             return (
               <article className="demo-card test-card" key={test.id}>
                 <div className="demo-row demo-row--between">
                   <StatusBadge status={test.status} />
                   <span className="test-card__course">{course?.title}</span>
+                </div>
+                <div className="demo-chip-list">
+                  <span>{test.type || 'Module Test'}</span>
+                  <span>{test.testStatus || 'Not Started'}</span>
                 </div>
                 <h2>{test.title}</h2>
                 <p>{test.description}</p>

@@ -54,9 +54,9 @@ export function CourseFilterBar({
         >
           {statuses.map((status) => (
             <option value={status} key={status}>
-              {status === 'published'
+              {status === 'Published'
                 ? 'Published only'
-                : status === 'draft'
+                : status === 'Draft'
                   ? 'Draft only'
                   : status}
             </option>

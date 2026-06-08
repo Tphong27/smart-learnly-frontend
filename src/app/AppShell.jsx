@@ -14,17 +14,23 @@ import { TestResultPage } from "../features/assessment/TestResultPage";
 import { TakeTestPage } from "../features/assessment/TakeTestPage";
 import { MyCoursesPage } from "../features/enrollment/MyCoursesPage";
 import { LearningWorkspacePage } from "../features/learning/LearningWorkspacePage";
-import { LessonDetailPage } from "../features/learning/LessonDetailPage";
 import { CheckoutPage } from "../features/payment/CheckoutPage";
 import { PaymentSimulationPage } from "../features/payment/PaymentSimulationPage";
 import { DashboardPage } from "../features/analytics/DashboardPage";
 import { ReportsPage } from "../features/analytics/ReportsPage";
 import { CourseContentPage } from "../features/course/CourseContentPage";
+import { SmeAssignedCoursesPage } from "../features/course/SmeAssignedCoursesPage";
+import { SmeCourseEditorPage } from "../features/course/SmeCourseEditorPage";
+import { TmoCourseDetailPage } from "../features/course/TmoCourseDetailPage";
+import { TmoCourseManagementPage } from "../features/course/TmoCourseManagementPage";
+import { TmoCourseReviewPage } from "../features/course/TmoCourseReviewPage";
+import { TmoCreateCoursePage } from "../features/course/TmoCreateCoursePage";
 import { QuestionBankPage } from "../features/assessment/QuestionBankPage";
 import { TrainerClassesPage } from "../features/classroom/TrainerClassesPage";
 import { ClassDetailPage } from "../features/classroom/ClassDetailPage";
 import { UsersRolesPage } from "../features/admin/UsersRolesPage";
 import { SystemSettingsPage } from "../features/admin/SystemSettingsPage";
+import { FlashcardsPage } from "../features/flashcard/FlashcardsPage";
 import { ROLES } from "@/shared/constants/roles";
 
 function PlaceholderPage({ title }) {
@@ -107,35 +113,53 @@ export function AppShell() {
               path="/profile"
               element={<PlaceholderPage title="Profile" />}
             />
-            <Route path="/checkout/:courseId" element={<CheckoutPage />} />
-            <Route
-              path="/payment/simulation/:courseId"
-              element={<PaymentSimulationPage />}
-            />
-            <Route path="/my-courses" element={<MyCoursesPage />} />
-            <Route path="/learning" element={<LearningWorkspacePage />} />
-            <Route
-              path="/learning/:courseId"
-              element={<LearningWorkspacePage />}
-            />
-            <Route
-              path="/learning/:courseId/lessons/:lessonId"
-              element={<LessonDetailPage />}
-            />
-            <Route path="/tests" element={<TestListPage />} />
-            <Route path="/tests/:testId" element={<TestDetailPage />} />
-            <Route path="/tests/:testId/take" element={<TakeTestPage />} />
-            <Route
-              path="/tests/:testId/result/:attemptId"
-              element={<TestResultPage />}
-            />
-            <Route path="/analytics/me" element={<MyAnalyticsPage />} />
+
+            <Route element={<RoleGuard allowedRoles={[ROLES.TRAINEE]} />}>
+              <Route path="/checkout/:courseId" element={<CheckoutPage />} />
+              <Route
+                path="/payment/simulation/:courseId"
+                element={<PaymentSimulationPage />}
+              />
+              <Route path="/my-courses" element={<MyCoursesPage />} />
+              <Route path="/learning" element={<LearningWorkspacePage />} />
+              <Route
+                path="/learning/:courseId"
+                element={<LearningWorkspacePage />}
+              />
+              <Route
+                path="/learning/:courseId/lessons/:lessonId"
+                element={<LearningWorkspacePage />}
+              />
+              <Route path="/flashcards" element={<FlashcardsPage />} />
+              <Route path="/tests" element={<TestListPage />} />
+              <Route path="/tests/:testId" element={<TestDetailPage />} />
+              <Route path="/tests/:testId/take" element={<TakeTestPage />} />
+              <Route
+                path="/tests/:testId/result/:attemptId"
+                element={<TestResultPage />}
+              />
+              <Route path="/analytics/me" element={<MyAnalyticsPage />} />
+            </Route>
 
             <Route
               element={<RoleGuard allowedRoles={[ROLES.ADMIN, ROLES.SME]} />}
             >
+              <Route path="/sme/courses" element={<SmeAssignedCoursesPage />} />
+              <Route
+                path="/sme/courses/:courseId/edit"
+                element={<SmeCourseEditorPage />}
+              />
               <Route path="/sme/content" element={<CourseContentPage />} />
               <Route path="/sme/questions" element={<QuestionBankPage />} />
+            </Route>
+
+            <Route
+              element={<RoleGuard allowedRoles={[ROLES.TMO, ROLES.ADMIN]} />}
+            >
+              <Route path="/tmo/courses" element={<TmoCourseManagementPage />} />
+              <Route path="/tmo/courses/create" element={<TmoCreateCoursePage />} />
+              <Route path="/tmo/courses/:courseId" element={<TmoCourseDetailPage />} />
+              <Route path="/tmo/courses/:courseId/review" element={<TmoCourseReviewPage />} />
             </Route>
 
             <Route element={<RoleGuard allowedRoles={[ROLES.ADMIN]} />}>

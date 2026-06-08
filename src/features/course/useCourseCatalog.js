@@ -1,11 +1,12 @@
 import { useMemo, useState } from 'react'
-import { demoCourses } from '@/data/demo'
+import { getAllLifecycleCourses } from '@/data/demo/courseLifecycleRuntime'
+import { COURSE_STATUSES } from '@/data/demo/courseLifecycle'
 
 const DEFAULT_FILTERS = {
   keyword: '',
   category: 'All categories',
   level: 'All levels',
-  status: 'published',
+  status: COURSE_STATUSES.PUBLISHED,
 }
 
 function normalize(value) {
@@ -102,7 +103,7 @@ export function useCourseCatalog() {
   const [selectedCourse, setSelectedCourse] = useState(null)
 
   const catalogCourses = useMemo(() => {
-    return demoCourses.map(mapCourseToCatalogItem)
+    return getAllLifecycleCourses().map(mapCourseToCatalogItem)
   }, [])
 
   const categories = useMemo(() => {
@@ -114,10 +115,10 @@ export function useCourseCatalog() {
   }, [catalogCourses])
 
   const statuses = useMemo(() => {
-    return ['published', 'draft'].some((status) =>
+    return [COURSE_STATUSES.PUBLISHED, COURSE_STATUSES.DRAFT].some((status) =>
       catalogCourses.some((course) => course.status === status),
     )
-      ? ['published', 'All statuses', 'draft']
+      ? [COURSE_STATUSES.PUBLISHED, 'All statuses', COURSE_STATUSES.DRAFT]
       : ['All statuses']
   }, [catalogCourses])
 

@@ -10,7 +10,7 @@ import {
   SlidersHorizontal,
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
-import { demoCourses } from '@/data/demo'
+import { getPublishedLifecycleCourses } from '@/data/demo/courseLifecycleRuntime'
 import { PageState } from '@/shared/components/PageState'
 import { StatusBadge } from '@/shared/components/StatusBadge'
 import { useDemoPageState } from '@/shared/hooks/useDemoPageState'
@@ -40,6 +40,10 @@ function CourseCard({ course }) {
 
         <h2>{course.title}</h2>
         <p>{course.shortDescription}</p>
+        <div className="demo-chip-list">
+          <span>AI-supported</span>
+          <span>{course.owner || course.assignedSmeName}</span>
+        </div>
 
         <div className="demo-meta-grid">
           <span>
@@ -119,7 +123,7 @@ export function CourseCatalogPage() {
   const [currentPage, setCurrentPage] = useState(1)
 
   const publishedCourses = useMemo(() => {
-    return demoCourses.filter((course) => course.status === 'published')
+    return getPublishedLifecycleCourses()
   }, [])
 
   const categories = useMemo(() => {
@@ -135,7 +139,7 @@ export function CourseCatalogPage() {
         course.category,
         course.level,
         course.shortDescription,
-        course.outcomes.join(' '),
+        (course.learningOutcomes || course.outcomes || []).join(' '),
       ]
         .join(' ')
         .toLowerCase()

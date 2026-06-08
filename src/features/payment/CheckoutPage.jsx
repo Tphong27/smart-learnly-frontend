@@ -1,8 +1,10 @@
 import { useState } from 'react'
 import { ArrowRight, CreditCard, ShieldCheck, WalletCards } from 'lucide-react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { demoCourses, demoUsers } from '@/data/demo'
+import { demoUsers } from '@/data/demo'
 import { createDemoEnrollment, getDemoEnrollmentByCourse } from '@/data/demo/demoRuntime'
+import { getLifecycleCourseById } from '@/data/demo/courseLifecycleRuntime'
+import { isCoursePublished } from '@/data/demo/courseLifecycle'
 import { PageState } from '@/shared/components/PageState'
 import { StatusBadge } from '@/shared/components/StatusBadge'
 import { useDemoPageState } from '@/shared/hooks/useDemoPageState'
@@ -27,7 +29,7 @@ export function CheckoutPage() {
   const [method, setMethod] = useState('bank_transfer')
   const [submitting, setSubmitting] = useState(false)
   const [formError, setFormError] = useState('')
-  const course = demoCourses.find((item) => item.id === courseId)
+  const course = getLifecycleCourseById(courseId)
   const enrollment = getDemoEnrollmentByCourse(courseId)
   const trainee = demoUsers.trainee
 
@@ -58,7 +60,7 @@ export function CheckoutPage() {
     return <PageState state="error" title="Checkout unavailable" description={error.message} />
   }
 
-  if (!course || course.status !== 'published') {
+  if (!course || !isCoursePublished(course)) {
     return <PageState state="empty" title="Course unavailable" description="Only published courses can be enrolled in the demo checkout." />
   }
 

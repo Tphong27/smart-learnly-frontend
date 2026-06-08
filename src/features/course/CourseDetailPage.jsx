@@ -11,11 +11,15 @@ import {
   Users,
 } from 'lucide-react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { demoClasses, demoCourseFeedback, demoCourses } from '@/data/demo'
+import { demoClasses, demoCourseFeedback } from '@/data/demo'
 import {
-  getDemoCourseModules,
   getDemoEnrollmentByCourse,
 } from '@/data/demo/demoRuntime'
+import {
+  getLifecycleCourseById,
+  getLifecycleModules,
+} from '@/data/demo/courseLifecycleRuntime'
+import { isCoursePublished } from '@/data/demo/courseLifecycle'
 import { PageState } from '@/shared/components/PageState'
 import { ProgressBar } from '@/shared/components/ProgressBar'
 import { StatusBadge } from '@/shared/components/StatusBadge'
@@ -186,8 +190,8 @@ export function CourseDetailPage() {
   const navigate = useNavigate()
   const { loading, error } = useDemoPageState()
 
-  const course = demoCourses.find((item) => item.id === courseId)
-  const modules = getDemoCourseModules(courseId)
+  const course = getLifecycleCourseById(courseId)
+  const modules = getLifecycleModules(courseId)
   const enrollment = getDemoEnrollmentByCourse(courseId)
 
   const classes = demoClasses.filter(
@@ -233,7 +237,7 @@ export function CourseDetailPage() {
     )
   }
 
-  if (!course || course.status !== 'published') {
+  if (!course || !isCoursePublished(course)) {
     return (
       <PageState
         state="empty"
@@ -266,11 +270,11 @@ export function CourseDetailPage() {
             </span>
 
             <span>
-              <Layers3 size={16} /> {course.moduleCount} modules
+              <Layers3 size={16} /> {course.moduleCount || course.modules || 0} modules
             </span>
 
             <span>
-              <BookOpen size={16} /> {course.lessonCount} lessons
+              <BookOpen size={16} /> {course.lessonCount || course.lessons || 0} lessons
             </span>
 
             <span>
@@ -292,10 +296,15 @@ export function CourseDetailPage() {
           <span className="demo-kicker">Course price</span>
           <strong>{formatPrice(course)}</strong>
 
+          <div className="lesson-content__media">
+            <BookOpen size={34} />
+            <span>Preview video placeholder</span>
+          </div>
+
           <div className="course-detail-price-meta">
             <span>
               <Users size={15} />
-              {course.enrolledCount} enrolled learners
+              {course.learnerCount || course.enrolledCount} enrolled learners
             </span>
 
             <span>
@@ -315,14 +324,24 @@ export function CourseDetailPage() {
                 className="demo-primary-action"
                 to={`/learning/${course.id}`}
               >
-                Continue learning <ArrowRight size={16} />
+                Go to Learning <ArrowRight size={16} />
               </Link>
             </>
           ) : (
             <Link className="demo-primary-action" to={`/checkout/${course.id}`}>
-              Enroll with mock payment <ArrowRight size={16} />
+              Buy Now <ArrowRight size={16} />
             </Link>
           )}
+
+          <div className="course-includes-list">
+            <strong>Course includes</strong>
+            <span>Video lessons</span>
+            <span>Reading materials</span>
+            <span>AI assistant</span>
+            <span>AI flashcards</span>
+            <span>AI practice tests</span>
+            <span>Certificate mock</span>
+          </div>
         </aside>
       </section>
 
@@ -333,7 +352,7 @@ export function CourseDetailPage() {
             <h2>Learning outcomes</h2>
 
             <ul className="demo-check-list">
-              {course.outcomes.map((outcome) => (
+              {(course.learningOutcomes || course.outcomes || []).map((outcome) => (
                 <li key={outcome}>
                   <CheckCircle2 size={17} /> {outcome}
                 </li>
@@ -342,6 +361,29 @@ export function CourseDetailPage() {
           </section>
 
           <ModuleSection modules={modules} />
+
+          <section className="demo-card">
+            <span className="demo-kicker">Requirements</span>
+            <h2>Before you start</h2>
+            <p>{course.requirements}</p>
+          </section>
+
+          <section className="demo-card">
+            <span className="demo-kicker">Description</span>
+            <h2>About this course</h2>
+            <p>{course.fullDescription}</p>
+          </section>
+
+          <section className="demo-card">
+            <span className="demo-kicker">AI learning support</span>
+            <h2>Study with SLP AI support</h2>
+            <div className="demo-chip-list">
+              <span>Ask AI about lessons</span>
+              <span>Generate flashcards</span>
+              <span>Create practice tests</span>
+              <span>Save key points</span>
+            </div>
+          </section>
 
           <FeedbackSection
             feedbackList={feedbackList}

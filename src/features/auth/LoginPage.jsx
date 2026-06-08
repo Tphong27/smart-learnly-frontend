@@ -19,6 +19,18 @@ const demoRoles = [
     icon: ShieldCheck,
   },
   {
+    role: ROLES.TMO,
+    label: 'TMO demo',
+    description: 'Create courses, assign SME, review content, and publish courses.',
+    icon: ShieldCheck,
+  },
+  {
+    role: ROLES.ADMIN,
+    label: 'Admin demo',
+    description: 'System management, users, reports, and course operations.',
+    icon: ShieldCheck,
+  },
+  {
     role: ROLES.TRAINER,
     label: 'Trainer demo',
     description: 'Classes and analytics workspace for Dev 2 screens.',

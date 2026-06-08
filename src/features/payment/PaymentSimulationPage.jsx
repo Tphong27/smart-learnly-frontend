@@ -1,6 +1,6 @@
 import { ArrowRight, CheckCircle2 } from 'lucide-react'
 import { Link, useLocation, useParams } from 'react-router-dom'
-import { demoCourses } from '@/data/demo'
+import { getLifecycleCourseById } from '@/data/demo/courseLifecycleRuntime'
 import { PageState } from '@/shared/components/PageState'
 import { StatusBadge } from '@/shared/components/StatusBadge'
 import { useDemoPageState } from '@/shared/hooks/useDemoPageState'
@@ -12,7 +12,7 @@ export function PaymentSimulationPage() {
   const { courseId } = useParams()
   const location = useLocation()
   const { loading } = useDemoPageState()
-  const course = demoCourses.find((item) => item.id === courseId)
+  const course = getLifecycleCourseById(courseId)
   const status = location.state?.status || 'paid'
 
   if (loading) {
