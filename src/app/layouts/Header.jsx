@@ -13,19 +13,19 @@ export function Header({ user, onToggleSidebar, onLogout }) {
     .toUpperCase()
 
   return (
-    <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/90 backdrop-blur">
+    <header className="app-header sticky top-0 z-30 border-b border-slate-200 bg-white/90 backdrop-blur">
       <div className="flex h-16 items-center justify-between px-4 lg:px-6">
         <div className="flex items-center gap-3">
           <button
             type="button"
             onClick={onToggleSidebar}
-            className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 lg:hidden"
+            className="app-icon-button inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 lg:hidden"
             aria-label="Open sidebar"
           >
             <Menu size={20} />
           </button>
 
-          <div className="hidden items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 md:flex">
+          <div className="app-search hidden items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 md:flex">
             <Search size={16} className="text-slate-400" />
             <input
               type="text"
@@ -38,7 +38,7 @@ export function Header({ user, onToggleSidebar, onLogout }) {
         <div className="flex items-center gap-3">
           <button
             type="button"
-            className="relative inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50"
+            className="app-icon-button relative inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50"
             aria-label="Notifications"
           >
             <Bell size={18} />
@@ -48,7 +48,7 @@ export function Header({ user, onToggleSidebar, onLogout }) {
           <div className="group relative">
             <button
               type="button"
-              className="flex items-center gap-3 rounded-xl border border-slate-200 px-2 py-1.5 hover:bg-slate-50"
+              className="app-user-menu flex items-center gap-3 rounded-xl border border-slate-200 px-2 py-1.5 hover:bg-slate-50"
             >
               {user?.avatarUrl ? (
                 <img

@@ -9,7 +9,7 @@ export const demoOperationalMetrics = {
 
 export const demoTraineeMetrics = {
   traineeId: 'trainee-minh',
-  enrolledCourses: 2,
+  enrolledCourses: 1,
   completedCourses: 0,
   averageScore: 75,
   learningProgress: 68,

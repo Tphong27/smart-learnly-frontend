@@ -12,7 +12,6 @@ export const routeGroups = [
     routes: [
       { path: '/learning', label: 'Learning Workspace' },
       { path: '/tests', label: 'Tests & Practice' },
-      { path: '/flashcards', label: 'Flashcards' },
       { path: '/analytics/me', label: 'My Analytics' },
     ],
   },

@@ -26,13 +26,25 @@ const navItems = [
     label: 'My Courses',
     path: '/my-courses',
     icon: GraduationCap,
-    roles: [ROLES.TRAINEE,ROLES.TRAINER, ROLES.SME, ROLES.ADMIN, ROLES.TMO],
+    roles: [ROLES.TRAINEE, ROLES.TRAINER, ROLES.SME, ROLES.ADMIN, ROLES.TMO],
+  },
+  {
+    label: 'Learning',
+    path: '/learning',
+    icon: BookOpen,
+    roles: [ROLES.TRAINEE],
   },
   {
     label: 'Tests',
     path: '/tests',
     icon: ClipboardCheck,
     roles: [ROLES.TRAINEE, ROLES.TRAINER, ROLES.SME, ROLES.ADMIN, ROLES.TMO],
+  },
+  {
+    label: 'My Analytics',
+    path: '/analytics/me',
+    icon: BarChart3,
+    roles: [ROLES.TRAINEE],
   },
   {
     label: 'Classes',
@@ -91,12 +103,12 @@ export function Sidebar({ userRole, open, onClose }) {
       />
 
       <aside
-        className={`fixed left-0 top-0 z-50 flex h-screen w-72 flex-col border-r border-slate-200 bg-white transition-transform lg:sticky lg:z-20 lg:translate-x-0 ${
+        className={`app-sidebar fixed left-0 top-0 z-50 flex h-screen w-72 flex-col border-r border-slate-200 bg-white transition-transform lg:sticky lg:z-20 lg:translate-x-0 ${
           open ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
-        <div className="flex h-16 items-center justify-between border-b border-slate-200 px-5">
-          <a href="/dashboard" className="flex items-center gap-2 font-bold text-slate-900">
+        <div className="app-sidebar__brand-row flex h-16 items-center justify-between border-b border-slate-200 px-5">
+          <a href="/dashboard" className="app-sidebar__brand flex items-center gap-2 font-bold text-slate-900">
             <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-600 text-white">
               <Zap size={18} />
             </span>
@@ -113,7 +125,7 @@ export function Sidebar({ userRole, open, onClose }) {
           </button>
         </div>
 
-        <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
+        <nav className="app-sidebar__nav flex-1 space-y-1 overflow-y-auto px-3 py-4">
           {visibleItems.map(({ label, path, icon: Icon }) => (
             <NavLink
               key={path}
@@ -121,7 +133,7 @@ export function Sidebar({ userRole, open, onClose }) {
               onClick={onClose}
               className={({ isActive }) =>
                 [
-                  'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition',
+                  'app-sidebar__link flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition',
                   isActive
                     ? 'bg-blue-50 text-blue-700'
                     : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900',

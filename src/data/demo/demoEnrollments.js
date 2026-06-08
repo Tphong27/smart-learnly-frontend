@@ -18,20 +18,6 @@ export const demoEnrollments = [
     enrolledAt: '2026-05-12',
     lastActivityAt: '2026-06-07T20:15:00+07:00',
   },
-  {
-    id: 'enrollment-data-minh',
-    traineeId: 'trainee-minh',
-    courseId: 'course-data',
-    classId: null,
-    status: 'paid',
-    paymentStatus: 'paid',
-    paymentId: 'payment-data-minh',
-    progress: 0,
-    completedLessonIds: [],
-    nextLessonId: 'lesson-data-1',
-    enrolledAt: '2026-06-05',
-    lastActivityAt: null,
-  },
 ]
 
 export const demoPayments = [
@@ -46,20 +32,10 @@ export const demoPayments = [
     paidAt: '2026-05-12T09:30:00+07:00',
   },
   {
-    id: 'payment-data-minh',
+    id: 'payment-checkout-pending',
     traineeId: 'trainee-minh',
     courseId: 'course-data',
     amount: 1890000,
-    currency: 'VND',
-    method: 'card',
-    status: 'paid',
-    paidAt: '2026-06-05T14:20:00+07:00',
-  },
-  {
-    id: 'payment-checkout-pending',
-    traineeId: 'trainee-minh',
-    courseId: 'course-aws',
-    amount: 2490000,
     currency: 'VND',
     method: 'bank_transfer',
     status: 'pending',

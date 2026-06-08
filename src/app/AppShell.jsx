@@ -3,7 +3,20 @@ import { PublicLayout } from './layouts/PublicLayout'
 import { AppLayout } from './layouts/AppLayout'
 import { ProtectedRoute } from './routes/ProtectedRoute'
 import { RoleGuard } from './routes/RoleGuard'
+import { LoginPage } from '../features/auth/LoginPage'
 import { HomePage } from '../features/home/HomePage'
+import { CourseCatalogPage } from '../features/course/CourseCatalogPage'
+import { CourseDetailPage } from '../features/course/CourseDetailPage'
+import { MyAnalyticsPage } from '../features/analytics/MyAnalyticsPage'
+import { TestDetailPage } from '../features/assessment/TestDetailPage'
+import { TestListPage } from '../features/assessment/TestListPage'
+import { TestResultPage } from '../features/assessment/TestResultPage'
+import { TakeTestPage } from '../features/assessment/TakeTestPage'
+import { MyCoursesPage } from '../features/enrollment/MyCoursesPage'
+import { LearningWorkspacePage } from '../features/learning/LearningWorkspacePage'
+import { LessonDetailPage } from '../features/learning/LessonDetailPage'
+import { CheckoutPage } from '../features/payment/CheckoutPage'
+import { PaymentSimulationPage } from '../features/payment/PaymentSimulationPage'
 import { ROLES } from '@/shared/constants/roles'
 
 function PlaceholderPage({ title }) {
@@ -15,10 +28,6 @@ function PlaceholderPage({ title }) {
       </p>
     </section>
   )
-}
-
-function LoginPage() {
-  return <PlaceholderPage title="Login" />
 }
 
 function RegisterPage() {
@@ -64,12 +73,39 @@ export function AppShell() {
           }
         />
 
+        <Route
+          path="/courses"
+          element={
+            <PublicLayout>
+              <CourseCatalogPage />
+            </PublicLayout>
+          }
+        />
+
+        <Route
+          path="/courses/:courseId"
+          element={
+            <PublicLayout>
+              <CourseDetailPage />
+            </PublicLayout>
+          }
+        />
+
         <Route element={<ProtectedRoute />}>
           <Route element={<AppLayout />}>
             <Route path="/dashboard" element={<PlaceholderPage title="Dashboard" />} />
             <Route path="/profile" element={<PlaceholderPage title="Profile" />} />
-            <Route path="/my-courses" element={<PlaceholderPage title="My Courses" />} />
-            <Route path="/tests" element={<PlaceholderPage title="Tests" />} />
+            <Route path="/checkout/:courseId" element={<CheckoutPage />} />
+            <Route path="/payment/simulation/:courseId" element={<PaymentSimulationPage />} />
+            <Route path="/my-courses" element={<MyCoursesPage />} />
+            <Route path="/learning" element={<LearningWorkspacePage />} />
+            <Route path="/learning/:courseId" element={<LearningWorkspacePage />} />
+            <Route path="/learning/:courseId/lessons/:lessonId" element={<LessonDetailPage />} />
+            <Route path="/tests" element={<TestListPage />} />
+            <Route path="/tests/:testId" element={<TestDetailPage />} />
+            <Route path="/tests/:testId/take" element={<TakeTestPage />} />
+            <Route path="/tests/:testId/result/:attemptId" element={<TestResultPage />} />
+            <Route path="/analytics/me" element={<MyAnalyticsPage />} />
 
             <Route
               element={
