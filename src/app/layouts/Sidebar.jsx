@@ -50,7 +50,7 @@ const navItems = [
     label: 'Classes',
     path: '/trainer/classes',
     icon: Users,
-    roles: [ROLES.TRAINER, ROLES.ADMIN, ROLES.TMO],
+    roles: [ROLES.TRAINER, ROLES.ADMIN, ROLES.TMO, ROLES.SME],
   },
   {
     label: 'Course Content',
