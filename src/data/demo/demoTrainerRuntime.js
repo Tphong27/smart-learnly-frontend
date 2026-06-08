@@ -8,6 +8,7 @@ const STORAGE_KEYS = {
   assignments: 'slp.demo.trainer.assignments',
   discussions: 'slp.demo.trainer.discussions',
   interventions: 'slp.demo.trainer.interventions',
+  tests: 'slp.demo.trainer.tests',
 }
 
 function readJson(key, fallback) {
@@ -149,6 +150,80 @@ export function getTrainerClassTests(classId) {
       classId,
       assignedToClass: true,
     }))
+}
+
+export function getTrainerCreatedTests(classId) {
+  return readJson(STORAGE_KEYS.tests, []).filter(
+    (test) => test.classId === classId,
+  )
+}
+
+export function createTrainerClassTest(classId, form) {
+  const currentClass = getTrainerClassById(classId)
+
+  const test = {
+    id: createId('trainer-test'),
+    classId,
+    courseId: currentClass?.courseId,
+    courseTitle: currentClass?.courseTitle,
+    title: form.title,
+    description: form.description,
+    sourceType: form.sourceType || 'modules',
+    selectedModuleIds: form.selectedModuleIds || [],
+    uploadedFileName: form.uploadedFileName || '',
+    status: form.status || 'draft',
+    testStatus: 'Not Started',
+    type: 'Class Practice Test',
+    totalQuestions: Number(form.totalQuestions) || 10,
+    durationMinutes: Number(form.durationMinutes) || 20,
+    passingScore: Number(form.passingScore) || 70,
+    createdBy: 'An Tran',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  }
+
+  const current = readJson(STORAGE_KEYS.tests, [])
+  writeJson(STORAGE_KEYS.tests, [test, ...current])
+
+  return test
+}
+
+export function updateTrainerClassTest(testId, form) {
+  const current = readJson(STORAGE_KEYS.tests, [])
+
+  const next = current.map((test) =>
+    test.id === testId
+      ? {
+          ...test,
+          ...form,
+          totalQuestions: Number(form.totalQuestions) || test.totalQuestions,
+          durationMinutes:
+            Number(form.durationMinutes) || test.durationMinutes,
+          passingScore: Number(form.passingScore) || test.passingScore,
+          updatedAt: new Date().toISOString(),
+        }
+      : test,
+  )
+
+  writeJson(STORAGE_KEYS.tests, next)
+
+  return next.find((test) => test.id === testId)
+}
+
+export function deleteTrainerClassTest(classId, testId) {
+  const current = readJson(STORAGE_KEYS.tests, [])
+  const next = current.filter((test) => test.id !== testId)
+
+  writeJson(STORAGE_KEYS.tests, next)
+
+  return getTrainerCreatedTests(classId)
+}
+
+export function getAllTrainerClassTests(classId) {
+  return [
+    ...getTrainerClassTests(classId),
+    ...getTrainerCreatedTests(classId),
+  ]
 }
 
 export function getTrainerClassDiscussions(classId) {

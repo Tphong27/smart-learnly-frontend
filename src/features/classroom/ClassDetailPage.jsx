@@ -26,17 +26,20 @@ import {
   addTrainerClassDiscussion,
   createInterventionFromRisk,
   createTrainerAssignment,
+  createTrainerClassTest,
   deleteTrainerAssignment,
+  deleteTrainerClassTest,
   generateTrainerAssignmentWithAi,
+  getAllTrainerClassTests,
   getTrainerClassAssignments,
   getTrainerClassById,
   getTrainerClassDiscussions,
   getTrainerClassModules,
-  getTrainerClassTests,
   getTrainerClassTrainees,
   getTrainerInterventions,
   markInterventionDone,
   updateTrainerAssignment,
+  updateTrainerClassTest,
 } from '@/data/demo/demoTrainerRuntime'
 
 const tabs = [
@@ -55,6 +58,18 @@ const emptyAssignmentForm = {
   sourceType: 'manual',
   selectedModuleIds: [],
   uploadedFileName: '',
+}
+
+const emptyTestForm = {
+  title: '',
+  description: '',
+  status: 'draft',
+  sourceType: 'modules',
+  selectedModuleIds: [],
+  uploadedFileName: '',
+  totalQuestions: 10,
+  durationMinutes: 20,
+  passingScore: 70,
 }
 
 function formatDate(value) {
@@ -662,62 +677,454 @@ function AssignmentsTab({ classId }) {
   )
 }
 
+function ClassTestModal({
+  open,
+  mode,
+  form,
+  modules,
+  error,
+  onChange,
+  onClose,
+  onSubmit,
+}) {
+  if (!open) return null
+
+  const updateField = (name, value) => {
+    onChange({
+      ...form,
+      [name]: value,
+    })
+  }
+
+  const toggleModule = (moduleId) => {
+    const selected = new Set(form.selectedModuleIds)
+
+    if (selected.has(moduleId)) {
+      selected.delete(moduleId)
+    } else {
+      selected.add(moduleId)
+    }
+
+    updateField('selectedModuleIds', Array.from(selected))
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
+      <section className="demo-card w-full max-w-4xl max-h-[92vh] overflow-y-auto">
+        <div className="demo-row demo-row--between">
+          <div>
+            <span className="demo-kicker">
+              {mode === 'create' ? 'Create class test' : 'Update class test'}
+            </span>
+            <h2>
+              {mode === 'create'
+                ? 'Create trainer test for this class'
+                : 'Update trainer-created test'}
+            </h2>
+            <p className="demo-muted">
+              Trainer can create tests from selected modules or an uploaded
+              document mock.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            className="demo-secondary-action"
+            onClick={onClose}
+          >
+            <X size={16} />
+            Close
+          </button>
+        </div>
+
+        <div className="course-flow-form-section">
+          <label className="course-flow-field">
+            <span>Test title</span>
+            <input
+              value={form.title}
+              placeholder="AWS pricing class practice test"
+              onChange={(event) => updateField('title', event.target.value)}
+            />
+          </label>
+
+          <label className="course-flow-field">
+            <span>Description</span>
+            <textarea
+              rows="3"
+              value={form.description}
+              placeholder="Describe this class test..."
+              onChange={(event) =>
+                updateField('description', event.target.value)
+              }
+            />
+          </label>
+
+          <div className="course-flow-form-grid course-flow-form-grid--compact">
+            <label className="course-flow-field">
+              <span>Status</span>
+              <select
+                value={form.status}
+                onChange={(event) => updateField('status', event.target.value)}
+              >
+                <option value="draft">Draft</option>
+                <option value="published">Published</option>
+                <option value="closed">Closed</option>
+              </select>
+            </label>
+
+            <label className="course-flow-field">
+              <span>Questions</span>
+              <input
+                type="number"
+                min="1"
+                value={form.totalQuestions}
+                onChange={(event) =>
+                  updateField('totalQuestions', event.target.value)
+                }
+              />
+            </label>
+
+            <label className="course-flow-field">
+              <span>Duration minutes</span>
+              <input
+                type="number"
+                min="1"
+                value={form.durationMinutes}
+                onChange={(event) =>
+                  updateField('durationMinutes', event.target.value)
+                }
+              />
+            </label>
+
+            <label className="course-flow-field">
+              <span>Passing score</span>
+              <input
+                type="number"
+                min="1"
+                max="100"
+                value={form.passingScore}
+                onChange={(event) =>
+                  updateField('passingScore', event.target.value)
+                }
+              />
+            </label>
+          </div>
+
+          <section className="demo-card">
+            <span className="demo-kicker">AI test source</span>
+            <h3>Choose generation source</h3>
+
+            <div className="demo-actions">
+              <button
+                type="button"
+                className={
+                  form.sourceType === 'modules'
+                    ? 'demo-primary-action'
+                    : 'demo-secondary-action'
+                }
+                onClick={() => updateField('sourceType', 'modules')}
+              >
+                <ClipboardCheck size={16} />
+                Module checklist
+              </button>
+
+              <button
+                type="button"
+                className={
+                  form.sourceType === 'upload'
+                    ? 'demo-primary-action'
+                    : 'demo-secondary-action'
+                }
+                onClick={() => updateField('sourceType', 'upload')}
+              >
+                <Upload size={16} />
+                Upload document mock
+              </button>
+            </div>
+
+            {form.sourceType === 'modules' ? (
+              <div className="demo-list">
+                {modules.map((module) => (
+                  <label key={module.id} className="demo-list-item">
+                    <div>
+                      <strong>{module.title}</strong>
+                      <small>{module.lessons.length} lessons</small>
+                    </div>
+
+                    <input
+                      type="checkbox"
+                      checked={form.selectedModuleIds.includes(module.id)}
+                      onChange={() => toggleModule(module.id)}
+                    />
+                  </label>
+                ))}
+              </div>
+            ) : null}
+
+            {form.sourceType === 'upload' ? (
+              <label className="course-flow-field">
+                <span>Uploaded file name mock</span>
+                <input
+                  value={form.uploadedFileName}
+                  placeholder="aws-class-practice.pdf"
+                  onChange={(event) =>
+                    updateField('uploadedFileName', event.target.value)
+                  }
+                />
+              </label>
+            ) : null}
+          </section>
+        </div>
+
+        {error ? <p className="demo-form-error">{error}</p> : null}
+
+        <div className="demo-actions">
+          <button
+            type="button"
+            className="demo-secondary-action"
+            onClick={onClose}
+          >
+            Cancel
+          </button>
+
+          <button
+            type="button"
+            className="demo-primary-action"
+            onClick={onSubmit}
+          >
+            <Sparkles size={16} />
+            {mode === 'create' ? 'Create test' : 'Save changes'}
+          </button>
+        </div>
+      </section>
+    </div>
+  )
+}
+
 function TestsTab({ classId }) {
-  const tests = getTrainerClassTests(classId)
+  const [tests, setTests] = useState(() => getAllTrainerClassTests(classId))
+  const [modalOpen, setModalOpen] = useState(false)
+  const [modalMode, setModalMode] = useState('create')
+  const [editingId, setEditingId] = useState(null)
+  const [form, setForm] = useState(emptyTestForm)
+  const [error, setError] = useState('')
+
+  const modules = getTrainerClassModules(classId)
+
+  const refresh = () => {
+    setTests(getAllTrainerClassTests(classId))
+  }
+
+  const openCreate = () => {
+    setModalMode('create')
+    setEditingId(null)
+    setForm(emptyTestForm)
+    setError('')
+    setModalOpen(true)
+  }
+
+  const openUpdate = (test) => {
+    setModalMode('update')
+    setEditingId(test.id)
+    setForm({
+      title: test.title,
+      description: test.description || '',
+      status: test.status || 'draft',
+      sourceType: test.sourceType || 'modules',
+      selectedModuleIds: test.selectedModuleIds || [],
+      uploadedFileName: test.uploadedFileName || '',
+      totalQuestions: test.totalQuestions || 10,
+      durationMinutes: test.durationMinutes || 20,
+      passingScore: test.passingScore || 70,
+    })
+    setError('')
+    setModalOpen(true)
+  }
+
+  const validate = () => {
+    if (!form.title.trim()) return 'Please enter test title.'
+
+    if (form.sourceType === 'modules' && form.selectedModuleIds.length === 0) {
+      return 'Please select at least one module.'
+    }
+
+    if (form.sourceType === 'upload' && !form.uploadedFileName.trim()) {
+      return 'Please enter uploaded file name mock.'
+    }
+
+    if (Number(form.totalQuestions) <= 0) {
+      return 'Questions must be greater than 0.'
+    }
+
+    if (Number(form.durationMinutes) <= 0) {
+      return 'Duration must be greater than 0.'
+    }
+
+    if (Number(form.passingScore) <= 0 || Number(form.passingScore) > 100) {
+      return 'Passing score must be between 1 and 100.'
+    }
+
+    return ''
+  }
+
+  const submit = () => {
+    const validationError = validate()
+
+    if (validationError) {
+      setError(validationError)
+      return
+    }
+
+    if (modalMode === 'create') {
+      createTrainerClassTest(classId, form)
+    } else {
+      updateTrainerClassTest(editingId, form)
+    }
+
+    refresh()
+    setModalOpen(false)
+  }
+
+  const remove = (testId) => {
+    deleteTrainerClassTest(classId, testId)
+    refresh()
+  }
 
   return (
     <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-      <span className="demo-kicker">Class Test</span>
-      <h2>Tests connected to this class course</h2>
+      <div className="demo-row demo-row--between">
+        <div>
+          <span className="demo-kicker">Class Test</span>
+          <h2>Tests connected to this class</h2>
+          <p className="mt-1 text-sm text-slate-500">
+            Trainer can create, update, and delete tests created specifically
+            for this class. Published course tests are shown as read-only.
+          </p>
+        </div>
+
+        <button type="button" className="demo-primary-action" onClick={openCreate}>
+          <Plus size={16} />
+          Create class test
+        </button>
+      </div>
 
       {tests.length === 0 ? (
         <DataState
           type="empty"
           title="No class tests"
-          description="Published course tests will appear here."
+          description="Create a class test from modules or an uploaded document."
         />
       ) : (
         <div className="mt-5 grid gap-4 xl:grid-cols-2">
-          {tests.map((test) => (
-            <article
-              key={test.id}
-              className="rounded-xl border border-slate-100 p-4"
-            >
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <StatusBadge status={test.status} />
-                  <h3 className="mt-2 font-bold text-slate-900">
-                    {test.title}
-                  </h3>
-                  <p className="mt-1 text-sm text-slate-500">
-                    {test.description}
-                  </p>
-                </div>
-              </div>
+          {tests.map((test) => {
+            const trainerCreated = test.id?.startsWith('trainer-test')
 
-              <div className="mt-4 grid gap-3 md:grid-cols-3">
-                <InfoItem label="Questions" value={test.totalQuestions} />
-                <InfoItem label="Duration" value={`${test.durationMinutes} min`} />
-                <InfoItem label="Passing" value={`${test.passingScore}%`} />
-              </div>
-            </article>
-          ))}
+            return (
+              <article
+                key={test.id}
+                className="rounded-xl border border-slate-100 p-4"
+              >
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <div className="flex flex-wrap gap-2">
+                      <StatusBadge status={test.status} />
+                      {trainerCreated ? (
+                        <span className="demo-count-badge">
+                          Trainer-created
+                        </span>
+                      ) : (
+                        <span className="demo-count-badge">
+                          Course test
+                        </span>
+                      )}
+                    </div>
+
+                    <h3 className="mt-2 font-bold text-slate-900">
+                      {test.title}
+                    </h3>
+
+                    <p className="mt-1 text-sm text-slate-500">
+                      {test.description}
+                    </p>
+
+                    <p className="mt-1 text-sm text-slate-500">
+                      Source: {test.sourceType || 'course'} · Status:{' '}
+                      {test.testStatus || 'Not Started'}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-4 grid gap-3 md:grid-cols-3">
+                  <InfoItem label="Questions" value={test.totalQuestions} />
+                  <InfoItem
+                    label="Duration"
+                    value={`${test.durationMinutes} min`}
+                  />
+                  <InfoItem label="Passing" value={`${test.passingScore}%`} />
+                </div>
+
+                {trainerCreated ? (
+                  <div className="mt-4 demo-actions">
+                    <button
+                      type="button"
+                      className="demo-secondary-action"
+                      onClick={() => openUpdate(test)}
+                    >
+                      <Edit3 size={16} />
+                      Update
+                    </button>
+
+                    <button
+                      type="button"
+                      className="demo-secondary-action"
+                      onClick={() => remove(test.id)}
+                    >
+                      <Trash2 size={16} />
+                      Delete
+                    </button>
+                  </div>
+                ) : null}
+              </article>
+            )
+          })}
         </div>
       )}
+
+      <ClassTestModal
+        open={modalOpen}
+        mode={modalMode}
+        form={form}
+        modules={modules}
+        error={error}
+        onChange={setForm}
+        onClose={() => setModalOpen(false)}
+        onSubmit={submit}
+      />
     </section>
   )
 }
 
 function DiscussionTab({ classId }) {
   const [message, setMessage] = useState('')
+  const [selectedDiscussionId, setSelectedDiscussionId] = useState(null)
   const [discussions, setDiscussions] = useState(() =>
     getTrainerClassDiscussions(classId),
   )
 
-  const submit = () => {
-    if (!message.trim()) return
+  const selectedDiscussion = discussions.find(
+    (item) => item.id === selectedDiscussionId,
+  )
 
-    addTrainerClassDiscussion(classId, message.trim())
+  const canReplyAsTrainer = selectedDiscussion?.authorRole === 'Trainer'
+
+  const submit = () => {
+    if (!message.trim() || !canReplyAsTrainer) return
+
+    addTrainerClassDiscussion(
+      classId,
+      `Reply to "${selectedDiscussion.message}": ${message.trim()}`,
+    )
+
     setDiscussions(getTrainerClassDiscussions(classId))
     setMessage('')
   }
@@ -728,38 +1135,90 @@ function DiscussionTab({ classId }) {
         <div>
           <span className="demo-kicker">Class Discussion</span>
           <h2>Trainer and trainee discussion</h2>
+          <p className="mt-1 text-sm text-slate-500">
+            Select a discussion. Reply box appears only when the selected
+            discussion belongs to Trainer.
+          </p>
         </div>
 
         <MessageCircle size={22} />
       </div>
 
       <div className="mt-5 grid gap-3">
-        {discussions.map((item) => (
-          <article key={item.id} className="rounded-xl bg-slate-50 p-4">
-            <strong className="text-slate-900">
-              {item.authorName} · {item.authorRole}
-            </strong>
-            <p className="mt-1 text-sm text-slate-700">{item.message}</p>
-            <small className="text-slate-500">
-              {formatDateTime(item.createdAt)}
-            </small>
-          </article>
-        ))}
+        {discussions.map((item) => {
+          const selected = item.id === selectedDiscussionId
+
+          return (
+            <button
+              key={item.id}
+              type="button"
+              className={
+                selected
+                  ? 'rounded-xl border border-blue-200 bg-blue-50 p-4 text-left'
+                  : 'rounded-xl bg-slate-50 p-4 text-left hover:bg-slate-100'
+              }
+              onClick={() => {
+                setSelectedDiscussionId(item.id)
+                setMessage('')
+              }}
+            >
+              <strong className="text-slate-900">
+                {item.authorName} · {item.authorRole}
+              </strong>
+              <p className="mt-1 text-sm text-slate-700">{item.message}</p>
+              <small className="text-slate-500">
+                {formatDateTime(item.createdAt)}
+              </small>
+            </button>
+          )
+        })}
       </div>
 
-      <div className="mt-5 flex gap-2">
-        <input
-          className="flex-1 rounded-xl border border-slate-200 px-4 py-2"
-          value={message}
-          placeholder="Write class announcement or reply..."
-          onChange={(event) => setMessage(event.target.value)}
-        />
+      {!selectedDiscussion ? (
+        <div className="mt-5 rounded-xl bg-slate-50 p-4">
+          <p className="text-sm text-slate-600">
+            Select one discussion to view reply options.
+          </p>
+        </div>
+      ) : null}
 
-        <button type="button" className="demo-primary-action" onClick={submit}>
-          <Send size={16} />
-          Send
-        </button>
-      </div>
+      {selectedDiscussion && !canReplyAsTrainer ? (
+        <div className="mt-5 rounded-xl bg-amber-50 p-4">
+          <p className="text-sm font-medium text-amber-800">
+            This discussion was created by a trainee. In this demo rule, the
+            trainer reply box appears only after selecting a Trainer discussion.
+          </p>
+        </div>
+      ) : null}
+
+      {canReplyAsTrainer ? (
+        <div className="mt-5 rounded-xl border border-slate-200 p-4">
+          <div className="mb-3">
+            <span className="demo-kicker">Reply as Trainer</span>
+            <p className="text-sm text-slate-500">
+              Replying to: {selectedDiscussion.message}
+            </p>
+          </div>
+
+          <div className="flex gap-2">
+            <input
+              className="flex-1 rounded-xl border border-slate-200 px-4 py-2"
+              value={message}
+              placeholder="Write trainer reply..."
+              onChange={(event) => setMessage(event.target.value)}
+            />
+
+            <button
+              type="button"
+              className="demo-primary-action"
+              onClick={submit}
+            >
+              <Send size={16} />
+              Reply
+            </button>
+          </div>
+        </div>
+      ) : null}
     </section>
   )
 }
