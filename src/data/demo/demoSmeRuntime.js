@@ -1,67 +1,213 @@
-import { demoQuestions } from './demoQuestions'
+import {
+  demoQuestionBankQuestions,
+  QUESTION_TYPES,
+} from "./demoQuestionBanks";
 import {
   getGeneratedResources,
   getLifecycleCourseById,
   getLifecycleModules,
   getSavedQuestionBankEntries,
-} from './courseLifecycleRuntime'
-import { ROLES } from '@/shared/constants/roles'
+} from "./courseLifecycleRuntime";
+import { ROLES } from "@/shared/constants/roles";
 
 const STORAGE_KEYS = {
-  questions: 'slp.demo.sme.questions',
-}
+  questions: "slp.demo.sme.questions",
+};
 
 function readJson(key, fallback) {
-  if (typeof window === 'undefined') return fallback
+  if (typeof window === "undefined") return fallback;
 
   try {
-    const value = window.localStorage.getItem(key)
-    return value ? JSON.parse(value) : fallback
+    const value = window.localStorage.getItem(key);
+    return value ? JSON.parse(value) : fallback;
   } catch {
-    return fallback
+    return fallback;
   }
 }
 
 function writeJson(key, value) {
-  if (typeof window === 'undefined') return
-  window.localStorage.setItem(key, JSON.stringify(value))
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(key, JSON.stringify(value));
 }
 
 function createId(prefix) {
-  return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`
+  return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function createOptionId(questionId, label) {
+  return `${questionId}-${String(label).toLowerCase()}`;
+}
+
+function getDefaultOptions(questionId, type) {
+  if (type === QUESTION_TYPES.TRUE_FALSE) {
+    return [
+      { id: createOptionId(questionId, "true"), label: "True", text: "True" },
+      {
+        id: createOptionId(questionId, "false"),
+        label: "False",
+        text: "False",
+      },
+    ];
+  }
+
+  if (type === QUESTION_TYPES.MATCHING) {
+    return [];
+  }
+
+  return ["A", "B", "C", "D"].map((label) => ({
+    id: createOptionId(questionId, label),
+    label,
+    text: "",
+  }));
+}
+
+function normalizeOptions(question) {
+  const type = question.type || QUESTION_TYPES.SINGLE_CHOICE;
+
+  if (type === QUESTION_TYPES.MATCHING) return [];
+
+  const fallbackOptions = getDefaultOptions(question.id, type);
+  const sourceOptions =
+    Array.isArray(question.options) && question.options.length > 0
+      ? question.options
+      : fallbackOptions;
+
+  return sourceOptions.map((option, index) => {
+    const fallback = fallbackOptions[index];
+
+    return {
+      id: option.id || fallback?.id || createOptionId(question.id, index + 1),
+      label: option.label || fallback?.label || String.fromCharCode(65 + index),
+      text: option.text || "",
+    };
+  });
+}
+
+function normalizePairs(question) {
+  if (question.type !== QUESTION_TYPES.MATCHING) return [];
+
+  const pairs = Array.isArray(question.pairs) ? question.pairs : [];
+
+  return pairs.length > 0
+    ? pairs.map((pair, index) => ({
+        id: pair.id || `${question.id}-pair-${index + 1}`,
+        prompt: pair.prompt || "",
+        answer: pair.answer || "",
+      }))
+    : [
+        { id: `${question.id}-pair-1`, prompt: "", answer: "" },
+        { id: `${question.id}-pair-2`, prompt: "", answer: "" },
+        { id: `${question.id}-pair-3`, prompt: "", answer: "" },
+        { id: `${question.id}-pair-4`, prompt: "", answer: "" },
+      ];
+}
+
+function getAnswerText(question) {
+  if (question.type === QUESTION_TYPES.MATCHING) {
+    return (question.pairs || [])
+      .map((pair) => `${pair.prompt} → ${pair.answer}`)
+      .join("; ");
+  }
+
+  return (question.options || [])
+    .filter((option) => (question.correctOptionIds || []).includes(option.id))
+    .map((option) => option.text)
+    .join("; ");
+}
+
+function buildOptionsFromPayload(questionId, payload) {
+  if (payload.type === QUESTION_TYPES.TRUE_FALSE) {
+    return getDefaultOptions(questionId, QUESTION_TYPES.TRUE_FALSE);
+  }
+
+  if (payload.type === QUESTION_TYPES.MATCHING) return [];
+
+  return ["A", "B", "C", "D"].map((label) => ({
+    id: createOptionId(questionId, label),
+    label,
+    text: payload[`option${label}`] || "",
+  }));
+}
+
+function buildCorrectOptionIds(questionId, payload, options) {
+  if (payload.type === QUESTION_TYPES.MATCHING) return [];
+
+  if (payload.type === QUESTION_TYPES.MULTIPLE_CHOICE) {
+    const correctLabels = Array.isArray(payload.correctAnswers)
+      ? payload.correctAnswers
+      : [];
+
+    return options
+      .filter((option) => correctLabels.includes(option.label))
+      .map((option) => option.id);
+  }
+
+  const correctAnswer = payload.correctAnswer || "A";
+
+  return options
+    .filter((option) => option.label === correctAnswer)
+    .map((option) => option.id);
+}
+
+function buildPairsFromPayload(questionId, payload) {
+  if (payload.type !== QUESTION_TYPES.MATCHING) return [];
+
+  return [1, 2, 3, 4].map((index) => ({
+    id: `${questionId}-pair-${index}`,
+    prompt: payload[`matchPrompt${index}`] || "",
+    answer: payload[`matchAnswer${index}`] || "",
+  }));
 }
 
 function normalizeQuestion(question) {
-  return {
+  const type = question.type || QUESTION_TYPES.SINGLE_CHOICE;
+  const options = normalizeOptions({
+    ...question,
+    type,
+  });
+  const pairs = normalizePairs({
+    ...question,
+    type,
+  });
+
+  const normalizedQuestion = {
     id: question.id,
-    courseId: question.courseId || 'course-aws',
-    lessonId: question.lessonId || '',
-    question: question.question,
-    type: question.type || 'single_choice',
-    clo: question.clo || 'CLO-AI',
-    bloom: question.bloom || 'Understand',
-    difficulty: question.difficulty || 'medium',
-    status: question.status || 'review',
-    source: question.source || 'Question bank',
+    courseId: question.courseId || "course-aws",
+    moduleId: question.moduleId || "",
+    lessonId: question.lessonId || "",
+    question: question.question || "",
+    type,
+    clo: question.clo || "CLO-AI",
+    bloom: question.bloom || "Understand",
+    difficulty: question.difficulty || "medium",
+    status: question.status || "review",
+    source: question.source || "Question bank",
     isAiGenerated: Boolean(question.isAiGenerated),
-    answer: question.answer || question.explanation || '',
-    explanation: question.explanation || question.answer || '',
-    options: question.options || [],
+    options,
+    pairs,
+    correctOptionIds: question.correctOptionIds || [],
+    createdByRole: question.createdByRole || ROLES.SME,
     createdAt: question.createdAt || new Date().toISOString(),
-    updatedAt: question.updatedAt || '',
-  }
+    updatedAt: question.updatedAt || "",
+  };
+
+  return {
+    ...normalizedQuestion,
+    answer: question.answer || getAnswerText(normalizedQuestion),
+    explanation: question.explanation || "",
+  };
 }
 
 function getStoredQuestions() {
-  return readJson(STORAGE_KEYS.questions, [])
+  return readJson(STORAGE_KEYS.questions, []);
 }
 
 function setStoredQuestions(questions) {
-  writeJson(STORAGE_KEYS.questions, questions)
+  writeJson(STORAGE_KEYS.questions, questions);
 }
 
 function getGeneratedQuestionDrafts() {
-  return getGeneratedResources({ type: 'questions' })
+  return getGeneratedResources({ type: "questions" })
     .filter((resource) => resource.createdByRole === ROLES.SME)
     .flatMap((resource) =>
       (resource.content || []).map((item, index) =>
@@ -72,157 +218,292 @@ function getGeneratedQuestionDrafts() {
           question: item.question,
           answer: item.answer,
           explanation: item.answer,
-          type: 'short_answer',
-          clo: 'CLO-AI',
-          bloom: 'Understand',
-          difficulty: 'medium',
-          status: 'review',
-          source: 'AI-generated from SME Course Builder',
+          type: "short_answer",
+          clo: "CLO-AI",
+          bloom: "Understand",
+          difficulty: "medium",
+          status: "review",
+          source: "AI-generated from SME Course Builder",
           isAiGenerated: true,
           createdAt: resource.createdAt,
         }),
       ),
-    )
+    );
 }
 
 function getSavedCourseBuilderQuestions() {
   return getSavedQuestionBankEntries().map((item) =>
     normalizeQuestion({
       ...item,
-      type: item.type || 'short_answer',
-      clo: item.clo || 'CLO-AI',
-      bloom: item.bloom || 'Understand',
-      difficulty: item.difficulty || 'medium',
-      status: item.status || 'review',
-      source: item.source || 'Saved from SME Course Builder',
+      type: item.type || "short_answer",
+      clo: item.clo || "CLO-AI",
+      bloom: item.bloom || "Understand",
+      difficulty: item.difficulty || "medium",
+      status: item.status || "review",
+      source: item.source || "Saved from SME Course Builder",
       isAiGenerated: item.isAiGenerated ?? true,
       createdAt: item.savedAt || item.createdAt,
     }),
-  )
+  );
 }
 
 function getQuestionSignature(question) {
   return [
     question.courseId,
     question.lessonId,
-    String(question.question || '').trim().toLowerCase(),
-  ].join(':')
+    String(question.question || "")
+      .trim()
+      .toLowerCase(),
+  ].join(":");
 }
 
 function dedupeQuestions(questions) {
-  const seenIds = new Set()
-  const seenSignatures = new Set()
+  const seenIds = new Set();
+  const seenSignatures = new Set();
 
   return questions.filter((question) => {
-    const signature = getQuestionSignature(question)
+    const signature = getQuestionSignature(question);
 
     if (seenIds.has(question.id) || seenSignatures.has(signature)) {
-      return false
+      return false;
     }
 
-    seenIds.add(question.id)
-    seenSignatures.add(signature)
-    return true
-  })
+    seenIds.add(question.id);
+    seenSignatures.add(signature);
+    return true;
+  });
 }
 
 export function getSmeQuestionBank() {
-  const stored = getStoredQuestions()
-  const storedById = new Map(stored.map((item) => [item.id, item]))
+  const stored = getStoredQuestions();
+  const storedById = new Map(stored.map((item) => [item.id, item]));
 
-  const baseQuestions = demoQuestions.map((question) => ({
+  const baseQuestions = demoQuestionBankQuestions.map((question) => ({
     ...normalizeQuestion(question),
     ...(storedById.get(question.id) || {}),
-  }))
+  }));
 
   const generatedQuestions = getGeneratedQuestionDrafts().map((question) => ({
     ...question,
     ...(storedById.get(question.id) || {}),
-  }))
+  }));
 
-  const savedCourseBuilderQuestions = getSavedCourseBuilderQuestions().map((question) => ({
-    ...question,
-    ...(storedById.get(question.id) || {}),
-  }))
+  const savedCourseBuilderQuestions = getSavedCourseBuilderQuestions().map(
+    (question) => ({
+      ...question,
+      ...(storedById.get(question.id) || {}),
+    }),
+  );
 
   const baseIds = new Set([
     ...baseQuestions.map((item) => item.id),
     ...generatedQuestions.map((item) => item.id),
     ...savedCourseBuilderQuestions.map((item) => item.id),
-  ])
+  ]);
 
-  const localOnly = stored.filter((item) => !baseIds.has(item.id))
+  const localOnly = stored.filter((item) => !baseIds.has(item.id));
 
   return dedupeQuestions([
     ...baseQuestions,
     ...generatedQuestions,
     ...savedCourseBuilderQuestions,
     ...localOnly.map(normalizeQuestion),
-  ])
+  ]).filter((question) => !question.deleted && question.status !== "deleted");
 }
 
 export function getSmeQuestionById(questionId) {
-  return getSmeQuestionBank().find((item) => item.id === questionId)
+  return getSmeQuestionBank().find((item) => item.id === questionId);
 }
 
 export function updateSmeQuestion(questionId, payload) {
-  const current = getStoredQuestions()
+  const current = getStoredQuestions();
   const existing =
-    getSmeQuestionById(questionId) || current.find((item) => item.id === questionId)
+    getSmeQuestionById(questionId) ||
+    current.find((item) => item.id === questionId);
 
-  if (!existing) return null
+  if (!existing) return null;
 
-  const updatedQuestion = {
+  const nextQuestion = {
     ...existing,
     ...payload,
     updatedAt: new Date().toISOString(),
-  }
+  };
 
-  const existsInStored = current.some((item) => item.id === questionId)
+  const updatedQuestion = normalizeQuestion({
+    ...nextQuestion,
+    answer: payload.answer || getAnswerText(nextQuestion),
+  });
+
+  const existsInStored = current.some((item) => item.id === questionId);
 
   if (existsInStored) {
     setStoredQuestions(
       current.map((item) => (item.id === questionId ? updatedQuestion : item)),
-    )
+    );
   } else {
-    setStoredQuestions([updatedQuestion, ...current])
+    setStoredQuestions([updatedQuestion, ...current]);
   }
 
-  return updatedQuestion
+  return updatedQuestion;
+}
+
+export function createSmeQuestion(payload = {}) {
+  const questionId = createId("sme-manual-question");
+  const type = payload.type || QUESTION_TYPES.SINGLE_CHOICE;
+  const options = buildOptionsFromPayload(questionId, {
+    ...payload,
+    type,
+  });
+  const pairs = buildPairsFromPayload(questionId, {
+    ...payload,
+    type,
+  });
+  const correctOptionIds = buildCorrectOptionIds(
+    questionId,
+    {
+      ...payload,
+      type,
+    },
+    options,
+  );
+
+  const question = normalizeQuestion({
+    id: questionId,
+    courseId: payload.courseId,
+    moduleId: payload.moduleId || "",
+    lessonId: payload.lessonId || "",
+    question: payload.question,
+    type,
+    clo: payload.clo || "CLO-AI",
+    bloom: payload.bloom || "Understand",
+    difficulty: payload.difficulty || "medium",
+    status: payload.status || "draft",
+    source: "Manual SME question",
+    isAiGenerated: false,
+    options,
+    pairs,
+    correctOptionIds,
+    explanation: payload.explanation || "",
+    createdByRole: ROLES.SME,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  });
+
+  setStoredQuestions([question, ...getStoredQuestions()]);
+
+  return question;
+}
+
+export function deleteSmeQuestion(questionId) {
+  const current = getStoredQuestions();
+  const existing = getSmeQuestionById(questionId);
+
+  if (!existing) return null;
+
+  const existsInStored = current.some((item) => item.id === questionId);
+
+  if (existsInStored) {
+    setStoredQuestions(current.filter((item) => item.id !== questionId));
+    return existing;
+  }
+
+  const deletedQuestion = {
+    ...existing,
+    status: "deleted",
+    deleted: true,
+    updatedAt: new Date().toISOString(),
+  };
+
+  setStoredQuestions([deletedQuestion, ...current]);
+
+  return deletedQuestion;
 }
 
 export function approveSmeQuestion(questionId) {
-  return updateSmeQuestion(questionId, { status: 'approved' })
+  return updateSmeQuestion(questionId, { status: "approved" });
 }
 
 export function rejectSmeQuestion(questionId) {
-  return updateSmeQuestion(questionId, { status: 'rejected' })
+  return updateSmeQuestion(questionId, { status: "rejected" });
 }
 
 export function createAiDraftQuestion(payload = {}) {
   const course = getLifecycleCourseById(payload.courseId || 'course-aws')
+  const modules = getLifecycleModules(payload.courseId || course?.id || 'course-aws')
+  const module = modules.find((item) => item.id === payload.moduleId)
+  const lesson = module?.lessons?.find((item) => item.id === payload.lessonId)
+
+  const questionId = createId('sme-ai-question')
+  const type = payload.type || QUESTION_TYPES.SINGLE_CHOICE
+
+  const options = buildOptionsFromPayload(questionId, {
+    type,
+    optionA: `Correct concept from ${lesson?.title || module?.title || course?.title || 'selected content'}`,
+    optionB: 'A related but incomplete explanation',
+    optionC: 'A distractor from another topic',
+    optionD: 'An incorrect interpretation of the lesson',
+    correctAnswer: 'A',
+    correctAnswers: ['A', 'B'],
+  })
+
+  const pairs = type === QUESTION_TYPES.MATCHING
+    ? [
+      {
+        id: `${questionId}-pair-1`,
+        prompt: 'Core concept',
+        answer: lesson?.title || module?.title || course?.title || 'Selected learning content',
+      },
+      {
+        id: `${questionId}-pair-2`,
+        prompt: 'Learning outcome',
+        answer: payload.clo || 'CLO-AI',
+      },
+      {
+        id: `${questionId}-pair-3`,
+        prompt: 'Cognitive level',
+        answer: payload.bloom || 'Understand',
+      },
+      {
+        id: `${questionId}-pair-4`,
+        prompt: 'Difficulty',
+        answer: payload.difficulty || 'medium',
+      },
+    ]
+    : []
+
+  const correctOptionIds =
+    type === QUESTION_TYPES.MULTIPLE_CHOICE
+      ? options.slice(0, 2).map((option) => option.id)
+      : type === QUESTION_TYPES.TRUE_FALSE
+        ? [createOptionId(questionId, 'true')]
+        : type === QUESTION_TYPES.SINGLE_CHOICE
+          ? [createOptionId(questionId, 'A')]
+          : []
 
   const question = normalizeQuestion({
-    id: createId('sme-ai-question'),
+    id: questionId,
     courseId: payload.courseId || course?.id || 'course-aws',
-    lessonId: payload.lessonId || '',
+    moduleId: payload.moduleId || module?.id || '',
+    lessonId: payload.lessonId || lesson?.id || '',
     question:
       payload.question ||
-      `Which statement best describes ${course?.title || 'the selected course'}?`,
-    answer:
-      payload.answer ||
-      'The best answer should match the course learning outcome and lesson explanation.',
-    explanation:
-      payload.explanation ||
-      'AI-generated mock explanation. SME must review before approval.',
-    type: payload.type || 'single_choice',
+      `Which option best matches ${lesson?.title || module?.title || course?.title || 'the selected learning content'}?`,
+    type,
     clo: payload.clo || 'CLO-AI',
     bloom: payload.bloom || 'Understand',
     difficulty: payload.difficulty || 'medium',
     status: 'review',
     source: 'AI-generated draft',
     isAiGenerated: true,
+    options,
+    pairs,
+    correctOptionIds,
+    explanation:
+      payload.explanation ||
+      `AI-generated draft based on ${lesson?.title || module?.title || course?.title || 'the selected learning content'}. SME must review before approval.`,
+    createdByRole: ROLES.SME,
     createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
   })
 
   setStoredQuestions([question, ...getStoredQuestions()])
@@ -231,81 +512,82 @@ export function createAiDraftQuestion(payload = {}) {
 }
 
 export function getSmeContentQualityReport(courseId) {
-  const course = getLifecycleCourseById(courseId)
-  const modules = getLifecycleModules(courseId)
-  const lessons = modules.flatMap((module) => module.lessons || [])
+  const course = getLifecycleCourseById(courseId);
+  const modules = getLifecycleModules(courseId);
+  const lessons = modules.flatMap((module) => module.lessons || []);
   const questions = getSmeQuestionBank().filter(
     (question) => question.courseId === courseId,
-  )
+  );
 
   const missingObjectives = lessons.filter(
     (lesson) =>
       !Array.isArray(lesson.learningObjectives) ||
       lesson.learningObjectives.length === 0,
-  )
+  );
 
   const lessonsWithoutMaterials = lessons.filter(
     (lesson) =>
-      !Array.isArray(lesson.materials) ||
-      lesson.materials.length === 0,
-  )
+      !Array.isArray(lesson.materials) || lesson.materials.length === 0,
+  );
 
   const reviewQuestions = questions.filter(
-    (question) => question.status === 'review' || question.status === 'draft',
-  )
+    (question) => question.status === "review" || question.status === "draft",
+  );
 
   const approvedQuestions = questions.filter(
-    (question) => question.status === 'approved',
-  )
+    (question) => question.status === "approved",
+  );
 
   const issues = [
     {
-      id: 'missing-objectives',
-      title: 'Lessons missing learning objectives',
+      id: "missing-objectives",
+      title: "Lessons missing learning objectives",
       value: missingObjectives.length,
-      severity: missingObjectives.length > 0 ? 'warning' : 'good',
+      severity: missingObjectives.length > 0 ? "warning" : "good",
       description:
         missingObjectives.length > 0
-          ? 'Some lessons do not have clear learning objectives.'
-          : 'All lessons have learning objectives.',
+          ? "Some lessons do not have clear learning objectives."
+          : "All lessons have learning objectives.",
     },
     {
-      id: 'missing-materials',
-      title: 'Lessons without uploaded material',
+      id: "missing-materials",
+      title: "Lessons without uploaded material",
       value: lessonsWithoutMaterials.length,
-      severity: lessonsWithoutMaterials.length > 0 ? 'warning' : 'good',
+      severity: lessonsWithoutMaterials.length > 0 ? "warning" : "good",
       description:
         lessonsWithoutMaterials.length > 0
-          ? 'Some lessons do not have supporting documents or references.'
-          : 'Lesson materials are available.',
+          ? "Some lessons do not have supporting documents or references."
+          : "Lesson materials are available.",
     },
     {
-      id: 'question-review',
-      title: 'AI questions waiting for SME review',
+      id: "question-review",
+      title: "AI questions waiting for SME review",
       value: reviewQuestions.length,
-      severity: reviewQuestions.length > 0 ? 'warning' : 'good',
+      severity: reviewQuestions.length > 0 ? "warning" : "good",
       description:
         reviewQuestions.length > 0
-          ? 'AI-generated questions need approve/reject/edit decision.'
-          : 'No pending AI question review.',
+          ? "AI-generated questions need approve/reject/edit decision."
+          : "No pending AI question review.",
     },
     {
-      id: 'approved-questions',
-      title: 'Approved question coverage',
+      id: "approved-questions",
+      title: "Approved question coverage",
       value: approvedQuestions.length,
-      severity: approvedQuestions.length >= modules.length ? 'good' : 'warning',
+      severity: approvedQuestions.length >= modules.length ? "good" : "warning",
       description:
         approvedQuestions.length >= modules.length
-          ? 'Question coverage is acceptable for demo.'
-          : 'Approved question count is lower than module count.',
+          ? "Question coverage is acceptable for demo."
+          : "Approved question count is lower than module count.",
     },
-  ]
+  ];
 
-  const warningCount = issues.filter((item) => item.severity === 'warning').length
-  const score = Math.max(0, 100 - warningCount * 20)
+  const warningCount = issues.filter(
+    (item) => item.severity === "warning",
+  ).length;
+  const score = Math.max(0, 100 - warningCount * 20);
 
   return {
-    courseTitle: course?.title || 'Selected course',
+    courseTitle: course?.title || "Selected course",
     moduleCount: modules.length,
     lessonCount: lessons.length,
     questionCount: questions.length,
@@ -313,5 +595,5 @@ export function getSmeContentQualityReport(courseId) {
     pendingQuestionCount: reviewQuestions.length,
     score,
     issues,
-  }
+  };
 }

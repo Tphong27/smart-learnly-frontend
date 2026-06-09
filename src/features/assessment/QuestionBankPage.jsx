@@ -1,675 +1,1377 @@
+import { useMemo, useState } from "react";
 import {
   Brain,
   CheckCircle2,
-  Edit3,
-  Save,
+  Eye,
+  Grid2X2,
+  List,
+  Pencil,
+  Plus,
+  Search,
+  Trash2,
+  X,
   XCircle,
-} from 'lucide-react'
-import { useMemo, useState } from 'react'
-import { PageHeader } from '@/shared/components/ui/PageHeader'
-import { StatusBadge } from '@/shared/components/ui/StatusBadge'
-import { DataState } from '@/shared/components/ui/DataState'
-import {
-  ClearFiltersButton,
-  FilterToolbar,
-  SearchBox,
-  SelectFilter,
-} from '@/shared/components/ui/ListControls'
+} from "lucide-react";
+import { PageHeader } from "@/shared/components/ui/PageHeader";
+import { StatusBadge } from "@/shared/components/ui/StatusBadge";
+import { DataState } from "@/shared/components/ui/DataState";
 import {
   approveSmeQuestion,
   createAiDraftQuestion,
+  createSmeQuestion,
+  deleteSmeQuestion,
   getSmeQuestionBank,
   rejectSmeQuestion,
   updateSmeQuestion,
-} from '@/data/demo/demoSmeRuntime'
+} from "@/data/demo/demoSmeRuntime";
 import {
   getAllLifecycleCourses,
   getLifecycleCourseById,
   getLifecycleModules,
-} from '@/data/demo/courseLifecycleRuntime'
+} from "@/data/demo/courseLifecycleRuntime";
+import { QUESTION_TYPES } from "@/data/demo/demoQuestionBanks";
+const VIEW_MODE = {
+  GRID: "grid",
+  LIST: "list",
+};
 
-const emptyEditForm = {
-  question: '',
-  answer: '',
-  explanation: '',
-  type: 'single_choice',
-  clo: 'CLO-AI',
-  bloom: 'Understand',
-  difficulty: 'medium',
-  status: 'review',
-  source: '',
-}
+const QUESTION_TYPE_OPTIONS = [
+  { value: QUESTION_TYPES.SINGLE_CHOICE, label: "Single Choice" },
+  { value: QUESTION_TYPES.MULTIPLE_CHOICE, label: "Multiple Choice" },
+  { value: QUESTION_TYPES.TRUE_FALSE, label: "True / False" },
+  { value: QUESTION_TYPES.MATCHING, label: "Matching" },
+];
 
-function toForm(question) {
-  if (!question) return emptyEditForm
+const DIFFICULTIES = [
+  { value: "easy", label: "Easy" },
+  { value: "medium", label: "Medium" },
+  { value: "hard", label: "Hard" },
+];
 
-  return {
-    question: question.question || '',
-    answer: question.answer || '',
-    explanation: question.explanation || '',
-    type: question.type || 'single_choice',
-    clo: question.clo || 'CLO-AI',
-    bloom: question.bloom || 'Understand',
-    difficulty: question.difficulty || 'medium',
-    status: question.status || 'review',
-    source: question.source || '',
-  }
-}
+const BLOOM_LEVELS = [
+  "Remember",
+  "Understand",
+  "Apply",
+  "Analyze",
+  "Evaluate",
+  "Create",
+];
+
+const emptyQuestionForm = {
+  question: "",
+  type: "single_choice",
+
+  optionA: "",
+  optionB: "",
+  optionC: "",
+  optionD: "",
+  correctAnswer: "A",
+  correctAnswers: [],
+
+  trueFalseAnswer: "True",
+
+  matchPrompt1: "",
+  matchAnswer1: "",
+  matchPrompt2: "",
+  matchAnswer2: "",
+  matchPrompt3: "",
+  matchAnswer3: "",
+  matchPrompt4: "",
+  matchAnswer4: "",
+
+  explanation: "",
+  clo: "CLO-AI",
+  bloom: "Understand",
+  difficulty: "medium",
+  status: "draft",
+};
+
+const emptyAiForm = {
+  courseId: "",
+  moduleId: "",
+  lessonId: "",
+  type: "single_choice",
+  difficulty: "medium",
+  bloom: "Understand",
+  clo: "CLO-AI",
+};
 
 function getCourseTitle(courseId) {
-  return getLifecycleCourseById(courseId)?.title || courseId || 'Unassigned course'
-}
-
-function getLessonTitle(courseId, lessonId) {
-  if (!lessonId) return 'Course level'
-
   return (
-    getLifecycleModules(courseId)
-      .flatMap((module) => module.lessons || [])
-      .find((lesson) => lesson.id === lessonId)?.title ||
-    lessonId
-  )
+    getLifecycleCourseById(courseId)?.title || courseId || "Unassigned course"
+  );
 }
 
-function QuestionDetailPanel({
-  question,
-  form,
-  editing,
-  onEdit,
-  onChange,
-  onSave,
-  onApprove,
-  onReject,
-}) {
-  if (!question) {
-    return (
-      <aside className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-        <DataState
-          type="empty"
-          title="No question selected"
-          description="Select a question from the table to review its detail."
-        />
-      </aside>
-    )
+function getModuleAndLesson(courseId, lessonId, moduleId = "") {
+  const modules = getLifecycleModules(courseId);
+
+  if (moduleId) {
+    const module = modules.find((item) => item.id === moduleId);
+    const lesson = module?.lessons?.find((item) => item.id === lessonId);
+
+    return {
+      module,
+      lesson,
+    };
   }
 
-  if (editing) {
-    return (
-      <aside className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-        <div className="demo-row demo-row--between">
-          <div>
-            <span className="demo-kicker">Edit Question</span>
-            <h2 className="text-lg font-bold text-slate-900">SME Review Form</h2>
-          </div>
-          <Edit3 size={20} />
-        </div>
+  for (const module of modules) {
+    const lesson = module.lessons?.find((item) => item.id === lessonId);
 
-        <div className="course-flow-form-section mt-4">
-          <label className="course-flow-field">
-            <span>Question</span>
-            <textarea
-              rows="5"
-              value={form.question}
-              onChange={(event) =>
-                onChange({ ...form, question: event.target.value })
-              }
-            />
-          </label>
-
-          <label className="course-flow-field">
-            <span>Answer</span>
-            <textarea
-              rows="3"
-              value={form.answer}
-              onChange={(event) =>
-                onChange({ ...form, answer: event.target.value })
-              }
-            />
-          </label>
-
-          <label className="course-flow-field">
-            <span>Explanation</span>
-            <textarea
-              rows="3"
-              value={form.explanation}
-              onChange={(event) =>
-                onChange({ ...form, explanation: event.target.value })
-              }
-            />
-          </label>
-
-          <div className="course-flow-form-grid course-flow-form-grid--compact">
-            <label className="course-flow-field">
-              <span>Type</span>
-              <select
-                value={form.type}
-                onChange={(event) =>
-                  onChange({ ...form, type: event.target.value })
-                }
-              >
-                <option value="single_choice">Single choice</option>
-                <option value="multiple_choice">Multiple choice</option>
-                <option value="true_false">True / False</option>
-                <option value="short_answer">Short answer</option>
-              </select>
-            </label>
-
-            <label className="course-flow-field">
-              <span>CLO</span>
-              <input
-                value={form.clo}
-                onChange={(event) =>
-                  onChange({ ...form, clo: event.target.value })
-                }
-              />
-            </label>
-
-            <label className="course-flow-field">
-              <span>Bloom</span>
-              <select
-                value={form.bloom}
-                onChange={(event) =>
-                  onChange({ ...form, bloom: event.target.value })
-                }
-              >
-                <option>Remember</option>
-                <option>Understand</option>
-                <option>Apply</option>
-                <option>Analyze</option>
-                <option>Evaluate</option>
-                <option>Create</option>
-              </select>
-            </label>
-
-            <label className="course-flow-field">
-              <span>Difficulty</span>
-              <select
-                value={form.difficulty}
-                onChange={(event) =>
-                  onChange({ ...form, difficulty: event.target.value })
-                }
-              >
-                <option value="easy">Easy</option>
-                <option value="medium">Medium</option>
-                <option value="hard">Hard</option>
-              </select>
-            </label>
-          </div>
-        </div>
-
-        <div className="mt-4 demo-actions">
-          <button type="button" className="demo-primary-action" onClick={onSave}>
-            <Save size={16} />
-            Save question
-          </button>
-        </div>
-      </aside>
-    )
-  }
-
-  return (
-    <aside className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-      <div className="demo-row demo-row--between">
-        <div>
-          <span className="demo-kicker">Question Detail</span>
-          <h2 className="text-lg font-bold text-slate-900">SME review</h2>
-        </div>
-        <StatusBadge status={question.status} />
-      </div>
-
-      <div className="mt-4 space-y-4">
-        <div>
-          <p className="text-xs font-semibold uppercase text-slate-500">Question</p>
-          <p className="mt-1 font-medium text-slate-900">{question.question}</p>
-        </div>
-
-        <div>
-          <p className="text-xs font-semibold uppercase text-slate-500">Answer</p>
-          <p className="mt-1 text-sm text-slate-700">
-            {question.answer || 'No answer provided.'}
-          </p>
-        </div>
-
-        <div>
-          <p className="text-xs font-semibold uppercase text-slate-500">
-            Explanation
-          </p>
-          <p className="mt-1 text-sm text-slate-700">
-            {question.explanation || 'No explanation provided.'}
-          </p>
-        </div>
-
-        <dl className="course-flow-mini-grid">
-          <div>
-            <dt>Type</dt>
-            <dd>{question.type}</dd>
-          </div>
-          <div>
-            <dt>CLO</dt>
-            <dd>{question.clo}</dd>
-          </div>
-          <div>
-            <dt>Bloom</dt>
-            <dd>{question.bloom}</dd>
-          </div>
-          <div>
-            <dt>Difficulty</dt>
-            <dd>{question.difficulty}</dd>
-          </div>
-          <div>
-            <dt>Source</dt>
-            <dd>{question.source}</dd>
-          </div>
-        </dl>
-      </div>
-
-      <div className="mt-5 demo-actions">
-        <button type="button" className="demo-secondary-action" onClick={onEdit}>
-          <Edit3 size={16} />
-          Edit
-        </button>
-
-        <button type="button" className="demo-primary-action" onClick={onApprove}>
-          <CheckCircle2 size={16} />
-          Approve
-        </button>
-
-        <button type="button" className="demo-secondary-action" onClick={onReject}>
-          <XCircle size={16} />
-          Reject
-        </button>
-      </div>
-    </aside>
-  )
-}
-
-export function QuestionBankPage() {
-  const [questions, setQuestions] = useState(() => getSmeQuestionBank())
-  const [filters, setFilters] = useState({
-    keyword: '',
-    status: 'all',
-    course: 'all',
-    lesson: 'all',
-    type: 'all',
-    difficulty: 'all',
-    source: 'all',
-    sort: 'updated-desc',
-  })
-  const [selectedQuestionId, setSelectedQuestionId] = useState(
-    questions[0]?.id || null,
-  )
-  const [editing, setEditing] = useState(false)
-  const [form, setForm] = useState(emptyEditForm)
-
-  const selectedQuestion = questions.find(
-    (question) => question.id === selectedQuestionId,
-  )
-
-  const courseOptions = useMemo(() => {
-    const courseIds = new Set(questions.map((question) => question.courseId).filter(Boolean))
-    const lifecycleCourses = getAllLifecycleCourses()
-      .filter((course) => courseIds.has(course.id))
-      .map((course) => ({ value: course.id, label: course.title }))
-    const knownCourseIds = new Set(lifecycleCourses.map((course) => course.value))
-    const localOnlyCourses = Array.from(courseIds)
-      .filter((courseId) => !knownCourseIds.has(courseId))
-      .map((courseId) => ({ value: courseId, label: courseId }))
-
-    return [{ value: 'all', label: 'All courses' }, ...lifecycleCourses, ...localOnlyCourses]
-  }, [questions])
-
-  const lessonOptions = useMemo(() => {
-    const questionLessons = questions
-      .filter((question) => filters.course === 'all' || question.courseId === filters.course)
-      .map((question) => ({
-        value: question.lessonId || 'course-level',
-        label: getLessonTitle(question.courseId, question.lessonId),
-      }))
-    const deduped = new Map(questionLessons.map((lesson) => [lesson.value, lesson]))
-
-    return [{ value: 'all', label: 'All lessons' }, ...deduped.values()]
-  }, [filters.course, questions])
-
-  const typeOptions = useMemo(() => {
-    return ['all', ...new Set(questions.map((question) => question.type).filter(Boolean))]
-  }, [questions])
-
-  const difficultyOptions = useMemo(() => {
-    return ['all', ...new Set(questions.map((question) => question.difficulty).filter(Boolean))]
-  }, [questions])
-
-  const sourceOptions = useMemo(() => {
-    return ['all', ...new Set(questions.map((question) => question.source).filter(Boolean))]
-  }, [questions])
-
-  const refresh = () => {
-    const nextQuestions = getSmeQuestionBank()
-    setQuestions(nextQuestions)
-
-    if (!selectedQuestionId && nextQuestions[0]) {
-      setSelectedQuestionId(nextQuestions[0].id)
+    if (lesson) {
+      return {
+        module,
+        lesson,
+      };
     }
   }
 
-  const filteredQuestions = useMemo(() => {
-    const normalizedKeyword = filters.keyword.trim().toLowerCase()
+  return {
+    module: null,
+    lesson: null,
+  };
+}
+
+function enrichQuestion(question) {
+  const { module, lesson } = getModuleAndLesson(
+    question.courseId,
+    question.lessonId,
+    question.moduleId,
+  );
+
+  return {
+    ...question,
+    moduleId: question.moduleId || module?.id || "",
+    courseTitle: getCourseTitle(question.courseId),
+    moduleTitle: module?.title || "Course level",
+    lessonTitle: lesson?.title || "Course level",
+  };
+}
+
+function buildQuestionBanks(questions) {
+  const bankMap = new Map();
+
+  questions.forEach((question) => {
+    const course = getLifecycleCourseById(question.courseId);
+
+    if (!bankMap.has(question.courseId)) {
+      bankMap.set(question.courseId, {
+        id: `question-bank-${question.courseId}`,
+        courseId: question.courseId,
+        courseTitle: course?.title || question.courseTitle || question.courseId,
+        courseStatus: course?.status || "unknown",
+        category: course?.category || "General",
+        level: course?.level || "Mixed",
+        questions: [],
+      });
+    }
+
+    bankMap.get(question.courseId).questions.push(question);
+  });
+
+  return Array.from(bankMap.values()).map((bank) => {
+    const total = bank.questions.length;
+    const approved = bank.questions.filter(
+      (item) => item.status === "approved" || item.status === "published",
+    ).length;
+    const review = bank.questions.filter(
+      (item) => item.status === "review" || item.status === "draft",
+    ).length;
+    const rejected = bank.questions.filter(
+      (item) => item.status === "rejected",
+    ).length;
+    const aiGenerated = bank.questions.filter(
+      (item) => item.isAiGenerated,
+    ).length;
+    const manual = total - aiGenerated;
+
+    return {
+      ...bank,
+      total,
+      approved,
+      review,
+      rejected,
+      aiGenerated,
+      manual,
+    };
+  });
+}
+
+function toQuestionForm(question) {
+  if (!question) return emptyQuestionForm;
+
+  const options = question.options || [];
+  const pairs = question.pairs || [];
+
+  const getOptionText = (label) => {
+    return options.find((option) => option.label === label)?.text || "";
+  };
+
+  const correctOptions = options.filter((option) =>
+    (question.correctOptionIds || []).includes(option.id),
+  );
+
+  const trueFalseCorrect = correctOptions[0]?.label || "True";
+
+  return {
+    question: question.question || "",
+    type: question.type || "single_choice",
+
+    optionA: getOptionText("A"),
+    optionB: getOptionText("B"),
+    optionC: getOptionText("C"),
+    optionD: getOptionText("D"),
+    correctAnswer: correctOptions[0]?.label || "A",
+    correctAnswers: correctOptions.map((option) => option.label),
+
+    trueFalseAnswer: trueFalseCorrect,
+
+    matchPrompt1: pairs[0]?.prompt || "",
+    matchAnswer1: pairs[0]?.answer || "",
+    matchPrompt2: pairs[1]?.prompt || "",
+    matchAnswer2: pairs[1]?.answer || "",
+    matchPrompt3: pairs[2]?.prompt || "",
+    matchAnswer3: pairs[2]?.answer || "",
+    matchPrompt4: pairs[3]?.prompt || "",
+    matchAnswer4: pairs[3]?.answer || "",
+
+    explanation: question.explanation || "",
+    clo: question.clo || "CLO-AI",
+    bloom: question.bloom || "Understand",
+    difficulty: question.difficulty || "medium",
+    status: question.status || "draft",
+  };
+}
+
+function QuestionBankCard({ bank, viewMode, onOpen }) {
+  return (
+    <article
+      className={
+        viewMode === VIEW_MODE.GRID
+          ? "question-bank-card"
+          : "question-bank-list-item"
+      }
+    >
+      <div className="question-bank-card__header">
+        <div>
+          <span className="demo-kicker">Question Bank</span>
+          <h2>{bank.courseTitle}</h2>
+          <p>
+            {bank.category} · {bank.level}
+          </p>
+        </div>
+
+        <span className="question-bank-count">{bank.total} questions</span>
+      </div>
+
+      <div className="question-bank-stats">
+        <span>Approved: {bank.approved}</span>
+        <span>Review: {bank.review}</span>
+        <span>Rejected: {bank.rejected}</span>
+        <span>AI: {bank.aiGenerated}</span>
+        <span>Manual: {bank.manual}</span>
+      </div>
+
+      <div className="demo-actions">
+        <button
+          type="button"
+          className="demo-primary-action"
+          onClick={() => onOpen(bank)}
+        >
+          <Eye size={16} />
+          Open bank
+        </button>
+      </div>
+    </article>
+  );
+}
+
+function QuestionBankToolbar({
+  keyword,
+  courseFilter,
+  viewMode,
+  banks,
+  onKeywordChange,
+  onCourseFilterChange,
+  onViewModeChange,
+}) {
+  return (
+    <section className="course-flow-filter-card question-bank-toolbar">
+      <div className="question-bank-search">
+        <Search size={16} />
+        <input
+          value={keyword}
+          placeholder="Search question bank by course name..."
+          onChange={(event) => onKeywordChange(event.target.value)}
+        />
+      </div>
+
+      <select
+        value={courseFilter}
+        onChange={(event) => onCourseFilterChange(event.target.value)}
+      >
+        <option value="all">All courses</option>
+        {banks.map((bank) => (
+          <option key={bank.courseId} value={bank.courseId}>
+            {bank.courseTitle}
+          </option>
+        ))}
+      </select>
+
+      <div className="question-bank-view-toggle">
+        <button
+          type="button"
+          className={viewMode === VIEW_MODE.GRID ? "is-active" : ""}
+          onClick={() => onViewModeChange(VIEW_MODE.GRID)}
+        >
+          <Grid2X2 size={16} />
+          Grid
+        </button>
+
+        <button
+          type="button"
+          className={viewMode === VIEW_MODE.LIST ? "is-active" : ""}
+          onClick={() => onViewModeChange(VIEW_MODE.LIST)}
+        >
+          <List size={16} />
+          List
+        </button>
+      </div>
+    </section>
+  );
+}
+
+function QuestionForm({ title, initialForm, onSubmit, onCancel }) {
+  const [form, setForm] = useState(initialForm || emptyQuestionForm);
+
+  const updateCorrectAnswers = (label, checked) => {
+    const current = new Set(form.correctAnswers || []);
+
+    if (checked) {
+      current.add(label);
+    } else {
+      current.delete(label);
+    }
+
+    setForm({
+      ...form,
+      correctAnswers: Array.from(current),
+    });
+  };
+
+  const handleSubmit = () => {
+    if (!form.question.trim()) return;
+
+    if (
+      [QUESTION_TYPES.SINGLE_CHOICE, QUESTION_TYPES.MULTIPLE_CHOICE].includes(
+        form.type,
+      ) &&
+      (!form.optionA.trim() ||
+        !form.optionB.trim() ||
+        !form.optionC.trim() ||
+        !form.optionD.trim())
+    ) {
+      return;
+    }
+
+    if (
+      form.type === QUESTION_TYPES.MULTIPLE_CHOICE &&
+      form.correctAnswers.length === 0
+    ) {
+      return;
+    }
+
+    if (
+      form.type === QUESTION_TYPES.MATCHING &&
+      (!form.matchPrompt1.trim() || !form.matchAnswer1.trim())
+    ) {
+      return;
+    }
+
+    onSubmit({
+      ...form,
+      question: form.question.trim(),
+      optionA: form.optionA.trim(),
+      optionB: form.optionB.trim(),
+      optionC: form.optionC.trim(),
+      optionD: form.optionD.trim(),
+      correctAnswer:
+        form.type === QUESTION_TYPES.TRUE_FALSE
+          ? form.trueFalseAnswer
+          : form.correctAnswer,
+      explanation: form.explanation.trim(),
+    });
+  };
+
+  return (
+    <section className="demo-card question-bank-form-card">
+      <div className="demo-row demo-row--between">
+        <div>
+          <span className="demo-kicker">Question editor</span>
+          <h2>{title}</h2>
+        </div>
+
+        {onCancel && (
+          <button
+            type="button"
+            className="demo-secondary-action"
+            onClick={onCancel}
+          >
+            <X size={16} />
+            Cancel
+          </button>
+        )}
+      </div>
+
+      <div className="question-bank-form-grid question-bank-form-grid--three">
+        <label className="course-flow-field">
+          <span>Question Type</span>
+          <select
+            value={form.type}
+            onChange={(event) =>
+              setForm({
+                ...form,
+                type: event.target.value,
+                correctAnswer: "A",
+                correctAnswers: [],
+                trueFalseAnswer: "True",
+              })
+            }
+          >
+            <option value={QUESTION_TYPES.SINGLE_CHOICE}>Single Choice</option>
+            <option value={QUESTION_TYPES.MULTIPLE_CHOICE}>
+              Multiple Choice
+            </option>
+            <option value={QUESTION_TYPES.TRUE_FALSE}>True / False</option>
+            <option value={QUESTION_TYPES.MATCHING}>Matching</option>
+          </select>
+        </label>
+
+        <label className="course-flow-field">
+          <span>Difficulty</span>
+          <select
+            value={form.difficulty}
+            onChange={(event) =>
+              setForm({ ...form, difficulty: event.target.value })
+            }
+          >
+            {DIFFICULTIES.map((difficulty) => (
+              <option key={difficulty.value} value={difficulty.value}>
+                {difficulty.label}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label className="course-flow-field">
+          <span>Status</span>
+          <select
+            value={form.status}
+            onChange={(event) =>
+              setForm({ ...form, status: event.target.value })
+            }
+          >
+            <option value="draft">Draft</option>
+            <option value="review">Review</option>
+            <option value="approved">Approved</option>
+          </select>
+        </label>
+      </div>
+
+      <label className="course-flow-field">
+        <span>Question</span>
+        <textarea
+          rows="4"
+          value={form.question}
+          placeholder="Enter question content..."
+          onChange={(event) =>
+            setForm({ ...form, question: event.target.value })
+          }
+        />
+      </label>
+
+      {[QUESTION_TYPES.SINGLE_CHOICE, QUESTION_TYPES.MULTIPLE_CHOICE].includes(
+        form.type,
+      ) && (
+        <div className="question-option-grid">
+          {[
+            ["A", "optionA"],
+            ["B", "optionB"],
+            ["C", "optionC"],
+            ["D", "optionD"],
+          ].map(([label, field]) => (
+            <label key={field} className="question-option-field">
+              <span className="question-option-label">{label}</span>
+
+              <input
+                value={form[field]}
+                placeholder={`Answer ${label}`}
+                onChange={(event) =>
+                  setForm({ ...form, [field]: event.target.value })
+                }
+              />
+
+              {form.type === QUESTION_TYPES.SINGLE_CHOICE ? (
+                <label className="question-correct-choice">
+                  <input
+                    type="radio"
+                    name="correctAnswer"
+                    value={label}
+                    checked={form.correctAnswer === label}
+                    onChange={(event) =>
+                      setForm({ ...form, correctAnswer: event.target.value })
+                    }
+                  />
+                  Correct
+                </label>
+              ) : (
+                <label className="question-correct-choice">
+                  <input
+                    type="checkbox"
+                    checked={(form.correctAnswers || []).includes(label)}
+                    onChange={(event) =>
+                      updateCorrectAnswers(label, event.target.checked)
+                    }
+                  />
+                  Correct
+                </label>
+              )}
+            </label>
+          ))}
+        </div>
+      )}
+
+      {form.type === QUESTION_TYPES.TRUE_FALSE && (
+        <div className="question-option-grid question-option-grid--true-false">
+          {["True", "False"].map((value) => (
+            <label key={value} className="question-option-field">
+              <span className="question-option-label">{value}</span>
+
+              <p>{value}</p>
+
+              <label className="question-correct-choice">
+                <input
+                  type="radio"
+                  name="trueFalseAnswer"
+                  value={value}
+                  checked={form.trueFalseAnswer === value}
+                  onChange={(event) =>
+                    setForm({ ...form, trueFalseAnswer: event.target.value })
+                  }
+                />
+                Correct
+              </label>
+            </label>
+          ))}
+        </div>
+      )}
+
+      {form.type === QUESTION_TYPES.MATCHING && (
+        <div className="question-matching-grid">
+          {[1, 2, 3, 4].map((index) => (
+            <div key={index} className="question-matching-row">
+              <span>{index}</span>
+
+              <input
+                value={form[`matchPrompt${index}`]}
+                placeholder={`Prompt ${index}`}
+                onChange={(event) =>
+                  setForm({
+                    ...form,
+                    [`matchPrompt${index}`]: event.target.value,
+                  })
+                }
+              />
+
+              <input
+                value={form[`matchAnswer${index}`]}
+                placeholder={`Matching answer ${index}`}
+                onChange={(event) =>
+                  setForm({
+                    ...form,
+                    [`matchAnswer${index}`]: event.target.value,
+                  })
+                }
+              />
+            </div>
+          ))}
+        </div>
+      )}
+
+      <label className="course-flow-field">
+        <span>Explanation</span>
+        <textarea
+          rows="3"
+          value={form.explanation}
+          placeholder="Explain the correct answer..."
+          onChange={(event) =>
+            setForm({ ...form, explanation: event.target.value })
+          }
+        />
+      </label>
+
+      <div className="question-bank-form-grid question-bank-form-grid--two">
+        <label className="course-flow-field">
+          <span>Bloom</span>
+          <select
+            value={form.bloom}
+            onChange={(event) =>
+              setForm({ ...form, bloom: event.target.value })
+            }
+          >
+            {BLOOM_LEVELS.map((level) => (
+              <option key={level}>{level}</option>
+            ))}
+          </select>
+        </label>
+
+        <label className="course-flow-field">
+          <span>CLO</span>
+          <input
+            value={form.clo}
+            onChange={(event) => setForm({ ...form, clo: event.target.value })}
+          />
+        </label>
+      </div>
+
+      <button
+        type="button"
+        className="demo-primary-action"
+        onClick={handleSubmit}
+      >
+        <Plus size={16} />
+        Save question
+      </button>
+    </section>
+  );
+}
+
+function AiQuestionForm({ bank, onGenerate }) {
+  const modules = useMemo(
+    () => getLifecycleModules(bank.courseId),
+    [bank.courseId],
+  );
+
+  const [form, setForm] = useState({
+    ...emptyAiForm,
+    courseId: bank.courseId,
+    moduleId: modules[0]?.id || "",
+    lessonId: modules[0]?.lessons?.[0]?.id || "",
+  });
+
+  const lessons = useMemo(() => {
+    return modules.find((module) => module.id === form.moduleId)?.lessons || [];
+  }, [modules, form.moduleId]);
+
+  const handleModuleChange = (moduleId) => {
+    const module = modules.find((item) => item.id === moduleId);
+    setForm({
+      ...form,
+      moduleId,
+      lessonId: module?.lessons?.[0]?.id || "",
+    });
+  };
+
+  const handleSubmit = () => {
+    onGenerate(form);
+  };
+
+  return (
+    <section className="demo-card question-bank-form-card">
+      <div>
+        <span className="demo-kicker">AI Generation</span>
+        <h2>Generate AI draft question</h2>
+        <p>
+          AI will create a draft question for the selected course, module, and
+          lesson.
+        </p>
+      </div>
+
+      <div className="question-bank-form-grid question-bank-form-grid--three">
+        <label className="course-flow-field">
+          <span>Module</span>
+          <select
+            value={form.moduleId}
+            onChange={(event) => handleModuleChange(event.target.value)}
+          >
+            {modules.map((module) => (
+              <option key={module.id} value={module.id}>
+                {module.title}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label className="course-flow-field">
+          <span>Lesson</span>
+          <select
+            value={form.lessonId}
+            onChange={(event) =>
+              setForm({ ...form, lessonId: event.target.value })
+            }
+          >
+            {lessons.map((lesson) => (
+              <option key={lesson.id} value={lesson.id}>
+                {lesson.title}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label className="course-flow-field">
+          <span>Type</span>
+          <select
+            value={form.type}
+            onChange={(event) => setForm({ ...form, type: event.target.value })}
+          >
+            <option value={QUESTION_TYPES.SINGLE_CHOICE}>Single Choice</option>
+            <option value={QUESTION_TYPES.MULTIPLE_CHOICE}>
+              Multiple Choice
+            </option>
+            <option value={QUESTION_TYPES.TRUE_FALSE}>True / False</option>
+            <option value={QUESTION_TYPES.MATCHING}>Matching</option>
+          </select>
+        </label>
+      </div>
+
+      <div className="question-bank-form-grid question-bank-form-grid--three">
+        <label className="course-flow-field">
+          <span>Difficulty</span>
+          <select
+            value={form.difficulty}
+            onChange={(event) =>
+              setForm({ ...form, difficulty: event.target.value })
+            }
+          >
+            {DIFFICULTIES.map((difficulty) => (
+              <option key={difficulty.value} value={difficulty.value}>
+                {difficulty.label}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label className="course-flow-field">
+          <span>Bloom</span>
+          <select
+            value={form.bloom}
+            onChange={(event) =>
+              setForm({ ...form, bloom: event.target.value })
+            }
+          >
+            {BLOOM_LEVELS.map((level) => (
+              <option key={level}>{level}</option>
+            ))}
+          </select>
+        </label>
+
+        <label className="course-flow-field">
+          <span>CLO</span>
+          <input
+            value={form.clo}
+            onChange={(event) => setForm({ ...form, clo: event.target.value })}
+          />
+        </label>
+      </div>
+
+      <button
+        type="button"
+        className="demo-primary-action"
+        onClick={handleSubmit}
+      >
+        <Brain size={16} />
+        Generate AI Draft
+      </button>
+    </section>
+  );
+}
+
+function QuestionBankDetail({
+  bank,
+  questions,
+  onBack,
+  onCreateManual,
+  onGenerateAi,
+  onUpdateQuestion,
+  onDeleteQuestion,
+  onApproveQuestion,
+  onRejectQuestion,
+}) {
+  const [filters, setFilters] = useState({
+    keyword: "",
+    moduleId: "all",
+    lessonId: "all",
+    status: "all",
+    type: "all",
+    difficulty: "all",
+    source: "all",
+  });
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [showAiForm, setShowAiForm] = useState(false);
+  const [editingQuestion, setEditingQuestion] = useState(null);
+
+  const modules = useMemo(
+    () => getLifecycleModules(bank.courseId),
+    [bank.courseId],
+  );
+
+  const lessonOptions = useMemo(() => {
+    if (filters.moduleId === "all") {
+      return modules.flatMap((module) =>
+        (module.lessons || []).map((lesson) => ({
+          value: lesson.id,
+          label: `${module.title} / ${lesson.title}`,
+        })),
+      );
+    }
+
+    const module = modules.find((item) => item.id === filters.moduleId);
+    return (module?.lessons || []).map((lesson) => ({
+      value: lesson.id,
+      label: lesson.title,
+    }));
+  }, [modules, filters.moduleId]);
+
+  const bankQuestions = useMemo(() => {
+    const keyword = filters.keyword.trim().toLowerCase();
 
     return questions
+      .filter((question) => question.courseId === bank.courseId)
       .filter((question) => {
-      const matchesKeyword = [
-        question.question,
-        question.type,
-        getCourseTitle(question.courseId),
-        getLessonTitle(question.courseId, question.lessonId),
-        question.clo,
-        question.bloom,
-        question.difficulty,
-        question.source,
-      ]
-        .join(' ')
-        .toLowerCase()
-        .includes(normalizedKeyword)
+        const matchesKeyword =
+          !keyword ||
+          [
+            question.question,
+            question.answer,
+            question.explanation,
+            question.moduleTitle,
+            question.lessonTitle,
+            question.clo,
+            question.bloom,
+            question.source,
+          ]
+            .join(" ")
+            .toLowerCase()
+            .includes(keyword);
 
-      const matchesStatus =
-        filters.status === 'all' || question.status === filters.status
-      const matchesCourse =
-        filters.course === 'all' || question.courseId === filters.course
-      const normalizedLessonId = question.lessonId || 'course-level'
-      const matchesLesson =
-        filters.lesson === 'all' || normalizedLessonId === filters.lesson
-      const matchesType = filters.type === 'all' || question.type === filters.type
-      const matchesDifficulty =
-        filters.difficulty === 'all' || question.difficulty === filters.difficulty
-      const matchesSource =
-        filters.source === 'all' || question.source === filters.source
+        const matchesModule =
+          filters.moduleId === "all" || question.moduleId === filters.moduleId;
+        const matchesLesson =
+          filters.lessonId === "all" || question.lessonId === filters.lessonId;
+        const matchesStatus =
+          filters.status === "all" || question.status === filters.status;
+        const matchesType =
+          filters.type === "all" || question.type === filters.type;
+        const matchesDifficulty =
+          filters.difficulty === "all" ||
+          question.difficulty === filters.difficulty;
+        const matchesSource =
+          filters.source === "all" ||
+          (filters.source === "ai" && question.isAiGenerated) ||
+          (filters.source === "manual" && !question.isAiGenerated);
 
-      return (
-        matchesKeyword &&
-        matchesStatus &&
-        matchesCourse &&
-        matchesLesson &&
-        matchesType &&
-        matchesDifficulty &&
-        matchesSource
-      )
-    })
-      .sort((a, b) => {
-        if (filters.sort === 'created-desc') {
-          return new Date(b.createdAt || 0) - new Date(a.createdAt || 0)
-        }
-        if (filters.sort === 'created-asc') {
-          return new Date(a.createdAt || 0) - new Date(b.createdAt || 0)
-        }
-        if (filters.sort === 'difficulty') {
-          return String(a.difficulty).localeCompare(String(b.difficulty))
-        }
-        return new Date(b.updatedAt || b.createdAt || 0) - new Date(a.updatedAt || a.createdAt || 0)
-      })
-  }, [filters, questions])
+        return (
+          matchesKeyword &&
+          matchesModule &&
+          matchesLesson &&
+          matchesStatus &&
+          matchesType &&
+          matchesDifficulty &&
+          matchesSource
+        );
+      });
+  }, [questions, bank.courseId, filters]);
 
   const updateFilter = (name, value) => {
     setFilters((current) => ({
       ...current,
       [name]: value,
-      ...(name === 'course' ? { lesson: 'all' } : {}),
-    }))
-  }
+      ...(name === "moduleId" ? { lessonId: "all" } : {}),
+    }));
+  };
 
-  const resetFilters = () => {
-    setFilters({
-      keyword: '',
-      status: 'all',
-      course: 'all',
-      lesson: 'all',
-      type: 'all',
-      difficulty: 'all',
-      source: 'all',
-      sort: 'updated-desc',
-    })
-  }
+  const handleCreateManual = (payload) => {
+    onCreateManual({
+      ...payload,
+      courseId: bank.courseId,
+      moduleId:
+        filters.moduleId === "all" ? modules[0]?.id || "" : filters.moduleId,
+      lessonId:
+        filters.lessonId === "all"
+          ? lessonOptions[0]?.value || ""
+          : filters.lessonId,
+    });
+    setShowCreateForm(false);
+  };
 
-  const hasActiveFilters =
-    filters.keyword ||
-    filters.status !== 'all' ||
-    filters.course !== 'all' ||
-    filters.lesson !== 'all' ||
-    filters.type !== 'all' ||
-    filters.difficulty !== 'all' ||
-    filters.source !== 'all' ||
-    filters.sort !== 'updated-desc'
+  const handleUpdate = (payload) => {
+    const options = [
+      {
+        id: editingQuestion.options?.[0]?.id || `${editingQuestion.id}-a`,
+        label: "A",
+        text: payload.optionA,
+      },
+      {
+        id: editingQuestion.options?.[1]?.id || `${editingQuestion.id}-b`,
+        label: "B",
+        text: payload.optionB,
+      },
+      {
+        id: editingQuestion.options?.[2]?.id || `${editingQuestion.id}-c`,
+        label: "C",
+        text: payload.optionC,
+      },
+      {
+        id: editingQuestion.options?.[3]?.id || `${editingQuestion.id}-d`,
+        label: "D",
+        text: payload.optionD,
+      },
+    ];
 
-  const handleGenerateAiDraft = () => {
-    const created = createAiDraftQuestion()
-    refresh()
-    setSelectedQuestionId(created.id)
-    setEditing(false)
-  }
+    const correctOption = options.find(
+      (option) => option.label === payload.correctAnswer,
+    );
 
-  const handleEdit = () => {
-    setForm(toForm(selectedQuestion))
-    setEditing(true)
-  }
+    onUpdateQuestion(editingQuestion.id, {
+      question: payload.question,
+      type: "single_choice",
+      difficulty: payload.difficulty,
+      bloom: payload.bloom,
+      clo: payload.clo,
+      status: payload.status,
+      explanation: payload.explanation,
+      options,
+      correctOptionIds: correctOption ? [correctOption.id] : [],
+      answer: correctOption?.text || "",
+    });
 
-  const handleSave = () => {
-    if (!selectedQuestion) return
-
-    updateSmeQuestion(selectedQuestion.id, form)
-    refresh()
-    setEditing(false)
-  }
-
-  const handleApprove = () => {
-    if (!selectedQuestion) return
-
-    approveSmeQuestion(selectedQuestion.id)
-    refresh()
-    setEditing(false)
-  }
-
-  const handleReject = () => {
-    if (!selectedQuestion) return
-
-    rejectSmeQuestion(selectedQuestion.id)
-    refresh()
-    setEditing(false)
-  }
-
-  const header = (
-    <PageHeader
-      title="Question Bank"
-      description="Review, edit, approve, or reject official and AI-generated questions before publishing tests."
-      action={
-        <button className="dev2-primary-button" onClick={handleGenerateAiDraft}>
-          <Brain size={16} />
-          Generate AI Draft
-        </button>
-      }
-    />
-  )
-
-  if (questions.length === 0) {
-    return (
-      <section>
-        {header}
-        <DataState
-          type="empty"
-          title="No questions found"
-          description="Create or generate a draft question before publishing tests."
-        />
-      </section>
-    )
-  }
+    setEditingQuestion(null);
+  };
 
   return (
-    <section>
-      {header}
+    <section className="question-bank-detail">
+      <section className="demo-card">
+        <div className="demo-row demo-row--between">
+          <div>
+            <span className="demo-kicker">Question Bank Detail</span>
+            <h1>{bank.courseTitle}</h1>
+            <p>Manage manual and AI-generated questions for this course.</p>
+          </div>
 
-      <FilterToolbar>
-        <SearchBox
-          value={filters.keyword}
-          placeholder="Search question, course, lesson"
-          ariaLabel="Search question bank"
-          onChange={(value) => updateFilter('keyword', value)}
-        />
+          <div className="demo-actions">
+            <button
+              type="button"
+              className="demo-secondary-action"
+              onClick={onBack}
+            >
+              Back to banks
+            </button>
 
-        <SelectFilter
-          value={filters.status}
-          onChange={(value) => updateFilter('status', value)}
-          ariaLabel="Filter questions by status"
-          options={[
-            { value: 'all', label: 'All status' },
-            { value: 'review', label: 'Review' },
-            { value: 'draft', label: 'Draft' },
-            { value: 'approved', label: 'Approved' },
-            { value: 'rejected', label: 'Rejected' },
-          ]}
-        />
+            <button
+              type="button"
+              className="demo-secondary-action"
+              onClick={() => setShowCreateForm((value) => !value)}
+            >
+              <Plus size={16} />
+              Create manual
+            </button>
 
-        <SelectFilter
-          value={filters.course}
-          onChange={(value) => updateFilter('course', value)}
-          ariaLabel="Filter questions by course"
-          options={courseOptions}
-        />
-
-        <SelectFilter
-          value={filters.lesson}
-          onChange={(value) => updateFilter('lesson', value)}
-          ariaLabel="Filter questions by lesson"
-          options={lessonOptions}
-        />
-
-        <SelectFilter
-          value={filters.type}
-          onChange={(value) => updateFilter('type', value)}
-          ariaLabel="Filter questions by type"
-          options={typeOptions.map((type) => ({
-            value: type,
-            label: type === 'all' ? 'All types' : type,
-          }))}
-        />
-
-        <SelectFilter
-          value={filters.difficulty}
-          onChange={(value) => updateFilter('difficulty', value)}
-          ariaLabel="Filter questions by difficulty"
-          options={difficultyOptions.map((difficulty) => ({
-            value: difficulty,
-            label: difficulty === 'all' ? 'All difficulty' : difficulty,
-          }))}
-        />
-
-        <SelectFilter
-          value={filters.source}
-          onChange={(value) => updateFilter('source', value)}
-          ariaLabel="Filter questions by source"
-          options={sourceOptions.map((source) => ({
-            value: source,
-            label: source === 'all' ? 'All sources' : source,
-          }))}
-        />
-
-        <SelectFilter
-          value={filters.sort}
-          onChange={(value) => updateFilter('sort', value)}
-          ariaLabel="Sort questions"
-          options={[
-            { value: 'updated-desc', label: 'Last updated' },
-            { value: 'created-desc', label: 'Newest created' },
-            { value: 'created-asc', label: 'Oldest created' },
-            { value: 'difficulty', label: 'Difficulty A-Z' },
-          ]}
-        />
-
-        <ClearFiltersButton onClick={resetFilters} disabled={!hasActiveFilters} />
-      </FilterToolbar>
-
-      <div className="grid gap-6 xl:grid-cols-[1fr_380px]">
-        {filteredQuestions.length === 0 ? (
-          <DataState
-            type="empty"
-            title="No questions match"
-            description="Adjust the question filters or clear them to see the full bank."
-            action={
-              <button type="button" className="demo-primary-action" onClick={resetFilters}>
-                Clear filters
-              </button>
-            }
-          />
-        ) : (
-          <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[1100px] text-left text-sm">
-              <thead className="bg-slate-50 text-xs uppercase text-slate-500">
-                <tr>
-                  <th className="px-4 py-3">Question</th>
-                  <th className="px-4 py-3">Course</th>
-                  <th className="px-4 py-3">Type</th>
-                  <th className="px-4 py-3">CLO</th>
-                  <th className="px-4 py-3">Bloom</th>
-                  <th className="px-4 py-3">Difficulty</th>
-                  <th className="px-4 py-3">Status</th>
-                  <th className="px-4 py-3">Source</th>
-                </tr>
-              </thead>
-
-              <tbody className="divide-y divide-slate-100">
-                {filteredQuestions.map((item) => (
-                  <tr
-                    key={item.id}
-                    className={
-                      item.id === selectedQuestionId
-                        ? 'align-top bg-blue-50'
-                        : 'align-top hover:bg-slate-50'
-                    }
-                    onClick={() => {
-                      setSelectedQuestionId(item.id)
-                      setEditing(false)
-                    }}
-                  >
-                    <td className="max-w-md px-4 py-4">
-                      <p className="font-medium text-slate-900">{item.question}</p>
-                      {item.isAiGenerated ? (
-                        <p className="mt-1 text-xs font-medium text-purple-600">
-                          AI-generated draft - SME review required
-                        </p>
-                      ) : null}
-                    </td>
-
-                    <td className="px-4 py-4 text-slate-600">
-                      <strong>{getCourseTitle(item.courseId)}</strong>
-                      <br />
-                      <small>{getLessonTitle(item.courseId, item.lessonId)}</small>
-                    </td>
-                    <td className="px-4 py-4 text-slate-600">{item.type}</td>
-                    <td className="px-4 py-4 text-slate-600">{item.clo}</td>
-                    <td className="px-4 py-4 text-slate-600">{item.bloom}</td>
-                    <td className="px-4 py-4 text-slate-600">
-                      {item.difficulty}
-                    </td>
-                    <td className="px-4 py-4">
-                      <StatusBadge status={item.status} />
-                    </td>
-                    <td className="px-4 py-4 text-slate-500">{item.source}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <button
+              type="button"
+              className="demo-primary-action"
+              onClick={() => setShowAiForm((value) => !value)}
+            >
+              <Brain size={16} />
+              AI Generate
+            </button>
           </div>
         </div>
-        )}
 
-        <QuestionDetailPanel
-          question={selectedQuestion}
-          form={form}
-          editing={editing}
-          onEdit={handleEdit}
-          onChange={setForm}
-          onSave={handleSave}
-          onApprove={handleApprove}
-          onReject={handleReject}
+        <div className="question-bank-stats">
+          <span>Total: {bank.total}</span>
+          <span>Approved: {bank.approved}</span>
+          <span>Review: {bank.review}</span>
+          <span>AI: {bank.aiGenerated}</span>
+          <span>Manual: {bank.manual}</span>
+        </div>
+      </section>
+
+      {showCreateForm && (
+        <QuestionForm
+          title="Create manual question"
+          initialForm={emptyQuestionForm}
+          onCancel={() => setShowCreateForm(false)}
+          onSubmit={handleCreateManual}
         />
-      </div>
+      )}
+
+      {showAiForm && (
+        <AiQuestionForm
+          bank={bank}
+          onGenerate={(payload) => {
+            onGenerateAi(payload);
+            setShowAiForm(false);
+          }}
+        />
+      )}
+
+      {editingQuestion && (
+        <QuestionForm
+          key={editingQuestion.id}
+          title="Update question"
+          initialForm={toQuestionForm(editingQuestion)}
+          onCancel={() => setEditingQuestion(null)}
+          onSubmit={handleUpdate}
+        />
+      )}
+
+      <section className="course-flow-filter-card question-bank-detail-toolbar">
+        <div className="question-bank-search">
+          <Search size={16} />
+          <input
+            value={filters.keyword}
+            placeholder="Search question, answer, explanation..."
+            onChange={(event) => updateFilter("keyword", event.target.value)}
+          />
+        </div>
+
+        <select
+          value={filters.moduleId}
+          onChange={(event) => updateFilter("moduleId", event.target.value)}
+        >
+          <option value="all">All modules</option>
+          {modules.map((module) => (
+            <option key={module.id} value={module.id}>
+              {module.title}
+            </option>
+          ))}
+        </select>
+
+        <select
+          value={filters.lessonId}
+          onChange={(event) => updateFilter("lessonId", event.target.value)}
+        >
+          <option value="all">All lessons</option>
+          {lessonOptions.map((lesson) => (
+            <option key={lesson.value} value={lesson.value}>
+              {lesson.label}
+            </option>
+          ))}
+        </select>
+
+        <select
+          value={filters.status}
+          onChange={(event) => updateFilter("status", event.target.value)}
+        >
+          <option value="all">All status</option>
+          <option value="draft">Draft</option>
+          <option value="review">Review</option>
+          <option value="approved">Approved</option>
+          <option value="published">Published</option>
+          <option value="rejected">Rejected</option>
+        </select>
+
+        <select
+          value={filters.type}
+          onChange={(event) => updateFilter("type", event.target.value)}
+        >
+          <option value="all">All types</option>
+          {QUESTION_TYPE_OPTIONS.map((type) => (
+            <option key={type.value} value={type.value}>
+              {type.label}
+            </option>
+          ))}
+        </select>
+
+        <select
+          value={filters.difficulty}
+          onChange={(event) => updateFilter("difficulty", event.target.value)}
+        >
+          <option value="all">All difficulty</option>
+          {DIFFICULTIES.map((difficulty) => (
+            <option key={difficulty.value} value={difficulty.value}>
+              {difficulty.label}
+            </option>
+          ))}
+        </select>
+
+        <select
+          value={filters.source}
+          onChange={(event) => updateFilter("source", event.target.value)}
+        >
+          <option value="all">All sources</option>
+          <option value="ai">AI-generated</option>
+          <option value="manual">Manual</option>
+        </select>
+      </section>
+
+      {bankQuestions.length === 0 ? (
+        <DataState
+          type="empty"
+          title="No questions match"
+          description="Adjust module, lesson, or search filters to find questions."
+        />
+      ) : (
+        <section className="question-bank-question-list">
+          {bankQuestions.map((question) => (
+            <article key={question.id} className="question-bank-question-card">
+              <div className="question-bank-question-card__main">
+                <div className="demo-row demo-row--between">
+                  <div>
+                    <span className="demo-kicker">
+                      {question.moduleTitle} / {question.lessonTitle}
+                    </span>
+                    <h3>{question.question}</h3>
+                  </div>
+
+                  <StatusBadge status={question.status} />
+                </div>
+
+                <p>
+                  <div className="question-options-preview">
+                    {(question.options || []).map((option) => {
+                      const isCorrect = (
+                        question.correctOptionIds || []
+                      ).includes(option.id);
+
+                      return (
+                        <div
+                          key={option.id}
+                          className={
+                            isCorrect
+                              ? "question-option-preview is-correct"
+                              : "question-option-preview"
+                          }
+                        >
+                          <span>{option.label || option.id}</span>
+                          <p>{option.text}</p>
+                          {isCorrect && <strong>Correct answer</strong>}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </p>
+
+                <p>
+                  <strong>Explanation:</strong>{" "}
+                  {question.explanation || "No explanation provided."}
+                </p>
+
+                <div className="question-bank-tags">
+                  <span>{question.type}</span>
+                  <span>{question.difficulty}</span>
+                  <span>{question.bloom}</span>
+                  <span>{question.clo}</span>
+                  <span>
+                    {question.isAiGenerated ? "AI-generated" : "Manual"}
+                  </span>
+                </div>
+              </div>
+
+              <div className="question-bank-question-card__actions">
+                <button
+                  type="button"
+                  className="demo-secondary-action"
+                  onClick={() => setEditingQuestion(question)}
+                >
+                  <Pencil size={16} />
+                  Edit
+                </button>
+
+                <button
+                  type="button"
+                  className="demo-primary-action"
+                  onClick={() => onApproveQuestion(question.id)}
+                >
+                  <CheckCircle2 size={16} />
+                  Approve
+                </button>
+
+                <button
+                  type="button"
+                  className="demo-secondary-action"
+                  onClick={() => onRejectQuestion(question.id)}
+                >
+                  <XCircle size={16} />
+                  Reject
+                </button>
+
+                <button
+                  type="button"
+                  className="demo-secondary-action"
+                  onClick={() => onDeleteQuestion(question.id)}
+                >
+                  <Trash2 size={16} />
+                  Delete
+                </button>
+              </div>
+            </article>
+          ))}
+        </section>
+      )}
     </section>
-  )
+  );
+}
+
+export function QuestionBankPage() {
+  const [questions, setQuestions] = useState(() =>
+    getSmeQuestionBank().map(enrichQuestion),
+  );
+  const [selectedBank, setSelectedBank] = useState(null);
+  const [viewMode, setViewMode] = useState(VIEW_MODE.GRID);
+  const [keyword, setKeyword] = useState("");
+  const [courseFilter, setCourseFilter] = useState("all");
+
+  const refresh = () => {
+    const nextQuestions = getSmeQuestionBank().map(enrichQuestion);
+    setQuestions(nextQuestions);
+
+    if (selectedBank) {
+      const nextBanks = buildQuestionBanks(nextQuestions);
+      setSelectedBank(
+        nextBanks.find((bank) => bank.courseId === selectedBank.courseId) ||
+          null,
+      );
+    }
+  };
+
+  const banks = useMemo(() => {
+    const questionCourseIds = new Set(
+      questions.map((question) => question.courseId),
+    );
+    const questionBanks = buildQuestionBanks(questions);
+
+    const emptyCourseBanks = getAllLifecycleCourses()
+      .filter((course) => !questionCourseIds.has(course.id))
+      .map((course) => ({
+        id: `question-bank-${course.id}`,
+        courseId: course.id,
+        courseTitle: course.title,
+        courseStatus: course.status,
+        category: course.category || "General",
+        level: course.level || "Mixed",
+        questions: [],
+        total: 0,
+        approved: 0,
+        review: 0,
+        rejected: 0,
+        aiGenerated: 0,
+        manual: 0,
+      }));
+
+    return [...questionBanks, ...emptyCourseBanks];
+  }, [questions]);
+
+  const visibleBanks = useMemo(() => {
+    const normalizedKeyword = keyword.trim().toLowerCase();
+
+    return banks.filter((bank) => {
+      const matchesKeyword =
+        !normalizedKeyword ||
+        [bank.courseTitle, bank.category, bank.level]
+          .join(" ")
+          .toLowerCase()
+          .includes(normalizedKeyword);
+
+      const matchesCourse =
+        courseFilter === "all" || bank.courseId === courseFilter;
+
+      return matchesKeyword && matchesCourse;
+    });
+  }, [banks, keyword, courseFilter]);
+
+  const handleCreateManual = (payload) => {
+    createSmeQuestion(payload);
+    refresh();
+  };
+
+  const handleGenerateAi = (payload) => {
+    createAiDraftQuestion(payload);
+    refresh();
+  };
+
+  const handleUpdateQuestion = (questionId, payload) => {
+    updateSmeQuestion(questionId, payload);
+    refresh();
+  };
+
+  const handleDeleteQuestion = (questionId) => {
+    const confirmed = window.confirm(
+      "Delete this question from the question bank?",
+    );
+    if (!confirmed) return;
+
+    deleteSmeQuestion(questionId);
+    refresh();
+  };
+
+  const handleApproveQuestion = (questionId) => {
+    approveSmeQuestion(questionId);
+    refresh();
+  };
+
+  const handleRejectQuestion = (questionId) => {
+    rejectSmeQuestion(questionId);
+    refresh();
+  };
+
+  return (
+    <section className="question-bank-page">
+      <PageHeader
+        title="Question Bank"
+        description="Manage question banks by course. SME can create manual questions or generate AI draft questions for review."
+      />
+
+      {selectedBank ? (
+        <QuestionBankDetail
+          bank={selectedBank}
+          questions={questions}
+          onBack={() => setSelectedBank(null)}
+          onCreateManual={handleCreateManual}
+          onGenerateAi={handleGenerateAi}
+          onUpdateQuestion={handleUpdateQuestion}
+          onDeleteQuestion={handleDeleteQuestion}
+          onApproveQuestion={handleApproveQuestion}
+          onRejectQuestion={handleRejectQuestion}
+        />
+      ) : (
+        <>
+          <QuestionBankToolbar
+            keyword={keyword}
+            courseFilter={courseFilter}
+            viewMode={viewMode}
+            banks={banks}
+            onKeywordChange={setKeyword}
+            onCourseFilterChange={setCourseFilter}
+            onViewModeChange={setViewMode}
+          />
+
+          {visibleBanks.length === 0 ? (
+            <DataState
+              type="empty"
+              title="No question banks found"
+              description="Adjust the search keyword or course filter."
+            />
+          ) : (
+            <section
+              className={
+                viewMode === VIEW_MODE.GRID
+                  ? "question-bank-grid"
+                  : "question-bank-list"
+              }
+            >
+              {visibleBanks.map((bank) => (
+                <QuestionBankCard
+                  key={bank.courseId}
+                  bank={bank}
+                  viewMode={viewMode}
+                  onOpen={setSelectedBank}
+                />
+              ))}
+            </section>
+          )}
+        </>
+      )}
+    </section>
+  );
 }
