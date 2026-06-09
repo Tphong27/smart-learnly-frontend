@@ -18,13 +18,14 @@ const GENERATED_TESTS_KEY = 'slp.courseflow.generatedTests'
 const LESSON_NOTES_KEY = 'slp.courseflow.lessonNotes'
 const QUESTION_BANK_KEY = 'slp.courseflow.questionBank'
 
-export const STANDARD_LESSON_TYPES = ['Video', 'Reading', 'Quiz', 'Assignment']
+export const STANDARD_LESSON_TYPES = ['Video', 'Reading', 'Module Test', 'Mock Test', 'Assignment']
 
 export function normalizeLessonType(type) {
   const value = String(type || 'Reading').trim().toLowerCase()
 
   if (value === 'video') return 'Video'
-  if (value === 'quiz') return 'Quiz'
+  if (value === 'quiz' || value === 'module test' || value === 'module-test') return 'Module Test'
+  if (value === 'mock test' || value === 'mock-test') return 'Mock Test'
   if (value === 'assignment') return 'Assignment'
   if (value === 'pdf' || value === 'rich text' || value === 'rich-text' || value === 'text') return 'Reading'
 
