@@ -1,4 +1,4 @@
-import { ArrowRight, BookOpen, Clock3 } from 'lucide-react'
+import { ArrowRight } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { CourseCatalogSection } from '@/features/course/CourseCatalogSection'
 import { getCourseProgress, getEnrollmentsByUser } from '@/data/demo/demoRuntime'
@@ -6,7 +6,6 @@ import { getLifecycleCourseById } from '@/data/demo/courseLifecycleRuntime'
 import { getCurrentUser } from '@/services'
 import { PageState } from '@/shared/components/PageState'
 import { ProgressBar } from '@/shared/components/ProgressBar'
-import { StatusBadge } from '@/shared/components/StatusBadge'
 import { useDemoPageState } from '@/shared/hooks/useDemoPageState'
 import { useDocumentTitle } from '@/shared/hooks/useDocumentTitle'
 
@@ -95,61 +94,6 @@ export function MyCoursesPage() {
               Continue Learning <ArrowRight size={16} />
             </Link>
           </article>
-        )}
-
-        {enrolledCourses.length === 0 ? (
-          <PageState
-            state="empty"
-            title="No enrolled courses"
-            description="Enroll in a published course to start learning."
-            action={
-              <a className="demo-primary-action" href="#available-courses">
-                Explore available courses <ArrowRight size={16} />
-              </a>
-            }
-          />
-        ) : (
-          <section className="demo-card-grid">
-            {enrolledCourses.map(({ course, enrollment }) => {
-              const progress = Math.max(
-                enrollment.progress,
-                getCourseProgress(course.id, traineeId),
-              )
-
-              return (
-                <article className="demo-card my-course-card" key={enrollment.id}>
-                  <div className="demo-row demo-row--between">
-                    <StatusBadge status={enrollment.status} />
-                    <small>{enrollment.enrolledAt}</small>
-                  </div>
-
-                  <h2>{course.title}</h2>
-                  <p>{course.shortDescription}</p>
-
-                  <div className="demo-meta-grid">
-                    <span>
-                    <BookOpen size={15} /> {course.lessonCount || course.lessons || 0} lessons
-                    </span>
-                    <span>
-                      <Clock3 size={15} /> {course.duration}
-                    </span>
-                  </div>
-
-                  <ProgressBar
-                    value={progress}
-                    label={`${course.title} progress`}
-                  />
-
-                  <Link
-                    className="demo-primary-action"
-                    to={`/learning/${course.id}`}
-                  >
-                    Continue learning <ArrowRight size={16} />
-                  </Link>
-                </article>
-              )
-            })}
-          </section>
         )}
       </section>
 
