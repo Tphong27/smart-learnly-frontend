@@ -9,6 +9,8 @@ export const traineeRoutes = [
   { path: '/tests', label: 'Tests & Practice' },
   { path: '/tests/:testId', label: 'Test Detail' },
   { path: '/tests/:testId/take', label: 'Take Test' },
+  { path: '/tests/:testId/attempts/:attemptId', label: 'Test Attempt' },
   { path: '/tests/:testId/result/:attemptId', label: 'Test Result' },
+  { path: '/tests/:testId/results/:attemptId', label: 'Test Result' },
   { path: '/analytics/me', label: 'My Analytics' },
 ]

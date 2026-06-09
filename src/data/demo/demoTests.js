@@ -7,12 +7,16 @@ export const demoTests = [
     status: 'published',
     durationMinutes: 20,
     passingScore: 70,
-    totalQuestions: 4,
+    type: 'Module Test',
+    totalQuestions: 6,
     questionIds: [
       'q-aws-001',
       'q-aws-002',
       'q-aws-004',
       'q-aws-005',
+      'q-aws-006',
+      'q-aws-007',
+      'q-aws-008',
     ],
     topicTags: [
       'Cloud Concepts',
