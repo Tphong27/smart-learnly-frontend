@@ -1,1001 +1,340 @@
-import { useMemo, useState } from "react";
+import { useState } from 'react'
 import {
-    ArrowRight,
-    ClipboardCheck,
-    Clock3,
-    Edit3,
-    Grid2X2,
-    List as ListIcon,
-    Plus,
-    Sparkles,
-    Target,
-    Trash2,
-    Upload,
-    X,
-} from "lucide-react";
-import { Link } from "react-router-dom";
-import { getEnrollmentsByUser } from "@/data/demo/demoRuntime";
+  ArrowRight,
+  Clock3,
+  Edit3,
+  History,
+  Plus,
+  Sparkles,
+  Target,
+  Trash2,
+  X,
+} from 'lucide-react'
+import { Link } from 'react-router-dom'
 import {
-    getAllLifecycleTests,
-    getLifecycleCourseById,
-} from "@/data/demo/courseLifecycleRuntime";
-import {
-    createTraineeTest,
-    deleteTraineeTest,
-    getModulesForTraineeTest,
-    getTraineeCourseOptions,
-    getTraineeCreatedTests,
-    updateTraineeTest,
-} from "@/data/demo/demoTraineeRuntime";
-import { PageState } from "@/shared/components/PageState";
-import { StatusBadge } from "@/shared/components/StatusBadge";
-import {
-    ClearFiltersButton,
-    FilterToolbar,
-    SearchBox,
-    SelectFilter,
-} from "@/shared/components/ui/ListControls";
-import { useDemoPageState } from "@/shared/hooks/useDemoPageState";
-import { useDocumentTitle } from "@/shared/hooks/useDocumentTitle";
-import { getCurrentUser } from "@/services";
+  QUESTION_TYPES,
+  archivePersonalTest,
+  createPersonalTest,
+  deletePersonalTest,
+  getGenerationModules,
+  getTestsForTrainee,
+  getTopicsForCourse,
+  getTraineeCourseOptions,
+  updatePersonalTest,
+} from '@/data/demo/traineeTestRuntime'
+import { PageState } from '@/shared/components/PageState'
+import { StatusBadge } from '@/shared/components/StatusBadge'
+import { useDemoPageState } from '@/shared/hooks/useDemoPageState'
+import { useDocumentTitle } from '@/shared/hooks/useDocumentTitle'
+import { getCurrentUser } from '@/services'
 
-const emptyForm = {
-    title: "",
-    description: "",
-    courseId: "",
-    sourceType: "modules",
+const typeLabels = {
+  simulation: 'Simulation Test',
+  mock: 'Mock Test',
+  module: 'Module Test',
+  practice: 'Practice Test',
+}
+
+const sourceLabels = {
+  official_course: 'Official Course',
+  official_class: 'Official Class',
+  personal_ai: 'Personal AI',
+}
+
+function initialForm(courseId = '') {
+  return {
+    title: '',
+    description: '',
+    type: 'practice',
+    sourceType: 'modules',
+    courseId,
     selectedModuleIds: [],
-    uploadedFileName: "",
+    topic: '',
+    difficulty: 'mixed',
+    questionTypes: ['single_choice'],
     totalQuestions: 10,
     durationMinutes: 20,
-    passingScore: 70,
-};
-
-function getInitialForm() {
-    const firstCourse = getTraineeCourseOptions()[0];
-
-    return {
-        ...emptyForm,
-        courseId: firstCourse?.id || "",
-    };
+    purpose: 'Quick practice',
+    uploadedFileName: '',
+  }
 }
 
-function getSourceSummary(test) {
-    if (test.sourceType === "upload") {
-        return test.uploadedFileName || "Uploaded document mock";
+function toEditForm(test) {
+  return {
+    ...initialForm(test.courseId),
+    title: test.title,
+    description: test.description,
+    type: test.type,
+    durationMinutes: test.durationMinutes,
+    totalQuestions: test.requestedQuestions || test.totalQuestions,
+    ...test.generationConfig,
+  }
+}
+
+function GenerateTestModal({ open, traineeId, editingTest, onClose, onSaved }) {
+  const courses = getTraineeCourseOptions(traineeId)
+  const [form, setForm] = useState(() => editingTest ? toEditForm(editingTest) : initialForm(courses[0]?.id))
+  const [error, setError] = useState('')
+  const modules = form.courseId ? getGenerationModules(form.courseId) : []
+  const topics = form.courseId ? getTopicsForCourse(form.courseId) : []
+
+  if (!open) return null
+
+  const update = (name, value) => setForm((current) => ({ ...current, [name]: value }))
+  const toggle = (name, value) => {
+    const values = new Set(form[name])
+    values.has(value) ? values.delete(value) : values.add(value)
+    update(name, Array.from(values))
+  }
+  const submit = () => {
+    if (!form.title.trim() || !form.courseId) {
+      setError('Enter a title and select an enrolled course.')
+      return
     }
+    if (form.sourceType === 'modules' && !form.selectedModuleIds.length) {
+      setError('Select at least one module.')
+      return
+    }
+    if (form.sourceType === 'upload' && !form.uploadedFileName.trim()) {
+      setError('Enter the uploaded personal material file name.')
+      return
+    }
+    if (!form.questionTypes.length || Number(form.totalQuestions) < 1 || Number(form.durationMinutes) < 1) {
+      setError('Select question types and enter valid question and duration values.')
+      return
+    }
+    const saved = editingTest
+      ? updatePersonalTest(traineeId, editingTest.id, form)
+      : createPersonalTest(traineeId, form)
+    onSaved(saved)
+  }
 
-    const selectedCount = Array.isArray(test.selectedModuleIds)
-        ? test.selectedModuleIds.length
-        : 0;
-
-    if (selectedCount === 0) return "Course module source";
-
-    return `${selectedCount} selected module${selectedCount > 1 ? "s" : ""}`;
-}
-
-function getSourceCategory(test) {
-    if (test.source === "imported_from_course") return "imported";
-    if (test.source === "created_in_class") return "class";
-    if (test.sourceType === "upload") return "upload";
-    if (test.sourceType === "modules") return "modules";
-    if (test.ownerType === "trainee") return "personal";
-    return "course";
-}
-
-function getVisibleStatus(test) {
-    return test.testStatus || test.status || "Not Started";
-}
-
-function TestFormModal({
-    open,
-    mode,
-    form,
-    formError,
-    onChange,
-    onClose,
-    onSubmit,
-}) {
-    const modules = form.courseId
-        ? getModulesForTraineeTest(form.courseId)
-        : [];
-
-    if (!open) return null;
-
-    const updateField = (name, value) => {
-        onChange({
-            ...form,
-            [name]: value,
-        });
-    };
-
-    const toggleModule = (moduleId) => {
-        const selected = new Set(form.selectedModuleIds);
-
-        if (selected.has(moduleId)) {
-            selected.delete(moduleId);
-        } else {
-            selected.add(moduleId);
-        }
-
-        updateField("selectedModuleIds", Array.from(selected));
-    };
-
-    return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
-            <section className="demo-card w-full max-w-4xl max-h-[92vh] overflow-y-auto">
-                <div className="demo-row demo-row--between">
-                    <div>
-                        <span className="demo-kicker">
-                            {mode === "create" ? "Create test" : "Update test"}
-                        </span>
-                        <h2>
-                            {mode === "create"
-                                ? "Generate personal practice test"
-                                : "Update your personal test"}
-                        </h2>
-                        <p className="demo-muted">
-                            Choose an enrolled course, then generate a test from
-                            selected modules or an uploaded document mock.
-                        </p>
-                    </div>
-
-                    <button
-                        type="button"
-                        className="demo-secondary-action"
-                        onClick={onClose}
-                    >
-                        <X size={16} />
-                        Close
-                    </button>
-                </div>
-
-                <div className="course-flow-form-section">
-                    <label className="course-flow-field">
-                        <span>Test title</span>
-                        <input
-                            value={form.title}
-                            placeholder="AWS pricing practice test"
-                            onChange={(event) =>
-                                updateField("title", event.target.value)
-                            }
-                        />
-                    </label>
-
-                    <label className="course-flow-field">
-                        <span>Description</span>
-                        <textarea
-                            rows="3"
-                            value={form.description}
-                            placeholder="Practice test generated from selected course modules."
-                            onChange={(event) =>
-                                updateField("description", event.target.value)
-                            }
-                        />
-                    </label>
-
-                    <label className="course-flow-field">
-                        <span>Course</span>
-                        <select
-                            value={form.courseId}
-                            onChange={(event) => {
-                                onChange({
-                                    ...form,
-                                    courseId: event.target.value,
-                                    selectedModuleIds: [],
-                                });
-                            }}
-                        >
-                            <option value="">Select enrolled course</option>
-                            {getTraineeCourseOptions().map((course) => (
-                                <option key={course.id} value={course.id}>
-                                    {course.title}
-                                </option>
-                            ))}
-                        </select>
-                    </label>
-
-                    <div className="course-flow-form-grid course-flow-form-grid--compact">
-                        <label className="course-flow-field">
-                            <span>Questions</span>
-                            <input
-                                type="number"
-                                min="1"
-                                value={form.totalQuestions}
-                                onChange={(event) =>
-                                    updateField(
-                                        "totalQuestions",
-                                        event.target.value,
-                                    )
-                                }
-                            />
-                        </label>
-
-                        <label className="course-flow-field">
-                            <span>Duration minutes</span>
-                            <input
-                                type="number"
-                                min="1"
-                                value={form.durationMinutes}
-                                onChange={(event) =>
-                                    updateField(
-                                        "durationMinutes",
-                                        event.target.value,
-                                    )
-                                }
-                            />
-                        </label>
-
-                        <label className="course-flow-field">
-                            <span>Passing score</span>
-                            <input
-                                type="number"
-                                min="1"
-                                max="100"
-                                value={form.passingScore}
-                                onChange={(event) =>
-                                    updateField(
-                                        "passingScore",
-                                        event.target.value,
-                                    )
-                                }
-                            />
-                        </label>
-                    </div>
-
-                    <section className="demo-card">
-                        <span className="demo-kicker">AI source</span>
-                        <h3>Choose how the test is generated</h3>
-
-                        <div className="demo-actions">
-                            <button
-                                type="button"
-                                className={
-                                    form.sourceType === "modules"
-                                        ? "demo-primary-action"
-                                        : "demo-secondary-action"
-                                }
-                                onClick={() =>
-                                    updateField("sourceType", "modules")
-                                }
-                            >
-                                <ClipboardCheck size={16} />
-                                Select course modules
-                            </button>
-
-                            <button
-                                type="button"
-                                className={
-                                    form.sourceType === "upload"
-                                        ? "demo-primary-action"
-                                        : "demo-secondary-action"
-                                }
-                                onClick={() =>
-                                    updateField("sourceType", "upload")
-                                }
-                            >
-                                <Upload size={16} />
-                                Upload document mock
-                            </button>
-                        </div>
-
-                        {form.sourceType === "modules" ? (
-                            <div className="demo-list">
-                                {modules.length === 0 ? (
-                                    <p className="demo-muted">
-                                        Select a course to show available
-                                        modules.
-                                    </p>
-                                ) : (
-                                    modules.map((module) => (
-                                        <label
-                                            key={module.id}
-                                            className="demo-list-item"
-                                        >
-                                            <div>
-                                                <strong>{module.title}</strong>
-                                                <small>
-                                                    {module.lessons.length}{" "}
-                                                    lessons
-                                                </small>
-                                            </div>
-
-                                            <input
-                                                type="checkbox"
-                                                checked={form.selectedModuleIds.includes(
-                                                    module.id,
-                                                )}
-                                                onChange={() =>
-                                                    toggleModule(module.id)
-                                                }
-                                            />
-                                        </label>
-                                    ))
-                                )}
-                            </div>
-                        ) : (
-                            <label className="course-flow-field">
-                                <span>Uploaded file name mock</span>
-                                <input
-                                    value={form.uploadedFileName}
-                                    placeholder="aws-practice-material.pdf"
-                                    onChange={(event) =>
-                                        updateField(
-                                            "uploadedFileName",
-                                            event.target.value,
-                                        )
-                                    }
-                                />
-                            </label>
-                        )}
-                    </section>
-                </div>
-
-                {formError ? (
-                    <p className="demo-form-error">{formError}</p>
-                ) : null}
-
-                <div className="demo-actions">
-                    <button
-                        type="button"
-                        className="demo-secondary-action"
-                        onClick={onClose}
-                    >
-                        Cancel
-                    </button>
-
-                    <button
-                        type="button"
-                        className="demo-primary-action"
-                        onClick={onSubmit}
-                    >
-                        <Sparkles size={16} />
-                        {mode === "create" ? "Create AI test" : "Save changes"}
-                    </button>
-                </div>
-            </section>
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
+      <section className="demo-card w-full max-w-4xl max-h-[92vh] overflow-y-auto">
+        <div className="demo-row demo-row--between">
+          <div>
+            <span className="demo-kicker">Personal AI learning resource</span>
+            <h2>{editingTest ? 'Regenerate AI Test' : 'Generate AI Test'}</h2>
+            <p className="demo-muted">Personal tests never enter the official Question Bank.</p>
+          </div>
+          <button type="button" className="demo-secondary-action" onClick={onClose}><X size={16} /> Close</button>
         </div>
-    );
-}
 
-function TestCard({ test, personal = false, onEdit, onDelete }) {
-    const course = getLifecycleCourseById(test.courseId);
+        <div className="course-flow-form-section">
+          <div className="course-flow-form-grid">
+            <label className="course-flow-field course-flow-field--wide">
+              <span>Test title</span>
+              <input value={form.title} onChange={(event) => update('title', event.target.value)} placeholder="AWS weak areas practice" />
+            </label>
+            <label className="course-flow-field">
+              <span>Test type</span>
+              <select value={form.type} onChange={(event) => update('type', event.target.value)}>
+                <option value="practice">Practice Test</option>
+                <option value="simulation">Simulation Test</option>
+              </select>
+            </label>
+            <label className="course-flow-field">
+              <span>Course</span>
+              <select value={form.courseId} onChange={(event) => setForm({ ...form, courseId: event.target.value, selectedModuleIds: [], topic: '' })}>
+                {courses.map((course) => <option key={course.id} value={course.id}>{course.title}</option>)}
+              </select>
+            </label>
+            <label className="course-flow-field">
+              <span>Source</span>
+              <select value={form.sourceType} onChange={(event) => update('sourceType', event.target.value)}>
+                <option value="modules">Enrolled course modules</option>
+                <option value="weak_area">Weak topics</option>
+                <option value="upload">Uploaded personal material</option>
+              </select>
+            </label>
+            <label className="course-flow-field">
+              <span>Topic (optional)</span>
+              <select value={form.topic} onChange={(event) => update('topic', event.target.value)}>
+                <option value="">All matching topics</option>
+                {topics.map((topic) => <option key={topic} value={topic}>{topic}</option>)}
+              </select>
+            </label>
+            <label className="course-flow-field">
+              <span>Difficulty</span>
+              <select value={form.difficulty} onChange={(event) => update('difficulty', event.target.value)}>
+                {['mixed', 'easy', 'medium', 'hard'].map((value) => <option key={value} value={value}>{value}</option>)}
+              </select>
+            </label>
+            <label className="course-flow-field">
+              <span>Questions requested</span>
+              <input type="number" min="1" max="50" value={form.totalQuestions} onChange={(event) => update('totalQuestions', event.target.value)} />
+            </label>
+            <label className="course-flow-field">
+              <span>Duration minutes</span>
+              <input type="number" min="1" value={form.durationMinutes} onChange={(event) => update('durationMinutes', event.target.value)} />
+            </label>
+            <label className="course-flow-field">
+              <span>Purpose</span>
+              <select value={form.purpose} onChange={(event) => update('purpose', event.target.value)}>
+                <option>Quick practice</option>
+                <option>Weak topic review</option>
+                <option>Exam simulation</option>
+              </select>
+            </label>
+          </div>
 
-    return (
-        <article className="demo-card test-card">
-            <div className="demo-row demo-row--between">
-                <StatusBadge status={test.status} />
-                <span className="test-card__course">
-                    {test.courseTitle || course?.title}
-                </span>
-            </div>
-
-            <div className="demo-chip-list">
-                <span>{test.type || "Module Test"}</span>
-                <span>{test.testStatus || "Not Started"}</span>
-                <span>{getSourceSummary(test)}</span>
-                {personal ? <span>Created by me</span> : null}
-            </div>
-
-            <h2>{test.title}</h2>
-            <p>{test.description}</p>
-
-            <div className="demo-meta-grid">
-                <span>
-                    <ClipboardCheck size={15} /> {test.totalQuestions} questions
-                </span>
-                <span>
-                    <Clock3 size={15} /> {test.durationMinutes} min
-                </span>
-                <span>
-                    <Target size={15} /> {test.passingScore}% pass
-                </span>
-            </div>
-
-            <div className="demo-actions">
-                {!personal ? (
-                    <Link
-                        className="demo-primary-action"
-                        to={`/tests/${test.id}`}
-                    >
-                        View test <ArrowRight size={16} />
-                    </Link>
-                ) : null}
-
-                {personal ? (
-                    <>
-                        <button
-                            type="button"
-                            className="demo-secondary-action"
-                            onClick={() => onEdit(test)}
-                        >
-                            <Edit3 size={16} />
-                            Update
-                        </button>
-
-                        <button
-                            type="button"
-                            className="demo-secondary-action"
-                            onClick={() => onDelete(test.id)}
-                        >
-                            <Trash2 size={16} />
-                            Delete
-                        </button>
-                    </>
-                ) : null}
-            </div>
-        </article>
-    );
-}
-
-function TestListRow({ test, personal = false, onEdit, onDelete }) {
-    const course = getLifecycleCourseById(test.courseId);
-
-    return (
-        <article className="demo-list-item">
-            <div>
-                <div className="demo-row">
-                    <StatusBadge status={test.status} />
-                    {personal ? (
-                        <span className="demo-count-badge">Created by me</span>
-                    ) : null}
-                </div>
-
-                <strong>{test.title}</strong>
-                <small>{test.courseTitle || course?.title}</small>
-                <small>
-                    {test.type || "Module Test"} ·{" "}
-                    {test.testStatus || "Not Started"} ·{" "}
-                    {getSourceSummary(test)}
-                </small>
-                <p>{test.description}</p>
-            </div>
-
-            <div className="demo-actions">
-                <span className="demo-muted">
-                    {test.totalQuestions} questions · {test.durationMinutes} min
-                    · {test.passingScore}% pass
-                </span>
-
-                {!personal ? (
-                    <Link
-                        className="demo-primary-action"
-                        to={`/tests/${test.id}`}
-                    >
-                        View test <ArrowRight size={16} />
-                    </Link>
-                ) : null}
-
-                {personal ? (
-                    <>
-                        <button
-                            type="button"
-                            className="demo-secondary-action"
-                            onClick={() => onEdit(test)}
-                        >
-                            <Edit3 size={16} />
-                            Update
-                        </button>
-
-                        <button
-                            type="button"
-                            className="demo-secondary-action"
-                            onClick={() => onDelete(test.id)}
-                        >
-                            <Trash2 size={16} />
-                            Delete
-                        </button>
-                    </>
-                ) : null}
-            </div>
-        </article>
-    );
-}
-
-function TestCollection({
-    tests,
-    viewMode,
-    personal = false,
-    onEdit,
-    onDelete,
-}) {
-    if (tests.length === 0) return null;
-
-    if (viewMode === "list") {
-        return (
-            <section className="demo-list">
-                {tests.map((test) => (
-                    <TestListRow
-                        key={test.id}
-                        test={test}
-                        personal={personal}
-                        onEdit={onEdit}
-                        onDelete={onDelete}
-                    />
+          {form.sourceType === 'upload' ? (
+            <label className="course-flow-field">
+              <span>Uploaded file name (demo metadata)</span>
+              <input value={form.uploadedFileName} onChange={(event) => update('uploadedFileName', event.target.value)} placeholder="personal-notes.pdf" />
+            </label>
+          ) : (
+            <section className="demo-card">
+              <h3>Modules</h3>
+              <div className="demo-chip-list">
+                {modules.map((module) => (
+                  <label key={module.id}>
+                    <input type="checkbox" checked={form.selectedModuleIds.includes(module.id)} onChange={() => toggle('selectedModuleIds', module.id)} /> {module.title}
+                  </label>
                 ))}
+              </div>
             </section>
-        );
-    }
+          )}
 
-    return (
-        <section className="demo-card-grid">
-            {tests.map((test) => (
-                <TestCard
-                    key={test.id}
-                    test={test}
-                    personal={personal}
-                    onEdit={onEdit}
-                    onDelete={onDelete}
-                />
-            ))}
-        </section>
-    );
+          <section className="demo-card">
+            <h3>Question types</h3>
+            <div className="demo-chip-list">
+              {QUESTION_TYPES.map((type) => (
+                <label key={type}>
+                  <input type="checkbox" checked={form.questionTypes.includes(type)} onChange={() => toggle('questionTypes', type)} /> {type.replaceAll('_', ' ')}
+                </label>
+              ))}
+            </div>
+          </section>
+        </div>
+
+        {error ? <p className="demo-form-error">{error}</p> : null}
+        <div className="demo-actions">
+          <button type="button" className="demo-secondary-action" onClick={onClose}>Cancel</button>
+          <button type="button" className="demo-primary-action" onClick={submit}><Sparkles size={16} /> Generate AI Test</button>
+        </div>
+      </section>
+    </div>
+  )
+}
+
+function TestCard({ test, traineeId, onEdit, onRefresh }) {
+  const takeLabel = test.inProgressAttemptId ? 'Resume' : test.attemptCount ? 'Retake' : 'Start Test'
+  const takeTo = test.inProgressAttemptId
+    ? `/tests/${test.id}/attempts/${test.inProgressAttemptId}`
+    : `/tests/${test.id}/take`
+  const archiveOrDelete = () => {
+    if (test.attemptCount || test.inProgressAttemptId) archivePersonalTest(traineeId, test.id)
+    else deletePersonalTest(traineeId, test.id)
+    onRefresh()
+  }
+
+  return (
+    <article className="demo-card test-card">
+      <div className="demo-row demo-row--between">
+        <StatusBadge status={test.learnerStatus} />
+        <span className="test-card__course">{test.courseTitle || test.className}</span>
+      </div>
+      <div className="demo-chip-list">
+        <span>{typeLabels[test.type]}</span>
+        <span>{sourceLabels[test.source]}</span>
+        {test.version > 1 ? <span>Version {test.version}</span> : null}
+      </div>
+      <h2>{test.title}</h2>
+      <p>{test.description || 'Official assessment available to the trainee.'}</p>
+      <div className="demo-meta-grid">
+        <span><Target size={15} /> {test.totalQuestions} questions</span>
+        <span><Clock3 size={15} /> {test.durationMinutes} min</span>
+        <span><History size={15} /> {test.attemptCount} attempts</span>
+        <span>Latest: {test.latestScore ?? '—'}%</span>
+        <span>Best: {test.bestScore ?? '—'}%</span>
+      </div>
+      {test.requestedQuestions > test.totalQuestions ? (
+        <p className="demo-muted">Generated {test.totalQuestions} of {test.requestedQuestions} requested questions from the available pool.</p>
+      ) : null}
+      <div className="demo-actions">
+        {test.questions.length && test.status !== 'closed' ? <Link className="demo-primary-action" to={takeTo}>{takeLabel} <ArrowRight size={16} /></Link> : null}
+        {test.attemptCount ? <Link className="demo-secondary-action" to={`/tests/${test.id}/results`}>History</Link> : null}
+        {test.source === 'personal_ai' ? (
+          <>
+            <button type="button" className="demo-secondary-action" onClick={() => onEdit(test)}><Edit3 size={15} /> Regenerate</button>
+            <button type="button" className="demo-secondary-action" onClick={archiveOrDelete}><Trash2 size={15} /> {test.attemptCount || test.inProgressAttemptId ? 'Archive' : 'Delete'}</button>
+          </>
+        ) : null}
+      </div>
+    </article>
+  )
 }
 
 export function TestListPage() {
-    useDocumentTitle("Tests and practice");
+  useDocumentTitle('Tests and practice')
+  const { loading, error } = useDemoPageState()
+  const traineeId = getCurrentUser()?.id || 'trainee-minh'
+  const [, setRevision] = useState(0)
+  const [tab, setTab] = useState('available')
+  const [modal, setModal] = useState(null)
+  const [keyword, setKeyword] = useState('')
+  const tests = getTestsForTrainee(traineeId)
+  const visible = tests.filter((test) => {
+    const tabMatch =
+      tab === 'personal' ? test.source === 'personal_ai'
+        : tab === 'in_progress' ? test.learnerStatus === 'In Progress'
+          : tab === 'completed' ? test.attemptCount > 0
+            : test.source !== 'personal_ai'
+    return tabMatch && [test.title, test.courseTitle, typeLabels[test.type], sourceLabels[test.source]].join(' ').toLowerCase().includes(keyword.toLowerCase())
+  })
 
-    const { loading, error } = useDemoPageState();
-    const [activeTab, setActiveTab] = useState("available");
-    const [viewMode, setViewMode] = useState("grid");
-    const [filters, setFilters] = useState({
-        keyword: "",
-        source: "all",
-        status: "all",
-        sort: "due-date",
-    });
-    const [personalTests, setPersonalTests] = useState(() =>
-        getTraineeCreatedTests(),
-    );
-    const [modalOpen, setModalOpen] = useState(false);
-    const [modalMode, setModalMode] = useState("create");
-    const [editingTestId, setEditingTestId] = useState(null);
-    const [form, setForm] = useState(getInitialForm);
-    const [formError, setFormError] = useState("");
-    const traineeId = getCurrentUser()?.id || "trainee-minh";
+  if (loading) return <PageState state="loading" title="Loading tests" description="Preparing official and personal tests." />
+  if (error) return <PageState state="error" title="Tests unavailable" description={error.message} />
 
-    const enrolledCourseIds = useMemo(
-        () =>
-            new Set(
-                getEnrollmentsByUser(traineeId).map(
-                    (enrollment) => enrollment.courseId,
-                ),
-            ),
-        [traineeId],
-    );
+  return (
+    <main className="demo-page">
+      <section className="demo-hero-band">
+        <div>
+          <span className="demo-kicker">Tests and practice</span>
+          <h1>Official assessments and personal AI practice</h1>
+          <p>Take published tests, resume unfinished attempts, and generate private AI learning resources.</p>
+        </div>
+        <button type="button" className="demo-primary-action" onClick={() => setModal({ mode: 'create' })}><Plus size={16} /> Generate AI Test</button>
+      </section>
 
-    const availableTests = useMemo(() => {
-        return getAllLifecycleTests().filter(
-            (test) =>
-                test.status === "published" &&
-                enrolledCourseIds.has(test.courseId),
-        );
-    }, [enrolledCourseIds]);
+      <section className="demo-toolbar">
+        <div className="demo-actions">
+          {[
+            ['available', 'Available Tests'],
+            ['personal', 'My AI Tests'],
+            ['in_progress', 'In Progress'],
+            ['completed', 'Completed'],
+          ].map(([value, label]) => (
+            <button key={value} type="button" className={tab === value ? 'demo-primary-action' : 'demo-secondary-action'} onClick={() => setTab(value)}>{label}</button>
+          ))}
+        </div>
+        <input value={keyword} onChange={(event) => setKeyword(event.target.value)} placeholder="Search tests" />
+      </section>
 
-    const completedTests = availableTests.filter(
-        (test) => test.testStatus === "Completed" || test.bestScore,
-    );
+      {visible.length ? (
+        <section className="demo-card-grid">
+          {visible.map((test) => <TestCard key={test.id} test={test} traineeId={traineeId} onEdit={(item) => setModal({ mode: 'edit', test: item })} onRefresh={() => setRevision((value) => value + 1)} />)}
+        </section>
+      ) : (
+        <PageState state="empty" title="No tests in this view" description="Try another tab, clear the search, or generate a personal AI test." />
+      )}
 
-    const currentTests =
-        activeTab === "personal"
-            ? personalTests
-            : activeTab === "completed"
-              ? completedTests
-              : availableTests;
-
-    const statusOptions = useMemo(() => {
-        return [
-            "all",
-            ...new Set(currentTests.map((test) => getVisibleStatus(test)).filter(Boolean)),
-        ];
-    }, [currentTests]);
-
-    const visibleTests = useMemo(() => {
-        const keyword = filters.keyword.trim().toLowerCase();
-
-        return currentTests
-            .filter((test) => {
-                const course = getLifecycleCourseById(test.courseId);
-                const matchesKeyword = [
-                    test.title,
-                    test.description,
-                    test.type,
-                    test.courseTitle,
-                    course?.title,
-                    getSourceSummary(test),
-                ]
-                    .join(" ")
-                    .toLowerCase()
-                    .includes(keyword);
-                const matchesSource =
-                    filters.source === "all" || getSourceCategory(test) === filters.source;
-                const matchesStatus =
-                    filters.status === "all" || getVisibleStatus(test) === filters.status;
-
-                return matchesKeyword && matchesSource && matchesStatus;
-            })
-            .sort((a, b) => {
-                if (filters.sort === "title") return a.title.localeCompare(b.title);
-                if (filters.sort === "questions") {
-                    return Number(b.totalQuestions || 0) - Number(a.totalQuestions || 0);
-                }
-                if (filters.sort === "created") {
-                    return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
-                }
-                return new Date(a.dueDate || a.createdAt || 0) - new Date(b.dueDate || b.createdAt || 0);
-            });
-    }, [currentTests, filters]);
-
-    const updateFilter = (name, value) => {
-        setFilters((current) => ({ ...current, [name]: value }));
-    };
-
-    const resetFilters = () => {
-        setFilters({
-            keyword: "",
-            source: "all",
-            status: "all",
-            sort: "due-date",
-        });
-    };
-
-    const hasActiveFilters =
-        filters.keyword ||
-        filters.source !== "all" ||
-        filters.status !== "all" ||
-        filters.sort !== "due-date";
-
-    const openCreateModal = () => {
-        setModalMode("create");
-        setEditingTestId(null);
-        setForm(getInitialForm());
-        setFormError("");
-        setModalOpen(true);
-    };
-
-    const openUpdateModal = (test) => {
-        setModalMode("update");
-        setEditingTestId(test.id);
-        setForm({
-            title: test.title,
-            description: test.description,
-            courseId: test.courseId,
-            sourceType: test.sourceType || "modules",
-            selectedModuleIds: test.selectedModuleIds || [],
-            uploadedFileName: test.uploadedFileName || "",
-            totalQuestions: test.totalQuestions,
-            durationMinutes: test.durationMinutes,
-            passingScore: test.passingScore,
-        });
-        setFormError("");
-        setModalOpen(true);
-    };
-
-    const validateForm = () => {
-        if (!form.title.trim()) return "Please enter a test title.";
-        if (!form.courseId) return "Please select an enrolled course.";
-
-        if (
-            form.sourceType === "modules" &&
-            form.selectedModuleIds.length === 0
-        ) {
-            return "Please select at least one module for AI generation.";
-        }
-
-        if (form.sourceType === "upload" && !form.uploadedFileName.trim()) {
-            return "Please enter an uploaded file name mock.";
-        }
-
-        if (Number(form.totalQuestions) <= 0) {
-            return "Questions must be greater than 0.";
-        }
-
-        if (Number(form.durationMinutes) <= 0) {
-            return "Duration must be greater than 0.";
-        }
-
-        if (Number(form.passingScore) <= 0 || Number(form.passingScore) > 100) {
-            return "Passing score must be between 1 and 100.";
-        }
-
-        return "";
-    };
-
-    const handleSubmit = () => {
-        const validationError = validateForm();
-
-        if (validationError) {
-            setFormError(validationError);
-            return;
-        }
-
-        if (modalMode === "create") {
-            createTraineeTest(form);
-            setActiveTab("personal");
-        } else {
-            updateTraineeTest(editingTestId, form);
-        }
-
-        setPersonalTests(getTraineeCreatedTests());
-        setModalOpen(false);
-        setFormError("");
-    };
-
-    const handleDelete = (testId) => {
-        deleteTraineeTest(testId);
-        setPersonalTests(getTraineeCreatedTests());
-    };
-
-    if (loading) {
-        return (
-            <PageState
-                state="loading"
-                title="Loading tests"
-                description="Checking published tests and your personal tests."
-            />
-        );
-    }
-
-    if (error) {
-        return (
-            <PageState
-                state="error"
-                title="Tests unavailable"
-                description={error.message}
-            />
-        );
-    }
-
-    return (
-        <main className="demo-page">
-            <section className="demo-hero-band">
-                <div>
-                    <span className="demo-kicker">Tests and practice</span>
-                    <h1>Practice from your enrolled courses</h1>
-                    <p>
-                        View assigned tests, create AI-generated personal tests,
-                        update your own tests, delete tests created by you, and
-                        switch between grid/list presentation.
-                    </p>
-                </div>
-
-                <button
-                    type="button"
-                    className="demo-primary-action"
-                    onClick={openCreateModal}
-                >
-                    <Plus size={16} />
-                    Create AI Test
-                </button>
-            </section>
-
-            <section className="demo-toolbar">
-                <div className="demo-actions">
-                    <button
-                        type="button"
-                        className={
-                            activeTab === "available"
-                                ? "demo-primary-action"
-                                : "demo-secondary-action"
-                        }
-                        onClick={() => setActiveTab("available")}
-                    >
-                        Assigned tests ({availableTests.length})
-                    </button>
-
-                    <button
-                        type="button"
-                        className={
-                            activeTab === "personal"
-                                ? "demo-primary-action"
-                                : "demo-secondary-action"
-                        }
-                        onClick={() => setActiveTab("personal")}
-                    >
-                        My generated tests ({personalTests.length})
-                    </button>
-
-                    <button
-                        type="button"
-                        className={
-                            activeTab === "completed"
-                                ? "demo-primary-action"
-                                : "demo-secondary-action"
-                        }
-                        onClick={() => setActiveTab("completed")}
-                    >
-                        Completed ({completedTests.length})
-                    </button>
-                </div>
-
-                <div className="demo-actions">
-                    <button
-                        type="button"
-                        className={
-                            viewMode === "grid"
-                                ? "demo-primary-action"
-                                : "demo-secondary-action"
-                        }
-                        onClick={() => setViewMode("grid")}
-                        aria-label="Show tests as grid"
-                    >
-                        <Grid2X2 size={16} />
-                        Grid
-                    </button>
-
-                    <button
-                        type="button"
-                        className={
-                            viewMode === "list"
-                                ? "demo-primary-action"
-                                : "demo-secondary-action"
-                        }
-                        onClick={() => setViewMode("list")}
-                        aria-label="Show tests as list"
-                    >
-                        <ListIcon size={16} />
-                        List
-                    </button>
-                </div>
-            </section>
-
-            <FilterToolbar>
-                <SearchBox
-                    value={filters.keyword}
-                    placeholder="Search test title, course, source"
-                    ariaLabel="Search tests"
-                    onChange={(value) => updateFilter("keyword", value)}
-                />
-
-                <SelectFilter
-                    value={filters.source}
-                    onChange={(value) => updateFilter("source", value)}
-                    ariaLabel="Filter tests by source"
-                    options={[
-                        { value: "all", label: "All sources" },
-                        { value: "course", label: "Course tests" },
-                        { value: "personal", label: "Personal tests" },
-                        { value: "modules", label: "Generated from modules" },
-                        { value: "upload", label: "Generated from upload" },
-                        { value: "class", label: "Class tests" },
-                        { value: "imported", label: "Imported from course" },
-                    ]}
-                />
-
-                <SelectFilter
-                    value={filters.status}
-                    onChange={(value) => updateFilter("status", value)}
-                    ariaLabel="Filter tests by status"
-                    options={statusOptions.map((status) => ({
-                        value: status,
-                        label: status === "all" ? "All status" : status,
-                    }))}
-                />
-
-                <SelectFilter
-                    value={filters.sort}
-                    onChange={(value) => updateFilter("sort", value)}
-                    ariaLabel="Sort tests"
-                    options={[
-                        { value: "due-date", label: "Due date" },
-                        { value: "created", label: "Newest created" },
-                        { value: "questions", label: "Question count" },
-                        { value: "title", label: "Name A-Z" },
-                    ]}
-                />
-
-                <ClearFiltersButton onClick={resetFilters} disabled={!hasActiveFilters} />
-            </FilterToolbar>
-
-            <div className="demo-result-summary">
-                Showing <strong>{visibleTests.length}</strong> of{" "}
-                <strong>{currentTests.length}</strong> test
-                {currentTests.length === 1 ? "" : "s"} in{" "}
-                <strong>{viewMode}</strong> view
-            </div>
-
-            {activeTab === "available" &&
-                (availableTests.length === 0 ? (
-                    <PageState
-                        state="empty"
-                        title="No assigned tests available"
-                        description="Enroll in a course with a published test to start practice."
-                        action={
-                            <Link className="demo-primary-action" to="/courses">
-                                Explore courses <ArrowRight size={16} />
-                            </Link>
-                        }
-                    />
-                ) : visibleTests.length === 0 ? (
-                    <PageState
-                        state="empty"
-                        title="No assigned tests match"
-                        description="Try a different keyword, source, or status filter."
-                        action={
-                            <button type="button" className="demo-primary-action" onClick={resetFilters}>
-                                Clear filters
-                            </button>
-                        }
-                    />
-                ) : (
-                    <TestCollection
-                        tests={visibleTests}
-                        viewMode={viewMode}
-                    />
-                ))}
-
-            {activeTab === "personal" &&
-                (personalTests.length === 0 ? (
-                    <PageState
-                        state="empty"
-                        title="No personal tests yet"
-                        description="Create an AI-generated test from uploaded material or selected modules."
-                        action={
-                            <button
-                                type="button"
-                                className="demo-primary-action"
-                                onClick={openCreateModal}
-                            >
-                                <Plus size={16} />
-                                Create test
-                            </button>
-                        }
-                    />
-                ) : visibleTests.length === 0 ? (
-                    <PageState
-                        state="empty"
-                        title="No personal tests match"
-                        description="Try a different keyword, source, or status filter."
-                        action={
-                            <button type="button" className="demo-primary-action" onClick={resetFilters}>
-                                Clear filters
-                            </button>
-                        }
-                    />
-                ) : (
-                    <TestCollection
-                        tests={visibleTests}
-                        viewMode={viewMode}
-                        personal
-                        onEdit={openUpdateModal}
-                        onDelete={handleDelete}
-                    />
-                ))}
-
-            {activeTab === "completed" &&
-                (completedTests.length === 0 ? (
-                    <PageState
-                        state="empty"
-                        title="No completed tests"
-                        description="Completed test attempts will appear here after practice."
-                    />
-                ) : visibleTests.length === 0 ? (
-                    <PageState
-                        state="empty"
-                        title="No completed tests match"
-                        description="Try a different keyword, source, or status filter."
-                        action={
-                            <button type="button" className="demo-primary-action" onClick={resetFilters}>
-                                Clear filters
-                            </button>
-                        }
-                    />
-                ) : (
-                    <TestCollection
-                        tests={visibleTests}
-                        viewMode={viewMode}
-                    />
-                ))}
-
-            <TestFormModal
-                open={modalOpen}
-                mode={modalMode}
-                form={form}
-                formError={formError}
-                onChange={setForm}
-                onClose={() => setModalOpen(false)}
-                onSubmit={handleSubmit}
-            />
-        </main>
-    );
+      {modal ? (
+        <GenerateTestModal
+          key={modal.test?.id || 'create'}
+          open
+          traineeId={traineeId}
+          editingTest={modal.test}
+          onClose={() => setModal(null)}
+          onSaved={() => {
+            setModal(null)
+            setTab('personal')
+            setRevision((value) => value + 1)
+          }}
+        />
+      ) : null}
+    </main>
+  )
 }

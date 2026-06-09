@@ -1,147 +1,131 @@
-import { useMemo, useState } from 'react'
-import { AlertCircle, ArrowRight, ClipboardCheck } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import { AlertCircle, ArrowRight, Clock3 } from 'lucide-react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { submitTestAttempt } from '@/data/demo/demoRuntime'
 import {
-  getLifecycleQuestionsForTest,
-  getLifecycleTestById,
-} from '@/data/demo/courseLifecycleRuntime'
+  getAttemptById,
+  getTestForTrainee,
+  saveAttemptAnswers,
+  startOrResumeAttempt,
+  submitAttempt,
+} from '@/data/demo/traineeTestRuntime'
 import { PageState } from '@/shared/components/PageState'
-import { useDemoPageState } from '@/shared/hooks/useDemoPageState'
 import { useDocumentTitle } from '@/shared/hooks/useDocumentTitle'
 import { getCurrentUser } from '@/services'
 
-function scoreAnswers(questions, answers) {
-  const correctCount = questions.reduce((count, question) => {
-    const selected = answers[question.id] || []
-    const expected = question.correctOptionIds || []
-    const isCorrect = expected.length > 0
-      && expected.length === selected.length
-      && expected.every((id) => selected.includes(id))
+function answered(question, answer) {
+  if (question.type === 'matching') return question.pairs?.every((pair) => answer?.[pair.id])
+  return Array.isArray(answer) ? answer.length > 0 : Boolean(String(answer ?? '').trim())
+}
 
-    return isCorrect ? count + 1 : count
-  }, 0)
-
-  return {
-    correctCount,
-    score: Math.round((correctCount / questions.length) * 100),
+function QuestionInput({ question, answer, onChange }) {
+  if (question.type === 'fill_blank') {
+    return <input value={answer || ''} onChange={(event) => onChange(event.target.value)} placeholder="Type your answer" />
   }
+  if (question.type === 'matching') {
+    const choices = question.pairs.map((pair) => pair.answer)
+    return (
+      <div className="demo-list">
+        {question.pairs.map((pair) => (
+          <label className="course-flow-field" key={pair.id}>
+            <span>{pair.prompt}</span>
+            <select value={answer?.[pair.id] || ''} onChange={(event) => onChange({ ...(answer || {}), [pair.id]: event.target.value })}>
+              <option value="">Select match</option>
+              {choices.map((choice) => <option key={choice} value={choice}>{choice}</option>)}
+            </select>
+          </label>
+        ))}
+      </div>
+    )
+  }
+  const multiple = question.type === 'multiple_response'
+  const selected = Array.isArray(answer) ? answer : answer ? [answer] : []
+  return (
+    <div className="answer-list">
+      {question.options?.map((option) => (
+        <label key={option.id} className="answer-option">
+          <input
+            type={multiple ? 'checkbox' : 'radio'}
+            name={question.id}
+            checked={selected.includes(option.id)}
+            onChange={() => {
+              if (!multiple) onChange(option.id)
+              else onChange(selected.includes(option.id) ? selected.filter((id) => id !== option.id) : [...selected, option.id])
+            }}
+          />
+          <span>{option.text}</span>
+        </label>
+      ))}
+    </div>
+  )
 }
 
 export function TakeTestPage() {
-  const { testId } = useParams()
+  const { testId, attemptId, classId } = useParams()
   const navigate = useNavigate()
-  const { loading, error } = useDemoPageState()
-  const test = getLifecycleTestById(testId)
-  const questions = useMemo(() => {
-    if (!test) return []
-    return getLifecycleQuestionsForTest(test).filter((question) => question.status === 'published')
-  }, [test])
-  const [answers, setAnswers] = useState({})
-  const [formError, setFormError] = useState('')
+  const traineeId = getCurrentUser()?.id || 'trainee-minh'
+  const test = getTestForTrainee(testId, traineeId)
+  const attempt = attemptId ? getAttemptById(attemptId, traineeId) : null
+  const [answers, setAnswers] = useState(attempt?.answers || {})
+  const [message, setMessage] = useState('')
+  const [seconds, setSeconds] = useState(() => Math.max(0, Number(test?.durationMinutes || 0) * 60))
 
   useDocumentTitle(test ? `Take ${test.title}` : 'Take test')
 
-  const handleSelect = (questionId, optionId) => {
-    setAnswers((current) => ({
-      ...current,
-      [questionId]: [optionId],
-    }))
+  useEffect(() => {
+    if (attemptId || !test || (classId && test.classId !== classId) || test.status === 'archived') return
+    const next = startOrResumeAttempt(test.id, traineeId)
+    if (!next) return
+    const prefix = classId ? `/my-classes/${classId}/tests` : '/tests'
+    navigate(`${prefix}/${test.id}/attempts/${next.id}`, { replace: true })
+  }, [attemptId, classId, navigate, test, traineeId])
+
+  useEffect(() => {
+    if (!attemptId || !attempt) return
+    const timer = window.setTimeout(() => saveAttemptAnswers(attemptId, traineeId, answers), 250)
+    return () => window.clearTimeout(timer)
+  }, [answers, attempt, attemptId, traineeId])
+
+  useEffect(() => {
+    if (!attempt || attempt.status !== 'in_progress') return
+    const timer = window.setInterval(() => setSeconds((value) => Math.max(0, value - 1)), 1000)
+    return () => window.clearInterval(timer)
+  }, [attempt])
+
+  const questions = useMemo(() => attempt?.questionSnapshot || [], [attempt])
+  if (!test || (classId && test.classId !== classId) || test.status === 'archived') {
+    return <PageState state="error" title="Test unavailable" description="You are not enrolled in the course or class for this test." />
+  }
+  if (!attemptId) return <PageState state="loading" title="Starting attempt" description="Preparing your question snapshot." />
+  if (!attempt || attempt.testId !== testId || attempt.status !== 'in_progress') {
+    return <PageState state="error" title="Attempt unavailable" description="This attempt is not available to the current trainee." />
   }
 
-  const handleSubmit = (event) => {
-    event.preventDefault()
-    const missingQuestion = questions.find((question) => !answers[question.id]?.length)
-
-    if (missingQuestion) {
-      setFormError('Answer every required question before submitting.')
+  const submit = () => {
+    if (questions.some((question) => !answered(question, answers[question.id]))) {
+      setMessage('Answer every question before submitting.')
       return
     }
-
-    const result = scoreAnswers(questions, answers)
-    const traineeId = getCurrentUser()?.id || 'trainee-minh'
-
-    const attempt = submitTestAttempt(traineeId, test.id, {
-      testId: test.id,
-      courseId: test.courseId,
-      traineeId,
-      status: 'completed',
-      score: result.score,
-      correctCount: result.correctCount,
-      totalQuestions: questions.length,
-      submittedAt: new Date().toISOString(),
-      answers,
-    })
-
-    navigate(`/tests/${test.id}/result/${attempt.id}`)
-  }
-
-  if (loading) {
-    return <PageState state="loading" title="Preparing test" description="Loading published questions." />
-  }
-
-  if (error) {
-    return <PageState state="error" title="Test unavailable" description={error.message} />
-  }
-
-  if (!test || test.status !== 'published') {
-    return <PageState state="empty" title="Test not found" description="Only published tests can be taken." />
-  }
-
-  if (questions.length === 0) {
-    return <PageState state="empty" title="No published questions" description="This test does not have published questions yet." />
+    const result = submitAttempt(attempt.id, traineeId, answers)
+    const prefix = classId ? `/my-classes/${classId}/tests` : '/tests'
+    navigate(`${prefix}/${test.id}/results/${result.id}`)
   }
 
   return (
     <main className="demo-page">
-      <form className="take-test-layout" onSubmit={handleSubmit}>
-        <section className="demo-card take-test-main">
-          <span className="demo-kicker">Assessment</span>
-          <h1>{test.title}</h1>
-          <p>{test.description}</p>
-
-          {formError && (
-            <div className="demo-inline-alert">
-              <AlertCircle size={17} />
-              {formError}
-            </div>
-          )}
-
-          <div className="question-list">
-            {questions.map((question, index) => (
-              <fieldset className="question-card" key={question.id}>
-                <legend>
-                  <small>Question {index + 1}</small>
-                  {question.question}
-                </legend>
-                <div className="answer-list">
-                  {question.options.map((option) => (
-                    <label key={option.id} className="answer-option">
-                      <input
-                        type="radio"
-                        name={question.id}
-                        value={option.id}
-                        checked={answers[question.id]?.includes(option.id) || false}
-                        onChange={() => handleSelect(question.id, option.id)}
-                      />
-                      <span>{option.text}</span>
-                    </label>
-                  ))}
-                </div>
-              </fieldset>
-            ))}
-          </div>
-        </section>
-
-        <aside className="demo-card take-test-side">
-          <ClipboardCheck size={24} />
-          <h2>Submit checkpoint</h2>
-          <p>{questions.length} required questions. Results are mock-scored for demo only.</p>
-          <button className="demo-primary-action" type="submit">
-            Submit test <ArrowRight size={16} />
-          </button>
-        </aside>
-      </form>
+      <section className="demo-hero-band">
+        <div><span className="demo-kicker">Attempt autosaves locally</span><h1>{test.title}</h1><p>{questions.length} questions · {test.type} · {test.source}</p></div>
+        <strong><Clock3 size={16} /> {Math.floor(seconds / 60)}:{String(seconds % 60).padStart(2, '0')}</strong>
+      </section>
+      {message ? <div className="demo-inline-alert"><AlertCircle size={17} /> {message}</div> : null}
+      <section className="question-list">
+        {questions.map((question, index) => (
+          <fieldset className="question-card" key={question.id}>
+            <legend><small>Question {index + 1} · {question.type.replaceAll('_', ' ')}</small>{question.question}</legend>
+            <QuestionInput question={question} answer={answers[question.id]} onChange={(value) => setAnswers((current) => ({ ...current, [question.id]: value }))} />
+          </fieldset>
+        ))}
+      </section>
+      <button type="button" className="demo-primary-action" onClick={submit}>Submit Test <ArrowRight size={16} /></button>
     </main>
   )
 }

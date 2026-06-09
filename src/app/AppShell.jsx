@@ -180,10 +180,13 @@ export function AppShell() {
               <Route path="/tests" element={<TestListPage />} />
               <Route path="/tests/:testId" element={<TestDetailPage />} />
               <Route path="/tests/:testId/take" element={<TakeTestPage />} />
+              <Route path="/tests/:testId/attempts/:attemptId" element={<TakeTestPage />} />
               <Route
                 path="/tests/:testId/result/:attemptId"
                 element={<TestResultPage />}
               />
+              <Route path="/tests/:testId/results" element={<TestResultPage />} />
+              <Route path="/tests/:testId/results/:attemptId" element={<TestResultPage />} />
               <Route path="/analytics/me" element={<MyAnalyticsPage />} />
             </Route>
 
@@ -277,6 +280,10 @@ export function AppShell() {
               <Route path="/my-classes/:classId/workspace" element={<TraineeClassOverview />} />
               <Route path="/my-classes/:classId/assignments" element={<TraineeAssignments />} />
               <Route path="/my-classes/:classId/tests" element={<TraineeTests />} />
+              <Route path="/my-classes/:classId/tests/:testId/take" element={<TakeTestPage />} />
+              <Route path="/my-classes/:classId/tests/:testId/attempts/:attemptId" element={<TakeTestPage />} />
+              <Route path="/my-classes/:classId/tests/:testId/results" element={<TestResultPage />} />
+              <Route path="/my-classes/:classId/tests/:testId/results/:attemptId" element={<TestResultPage />} />
               <Route path="/my-classes/:classId/flashcards" element={<TraineeFlashcards />} />
               <Route path="/my-classes/:classId/discussions" element={<TraineeDiscussions />} />
               <Route path="/my-classes/:classId/progress" element={<TraineeProgress />} />
