@@ -875,23 +875,99 @@ export function generateFlashcardsForLesson(courseId, lessonId, createdByRole = 
 }
 
 export function createManualFlashcard(payload) {
+  const timestamp = Date.now()
+
   return saveGeneratedResource({
-    id: `resource-flashcard-manual-${Date.now()}`,
+    id: `resource-flashcard-manual-${timestamp}`,
     type: 'flashcard',
     createdByRole: ROLES.TRAINEE,
-    content: [
-      {
-        id: `flashcard-manual-${Date.now()}`,
-        source: 'Manual',
-        createdBy: ROLES.TRAINEE,
-        createdAt: nowIso(),
-        ...payload,
-      },
-    ],
+    createdByUserId: payload.createdByUserId,
     courseId: payload.courseId,
     lessonId: payload.lessonId,
+    content: [
+      {
+        id: `flashcard-manual-${timestamp}`,
+        source: 'Manual',
+        createdBy: ROLES.TRAINEE,
+        createdByUserId: payload.createdByUserId,
+        courseId: payload.courseId,
+        lessonId: payload.lessonId,
+        front: payload.front,
+        back: payload.back,
+        createdAt: nowIso(),
+        updatedAt: nowIso(),
+      },
+    ],
     createdAt: nowIso(),
+    updatedAt: nowIso(),
   })
+}
+
+export function updateManualFlashcard(cardId, payload, currentUserId) {
+  const resources = readJson(GENERATED_RESOURCES_KEY, [])
+  let updatedCard = null
+
+  const nextResources = resources.map((resource) => {
+    if (resource.type !== 'flashcard') return resource
+
+    const nextContent = (Array.isArray(resource.content) ? resource.content : []).map((card) => {
+      const isTargetCard = card.id === cardId
+      const isOwner = card.createdByUserId === currentUserId
+
+      if (!isTargetCard || !isOwner) return card
+
+      updatedCard = {
+        ...card,
+        front: payload.front,
+        back: payload.back,
+        courseId: payload.courseId || card.courseId,
+        lessonId: payload.lessonId || card.lessonId,
+        updatedAt: nowIso(),
+      }
+
+      return updatedCard
+    })
+
+    return {
+      ...resource,
+      courseId: payload.courseId || resource.courseId,
+      lessonId: payload.lessonId || resource.lessonId,
+      content: nextContent,
+      updatedAt: updatedCard ? nowIso() : resource.updatedAt,
+    }
+  })
+
+  writeJson(GENERATED_RESOURCES_KEY, nextResources)
+
+  return updatedCard
+}
+
+export function deleteManualFlashcard(cardId, currentUserId) {
+  const resources = readJson(GENERATED_RESOURCES_KEY, [])
+
+  const nextResources = resources
+    .map((resource) => {
+      if (resource.type !== 'flashcard') return resource
+
+      const nextContent = (Array.isArray(resource.content) ? resource.content : []).filter((card) => {
+        const isTargetCard = card.id === cardId
+        const isOwner = card.createdByUserId === currentUserId
+
+        return !(isTargetCard && isOwner)
+      })
+
+      return {
+        ...resource,
+        content: nextContent,
+        updatedAt: nowIso(),
+      }
+    })
+    .filter((resource) => {
+      if (resource.type !== 'flashcard') return true
+      return Array.isArray(resource.content) && resource.content.length > 0
+    })
+
+  writeJson(GENERATED_RESOURCES_KEY, nextResources)
 }
 
 export function generateSummaryForLesson(courseId, lessonId, createdByRole = ROLES.TRAINEE) {
