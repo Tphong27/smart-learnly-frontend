@@ -4,9 +4,15 @@ import {
   enrollTraineeClass,
   getTraineeClasses,
 } from '@/data/demo/demoTraineeRuntime'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { PageState } from '@/shared/components/PageState'
 import { StatusBadge } from '@/shared/components/StatusBadge'
+import {
+  ClearFiltersButton,
+  FilterToolbar,
+  SearchBox,
+  SelectFilter,
+} from '@/shared/components/ui/ListControls'
 import { useDocumentTitle } from '@/shared/hooks/useDocumentTitle'
 
 function formatDate(value) {
@@ -20,6 +26,13 @@ function formatDate(value) {
 }
 
 function ClassCard({ classItem, enrolled, onEnroll }) {
+  const className =
+    classItem.displayName || classItem.className || classItem.name || 'Class'
+  const traineeCount =
+    classItem.traineeCount ??
+    (Array.isArray(classItem.traineeIds) ? classItem.traineeIds.length : 0)
+  const capacity = classItem.maxTrainees || classItem.trainees
+
   return (
     <article className="demo-card">
       <div className="demo-row demo-row--between">
@@ -28,7 +41,7 @@ function ClassCard({ classItem, enrolled, onEnroll }) {
             {enrolled ? 'Registered class' : 'Available class'}
           </span>
           <h2>
-            {classItem.displayName || classItem.name} - {classItem.courseTitle}
+            {className} - {classItem.courseTitle}
           </h2>
         </div>
 
@@ -36,7 +49,8 @@ function ClassCard({ classItem, enrolled, onEnroll }) {
       </div>
 
       <p className="demo-muted">
-        Trainer: {classItem.trainerName} · {classItem.traineeCount} trainees
+        Trainer: {classItem.trainerName} · {traineeCount}
+        {capacity ? `/${capacity}` : ''} trainees
       </p>
 
       <div className="demo-meta-grid demo-meta-grid--wide">
@@ -95,13 +109,19 @@ function ClassCard({ classItem, enrolled, onEnroll }) {
 
           <div className="demo-actions">
             <Link
+              className="demo-primary-action"
+              to={`/my-classes/${classItem.id}/workspace`}
+            >
+              Go to Class Workspace
+            </Link>
+            <Link
               className="demo-secondary-action"
               to={`/courses/${classItem.courseId}`}
             >
               View course
             </Link>
             <Link
-              className="demo-primary-action"
+              className="demo-secondary-action"
               to={`/learning/${classItem.courseId}`}
             >
               Open learning workspace
@@ -123,16 +143,104 @@ function ClassCard({ classItem, enrolled, onEnroll }) {
   )
 }
 
+function filterAndSortClasses(classes, filters) {
+  const keyword = filters.keyword.trim().toLowerCase()
+
+  return classes
+    .filter((classItem) => {
+      const matchesKeyword = [
+        classItem.className,
+        classItem.displayName,
+        classItem.name,
+        classItem.courseTitle,
+        classItem.trainerName,
+        classItem.schedule,
+      ]
+        .join(' ')
+        .toLowerCase()
+        .includes(keyword)
+      const matchesStatus =
+        filters.status === 'all' || classItem.status === filters.status
+      const matchesCourse =
+        filters.course === 'all' || classItem.courseTitle === filters.course
+
+      return matchesKeyword && matchesStatus && matchesCourse
+    })
+    .sort((a, b) => {
+      if (filters.sort === 'progress') {
+        return Number(b.averageProgress || 0) - Number(a.averageProgress || 0)
+      }
+      if (filters.sort === 'name') {
+        return (a.className || a.displayName || a.name || '').localeCompare(
+          b.className || b.displayName || b.name || '',
+        )
+      }
+      return new Date(a.startDate || 0) - new Date(b.startDate || 0)
+    })
+}
+
 export function TraineeMyClassesPage() {
   useDocumentTitle('My Classes')
 
   const [version, setVersion] = useState(0)
-  const { enrolledClasses, availableClasses } = getTraineeClasses()
+  const [filters, setFilters] = useState({
+    keyword: '',
+    status: 'all',
+    course: 'all',
+    sort: 'schedule',
+  })
+  const classRuntime = useMemo(
+    () => ({
+      ...getTraineeClasses(),
+      runtimeVersion: version,
+    }),
+    [version],
+  )
+  const { enrolledClasses, availableClasses } = classRuntime
+  const allClasses = useMemo(
+    () => [...enrolledClasses, ...availableClasses],
+    [availableClasses, enrolledClasses],
+  )
+
+  const courseOptions = useMemo(() => {
+    return ['all', ...new Set(allClasses.map((item) => item.courseTitle).filter(Boolean))]
+  }, [allClasses])
+
+  const statusOptions = useMemo(() => {
+    return ['all', ...new Set(allClasses.map((item) => item.status).filter(Boolean))]
+  }, [allClasses])
+
+  const filteredEnrolledClasses = useMemo(() => {
+    return filterAndSortClasses(enrolledClasses, filters)
+  }, [enrolledClasses, filters])
+
+  const filteredAvailableClasses = useMemo(() => {
+    return filterAndSortClasses(availableClasses, filters)
+  }, [availableClasses, filters])
 
   const handleEnroll = (classId) => {
     enrollTraineeClass(classId)
     setVersion((current) => current + 1)
   }
+
+  const updateFilter = (name, value) => {
+    setFilters((current) => ({ ...current, [name]: value }))
+  }
+
+  const resetFilters = () => {
+    setFilters({
+      keyword: '',
+      status: 'all',
+      course: 'all',
+      sort: 'schedule',
+    })
+  }
+
+  const hasActiveFilters =
+    filters.keyword ||
+    filters.status !== 'all' ||
+    filters.course !== 'all' ||
+    filters.sort !== 'schedule'
 
   return (
     <main className="demo-page" data-version={version}>
@@ -147,6 +255,48 @@ export function TraineeMyClassesPage() {
         </div>
       </section>
 
+      <FilterToolbar>
+        <SearchBox
+          value={filters.keyword}
+          placeholder="Search class, course, trainer"
+          ariaLabel="Search my classes"
+          onChange={(value) => updateFilter('keyword', value)}
+        />
+
+        <SelectFilter
+          value={filters.status}
+          onChange={(value) => updateFilter('status', value)}
+          ariaLabel="Filter classes by status"
+          options={statusOptions.map((status) => ({
+            value: status,
+            label: status === 'all' ? 'All status' : status,
+          }))}
+        />
+
+        <SelectFilter
+          value={filters.course}
+          onChange={(value) => updateFilter('course', value)}
+          ariaLabel="Filter classes by course"
+          options={courseOptions.map((course) => ({
+            value: course,
+            label: course === 'all' ? 'All courses' : course,
+          }))}
+        />
+
+        <SelectFilter
+          value={filters.sort}
+          onChange={(value) => updateFilter('sort', value)}
+          ariaLabel="Sort classes"
+          options={[
+            { value: 'schedule', label: 'Schedule' },
+            { value: 'progress', label: 'Progress high to low' },
+            { value: 'name', label: 'Name A-Z' },
+          ]}
+        />
+
+        <ClearFiltersButton onClick={resetFilters} disabled={!hasActiveFilters} />
+      </FilterToolbar>
+
       <section className="my-courses-section">
         <div className="demo-row demo-row--between my-courses-section__heading">
           <div>
@@ -155,7 +305,7 @@ export function TraineeMyClassesPage() {
           </div>
 
           <span className="course-result-count">
-            {enrolledClasses.length} enrolled
+            {filteredEnrolledClasses.length} enrolled
           </span>
         </div>
 
@@ -165,9 +315,20 @@ export function TraineeMyClassesPage() {
             title="No registered classes"
             description="Enroll in an available class to see schedule, meet link, and assignments."
           />
+        ) : filteredEnrolledClasses.length === 0 ? (
+          <PageState
+            state="empty"
+            title="No registered classes match"
+            description="Adjust or clear filters to see your joined classes."
+            action={
+              <button type="button" className="demo-primary-action" onClick={resetFilters}>
+                Clear filters
+              </button>
+            }
+          />
         ) : (
           <section className="demo-card-grid">
-            {enrolledClasses.map((classItem) => (
+            {filteredEnrolledClasses.map((classItem) => (
               <ClassCard
                 key={classItem.id}
                 classItem={classItem}
@@ -187,20 +348,35 @@ export function TraineeMyClassesPage() {
           </div>
 
           <span className="course-result-count">
-            {availableClasses.length} available
+            {filteredAvailableClasses.length} available
           </span>
         </div>
 
-        <section className="demo-card-grid">
-          {availableClasses.map((classItem) => (
-            <ClassCard
-              key={classItem.id}
-              classItem={classItem}
-              enrolled={false}
-              onEnroll={handleEnroll}
-            />
-          ))}
-        </section>
+        {filteredAvailableClasses.length === 0 ? (
+          <PageState
+            state="empty"
+            title="No available classes match"
+            description="Try clearing filters or checking back when TMO creates more classes."
+            action={
+              hasActiveFilters ? (
+                <button type="button" className="demo-primary-action" onClick={resetFilters}>
+                  Clear filters
+                </button>
+              ) : null
+            }
+          />
+        ) : (
+          <section className="demo-card-grid">
+            {filteredAvailableClasses.map((classItem) => (
+              <ClassCard
+                key={classItem.id}
+                classItem={classItem}
+                enrolled={false}
+                onEnroll={handleEnroll}
+              />
+            ))}
+          </section>
+        )}
       </section>
     </main>
   )

@@ -18,6 +18,19 @@ const GENERATED_TESTS_KEY = 'slp.courseflow.generatedTests'
 const LESSON_NOTES_KEY = 'slp.courseflow.lessonNotes'
 const QUESTION_BANK_KEY = 'slp.courseflow.questionBank'
 
+export const STANDARD_LESSON_TYPES = ['Video', 'Reading', 'Quiz', 'Assignment']
+
+export function normalizeLessonType(type) {
+  const value = String(type || 'Reading').trim().toLowerCase()
+
+  if (value === 'video') return 'Video'
+  if (value === 'quiz') return 'Quiz'
+  if (value === 'assignment') return 'Assignment'
+  if (value === 'pdf' || value === 'rich text' || value === 'rich-text' || value === 'text') return 'Reading'
+
+  return 'Reading'
+}
+
 function readJson(key, fallback) {
   if (typeof window === 'undefined') return fallback
 
@@ -411,16 +424,33 @@ function upsertLocalModule(courseId, module) {
   return module
 }
 
+function normalizeLesson(lesson, courseId, moduleId) {
+  return {
+    ...lesson,
+    courseId: lesson.courseId || courseId,
+    moduleId: lesson.moduleId || moduleId,
+    type: normalizeLessonType(lesson.type),
+    durationMinutes: Number(lesson.durationMinutes || lesson.duration || 0),
+  }
+}
+
 export function saveLessonDraft(courseId, lessonId, draft) {
   const drafts = getLessonDrafts()
   const key = `${courseId}:${lessonId}`
+  const nextDraft = {
+    ...draft,
+    updatedAt: nowIso(),
+  }
+
+  if (draft.type) {
+    nextDraft.type = normalizeLessonType(draft.type)
+  }
 
   writeJson(LESSON_DRAFTS_KEY, {
     ...drafts,
     [key]: {
       ...(drafts[key] || {}),
-      ...draft,
-      updatedAt: nowIso(),
+      ...nextDraft,
     },
   })
 
@@ -450,8 +480,14 @@ export function getLifecycleModules(courseId) {
     .map((module) => ({
       ...module,
       lessons: (module.lessons || []).filter((lesson) => !lesson.deleted).map((lesson) => ({
-        ...lesson,
-        ...(drafts[`${courseId}:${lesson.id}`] || {}),
+        ...normalizeLesson(
+          {
+            ...lesson,
+            ...(drafts[`${courseId}:${lesson.id}`] || {}),
+          },
+          courseId,
+          module.id,
+        ),
       })),
     }))
 }
@@ -517,7 +553,7 @@ export function addMockCourseLesson(courseId, moduleId, payload = {}) {
     courseId,
     moduleId: targetModule.id,
     title: payload.title || 'New Lesson',
-    type: payload.type || 'Reading',
+    type: normalizeLessonType(payload.type),
     durationMinutes: Number(payload.durationMinutes) || 15,
     status: 'draft',
     completed: false,
@@ -738,37 +774,61 @@ export function getGeneratedResourcesByLesson(courseId, lessonId) {
   return getGeneratedResources({ courseId, lessonId })
 }
 
+function getQuestionSignature(question) {
+  return [
+    question.courseId,
+    question.lessonId,
+    question.resourceId,
+    String(question.question || '').trim().toLowerCase(),
+  ].join(':')
+}
+
+export function getSavedQuestionBankEntries() {
+  return readJson(QUESTION_BANK_KEY, [])
+}
+
 export function saveGeneratedQuestionsToQuestionBank(courseId, lessonId) {
   const resources = getGeneratedResources({ courseId, lessonId })
     .filter((resource) => ['questions', 'test'].includes(resource.type))
-  const existing = readJson(QUESTION_BANK_KEY, [])
+  const existing = getSavedQuestionBankEntries()
   const entries = resources.flatMap((resource) => {
     if (resource.type === 'test') {
       return (resource.content?.questions || []).map((question) => ({
         ...question,
-        id: `bank-${question.id}-${Date.now()}`,
+        id: `bank-${resource.id}-${question.id}`,
         resourceId: resource.id,
         courseId,
         lessonId,
-        status: 'draft',
+        answer: question.explanation || question.options?.find((option) => question.correctOptionIds?.includes(option.id))?.text || '',
+        explanation: question.explanation || '',
+        source: 'Saved from SME Course Builder',
+        isAiGenerated: true,
+        status: 'review',
         savedAt: nowIso(),
       }))
     }
 
     return (resource.content || []).map((question, index) => ({
-      id: `bank-${resource.id}-${index}-${Date.now()}`,
+      id: `bank-${resource.id}-${index}`,
       resourceId: resource.id,
       courseId,
       lessonId,
       question: question.question,
       answer: question.answer,
-      status: 'draft',
+      explanation: question.answer || '',
+      type: 'short_answer',
+      source: 'Saved from SME Course Builder',
+      isAiGenerated: true,
+      status: 'review',
       savedAt: nowIso(),
     }))
   })
 
-  writeJson(QUESTION_BANK_KEY, [...entries, ...existing])
-  return entries
+  const existingSignatures = new Set(existing.map(getQuestionSignature))
+  const uniqueEntries = entries.filter((entry) => !existingSignatures.has(getQuestionSignature(entry)))
+
+  writeJson(QUESTION_BANK_KEY, [...uniqueEntries, ...existing])
+  return uniqueEntries
 }
 
 function getLessonTopic(lesson) {

@@ -5,14 +5,18 @@ import {
   ChevronLeft,
   ChevronRight,
   Clock3,
-  Search,
   Star,
-  SlidersHorizontal,
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { getPublishedLifecycleCourses } from '@/data/demo/courseLifecycleRuntime'
 import { PageState } from '@/shared/components/PageState'
 import { StatusBadge } from '@/shared/components/StatusBadge'
+import {
+  ClearFiltersButton,
+  FilterToolbar,
+  SearchBox,
+  SelectFilter,
+} from '@/shared/components/ui/ListControls'
 import { useDemoPageState } from '@/shared/hooks/useDemoPageState'
 import { useDocumentTitle } from '@/shared/hooks/useDocumentTitle'
 
@@ -120,6 +124,10 @@ export function CourseCatalogPage() {
   const { loading, error } = useDemoPageState()
   const [query, setQuery] = useState('')
   const [category, setCategory] = useState('all')
+  const [level, setLevel] = useState('all')
+  const [priceType, setPriceType] = useState('all')
+  const [minRating, setMinRating] = useState('all')
+  const [sortBy, setSortBy] = useState('newest')
   const [currentPage, setCurrentPage] = useState(1)
 
   const publishedCourses = useMemo(() => {
@@ -130,15 +138,22 @@ export function CourseCatalogPage() {
     return ['all', ...new Set(publishedCourses.map((course) => course.category))]
   }, [publishedCourses])
 
+  const levels = useMemo(() => {
+    return ['all', ...new Set(publishedCourses.map((course) => course.level).filter(Boolean))]
+  }, [publishedCourses])
+
   const filteredCourses = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase()
 
-    return publishedCourses.filter((course) => {
+    return publishedCourses
+      .filter((course) => {
       const matchesQuery = [
         course.title,
         course.category,
         course.level,
         course.shortDescription,
+        course.owner,
+        course.assignedSmeName,
         (course.learningOutcomes || course.outcomes || []).join(' '),
       ]
         .join(' ')
@@ -146,10 +161,26 @@ export function CourseCatalogPage() {
         .includes(normalizedQuery)
 
       const matchesCategory = category === 'all' || course.category === category
+      const matchesLevel = level === 'all' || course.level === level
+      const matchesPrice =
+        priceType === 'all' ||
+        (priceType === 'free' ? Number(course.price) === 0 : Number(course.price) > 0)
+      const matchesRating =
+        minRating === 'all' || Number(course.rating || 0) >= Number(minRating)
 
-      return matchesQuery && matchesCategory
+      return matchesQuery && matchesCategory && matchesLevel && matchesPrice && matchesRating
     })
-  }, [category, publishedCourses, query])
+      .sort((a, b) => {
+        if (sortBy === 'rating') return Number(b.rating || 0) - Number(a.rating || 0)
+        if (sortBy === 'learners') {
+          return Number(b.learnerCount || b.enrollmentCount || 0) - Number(a.learnerCount || a.enrollmentCount || 0)
+        }
+        if (sortBy === 'price-low') return Number(a.price || 0) - Number(b.price || 0)
+        if (sortBy === 'price-high') return Number(b.price || 0) - Number(a.price || 0)
+        if (sortBy === 'title') return a.title.localeCompare(b.title)
+        return new Date(b.updatedAt || b.createdAt || 0) - new Date(a.updatedAt || a.createdAt || 0)
+      })
+  }, [category, level, minRating, priceType, publishedCourses, query, sortBy])
 
   const totalPages = Math.max(1, Math.ceil(filteredCourses.length / PAGE_SIZE))
 
@@ -167,6 +198,39 @@ export function CourseCatalogPage() {
     setCategory(value)
     setCurrentPage(1)
   }
+
+  const updateLevel = (value) => {
+    setLevel(value)
+    setCurrentPage(1)
+  }
+
+  const updatePriceType = (value) => {
+    setPriceType(value)
+    setCurrentPage(1)
+  }
+
+  const updateMinRating = (value) => {
+    setMinRating(value)
+    setCurrentPage(1)
+  }
+
+  const updateSort = (value) => {
+    setSortBy(value)
+    setCurrentPage(1)
+  }
+
+  const resetFilters = () => {
+    setQuery('')
+    setCategory('all')
+    setLevel('all')
+    setPriceType('all')
+    setMinRating('all')
+    setSortBy('newest')
+    setCurrentPage(1)
+  }
+
+  const hasActiveFilters =
+    query || category !== 'all' || level !== 'all' || priceType !== 'all' || minRating !== 'all' || sortBy !== 'newest'
 
   if (loading) {
     return (
@@ -201,30 +265,73 @@ export function CourseCatalogPage() {
         </div>
       </section>
 
-      <section className="demo-toolbar" aria-label="Course filters">
-        <label className="demo-search">
-          <Search size={18} />
-          <input
-            value={query}
-            onChange={(event) => updateQuery(event.target.value)}
-            placeholder="Search by title, topic, or outcome"
-          />
-        </label>
+      <FilterToolbar>
+        <SearchBox
+          value={query}
+          onChange={updateQuery}
+          placeholder="Search title, topic, SME"
+          ariaLabel="Search courses"
+        />
 
-        <label className="demo-select">
-          <SlidersHorizontal size={17} />
-          <select
-            value={category}
-            onChange={(event) => updateCategory(event.target.value)}
-          >
-            {categories.map((item) => (
-              <option key={item} value={item}>
-                {item === 'all' ? 'All categories' : item}
-              </option>
-            ))}
-          </select>
-        </label>
-      </section>
+        <SelectFilter
+          value={category}
+          onChange={updateCategory}
+          ariaLabel="Filter by category"
+          options={categories.map((item) => ({
+            value: item,
+            label: item === 'all' ? 'All categories' : item,
+          }))}
+        />
+
+        <SelectFilter
+          value={level}
+          onChange={updateLevel}
+          ariaLabel="Filter by level"
+          options={levels.map((item) => ({
+            value: item,
+            label: item === 'all' ? 'All levels' : item,
+          }))}
+        />
+
+        <SelectFilter
+          value={priceType}
+          onChange={updatePriceType}
+          ariaLabel="Filter by price"
+          options={[
+            { value: 'all', label: 'All prices' },
+            { value: 'free', label: 'Free' },
+            { value: 'paid', label: 'Paid' },
+          ]}
+        />
+
+        <SelectFilter
+          value={minRating}
+          onChange={updateMinRating}
+          ariaLabel="Filter by rating"
+          options={[
+            { value: 'all', label: 'Any rating' },
+            { value: '4.5', label: '4.5+ rating' },
+            { value: '4', label: '4.0+ rating' },
+            { value: '3', label: '3.0+ rating' },
+          ]}
+        />
+
+        <SelectFilter
+          value={sortBy}
+          onChange={updateSort}
+          ariaLabel="Sort courses"
+          options={[
+            { value: 'newest', label: 'Newest' },
+            { value: 'rating', label: 'Rating' },
+            { value: 'learners', label: 'Learner count' },
+            { value: 'price-low', label: 'Price low to high' },
+            { value: 'price-high', label: 'Price high to low' },
+            { value: 'title', label: 'Name A-Z' },
+          ]}
+        />
+
+        <ClearFiltersButton onClick={resetFilters} disabled={!hasActiveFilters} />
+      </FilterToolbar>
 
       <div className="demo-result-summary">
         Showing <strong>{paginatedCourses.length}</strong> of{' '}
@@ -236,6 +343,11 @@ export function CourseCatalogPage() {
           state="empty"
           title="No courses found"
           description="Try a different keyword or category."
+          action={
+            <button type="button" className="demo-primary-action" onClick={resetFilters}>
+              Clear filters
+            </button>
+          }
         />
       ) : (
         <>

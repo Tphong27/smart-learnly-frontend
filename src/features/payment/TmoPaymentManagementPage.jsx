@@ -4,12 +4,17 @@ import {
   CreditCard,
   FileText,
   RefreshCcw,
-  Search,
 } from 'lucide-react'
 import { DataState } from '@/shared/components/ui/DataState'
 import { KpiCard } from '@/shared/components/ui/KpiCard'
 import { PageHeader } from '@/shared/components/ui/PageHeader'
 import { StatusBadge } from '@/shared/components/ui/StatusBadge'
+import {
+  ClearFiltersButton,
+  FilterToolbar,
+  SearchBox,
+  SelectFilter,
+} from '@/shared/components/ui/ListControls'
 import {
   getTmoPaymentSummary,
   getTmoPayments,
@@ -205,15 +210,25 @@ export function TmoPaymentManagementPage() {
   const [filters, setFilters] = useState({
     keyword: '',
     status: 'all',
+    method: 'all',
+    startDate: '',
+    endDate: '',
+    sort: 'newest',
   })
   const [selectedPaymentId, setSelectedPaymentId] = useState(payments[0]?.id || null)
 
   const summary = getTmoPaymentSummary()
+  const methodOptions = useMemo(() => {
+    return ['all', ...new Set(payments.map((payment) => payment.method).filter(Boolean))]
+  }, [payments])
 
   const visiblePayments = useMemo(() => {
     const keyword = filters.keyword.trim().toLowerCase()
+    const startTime = filters.startDate ? new Date(filters.startDate).getTime() : null
+    const endTime = filters.endDate ? new Date(filters.endDate).getTime() : null
 
-    return payments.filter((payment) => {
+    return payments
+      .filter((payment) => {
       const matchesKeyword = [
         payment.invoiceNo,
         payment.traineeName,
@@ -228,9 +243,22 @@ export function TmoPaymentManagementPage() {
 
       const matchesStatus =
         filters.status === 'all' || payment.status === filters.status
+      const matchesMethod =
+        filters.method === 'all' || payment.method === filters.method
+      const paidTime = payment.paidAt ? new Date(payment.paidAt).getTime() : null
+      const createdTime = payment.createdAt ? new Date(payment.createdAt).getTime() : null
+      const activityTime = paidTime || createdTime
+      const matchesStart = !startTime || (activityTime && activityTime >= startTime)
+      const matchesEnd = !endTime || (activityTime && activityTime <= endTime)
 
-      return matchesKeyword && matchesStatus
+      return matchesKeyword && matchesStatus && matchesMethod && matchesStart && matchesEnd
     })
+      .sort((a, b) => {
+        if (filters.sort === 'oldest') return new Date(a.paidAt || a.createdAt || 0) - new Date(b.paidAt || b.createdAt || 0)
+        if (filters.sort === 'amount-high') return Number(b.amount || 0) - Number(a.amount || 0)
+        if (filters.sort === 'amount-low') return Number(a.amount || 0) - Number(b.amount || 0)
+        return new Date(b.paidAt || b.createdAt || 0) - new Date(a.paidAt || a.createdAt || 0)
+      })
   }, [payments, filters])
 
   const selectedPayment = payments.find((item) => item.id === selectedPaymentId)
@@ -251,6 +279,25 @@ export function TmoPaymentManagementPage() {
     }))
   }
 
+  const resetFilters = () => {
+    setFilters({
+      keyword: '',
+      status: 'all',
+      method: 'all',
+      startDate: '',
+      endDate: '',
+      sort: 'newest',
+    })
+  }
+
+  const hasActiveFilters =
+    filters.keyword ||
+    filters.status !== 'all' ||
+    filters.method !== 'all' ||
+    filters.startDate ||
+    filters.endDate ||
+    filters.sort !== 'newest'
+
   const handleVerify = (paymentId) => {
     updateTmoPaymentStatus(paymentId, 'paid')
     refresh()
@@ -259,6 +306,18 @@ export function TmoPaymentManagementPage() {
   const handleRefund = (paymentId) => {
     updateTmoPaymentStatus(paymentId, 'refunded')
     refresh()
+  }
+
+  const handleExportVisible = () => {
+    const blob = new Blob([JSON.stringify(visiblePayments, null, 2)], {
+      type: 'application/json',
+    })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = 'slp-payment-management-visible-demo.json'
+    link.click()
+    URL.revokeObjectURL(url)
   }
 
   return (
@@ -280,27 +339,66 @@ export function TmoPaymentManagementPage() {
         <span>{formatCurrency(summary.revenue, 'VND')}</span>
       </div>
 
-      <div className="course-flow-filter-card">
-        <label className="course-flow-search">
-          <Search size={17} />
+      <FilterToolbar>
+        <SearchBox
+          value={filters.keyword}
+          placeholder="Search invoice, trainee, course"
+          ariaLabel="Search TMO payments"
+          onChange={(value) => updateFilter('keyword', value)}
+        />
+        <SelectFilter
+          value={filters.status}
+          onChange={(value) => updateFilter('status', value)}
+          ariaLabel="Filter TMO payments by status"
+          options={[
+            { value: 'all', label: 'All status' },
+            { value: 'paid', label: 'Paid' },
+            { value: 'pending', label: 'Pending' },
+            { value: 'refund_requested', label: 'Refund Requested' },
+            { value: 'refunded', label: 'Refunded' },
+          ]}
+        />
+        <SelectFilter
+          value={filters.method}
+          onChange={(value) => updateFilter('method', value)}
+          ariaLabel="Filter TMO payments by method"
+          options={methodOptions.map((method) => ({
+            value: method,
+            label: method === 'all' ? 'All methods' : method,
+          }))}
+        />
+        <label className="course-flow-field">
+          <span>From</span>
           <input
-            value={filters.keyword}
-            placeholder="Search invoice, trainee, course"
-            onChange={(event) => updateFilter('keyword', event.target.value)}
+            type="date"
+            value={filters.startDate}
+            onChange={(event) => updateFilter('startDate', event.target.value)}
           />
         </label>
-
-        <select
-          value={filters.status}
-          onChange={(event) => updateFilter('status', event.target.value)}
-        >
-          <option value="all">All status</option>
-          <option value="paid">Paid</option>
-          <option value="pending">Pending</option>
-          <option value="refund_requested">Refund Requested</option>
-          <option value="refunded">Refunded</option>
-        </select>
-      </div>
+        <label className="course-flow-field">
+          <span>To</span>
+          <input
+            type="date"
+            value={filters.endDate}
+            onChange={(event) => updateFilter('endDate', event.target.value)}
+          />
+        </label>
+        <SelectFilter
+          value={filters.sort}
+          onChange={(value) => updateFilter('sort', value)}
+          ariaLabel="Sort TMO payments"
+          options={[
+            { value: 'newest', label: 'Newest' },
+            { value: 'oldest', label: 'Oldest' },
+            { value: 'amount-high', label: 'Amount high to low' },
+            { value: 'amount-low', label: 'Amount low to high' },
+          ]}
+        />
+        <ClearFiltersButton onClick={resetFilters} disabled={!hasActiveFilters} />
+        <button type="button" className="demo-secondary-action list-clear-button" onClick={handleExportVisible}>
+          Export visible
+        </button>
+      </FilterToolbar>
 
       <div className="grid gap-6 xl:grid-cols-[1fr_380px]">
         <PaymentTable

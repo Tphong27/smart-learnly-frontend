@@ -1,4 +1,5 @@
 import { ArrowRight, BookOpen, Clock3 } from 'lucide-react'
+import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { CourseCatalogSection } from '@/features/course/CourseCatalogSection'
 import { getCourseProgress, getEnrollmentsByUser } from '@/data/demo/demoRuntime'
@@ -7,26 +8,99 @@ import { getCurrentUser } from '@/services'
 import { PageState } from '@/shared/components/PageState'
 import { ProgressBar } from '@/shared/components/ProgressBar'
 import { StatusBadge } from '@/shared/components/StatusBadge'
+import {
+  ClearFiltersButton,
+  FilterToolbar,
+  SearchBox,
+  SelectFilter,
+} from '@/shared/components/ui/ListControls'
 import { useDemoPageState } from '@/shared/hooks/useDemoPageState'
 import { useDocumentTitle } from '@/shared/hooks/useDocumentTitle'
+
+function getProgressStatus(progress) {
+  if (progress >= 100) return 'completed'
+  if (progress > 0) return 'in-progress'
+  return 'not-started'
+}
 
 export function MyCoursesPage() {
   useDocumentTitle('My courses')
 
   const { loading, error } = useDemoPageState()
+  const [filters, setFilters] = useState({
+    keyword: '',
+    progress: 'all',
+    sort: 'last-accessed',
+  })
 
   const currentUser = getCurrentUser()
   const traineeId = currentUser?.id || 'trainee-minh'
   const enrollments = getEnrollmentsByUser(traineeId)
 
-  const enrolledCourses = enrollments
-    .map((enrollment) => ({
-      enrollment,
-      course: getLifecycleCourseById(enrollment.courseId),
-    }))
-    .filter((item) => item.course)
+  const enrolledCourses = useMemo(() => {
+    return enrollments
+      .map((enrollment) => {
+        const course = getLifecycleCourseById(enrollment.courseId)
+        const progress = course
+          ? Math.max(enrollment.progress, getCourseProgress(course.id, traineeId))
+          : 0
+
+        return {
+          enrollment,
+          course,
+          progress,
+          progressStatus: getProgressStatus(progress),
+          lastAccessedAt: enrollment.lastActivityAt || enrollment.enrolledAt || '',
+        }
+      })
+      .filter((item) => item.course)
+      .sort((a, b) => new Date(b.lastAccessedAt || 0) - new Date(a.lastAccessedAt || 0))
+  }, [enrollments, traineeId])
+
+  const visibleEnrolledCourses = useMemo(() => {
+    const keyword = filters.keyword.trim().toLowerCase()
+
+    return enrolledCourses
+      .filter(({ course, progressStatus }) => {
+        const matchesKeyword = [
+          course.title,
+          course.category,
+          course.level,
+          course.shortDescription,
+        ]
+          .join(' ')
+          .toLowerCase()
+          .includes(keyword)
+        const matchesProgress =
+          filters.progress === 'all' || progressStatus === filters.progress
+
+        return matchesKeyword && matchesProgress
+      })
+      .sort((a, b) => {
+        if (filters.sort === 'progress-high') return b.progress - a.progress
+        if (filters.sort === 'progress-low') return a.progress - b.progress
+        if (filters.sort === 'title') return a.course.title.localeCompare(b.course.title)
+        return new Date(b.lastAccessedAt || 0) - new Date(a.lastAccessedAt || 0)
+      })
+  }, [enrolledCourses, filters])
 
   const enrolledCourseIds = enrolledCourses.map(({ course }) => course.id)
+  const continueItem = enrolledCourses[0]
+
+  const updateFilter = (name, value) => {
+    setFilters((current) => ({ ...current, [name]: value }))
+  }
+
+  const resetFilters = () => {
+    setFilters({
+      keyword: '',
+      progress: 'all',
+      sort: 'last-accessed',
+    })
+  }
+
+  const hasActiveFilters =
+    filters.keyword || filters.progress !== 'all' || filters.sort !== 'last-accessed'
 
   if (loading) {
     return (
@@ -77,20 +151,20 @@ export function MyCoursesPage() {
           </span>
         </div>
 
-        {enrolledCourses.length > 0 && (
+        {continueItem && (
           <article className="demo-card continue-learning-card">
             <div>
               <span className="demo-kicker">Continue learning</span>
-              <h2>{enrolledCourses[0].course.title}</h2>
-              <p>{enrolledCourses[0].course.shortDescription}</p>
+              <h2>{continueItem.course.title}</h2>
+              <p>{continueItem.course.shortDescription}</p>
             </div>
             <ProgressBar
-              value={getCourseProgress(enrolledCourses[0].course.id, traineeId)}
+              value={continueItem.progress}
               label="Course progress"
             />
             <Link
               className="demo-primary-action"
-              to={`/learning/${enrolledCourses[0].course.id}`}
+              to={`/learning/${continueItem.course.id}`}
             >
               Continue Learning <ArrowRight size={16} />
             </Link>
@@ -108,13 +182,87 @@ export function MyCoursesPage() {
               </a>
             }
           />
+        ) : visibleEnrolledCourses.length === 0 ? (
+          <>
+            <FilterToolbar>
+              <SearchBox
+                value={filters.keyword}
+                placeholder="Search enrolled courses"
+                ariaLabel="Search enrolled courses"
+                onChange={(value) => updateFilter('keyword', value)}
+              />
+              <SelectFilter
+                value={filters.progress}
+                onChange={(value) => updateFilter('progress', value)}
+                ariaLabel="Filter courses by progress"
+                options={[
+                  { value: 'all', label: 'All progress' },
+                  { value: 'not-started', label: 'Not Started' },
+                  { value: 'in-progress', label: 'In Progress' },
+                  { value: 'completed', label: 'Completed' },
+                ]}
+              />
+              <SelectFilter
+                value={filters.sort}
+                onChange={(value) => updateFilter('sort', value)}
+                ariaLabel="Sort enrolled courses"
+                options={[
+                  { value: 'last-accessed', label: 'Last accessed' },
+                  { value: 'progress-high', label: 'Progress high to low' },
+                  { value: 'progress-low', label: 'Progress low to high' },
+                  { value: 'title', label: 'Name A-Z' },
+                ]}
+              />
+              <ClearFiltersButton onClick={resetFilters} disabled={!hasActiveFilters} />
+            </FilterToolbar>
+
+            <PageState
+              state="empty"
+              title="No enrolled courses match"
+              description="Try a different keyword or progress filter."
+              action={
+                <button type="button" className="demo-primary-action" onClick={resetFilters}>
+                  Clear filters
+                </button>
+              }
+            />
+          </>
         ) : (
-          <section className="demo-card-grid">
-            {enrolledCourses.map(({ course, enrollment }) => {
-              const progress = Math.max(
-                enrollment.progress,
-                getCourseProgress(course.id, traineeId),
-              )
+          <>
+            <FilterToolbar>
+              <SearchBox
+                value={filters.keyword}
+                placeholder="Search enrolled courses"
+                ariaLabel="Search enrolled courses"
+                onChange={(value) => updateFilter('keyword', value)}
+              />
+              <SelectFilter
+                value={filters.progress}
+                onChange={(value) => updateFilter('progress', value)}
+                ariaLabel="Filter courses by progress"
+                options={[
+                  { value: 'all', label: 'All progress' },
+                  { value: 'not-started', label: 'Not Started' },
+                  { value: 'in-progress', label: 'In Progress' },
+                  { value: 'completed', label: 'Completed' },
+                ]}
+              />
+              <SelectFilter
+                value={filters.sort}
+                onChange={(value) => updateFilter('sort', value)}
+                ariaLabel="Sort enrolled courses"
+                options={[
+                  { value: 'last-accessed', label: 'Last accessed' },
+                  { value: 'progress-high', label: 'Progress high to low' },
+                  { value: 'progress-low', label: 'Progress low to high' },
+                  { value: 'title', label: 'Name A-Z' },
+                ]}
+              />
+              <ClearFiltersButton onClick={resetFilters} disabled={!hasActiveFilters} />
+            </FilterToolbar>
+
+            <section className="demo-card-grid">
+              {visibleEnrolledCourses.map(({ course, enrollment, progress }) => {
 
               return (
                 <article className="demo-card my-course-card" key={enrollment.id}>
@@ -149,7 +297,8 @@ export function MyCoursesPage() {
                 </article>
               )
             })}
-          </section>
+            </section>
+          </>
         )}
       </section>
 

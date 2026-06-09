@@ -3,11 +3,15 @@ import { PageHeader } from '@/shared/components/ui/PageHeader'
 import { ProgressBar } from '@/shared/components/ui/ProgressBar'
 import { StatusBadge } from '@/shared/components/ui/StatusBadge'
 import { DataState } from '@/shared/components/ui/DataState'
-import { demoCourses, demoModules } from '@/data/demo/demoCourses'
+import {
+  getAllLifecycleCourses,
+  getLifecycleModules,
+} from '@/data/demo/courseLifecycleRuntime'
 
 export function CourseContentPage() {
-  const courses = demoCourses
-  const modules = demoModules
+  const courses = getAllLifecycleCourses()
+  const selectedCourse = courses[0]
+  const modules = getLifecycleModules(selectedCourse?.id)
   const isLoading = false
   const error = null
 
@@ -82,7 +86,7 @@ export function CourseContentPage() {
           <div className="mb-5 flex items-center justify-between">
             <div>
               <h2 className="text-lg font-bold text-slate-900">
-                AWS Cloud Practitioner Foundation
+                {selectedCourse?.title || 'Course Content'}
               </h2>
               <p className="text-sm text-slate-500">
                 Manage official content before publishing to trainees.

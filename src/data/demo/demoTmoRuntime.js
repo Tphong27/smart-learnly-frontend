@@ -1,5 +1,6 @@
 import { demoClasses } from './demoClasses'
 import { getAllLifecycleCourses, getLifecycleCourseById } from './courseLifecycleRuntime'
+import { getMockPayments } from './demoRuntime'
 import { demoUsers } from './demoUsers'
 import { ROLES } from '@/shared/constants/roles'
 
@@ -26,6 +27,17 @@ function writeJson(key, value) {
 
 function createId(prefix) {
   return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`
+}
+
+function formatPaymentMethod(method) {
+  return String(method || 'bank_transfer')
+    .split('_')
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ')
+}
+
+function getUserById(userId) {
+  return Object.values(demoUsers).find((user) => user.id === userId)
 }
 
 export function getTrainerOptions() {
@@ -226,10 +238,46 @@ export function getTmoPayments() {
 
   const storedById = new Map(storedPayments.map((item) => [item.id, item]))
 
-  return defaultPayments.map((item) => ({
+  const basePayments = defaultPayments.map((item) => ({
     ...item,
     ...(storedById.get(item.id) || {}),
   }))
+
+  const runtimePayments = getMockPayments().map((payment) => {
+    const user = getUserById(payment.userId)
+    const course = getLifecycleCourseById(payment.courseId)
+    const normalizedPayment = {
+      id: payment.id,
+      invoiceNo: `SLP-MOCK-${payment.id.slice(-8).toUpperCase()}`,
+      traineeName: user?.displayName || payment.userId,
+      traineeEmail: user?.email || '',
+      courseId: payment.courseId,
+      courseTitle: course?.title || 'Course enrollment',
+      classId: null,
+      className: 'Self-paced learning',
+      amount: payment.amount,
+      currency: payment.currency,
+      method: formatPaymentMethod(payment.method),
+      status: payment.status,
+      paidAt: payment.status === 'paid' ? payment.updatedAt || payment.createdAt : '',
+      note: 'Created from trainee checkout simulation.',
+      createdAt: payment.createdAt,
+      updatedAt: payment.updatedAt,
+    }
+
+    return {
+      ...normalizedPayment,
+      ...(storedById.get(payment.id) || {}),
+    }
+  })
+
+  const knownIds = new Set([
+    ...basePayments.map((payment) => payment.id),
+    ...runtimePayments.map((payment) => payment.id),
+  ])
+  const localOnlyPayments = storedPayments.filter((payment) => !knownIds.has(payment.id))
+
+  return [...basePayments, ...runtimePayments, ...localOnlyPayments]
 }
 
 export function updateTmoPaymentStatus(paymentId, status) {

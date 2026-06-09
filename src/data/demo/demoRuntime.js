@@ -186,6 +186,10 @@ function getStoredPayments() {
   return readJson(DEMO_PAYMENTS_KEY, [])
 }
 
+export function getMockPayments() {
+  return getStoredPayments()
+}
+
 function setStoredPayments(payments) {
   writeJson(DEMO_PAYMENTS_KEY, payments)
 }
