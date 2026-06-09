@@ -1940,6 +1940,22 @@ button.course-builder-add-row,
   gap: 8px;
 }
 
+.course-builder-assessment-section {
+  display: grid;
+  gap: 10px;
+  border-top: 1px solid #edf1f7;
+  padding-top: 14px;
+}
+
+.course-builder-assessment-section h3 {
+  margin: 0;
+  color: #14213d;
+}
+
+.course-builder-assessment-row {
+  width: 100%;
+}
+
 .course-builder-add-test-button {
   border-color: #9bb9f7;
   color: #1d4ed8;

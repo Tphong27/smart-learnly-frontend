@@ -22,12 +22,15 @@ import {
   addMockCourseModule,
   addMockLessonMaterial,
   addMockLessonVideo,
+  createCourseMockTest,
   deleteCourseModule,
+  getCourseMockTests,
   getLifecycleCourseById,
   getLifecycleModules,
   saveLessonDraft,
   submitCourseForTmoReview,
   updateCourseModule,
+  updateCourseMockTest,
   updateCourseStatus,
 } from "@/data/demo/courseLifecycleRuntime";
 import { getSmeQuestionBank } from "@/data/demo/demoSmeRuntime";
@@ -90,10 +93,10 @@ function fromLines(value) {
     .filter(Boolean);
 }
 
-const LESSON_TYPES = ["Video", "Reading", "Module Test", "Mock Test", "Assignment"];
+const LESSON_TYPES = ["Video", "Reading", "Module Test", "Assignment"];
 
 function isAssessmentType(type) {
-  return ["Quiz", "Module Test", "Mock Test"].includes(type);
+  return ["Quiz", "Module Test"].includes(type);
 }
 
 function LessonTypeBadge({ type }) {
@@ -196,8 +199,11 @@ function InlineAddLessonForm({ moduleId, onSubmit, onCancel }) {
 function CourseStructurePanel({
   course,
   modules,
+  mockTests,
   selectedLessonId,
+  selectedMockTestId,
   onSelectLesson,
+  onSelectMockTest,
   onAddModule,
   onAddLesson,
   onAddMockTest,
@@ -313,6 +319,38 @@ function CourseStructurePanel({
           ))}
         </div>
       )}
+
+      <section className="course-builder-assessment-section">
+        <div className="course-builder-section-header">
+          <span className="demo-kicker">Course Assessments</span>
+          <h3>Mock Tests</h3>
+        </div>
+        {mockTests.length === 0 ? (
+          <p className="demo-muted">No course-level Mock Test yet.</p>
+        ) : (
+          <div className="course-editor-module-list">
+            {mockTests.map((test) => (
+              <button
+                key={test.id}
+                type="button"
+                className={`course-builder-lesson-row course-builder-assessment-row ${
+                  test.id === selectedMockTestId ? "is-active" : ""
+                }`}
+                onClick={() => onSelectMockTest(test.id)}
+              >
+                <strong>{test.title}</strong>
+                <div>
+                  <span className="lesson-type-badge lesson-type-badge--mock-test">
+                    Mock Test
+                  </span>
+                  <small>{test.totalQuestions || 0} questions</small>
+                  <LessonStatusBadge status={test.status} />
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
+      </section>
 
       {moduleFormOpen ? (
         <div className="course-builder-inline-form">
@@ -550,6 +588,7 @@ function getQuestionAnswer(question) {
 function QuestionBankPicker({
   open,
   courseId,
+  assessmentLabel = "Module Test",
   existingQuestionIds,
   onClose,
   onAdd,
@@ -597,7 +636,7 @@ function QuestionBankPicker({
         <div className="demo-row demo-row--between">
           <div>
             <span className="demo-kicker">Question Bank</span>
-            <h2>Select questions for Module Test</h2>
+            <h2>Select questions for {assessmentLabel}</h2>
             <p className="demo-muted">
               Only questions belonging to this course are shown.
             </p>
@@ -663,6 +702,155 @@ function QuestionBankPicker({
         </div>
       </section>
     </div>
+  );
+}
+
+function MockTestBuilderPanel({ courseId, test, onSave }) {
+  const [activeTab, setActiveTab] = useState("Content");
+  const [form, setForm] = useState(() => ({
+    title: test.title || "New Mock Test",
+    description: test.description || "",
+    durationMinutes: test.durationMinutes || 60,
+    passingScore: test.passingScore || 70,
+    status: test.status || "draft",
+    questions: test.questions || [],
+  }));
+  const [questionBankOpen, setQuestionBankOpen] = useState(false);
+  const [saveStatus, setSaveStatus] = useState("Draft not saved");
+
+  const update = (name, value) =>
+    setForm((current) => ({ ...current, [name]: value }));
+  const addQuestions = (questions) =>
+    setForm((current) => ({
+      ...current,
+      questions: [
+        ...current.questions,
+        ...questions.map((question) => ({
+          ...question,
+          text: getQuestionText(question),
+          correctAnswer: getQuestionAnswer(question),
+          questionBankId: question.id,
+        })),
+      ],
+    }));
+  const removeQuestion = (questionId) =>
+    update(
+      "questions",
+      form.questions.filter((question) => question.id !== questionId),
+    );
+  const save = () => {
+    onSave(test.id, {
+      ...form,
+      durationMinutes: Number(form.durationMinutes) || 60,
+      passingScore: Number(form.passingScore) || 70,
+    });
+    setSaveStatus("Saved just now");
+  };
+
+  return (
+    <main className="course-editor-panel course-editor-lesson">
+      <section className="course-builder-lesson-shell">
+        <div className="course-builder-lesson-topbar">
+          <div className="course-builder-lesson-title-block">
+            <span className="demo-kicker">Course Assessment Builder</span>
+            <h2>{form.title}</h2>
+            <div>
+              <span className="lesson-type-badge lesson-type-badge--mock-test">
+                Mock Test
+              </span>
+              <LessonStatusBadge status={form.status} />
+              <small>{saveStatus}</small>
+            </div>
+          </div>
+          <button type="button" className="demo-primary-action" onClick={save}>
+            <Save size={16} />
+            Save Mock Test
+          </button>
+        </div>
+
+        <div className="course-builder-tabs">
+          {["Content", "Settings"].map((tab) => (
+            <button
+              key={tab}
+              type="button"
+              className={activeTab === tab ? "is-active" : ""}
+              onClick={() => setActiveTab(tab)}
+            >
+              {tab}
+            </button>
+          ))}
+        </div>
+
+        {activeTab === "Content" ? <div className="course-builder-tab-body">
+          <label className="course-flow-field">
+            <span>Mock Test title</span>
+            <input value={form.title} onChange={(event) => update("title", event.target.value)} />
+          </label>
+          <label className="course-flow-field">
+            <span>Description</span>
+            <textarea rows="3" value={form.description} onChange={(event) => update("description", event.target.value)} />
+          </label>
+
+          <section className="course-builder-compact-card">
+            <div className="course-builder-section-header">
+              <span className="demo-kicker">Question List</span>
+              <div className="demo-row demo-row--between">
+                <h3>{form.questions.length} questions</h3>
+                <button type="button" className="demo-primary-action" onClick={() => setQuestionBankOpen(true)}>
+                  <Plus size={16} />
+                  Add from Question Bank
+                </button>
+              </div>
+            </div>
+            {form.questions.length === 0 ? (
+              <p className="demo-muted">No questions added yet.</p>
+            ) : (
+              form.questions.map((question, index) => (
+                <article key={question.id}>
+                  <strong>{index + 1}. {getQuestionText(question)}</strong>
+                  <small>{question.type} | Answer: {getQuestionAnswer(question) || "Not set"}</small>
+                  <button type="button" className="course-builder-question-remove" onClick={() => removeQuestion(question.id)}>
+                    <Trash2 size={14} />
+                    Remove
+                  </button>
+                </article>
+              ))
+            )}
+          </section>
+
+        </div> : <div className="course-builder-tab-body">
+          <div className="course-flow-form-grid">
+            <label className="course-flow-field">
+              <span>Duration</span>
+              <input type="number" min="1" value={form.durationMinutes} onChange={(event) => update("durationMinutes", event.target.value)} />
+            </label>
+            <label className="course-flow-field">
+              <span>Passing score</span>
+              <input type="number" min="1" max="100" value={form.passingScore} onChange={(event) => update("passingScore", event.target.value)} />
+            </label>
+            <label className="course-flow-field">
+              <span>Status</span>
+              <select value={form.status} onChange={(event) => update("status", event.target.value)}>
+                <option value="draft">Draft</option>
+                <option value="published">Published</option>
+              </select>
+            </label>
+          </div>
+          <button type="button" className="demo-primary-action" onClick={save}>
+            <Save size={16} />
+            Save Settings
+          </button>
+        </div>}
+      </section>
+      <QuestionBankPicker
+        open={questionBankOpen}
+        courseId={courseId}
+        assessmentLabel="Mock Test"
+        existingQuestionIds={form.questions.map((question) => question.questionBankId || question.id)}
+        onClose={() => setQuestionBankOpen(false)}
+        onAdd={addQuestions}
+      />
+    </main>
   );
 }
 
@@ -1313,9 +1501,11 @@ export function SmeCourseEditorPage() {
     return initialCourse;
   });
   const [modules, setModules] = useState(() => getLifecycleModules(courseId));
+  const [mockTests, setMockTests] = useState(() => getCourseMockTests(courseId));
   const [selectedLessonId, setSelectedLessonId] = useState(() =>
     getFirstLessonId(getLifecycleModules(courseId)),
   );
+  const [selectedMockTestId, setSelectedMockTestId] = useState("");
   const [saveStatus, setSaveStatus] = useState("Saved 2 minutes ago");
 
   const selectedLesson = useMemo(() => {
@@ -1323,10 +1513,15 @@ export function SmeCourseEditorPage() {
       .flatMap((module) => module.lessons)
       .find((lesson) => lesson.id === selectedLessonId);
   }, [modules, selectedLessonId]);
+  const selectedMockTest = useMemo(
+    () => mockTests.find((test) => test.id === selectedMockTestId),
+    [mockTests, selectedMockTestId],
+  );
 
   const refresh = useCallback(() => {
     setCourse(getLifecycleCourseById(courseId));
     setModules(getLifecycleModules(courseId));
+    setMockTests(getCourseMockTests(courseId));
   }, [courseId]);
 
   const handleSaveLesson = (lessonId, form) => {
@@ -1357,20 +1552,20 @@ export function SmeCourseEditorPage() {
   };
 
   const handleAddMockTest = () => {
-    const targetModule =
-      modules[modules.length - 1] ||
-      addMockCourseModule(courseId, "Assessment Module");
-    const existingTests = targetModule.lessons.filter(
-      (lesson) => lesson.type === "Mock Test",
-    ).length;
-    const lesson = addMockCourseLesson(courseId, targetModule.id, {
-      title: `Mock Test ${existingTests + 1}`,
-      type: "Mock Test",
+    const test = createCourseMockTest(courseId, {
+      title: `Mock Test ${mockTests.length + 1}`,
       durationMinutes: 30,
-      summary: "Official mock assessment draft.",
+      description: "Official course-level mock assessment draft.",
     });
     refresh();
-    if (lesson) setSelectedLessonId(lesson.id);
+    setSelectedLessonId("");
+    setSelectedMockTestId(test.id);
+  };
+
+  const handleSaveMockTest = (testId, form) => {
+    updateCourseMockTest(testId, form);
+    setSaveStatus("Saved just now");
+    refresh();
   };
 
   const handleEditModule = (module) => {
@@ -1477,8 +1672,17 @@ export function SmeCourseEditorPage() {
         <CourseStructurePanel
           course={course}
           modules={modules}
+          mockTests={mockTests}
           selectedLessonId={selectedLessonId}
-          onSelectLesson={setSelectedLessonId}
+          selectedMockTestId={selectedMockTestId}
+          onSelectLesson={(lessonId) => {
+            setSelectedMockTestId("");
+            setSelectedLessonId(lessonId);
+          }}
+          onSelectMockTest={(testId) => {
+            setSelectedLessonId("");
+            setSelectedMockTestId(testId);
+          }}
           onAddModule={handleAddModule}
           onAddLesson={handleAddLesson}
           onAddMockTest={handleAddMockTest}
@@ -1486,18 +1690,27 @@ export function SmeCourseEditorPage() {
           onDeleteModule={handleDeleteModule}
         />
 
-        <LessonBuilderPanel
-          key={selectedLesson?.id || "no-lesson"}
-          courseId={courseId}
-          modules={modules}
-          lesson={selectedLesson}
-          onSave={handleSaveLesson}
-          onRefresh={refresh}
-        />
+        {selectedMockTest ? (
+          <MockTestBuilderPanel
+            key={selectedMockTest.id}
+            courseId={courseId}
+            test={selectedMockTest}
+            onSave={handleSaveMockTest}
+          />
+        ) : (
+          <LessonBuilderPanel
+            key={selectedLesson?.id || "no-lesson"}
+            courseId={courseId}
+            modules={modules}
+            lesson={selectedLesson}
+            onSave={handleSaveLesson}
+            onRefresh={refresh}
+          />
+        )}
 
         <CourseBuilderAiChatPanel
           course={course}
-          lesson={selectedLesson}
+          lesson={selectedMockTest || selectedLesson}
         />
       </div>
     </section>

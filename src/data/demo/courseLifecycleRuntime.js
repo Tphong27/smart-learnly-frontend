@@ -18,14 +18,13 @@ const GENERATED_TESTS_KEY = 'slp.courseflow.generatedTests'
 const LESSON_NOTES_KEY = 'slp.courseflow.lessonNotes'
 const QUESTION_BANK_KEY = 'slp.courseflow.questionBank'
 
-export const STANDARD_LESSON_TYPES = ['Video', 'Reading', 'Module Test', 'Mock Test', 'Assignment']
+export const STANDARD_LESSON_TYPES = ['Video', 'Reading', 'Module Test', 'Assignment']
 
 export function normalizeLessonType(type) {
   const value = String(type || 'Reading').trim().toLowerCase()
 
   if (value === 'video') return 'Video'
   if (value === 'quiz' || value === 'module test' || value === 'module-test') return 'Module Test'
-  if (value === 'mock test' || value === 'mock-test') return 'Mock Test'
   if (value === 'assignment') return 'Assignment'
   if (value === 'pdf' || value === 'rich text' || value === 'rich-text' || value === 'text') return 'Reading'
 
@@ -1055,6 +1054,52 @@ function getGeneratedTests() {
 function saveGeneratedTest(test) {
   writeJson(GENERATED_TESTS_KEY, [test, ...getGeneratedTests()])
   return test
+}
+
+export function getCourseMockTests(courseId) {
+  return getGeneratedTests()
+    .filter((test) => test.courseId === courseId && test.type === 'Mock Test' && test.status !== 'archived')
+    .sort((a, b) => new Date(b.updatedAt || b.createdAt || 0) - new Date(a.updatedAt || a.createdAt || 0))
+}
+
+export function createCourseMockTest(courseId, payload = {}) {
+  const timestamp = Date.now()
+  return saveGeneratedTest({
+    id: `mock-test-${courseId}-${timestamp}`,
+    courseId,
+    type: 'Mock Test',
+    source: 'official_course',
+    title: payload.title || 'New Mock Test',
+    description: payload.description || 'Course-level mock assessment draft.',
+    status: 'draft',
+    durationMinutes: Number(payload.durationMinutes) || 60,
+    passingScore: Number(payload.passingScore) || 70,
+    questions: payload.questions || [],
+    questionIds: (payload.questions || []).map((question) => question.id),
+    totalQuestions: (payload.questions || []).length,
+    topicTags: payload.topicTags || [],
+    createdByRole: ROLES.SME,
+    createdAt: nowIso(),
+    updatedAt: nowIso(),
+  })
+}
+
+export function updateCourseMockTest(testId, updates = {}) {
+  let updated = null
+  const next = getGeneratedTests().map((test) => {
+    if (test.id !== testId || test.type !== 'Mock Test') return test
+    updated = {
+      ...test,
+      ...updates,
+      questions: updates.questions || test.questions || [],
+      questionIds: (updates.questions || test.questions || []).map((question) => question.id),
+      totalQuestions: (updates.questions || test.questions || []).length,
+      updatedAt: nowIso(),
+    }
+    return updated
+  })
+  writeJson(GENERATED_TESTS_KEY, next)
+  return updated
 }
 
 export function generatePracticeTestForLesson(courseId, lessonId, createdByRole = ROLES.TRAINEE) {
