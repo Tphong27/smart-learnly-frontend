@@ -12,6 +12,7 @@ import { ROLES } from "@/shared/constants/roles";
 
 const STORAGE_KEYS = {
   questions: "slp.demo.sme.questions",
+  questionBanks: "slp.demo.sme.questionBanks",
 };
 
 function readJson(key, fallback) {
@@ -204,6 +205,114 @@ function getStoredQuestions() {
 
 function setStoredQuestions(questions) {
   writeJson(STORAGE_KEYS.questions, questions);
+}
+
+function getStoredQuestionBanks() {
+  return readJson(STORAGE_KEYS.questionBanks, []);
+}
+
+function setStoredQuestionBanks(questionBanks) {
+  writeJson(STORAGE_KEYS.questionBanks, questionBanks);
+}
+
+function getQuestionBankTitle(courseId) {
+  const course = getLifecycleCourseById(courseId);
+
+  return course?.title ? `${course.title} Question Bank` : "Untitled Question Bank";
+}
+
+export function getSmeQuestionBankMetas() {
+  const storedBanks = getStoredQuestionBanks();
+
+  const questionCourseIds = new Set(
+    getSmeQuestionBank()
+      .map((question) => question.courseId)
+      .filter(Boolean),
+  );
+
+  const derivedBanks = Array.from(questionCourseIds).map((courseId) => {
+    const course = getLifecycleCourseById(courseId);
+
+    return {
+      id: `question-bank-${courseId}`,
+      courseId,
+      title: getQuestionBankTitle(courseId),
+      description: `Question bank generated from existing questions of ${course?.title || courseId}.`,
+      status: "active",
+      createdAt: course?.createdAt || new Date().toISOString(),
+      updatedAt: course?.updatedAt || new Date().toISOString(),
+      source: "derived",
+    };
+  });
+
+  const storedByCourseId = new Map(storedBanks.map((bank) => [bank.courseId, bank]));
+
+  return [
+    ...derivedBanks.map((bank) => ({
+      ...bank,
+      ...(storedByCourseId.get(bank.courseId) || {}),
+    })),
+    ...storedBanks.filter((bank) => !questionCourseIds.has(bank.courseId)),
+  ];
+}
+
+export function createSmeQuestionBank(payload = {}) {
+  const course = getLifecycleCourseById(payload.courseId);
+  const current = getStoredQuestionBanks();
+
+  const duplicated = current.find((bank) => bank.courseId === payload.courseId);
+
+  if (duplicated) {
+    return updateSmeQuestionBank(duplicated.id, payload);
+  }
+
+  const questionBank = {
+    id: createId("sme-question-bank"),
+    courseId: payload.courseId,
+    title: payload.title || getQuestionBankTitle(payload.courseId),
+    description:
+      payload.description ||
+      `Question bank for ${course?.title || payload.courseId}.`,
+    status: payload.status || "active",
+    source: "manual",
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+
+  setStoredQuestionBanks([questionBank, ...current]);
+
+  return questionBank;
+}
+
+export function updateSmeQuestionBank(questionBankId, payload = {}) {
+  const current = getStoredQuestionBanks();
+
+  const existing =
+    current.find((bank) => bank.id === questionBankId) ||
+    getSmeQuestionBankMetas().find((bank) => bank.id === questionBankId);
+
+  if (!existing) return null;
+
+  const updatedBank = {
+    ...existing,
+    ...payload,
+    title: payload.title || existing.title,
+    description: payload.description ?? existing.description,
+    status: payload.status || existing.status,
+    updatedAt: new Date().toISOString(),
+  };
+
+  const existsInStored = current.some((bank) => bank.id === questionBankId);
+
+  if (existsInStored) {
+    setStoredQuestionBanks(
+      current.map((bank) => (bank.id === questionBankId ? updatedBank : bank)),
+    );
+  } else {
+    setStoredQuestionBanks([updatedBank, ...current]);
+  }
+
+  return updatedBank;
 }
 
 function getGeneratedQuestionDrafts() {

@@ -19,10 +19,13 @@ import {
   approveSmeQuestion,
   createAiDraftQuestion,
   createSmeQuestion,
+  createSmeQuestionBank,
   deleteSmeQuestion,
   getSmeQuestionBank,
+  getSmeQuestionBankMetas,
   rejectSmeQuestion,
   updateSmeQuestion,
+  updateSmeQuestionBank,
 } from "@/data/demo/demoSmeRuntime";
 import {
   getAllLifecycleCourses,
@@ -95,6 +98,12 @@ const emptyAiForm = {
   bloom: "Understand",
   clo: "CLO-AI",
 };
+const emptyQuestionBankForm = {
+  courseId: "",
+  title: "",
+  description: "",
+  status: "active",
+};
 
 function getCourseTitle(courseId) {
   return (
@@ -148,8 +157,26 @@ function enrichQuestion(question) {
   };
 }
 
-function buildQuestionBanks(questions) {
+function buildQuestionBanks(questions, bankMetas = []) {
   const bankMap = new Map();
+
+  bankMetas.forEach((meta) => {
+    const course = getLifecycleCourseById(meta.courseId);
+
+    bankMap.set(meta.courseId, {
+      id: meta.id,
+      courseId: meta.courseId,
+      title: meta.title,
+      description: meta.description,
+      status: meta.status || "active",
+      source: meta.source || "manual",
+      courseTitle: course?.title || meta.courseTitle || meta.courseId,
+      courseStatus: course?.status || "unknown",
+      category: course?.category || "General",
+      level: course?.level || "Mixed",
+      questions: [],
+    });
+  });
 
   questions.forEach((question) => {
     const course = getLifecycleCourseById(question.courseId);
@@ -158,6 +185,10 @@ function buildQuestionBanks(questions) {
       bankMap.set(question.courseId, {
         id: `question-bank-${question.courseId}`,
         courseId: question.courseId,
+        title: `${course?.title || question.courseTitle || question.courseId} Question Bank`,
+        description: `Question bank generated from existing questions of ${course?.title || question.courseId}.`,
+        status: "active",
+        source: "derived",
         courseTitle: course?.title || question.courseTitle || question.courseId,
         courseStatus: course?.status || "unknown",
         category: course?.category || "General",
@@ -243,7 +274,7 @@ function toQuestionForm(question) {
   };
 }
 
-function QuestionBankCard({ bank, viewMode, onOpen }) {
+function QuestionBankCard({ bank, viewMode, onOpen, onEdit }) {
   return (
     <article
       className={
@@ -255,7 +286,7 @@ function QuestionBankCard({ bank, viewMode, onOpen }) {
       <div className="question-bank-card__header">
         <div>
           <span className="demo-kicker">Question Bank</span>
-          <h2>{bank.courseTitle}</h2>
+          <h2>{bank.title || bank.courseTitle}</h2>
           <p>
             {bank.category} · {bank.level}
           </p>
@@ -280,6 +311,15 @@ function QuestionBankCard({ bank, viewMode, onOpen }) {
         >
           <Eye size={16} />
           Open bank
+        </button>
+
+        <button
+          type="button"
+          className="demo-secondary-action"
+          onClick={() => onEdit(bank)}
+        >
+          <Pencil size={16} />
+          Update
         </button>
       </div>
     </article>
@@ -337,6 +377,135 @@ function QuestionBankToolbar({
           List
         </button>
       </div>
+    </section>
+  );
+}
+function QuestionBankForm({
+  title,
+  courses,
+  initialForm,
+  existingBanks,
+  onSubmit,
+  onCancel,
+}) {
+  const [form, setForm] = useState(initialForm || emptyQuestionBankForm);
+
+  const availableCourses = useMemo(() => {
+    const usedCourseIds = new Set(
+      existingBanks
+        .filter((bank) => bank.courseId !== initialForm?.courseId)
+        .map((bank) => bank.courseId),
+    );
+
+    return courses.filter((course) => !usedCourseIds.has(course.id));
+  }, [courses, existingBanks, initialForm?.courseId]);
+
+  const handleCourseChange = (courseId) => {
+    const course = courses.find((item) => item.id === courseId);
+
+    setForm({
+      ...form,
+      courseId,
+      title:
+        form.title || `${course?.title || "Selected course"} Question Bank`,
+      description:
+        form.description ||
+        `Question bank for ${course?.title || "selected course"}.`,
+    });
+  };
+
+  const handleSubmit = () => {
+    if (!form.courseId || !form.title.trim()) return;
+
+    onSubmit({
+      ...form,
+      title: form.title.trim(),
+      description: form.description.trim(),
+    });
+  };
+
+  return (
+    <section className="demo-card question-bank-form-card">
+      <div className="demo-row demo-row--between">
+        <div>
+          <span className="demo-kicker">Question Bank</span>
+          <h2>{title}</h2>
+          <p>
+            Create a question bank for a course before managing its questions.
+          </p>
+        </div>
+
+        <button
+          type="button"
+          className="demo-secondary-action"
+          onClick={onCancel}
+        >
+          <X size={16} />
+          Cancel
+        </button>
+      </div>
+
+      <div className="question-bank-form-grid question-bank-form-grid--two">
+        <label className="course-flow-field">
+          <span>Course</span>
+          <select
+            value={form.courseId}
+            disabled={Boolean(initialForm?.courseId)}
+            onChange={(event) => handleCourseChange(event.target.value)}
+          >
+            <option value="">Select course</option>
+            {availableCourses.map((course) => (
+              <option key={course.id} value={course.id}>
+                {course.title}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label className="course-flow-field">
+          <span>Status</span>
+          <select
+            value={form.status}
+            onChange={(event) =>
+              setForm({ ...form, status: event.target.value })
+            }
+          >
+            <option value="active">Active</option>
+            <option value="draft">Draft</option>
+            <option value="archived">Archived</option>
+          </select>
+        </label>
+      </div>
+
+      <label className="course-flow-field">
+        <span>QuestionBank name</span>
+        <input
+          value={form.title}
+          placeholder="Example: AWS Cloud Practitioner Question Bank"
+          onChange={(event) => setForm({ ...form, title: event.target.value })}
+        />
+      </label>
+
+      <label className="course-flow-field">
+        <span>Description</span>
+        <textarea
+          rows="3"
+          value={form.description}
+          placeholder="Describe the purpose of this question bank..."
+          onChange={(event) =>
+            setForm({ ...form, description: event.target.value })
+          }
+        />
+      </label>
+
+      <button
+        type="button"
+        className="demo-primary-action"
+        onClick={handleSubmit}
+      >
+        <Plus size={16} />
+        Save QuestionBank
+      </button>
     </section>
   );
 }
@@ -1222,12 +1391,19 @@ export function QuestionBankPage() {
   const [keyword, setKeyword] = useState("");
   const [courseFilter, setCourseFilter] = useState("all");
 
+  const [bankMetas, setBankMetas] = useState(() => getSmeQuestionBankMetas());
+  const [showBankForm, setShowBankForm] = useState(false);
+  const [editingBank, setEditingBank] = useState(null);
+
   const refresh = () => {
     const nextQuestions = getSmeQuestionBank().map(enrichQuestion);
+    const nextBankMetas = getSmeQuestionBankMetas();
+
     setQuestions(nextQuestions);
+    setBankMetas(nextBankMetas);
 
     if (selectedBank) {
-      const nextBanks = buildQuestionBanks(nextQuestions);
+      const nextBanks = buildQuestionBanks(nextQuestions, nextBankMetas);
       setSelectedBank(
         nextBanks.find((bank) => bank.courseId === selectedBank.courseId) ||
           null,
@@ -1236,31 +1412,8 @@ export function QuestionBankPage() {
   };
 
   const banks = useMemo(() => {
-    const questionCourseIds = new Set(
-      questions.map((question) => question.courseId),
-    );
-    const questionBanks = buildQuestionBanks(questions);
-
-    const emptyCourseBanks = getAllLifecycleCourses()
-      .filter((course) => !questionCourseIds.has(course.id))
-      .map((course) => ({
-        id: `question-bank-${course.id}`,
-        courseId: course.id,
-        courseTitle: course.title,
-        courseStatus: course.status,
-        category: course.category || "General",
-        level: course.level || "Mixed",
-        questions: [],
-        total: 0,
-        approved: 0,
-        review: 0,
-        rejected: 0,
-        aiGenerated: 0,
-        manual: 0,
-      }));
-
-    return [...questionBanks, ...emptyCourseBanks];
-  }, [questions]);
+    return buildQuestionBanks(questions, bankMetas);
+  }, [questions, bankMetas]);
 
   const visibleBanks = useMemo(() => {
     const normalizedKeyword = keyword.trim().toLowerCase();
@@ -1279,6 +1432,31 @@ export function QuestionBankPage() {
       return matchesKeyword && matchesCourse;
     });
   }, [banks, keyword, courseFilter]);
+
+  const courses = useMemo(() => getAllLifecycleCourses(), []);
+
+  const handleCreateQuestionBank = (payload) => {
+    createSmeQuestionBank(payload);
+    setShowBankForm(false);
+    refresh();
+  };
+
+  const handleUpdateQuestionBank = (payload) => {
+    updateSmeQuestionBank(editingBank.id, payload);
+    setEditingBank(null);
+    refresh();
+  };
+
+  const handleEditBank = (bank) => {
+    setEditingBank({
+      id: bank.id,
+      courseId: bank.courseId,
+      title: bank.title || `${bank.courseTitle} Question Bank`,
+      description: bank.description || "",
+      status: bank.status || "active",
+    });
+    setShowBankForm(false);
+  };
 
   const handleCreateManual = (payload) => {
     createSmeQuestion(payload);
@@ -1320,6 +1498,21 @@ export function QuestionBankPage() {
       <PageHeader
         title="Question Bank"
         description="Manage question banks by course. SME can create manual questions or generate AI draft questions for review."
+        action={
+          !selectedBank ? (
+            <button
+              type="button"
+              className="demo-primary-action"
+              onClick={() => {
+                setShowBankForm(true);
+                setEditingBank(null);
+              }}
+            >
+              <Plus size={16} />
+              Create QuestionBank
+            </button>
+          ) : null
+        }
       />
 
       {selectedBank ? (
@@ -1336,6 +1529,36 @@ export function QuestionBankPage() {
         />
       ) : (
         <>
+          {showBankForm && (
+            <QuestionBankForm
+              title="Create QuestionBank"
+              courses={courses}
+              existingBanks={banks}
+              initialForm={{
+                ...emptyQuestionBankForm,
+                courseId: courses[0]?.id || "",
+                title: courses[0]?.title
+                  ? `${courses[0].title} Question Bank`
+                  : "",
+                description: courses[0]?.title
+                  ? `Question bank for ${courses[0].title}.`
+                  : "",
+              }}
+              onCancel={() => setShowBankForm(false)}
+              onSubmit={handleCreateQuestionBank}
+            />
+          )}
+
+          {editingBank && (
+            <QuestionBankForm
+              title="Update QuestionBank"
+              courses={courses}
+              existingBanks={banks}
+              initialForm={editingBank}
+              onCancel={() => setEditingBank(null)}
+              onSubmit={handleUpdateQuestionBank}
+            />
+          )}
           <QuestionBankToolbar
             keyword={keyword}
             courseFilter={courseFilter}
@@ -1366,6 +1589,7 @@ export function QuestionBankPage() {
                   bank={bank}
                   viewMode={viewMode}
                   onOpen={setSelectedBank}
+                  onEdit={handleEditBank}
                 />
               ))}
             </section>
