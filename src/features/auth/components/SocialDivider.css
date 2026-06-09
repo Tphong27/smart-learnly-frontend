@@ -1,0 +1,17 @@
+.social-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 16px 0;
+  color: #9ca3af;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.social-divider::before,
+.social-divider::after {
+  flex: 1;
+  height: 1px;
+  background: #e5e7eb;
+  content: "";
+}

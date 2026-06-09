@@ -4,6 +4,14 @@ import { AppLayout } from './layouts/AppLayout'
 import { ProtectedRoute } from './routes/ProtectedRoute'
 import { RoleGuard } from './routes/RoleGuard'
 import { HomePage } from '../features/home/HomePage'
+import {
+  LoginPage,
+  RegisterPage,
+  ForgotPasswordPage,
+  ResetPasswordPage,
+  VerifyEmailPage,
+  ProfilePage,
+} from '../features/auth'
 import { ROLES } from '@/shared/constants/roles'
 
 function PlaceholderPage({ title }) {
@@ -15,14 +23,6 @@ function PlaceholderPage({ title }) {
       </p>
     </section>
   )
-}
-
-function LoginPage() {
-  return <PlaceholderPage title="Login" />
-}
-
-function RegisterPage() {
-  return <PlaceholderPage title="Register" />
 }
 
 function ForbiddenPage() {
@@ -46,28 +46,16 @@ export function AppShell() {
           }
         />
 
-        <Route
-          path="/login"
-          element={
-            <PublicLayout>
-              <LoginPage />
-            </PublicLayout>
-          }
-        />
-
-        <Route
-          path="/register"
-          element={
-            <PublicLayout>
-              <RegisterPage />
-            </PublicLayout>
-          }
-        />
+        <Route path="/login" element={<PublicLayout><LoginPage /></PublicLayout>} />
+        <Route path="/register" element={<PublicLayout><RegisterPage /></PublicLayout>} />
+        <Route path="/forgot-password" element={<PublicLayout><ForgotPasswordPage /></PublicLayout>} />
+        <Route path="/reset-password" element={<PublicLayout><ResetPasswordPage /></PublicLayout>} />
+        <Route path="/verify-email" element={<PublicLayout><VerifyEmailPage /></PublicLayout>} />
 
         <Route element={<ProtectedRoute />}>
           <Route element={<AppLayout />}>
             <Route path="/dashboard" element={<PlaceholderPage title="Dashboard" />} />
-            <Route path="/profile" element={<PlaceholderPage title="Profile" />} />
+            <Route path="/profile" element={<ProfilePage />} />
             <Route path="/my-courses" element={<PlaceholderPage title="My Courses" />} />
             <Route path="/tests" element={<PlaceholderPage title="Tests" />} />
 
