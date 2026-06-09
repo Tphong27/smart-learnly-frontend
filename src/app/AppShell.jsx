@@ -2,6 +2,7 @@ import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { PublicLayout } from "./layouts/PublicLayout";
 import { AppLayout } from "./layouts/AppLayout";
 import { WorkspaceLayout } from "./layouts/WorkspaceLayout";
+import { ClassWorkspaceLayout } from "./layouts/ClassWorkspaceLayout";
 import { ProtectedRoute } from "./routes/ProtectedRoute";
 import { RoleGuard } from "./routes/RoleGuard";
 import { LoginPage } from "../features/auth/LoginPage";
@@ -28,7 +29,6 @@ import { TmoCourseReviewPage } from "../features/course/TmoCourseReviewPage";
 import { TmoCreateCoursePage } from "../features/course/TmoCreateCoursePage";
 import { QuestionBankPage } from "../features/assessment/QuestionBankPage";
 import { TrainerClassesPage } from "../features/classroom/TrainerClassesPage";
-import { ClassDetailPage } from "../features/classroom/ClassDetailPage";
 import { UsersRolesPage } from "../features/admin/UsersRolesPage";
 import { SystemSettingsPage } from "../features/admin/SystemSettingsPage";
 import { FlashcardsPage } from "../features/flashcard/FlashcardsPage";
@@ -37,6 +37,25 @@ import { PaymentHistoryPage } from "../features/payment/PaymentHistoryPage";
 import { TmoClassManagementPage } from "../features/classroom/TmoClassManagementPage";
 import { TmoPaymentManagementPage } from "../features/payment/TmoPaymentManagementPage";
 import { ROLES } from "@/shared/constants/roles";
+
+// Class Flow: TMO
+import { TmoCreateClassPage } from "../features/classroom/TmoCreateClassPage";
+import { TmoClassDetailPage } from "../features/classroom/TmoClassDetailPage";
+// Class Flow: Trainer Workspace
+import { TrainerClassOverview } from "../features/classroom/trainer/TrainerClassOverview";
+import { TrainerAssignments } from "../features/classroom/trainer/TrainerAssignments";
+import { TrainerTests } from "../features/classroom/trainer/TrainerTests";
+import { TrainerFlashcards } from "../features/classroom/trainer/TrainerFlashcards";
+import { TrainerDiscussions } from "../features/classroom/trainer/TrainerDiscussions";
+import { TrainerTrainees } from "../features/classroom/trainer/TrainerTrainees";
+import { TrainerAnalytics } from "../features/classroom/trainer/TrainerAnalytics";
+// Class Flow: Trainee Workspace
+import { TraineeClassOverview } from "../features/classroom/trainee/TraineeClassOverview";
+import { TraineeAssignments } from "../features/classroom/trainee/TraineeAssignments";
+import { TraineeTests } from "../features/classroom/trainee/TraineeTests";
+import { TraineeFlashcards } from "../features/classroom/trainee/TraineeFlashcards";
+import { TraineeDiscussions } from "../features/classroom/trainee/TraineeDiscussions";
+import { TraineeProgress } from "../features/classroom/trainee/TraineeProgress";
 
 function PlaceholderPage({ title }) {
   return (
@@ -112,8 +131,10 @@ export function AppShell() {
         />
 
         <Route element={<ProtectedRoute />}>
+          {/* ── Workspace Layout (existing) ────────────────── */}
           <Route element={<WorkspaceLayout />}>
             <Route element={<RoleGuard allowedRoles={[ROLES.TRAINEE]} />}>
+              <Route path="/learning" element={<LearningWorkspacePage />} />
               <Route
                 path="/learning/:courseId"
                 element={<LearningWorkspacePage />}
@@ -134,6 +155,7 @@ export function AppShell() {
             </Route>
           </Route>
 
+          {/* ── App Layout (with global sidebar) ───────────── */}
           <Route element={<AppLayout />}>
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route
@@ -149,8 +171,11 @@ export function AppShell() {
               />
               <Route path="/my-courses" element={<MyCoursesPage />} />
               <Route path="/my-classes" element={<TraineeMyClassesPage />} />
+              <Route
+                path="/my-classes/:classId"
+                element={<Navigate to="workspace" replace />}
+              />
               <Route path="/payments" element={<PaymentHistoryPage />} />
-              <Route path="/learning" element={<LearningWorkspacePage />} />
               <Route path="/flashcards" element={<FlashcardsPage />} />
               <Route path="/tests" element={<TestListPage />} />
               <Route path="/tests/:testId" element={<TestDetailPage />} />
@@ -190,6 +215,7 @@ export function AppShell() {
                 element={<TmoCourseReviewPage />}
               />
               <Route path="/tmo/classes" element={<TmoClassManagementPage />} />
+              <Route path="/tmo/classes/create" element={<TmoCreateClassPage />} />
               <Route
                 path="/tmo/payments"
                 element={<TmoPaymentManagementPage />}
@@ -219,10 +245,41 @@ export function AppShell() {
               }
             >
               <Route path="/trainer/classes" element={<TrainerClassesPage />} />
+              {/* Old route → redirect to new workspace (ClassDetailPage kept in codebase) */}
               <Route
                 path="/trainer/classes/:classId"
-                element={<ClassDetailPage />}
+                element={<Navigate to="workspace" replace />}
               />
+            </Route>
+          </Route>
+
+          {/* ── Class Workspace Layout (full-screen, no global sidebar) ── */}
+          <Route element={<ClassWorkspaceLayout />}>
+            {/* TMO Class Workspace */}
+            <Route element={<RoleGuard allowedRoles={[ROLES.TMO, ROLES.ADMIN]} />}>
+              <Route path="/tmo/classes/:classId" element={<TmoClassDetailPage />} />
+              <Route path="/tmo/classes/:classId/manage" element={<TmoClassDetailPage />} />
+            </Route>
+
+            {/* Trainer Class Workspace */}
+            <Route element={<RoleGuard allowedRoles={[ROLES.TRAINER, ROLES.TMO, ROLES.ADMIN]} />}>
+              <Route path="/trainer/classes/:classId/workspace" element={<TrainerClassOverview />} />
+              <Route path="/trainer/classes/:classId/assignments" element={<TrainerAssignments />} />
+              <Route path="/trainer/classes/:classId/tests" element={<TrainerTests />} />
+              <Route path="/trainer/classes/:classId/flashcards" element={<TrainerFlashcards />} />
+              <Route path="/trainer/classes/:classId/discussions" element={<TrainerDiscussions />} />
+              <Route path="/trainer/classes/:classId/trainees" element={<TrainerTrainees />} />
+              <Route path="/trainer/classes/:classId/analytics" element={<TrainerAnalytics />} />
+            </Route>
+
+            {/* Trainee Class Workspace */}
+            <Route element={<RoleGuard allowedRoles={[ROLES.TRAINEE]} />}>
+              <Route path="/my-classes/:classId/workspace" element={<TraineeClassOverview />} />
+              <Route path="/my-classes/:classId/assignments" element={<TraineeAssignments />} />
+              <Route path="/my-classes/:classId/tests" element={<TraineeTests />} />
+              <Route path="/my-classes/:classId/flashcards" element={<TraineeFlashcards />} />
+              <Route path="/my-classes/:classId/discussions" element={<TraineeDiscussions />} />
+              <Route path="/my-classes/:classId/progress" element={<TraineeProgress />} />
             </Route>
           </Route>
         </Route>

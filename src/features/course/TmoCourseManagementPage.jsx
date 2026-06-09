@@ -1,10 +1,17 @@
 import { useMemo, useState } from 'react'
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
-import { ArrowRight, BookOpen, ClipboardCheck, Eye, Search, Send, UploadCloud } from 'lucide-react'
+import { ArrowRight, BookOpen, ClipboardCheck, Eye, Send, UploadCloud } from 'lucide-react'
 import { KpiCard } from '@/shared/components/ui/KpiCard'
 import { PageHeader } from '@/shared/components/ui/PageHeader'
 import { DataState } from '@/shared/components/ui/DataState'
 import { Modal } from '@/shared/components/ui/Modal/Modal'
+import {
+  ClearFiltersButton,
+  FilterToolbar,
+  SearchBox,
+  SelectFilter,
+  StatusTabs,
+} from '@/shared/components/ui/ListControls'
 import {
   assignCourseToSme,
   getAllLifecycleCourses,
@@ -14,8 +21,6 @@ import {
 } from '@/data/demo/courseLifecycleRuntime'
 import { COURSE_STATUSES } from '@/data/demo/courseLifecycle'
 import { CourseStatusBadge } from './CourseStatusBadge'
-
-const allStatuses = ['All statuses', ...Object.values(COURSE_STATUSES)]
 
 function formatPrice(course) {
   if (!course?.price) return 'Free'
@@ -170,6 +175,7 @@ export function TmoCourseManagementPage() {
     status: initialStatus,
     category: 'All categories',
     sme: 'All SMEs',
+    sort: 'updated-desc',
   })
   const [assignCourse, setAssignCourse] = useState(null)
 
@@ -186,7 +192,8 @@ export function TmoCourseManagementPage() {
   const visibleCourses = useMemo(() => {
     const keyword = filters.keyword.trim().toLowerCase()
 
-    return courses.filter((course) => {
+    return courses
+      .filter((course) => {
       const matchesKeyword = [course.title, course.category, course.assignedSmeName]
         .join(' ')
         .toLowerCase()
@@ -197,13 +204,49 @@ export function TmoCourseManagementPage() {
 
       return matchesKeyword && matchesStatus && matchesCategory && matchesSme
     })
+      .sort((a, b) => {
+        if (filters.sort === 'updated-asc') {
+          return new Date(a.updatedAt || a.createdAt || 0) - new Date(b.updatedAt || b.createdAt || 0)
+        }
+        if (filters.sort === 'title') return a.title.localeCompare(b.title)
+        if (filters.sort === 'price-high') return Number(b.price || 0) - Number(a.price || 0)
+        return new Date(b.updatedAt || b.createdAt || 0) - new Date(a.updatedAt || a.createdAt || 0)
+      })
   }, [courses, filters])
 
   const counts = getCourseCounts(courses)
+  const statusTabs = useMemo(
+    () => [
+      { key: 'All statuses', label: 'All', count: courses.length },
+      ...Object.values(COURSE_STATUSES).map((status) => ({
+        key: status,
+        label: status,
+        count: courses.filter((course) => course.status === status).length,
+      })),
+    ],
+    [courses],
+  )
 
   const updateFilter = (name, value) => {
     setFilters((current) => ({ ...current, [name]: value }))
   }
+
+  const resetFilters = () => {
+    setFilters({
+      keyword: '',
+      status: 'All statuses',
+      category: 'All categories',
+      sme: 'All SMEs',
+      sort: 'updated-desc',
+    })
+  }
+
+  const hasActiveFilters =
+    filters.keyword ||
+    filters.status !== 'All statuses' ||
+    filters.category !== 'All categories' ||
+    filters.sme !== 'All SMEs' ||
+    filters.sort !== 'updated-desc'
 
   const handlePublish = (courseId) => {
     publishCourse(courseId)
@@ -245,28 +288,49 @@ export function TmoCourseManagementPage() {
         <KpiCard title="Published Courses" value={counts.published} icon={UploadCloud} />
       </div>
 
-      <div className="course-flow-filter-card">
-        <label className="course-flow-search">
-          <Search size={17} />
-          <input
-            value={filters.keyword}
-            placeholder="Search by course title"
-            onChange={(event) => updateFilter('keyword', event.target.value)}
-          />
-        </label>
+      <StatusTabs
+        tabs={statusTabs}
+        activeKey={filters.status}
+        onChange={(status) => updateFilter('status', status)}
+        ariaLabel="Course lifecycle status"
+      />
 
-        <select value={filters.status} onChange={(event) => updateFilter('status', event.target.value)}>
-          {allStatuses.map((status) => <option key={status}>{status}</option>)}
-        </select>
+      <FilterToolbar>
+        <SearchBox
+          value={filters.keyword}
+          placeholder="Search course title, category, SME"
+          ariaLabel="Search managed courses"
+          onChange={(value) => updateFilter('keyword', value)}
+        />
 
-        <select value={filters.category} onChange={(event) => updateFilter('category', event.target.value)}>
-          {categories.map((category) => <option key={category}>{category}</option>)}
-        </select>
+        <SelectFilter
+          value={filters.category}
+          onChange={(value) => updateFilter('category', value)}
+          ariaLabel="Filter courses by category"
+          options={categories}
+        />
 
-        <select value={filters.sme} onChange={(event) => updateFilter('sme', event.target.value)}>
-          {smeOptions.map((sme) => <option key={sme}>{sme}</option>)}
-        </select>
-      </div>
+        <SelectFilter
+          value={filters.sme}
+          onChange={(value) => updateFilter('sme', value)}
+          ariaLabel="Filter courses by SME"
+          options={smeOptions}
+        />
+
+        <SelectFilter
+          value={filters.sort}
+          onChange={(value) => updateFilter('sort', value)}
+          ariaLabel="Sort managed courses"
+          options={[
+            { value: 'updated-desc', label: 'Last updated' },
+            { value: 'updated-asc', label: 'Oldest updated' },
+            { value: 'title', label: 'Name A-Z' },
+            { value: 'price-high', label: 'Price high to low' },
+          ]}
+        />
+
+        <ClearFiltersButton onClick={resetFilters} disabled={!hasActiveFilters} />
+      </FilterToolbar>
 
       <CourseTable
         courses={visibleCourses}

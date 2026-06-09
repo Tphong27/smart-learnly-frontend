@@ -138,7 +138,9 @@ export function UsersRolesPage() {
     keyword: '',
     role: 'all',
     status: 'all',
+    sort: 'name',
   })
+  const [selectedIds, setSelectedIds] = useState(new Set())
   const [modalOpen, setModalOpen] = useState(false)
   const [modalMode, setModalMode] = useState('create')
   const [editingUserId, setEditingUserId] = useState(null)
@@ -151,7 +153,8 @@ export function UsersRolesPage() {
   const visibleUsers = useMemo(() => {
     const keyword = filters.keyword.trim().toLowerCase()
 
-    return users.filter((user) => {
+    return users
+      .filter((user) => {
       const matchesKeyword = [user.name, user.email, user.role, user.status]
         .join(' ')
         .toLowerCase()
@@ -164,6 +167,16 @@ export function UsersRolesPage() {
 
       return matchesKeyword && matchesRole && matchesStatus
     })
+      .sort((a, b) => {
+        if (filters.sort === 'created-desc') {
+          return new Date(b.createdAt || 0) - new Date(a.createdAt || 0)
+        }
+        if (filters.sort === 'created-asc') {
+          return new Date(a.createdAt || 0) - new Date(b.createdAt || 0)
+        }
+        if (filters.sort === 'role') return a.role.localeCompare(b.role)
+        return a.name.localeCompare(b.name)
+      })
   }, [users, filters])
 
   const refresh = () => {
@@ -175,6 +188,39 @@ export function UsersRolesPage() {
       ...current,
       [name]: value,
     }))
+  }
+
+  const resetFilters = () => {
+    setFilters({
+      keyword: '',
+      role: 'all',
+      status: 'all',
+      sort: 'name',
+    })
+  }
+
+  const hasActiveFilters =
+    filters.keyword ||
+    filters.role !== 'all' ||
+    filters.status !== 'all' ||
+    filters.sort !== 'name'
+
+  const toggleSelected = (userId) => {
+    setSelectedIds((current) => {
+      const next = new Set(current)
+      if (next.has(userId)) {
+        next.delete(userId)
+      } else {
+        next.add(userId)
+      }
+      return next
+    })
+  }
+
+  const handleBulkStatus = (status) => {
+    selectedIds.forEach((userId) => updateAdminUser(userId, { status }))
+    setSelectedIds(new Set())
+    refresh()
   }
 
   const openCreate = () => {
@@ -274,7 +320,43 @@ export function UsersRolesPage() {
           <option value="inactive">Inactive</option>
           <option value="locked">Locked</option>
         </select>
+
+        <select
+          value={filters.sort}
+          onChange={(event) => updateFilter('sort', event.target.value)}
+        >
+          <option value="name">Name A-Z</option>
+          <option value="role">Role A-Z</option>
+          <option value="created-desc">Newest created</option>
+          <option value="created-asc">Oldest created</option>
+        </select>
+
+        <button
+          type="button"
+          className="demo-secondary-action list-clear-button"
+          disabled={!hasActiveFilters}
+          onClick={resetFilters}
+        >
+          Clear filters
+        </button>
       </div>
+
+      {selectedIds.size > 0 ? (
+        <div className="course-flow-note-card">
+          <strong>{selectedIds.size} selected user(s)</strong>
+          <div className="demo-actions">
+            <button type="button" className="demo-secondary-action" onClick={() => handleBulkStatus('active')}>
+              Activate selected
+            </button>
+            <button type="button" className="demo-secondary-action" onClick={() => handleBulkStatus('inactive')}>
+              Deactivate selected
+            </button>
+            <button type="button" className="demo-secondary-action" onClick={() => setSelectedIds(new Set())}>
+              Clear selection
+            </button>
+          </div>
+        </div>
+      ) : null}
 
       {visibleUsers.length === 0 ? (
         <DataState
@@ -288,6 +370,7 @@ export function UsersRolesPage() {
             <table className="w-full min-w-[900px] text-left text-sm">
               <thead className="bg-slate-50 text-xs uppercase text-slate-500">
                 <tr>
+                  <th className="px-4 py-3">Select</th>
                   <th className="px-4 py-3">User</th>
                   <th className="px-4 py-3">Email</th>
                   <th className="px-4 py-3">Role</th>
@@ -300,6 +383,14 @@ export function UsersRolesPage() {
               <tbody className="divide-y divide-slate-100">
                 {visibleUsers.map((user) => (
                   <tr key={user.id} className="hover:bg-slate-50">
+                    <td className="px-4 py-4">
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.has(user.id)}
+                        onChange={() => toggleSelected(user.id)}
+                        aria-label={`Select ${user.name}`}
+                      />
+                    </td>
                     <td className="px-4 py-4 font-medium text-slate-900">
                       {user.name}
                     </td>

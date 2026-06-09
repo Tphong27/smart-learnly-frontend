@@ -3,6 +3,7 @@ import {
   getGeneratedResources,
   getLifecycleCourseById,
   getLifecycleModules,
+  getSavedQuestionBankEntries,
 } from './courseLifecycleRuntime'
 import { ROLES } from '@/shared/constants/roles'
 
@@ -84,6 +85,47 @@ function getGeneratedQuestionDrafts() {
     )
 }
 
+function getSavedCourseBuilderQuestions() {
+  return getSavedQuestionBankEntries().map((item) =>
+    normalizeQuestion({
+      ...item,
+      type: item.type || 'short_answer',
+      clo: item.clo || 'CLO-AI',
+      bloom: item.bloom || 'Understand',
+      difficulty: item.difficulty || 'medium',
+      status: item.status || 'review',
+      source: item.source || 'Saved from SME Course Builder',
+      isAiGenerated: item.isAiGenerated ?? true,
+      createdAt: item.savedAt || item.createdAt,
+    }),
+  )
+}
+
+function getQuestionSignature(question) {
+  return [
+    question.courseId,
+    question.lessonId,
+    String(question.question || '').trim().toLowerCase(),
+  ].join(':')
+}
+
+function dedupeQuestions(questions) {
+  const seenIds = new Set()
+  const seenSignatures = new Set()
+
+  return questions.filter((question) => {
+    const signature = getQuestionSignature(question)
+
+    if (seenIds.has(question.id) || seenSignatures.has(signature)) {
+      return false
+    }
+
+    seenIds.add(question.id)
+    seenSignatures.add(signature)
+    return true
+  })
+}
+
 export function getSmeQuestionBank() {
   const stored = getStoredQuestions()
   const storedById = new Map(stored.map((item) => [item.id, item]))
@@ -98,14 +140,25 @@ export function getSmeQuestionBank() {
     ...(storedById.get(question.id) || {}),
   }))
 
+  const savedCourseBuilderQuestions = getSavedCourseBuilderQuestions().map((question) => ({
+    ...question,
+    ...(storedById.get(question.id) || {}),
+  }))
+
   const baseIds = new Set([
     ...baseQuestions.map((item) => item.id),
     ...generatedQuestions.map((item) => item.id),
+    ...savedCourseBuilderQuestions.map((item) => item.id),
   ])
 
   const localOnly = stored.filter((item) => !baseIds.has(item.id))
 
-  return [...baseQuestions, ...generatedQuestions, ...localOnly]
+  return dedupeQuestions([
+    ...baseQuestions,
+    ...generatedQuestions,
+    ...savedCourseBuilderQuestions,
+    ...localOnly.map(normalizeQuestion),
+  ])
 }
 
 export function getSmeQuestionById(questionId) {

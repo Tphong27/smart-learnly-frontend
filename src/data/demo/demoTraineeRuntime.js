@@ -1,10 +1,15 @@
 import { demoClasses } from './demoClasses'
 import { demoCourseFeedback } from './demoFeedback'
-import { getAllDemoEnrollments } from './demoRuntime'
+import { getAllDemoEnrollments, getMockPayments } from './demoRuntime'
 import {
   getLifecycleCourseById,
   getLifecycleModules,
 } from './courseLifecycleRuntime'
+import {
+  getClassAssignments,
+  getClassFlowClasses,
+  updateClassFlowClass,
+} from './classFlowRuntime'
 
 const TRAINEE_ID = 'trainee-minh'
 
@@ -36,6 +41,30 @@ function createId(prefix) {
   return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`
 }
 
+function formatPaymentMethod(method) {
+  return String(method || 'bank_transfer')
+    .split('_')
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ')
+}
+
+function toTraineeClassCard(classItem, enrollmentStatus) {
+  return {
+    ...classItem,
+    name: classItem.name || classItem.className || classItem.displayName,
+    displayName: classItem.displayName || classItem.className || classItem.name,
+    courseTitle: classItem.courseTitle || classItem.course,
+    trainerName: classItem.trainerName || classItem.trainer || 'Unassigned',
+    traineeCount:
+      classItem.traineeCount ||
+      (Array.isArray(classItem.traineeIds) ? classItem.traineeIds.length : 0),
+    maxTrainees: classItem.maxTrainees || classItem.traineeCount || classItem.trainees,
+    assignments: getClassAssignments(classItem.id),
+    enrollmentStatus,
+    canJoinMeet: classItem.status === 'running',
+  }
+}
+
 export function getTraineeClassEnrollments(traineeId = TRAINEE_ID) {
   const stored = readJson(STORAGE_KEYS.classEnrollments, [])
 
@@ -60,23 +89,27 @@ export function getTraineeClassEnrollments(traineeId = TRAINEE_ID) {
 
 export function getTraineeClasses(traineeId = TRAINEE_ID) {
   const classEnrollments = getTraineeClassEnrollments(traineeId)
-  const enrolledClassIds = new Set(classEnrollments.map((item) => item.classId))
+  const legacyEnrollmentIds = new Set(classEnrollments.map((item) => item.classId))
+  const classFlowClasses = getClassFlowClasses()
 
-  const enrolledClasses = demoClasses
-    .filter((item) => enrolledClassIds.has(item.id))
-    .map((item) => ({
-      ...item,
-      enrollmentStatus: 'enrolled',
-      canJoinMeet: item.status === 'running',
-    }))
+  const enrolledClasses = classFlowClasses
+    .filter(
+      (item) =>
+        legacyEnrollmentIds.has(item.id) ||
+        (Array.isArray(item.traineeIds) && item.traineeIds.includes(traineeId)),
+    )
+    .map((item) => toTraineeClassCard(item, 'enrolled'))
 
-  const availableClasses = demoClasses
-    .filter((item) => !enrolledClassIds.has(item.id) && item.status !== 'completed')
-    .map((item) => ({
-      ...item,
-      enrollmentStatus: 'available',
-      canJoinMeet: false,
-    }))
+  const enrolledClassIds = new Set(enrolledClasses.map((item) => item.id))
+
+  const availableClasses = classFlowClasses
+    .filter(
+      (item) =>
+        !enrolledClassIds.has(item.id) &&
+        item.status !== 'completed' &&
+        item.status !== 'cancelled',
+    )
+    .map((item) => toTraineeClassCard(item, 'available'))
 
   return {
     enrolledClasses,
@@ -86,12 +119,20 @@ export function getTraineeClasses(traineeId = TRAINEE_ID) {
 
 export function enrollTraineeClass(classId, traineeId = TRAINEE_ID) {
   const current = getTraineeClassEnrollments(traineeId)
+  const classItem =
+    getClassFlowClasses().find((item) => item.id === classId) ||
+    demoClasses.find((item) => item.id === classId)
+  const traineeIds = classItem?.traineeIds || []
 
-  if (current.some((item) => item.classId === classId)) {
-    return current
+  if (classItem && !traineeIds.includes(traineeId)) {
+    updateClassFlowClass(classId, {
+      traineeIds: [...traineeIds, traineeId],
+    })
   }
 
-  const classItem = demoClasses.find((item) => item.id === classId)
+  if (current.some((item) => item.classId === classId)) {
+    return getTraineeClassEnrollments(traineeId)
+  }
 
   const next = [
     ...readJson(STORAGE_KEYS.classEnrollments, []),
@@ -129,12 +170,41 @@ export function getTraineePayments(traineeId = TRAINEE_ID) {
     },
   ]
 
-  const storedIds = new Set(stored.map((item) => item.id))
+  const runtimePayments = getMockPayments()
+    .filter((payment) => payment.userId === traineeId)
+    .map((payment) => {
+      const course = getLifecycleCourseById(payment.courseId)
 
-  return [
-    ...defaultPayments.filter((item) => !storedIds.has(item.id)),
-    ...stored,
-  ]
+      return {
+        id: payment.id,
+        traineeId,
+        courseId: payment.courseId,
+        classId: null,
+        invoiceNo: `SLP-MOCK-${payment.id.slice(-8).toUpperCase()}`,
+        title: course?.title || 'Course enrollment',
+        amount: payment.amount,
+        currency: payment.currency,
+        method: formatPaymentMethod(payment.method),
+        status: payment.status,
+        paidAt: payment.status === 'paid' ? payment.updatedAt || payment.createdAt : '',
+        type: 'Course Enrollment',
+      }
+    })
+
+  const paymentMap = new Map()
+  const mergedPayments = [...defaultPayments, ...stored, ...runtimePayments]
+
+  mergedPayments.forEach((payment) => {
+    if (!paymentMap.has(payment.id)) {
+      paymentMap.set(payment.id, payment)
+    }
+  })
+
+  return Array.from(paymentMap.values()).sort((a, b) => {
+    const aTime = new Date(a.paidAt || a.createdAt || 0).getTime()
+    const bTime = new Date(b.paidAt || b.createdAt || 0).getTime()
+    return bTime - aTime
+  })
 }
 
 export function getTraineePaymentById(paymentId) {

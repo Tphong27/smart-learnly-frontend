@@ -12,7 +12,14 @@ import { PageHeader } from "@/shared/components/ui/PageHeader";
 import { ProgressBar } from "@/shared/components/ui/ProgressBar";
 import { StatusBadge } from "@/shared/components/ui/StatusBadge";
 import { DataState } from "@/shared/components/ui/DataState";
-import { getTrainerClasses } from "@/data/demo/demoTrainerRuntime";
+import {
+  ClearFiltersButton,
+  FilterToolbar,
+  SearchBox,
+  SelectFilter,
+} from "@/shared/components/ui/ListControls";
+import { getCurrentUser } from "@/services/api-client";
+import { getClassesByTrainer } from "@/data/demo/classFlowRuntime";
 
 const tabs = [
   { key: "running", label: "Running" },
@@ -42,16 +49,16 @@ function MiniMetric({ label, value }) {
 function ClassCard({ item }) {
   return (
     <Link
-      to={`/trainer/classes/${item.id}`}
+      to={`/trainer/classes/${item.id}/workspace`}
       className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
     >
       <div className="flex items-start justify-between gap-4">
         <div>
           <h2 className="text-lg font-bold text-slate-900">
-            {item.displayName || item.name}
+            {item.className || item.displayName || item.name}
           </h2>
-          <p className="mt-1 text-sm text-slate-500">{item.course}</p>
-          <p className="mt-1 text-sm text-slate-500">Trainer: {item.trainer}</p>
+          <p className="mt-1 text-sm text-slate-500">{item.courseTitle || item.course}</p>
+          <p className="mt-1 text-sm text-slate-500">Trainer: {item.trainerName || item.trainer}</p>
         </div>
 
         <StatusBadge status={item.status} />
@@ -73,7 +80,7 @@ function ClassCard({ item }) {
         <ProgressBar value={item.averageProgress} label="Average progress" />
 
         <div className="grid gap-3 md:grid-cols-3">
-          <MiniMetric label="Trainees" value={item.trainees} />
+          <MiniMetric label="Trainees" value={item.maxTrainees || item.trainees} />
           <MiniMetric label="Avg. score" value={`${item.averageScore}%`} />
           <MiniMetric label="At risk" value={item.atRiskCount} />
         </div>
@@ -90,8 +97,15 @@ function ClassCard({ item }) {
 
 export function TrainerClassesPage() {
   const [activeTab, setActiveTab] = useState("running");
+  const [filters, setFilters] = useState({
+    keyword: "",
+    course: "all",
+    sort: "schedule",
+  });
 
-  const classes = useMemo(() => getTrainerClasses(), []);
+  const user = getCurrentUser();
+  const trainerId = user?.id || 'trainer-an';
+  const classes = useMemo(() => getClassesByTrainer(trainerId), [trainerId]);
   const isLoading = false;
   const error = null;
 
@@ -107,7 +121,56 @@ export function TrainerClassesPage() {
   const upcomingClasses = classGroups.upcoming;
   const completedClasses = classGroups.completed;
 
-  const filteredClasses = classGroups[activeTab] || [];
+  const courseOptions = useMemo(() => {
+    return ["all", ...new Set(classes.map((item) => item.courseTitle || item.course).filter(Boolean))];
+  }, [classes]);
+
+  const filteredClasses = useMemo(() => {
+    const keyword = filters.keyword.trim().toLowerCase();
+
+    return (classGroups[activeTab] || [])
+      .filter((item) => {
+        const matchesKeyword = [
+          item.className,
+          item.displayName,
+          item.name,
+          item.courseTitle,
+          item.course,
+          item.schedule,
+        ]
+          .join(" ")
+          .toLowerCase()
+          .includes(keyword);
+        const matchesCourse =
+          filters.course === "all" || (item.courseTitle || item.course) === filters.course;
+
+        return matchesKeyword && matchesCourse;
+      })
+      .sort((a, b) => {
+        if (filters.sort === "progress") return Number(b.averageProgress || 0) - Number(a.averageProgress || 0);
+        if (filters.sort === "name") {
+          return (a.className || a.displayName || a.name || "").localeCompare(
+            b.className || b.displayName || b.name || "",
+          );
+        }
+        return new Date(a.startDate || 0) - new Date(b.startDate || 0);
+      });
+  }, [activeTab, classGroups, filters]);
+
+  const updateFilter = (name, value) => {
+    setFilters((current) => ({ ...current, [name]: value }));
+  };
+
+  const resetFilters = () => {
+    setFilters({
+      keyword: "",
+      course: "all",
+      sort: "schedule",
+    });
+  };
+
+  const hasActiveFilters =
+    filters.keyword || filters.course !== "all" || filters.sort !== "schedule";
 
   const totalAtRisk = classes.reduce(
     (sum, item) => sum + (item.atRiskCount || 0),
@@ -204,11 +267,48 @@ export function TrainerClassesPage() {
         })}
       </div>
 
+      <FilterToolbar>
+        <SearchBox
+          value={filters.keyword}
+          placeholder="Search class or schedule"
+          ariaLabel="Search trainer classes"
+          onChange={(value) => updateFilter("keyword", value)}
+        />
+
+        <SelectFilter
+          value={filters.course}
+          onChange={(value) => updateFilter("course", value)}
+          ariaLabel="Filter trainer classes by course"
+          options={courseOptions.map((course) => ({
+            value: course,
+            label: course === "all" ? "All courses" : course,
+          }))}
+        />
+
+        <SelectFilter
+          value={filters.sort}
+          onChange={(value) => updateFilter("sort", value)}
+          ariaLabel="Sort trainer classes"
+          options={[
+            { value: "schedule", label: "Upcoming schedule" },
+            { value: "progress", label: "Progress high to low" },
+            { value: "name", label: "Name A-Z" },
+          ]}
+        />
+
+        <ClearFiltersButton onClick={resetFilters} disabled={!hasActiveFilters} />
+      </FilterToolbar>
+
       {filteredClasses.length === 0 ? (
         <DataState
           type="empty"
           title={`No ${activeTab} classes`}
-          description="Classes will appear here when their status matches this tab."
+          description="Classes will appear here when their status matches this tab and the current filters."
+          action={
+            <button type="button" className="demo-primary-action" onClick={resetFilters}>
+              Clear filters
+            </button>
+          }
         />
       ) : (
         <div className="grid gap-4 xl:grid-cols-2">

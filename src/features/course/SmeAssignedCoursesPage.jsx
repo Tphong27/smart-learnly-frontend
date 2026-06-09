@@ -5,11 +5,16 @@ import {
   BookOpen,
   ClipboardCheck,
   Layers3,
-  Search,
 } from 'lucide-react'
 import { KpiCard } from '@/shared/components/ui/KpiCard'
 import { PageHeader } from '@/shared/components/ui/PageHeader'
 import { DataState } from '@/shared/components/ui/DataState'
+import {
+  ClearFiltersButton,
+  FilterToolbar,
+  SearchBox,
+  SelectFilter,
+} from '@/shared/components/ui/ListControls'
 import { getAllLifecycleCourses } from '@/data/demo/courseLifecycleRuntime'
 import { COURSE_STATUSES } from '@/data/demo/courseLifecycle'
 import { getCurrentUser } from '@/services'
@@ -95,14 +100,17 @@ function AssignedCourseCard({ course }) {
 
 export function SmeAssignedCoursesPage() {
   const currentUser = getCurrentUser()
-  const [keyword, setKeyword] = useState('')
-  const [statusFilter, setStatusFilter] = useState('all')
+  const [filters, setFilters] = useState({
+    keyword: '',
+    status: 'all',
+    category: 'all',
+    sort: 'updated-desc',
+  })
 
   const allCourses = useMemo(() => getAllLifecycleCourses(), [])
 
-  const assignedCourses = useMemo(() => {
+  const baseAssignedCourses = useMemo(() => {
     const smeId = currentUser?.role === ROLES.ADMIN ? null : currentUser?.id
-    const normalizedKeyword = keyword.trim().toLowerCase()
 
     return allCourses.filter((course) => {
       const assignedToCurrentSme = !smeId || course.assignedSmeId === smeId
@@ -111,24 +119,61 @@ export function SmeAssignedCoursesPage() {
         course.status !== COURSE_STATUSES.PUBLISHED &&
         course.status !== COURSE_STATUSES.UNPUBLISHED
 
+      return assignedToCurrentSme && operationalStatus
+    })
+  }, [allCourses, currentUser])
+
+  const categories = useMemo(() => {
+    return ['all', ...new Set(baseAssignedCourses.map((course) => course.category).filter(Boolean))]
+  }, [baseAssignedCourses])
+
+  const assignedCourses = useMemo(() => {
+    const normalizedKeyword = filters.keyword.trim().toLowerCase()
+
+    return baseAssignedCourses
+      .filter((course) => {
       const matchesKeyword = [course.title, course.category, course.status]
         .join(' ')
         .toLowerCase()
         .includes(normalizedKeyword)
 
       const matchesStatus =
-        statusFilter === 'all' || course.status === statusFilter
+        filters.status === 'all' || course.status === filters.status
+      const matchesCategory =
+        filters.category === 'all' || course.category === filters.category
 
-      return (
-        assignedToCurrentSme &&
-        operationalStatus &&
-        matchesKeyword &&
-        matchesStatus
-      )
+      return matchesKeyword && matchesStatus && matchesCategory
     })
-  }, [allCourses, currentUser, keyword, statusFilter])
+      .sort((a, b) => {
+        if (filters.sort === 'updated-asc') {
+          return new Date(a.updatedAt || a.createdAt || 0) - new Date(b.updatedAt || b.createdAt || 0)
+        }
+        if (filters.sort === 'title') return a.title.localeCompare(b.title)
+        if (filters.sort === 'status') return a.status.localeCompare(b.status)
+        return new Date(b.updatedAt || b.createdAt || 0) - new Date(a.updatedAt || a.createdAt || 0)
+      })
+  }, [baseAssignedCourses, filters])
 
-  const counts = getCounts(assignedCourses)
+  const counts = getCounts(baseAssignedCourses)
+
+  const updateFilter = (name, value) => {
+    setFilters((current) => ({ ...current, [name]: value }))
+  }
+
+  const resetFilters = () => {
+    setFilters({
+      keyword: '',
+      status: 'all',
+      category: 'all',
+      sort: 'updated-desc',
+    })
+  }
+
+  const hasActiveFilters =
+    filters.keyword ||
+    filters.status !== 'all' ||
+    filters.category !== 'all' ||
+    filters.sort !== 'updated-desc'
 
   return (
     <section>
@@ -163,45 +208,63 @@ export function SmeAssignedCoursesPage() {
         />
       </div>
 
-      <div className="course-flow-filter-card">
-        <label className="course-flow-search">
-          <Search size={17} />
-          <input
-            value={keyword}
-            placeholder="Search assigned courses"
-            onChange={(event) => setKeyword(event.target.value)}
-          />
-        </label>
+      <FilterToolbar>
+        <SearchBox
+          value={filters.keyword}
+          placeholder="Search assigned courses"
+          ariaLabel="Search assigned courses"
+          onChange={(value) => updateFilter('keyword', value)}
+        />
 
-        <label className="course-flow-field">
-          <span>Status</span>
-          <select
-            value={statusFilter}
-            onChange={(event) => setStatusFilter(event.target.value)}
-          >
-            <option value="all">All status</option>
-            <option value={COURSE_STATUSES.ASSIGNED_TO_SME}>
-              Assigned to SME
-            </option>
-            <option value={COURSE_STATUSES.CONTENT_EDITING}>
-              Content Editing
-            </option>
-            <option value={COURSE_STATUSES.SUBMITTED_FOR_REVIEW}>
-              Submitted for Review
-            </option>
-            <option value={COURSE_STATUSES.REVISION_REQUIRED}>
-              Revision Required
-            </option>
-            <option value={COURSE_STATUSES.VERIFIED}>Verified</option>
-          </select>
-        </label>
-      </div>
+        <SelectFilter
+          value={filters.status}
+          onChange={(value) => updateFilter('status', value)}
+          ariaLabel="Filter assigned courses by status"
+          options={[
+            { value: 'all', label: 'All status' },
+            { value: COURSE_STATUSES.ASSIGNED_TO_SME, label: 'Assigned to SME' },
+            { value: COURSE_STATUSES.CONTENT_EDITING, label: 'Content Editing' },
+            { value: COURSE_STATUSES.SUBMITTED_FOR_REVIEW, label: 'Submitted for Review' },
+            { value: COURSE_STATUSES.REVISION_REQUIRED, label: 'Revision Required' },
+            { value: COURSE_STATUSES.VERIFIED, label: 'Verified' },
+          ]}
+        />
+
+        <SelectFilter
+          value={filters.category}
+          onChange={(value) => updateFilter('category', value)}
+          ariaLabel="Filter assigned courses by category"
+          options={categories.map((category) => ({
+            value: category,
+            label: category === 'all' ? 'All categories' : category,
+          }))}
+        />
+
+        <SelectFilter
+          value={filters.sort}
+          onChange={(value) => updateFilter('sort', value)}
+          ariaLabel="Sort assigned courses"
+          options={[
+            { value: 'updated-desc', label: 'Last updated' },
+            { value: 'updated-asc', label: 'Oldest updated' },
+            { value: 'title', label: 'Name A-Z' },
+            { value: 'status', label: 'Status A-Z' },
+          ]}
+        />
+
+        <ClearFiltersButton onClick={resetFilters} disabled={!hasActiveFilters} />
+      </FilterToolbar>
 
       {assignedCourses.length === 0 ? (
         <DataState
           type="empty"
           title="No assigned courses"
-          description="Courses assigned by TMO will appear here."
+          description="Courses assigned by TMO will appear here, or adjust the current filters."
+          action={
+            <button type="button" className="demo-primary-action" onClick={resetFilters}>
+              Clear filters
+            </button>
+          }
         />
       ) : (
         <div className="assigned-course-grid">

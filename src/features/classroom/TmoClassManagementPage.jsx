@@ -1,12 +1,15 @@
 import { useMemo, useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 import {
   CalendarDays,
+  CheckCircle2,
   Edit3,
-  ExternalLink,
+  Eye,
   Plus,
-  Search,
+  Settings,
   Trash2,
   Users,
+  XCircle,
 } from 'lucide-react'
 import { DataState } from '@/shared/components/ui/DataState'
 import { KpiCard } from '@/shared/components/ui/KpiCard'
@@ -14,13 +17,19 @@ import { Modal } from '@/shared/components/ui/Modal/Modal'
 import { PageHeader } from '@/shared/components/ui/PageHeader'
 import { StatusBadge } from '@/shared/components/ui/StatusBadge'
 import {
-  createTmoClass,
-  deleteTmoClass,
-  getTmoClasses,
-  getTmoCourseOptions,
-  getTrainerOptions,
-  updateTmoClass,
-} from '@/data/demo/demoTmoRuntime'
+  ClearFiltersButton,
+  FilterToolbar,
+  SearchBox,
+  SelectFilter,
+  StatusTabs,
+} from '@/shared/components/ui/ListControls'
+import {
+  createClassFlowClass,
+  getAvailableCourses,
+  getAvailableTrainers,
+  getClassFlowClasses,
+  updateClassFlowClass,
+} from '@/data/demo/classFlowRuntime'
 
 const initialClassForm = {
   name: '',
@@ -53,8 +62,8 @@ function ClassFormModal({
   onClose,
   onSubmit,
 }) {
-  const courseOptions = getTmoCourseOptions()
-  const trainerOptions = getTrainerOptions()
+  const courseOptions = getAvailableCourses()
+  const trainerOptions = getAvailableTrainers()
 
   if (!open) return null
 
@@ -187,7 +196,7 @@ function ClassFormModal({
   )
 }
 
-function ClassTable({ classes, onEdit, onDelete }) {
+function ClassTable({ classes, onEdit, onDelete, onStatusChange }) {
   if (classes.length === 0) {
     return (
       <DataState
@@ -210,7 +219,6 @@ function ClassTable({ classes, onEdit, onDelete }) {
             <th>Dates</th>
             <th>Trainees</th>
             <th>Status</th>
-            <th>Meet</th>
             <th>Actions</th>
           </tr>
         </thead>
@@ -219,7 +227,7 @@ function ClassTable({ classes, onEdit, onDelete }) {
           {classes.map((item) => (
             <tr key={item.id}>
               <td>
-                <strong>{item.displayName || item.name}</strong>
+                <strong>{item.className || item.displayName || item.name}</strong>
               </td>
 
               <td>{item.courseTitle}</td>
@@ -228,26 +236,41 @@ function ClassTable({ classes, onEdit, onDelete }) {
               <td>
                 {formatDate(item.startDate)} - {formatDate(item.endDate)}
               </td>
-              <td>{item.traineeCount}</td>
+              <td>{item.maxTrainees || item.traineeCount}</td>
               <td>
                 <StatusBadge status={item.status} />
-              </td>
-              <td>
-                {item.meetLink ? (
-                  <a href={item.meetLink} target="_blank" rel="noreferrer">
-                    <ExternalLink size={16} />
-                  </a>
-                ) : (
-                  'N/A'
-                )}
               </td>
 
               <td>
                 <div className="course-flow-row-actions">
+                  <Link to={`/tmo/classes/${item.id}`}>
+                    <Eye size={15} />
+                    Detail
+                  </Link>
+
+                  <Link to={`/tmo/classes/${item.id}/manage`}>
+                    <Settings size={15} />
+                    Manage
+                  </Link>
+
                   <button type="button" onClick={() => onEdit(item)}>
                     <Edit3 size={15} />
                     Edit
                   </button>
+
+                  {item.status !== 'running' && item.status !== 'completed' ? (
+                    <button type="button" onClick={() => onStatusChange(item.id, 'running')}>
+                      <CheckCircle2 size={15} />
+                      Activate
+                    </button>
+                  ) : null}
+
+                  {item.status === 'running' ? (
+                    <button type="button" onClick={() => onStatusChange(item.id, 'completed')}>
+                      <XCircle size={15} />
+                      Close
+                    </button>
+                  ) : null}
 
                   <button type="button" onClick={() => onDelete(item.id)}>
                     <Trash2 size={15} />
@@ -264,10 +287,15 @@ function ClassTable({ classes, onEdit, onDelete }) {
 }
 
 export function TmoClassManagementPage() {
-  const [classes, setClasses] = useState(() => getTmoClasses())
+  const navigate = useNavigate()
+  const [classes, setClasses] = useState(() => getClassFlowClasses())
   const [filters, setFilters] = useState({
     keyword: '',
     status: 'all',
+    course: 'all',
+    trainer: 'all',
+    mode: 'all',
+    sort: 'start-date',
   })
   const [modalOpen, setModalOpen] = useState(false)
   const [modalMode, setModalMode] = useState('create')
@@ -279,13 +307,36 @@ export function TmoClassManagementPage() {
   const upcomingCount = classes.filter((item) => item.status === 'upcoming').length
   const completedCount = classes.filter((item) => item.status === 'completed').length
 
+  const courseOptions = useMemo(() => {
+    return ['all', ...new Set(classes.map((item) => item.courseTitle).filter(Boolean))]
+  }, [classes])
+
+  const trainerOptions = useMemo(() => {
+    return ['all', ...new Set(classes.map((item) => item.trainerName).filter(Boolean))]
+  }, [classes])
+
+  const modeOptions = useMemo(() => {
+    return ['all', ...new Set(classes.map((item) => item.learningMode).filter(Boolean))]
+  }, [classes])
+
+  const statusTabs = useMemo(() => {
+    const statuses = ['all', 'running', 'upcoming', 'completed', 'cancelled']
+    return statuses.map((status) => ({
+      key: status,
+      label: status === 'all' ? 'All' : status,
+      count: status === 'all' ? classes.length : classes.filter((item) => item.status === status).length,
+    }))
+  }, [classes])
+
   const visibleClasses = useMemo(() => {
     const keyword = filters.keyword.trim().toLowerCase()
 
-    return classes.filter((item) => {
+    return classes
+      .filter((item) => {
       const matchesKeyword = [
-        item.name,
+        item.className,
         item.displayName,
+        item.name,
         item.courseTitle,
         item.trainerName,
         item.schedule,
@@ -296,13 +347,29 @@ export function TmoClassManagementPage() {
 
       const matchesStatus =
         filters.status === 'all' || item.status === filters.status
+      const matchesCourse =
+        filters.course === 'all' || item.courseTitle === filters.course
+      const matchesTrainer =
+        filters.trainer === 'all' || item.trainerName === filters.trainer
+      const matchesMode =
+        filters.mode === 'all' || item.learningMode === filters.mode
 
-      return matchesKeyword && matchesStatus
+      return matchesKeyword && matchesStatus && matchesCourse && matchesTrainer && matchesMode
     })
+      .sort((a, b) => {
+        if (filters.sort === 'start-desc') return new Date(b.startDate || 0) - new Date(a.startDate || 0)
+        if (filters.sort === 'name') {
+          return (a.className || a.displayName || a.name || '').localeCompare(
+            b.className || b.displayName || b.name || '',
+          )
+        }
+        if (filters.sort === 'progress') return Number(b.averageProgress || 0) - Number(a.averageProgress || 0)
+        return new Date(a.startDate || 0) - new Date(b.startDate || 0)
+      })
   }, [classes, filters])
 
   const refresh = () => {
-    setClasses(getTmoClasses())
+    setClasses(getClassFlowClasses())
   }
 
   const updateFilter = (name, value) => {
@@ -312,23 +379,38 @@ export function TmoClassManagementPage() {
     }))
   }
 
+  const resetFilters = () => {
+    setFilters({
+      keyword: '',
+      status: 'all',
+      course: 'all',
+      trainer: 'all',
+      mode: 'all',
+      sort: 'start-date',
+    })
+  }
+
+  const hasActiveFilters =
+    filters.keyword ||
+    filters.status !== 'all' ||
+    filters.course !== 'all' ||
+    filters.trainer !== 'all' ||
+    filters.mode !== 'all' ||
+    filters.sort !== 'start-date'
+
   const openCreate = () => {
-    setModalMode('create')
-    setEditingClassId(null)
-    setForm(initialClassForm)
-    setError('')
-    setModalOpen(true)
+    navigate('/tmo/classes/create')
   }
 
   const openUpdate = (classItem) => {
     setModalMode('update')
     setEditingClassId(classItem.id)
     setForm({
-      name: classItem.displayName || classItem.name,
+      name: classItem.className || classItem.displayName || classItem.name,
       courseId: classItem.courseId,
       trainerId: classItem.trainerId,
       status: classItem.status,
-      traineeCount: classItem.traineeCount,
+      traineeCount: classItem.maxTrainees || classItem.traineeCount || 0,
       startDate: classItem.startDate,
       endDate: classItem.endDate,
       schedule: classItem.schedule,
@@ -357,9 +439,29 @@ export function TmoClassManagementPage() {
     }
 
     if (modalMode === 'create') {
-      createTmoClass(form)
+      createClassFlowClass({
+        className: form.name,
+        courseId: form.courseId,
+        trainerId: form.trainerId,
+        status: form.status,
+        maxTrainees: form.traineeCount,
+        startDate: form.startDate,
+        endDate: form.endDate,
+        schedule: form.schedule,
+        meetLink: form.meetLink,
+      })
     } else {
-      updateTmoClass(editingClassId, form)
+      updateClassFlowClass(editingClassId, {
+        className: form.name,
+        courseId: form.courseId,
+        trainerId: form.trainerId,
+        status: form.status,
+        maxTrainees: form.traineeCount,
+        startDate: form.startDate,
+        endDate: form.endDate,
+        schedule: form.schedule,
+        meetLink: form.meetLink,
+      })
     }
 
     refresh()
@@ -370,7 +472,12 @@ export function TmoClassManagementPage() {
     const confirmed = window.confirm('Delete this class from TMO demo data?')
     if (!confirmed) return
 
-    deleteTmoClass(classId)
+    updateClassFlowClass(classId, { status: 'cancelled' })
+    refresh()
+  }
+
+  const handleStatusChange = (classId, newStatus) => {
+    updateClassFlowClass(classId, { status: newStatus })
     refresh()
   }
 
@@ -394,32 +501,71 @@ export function TmoClassManagementPage() {
         <KpiCard title="Completed" value={completedCount} icon={CalendarDays} />
       </div>
 
-      <div className="course-flow-filter-card">
-        <label className="course-flow-search">
-          <Search size={17} />
-          <input
-            value={filters.keyword}
-            placeholder="Search class, course, trainer"
-            onChange={(event) => updateFilter('keyword', event.target.value)}
-          />
-        </label>
+      <StatusTabs
+        tabs={statusTabs}
+        activeKey={filters.status}
+        onChange={(value) => updateFilter('status', value)}
+        ariaLabel="Class status tabs"
+      />
 
-        <select
-          value={filters.status}
-          onChange={(event) => updateFilter('status', event.target.value)}
-        >
-          <option value="all">All status</option>
-          <option value="running">Running</option>
-          <option value="upcoming">Upcoming</option>
-          <option value="completed">Completed</option>
-          <option value="cancelled">Cancelled</option>
-        </select>
-      </div>
+      <FilterToolbar>
+        <SearchBox
+          value={filters.keyword}
+          placeholder="Search class, course, trainer"
+          ariaLabel="Search classes"
+          onChange={(value) => updateFilter('keyword', value)}
+        />
+
+        <SelectFilter
+          value={filters.course}
+          onChange={(value) => updateFilter('course', value)}
+          ariaLabel="Filter classes by course"
+          options={courseOptions.map((course) => ({
+            value: course,
+            label: course === 'all' ? 'All courses' : course,
+          }))}
+        />
+
+        <SelectFilter
+          value={filters.trainer}
+          onChange={(value) => updateFilter('trainer', value)}
+          ariaLabel="Filter classes by trainer"
+          options={trainerOptions.map((trainer) => ({
+            value: trainer,
+            label: trainer === 'all' ? 'All trainers' : trainer,
+          }))}
+        />
+
+        <SelectFilter
+          value={filters.mode}
+          onChange={(value) => updateFilter('mode', value)}
+          ariaLabel="Filter classes by learning mode"
+          options={modeOptions.map((mode) => ({
+            value: mode,
+            label: mode === 'all' ? 'All modes' : mode,
+          }))}
+        />
+
+        <SelectFilter
+          value={filters.sort}
+          onChange={(value) => updateFilter('sort', value)}
+          ariaLabel="Sort classes"
+          options={[
+            { value: 'start-date', label: 'Start date' },
+            { value: 'start-desc', label: 'Latest start' },
+            { value: 'name', label: 'Name A-Z' },
+            { value: 'progress', label: 'Average progress' },
+          ]}
+        />
+
+        <ClearFiltersButton onClick={resetFilters} disabled={!hasActiveFilters} />
+      </FilterToolbar>
 
       <ClassTable
         classes={visibleClasses}
         onEdit={openUpdate}
         onDelete={remove}
+        onStatusChange={handleStatusChange}
       />
 
       <ClassFormModal

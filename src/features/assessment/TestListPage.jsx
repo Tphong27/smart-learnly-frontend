@@ -29,6 +29,12 @@ import {
 } from "@/data/demo/demoTraineeRuntime";
 import { PageState } from "@/shared/components/PageState";
 import { StatusBadge } from "@/shared/components/StatusBadge";
+import {
+    ClearFiltersButton,
+    FilterToolbar,
+    SearchBox,
+    SelectFilter,
+} from "@/shared/components/ui/ListControls";
 import { useDemoPageState } from "@/shared/hooks/useDemoPageState";
 import { useDocumentTitle } from "@/shared/hooks/useDocumentTitle";
 import { getCurrentUser } from "@/services";
@@ -66,6 +72,19 @@ function getSourceSummary(test) {
     if (selectedCount === 0) return "Course module source";
 
     return `${selectedCount} selected module${selectedCount > 1 ? "s" : ""}`;
+}
+
+function getSourceCategory(test) {
+    if (test.source === "imported_from_course") return "imported";
+    if (test.source === "created_in_class") return "class";
+    if (test.sourceType === "upload") return "upload";
+    if (test.sourceType === "modules") return "modules";
+    if (test.ownerType === "trainee") return "personal";
+    return "course";
+}
+
+function getVisibleStatus(test) {
+    return test.testStatus || test.status || "Not Started";
 }
 
 function TestFormModal({
@@ -519,6 +538,12 @@ export function TestListPage() {
     const { loading, error } = useDemoPageState();
     const [activeTab, setActiveTab] = useState("available");
     const [viewMode, setViewMode] = useState("grid");
+    const [filters, setFilters] = useState({
+        keyword: "",
+        source: "all",
+        status: "all",
+        sort: "due-date",
+    });
     const [personalTests, setPersonalTests] = useState(() =>
         getTraineeCreatedTests(),
     );
@@ -527,15 +552,16 @@ export function TestListPage() {
     const [editingTestId, setEditingTestId] = useState(null);
     const [form, setForm] = useState(getInitialForm);
     const [formError, setFormError] = useState("");
+    const traineeId = getCurrentUser()?.id || "trainee-minh";
 
     const enrolledCourseIds = useMemo(
         () =>
             new Set(
-                getAllDemoEnrollments().map(
+                getEnrollmentsByUser(traineeId).map(
                     (enrollment) => enrollment.courseId,
                 ),
             ),
-        [],
+        [traineeId],
     );
 
     const availableTests = useMemo(() => {
@@ -556,6 +582,68 @@ export function TestListPage() {
             : activeTab === "completed"
               ? completedTests
               : availableTests;
+
+    const statusOptions = useMemo(() => {
+        return [
+            "all",
+            ...new Set(currentTests.map((test) => getVisibleStatus(test)).filter(Boolean)),
+        ];
+    }, [currentTests]);
+
+    const visibleTests = useMemo(() => {
+        const keyword = filters.keyword.trim().toLowerCase();
+
+        return currentTests
+            .filter((test) => {
+                const course = getLifecycleCourseById(test.courseId);
+                const matchesKeyword = [
+                    test.title,
+                    test.description,
+                    test.type,
+                    test.courseTitle,
+                    course?.title,
+                    getSourceSummary(test),
+                ]
+                    .join(" ")
+                    .toLowerCase()
+                    .includes(keyword);
+                const matchesSource =
+                    filters.source === "all" || getSourceCategory(test) === filters.source;
+                const matchesStatus =
+                    filters.status === "all" || getVisibleStatus(test) === filters.status;
+
+                return matchesKeyword && matchesSource && matchesStatus;
+            })
+            .sort((a, b) => {
+                if (filters.sort === "title") return a.title.localeCompare(b.title);
+                if (filters.sort === "questions") {
+                    return Number(b.totalQuestions || 0) - Number(a.totalQuestions || 0);
+                }
+                if (filters.sort === "created") {
+                    return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
+                }
+                return new Date(a.dueDate || a.createdAt || 0) - new Date(b.dueDate || b.createdAt || 0);
+            });
+    }, [currentTests, filters]);
+
+    const updateFilter = (name, value) => {
+        setFilters((current) => ({ ...current, [name]: value }));
+    };
+
+    const resetFilters = () => {
+        setFilters({
+            keyword: "",
+            source: "all",
+            status: "all",
+            sort: "due-date",
+        });
+    };
+
+    const hasActiveFilters =
+        filters.keyword ||
+        filters.source !== "all" ||
+        filters.status !== "all" ||
+        filters.sort !== "due-date";
 
     const openCreateModal = () => {
         setModalMode("create");
@@ -751,8 +839,57 @@ export function TestListPage() {
                 </div>
             </section>
 
+            <FilterToolbar>
+                <SearchBox
+                    value={filters.keyword}
+                    placeholder="Search test title, course, source"
+                    ariaLabel="Search tests"
+                    onChange={(value) => updateFilter("keyword", value)}
+                />
+
+                <SelectFilter
+                    value={filters.source}
+                    onChange={(value) => updateFilter("source", value)}
+                    ariaLabel="Filter tests by source"
+                    options={[
+                        { value: "all", label: "All sources" },
+                        { value: "course", label: "Course tests" },
+                        { value: "personal", label: "Personal tests" },
+                        { value: "modules", label: "Generated from modules" },
+                        { value: "upload", label: "Generated from upload" },
+                        { value: "class", label: "Class tests" },
+                        { value: "imported", label: "Imported from course" },
+                    ]}
+                />
+
+                <SelectFilter
+                    value={filters.status}
+                    onChange={(value) => updateFilter("status", value)}
+                    ariaLabel="Filter tests by status"
+                    options={statusOptions.map((status) => ({
+                        value: status,
+                        label: status === "all" ? "All status" : status,
+                    }))}
+                />
+
+                <SelectFilter
+                    value={filters.sort}
+                    onChange={(value) => updateFilter("sort", value)}
+                    ariaLabel="Sort tests"
+                    options={[
+                        { value: "due-date", label: "Due date" },
+                        { value: "created", label: "Newest created" },
+                        { value: "questions", label: "Question count" },
+                        { value: "title", label: "Name A-Z" },
+                    ]}
+                />
+
+                <ClearFiltersButton onClick={resetFilters} disabled={!hasActiveFilters} />
+            </FilterToolbar>
+
             <div className="demo-result-summary">
-                Showing <strong>{currentTests.length}</strong> test
+                Showing <strong>{visibleTests.length}</strong> of{" "}
+                <strong>{currentTests.length}</strong> test
                 {currentTests.length === 1 ? "" : "s"} in{" "}
                 <strong>{viewMode}</strong> view
             </div>
@@ -769,9 +906,20 @@ export function TestListPage() {
                             </Link>
                         }
                     />
+                ) : visibleTests.length === 0 ? (
+                    <PageState
+                        state="empty"
+                        title="No assigned tests match"
+                        description="Try a different keyword, source, or status filter."
+                        action={
+                            <button type="button" className="demo-primary-action" onClick={resetFilters}>
+                                Clear filters
+                            </button>
+                        }
+                    />
                 ) : (
                     <TestCollection
-                        tests={availableTests}
+                        tests={visibleTests}
                         viewMode={viewMode}
                     />
                 ))}
@@ -793,9 +941,20 @@ export function TestListPage() {
                             </button>
                         }
                     />
+                ) : visibleTests.length === 0 ? (
+                    <PageState
+                        state="empty"
+                        title="No personal tests match"
+                        description="Try a different keyword, source, or status filter."
+                        action={
+                            <button type="button" className="demo-primary-action" onClick={resetFilters}>
+                                Clear filters
+                            </button>
+                        }
+                    />
                 ) : (
                     <TestCollection
-                        tests={personalTests}
+                        tests={visibleTests}
                         viewMode={viewMode}
                         personal
                         onEdit={openUpdateModal}
@@ -810,9 +969,20 @@ export function TestListPage() {
                         title="No completed tests"
                         description="Completed test attempts will appear here after practice."
                     />
+                ) : visibleTests.length === 0 ? (
+                    <PageState
+                        state="empty"
+                        title="No completed tests match"
+                        description="Try a different keyword, source, or status filter."
+                        action={
+                            <button type="button" className="demo-primary-action" onClick={resetFilters}>
+                                Clear filters
+                            </button>
+                        }
+                    />
                 ) : (
                     <TestCollection
-                        tests={completedTests}
+                        tests={visibleTests}
                         viewMode={viewMode}
                     />
                 ))}

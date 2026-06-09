@@ -1304,6 +1304,69 @@
 
 .course-flow-filter-card--single { grid-template-columns: minmax(280px, 1fr); }
 
+.list-filter-card {
+  grid-template-columns: minmax(240px, 1.35fr) repeat(auto-fit, minmax(150px, 220px));
+  align-items: center;
+}
+
+.list-status-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 20px 0 0;
+}
+
+.list-status-tabs button {
+  display: inline-flex;
+  min-height: 38px;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid #dfe6f1;
+  border-radius: 8px;
+  padding: 0 12px;
+  color: #526078;
+  background: #fff;
+  font-size: 13px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.list-status-tabs button.is-active {
+  border-color: #9bb9f7;
+  color: #1d4ed8;
+  background: #edf4ff;
+}
+
+.list-status-tabs span {
+  border-radius: 999px;
+  padding: 2px 7px;
+  color: #526078;
+  background: #eef2f7;
+  font-size: 11px;
+}
+
+.list-result-summary,
+.demo-result-summary {
+  margin: -8px 0 16px;
+  color: #64708a;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.list-result-summary strong,
+.demo-result-summary strong {
+  color: #14213d;
+}
+
+.list-clear-button {
+  min-height: 42px;
+}
+
+.list-clear-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
 .course-flow-search,
 .course-flow-field,
 .learning-ai-input,
@@ -1324,6 +1387,8 @@
 
 .course-flow-search input,
 .course-flow-filter-card select,
+.course-builder-compact-card select,
+.learning-tools-panel select,
 .course-flow-field input,
 .course-flow-field select,
 .course-flow-field textarea,
