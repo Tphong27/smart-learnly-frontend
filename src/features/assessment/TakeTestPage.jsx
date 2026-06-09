@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { AlertCircle, ArrowRight, ClipboardCheck } from 'lucide-react'
 import { useNavigate, useParams } from 'react-router-dom'
+import { submitTestAttempt } from '@/data/demo/demoRuntime'
 import {
   getLifecycleQuestionsForTest,
   getLifecycleTestById,
@@ -8,6 +9,7 @@ import {
 import { PageState } from '@/shared/components/PageState'
 import { useDemoPageState } from '@/shared/hooks/useDemoPageState'
 import { useDocumentTitle } from '@/shared/hooks/useDocumentTitle'
+import { getCurrentUser } from '@/services'
 
 function scoreAnswers(questions, answers) {
   const correctCount = questions.reduce((count, question) => {
@@ -57,20 +59,21 @@ export function TakeTestPage() {
     }
 
     const result = scoreAnswers(questions, answers)
+    const traineeId = getCurrentUser()?.id || 'trainee-minh'
 
-    window.sessionStorage.setItem(`slp.demo.result.${test.id}`, JSON.stringify({
+    const attempt = submitTestAttempt(traineeId, test.id, {
       testId: test.id,
       courseId: test.courseId,
-      traineeId: 'trainee-minh',
+      traineeId,
       status: 'completed',
       score: result.score,
       correctCount: result.correctCount,
       totalQuestions: questions.length,
       submittedAt: new Date().toISOString(),
       answers,
-    }))
+    })
 
-    navigate(`/tests/${test.id}/result/demo-live-attempt`)
+    navigate(`/tests/${test.id}/result/${attempt.id}`)
   }
 
   if (loading) {

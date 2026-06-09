@@ -9,13 +9,15 @@ import { PageState } from '@/shared/components/PageState'
 import { StatusBadge } from '@/shared/components/StatusBadge'
 import { useDemoPageState } from '@/shared/hooks/useDemoPageState'
 import { useDocumentTitle } from '@/shared/hooks/useDocumentTitle'
+import { getCurrentUser } from '@/services'
 
 export function TestDetailPage() {
   const { testId } = useParams()
   const { loading, error } = useDemoPageState()
   const test = getLifecycleTestById(testId)
   const course = getLifecycleCourseById(test?.courseId)
-  const enrollment = getDemoEnrollmentByCourse(test?.courseId)
+  const traineeId = getCurrentUser()?.id || 'trainee-minh'
+  const enrollment = getDemoEnrollmentByCourse(test?.courseId, traineeId)
 
   useDocumentTitle(test ? test.title : 'Test detail')
 

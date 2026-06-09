@@ -1,7 +1,13 @@
-import { demoCourses, demoEnrollments, demoLessons, demoModules } from './index'
+import { demoEnrollments, demoModules } from './index'
+import {
+  getLifecycleCourseById,
+  getLifecycleModules,
+} from './courseLifecycleRuntime'
 
 const DEMO_ENROLLMENTS_KEY = 'slp.demo.enrollments'
 const DEMO_COMPLETED_LESSONS_KEY = 'slp.demo.completedLessons'
+const DEMO_PAYMENTS_KEY = 'slp.demo.payments'
+const DEMO_TEST_ATTEMPTS_KEY = 'slp.demo.testAttempts'
 
 function readJson(key, fallback) {
   if (typeof window === 'undefined') return fallback
@@ -39,6 +45,10 @@ export function getDemoEnrollmentByCourse(courseId, traineeId = 'trainee-minh') 
   )
 }
 
+function setStoredDemoEnrollments(enrollments) {
+  writeJson(DEMO_ENROLLMENTS_KEY, enrollments)
+}
+
 export function createDemoEnrollment(courseId, traineeId = 'trainee-minh') {
   const existingEnrollment = getDemoEnrollmentByCourse(courseId, traineeId)
 
@@ -46,8 +56,8 @@ export function createDemoEnrollment(courseId, traineeId = 'trainee-minh') {
     return existingEnrollment
   }
 
-  const course = demoCourses.find((item) => item.id === courseId)
-  const firstLesson = demoLessons.find((lesson) => lesson.courseId === courseId)
+  const course = getLifecycleCourseById(courseId)
+  const firstLesson = getLifecycleModules(courseId).flatMap((module) => module.lessons)[0]
 
   const enrollment = {
     id: `enrollment-${courseId.replace('course-', '')}-${traineeId.replace('trainee-', '')}-local`,
@@ -71,6 +81,28 @@ export function createDemoEnrollment(courseId, traineeId = 'trainee-minh') {
   ])
 
   return enrollment
+}
+
+export function updateDemoEnrollment(courseId, traineeId = 'trainee-minh', updates = {}) {
+  const storedEnrollments = getStoredDemoEnrollments()
+  const existingEnrollment = getDemoEnrollmentByCourse(courseId, traineeId)
+  const nextEnrollment = {
+    ...existingEnrollment,
+    ...updates,
+    lastActivityAt: new Date().toISOString(),
+  }
+
+  const storedIndex = storedEnrollments.findIndex((enrollment) => enrollment.id === existingEnrollment?.id)
+
+  if (storedIndex >= 0) {
+    setStoredDemoEnrollments(
+      storedEnrollments.map((enrollment, index) => (index === storedIndex ? nextEnrollment : enrollment)),
+    )
+  } else if (existingEnrollment) {
+    setStoredDemoEnrollments([...storedEnrollments, nextEnrollment])
+  }
+
+  return nextEnrollment
 }
 
 export function getDemoCourseModules(courseId) {
@@ -102,14 +134,153 @@ export function markDemoLessonCompleted(courseId, lessonId, traineeId = 'trainee
     [key]: Array.from(completed),
   })
 
-  return Array.from(completed)
+  const completedLessonIds = Array.from(completed)
+  updateDemoEnrollment(courseId, traineeId, {
+    completedLessonIds,
+    progress: getCourseProgress(courseId, traineeId, completedLessonIds),
+    nextLessonId: getNextLessonId(courseId, completedLessonIds),
+  })
+
+  return completedLessonIds
 }
 
-export function getCourseProgress(courseId, traineeId = 'trainee-minh') {
-  const courseLessons = demoLessons.filter((lesson) => lesson.courseId === courseId)
+function getCourseLessons(courseId) {
+  return getLifecycleModules(courseId).flatMap((module) => module.lessons)
+}
+
+function getNextLessonId(courseId, completedLessonIds = []) {
+  return getCourseLessons(courseId).find((lesson) => !completedLessonIds.includes(lesson.id))?.id || null
+}
+
+export function getCourseProgress(courseId, traineeId = 'trainee-minh', completedOverride = null) {
+  const courseLessons = getCourseLessons(courseId)
 
   if (courseLessons.length === 0) return 0
 
-  const completedLessonIds = getCompletedLessonIds(courseId, traineeId)
+  const completedLessonIds = completedOverride || getCompletedLessonIds(courseId, traineeId)
   return Math.round((completedLessonIds.length / courseLessons.length) * 100)
+}
+
+export function getEnrollmentsByUser(userId = 'trainee-minh') {
+  return getAllDemoEnrollments().filter((enrollment) => enrollment.traineeId === userId)
+}
+
+export function enrollCourse(userId, courseId) {
+  return createDemoEnrollment(courseId, userId)
+}
+
+export function markLessonComplete(userId, courseId, lessonId) {
+  return markDemoLessonCompleted(courseId, lessonId, userId)
+}
+
+export function updateLearningProgress(userId, courseId) {
+  const completedLessonIds = getCompletedLessonIds(courseId, userId)
+  return updateDemoEnrollment(courseId, userId, {
+    completedLessonIds,
+    progress: getCourseProgress(courseId, userId, completedLessonIds),
+    nextLessonId: getNextLessonId(courseId, completedLessonIds),
+  })
+}
+
+function getStoredPayments() {
+  return readJson(DEMO_PAYMENTS_KEY, [])
+}
+
+function setStoredPayments(payments) {
+  writeJson(DEMO_PAYMENTS_KEY, payments)
+}
+
+export function createMockPayment(userId, courseId, payload = {}) {
+  const payment = {
+    id: `payment-${courseId}-${userId}-${Date.now()}`,
+    userId,
+    courseId,
+    status: 'pending',
+    method: payload.method || 'bank_transfer',
+    amount: payload.amount || 0,
+    currency: payload.currency || 'VND',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  }
+
+  setStoredPayments([payment, ...getStoredPayments()])
+  return payment
+}
+
+export function markPaymentSuccess(paymentId) {
+  let updatedPayment = null
+  const payments = getStoredPayments().map((payment) => {
+    if (payment.id !== paymentId) return payment
+
+    updatedPayment = {
+      ...payment,
+      status: 'paid',
+      updatedAt: new Date().toISOString(),
+    }
+    return updatedPayment
+  })
+
+  setStoredPayments(payments)
+
+  if (updatedPayment) {
+    createDemoEnrollment(updatedPayment.courseId, updatedPayment.userId)
+  }
+
+  return updatedPayment
+}
+
+export function markPaymentFailed(paymentId) {
+  let updatedPayment = null
+  const payments = getStoredPayments().map((payment) => {
+    if (payment.id !== paymentId) return payment
+
+    updatedPayment = {
+      ...payment,
+      status: 'failed',
+      updatedAt: new Date().toISOString(),
+    }
+    return updatedPayment
+  })
+
+  setStoredPayments(payments)
+  return updatedPayment
+}
+
+function getStoredTestAttempts() {
+  return readJson(DEMO_TEST_ATTEMPTS_KEY, [])
+}
+
+function setStoredTestAttempts(attempts) {
+  writeJson(DEMO_TEST_ATTEMPTS_KEY, attempts)
+}
+
+export function startTest(userId, testId) {
+  const attempt = {
+    id: `attempt-${testId}-${userId}-${Date.now()}`,
+    userId,
+    testId,
+    status: 'started',
+    startedAt: new Date().toISOString(),
+  }
+
+  setStoredTestAttempts([attempt, ...getStoredTestAttempts()])
+  return attempt
+}
+
+export function submitTestAttempt(userId, testId, result) {
+  const attempt = {
+    id: `attempt-${testId}-${userId}-${Date.now()}`,
+    userId,
+    testId,
+    status: 'completed',
+    submittedAt: new Date().toISOString(),
+    ...result,
+  }
+
+  setStoredTestAttempts([attempt, ...getStoredTestAttempts()])
+  return attempt
+}
+
+export function getTestResult(attemptId) {
+  return getStoredTestAttempts().find((attempt) => attempt.id === attemptId)
 }

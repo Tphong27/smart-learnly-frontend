@@ -1,6 +1,7 @@
 import { ArrowRight, CheckCircle2, RotateCcw, Target, XCircle } from 'lucide-react'
 import { Link, useParams } from 'react-router-dom'
 import { demoAttempts, demoTraineeWeaknessAnalysis } from '@/data/demo'
+import { getTestResult } from '@/data/demo/demoRuntime'
 import {
   getLifecycleQuestionsForTest,
   getLifecycleTestById,
@@ -11,22 +12,11 @@ import { StatusBadge } from '@/shared/components/StatusBadge'
 import { useDemoPageState } from '@/shared/hooks/useDemoPageState'
 import { useDocumentTitle } from '@/shared/hooks/useDocumentTitle'
 
-function getLiveResult(testId) {
-  if (typeof window === 'undefined') return null
-
-  try {
-    const value = window.sessionStorage.getItem(`slp.demo.result.${testId}`)
-    return value ? JSON.parse(value) : null
-  } catch {
-    return null
-  }
-}
-
 export function TestResultPage() {
   const { testId, attemptId } = useParams()
   const { loading, error } = useDemoPageState()
   const test = getLifecycleTestById(testId)
-  const liveResult = attemptId === 'demo-live-attempt' ? getLiveResult(testId) : null
+  const liveResult = getTestResult(attemptId)
   const savedAttempt = demoAttempts.find((attempt) => attempt.id === attemptId) || demoAttempts.find((attempt) => attempt.testId === testId)
   const result = liveResult || savedAttempt
   const weaknessItems = demoTraineeWeaknessAnalysis.filter((item) => item.testId === testId)

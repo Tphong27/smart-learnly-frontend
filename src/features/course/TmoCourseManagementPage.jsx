@@ -1,85 +1,58 @@
-import { useMemo, useState } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import {
-  ArrowRight,
-  BookOpen,
-  CalendarDays,
-  ClipboardCheck,
-  CreditCard,
-  Eye,
-  Search,
-  Send,
-  UploadCloud,
-} from "lucide-react";
-import { KpiCard } from "@/shared/components/ui/KpiCard";
-import { PageHeader } from "@/shared/components/ui/PageHeader";
-import { DataState } from "@/shared/components/ui/DataState";
-import { Modal } from "@/shared/components/ui/Modal/Modal";
+import { useMemo, useState } from 'react'
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
+import { ArrowRight, BookOpen, ClipboardCheck, Eye, Search, Send, UploadCloud } from 'lucide-react'
+import { KpiCard } from '@/shared/components/ui/KpiCard'
+import { PageHeader } from '@/shared/components/ui/PageHeader'
+import { DataState } from '@/shared/components/ui/DataState'
+import { Modal } from '@/shared/components/ui/Modal/Modal'
 import {
   assignCourseToSme,
   getAllLifecycleCourses,
   getSmeOptions,
   publishCourse,
   unpublishCourse,
-} from "@/data/demo/courseLifecycleRuntime";
-import { COURSE_STATUSES } from "@/data/demo/courseLifecycle";
-import { CourseStatusBadge } from "./CourseStatusBadge";
+} from '@/data/demo/courseLifecycleRuntime'
+import { COURSE_STATUSES } from '@/data/demo/courseLifecycle'
+import { CourseStatusBadge } from './CourseStatusBadge'
 
-const allStatuses = ["All statuses", ...Object.values(COURSE_STATUSES)];
+const allStatuses = ['All statuses', ...Object.values(COURSE_STATUSES)]
 
 function formatPrice(course) {
-  if (!course?.price) return "Free";
-  return `${new Intl.NumberFormat("vi-VN").format(course.price)} ${course.currency || "VND"}`;
+  if (!course?.price) return 'Free'
+  return `${new Intl.NumberFormat('vi-VN').format(course.price)} ${course.currency || 'VND'}`
 }
 
 function getCourseCounts(courses) {
   return {
     total: courses.length,
-    draft: courses.filter((course) => course.status === COURSE_STATUSES.DRAFT)
-      .length,
-    review: courses.filter(
-      (course) => course.status === COURSE_STATUSES.SUBMITTED_FOR_REVIEW,
-    ).length,
-    published: courses.filter(
-      (course) => course.status === COURSE_STATUSES.PUBLISHED,
-    ).length,
-  };
+    draft: courses.filter((course) => course.status === COURSE_STATUSES.DRAFT).length,
+    review: courses.filter((course) => course.status === COURSE_STATUSES.SUBMITTED_FOR_REVIEW).length,
+    published: courses.filter((course) => course.status === COURSE_STATUSES.PUBLISHED).length,
+  }
 }
 
 function AssignSmeModal({ course, open, onClose, onAssigned }) {
-  const smeOptions = getSmeOptions();
-  const [selectedSmeId, setSelectedSmeId] = useState(
-    course?.assignedSmeId || smeOptions[0]?.id || "",
-  );
+  const smeOptions = getSmeOptions()
+  const [selectedSmeId, setSelectedSmeId] = useState(course?.assignedSmeId || smeOptions[0]?.id || '')
 
   const handleAssign = () => {
-    if (!course || !selectedSmeId) return;
-    assignCourseToSme(course.id, selectedSmeId);
-    onAssigned?.();
-    onClose?.();
-  };
+    if (!course || !selectedSmeId) return
+    assignCourseToSme(course.id, selectedSmeId)
+    onAssigned?.()
+    onClose?.()
+  }
 
   return (
     <Modal
       open={open}
       title="Assign SME"
-      description={
-        course ? `Choose the SME responsible for ${course.title}.` : ""
-      }
+      description={course ? `Choose the SME responsible for ${course.title}.` : ''}
       footer={
         <div className="course-flow-modal-actions">
-          <button
-            type="button"
-            className="demo-secondary-action"
-            onClick={onClose}
-          >
+          <button type="button" className="demo-secondary-action" onClick={onClose}>
             Cancel
           </button>
-          <button
-            type="button"
-            className="demo-primary-action"
-            onClick={handleAssign}
-          >
+          <button type="button" className="demo-primary-action" onClick={handleAssign}>
             Assign SME
           </button>
         </div>
@@ -100,7 +73,7 @@ function AssignSmeModal({ course, open, onClose, onAssigned }) {
         </select>
       </label>
     </Modal>
-  );
+  )
 }
 
 function CourseTable({ courses, onAssign, onPublish, onUnpublish }) {
@@ -111,7 +84,7 @@ function CourseTable({ courses, onAssign, onPublish, onUnpublish }) {
         title="No courses found"
         description="Try changing the search text, status, category, or SME filter."
       />
-    );
+    )
   }
 
   return (
@@ -142,14 +115,12 @@ function CourseTable({ courses, onAssign, onPublish, onUnpublish }) {
                   </span>
                 </div>
               </td>
-              <td>{course.assignedSmeName || "Unassigned"}</td>
+              <td>{course.assignedSmeName || 'Unassigned'}</td>
               <td>{course.level}</td>
               <td>{formatPrice(course)}</td>
               <td>{course.moduleCount || course.modules || 0}</td>
               <td>{course.lessonCount || course.lessons || 0}</td>
-              <td>
-                <CourseStatusBadge status={course.status} />
-              </td>
+              <td><CourseStatusBadge status={course.status} /></td>
               <td>{course.updatedAt}</td>
               <td>
                 <div className="course-flow-row-actions">
@@ -174,10 +145,7 @@ function CourseTable({ courses, onAssign, onPublish, onUnpublish }) {
                     </button>
                   )}
                   {course.status === COURSE_STATUSES.PUBLISHED && (
-                    <button
-                      type="button"
-                      onClick={() => onUnpublish(course.id)}
-                    >
+                    <button type="button" onClick={() => onUnpublish(course.id)}>
                       Unpublish
                     </button>
                   )}
@@ -188,80 +156,64 @@ function CourseTable({ courses, onAssign, onPublish, onUnpublish }) {
         </tbody>
       </table>
     </div>
-  );
+  )
 }
 
 export function TmoCourseManagementPage() {
-  const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const initialStatus = searchParams.get("status") || "All statuses";
-  const [courses, setCourses] = useState(() => getAllLifecycleCourses());
+  const navigate = useNavigate()
+  const location = useLocation()
+  const [searchParams] = useSearchParams()
+  const initialStatus = searchParams.get('status') || 'All statuses'
+  const [courses, setCourses] = useState(() => getAllLifecycleCourses())
   const [filters, setFilters] = useState({
-    keyword: "",
+    keyword: '',
     status: initialStatus,
-    category: "All categories",
-    sme: "All SMEs",
-  });
-  const [assignCourse, setAssignCourse] = useState(null);
+    category: 'All categories',
+    sme: 'All SMEs',
+  })
+  const [assignCourse, setAssignCourse] = useState(null)
 
-  const refreshCourses = () => setCourses(getAllLifecycleCourses());
+  const refreshCourses = () => setCourses(getAllLifecycleCourses())
 
   const categories = useMemo(() => {
-    return [
-      "All categories",
-      ...new Set(courses.map((course) => course.category).filter(Boolean)),
-    ];
-  }, [courses]);
+    return ['All categories', ...new Set(courses.map((course) => course.category).filter(Boolean))]
+  }, [courses])
 
   const smeOptions = useMemo(() => {
-    return [
-      "All SMEs",
-      ...new Set(
-        courses.map((course) => course.assignedSmeName || "Unassigned"),
-      ),
-    ];
-  }, [courses]);
+    return ['All SMEs', ...new Set(courses.map((course) => course.assignedSmeName || 'Unassigned'))]
+  }, [courses])
 
   const visibleCourses = useMemo(() => {
-    const keyword = filters.keyword.trim().toLowerCase();
+    const keyword = filters.keyword.trim().toLowerCase()
 
     return courses.filter((course) => {
-      const matchesKeyword = [
-        course.title,
-        course.category,
-        course.assignedSmeName,
-      ]
-        .join(" ")
+      const matchesKeyword = [course.title, course.category, course.assignedSmeName]
+        .join(' ')
         .toLowerCase()
-        .includes(keyword);
-      const matchesStatus =
-        filters.status === "All statuses" || course.status === filters.status;
-      const matchesCategory =
-        filters.category === "All categories" ||
-        course.category === filters.category;
-      const matchesSme =
-        filters.sme === "All SMEs" ||
-        (course.assignedSmeName || "Unassigned") === filters.sme;
+        .includes(keyword)
+      const matchesStatus = filters.status === 'All statuses' || course.status === filters.status
+      const matchesCategory = filters.category === 'All categories' || course.category === filters.category
+      const matchesSme = filters.sme === 'All SMEs' || (course.assignedSmeName || 'Unassigned') === filters.sme
 
-      return matchesKeyword && matchesStatus && matchesCategory && matchesSme;
-    });
-  }, [courses, filters]);
+      return matchesKeyword && matchesStatus && matchesCategory && matchesSme
+    })
+  }, [courses, filters])
 
-  const counts = getCourseCounts(courses);
+  const counts = getCourseCounts(courses)
 
   const updateFilter = (name, value) => {
-    setFilters((current) => ({ ...current, [name]: value }));
-  };
+    setFilters((current) => ({ ...current, [name]: value }))
+  }
 
   const handlePublish = (courseId) => {
-    publishCourse(courseId);
-    refreshCourses();
-  };
+    publishCourse(courseId)
+    refreshCourses()
+  }
 
   const handleUnpublish = (courseId) => {
-    unpublishCourse(courseId);
-    refreshCourses();
-  };
+    unpublishCourse(courseId)
+    refreshCourses()
+  }
 
   return (
     <section>
@@ -272,7 +224,7 @@ export function TmoCourseManagementPage() {
           <button
             type="button"
             className="dev2-primary-button"
-            onClick={() => navigate("/tmo/courses/create")}
+            onClick={() => navigate('/tmo/courses/create')}
           >
             <BookOpen size={16} />
             Create Course
@@ -280,41 +232,17 @@ export function TmoCourseManagementPage() {
         }
       />
 
+      {location.state?.successMessage ? (
+        <div className="demo-inline-alert">
+          {location.state.successMessage}
+        </div>
+      ) : null}
+
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <KpiCard title="Total Courses" value={counts.total} icon={BookOpen} />
         <KpiCard title="Draft Courses" value={counts.draft} icon={BookOpen} />
-        <KpiCard
-          title="Waiting for Review"
-          value={counts.review}
-          icon={ClipboardCheck}
-        />
-        <KpiCard
-          title="Published Courses"
-          value={counts.published}
-          icon={UploadCloud}
-        />
-      </div>
-      <div className="course-flow-note-card">
-        <strong>TMO operations</strong>
-        <span>
-          After creating and reviewing courses, manage class schedules and
-          trainee payments.
-        </span>
-
-        <Link className="demo-secondary-action" to="/tmo/classes">
-          <CalendarDays size={16} />
-          Manage Classes
-        </Link>
-
-        <Link className="demo-secondary-action" to="/tmo/payments">
-          <CreditCard size={16} />
-          Manage Payments
-        </Link>
-
-        <Link className="demo-secondary-action" to="/reports">
-          <ArrowRight size={16} />
-          View Reports
-        </Link>
+        <KpiCard title="Waiting for Review" value={counts.review} icon={ClipboardCheck} />
+        <KpiCard title="Published Courses" value={counts.published} icon={UploadCloud} />
       </div>
 
       <div className="course-flow-filter-card">
@@ -323,35 +251,20 @@ export function TmoCourseManagementPage() {
           <input
             value={filters.keyword}
             placeholder="Search by course title"
-            onChange={(event) => updateFilter("keyword", event.target.value)}
+            onChange={(event) => updateFilter('keyword', event.target.value)}
           />
         </label>
 
-        <select
-          value={filters.status}
-          onChange={(event) => updateFilter("status", event.target.value)}
-        >
-          {allStatuses.map((status) => (
-            <option key={status}>{status}</option>
-          ))}
+        <select value={filters.status} onChange={(event) => updateFilter('status', event.target.value)}>
+          {allStatuses.map((status) => <option key={status}>{status}</option>)}
         </select>
 
-        <select
-          value={filters.category}
-          onChange={(event) => updateFilter("category", event.target.value)}
-        >
-          {categories.map((category) => (
-            <option key={category}>{category}</option>
-          ))}
+        <select value={filters.category} onChange={(event) => updateFilter('category', event.target.value)}>
+          {categories.map((category) => <option key={category}>{category}</option>)}
         </select>
 
-        <select
-          value={filters.sme}
-          onChange={(event) => updateFilter("sme", event.target.value)}
-        >
-          {smeOptions.map((sme) => (
-            <option key={sme}>{sme}</option>
-          ))}
+        <select value={filters.sme} onChange={(event) => updateFilter('sme', event.target.value)}>
+          {smeOptions.map((sme) => <option key={sme}>{sme}</option>)}
         </select>
       </div>
 
@@ -372,11 +285,10 @@ export function TmoCourseManagementPage() {
       <div className="course-flow-note-card">
         <strong>Lifecycle demo path</strong>
         <span>
-          TMO creates and assigns the course, SME edits and submits, TMO
-          verifies and publishes, then trainees see it in the catalog.
+          TMO creates and assigns the course, SME edits and submits, TMO verifies and publishes, then trainees see it in the catalog.
         </span>
         <ArrowRight size={16} />
       </div>
     </section>
-  );
+  )
 }

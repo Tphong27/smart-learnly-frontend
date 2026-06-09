@@ -2,9 +2,10 @@ import { useState } from 'react'
 import { ArrowRight, CreditCard, ShieldCheck, WalletCards } from 'lucide-react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { demoUsers } from '@/data/demo'
-import { createDemoEnrollment, getDemoEnrollmentByCourse } from '@/data/demo/demoRuntime'
+import { createMockPayment, getDemoEnrollmentByCourse } from '@/data/demo/demoRuntime'
 import { getLifecycleCourseById } from '@/data/demo/courseLifecycleRuntime'
 import { isCoursePublished } from '@/data/demo/courseLifecycle'
+import { getCurrentUser } from '@/services'
 import { PageState } from '@/shared/components/PageState'
 import { StatusBadge } from '@/shared/components/StatusBadge'
 import { useDemoPageState } from '@/shared/hooks/useDemoPageState'
@@ -30,8 +31,9 @@ export function CheckoutPage() {
   const [submitting, setSubmitting] = useState(false)
   const [formError, setFormError] = useState('')
   const course = getLifecycleCourseById(courseId)
-  const enrollment = getDemoEnrollmentByCourse(courseId)
-  const trainee = demoUsers.trainee
+  const currentUser = getCurrentUser() || demoUsers.trainee
+  const enrollment = getDemoEnrollmentByCourse(courseId, currentUser.id)
+  const trainee = currentUser
 
   const handleSubmit = (event) => {
     event.preventDefault()
@@ -44,10 +46,15 @@ export function CheckoutPage() {
 
     setSubmitting(true)
     window.setTimeout(() => {
-      createDemoEnrollment(courseId)
+      const payment = createMockPayment(currentUser.id, courseId, {
+        method,
+        amount: Number(course.price) || 0,
+        currency: course.currency || 'VND',
+      })
+
       navigate(`/payment/simulation/${courseId}`, {
         replace: true,
-        state: { status: 'paid', method },
+        state: { paymentId: payment.id, method },
       })
     }, 500)
   }
@@ -120,7 +127,7 @@ export function CheckoutPage() {
           </dl>
           <button className="demo-primary-action" type="submit" disabled={submitting}>
             {submitting ? <WalletCards size={16} /> : <ShieldCheck size={16} />}
-            {submitting ? 'Simulating payment...' : 'Pay and enroll'}
+            {submitting ? 'Preparing payment...' : 'Continue to Payment'}
           </button>
         </aside>
       </form>

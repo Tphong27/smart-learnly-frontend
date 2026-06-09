@@ -1,6 +1,7 @@
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { PublicLayout } from "./layouts/PublicLayout";
 import { AppLayout } from "./layouts/AppLayout";
+import { WorkspaceLayout } from "./layouts/WorkspaceLayout";
 import { ProtectedRoute } from "./routes/ProtectedRoute";
 import { RoleGuard } from "./routes/RoleGuard";
 import { LoginPage } from "../features/auth/LoginPage";
@@ -111,6 +112,28 @@ export function AppShell() {
         />
 
         <Route element={<ProtectedRoute />}>
+          <Route element={<WorkspaceLayout />}>
+            <Route element={<RoleGuard allowedRoles={[ROLES.TRAINEE]} />}>
+              <Route
+                path="/learning/:courseId"
+                element={<LearningWorkspacePage />}
+              />
+              <Route
+                path="/learning/:courseId/lessons/:lessonId"
+                element={<LearningWorkspacePage />}
+              />
+            </Route>
+
+            <Route
+              element={<RoleGuard allowedRoles={[ROLES.ADMIN, ROLES.SME]} />}
+            >
+              <Route
+                path="/sme/courses/:courseId/edit"
+                element={<SmeCourseEditorPage />}
+              />
+            </Route>
+          </Route>
+
           <Route element={<AppLayout />}>
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route
@@ -128,14 +151,6 @@ export function AppShell() {
               <Route path="/my-classes" element={<TraineeMyClassesPage />} />
               <Route path="/payments" element={<PaymentHistoryPage />} />
               <Route path="/learning" element={<LearningWorkspacePage />} />
-              <Route
-                path="/learning/:courseId"
-                element={<LearningWorkspacePage />}
-              />
-              <Route
-                path="/learning/:courseId/lessons/:lessonId"
-                element={<LearningWorkspacePage />}
-              />
               <Route path="/flashcards" element={<FlashcardsPage />} />
               <Route path="/tests" element={<TestListPage />} />
               <Route path="/tests/:testId" element={<TestDetailPage />} />
@@ -151,10 +166,6 @@ export function AppShell() {
               element={<RoleGuard allowedRoles={[ROLES.ADMIN, ROLES.SME]} />}
             >
               <Route path="/sme/courses" element={<SmeAssignedCoursesPage />} />
-              <Route
-                path="/sme/courses/:courseId/edit"
-                element={<SmeCourseEditorPage />}
-              />
               <Route path="/sme/content" element={<CourseContentPage />} />
               <Route path="/sme/questions" element={<QuestionBankPage />} />
             </Route>
