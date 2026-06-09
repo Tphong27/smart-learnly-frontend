@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useOutletContext } from 'react-router-dom'
-import { CheckCircle2, Plus, Send, Sparkles } from 'lucide-react'
+import { CheckCircle2, Clock, Edit3, FileUp, Paperclip, Plus, Send, Sparkles, Trash2, X } from 'lucide-react'
 import { StatusBadge } from '@/shared/components/ui/StatusBadge'
 import {
   ClearFiltersButton,
@@ -12,15 +12,19 @@ import {
 import {
   aiGradeSubmission,
   createClassAssignment,
+  deleteClassAssignment,
   getAssignmentSubmissions,
   getClassAssignments,
   saveSubmissionGrade,
   updateClassAssignment,
 } from '@/data/demo/classFlowRuntime'
 
-function formatDate(v) {
+function formatDateTime(v) {
   if (!v) return 'Not set'
-  return new Intl.DateTimeFormat('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(new Date(v))
+  return new Intl.DateTimeFormat('vi-VN', {
+    day: '2-digit', month: '2-digit', year: 'numeric',
+    hour: '2-digit', minute: '2-digit',
+  }).format(new Date(v))
 }
 
 function SubmissionPanel({ submission, onRefresh }) {
@@ -48,7 +52,7 @@ function SubmissionPanel({ submission, onRefresh }) {
         <div>
           <strong>{submission.traineeName}</strong>
           <small style={{ display: 'block', color: '#94a3b8' }}>
-            Submitted: {formatDate(submission.submittedAt)}
+            Submitted: {formatDateTime(submission.submittedAt)}
           </small>
         </div>
         <StatusBadge status={submission.status} />
@@ -59,6 +63,15 @@ function SubmissionPanel({ submission, onRefresh }) {
       ) : null}
       {submission.attachment ? (
         <p className="demo-muted">📎 {submission.attachment}</p>
+      ) : null}
+      {submission.files && submission.files.length > 0 ? (
+        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.5rem' }}>
+          {submission.files.map((f, i) => (
+            <span key={i} className="classflow-attachment-chip">
+              <Paperclip size={12} /> {f}
+            </span>
+          ))}
+        </div>
       ) : null}
 
       <div className="classflow-grade-row">
@@ -87,22 +100,26 @@ function SubmissionPanel({ submission, onRefresh }) {
   )
 }
 
+const emptyForm = { title: '', description: '', dueDate: '', points: 100, status: 'draft', attachments: [] }
+
 export function TrainerAssignments() {
   const { classId } = useOutletContext()
   const [assignments, setAssignments] = useState(() => getClassAssignments(classId))
-  const [creating, setCreating] = useState(false)
+  const [mode, setMode] = useState(null) // 'create' | 'edit'
+  const [editingId, setEditingId] = useState(null)
   const [expandedId, setExpandedId] = useState(null)
+  const [deleteConfirmId, setDeleteConfirmId] = useState(null)
   const [filters, setFilters] = useState({
     keyword: '',
     status: 'all',
-    submissionType: 'all',
     due: 'all',
     sort: 'due-date',
   })
-  const [form, setForm] = useState({ title: '', description: '', dueDate: '', submissionType: 'text', points: 100, status: 'draft' })
+  const [form, setForm] = useState(emptyForm)
 
   const refresh = () => setAssignments(getClassAssignments(classId))
   const update = (f, v) => setForm((p) => ({ ...p, [f]: v }))
+
   const statusTabs = useMemo(() => {
     const statuses = ['all', 'draft', 'published', 'closed']
     return statuses.map((status) => ({
@@ -112,10 +129,6 @@ export function TrainerAssignments() {
     }))
   }, [assignments])
 
-  const submissionTypes = useMemo(() => {
-    return ['all', ...new Set(assignments.map((item) => item.submissionType).filter(Boolean))]
-  }, [assignments])
-
   const visibleAssignments = useMemo(() => {
     const keyword = filters.keyword.trim().toLowerCase()
     const today = new Date()
@@ -123,14 +136,12 @@ export function TrainerAssignments() {
 
     return assignments
       .filter((assignment) => {
-        const matchesKeyword = [assignment.title, assignment.description, assignment.submissionType]
+        const matchesKeyword = [assignment.title, assignment.description]
           .join(' ')
           .toLowerCase()
           .includes(keyword)
         const matchesStatus =
           filters.status === 'all' || assignment.status === filters.status
-        const matchesType =
-          filters.submissionType === 'all' || assignment.submissionType === filters.submissionType
         const dueTime = assignment.dueDate ? new Date(assignment.dueDate).getTime() : null
         const matchesDue =
           filters.due === 'all' ||
@@ -138,7 +149,7 @@ export function TrainerAssignments() {
           (filters.due === 'upcoming' && dueTime && dueTime >= today.getTime()) ||
           (filters.due === 'no-date' && !dueTime)
 
-        return matchesKeyword && matchesStatus && matchesType && matchesDue
+        return matchesKeyword && matchesStatus && matchesDue
       })
       .sort((a, b) => {
         if (filters.sort === 'due-desc') return new Date(b.dueDate || 0) - new Date(a.dueDate || 0)
@@ -153,27 +164,59 @@ export function TrainerAssignments() {
   }
 
   const resetFilters = () => {
-    setFilters({
-      keyword: '',
-      status: 'all',
-      submissionType: 'all',
-      due: 'all',
-      sort: 'due-date',
-    })
+    setFilters({ keyword: '', status: 'all', due: 'all', sort: 'due-date' })
   }
 
   const hasActiveFilters =
     filters.keyword ||
     filters.status !== 'all' ||
-    filters.submissionType !== 'all' ||
     filters.due !== 'all' ||
     filters.sort !== 'due-date'
 
-  const handleCreate = () => {
+  const handleFileChange = (e) => {
+    const files = Array.from(e.target.files || []).map((f) => f.name)
+    update('attachments', [...(form.attachments || []), ...files])
+  }
+
+  const removeAttachment = (idx) => {
+    update('attachments', form.attachments.filter((_, i) => i !== idx))
+  }
+
+  const openCreate = () => {
+    setMode('create')
+    setEditingId(null)
+    setForm(emptyForm)
+  }
+
+  const openEdit = (a) => {
+    setMode('edit')
+    setEditingId(a.id)
+    setForm({
+      title: a.title,
+      description: a.description || '',
+      dueDate: a.dueDate || '',
+      points: a.points || 100,
+      status: a.status || 'draft',
+      attachments: a.attachments || [],
+    })
+  }
+
+  const handleSave = () => {
     if (!form.title.trim()) return
-    createClassAssignment(classId, form)
-    setForm({ title: '', description: '', dueDate: '', submissionType: 'text', points: 100, status: 'draft' })
-    setCreating(false)
+    if (mode === 'create') {
+      createClassAssignment(classId, form)
+    } else {
+      updateClassAssignment(editingId, form)
+    }
+    setForm(emptyForm)
+    setMode(null)
+    setEditingId(null)
+    refresh()
+  }
+
+  const handleDelete = (id) => {
+    deleteClassAssignment(id)
+    setDeleteConfirmId(null)
     refresh()
   }
 
@@ -192,17 +235,25 @@ export function TrainerAssignments() {
       <section className="classflow-section">
         <div className="classflow-section__header">
           <h2 className="classflow-section__title">Assignments</h2>
-          <button type="button" className="demo-primary-action" onClick={() => setCreating(true)}>
+          <button type="button" className="demo-primary-action" onClick={openCreate}>
             <Plus size={15} /> Create Assignment
           </button>
         </div>
 
-        {/* Create form */}
-        {creating ? (
+        {/* Create / Edit form */}
+        {mode ? (
           <div className="classflow-submission-panel" style={{ marginBottom: '1rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+              <h3 style={{ fontWeight: 700, color: '#0f172a', margin: 0 }}>
+                {mode === 'create' ? 'Create Assignment' : 'Edit Assignment'}
+              </h3>
+              <button type="button" className="demo-secondary-action" onClick={() => { setMode(null); setEditingId(null) }} style={{ padding: '0.25rem 0.5rem' }}>
+                <X size={14} />
+              </button>
+            </div>
             <div className="course-flow-form-grid">
               <label className="course-flow-field course-flow-field--wide">
-                <span>Title</span>
+                <span>Title *</span>
                 <input value={form.title} onChange={(e) => update('title', e.target.value)} placeholder="Assignment title" />
               </label>
               <label className="course-flow-field course-flow-field--wide">
@@ -210,17 +261,8 @@ export function TrainerAssignments() {
                 <textarea rows="3" value={form.description} onChange={(e) => update('description', e.target.value)} placeholder="Describe the assignment..." />
               </label>
               <label className="course-flow-field">
-                <span>Due date</span>
-                <input type="date" value={form.dueDate} onChange={(e) => update('dueDate', e.target.value)} />
-              </label>
-              <label className="course-flow-field">
-                <span>Submission type</span>
-                <select value={form.submissionType} onChange={(e) => update('submissionType', e.target.value)}>
-                  <option value="text">Text</option>
-                  <option value="file">File Upload</option>
-                  <option value="link">Link</option>
-                  <option value="essay">Essay</option>
-                </select>
+                <span>Due date & time</span>
+                <input type="datetime-local" value={form.dueDate} onChange={(e) => update('dueDate', e.target.value)} />
               </label>
               <label className="course-flow-field">
                 <span>Points</span>
@@ -233,11 +275,30 @@ export function TrainerAssignments() {
                   <option value="published">Published</option>
                 </select>
               </label>
+              <div className="course-flow-field">
+                <span>Attachments</span>
+                <label className="classflow-file-upload-btn">
+                  <FileUp size={14} /> Upload files
+                  <input type="file" multiple hidden onChange={handleFileChange} />
+                </label>
+                {form.attachments && form.attachments.length > 0 ? (
+                  <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.5rem' }}>
+                    {form.attachments.map((name, i) => (
+                      <span key={i} className="classflow-attachment-chip">
+                        <Paperclip size={12} /> {name}
+                        <button type="button" onClick={() => removeAttachment(i)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, marginLeft: '4px', color: '#94a3b8' }}>
+                          <X size={12} />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
             </div>
             <div className="demo-actions" style={{ marginTop: '0.75rem' }}>
-              <button type="button" className="demo-secondary-action" onClick={() => setCreating(false)}>Cancel</button>
-              <button type="button" className="demo-primary-action" onClick={handleCreate}>
-                <CheckCircle2 size={15} /> Create
+              <button type="button" className="demo-secondary-action" onClick={() => { setMode(null); setEditingId(null) }}>Cancel</button>
+              <button type="button" className="demo-primary-action" onClick={handleSave}>
+                <CheckCircle2 size={15} /> {mode === 'create' ? 'Create' : 'Save Changes'}
               </button>
             </div>
           </div>
@@ -256,15 +317,6 @@ export function TrainerAssignments() {
             placeholder="Search assignments"
             ariaLabel="Search assignments"
             onChange={(value) => updateFilter('keyword', value)}
-          />
-          <SelectFilter
-            value={filters.submissionType}
-            onChange={(value) => updateFilter('submissionType', value)}
-            ariaLabel="Filter assignments by submission type"
-            options={submissionTypes.map((type) => ({
-              value: type,
-              label: type === 'all' ? 'All submission types' : type,
-            }))}
           />
           <SelectFilter
             value={filters.due}
@@ -315,20 +367,50 @@ export function TrainerAssignments() {
                       <h3 style={{ marginTop: '0.35rem', fontWeight: 700, color: '#0f172a' }}>{a.title}</h3>
                       <p className="demo-muted" style={{ margin: '0.25rem 0' }}>{a.description}</p>
                       <small className="demo-muted">
-                        Due: {formatDate(a.dueDate)} · {a.submissionType} · {a.points} pts
+                        <Clock size={12} style={{ display: 'inline', verticalAlign: '-1px', marginRight: '3px' }} />
+                        Due: {formatDateTime(a.dueDate)} · {a.points} pts
                       </small>
+                      {a.attachments && a.attachments.length > 0 ? (
+                        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.5rem' }}>
+                          {a.attachments.map((name, i) => (
+                            <span key={i} className="classflow-attachment-chip">
+                              <Paperclip size={12} /> {name}
+                            </span>
+                          ))}
+                        </div>
+                      ) : null}
                     </div>
-                    <div className="demo-actions">
+                    <div className="demo-actions" style={{ flexShrink: 0 }}>
                       {a.status === 'draft' ? (
                         <button type="button" className="demo-primary-action" onClick={() => handlePublish(a.id)}>Publish</button>
                       ) : a.status === 'published' ? (
                         <button type="button" className="demo-secondary-action" onClick={() => handleClose(a.id)}>Close</button>
                       ) : null}
+                      <button type="button" className="demo-secondary-action" onClick={() => openEdit(a)}>
+                        <Edit3 size={14} /> Edit
+                      </button>
+                      <button type="button" className="demo-secondary-action" onClick={() => setDeleteConfirmId(a.id)} style={{ color: '#ef4444' }}>
+                        <Trash2 size={14} /> Delete
+                      </button>
                       <button type="button" className="demo-secondary-action" onClick={() => setExpandedId(isExpanded ? null : a.id)}>
                         {isExpanded ? 'Hide' : 'View'} Submissions
                       </button>
                     </div>
                   </div>
+
+                  {/* Delete confirmation */}
+                  {deleteConfirmId === a.id ? (
+                    <div className="classflow-submission-panel" style={{ marginTop: '0.75rem', background: '#fef2f2', borderColor: '#fecaca' }}>
+                      <p style={{ fontWeight: 600, color: '#991b1b' }}>Are you sure you want to delete this assignment?</p>
+                      <p className="demo-muted" style={{ fontSize: '0.8125rem' }}>This will also delete all submissions. This action cannot be undone.</p>
+                      <div className="demo-actions" style={{ marginTop: '0.5rem' }}>
+                        <button type="button" className="demo-secondary-action" onClick={() => setDeleteConfirmId(null)}>Cancel</button>
+                        <button type="button" className="demo-primary-action" onClick={() => handleDelete(a.id)} style={{ background: '#dc2626' }}>
+                          <Trash2 size={14} /> Confirm Delete
+                        </button>
+                      </div>
+                    </div>
+                  ) : null}
 
                   {isExpanded ? (
                     <div style={{ marginTop: '1rem' }}>

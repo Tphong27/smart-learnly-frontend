@@ -56,6 +56,10 @@ import { TraineeTests } from "../features/classroom/trainee/TraineeTests";
 import { TraineeFlashcards } from "../features/classroom/trainee/TraineeFlashcards";
 import { TraineeDiscussions } from "../features/classroom/trainee/TraineeDiscussions";
 import { TraineeProgress } from "../features/classroom/trainee/TraineeProgress";
+// Class Flow: Shared components
+import { CreateTestPage } from "../features/classroom/trainer/CreateTestPage";
+import { CreateFlashcardPage } from "../features/classroom/shared/CreateFlashcardPage";
+import { ViewFlashcardPage } from "../features/classroom/shared/ViewFlashcardPage";
 
 function PlaceholderPage({ title }) {
   return (
@@ -269,7 +273,12 @@ export function AppShell() {
               <Route path="/trainer/classes/:classId/workspace" element={<TrainerClassOverview />} />
               <Route path="/trainer/classes/:classId/assignments" element={<TrainerAssignments />} />
               <Route path="/trainer/classes/:classId/tests" element={<TrainerTests />} />
+              <Route path="/trainer/classes/:classId/tests/create" element={<CreateTestPage />} />
+              <Route path="/trainer/classes/:classId/tests/:testId/edit" element={<CreateTestPage />} />
               <Route path="/trainer/classes/:classId/flashcards" element={<TrainerFlashcards />} />
+              <Route path="/trainer/classes/:classId/flashcards/create" element={<CreateFlashcardPage />} />
+              <Route path="/trainer/classes/:classId/flashcards/:setId" element={<ViewFlashcardPage />} />
+              <Route path="/trainer/classes/:classId/flashcards/:setId/edit" element={<CreateFlashcardPage />} />
               <Route path="/trainer/classes/:classId/discussions" element={<TrainerDiscussions />} />
               <Route path="/trainer/classes/:classId/trainees" element={<TrainerTrainees />} />
               <Route path="/trainer/classes/:classId/analytics" element={<TrainerAnalytics />} />
@@ -285,6 +294,9 @@ export function AppShell() {
               <Route path="/my-classes/:classId/tests/:testId/results" element={<TestResultPage />} />
               <Route path="/my-classes/:classId/tests/:testId/results/:attemptId" element={<TestResultPage />} />
               <Route path="/my-classes/:classId/flashcards" element={<TraineeFlashcards />} />
+              <Route path="/my-classes/:classId/flashcards/create" element={<CreateFlashcardPage />} />
+              <Route path="/my-classes/:classId/flashcards/:setId" element={<ViewFlashcardPage />} />
+              <Route path="/my-classes/:classId/flashcards/:setId/edit" element={<CreateFlashcardPage />} />
               <Route path="/my-classes/:classId/discussions" element={<TraineeDiscussions />} />
               <Route path="/my-classes/:classId/progress" element={<TraineeProgress />} />
             </Route>

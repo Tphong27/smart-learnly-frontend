@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
-import { useOutletContext } from 'react-router-dom'
-import { Eye, Plus, Share2, Sparkles, RotateCcw } from 'lucide-react'
+import { useNavigate, useOutletContext } from 'react-router-dom'
+import { Edit3, Eye, Layers3, Plus, Share2, Sparkles, Trash2 } from 'lucide-react'
 import {
   ClearFiltersButton,
   FilterToolbar,
@@ -8,7 +8,7 @@ import {
   SelectFilter,
 } from '@/shared/components/ui/ListControls'
 import {
-  createFlashcardSet,
+  deleteFlashcardSet,
   generateFlashcardsAi,
   getClassFlashcardSets,
   shareFlashcardSet,
@@ -16,18 +16,15 @@ import {
 
 export function TrainerFlashcards() {
   const { classId } = useOutletContext()
+  const navigate = useNavigate()
   const [sets, setSets] = useState(() => getClassFlashcardSets(classId))
-  const [creating, setCreating] = useState(false)
-  const [previewSetId, setPreviewSetId] = useState(null)
+  const [deleteConfirmId, setDeleteConfirmId] = useState(null)
   const [filters, setFilters] = useState({
     keyword: '',
     source: 'all',
     shared: 'all',
     sort: 'created-desc',
   })
-  const [studyIndex, setStudyIndex] = useState(0)
-  const [flipped, setFlipped] = useState(false)
-  const [form, setForm] = useState({ title: '', cardsText: '' })
 
   const refresh = () => setSets(getClassFlashcardSets(classId))
   const sourceOptions = useMemo(() => {
@@ -66,12 +63,7 @@ export function TrainerFlashcards() {
   }
 
   const resetFilters = () => {
-    setFilters({
-      keyword: '',
-      source: 'all',
-      shared: 'all',
-      sort: 'created-desc',
-    })
+    setFilters({ keyword: '', source: 'all', shared: 'all', sort: 'created-desc' })
   }
 
   const hasActiveFilters =
@@ -79,21 +71,6 @@ export function TrainerFlashcards() {
     filters.source !== 'all' ||
     filters.shared !== 'all' ||
     filters.sort !== 'created-desc'
-
-  const handleCreate = () => {
-    if (!form.title.trim()) return
-    const cards = form.cardsText
-      .split('\n')
-      .filter((line) => line.includes('|'))
-      .map((line, i) => {
-        const [front, back] = line.split('|').map((s) => s.trim())
-        return { id: `manual-fc-${Date.now()}-${i}`, front, back: back || '' }
-      })
-    createFlashcardSet(classId, { title: form.title, cards, shared: false })
-    setCreating(false)
-    setForm({ title: '', cardsText: '' })
-    refresh()
-  }
 
   const handleGenerateAi = () => {
     generateFlashcardsAi(classId)
@@ -105,8 +82,11 @@ export function TrainerFlashcards() {
     refresh()
   }
 
-  const previewSet = sets.find((s) => s.id === previewSetId)
-  const previewCard = previewSet?.cards?.[studyIndex]
+  const handleDelete = (setId) => {
+    deleteFlashcardSet(setId)
+    setDeleteConfirmId(null)
+    refresh()
+  }
 
   return (
     <div>
@@ -117,33 +97,15 @@ export function TrainerFlashcards() {
             <button type="button" className="demo-secondary-action" onClick={handleGenerateAi}>
               <Sparkles size={15} /> AI Generate
             </button>
-            <button type="button" className="demo-primary-action" onClick={() => setCreating(true)}>
+            <button
+              type="button"
+              className="demo-primary-action"
+              onClick={() => navigate(`/trainer/classes/${classId}/flashcards/create`)}
+            >
               <Plus size={15} /> Create Set
             </button>
           </div>
         </div>
-
-        {creating ? (
-          <div className="classflow-submission-panel" style={{ marginBottom: '1rem' }}>
-            <label className="course-flow-field">
-              <span>Set title</span>
-              <input value={form.title} onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))} placeholder="Flashcard set title" />
-            </label>
-            <label className="course-flow-field" style={{ marginTop: '0.5rem' }}>
-              <span>Cards (one per line, format: front | back)</span>
-              <textarea
-                rows="6"
-                value={form.cardsText}
-                onChange={(e) => setForm((p) => ({ ...p, cardsText: e.target.value }))}
-                placeholder={"What is IAM? | Identity and Access Management\nWhat is MFA? | Multi-Factor Authentication"}
-              />
-            </label>
-            <div className="demo-actions" style={{ marginTop: '0.75rem' }}>
-              <button type="button" className="demo-secondary-action" onClick={() => setCreating(false)}>Cancel</button>
-              <button type="button" className="demo-primary-action" onClick={handleCreate}>Create Set</button>
-            </div>
-          </div>
-        ) : null}
 
         <FilterToolbar>
           <SearchBox
@@ -158,7 +120,7 @@ export function TrainerFlashcards() {
             ariaLabel="Filter flashcard sets by source"
             options={sourceOptions.map((source) => ({
               value: source,
-              label: source === 'all' ? 'All sources' : source,
+              label: source === 'all' ? 'All sources' : source.replaceAll('_', ' '),
             }))}
           />
           <SelectFilter
@@ -196,64 +158,50 @@ export function TrainerFlashcards() {
             </button>
           </div>
         ) : (
-          <div className="demo-list" style={{ marginTop: '0.75rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '0.75rem', marginTop: '0.75rem' }}>
             {visibleSets.map((s) => (
-              <div key={s.id} className="demo-list-item">
-                <div>
-                  <strong>{s.title}</strong>
-                  <small>
-                    {s.cards.length} cards · {s.source} · {s.shared ? '✅ Shared' : '🔒 Not shared'}
-                  </small>
+              <div key={s.id} style={{ border: '1px solid #e2e8f0', borderRadius: '0.75rem', padding: '1rem', background: '#fff', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <div>
+                    <h3 style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.9375rem' }}>{s.title}</h3>
+                    <p className="demo-muted" style={{ fontSize: '0.8125rem', marginTop: '0.15rem' }}>
+                      <Layers3 size={12} style={{ display: 'inline', verticalAlign: '-1px', marginRight: '3px' }} />
+                      {s.cards.length} cards · {(s.source || '').replaceAll('_', ' ')}
+                    </p>
+                  </div>
+                  <span style={{ fontSize: '0.6875rem', padding: '0.15rem 0.5rem', borderRadius: '0.375rem', background: s.shared ? '#dcfce7' : '#f1f5f9', color: s.shared ? '#15803d' : '#64748b', fontWeight: 600 }}>
+                    {s.shared ? '✅ Shared' : '🔒 Private'}
+                  </span>
                 </div>
-                <div className="demo-actions">
-                  <button type="button" className="demo-secondary-action" onClick={() => { setPreviewSetId(s.id); setStudyIndex(0); setFlipped(false) }}>
-                    <Eye size={14} /> Preview
+                <div className="demo-actions" style={{ marginTop: 'auto' }}>
+                  <button type="button" className="demo-secondary-action" onClick={() => navigate(`/trainer/classes/${classId}/flashcards/${s.id}`)}>
+                    <Eye size={14} /> View
+                  </button>
+                  <button type="button" className="demo-secondary-action" onClick={() => navigate(`/trainer/classes/${classId}/flashcards/${s.id}/edit`)}>
+                    <Edit3 size={14} /> Edit
                   </button>
                   <button type="button" className="demo-secondary-action" onClick={() => handleShareToggle(s.id)}>
                     <Share2 size={14} /> {s.shared ? 'Unshare' : 'Share'}
                   </button>
+                  <button type="button" className="demo-secondary-action" onClick={() => setDeleteConfirmId(s.id)} style={{ color: '#ef4444' }}>
+                    <Trash2 size={14} />
+                  </button>
                 </div>
+
+                {deleteConfirmId === s.id ? (
+                  <div style={{ padding: '0.5rem', background: '#fef2f2', borderRadius: '0.5rem', border: '1px solid #fecaca' }}>
+                    <p style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#991b1b' }}>Delete this set?</p>
+                    <div className="demo-actions" style={{ marginTop: '0.35rem' }}>
+                      <button type="button" className="demo-secondary-action" onClick={() => setDeleteConfirmId(null)} style={{ fontSize: '0.75rem', padding: '0.2rem 0.5rem' }}>Cancel</button>
+                      <button type="button" className="demo-primary-action" onClick={() => handleDelete(s.id)} style={{ background: '#dc2626', fontSize: '0.75rem', padding: '0.2rem 0.5rem' }}>Delete</button>
+                    </div>
+                  </div>
+                ) : null}
               </div>
             ))}
           </div>
         )}
       </section>
-
-      {/* Preview / Study */}
-      {previewSet ? (
-        <section className="classflow-section">
-          <div className="classflow-section__header">
-            <h2 className="classflow-section__title">Preview: {previewSet.title}</h2>
-            <button type="button" className="demo-secondary-action" onClick={() => setPreviewSetId(null)}>Close</button>
-          </div>
-          {previewCard ? (
-            <div className="classflow-flashcard-study">
-              <p className="demo-muted">{studyIndex + 1} / {previewSet.cards.length}</p>
-              <button
-                type="button"
-                className={`classflow-flashcard-card${flipped ? ' is-flipped' : ''}`}
-                onClick={() => setFlipped((v) => !v)}
-              >
-                {flipped ? previewCard.back : previewCard.front}
-              </button>
-              <div className="demo-actions">
-                <button type="button" className="demo-secondary-action" onClick={() => setFlipped((v) => !v)}>
-                  <RotateCcw size={15} /> Flip
-                </button>
-                <button
-                  type="button"
-                  className="demo-primary-action"
-                  onClick={() => { setStudyIndex((i) => (i + 1) % previewSet.cards.length); setFlipped(false) }}
-                >
-                  Next
-                </button>
-              </div>
-            </div>
-          ) : (
-            <p className="demo-muted">No cards in this set.</p>
-          )}
-        </section>
-      ) : null}
     </div>
   )
 }

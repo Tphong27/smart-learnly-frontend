@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useOutletContext } from 'react-router-dom'
-import { CheckCircle2, Send } from 'lucide-react'
+import { CheckCircle2, Clock, FileUp, Paperclip, Send } from 'lucide-react'
 import { StatusBadge } from '@/shared/components/ui/StatusBadge'
 import {
   ClearFiltersButton,
@@ -15,9 +15,12 @@ import {
   submitAssignment,
 } from '@/data/demo/classFlowRuntime'
 
-function formatDate(v) {
+function formatDateTime(v) {
   if (!v) return 'Not set'
-  return new Intl.DateTimeFormat('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(new Date(v))
+  return new Intl.DateTimeFormat('vi-VN', {
+    day: '2-digit', month: '2-digit', year: 'numeric',
+    hour: '2-digit', minute: '2-digit',
+  }).format(new Date(v))
 }
 
 function getSubmissionStatus(assignment, submissions, traineeId) {
@@ -38,7 +41,7 @@ export function TraineeAssignments() {
     status: 'all',
     sort: 'due-date',
   })
-  const [submitForm, setSubmitForm] = useState({ content: '', attachment: '' })
+  const [submitForm, setSubmitForm] = useState({ content: '', files: [] })
 
   const getAllSubs = () => {
     const allSubs = []
@@ -55,7 +58,7 @@ export function TraineeAssignments() {
     return assignments
       .filter((assignment) => {
         const status = getSubmissionStatus(assignment, allSubmissions, traineeId)
-        const matchesKeyword = [assignment.title, assignment.description, assignment.submissionType]
+        const matchesKeyword = [assignment.title, assignment.description]
           .join(' ')
           .toLowerCase()
           .includes(keyword)
@@ -76,10 +79,23 @@ export function TraineeAssignments() {
     setAllSubmissions(getAllSubs())
   }
 
+  const handleFileChange = (e) => {
+    const files = Array.from(e.target.files || []).map((f) => f.name)
+    setSubmitForm((p) => ({ ...p, files: [...p.files, ...files] }))
+  }
+
+  const removeFile = (idx) => {
+    setSubmitForm((p) => ({ ...p, files: p.files.filter((_, i) => i !== idx) }))
+  }
+
   const handleSubmit = (assignmentId) => {
-    if (!submitForm.content.trim() && !submitForm.attachment.trim()) return
-    submitAssignment(assignmentId, traineeId, submitForm)
-    setSubmitForm({ content: '', attachment: '' })
+    if (!submitForm.content.trim() && submitForm.files.length === 0) return
+    submitAssignment(assignmentId, traineeId, {
+      content: submitForm.content,
+      attachment: submitForm.files[0] || '',
+      files: submitForm.files,
+    })
+    setSubmitForm({ content: '', files: [] })
     setExpandedId(null)
     refresh()
   }
@@ -89,11 +105,7 @@ export function TraineeAssignments() {
   }
 
   const resetFilters = () => {
-    setFilters({
-      keyword: '',
-      status: 'all',
-      sort: 'due-date',
-    })
+    setFilters({ keyword: '', status: 'all', sort: 'due-date' })
   }
 
   const hasActiveFilters =
@@ -161,7 +173,19 @@ export function TraineeAssignments() {
                       <StatusBadge status={status === 'not_submitted' ? 'pending' : status} />
                       <h3 style={{ marginTop: '0.35rem', fontWeight: 700, color: '#0f172a' }}>{a.title}</h3>
                       <p className="demo-muted" style={{ margin: '0.25rem 0' }}>{a.description}</p>
-                      <small className="demo-muted">Due: {formatDate(a.dueDate)} · {a.submissionType} · {a.points} pts</small>
+                      <small className="demo-muted">
+                        <Clock size={12} style={{ display: 'inline', verticalAlign: '-1px', marginRight: '3px' }} />
+                        Due: {formatDateTime(a.dueDate)} · {a.points} pts
+                      </small>
+                      {a.attachments && a.attachments.length > 0 ? (
+                        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.5rem' }}>
+                          {a.attachments.map((name, i) => (
+                            <span key={i} className="classflow-attachment-chip">
+                              <Paperclip size={12} /> {name}
+                            </span>
+                          ))}
+                        </div>
+                      ) : null}
                     </div>
                     <div className="demo-actions">
                       {status === 'not_submitted' && a.status !== 'closed' ? (
@@ -177,28 +201,37 @@ export function TraineeAssignments() {
                     </div>
                   </div>
 
-                  {/* Submit form */}
+                  {/* Submit form — comment + file attachment */}
                   {isExpanded && status === 'not_submitted' && a.status !== 'closed' ? (
                     <div className="classflow-submission-panel" style={{ marginTop: '0.75rem' }}>
                       <label className="course-flow-field">
-                        <span>Your answer</span>
+                        <span>Your comment / answer</span>
                         <textarea
                           rows="4"
                           value={submitForm.content}
                           onChange={(e) => setSubmitForm((p) => ({ ...p, content: e.target.value }))}
-                          placeholder="Write your response..."
+                          placeholder="Write your response, comment, or explanation..."
                         />
                       </label>
-                      <label className="course-flow-field" style={{ marginTop: '0.5rem' }}>
-                        <span>Attachment (filename mock)</span>
-                        <input
-                          value={submitForm.attachment}
-                          onChange={(e) => setSubmitForm((p) => ({ ...p, attachment: e.target.value }))}
-                          placeholder="my-assignment.pdf"
-                        />
-                      </label>
+                      <div className="course-flow-field" style={{ marginTop: '0.5rem' }}>
+                        <span>Attach files</span>
+                        <label className="classflow-file-upload-btn">
+                          <FileUp size={14} /> Choose files
+                          <input type="file" multiple hidden onChange={handleFileChange} />
+                        </label>
+                        {submitForm.files.length > 0 ? (
+                          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.5rem' }}>
+                            {submitForm.files.map((f, i) => (
+                              <span key={i} className="classflow-attachment-chip">
+                                <Paperclip size={12} /> {f}
+                                <button type="button" onClick={() => removeFile(i)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, marginLeft: '4px', color: '#94a3b8' }}>×</button>
+                              </span>
+                            ))}
+                          </div>
+                        ) : null}
+                      </div>
                       <div className="demo-actions" style={{ marginTop: '0.75rem' }}>
-                        <button type="button" className="demo-secondary-action" onClick={() => setExpandedId(null)}>Cancel</button>
+                        <button type="button" className="demo-secondary-action" onClick={() => { setExpandedId(null); setSubmitForm({ content: '', files: [] }) }}>Cancel</button>
                         <button type="button" className="demo-primary-action" onClick={() => handleSubmit(a.id)}>
                           <CheckCircle2 size={15} /> Submit Assignment
                         </button>
@@ -212,6 +245,15 @@ export function TraineeAssignments() {
                       <h4 style={{ fontWeight: 600, color: '#475569', marginBottom: '0.5rem' }}>Your Submission</h4>
                       {mySub.content ? <div className="classflow-submission-panel__content">{mySub.content}</div> : null}
                       {mySub.attachment ? <p className="demo-muted">📎 {mySub.attachment}</p> : null}
+                      {mySub.files && mySub.files.length > 0 ? (
+                        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.5rem' }}>
+                          {mySub.files.map((f, i) => (
+                            <span key={i} className="classflow-attachment-chip">
+                              <Paperclip size={12} /> {f}
+                            </span>
+                          ))}
+                        </div>
+                      ) : null}
 
                       <div className="classflow-info-grid" style={{ marginTop: '0.75rem' }}>
                         <div className="classflow-info-item">

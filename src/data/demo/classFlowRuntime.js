@@ -275,6 +275,16 @@ export function updateClassAssignment(assignmentId, updates) {
   return next.find((a) => a.id === assignmentId)
 }
 
+export function deleteClassAssignment(assignmentId) {
+  const stored = readJson(KEYS.assignments, [])
+  const all = mergeById(seedClassAssignments, stored)
+  const next = all.filter((a) => a.id !== assignmentId)
+  writeJson(KEYS.assignments, next)
+  // Also remove submissions for this assignment
+  const subs = readJson(KEYS.submissions, [])
+  writeJson(KEYS.submissions, subs.filter((s) => s.assignmentId !== assignmentId))
+}
+
 /* ================================================================
    SUBMISSIONS
    ================================================================ */
@@ -366,6 +376,12 @@ export function getClassTests(classId) {
   return mergeById(seeds, stored.filter((t) => t.classId === classId))
 }
 
+export function getClassTestById(testId) {
+  const stored = readJson(KEYS.classTests, [])
+  const all = mergeById(seedClassTests, stored)
+  return all.find((t) => t.id === testId) || null
+}
+
 export function createClassTest(classId, form) {
   const test = {
     id: createId('cf-test'),
@@ -373,11 +389,20 @@ export function createClassTest(classId, form) {
     source: 'created_in_class',
     courseTestId: null,
     title: form.title,
+    description: form.description || '',
     type: form.type || 'Practice Test',
     timeLimit: Number(form.timeLimit) || 20,
     dueDate: form.dueDate || '',
+    startTime: form.startTime || '',
+    endTime: form.endTime || '',
     numberOfQuestions: Number(form.numberOfQuestions) || 10,
     questions: form.questions || [],
+    shuffleQuestions: form.shuffleQuestions || false,
+    shuffleAnswers: form.shuffleAnswers || false,
+    showCorrectAnswers: form.showCorrectAnswers !== false,
+    allowRetake: form.allowRetake !== false,
+    maxAttempts: Number(form.maxAttempts) || 0,
+    passingScore: Number(form.passingScore) || 70,
     status: form.status || 'draft',
     createdBy: form.createdBy || 'trainer-an',
     createdAt: today(),
@@ -416,6 +441,15 @@ export function updateClassTest(testId, updates) {
   )
   writeJson(KEYS.classTests, next)
   return next.find((t) => t.id === testId)
+}
+
+export function deleteClassTest(testId) {
+  const stored = readJson(KEYS.classTests, [])
+  const all = mergeById(seedClassTests, stored)
+  writeJson(KEYS.classTests, all.filter((t) => t.id !== testId))
+  // Also remove attempts
+  const attempts = readJson(KEYS.classTestAttempts, [])
+  writeJson(KEYS.classTestAttempts, attempts.filter((a) => a.classTestId !== testId))
 }
 
 /* ── Class Test Attempts ──────────────────────────────── */
@@ -534,6 +568,28 @@ export function shareFlashcardSet(setId) {
   return next.find((s) => s.id === setId)
 }
 
+export function getFlashcardSetById(setId) {
+  const stored = readJson(KEYS.flashcardSets, [])
+  const all = mergeById(seedClassFlashcardSets, stored)
+  return all.find((s) => s.id === setId) || null
+}
+
+export function updateFlashcardSet(setId, updates) {
+  const stored = readJson(KEYS.flashcardSets, [])
+  const all = mergeById(seedClassFlashcardSets, stored)
+  const next = all.map((s) =>
+    s.id === setId ? { ...s, ...updates, updatedAt: now() } : s,
+  )
+  writeJson(KEYS.flashcardSets, next)
+  return next.find((s) => s.id === setId)
+}
+
+export function deleteFlashcardSet(setId) {
+  const stored = readJson(KEYS.flashcardSets, [])
+  const all = mergeById(seedClassFlashcardSets, stored)
+  writeJson(KEYS.flashcardSets, all.filter((s) => s.id !== setId))
+}
+
 export function saveFlashcardsToPersonal(setId, traineeId) {
   const set = [...seedClassFlashcardSets, ...readJson(KEYS.flashcardSets, [])]
     .find((s) => s.id === setId)
@@ -617,6 +673,8 @@ export function createDiscussion(classId, form) {
     classId,
     title: form.title,
     content: form.content,
+    attachments: form.attachments || [],
+    category: form.category || 'general',
     createdBy: form.createdBy || 'trainee-minh',
     createdByName: form.createdByName || 'Minh Nguyen',
     createdByRole: form.createdByRole || 'trainee',
@@ -640,6 +698,7 @@ export function addDiscussionReply(discussionId, reply) {
         {
           id: createId('cf-reply'),
           content: reply.content,
+          attachments: reply.attachments || [],
           createdBy: reply.createdBy || 'trainee-minh',
           createdByName: reply.createdByName || 'Minh Nguyen',
           createdByRole: reply.createdByRole || 'trainee',

@@ -407,6 +407,168 @@
   border-color: #2563eb;
 }
 
+/* ── Stepper (multi-step form) ────────────────────────── */
+
+.classflow-stepper {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.classflow-stepper__step {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.625rem;
+  background: #fff;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.classflow-stepper__step:hover {
+  border-color: #94a3b8;
+  color: #1e293b;
+}
+
+.classflow-stepper__step.active {
+  border-color: #2563eb;
+  background: #eff6ff;
+  color: #2563eb;
+  font-weight: 600;
+}
+
+.classflow-stepper__step.completed {
+  border-color: #22c55e;
+  color: #15803d;
+}
+
+.classflow-stepper__number {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #f1f5f9;
+  font-size: 0.6875rem;
+  font-weight: 700;
+}
+
+.classflow-stepper__step.active .classflow-stepper__number {
+  background: #2563eb;
+  color: #fff;
+}
+
+.classflow-stepper__step.completed .classflow-stepper__number {
+  background: #22c55e;
+  color: #fff;
+}
+
+/* ── Toggle row (checkbox options in config) ──────────── */
+
+.classflow-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.625rem;
+  background: #fff;
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+
+.classflow-toggle-row:hover {
+  border-color: #94a3b8;
+}
+
+.classflow-toggle-row strong {
+  font-size: 0.875rem;
+  color: #0f172a;
+}
+
+.classflow-toggle-row small {
+  display: block;
+  font-size: 0.75rem;
+  color: #94a3b8;
+  margin-top: 0.1rem;
+}
+
+.classflow-toggle-row input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: #2563eb;
+  cursor: pointer;
+}
+
+/* ── Attachment chips ─────────────────────────────────── */
+
+.classflow-attachment-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.2rem 0.6rem;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.375rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #475569;
+}
+
+/* ── File upload button ───────────────────────────────── */
+
+.classflow-file-upload-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.45rem 0.75rem;
+  border: 1px dashed #cbd5e1;
+  border-radius: 0.5rem;
+  background: #fff;
+  cursor: pointer;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: #475569;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.classflow-file-upload-btn:hover {
+  border-color: #2563eb;
+  background: #eff6ff;
+  color: #2563eb;
+}
+
+/* ── Chip list (metadata tags) ────────────────────────── */
+
+.demo-chip-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.demo-chip-list > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.75rem;
+  color: #64748b;
+}
+
+/* ── Option card active ───────────────────────────────── */
+
+.classflow-option-card.active {
+  border-color: #2563eb;
+  border-style: solid;
+  background: #eff6ff;
+}
+
 /* ── Responsive ───────────────────────────────────────── */
 
 @media (max-width: 768px) {
@@ -421,5 +583,9 @@
 
   .classflow-info-grid {
     grid-template-columns: 1fr;
+  }
+
+  .classflow-stepper {
+    flex-direction: column;
   }
 }
