@@ -1,0 +1,425 @@
+/**
+ * classFlow.css
+ * Styles for class management pages.
+ * Reuses demo-*, course-flow-* classes. Only adds class-specific styles.
+ */
+
+/* ── Two-option cards (test creation) ─────────────────── */
+
+.classflow-option-cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.classflow-option-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 2rem 1.5rem;
+  border: 2px dashed #cbd5e1;
+  border-radius: 1rem;
+  background: #fff;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+  text-align: center;
+}
+
+.classflow-option-card:hover {
+  border-color: #2563eb;
+  background: #eff6ff;
+}
+
+.classflow-option-card__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 0.75rem;
+  background: #eff6ff;
+  color: #2563eb;
+}
+
+.classflow-option-card__title {
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.classflow-option-card__desc {
+  font-size: 0.8125rem;
+  color: #64748b;
+}
+
+/* ── Submission review panel ──────────────────────────── */
+
+.classflow-submission-panel {
+  border: 1px solid #e2e8f0;
+  border-radius: 0.75rem;
+  padding: 1rem;
+  margin-top: 0.75rem;
+  background: #f8fafc;
+}
+
+.classflow-submission-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.classflow-submission-panel__content {
+  padding: 0.75rem;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  color: #334155;
+  margin-bottom: 0.75rem;
+  white-space: pre-wrap;
+}
+
+.classflow-grade-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.classflow-grade-row label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #475569;
+}
+
+.classflow-grade-row input,
+.classflow-grade-row textarea {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+.classflow-grade-row input:focus,
+.classflow-grade-row textarea:focus {
+  border-color: #2563eb;
+}
+
+.classflow-grade-row textarea {
+  min-height: 60px;
+  resize: vertical;
+  flex: 1;
+  min-width: 200px;
+}
+
+.classflow-grade-row input[type="number"] {
+  width: 80px;
+}
+
+/* ── Announcement feed ────────────────────────────────── */
+
+.classflow-announcement {
+  border: 1px solid #e2e8f0;
+  border-radius: 0.75rem;
+  padding: 1rem 1.25rem;
+  background: #fff;
+  transition: box-shadow 0.15s ease;
+}
+
+.classflow-announcement:hover {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
+.classflow-announcement.is-pinned {
+  border-color: #2563eb;
+  background: #eff6ff;
+}
+
+.classflow-announcement__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.classflow-announcement__title {
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.classflow-announcement__meta {
+  font-size: 0.75rem;
+  color: #94a3b8;
+}
+
+.classflow-announcement__body {
+  font-size: 0.875rem;
+  color: #334155;
+  line-height: 1.6;
+}
+
+.classflow-pin-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.15rem 0.5rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: #2563eb;
+  background: #dbeafe;
+  border-radius: 0.375rem;
+}
+
+/* ── Discussion thread ────────────────────────────────── */
+
+.classflow-discussion {
+  border: 1px solid #e2e8f0;
+  border-radius: 0.75rem;
+  padding: 1rem 1.25rem;
+  background: #fff;
+}
+
+.classflow-discussion__title {
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin-bottom: 0.25rem;
+}
+
+.classflow-discussion__body {
+  font-size: 0.875rem;
+  color: #334155;
+  margin-bottom: 0.75rem;
+}
+
+.classflow-discussion__meta {
+  font-size: 0.75rem;
+  color: #94a3b8;
+  margin-bottom: 0.5rem;
+}
+
+.classflow-replies {
+  margin-left: 1.5rem;
+  padding-left: 1rem;
+  border-left: 2px solid #e2e8f0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.classflow-reply {
+  font-size: 0.875rem;
+  color: #334155;
+}
+
+.classflow-reply__meta {
+  font-size: 0.75rem;
+  color: #94a3b8;
+  margin-bottom: 0.15rem;
+}
+
+.classflow-reply__author--trainer {
+  color: #2563eb;
+  font-weight: 600;
+}
+
+.classflow-reply-input {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+  margin-left: 1.5rem;
+}
+
+.classflow-reply-input input {
+  flex: 1;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  outline: none;
+}
+
+.classflow-reply-input input:focus {
+  border-color: #2563eb;
+}
+
+/* ── Tabs ─────────────────────────────────────────────── */
+
+.classflow-tabs {
+  display: flex;
+  gap: 0.25rem;
+  margin-bottom: 1.5rem;
+  border-bottom: 1px solid #e2e8f0;
+  padding-bottom: 0;
+}
+
+.classflow-tab {
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #64748b;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.classflow-tab:hover {
+  color: #1e293b;
+}
+
+.classflow-tab.active {
+  color: #2563eb;
+  border-bottom-color: #2563eb;
+  font-weight: 600;
+}
+
+/* ── Progress bar (reusable) ──────────────────────────── */
+
+.classflow-progress-stat {
+  margin-bottom: 1rem;
+}
+
+.classflow-progress-stat__label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: #475569;
+  margin-bottom: 0.35rem;
+}
+
+.classflow-progress-stat__bar {
+  height: 8px;
+  background: #e2e8f0;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.classflow-progress-stat__fill {
+  height: 100%;
+  background: #2563eb;
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+/* ── Info grid ────────────────────────────────────────── */
+
+.classflow-info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 0.75rem;
+}
+
+.classflow-info-item {
+  background: #f8fafc;
+  border-radius: 0.625rem;
+  padding: 0.875rem;
+}
+
+.classflow-info-item__label {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: #94a3b8;
+  margin-bottom: 0.25rem;
+}
+
+.classflow-info-item__value {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+/* ── Section card (used inside workspace pages) ───────── */
+
+.classflow-section {
+  border: 1px solid #e2e8f0;
+  border-radius: 1rem;
+  background: #fff;
+  padding: 1.25rem;
+  margin-bottom: 1.25rem;
+}
+
+.classflow-section__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.classflow-section__title {
+  font-size: 1.0625rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+/* ── Flashcard study in class workspace ───────────────── */
+
+.classflow-flashcard-study {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+.classflow-flashcard-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+  width: 100%;
+  max-width: 480px;
+  padding: 2rem;
+  border: 2px solid #e2e8f0;
+  border-radius: 1rem;
+  background: #fff;
+  cursor: pointer;
+  text-align: center;
+  font-size: 1.0625rem;
+  font-weight: 600;
+  color: #0f172a;
+  transition: border-color 0.15s ease, transform 0.15s ease;
+  user-select: none;
+}
+
+.classflow-flashcard-card:hover {
+  border-color: #2563eb;
+  transform: translateY(-2px);
+}
+
+.classflow-flashcard-card.is-flipped {
+  background: #eff6ff;
+  border-color: #2563eb;
+}
+
+/* ── Responsive ───────────────────────────────────────── */
+
+@media (max-width: 768px) {
+  .classflow-option-cards {
+    grid-template-columns: 1fr;
+  }
+
+  .classflow-grade-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .classflow-info-grid {
+    grid-template-columns: 1fr;
+  }
+}
