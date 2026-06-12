@@ -1,8 +1,8 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { KeyRound, MailCheck, RefreshCw } from 'lucide-react'
+import { KeyRound, Mail, MailCheck } from 'lucide-react'
 import { Form, FormField, Button, useToast } from '@/shared/components/ui'
 import { authService } from '@/services'
 import { verifyEmailSchema } from '../schemas/auth-schemas'
@@ -14,25 +14,24 @@ export function VerifyEmailPage() {
   const navigate = useNavigate()
   const toast = useToast()
   const [searchParams] = useSearchParams()
-  const email = searchParams.get('email') ?? ''
-  const initialToken = searchParams.get('token') ?? ''
+  const emailFromQuery = searchParams.get('email') ?? ''
 
   const [serverError, setServerError] = useState(null)
   const [resendCooldown, setResendCooldown] = useState(0)
   const [resendLoading, setResendLoading] = useState(false)
-  const [autoVerifyState, setAutoVerifyState] = useState(initialToken ? 'pending' : 'idle')
-  const autoVerifiedRef = useRef(false)
 
   const {
     register,
     handleSubmit,
-    setValue,
+    watch,
     formState: { errors, isSubmitting },
   } = useForm({
     resolver: zodResolver(verifyEmailSchema),
-    defaultValues: { token: initialToken },
+    defaultValues: { email: emailFromQuery, otpCode: '' },
     mode: 'onBlur',
   })
+
+  const watchedEmail = watch('email')
 
   useEffect(() => {
     if (resendCooldown <= 0) return undefined
@@ -42,45 +41,24 @@ export function VerifyEmailPage() {
     return () => window.clearInterval(timer)
   }, [resendCooldown])
 
-  useEffect(() => {
-    if (!initialToken || autoVerifiedRef.current) return
-    autoVerifiedRef.current = true
-
-    let cancelled = false
-    ;(async () => {
-      setAutoVerifyState('pending')
-      try {
-        await authService.verifyEmail(initialToken)
-        if (cancelled) return
-        toast.success('Email verified successfully. Please sign in.')
-        navigate('/login', { replace: true })
-      } catch (error) {
-        if (cancelled) return
-        setAutoVerifyState('failed')
-        setServerError(error?.message || 'Token is invalid or has expired.')
-        setValue('token', initialToken)
-      }
-    })()
-
-    return () => {
-      cancelled = true
-    }
-  }, [initialToken, navigate, toast, setValue])
-
   async function onSubmit(values) {
     setServerError(null)
     try {
-      await authService.verifyEmail(values.token)
+      await authService.verifyEmail({
+        email: values.email,
+        otpCode: values.otpCode,
+      })
       toast.success('Email verified successfully. Please sign in.')
       navigate('/login', { replace: true })
     } catch (error) {
-      setServerError(error?.message || 'Token is invalid or has expired.')
+      setServerError(error?.message || 'Verification code is invalid or has expired.')
     }
   }
 
   async function handleResend() {
+    const email = (watchedEmail || emailFromQuery || '').trim()
     if (!email) {
-      setServerError('Email is missing. Please go back to the registration page.')
+      setServerError('Please enter your email first.')
       return
     }
     if (resendCooldown > 0) return
@@ -89,26 +67,13 @@ export function VerifyEmailPage() {
     setServerError(null)
     try {
       await authService.resendVerification(email)
-      toast.success('Verification token resent. Please check your email.')
+      toast.success('Verification code resent. Please check your email.')
       setResendCooldown(RESEND_COOLDOWN_SECONDS)
     } catch (error) {
-      setServerError(error?.message || 'Could not resend the token. Try again later.')
+      setServerError(error?.message || 'Could not resend the code. Try again later.')
     } finally {
       setResendLoading(false)
     }
-  }
-
-  if (autoVerifyState === 'pending') {
-    return (
-      <AuthPage>
-        <AuthCard title="Verifying your email..." subtitle="Please wait a moment.">
-          <div style={{ display: 'flex', justifyContent: 'center', padding: '24px 0' }}>
-            <RefreshCw size={32} className="spin" style={{ color: '#2768ee' }} />
-          </div>
-          <style>{`.spin{animation:spin 1s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}`}</style>
-        </AuthCard>
-      </AuthPage>
-    )
   }
 
   return (
@@ -116,9 +81,9 @@ export function VerifyEmailPage() {
       <AuthCard
         title="Verify your email"
         subtitle={
-          email
-            ? `We sent a verification token to ${email}. Paste it into the field below.`
-            : 'Paste the verification token from your email below.'
+          emailFromQuery
+            ? `We sent a 6-digit code to ${emailFromQuery}. Enter it below to activate your account.`
+            : 'Enter your email and the 6-digit code we sent you to verify your account.'
         }
         alert={serverError ? { type: 'error', message: serverError } : null}
         footer={
@@ -136,11 +101,24 @@ export function VerifyEmailPage() {
 
         <Form onSubmit={handleSubmit(onSubmit)}>
           <FormField
-            label="Verification token"
-            placeholder="Paste the token from your email"
+            label="Email"
+            type="email"
+            placeholder="you@example.com"
             required
-            registration={register('token')}
-            error={errors.token?.message}
+            registration={register('email')}
+            error={errors.email?.message}
+            leftIcon={<Mail size={16} />}
+            autoComplete="email"
+          />
+
+          <FormField
+            label="6-digit verification code"
+            placeholder="123456"
+            inputMode="numeric"
+            maxLength={6}
+            required
+            registration={register('otpCode')}
+            error={errors.otpCode?.message}
             leftIcon={<KeyRound size={16} />}
             autoComplete="one-time-code"
           />
@@ -154,10 +132,10 @@ export function VerifyEmailPage() {
             variant="outline"
             fullWidth
             onClick={handleResend}
-            disabled={resendCooldown > 0 || !email}
+            disabled={resendCooldown > 0}
             loading={resendLoading}
           >
-            {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : 'Resend token'}
+            {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : 'Resend code'}
           </Button>
         </Form>
       </AuthCard>

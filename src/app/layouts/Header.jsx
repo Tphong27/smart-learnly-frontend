@@ -1,96 +1,117 @@
-import { Bell, Menu, Search, User, LogOut } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { Bell, LogOut, Menu, Search, User } from 'lucide-react'
 
-export function Header({ user, onToggleSidebar, onLogout }) {
-  const displayName = user?.firstName
-    ? `${user.firstName} ${user.lastName || ''}`.trim()
-    : user?.email || 'User'
-
-  const initials = displayName
+function getInitials(name) {
+  return (name || 'U')
     .split(' ')
+    .filter(Boolean)
     .map((word) => word[0])
     .join('')
     .slice(0, 2)
     .toUpperCase()
+}
+
+export function Header({ user, onToggleSidebar, onLogout }) {
+  const navigate = useNavigate()
+  const [open, setOpen] = useState(false)
+  const menuRef = useRef(null)
+
+  const displayName =
+    user?.fullName ||
+    [user?.firstName, user?.lastName].filter(Boolean).join(' ') ||
+    user?.email ||
+    'User'
+  const initials = getInitials(displayName)
+  const role = user?.role || 'user'
+
+  useEffect(() => {
+    function handleClick(event) {
+      if (menuRef.current && !menuRef.current.contains(event.target)) {
+        setOpen(false)
+      }
+    }
+    if (open) {
+      document.addEventListener('mousedown', handleClick)
+      return () => document.removeEventListener('mousedown', handleClick)
+    }
+    return undefined
+  }, [open])
+
+  function handleProfile() {
+    setOpen(false)
+    navigate('/profile')
+  }
+
+  function handleLogout() {
+    setOpen(false)
+    onLogout?.()
+  }
 
   return (
-    <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/90 backdrop-blur">
-      <div className="flex h-16 items-center justify-between px-4 lg:px-6">
-        <div className="flex items-center gap-3">
+    <header className="app-header">
+      <div className="app-header__left">
+        <button
+          type="button"
+          onClick={onToggleSidebar}
+          className="app-header__menu-btn"
+          aria-label="Open sidebar"
+        >
+          <Menu size={20} />
+        </button>
+
+        <label className="app-header__search">
+          <Search size={16} />
+          <input type="text" placeholder="Search courses, lessons, questions..." />
+        </label>
+      </div>
+
+      <div className="app-header__right">
+        <button type="button" className="icon-button" aria-label="Notifications">
+          <Bell size={18} />
+          <span className="icon-button__dot" />
+        </button>
+
+        <div className="user-menu" ref={menuRef}>
           <button
             type="button"
-            onClick={onToggleSidebar}
-            className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 lg:hidden"
-            aria-label="Open sidebar"
+            className="user-menu__trigger"
+            onClick={() => setOpen((s) => !s)}
+            aria-haspopup="true"
+            aria-expanded={open}
           >
-            <Menu size={20} />
-          </button>
-
-          <div className="hidden items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 md:flex">
-            <Search size={16} className="text-slate-400" />
-            <input
-              type="text"
-              placeholder="Search..."
-              className="w-64 bg-transparent text-sm outline-none placeholder:text-slate-400"
-            />
-          </div>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <button
-            type="button"
-            className="relative inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50"
-            aria-label="Notifications"
-          >
-            <Bell size={18} />
-            <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-red-500" />
-          </button>
-
-          <div className="group relative">
-            <button
-              type="button"
-              className="flex items-center gap-3 rounded-xl border border-slate-200 px-2 py-1.5 hover:bg-slate-50"
-            >
+            <span className="user-menu__avatar">
               {user?.avatarUrl ? (
-                <img
-                  src={user.avatarUrl}
-                  alt={displayName}
-                  className="h-8 w-8 rounded-full object-cover"
-                />
+                <img src={user.avatarUrl} alt={displayName} />
               ) : (
-                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-600 text-xs font-semibold text-white">
-                  {initials}
-                </span>
+                initials
               )}
+            </span>
+            <span className="user-menu__meta">
+              <span className="user-menu__meta-name">{displayName}</span>
+              <span className="user-menu__meta-role">{role}</span>
+            </span>
+          </button>
 
-              <span className="hidden text-left md:block">
-                <span className="block text-sm font-semibold text-slate-800">
-                  {displayName}
-                </span>
-                <span className="block text-xs capitalize text-slate-500">
-                  {user?.role || 'user'}
-                </span>
-              </span>
-            </button>
-
-            <div className="invisible absolute right-0 mt-2 w-52 rounded-2xl border border-slate-200 bg-white p-2 opacity-0 shadow-lg transition group-hover:visible group-hover:opacity-100">
-              <a
-                href="/profile"
-                className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
-              >
-                <User size={16} />
-                Profile
-              </a>
-
+          {open && (
+            <div className="user-menu__panel" role="menu">
               <button
                 type="button"
-                onClick={onLogout}
-                className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50"
+                className="user-menu__panel-item"
+                onClick={handleProfile}
               >
-                <LogOut size={16} />
-                Logout
+                <User size={16} /> Profile
+              </button>
+              <div className="user-menu__divider" />
+              <button
+                type="button"
+                className="user-menu__panel-item user-menu__panel-item--danger"
+                onClick={handleLogout}
+              >
+                <LogOut size={16} /> Logout
               </button>
             </div>
-          </div>
+          )}
         </div>
       </div>
     </header>

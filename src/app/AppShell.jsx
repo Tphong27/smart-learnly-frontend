@@ -16,9 +16,10 @@ import { ROLES } from '@/shared/constants/roles'
 
 function PlaceholderPage({ title }) {
   return (
-    <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-      <h1 className="text-2xl font-bold text-slate-900">{title}</h1>
-      <p className="mt-2 text-slate-600">
+    <section className="placeholder-page">
+      <span className="placeholder-page__eyebrow">Coming soon</span>
+      <h1 className="placeholder-page__title">{title}</h1>
+      <p className="placeholder-page__text">
         This is a placeholder page for <strong>{title}</strong>. Content will be added in future sprints.
       </p>
     </section>

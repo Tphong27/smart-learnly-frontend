@@ -60,7 +60,11 @@ export const resetPasswordSchema = z
   })
 
 export const verifyEmailSchema = z.object({
-  token: z.string({ message: 'Verification token is required' }).min(1, 'Verification token is required'),
+  email: emailSchema,
+  otpCode: z
+    .string({ message: 'Verification code is required' })
+    .trim()
+    .regex(/^\d{6}$/, 'Verification code must be exactly 6 digits'),
 })
 
 export const profileSchema = z.object({

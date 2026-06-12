@@ -52,8 +52,8 @@ export const authService = {
     return apiClient.post('/auth/reset-password', payload)
   },
 
-  async verifyEmail(token) {
-    return apiClient.post('/auth/verify-email', { token })
+  async verifyEmail(payload) {
+    return apiClient.post('/auth/verify-email', payload)
   },
 
   async resendVerification(email) {
