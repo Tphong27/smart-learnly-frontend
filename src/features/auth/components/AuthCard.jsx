@@ -1,148 +1,140 @@
-import { Zap, BookOpen, ShieldCheck, BarChart3, Check, TrendingUp } from "lucide-react"
+import { ArrowUpRight, BookOpen, Quote, Sparkles, TrendingUp, Users } from "lucide-react"
 import "./AuthCard.css"
+
+function BrandLogo({ tone = "dark" }) {
+  return (
+    <span className={`auth-brand auth-brand--${tone}`}>
+      <span className="auth-brand__mark" aria-hidden="true">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M4 19V5l8 5 8-5v14" />
+          <path d="M4 12l8 5 8-5" opacity="0.55" />
+        </svg>
+      </span>
+      <span className="auth-brand__wordmark">
+        Smart<span>Learnly</span>
+      </span>
+    </span>
+  )
+}
 
 export function AuthPage({ children }) {
   return (
     <div className="auth-page">
-      <div className="auth-page__shell">
-        <aside className="auth-side">
-          <div className="auth-side__inner">
-            <div className="auth-side__brand">
-              <span className="auth-side__brand-mark">
-                <Zap size={18} strokeWidth={2.6} />
-              </span>
-              <span>Smart Learnly</span>
-            </div>
+      <aside className="auth-stage">
+        <div className="auth-stage__decor" aria-hidden="true">
+          <span className="auth-stage__orbit auth-stage__orbit--one" />
+          <span className="auth-stage__orbit auth-stage__orbit--two" />
+          <span className="auth-stage__glow auth-stage__glow--blue" />
+          <span className="auth-stage__glow auth-stage__glow--violet" />
+          <span className="auth-stage__grid" />
+        </div>
 
-            <div className="auth-side__copy">
-              <h2 className="auth-side__title">
-                The learning platform built for modern teams.
+        <div className="auth-stage__inner">
+          <div className="auth-stage__top">
+            <BrandLogo tone="light" />
+            <span className="auth-stage__pill">
+              <Sparkles size={11} strokeWidth={2.6} />
+              AI-powered learning
+            </span>
+          </div>
+
+          <div className="auth-stage__body">
+            <div className="auth-stage__hero">
+              <h2 className="auth-stage__title">
+                Học thông minh hơn,
+                <br />
+                <em>tiến bộ</em> mỗi ngày.
               </h2>
-              <p className="auth-side__subtitle">
-                Personalized paths, deep analytics, and instant feedback. Trusted by universities and enterprise teams to accelerate skill growth.
+              <p className="auth-stage__lede">
+                Smart Learnly cá nhân hóa lộ trình học bằng AI &mdash; theo dõi tiến độ,
+                gợi ý bài tập đúng trình độ, ghi nhớ lâu hơn.
               </p>
             </div>
 
-            <div className="auth-side__preview" aria-hidden="true">
-              <div className="preview-card">
-                <div className="preview-card__head">
-                  <div className="preview-card__title">
-                    <span className="preview-card__dot" />
-                    <strong>Weekly progress</strong>
-                  </div>
-                  <span className="preview-card__badge">
-                    <TrendingUp size={11} strokeWidth={2.6} />
-                    +12.4%
-                  </span>
-                </div>
+            <figure className="auth-stage__quote">
+            <span className="auth-stage__quote-mark" aria-hidden="true">
+              <Quote size={18} strokeWidth={2.4} />
+            </span>
+            <blockquote>
+              &ldquo;Sau 3 tháng, mình đã đạt 8.0 IELTS. Lộ trình AI thực sự
+              biết chỗ mình yếu để luyện đúng điểm.&rdquo;
+            </blockquote>
+            <figcaption>
+              <span className="auth-stage__avatar">MN</span>
+              <span>
+                <strong>Minh Nguyễn</strong>
+                <small>Sinh viên năm 3 &middot; ĐH Bách Khoa</small>
+              </span>
+            </figcaption>
+          </figure>
 
-                <div className="preview-card__metric">
-                  <span className="preview-card__value">86<small>%</small></span>
-                  <span className="preview-card__label">Course completion</span>
-                </div>
-
-                <div className="preview-card__chart">
-                  <span style={{ height: "32%" }} />
-                  <span style={{ height: "48%" }} />
-                  <span style={{ height: "40%" }} />
-                  <span style={{ height: "62%" }} />
-                  <span style={{ height: "55%" }} />
-                  <span style={{ height: "78%" }} />
-                  <span style={{ height: "72%" }} />
-                </div>
-
-                <ul className="preview-card__rows">
-                  <li>
-                    <span className="preview-card__row-icon preview-card__row-icon--blue">
-                      <BarChart3 size={13} />
-                    </span>
-                    <div>
-                      <strong>Data Analytics</strong>
-                      <small>Module 4 of 6</small>
-                    </div>
-                    <span className="preview-card__progress">
-                      <i style={{ width: "72%" }} />
-                    </span>
-                  </li>
-                  <li>
-                    <span className="preview-card__row-icon preview-card__row-icon--slate">
-                      <BookOpen size={13} />
-                    </span>
-                    <div>
-                      <strong>Product Strategy</strong>
-                      <small>Module 2 of 5</small>
-                    </div>
-                    <span className="preview-card__progress">
-                      <i style={{ width: "44%" }} />
-                    </span>
-                  </li>
-                </ul>
-              </div>
-            </div>
-
-            <ul className="auth-side__points">
-              <li>
-                <Check size={14} strokeWidth={3} />
-                <span>Adaptive learning paths tailored to each learner</span>
-              </li>
-              <li>
-                <Check size={14} strokeWidth={3} />
-                <span>Real-time analytics for managers and instructors</span>
-              </li>
-              <li>
-                <Check size={14} strokeWidth={3} />
-                <span>SSO, SCIM and enterprise-grade security</span>
-              </li>
-            </ul>
-
-            <div className="auth-side__footer">
-              <div className="auth-side__metric">
-                <strong>120K+</strong>
-                <span>Active learners</span>
-              </div>
-              <div className="auth-side__metric">
-                <strong>98%</strong>
-                <span>Satisfaction rate</span>
-              </div>
-              <div className="auth-side__metric">
-                <strong>SOC 2</strong>
-                <span>Type II certified</span>
-              </div>
-            </div>
+          <div className="auth-stage__chips" aria-hidden="true">
+            <span className="auth-chip">
+              <span className="auth-chip__icon auth-chip__icon--blue">
+                <TrendingUp size={13} strokeWidth={2.4} />
+              </span>
+              <span className="auth-chip__body">
+                <strong>+92%</strong>
+                <small>Tỉ lệ hoàn thành</small>
+              </span>
+            </span>
+            <span className="auth-chip">
+              <span className="auth-chip__icon auth-chip__icon--violet">
+                <Users size={13} strokeWidth={2.4} />
+              </span>
+              <span className="auth-chip__body">
+                <strong>12.4K</strong>
+                <small>Học viên đang học</small>
+              </span>
+            </span>
+            <span className="auth-chip">
+              <span className="auth-chip__icon auth-chip__icon--teal">
+                <BookOpen size={13} strokeWidth={2.4} />
+              </span>
+              <span className="auth-chip__body">
+                <strong>340+</strong>
+                <small>Khoá học chất lượng</small>
+              </span>
+            </span>
           </div>
-        </aside>
+          </div>
 
-        <main className="auth-main">
+          <div className="auth-stage__foot">
+            <span>Được tin dùng bởi 500+ tổ chức giáo dục</span>
+            <span className="auth-stage__delta">
+              <ArrowUpRight size={11} strokeWidth={2.6} />
+              4.9/5 đánh giá
+            </span>
+          </div>
+        </div>
+      </aside>
+
+      <main className="auth-form">
+        <div className="auth-form__brand-mobile">
+          <BrandLogo tone="dark" />
+        </div>
+        <div className="auth-form__inner">
           {children}
-        </main>
-      </div>
+        </div>
+      </main>
     </div>
   )
 }
 
-export function AuthCard({ title, subtitle, children, footer, wide = false, alert }) {
+export function AuthCard({ title, subtitle, children, footer, wide = false, alert, icon }) {
   const className = ["auth-card", wide ? "auth-card--wide" : ""].filter(Boolean).join(" ")
 
   return (
     <section className={className}>
-      <div className="auth-card__brand">
-        <span className="auth-card__brand-mark">
-          <Zap size={18} strokeWidth={2.6} />
-        </span>
-        Smart Learnly
-      </div>
-
+      {icon && <span className="auth-card__icon" aria-hidden="true">{icon}</span>}
       {title && <h1 className="auth-card__title">{title}</h1>}
       {subtitle && <p className="auth-card__subtitle">{subtitle}</p>}
-
       {alert && (
         <div className={`auth-card__alert auth-card__alert--${alert.type || "error"}`}>
           {alert.message}
         </div>
       )}
-
       {children}
-
       {footer && <div className="auth-card__footer">{footer}</div>}
     </section>
   )

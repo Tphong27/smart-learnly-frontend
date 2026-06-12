@@ -39,6 +39,7 @@ export function ForgotPasswordPage() {
     return (
       <AuthPage>
         <AuthCard
+          icon={<MailCheck size={24} strokeWidth={2.2} />}
           title="Check your email"
           subtitle={`We sent password reset instructions to ${submittedEmail} (if the account exists).`}
           alert={{ type: 'info', message: 'Remember to check your spam folder if you do not see the email.' }}
@@ -49,12 +50,7 @@ export function ForgotPasswordPage() {
             </>
           }
         >
-          <div style={{ display: 'flex', justifyContent: 'center', margin: '12px 0 18px' }}>
-            <span style={{ display: 'grid', placeItems: 'center', width: 64, height: 64, borderRadius: '50%', background: '#eff6ff', color: '#1d4ed8' }}>
-              <MailCheck size={28} />
-            </span>
-          </div>
-          <div style={{ display: 'flex', gap: 10 }}>
+          <div className="auth-actions">
             <Button variant="outline" fullWidth onClick={() => setSubmittedEmail(null)}>
               Resend
             </Button>
@@ -71,7 +67,7 @@ export function ForgotPasswordPage() {
     <AuthPage>
       <AuthCard
         title="Forgot your password?"
-        subtitle="Enter your email and we will send you instructions to reset your password."
+        subtitle="Enter your email and we will send instructions to reset your password."
         alert={serverError ? { type: 'error', message: serverError } : null}
         footer={
           <>

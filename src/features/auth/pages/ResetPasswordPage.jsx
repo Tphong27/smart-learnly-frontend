@@ -90,14 +90,14 @@ export function ResetPasswordPage() {
                   type="button"
                   onClick={() => setShowPassword((s) => !s)}
                   aria-label={showPassword ? 'Hide password' : 'Show password'}
-                  style={{ background: 'transparent', border: 0, cursor: 'pointer', color: 'inherit', display: 'inline-flex' }}
+                  className="auth-toggle-eye"
                 >
                   {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
               }
               autoComplete="new-password"
             />
-            <div style={{ marginTop: 10 }}>
+            <div style={{ marginTop: 12 }}>
               <PasswordStrengthChecklist value={passwordValue} />
             </div>
           </div>
@@ -115,7 +115,7 @@ export function ResetPasswordPage() {
                 type="button"
                 onClick={() => setShowConfirm((s) => !s)}
                 aria-label={showConfirm ? 'Hide password' : 'Show password'}
-                style={{ background: 'transparent', border: 0, cursor: 'pointer', color: 'inherit', display: 'inline-flex' }}
+                className="auth-toggle-eye"
               >
                 {showConfirm ? <EyeOff size={16} /> : <Eye size={16} />}
               </button>

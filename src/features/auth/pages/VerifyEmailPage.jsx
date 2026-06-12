@@ -44,10 +44,7 @@ export function VerifyEmailPage() {
   async function onSubmit(values) {
     setServerError(null)
     try {
-      await authService.verifyEmail({
-        email: values.email,
-        otpCode: values.otpCode,
-      })
+      await authService.verifyEmail({ email: values.email, otpCode: values.otpCode })
       toast.success('Email verified successfully. Please sign in.')
       navigate('/login', { replace: true })
     } catch (error) {
@@ -79,26 +76,20 @@ export function VerifyEmailPage() {
   return (
     <AuthPage>
       <AuthCard
+        icon={<MailCheck size={24} strokeWidth={2.2} />}
         title="Verify your email"
         subtitle={
           emailFromQuery
-            ? `We sent a 6-digit code to ${emailFromQuery}. Enter it below to activate your account.`
-            : 'Enter your email and the 6-digit code we sent you to verify your account.'
+            ? `We sent a 6-digit code to ${emailFromQuery}.`
+            : 'Enter your email and the 6-digit code we sent you.'
         }
         alert={serverError ? { type: 'error', message: serverError } : null}
         footer={
           <>
-            Wrong email?{' '}
-            <Link to="/register">Sign up again</Link>
+            Wrong email? <Link to="/register">Sign up again</Link>
           </>
         }
       >
-        <div style={{ display: 'flex', justifyContent: 'center', margin: '0 0 14px' }}>
-          <span style={{ display: 'grid', placeItems: 'center', width: 56, height: 56, borderRadius: '50%', background: '#eff6ff', color: '#1d4ed8' }}>
-            <MailCheck size={26} />
-          </span>
-        </div>
-
         <Form onSubmit={handleSubmit(onSubmit)}>
           <FormField
             label="Email"

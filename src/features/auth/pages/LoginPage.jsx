@@ -94,7 +94,7 @@ export function LoginPage() {
         {unverifiedEmail && (
           <div className="auth-card__alert auth-card__alert--info">
             Your email is not verified yet.{' '}
-            <Link to={`/verify-email?email=${encodeURIComponent(unverifiedEmail)}`} style={{ color: 'inherit', textDecoration: 'underline', fontWeight: 600 }}>
+            <Link to={`/verify-email?email=${encodeURIComponent(unverifiedEmail)}`} style={{ color: 'inherit', textDecoration: 'underline', fontWeight: 700 }}>
               Verify now
             </Link>
           </div>
@@ -125,7 +125,7 @@ export function LoginPage() {
                 type="button"
                 onClick={() => setShowPassword((s) => !s)}
                 aria-label={showPassword ? 'Hide password' : 'Show password'}
-                style={{ background: 'transparent', border: 0, cursor: 'pointer', color: 'inherit', display: 'inline-flex' }}
+                className="auth-toggle-eye"
               >
                 {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
               </button>
@@ -133,8 +133,8 @@ export function LoginPage() {
             autoComplete="current-password"
           />
 
-          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: -8 }}>
-            <Link to="/forgot-password" style={{ color: 'var(--blue, #2768ee)', fontSize: 13, fontWeight: 600 }}>
+          <div className="auth-link-row">
+            <Link to="/forgot-password" className="auth-link">
               Forgot password?
             </Link>
           </div>
@@ -147,7 +147,7 @@ export function LoginPage() {
         {isGoogleConfigured ? (
           <>
             <SocialDivider>or</SocialDivider>
-            <div style={{ display: 'flex', justifyContent: 'center' }}>
+            <div className="auth-google-mount">
               <GoogleLogin
                 onSuccess={handleGoogleSuccess}
                 onError={() => setServerError('Google sign-in was cancelled or failed.')}
@@ -161,7 +161,7 @@ export function LoginPage() {
             </div>
           </>
         ) : (
-          <p style={{ marginTop: 14, fontSize: 12.5, color: '#9ca3af', textAlign: 'center' }}>
+          <p className="auth-google-fallback">
             Google sign-in is being configured. Set VITE_GOOGLE_CLIENT_ID in .env to enable it.
           </p>
         )}
