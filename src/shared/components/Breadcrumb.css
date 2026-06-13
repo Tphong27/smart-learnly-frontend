@@ -1,0 +1,43 @@
+.modern-breadcrumb {
+  margin-bottom: 20px;
+}
+
+.breadcrumb-list {
+  display: flex;
+  flex-wrap: wrap;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  gap: 8px;
+  align-items: center;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.breadcrumb-item {
+  display: flex;
+  align-items: center;
+  color: var(--muted);
+}
+
+.breadcrumb-item a {
+  color: var(--muted);
+  transition: color 0.2s ease;
+}
+
+.breadcrumb-item a:hover {
+  color: var(--blue);
+}
+
+/* Thêm dấu gạch chéo phân cách giữa các cấp */
+.breadcrumb-item + .breadcrumb-item::before {
+  content: "/";
+  margin-right: 8px;
+  color: var(--line);
+  font-weight: 400;
+}
+
+.breadcrumb-item.active {
+  color: var(--ink);
+  font-weight: 600;
+}

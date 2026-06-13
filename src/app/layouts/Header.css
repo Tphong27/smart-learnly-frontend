@@ -1,0 +1,276 @@
+/* --- Khung Header Tổng Thể --- */
+.app-header {
+  background: #ffffff;
+  border-bottom: 1px solid #f1f5f9;
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  height: 68px;
+  display: flex;
+  align-items: center;
+  padding: 0 24px;
+}
+
+.app-header__inner {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.app-header__left,
+.app-header__actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+/* --- Nút Bấm Menu Sidebar --- */
+.app-header__menu-button {
+  background: transparent;
+  border: none;
+  color: #64748b;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.app-header__menu-button:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+/* --- Thanh Tìm Kiếm Hiện Đại --- */
+.app-header__search-container {
+  display: flex;
+  align-items: center;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 0 14px;
+  width: 260px;
+  height: 38px;
+  transition: all 0.2s ease;
+}
+
+.app-header__search-container:focus-within {
+  background: #ffffff;
+  border-color: #6366f1; /* Đổi sang viền màu Indigo cực sang */
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+  width: 300px; /* Hiệu ứng co giãn nhẹ khi focus */
+}
+
+.app-header__search-icon {
+  color: #94a3b8;
+  margin-right: 10px;
+}
+
+.app-header__search-input {
+  border: none;
+  background: transparent;
+  outline: none;
+  width: 100%;
+  font-size: 14px;
+  color: #334155;
+}
+
+.app-header__search-input::placeholder {
+  color: #94a3b8;
+}
+
+/* --- Nút Thông Báo (Notification) --- */
+.app-header__icon-button {
+  background: transparent;
+  border: none;
+  color: #64748b;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 8px;
+  position: relative;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+}
+
+.app-header__icon-button:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+.app-header__notification-dot {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 8px;
+  height: 8px;
+  background-color: #ef4444; /* Đỏ rực cảnh báo */
+  border: 2px solid #ffffff;
+  border-radius: 50%;
+}
+
+.app-header__divider {
+  width: 1px;
+  height: 24px;
+  background-color: #e2e8f0;
+}
+
+/* --- Profile Button Khách Hàng --- */
+.app-header__user {
+  position: relative;
+}
+
+.app-header__user-button {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 12px;
+  border-radius: 10px;
+  transition: all 0.2s ease;
+  text-align: left;
+}
+
+.app-header__user-button:hover,
+.app-header__user-button--active {
+  background: #f8fafc;
+}
+
+/* --- Avatar & Chữ viết tắt --- */
+.app-header__avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid #e2e8f0;
+}
+
+.app-header__avatar--initials {
+  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+  color: #ffffff;
+  font-weight: 600;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+}
+
+.app-header__user-copy {
+  display: flex;
+  flex-direction: column;
+}
+
+.app-header__user-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1e293b;
+  line-height: 1.2;
+}
+
+.app-header__user-role {
+  font-size: 12px;
+  color: #64748b;
+  font-weight: 500;
+  text-transform: capitalize;
+}
+
+.app-header__chevron {
+  color: #94a3b8;
+  transition: transform 0.2s ease;
+}
+
+.app-header__chevron--rotate {
+  transform: rotate(180deg);
+}
+
+/* --- Dropdown Menu Đổ Bóng Cực Đẹp --- */
+.app-header__user-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 220px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  box-shadow:
+    0 10px 25px -5px rgba(0, 0, 0, 0.05),
+    0 8px 10px -6px rgba(0, 0, 0, 0.05);
+  padding: 6px;
+  animation: fadeInHeaderDropdown 0.15s ease-out;
+}
+
+.app-header__dropdown-header {
+  padding: 10px 12px 8px 12px;
+}
+
+.dropdown-user-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: #0f172a;
+  margin: 0;
+}
+
+.dropdown-user-email {
+  font-size: 12px;
+  color: #94a3b8;
+  margin: 2px 0 0 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.user-menu__divider {
+  height: 1px;
+  background-color: #f1f5f9;
+  margin: 6px 0;
+}
+
+/* --- Các Action Items Trong Menu --- */
+.app-header__user-menu-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: transparent;
+  border: none;
+  padding: 9px 12px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #475569;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: all 0.15s ease;
+  text-align: left;
+}
+
+.app-header__user-menu-item:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+.app-header__user-menu-item--danger {
+  color: #ef4444;
+}
+
+.app-header__user-menu-item--danger:hover {
+  background: #fef2f2;
+  color: #dc2626;
+}
+
+/* Animation khi hiện Dropdown */
+@keyframes fadeInHeaderDropdown {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
