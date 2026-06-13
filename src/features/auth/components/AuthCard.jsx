@@ -41,13 +41,13 @@ export function AuthPage({ children }) {
           <div className="auth-stage__body">
             <div className="auth-stage__hero">
               <h2 className="auth-stage__title">
-                Học thông minh hơn,
+                Learn smarter,
                 <br />
-                <em>tiến bộ</em> mỗi ngày.
+                <em>progress</em> every day.
               </h2>
               <p className="auth-stage__lede">
-                Smart Learnly cá nhân hóa lộ trình học bằng AI &mdash; theo dõi tiến độ,
-                gợi ý bài tập đúng trình độ, ghi nhớ lâu hơn.
+                Smart Learnly personalizes your learning path with AI &mdash; track progress,
+                get exercises matched to your level, and remember longer.
               </p>
             </div>
 
@@ -56,14 +56,14 @@ export function AuthPage({ children }) {
               <Quote size={18} strokeWidth={2.4} />
             </span>
             <blockquote>
-              &ldquo;Sau 3 tháng, mình đã đạt 8.0 IELTS. Lộ trình AI thực sự
-              biết chỗ mình yếu để luyện đúng điểm.&rdquo;
+              &ldquo;After 3 months, I scored 8.0 on IELTS. The AI roadmap really
+              knows my weak spots and trains me right where it matters.&rdquo;
             </blockquote>
             <figcaption>
               <span className="auth-stage__avatar">MN</span>
               <span>
-                <strong>Minh Nguyễn</strong>
-                <small>Sinh viên năm 3 &middot; ĐH Bách Khoa</small>
+                <strong>Minh Nguyen</strong>
+                <small>Third-year student &middot; HUST</small>
               </span>
             </figcaption>
           </figure>
@@ -75,7 +75,7 @@ export function AuthPage({ children }) {
               </span>
               <span className="auth-chip__body">
                 <strong>+92%</strong>
-                <small>Tỉ lệ hoàn thành</small>
+                <small>Completion rate</small>
               </span>
             </span>
             <span className="auth-chip">
@@ -84,7 +84,7 @@ export function AuthPage({ children }) {
               </span>
               <span className="auth-chip__body">
                 <strong>12.4K</strong>
-                <small>Học viên đang học</small>
+                <small>Active learners</small>
               </span>
             </span>
             <span className="auth-chip">
@@ -93,17 +93,17 @@ export function AuthPage({ children }) {
               </span>
               <span className="auth-chip__body">
                 <strong>340+</strong>
-                <small>Khoá học chất lượng</small>
+                <small>Quality courses</small>
               </span>
             </span>
           </div>
           </div>
 
           <div className="auth-stage__foot">
-            <span>Được tin dùng bởi 500+ tổ chức giáo dục</span>
+            <span>Trusted by 500+ educational institutions</span>
             <span className="auth-stage__delta">
               <ArrowUpRight size={11} strokeWidth={2.6} />
-              4.9/5 đánh giá
+              4.9/5 rating
             </span>
           </div>
         </div>
