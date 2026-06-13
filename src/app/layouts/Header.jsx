@@ -80,9 +80,10 @@ export function Header({ user, onToggleSidebar, onLogout }) {
             <span className="app-header__notification-dot" />
           </button>
 
-          <div className="app-header__user">
+          <div className="app-header__user" ref={menuRef}>
             <button
               type="button"
+              onClick={() => setOpen((value) => !value)}
               className="app-header__user-button"
             >
               {user?.avatarUrl ? (
@@ -107,23 +108,26 @@ export function Header({ user, onToggleSidebar, onLogout }) {
               </span>
             </button>
 
-            <div className="app-header__user-menu">
-              <a
-                href="/profile"
-                className="app-header__user-menu-item"
-              >
-                <User size={16} /> Profile
-              </button>
-              <div className="user-menu__divider" />
-              <button
-                type="button"
-                onClick={onLogout}
-                className="app-header__user-menu-item app-header__user-menu-item--danger"
-              >
-                <LogOut size={16} /> Logout
-              </button>
-            </div>
-          )}
+            {open && (
+              <div className="app-header__user-menu">
+                <button
+                  type="button"
+                  onClick={handleProfile}
+                  className="app-header__user-menu-item"
+                >
+                  <User size={16} /> Profile
+                </button>
+                <div className="user-menu__divider" />
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  className="app-header__user-menu-item app-header__user-menu-item--danger"
+                >
+                  <LogOut size={16} /> Logout
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </header>

@@ -34,17 +34,6 @@ function PlaceholderPage({ title }) {
   );
 }
 
-// ---------------------------------------------------------
-// CẤU HÌNH COMPONENT LOGIN & REGISTER
-// ---------------------------------------------------------
-function LoginPage() {
-  return <PlaceholderPage title="Login" />;
-}
-
-function RegisterPage() {
-  return <PlaceholderPage title="Register" />;
-}
-
 export function AppShell() {
   return (
     <BrowserRouter>

@@ -24,13 +24,21 @@ export function getAccessToken() {
   return localStorage.getItem(ACCESS_TOKEN_KEY)
 }
 
+function normalizeUser(user) {
+  if (!user) return user
+  return {
+    ...user,
+    role: typeof user.role === 'string' ? user.role.toLowerCase() : user.role,
+  }
+}
+
 export function setAuthSession({ accessToken, user }) {
   if (accessToken) {
     localStorage.setItem(ACCESS_TOKEN_KEY, accessToken)
   }
 
   if (user) {
-    localStorage.setItem(USER_KEY, JSON.stringify(user))
+    localStorage.setItem(USER_KEY, JSON.stringify(normalizeUser(user)))
   }
 }
 
@@ -82,14 +90,24 @@ const refreshClient = axios.create({
   },
 })
 
+const PUBLIC_AUTH_ENDPOINTS = /\/auth\/(login|register|google|refresh|forgot-password|reset-password|verify-email|resend-verification)/
+
 apiClient.interceptors.request.use(
   (config) => {
-    const accessToken = getAccessToken()
+    const url = config?.url || ''
+    const isPublicAuth = PUBLIC_AUTH_ENDPOINTS.test(url)
 
+    if (isPublicAuth) {
+      if (config.headers) {
+        delete config.headers.Authorization
+      }
+      return config
+    }
+
+    const accessToken = getAccessToken()
     if (accessToken) {
       config.headers.Authorization = `Bearer ${accessToken}`
     }
-
     return config
   },
   (error) => Promise.reject(error),

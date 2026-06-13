@@ -53,7 +53,7 @@ export function Sidebar({ userRole, open, onClose }) {
               <Zap size={18} />
             </span>
             Smart Learnly
-          </NavLink>
+          </a>
 
           <button
             type="button"
