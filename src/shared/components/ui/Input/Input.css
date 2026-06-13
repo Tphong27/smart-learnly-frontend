@@ -1,14 +1,15 @@
 .input-field {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 7px;
   width: 100%;
 }
 
 .input-field__label {
-  color: #111827;
-  font-size: 14px;
+  color: var(--ink, #14213d);
+  font-size: 13.5px;
   font-weight: 600;
+  letter-spacing: -0.1px;
 }
 
 .input-field__required {
@@ -24,13 +25,14 @@
 
 .input-field__control {
   width: 100%;
-  min-height: 42px;
-  border: 1px solid #d1d5db;
-  border-radius: 10px;
+  min-height: 46px;
+  border: 1px solid #dde4ee;
+  border-radius: 12px;
   background: #ffffff;
-  color: #111827;
-  padding: 0 12px;
+  color: var(--ink, #14213d);
+  padding: 0 14px;
   font-size: 15px;
+  font-family: inherit;
   outline: none;
   transition:
     border-color 0.2s ease,
@@ -39,26 +41,30 @@
 }
 
 .input-field__control::placeholder {
-  color: #9ca3af;
+  color: #9aa4b6;
+}
+
+.input-field__control:hover:not(:disabled):not(:focus) {
+  border-color: #c5cfdf;
 }
 
 .input-field__control:focus {
-  border-color: #2563eb;
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.14);
+  border-color: var(--blue, #2768ee);
+  box-shadow: 0 0 0 4px rgba(39, 104, 238, 0.12);
 }
 
 .input-field__control:disabled {
   cursor: not-allowed;
-  background: #f3f4f6;
-  color: #6b7280;
+  background: #f6f8fc;
+  color: #8e98ad;
 }
 
 .input-field__control--has-left-icon {
-  padding-left: 40px;
+  padding-left: 42px;
 }
 
 .input-field__control--has-right-icon {
-  padding-right: 40px;
+  padding-right: 42px;
 }
 
 .input-field__icon {
@@ -67,33 +73,47 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  color: #6b7280;
+  color: #8b95a9;
+  pointer-events: none;
+  transition: color 0.2s ease;
+}
+
+.input-field__wrapper:focus-within .input-field__icon {
+  color: var(--blue, #2768ee);
 }
 
 .input-field__icon--left {
-  left: 12px;
+  left: 14px;
 }
 
 .input-field__icon--right {
-  right: 12px;
+  right: 14px;
+  pointer-events: auto;
 }
 
 .input-field--error .input-field__control {
   border-color: #dc2626;
+  background: #fef9f9;
 }
 
 .input-field--error .input-field__control:focus {
-  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.14);
+  box-shadow: 0 0 0 4px rgba(220, 38, 38, 0.12);
+}
+
+.input-field--error .input-field__icon {
+  color: #dc2626;
 }
 
 .input-field__error,
 .input-field__helper {
   margin: 0;
-  font-size: 13px;
+  font-size: 12.5px;
+  line-height: 1.45;
 }
 
 .input-field__error {
   color: #dc2626;
+  font-weight: 500;
 }
 
 .input-field__helper {

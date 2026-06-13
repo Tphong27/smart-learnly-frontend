@@ -8,6 +8,7 @@ import {
   Layers3,
   Settings,
   ShieldCheck,
+  Sparkles,
   Users,
   X,
   Zap,
@@ -16,66 +17,16 @@ import { NavLink } from 'react-router-dom'
 import { ROLES } from '@/shared/constants/roles'
 
 const navItems = [
-  {
-    label: 'Dashboard',
-    path: '/dashboard',
-    icon: Home,
-    roles: [ROLES.TRAINEE, ROLES.TRAINER, ROLES.TMO, ROLES.SME, ROLES.ADMIN],
-  },
-  {
-    label: 'My Courses',
-    path: '/my-courses',
-    icon: GraduationCap,
-    roles: [ROLES.TRAINEE,ROLES.TRAINER, ROLES.SME, ROLES.ADMIN, ROLES.TMO],
-  },
-  {
-    label: 'Tests',
-    path: '/tests',
-    icon: ClipboardCheck,
-    roles: [ROLES.TRAINEE, ROLES.TRAINER, ROLES.SME, ROLES.ADMIN, ROLES.TMO],
-  },
-  {
-    label: 'Classes',
-    path: '/trainer/classes',
-    icon: Users,
-    roles: [ROLES.TRAINER, ROLES.SME, ROLES.ADMIN, ROLES.TMO],
-  },
-  {
-    label: 'Course Content',
-    path: '/sme/content',
-    icon: Layers3,
-    roles: [ROLES.SME, ROLES.ADMIN, ROLES.TRAINER, ROLES.TMO],
-  },
-  {
-    label: 'Question Bank',
-    path: '/sme/questions',
-    icon: FileQuestion,
-    roles: [ROLES.SME, ROLES.ADMIN, ROLES.TRAINER, ROLES.TMO],
-  },
-  {
-    label: 'Course Management',
-    path: '/admin/courses',
-    icon: BookOpen,
-    roles: [ROLES.ADMIN, ROLES.TMO, ROLES.TRAINER, ROLES.SME],
-  },
-  {
-    label: 'Users & Roles',
-    path: '/admin/users',
-    icon: ShieldCheck,
-    roles: [ROLES.ADMIN],
-  },
-  {
-    label: 'Reports',
-    path: '/reports',
-    icon: BarChart3,
-    roles: [ROLES.TMO, ROLES.ADMIN, ROLES.TRAINER, ROLES.SME],
-  },
-  {
-    label: 'Settings',
-    path: '/settings',
-    icon: Settings,
-    roles: [ROLES.ADMIN],
-  },
+  { label: 'Dashboard', path: '/dashboard', icon: Home, roles: [ROLES.TRAINEE, ROLES.TRAINER, ROLES.TMO, ROLES.SME, ROLES.ADMIN] },
+  { label: 'My Courses', path: '/my-courses', icon: GraduationCap, roles: [ROLES.TRAINEE, ROLES.TRAINER, ROLES.SME, ROLES.ADMIN, ROLES.TMO] },
+  { label: 'Tests', path: '/tests', icon: ClipboardCheck, roles: [ROLES.TRAINEE, ROLES.TRAINER, ROLES.SME, ROLES.ADMIN, ROLES.TMO] },
+  { label: 'Classes', path: '/trainer/classes', icon: Users, roles: [ROLES.TRAINER, ROLES.SME, ROLES.ADMIN, ROLES.TMO] },
+  { label: 'Course Content', path: '/sme/content', icon: Layers3, roles: [ROLES.SME, ROLES.ADMIN, ROLES.TRAINER, ROLES.TMO] },
+  { label: 'Question Bank', path: '/sme/questions', icon: FileQuestion, roles: [ROLES.SME, ROLES.ADMIN, ROLES.TRAINER, ROLES.TMO] },
+  { label: 'Course Management', path: '/admin/courses', icon: BookOpen, roles: [ROLES.ADMIN, ROLES.TMO, ROLES.TRAINER, ROLES.SME] },
+  { label: 'Users & Roles', path: '/admin/users', icon: ShieldCheck, roles: [ROLES.ADMIN] },
+  { label: 'Reports', path: '/reports', icon: BarChart3, roles: [ROLES.TMO, ROLES.ADMIN, ROLES.TRAINER, ROLES.SME] },
+  { label: 'Settings', path: '/settings', icon: Settings, roles: [ROLES.ADMIN] },
 ]
 
 export function Sidebar({ userRole, open, onClose }) {
@@ -92,6 +43,7 @@ export function Sidebar({ userRole, open, onClose }) {
       <div
         className={overlayClassName}
         onClick={onClose}
+        aria-hidden="true"
       />
 
       <aside className={sidebarClassName}>
@@ -101,7 +53,7 @@ export function Sidebar({ userRole, open, onClose }) {
               <Zap size={18} />
             </span>
             Smart Learnly
-          </a>
+          </NavLink>
 
           <button
             type="button"
@@ -141,3 +93,4 @@ export function Sidebar({ userRole, open, onClose }) {
     </>
   )
 }
+

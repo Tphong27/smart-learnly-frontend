@@ -1,8 +1,11 @@
 import apiClient, {
   clearAuthSession,
   setAuthSession,
-  getRefreshToken,
 } from './api-client'
+
+function unwrap(response) {
+  return response?.data ?? response
+}
 
 export const authService = {
   async register(payload) {
@@ -11,11 +14,10 @@ export const authService = {
 
   async login(payload) {
     const response = await apiClient.post('/auth/login', payload)
-    const data = response.data || response
+    const data = unwrap(response)
 
     setAuthSession({
       accessToken: data.accessToken,
-      refreshToken: data.refreshToken,
       user: data.user,
     })
 
@@ -24,11 +26,10 @@ export const authService = {
 
   async loginGoogle(idToken) {
     const response = await apiClient.post('/auth/google', { idToken })
-    const data = response.data || response
+    const data = unwrap(response)
 
     setAuthSession({
       accessToken: data.accessToken,
-      refreshToken: data.refreshToken,
       user: data.user,
     })
 
@@ -36,12 +37,8 @@ export const authService = {
   },
 
   async logout() {
-    const refreshToken = getRefreshToken()
-
     try {
-      if (refreshToken) {
-        await apiClient.post('/auth/logout', { refreshToken })
-      }
+      await apiClient.post('/auth/logout')
     } finally {
       clearAuthSession()
     }
@@ -64,14 +61,16 @@ export const authService = {
   },
 
   async getProfile() {
-    return apiClient.get('/users/me')
+    const response = await apiClient.get('/auth/profile')
+    return unwrap(response)
   },
 
   async updateProfile(payload) {
-    return apiClient.put('/users/me', payload)
+    const response = await apiClient.patch('/auth/profile', payload)
+    return unwrap(response)
   },
 
   async changePassword(payload) {
-    return apiClient.put('/users/me/password', payload)
+    return apiClient.post('/auth/change-password', payload)
   },
 }

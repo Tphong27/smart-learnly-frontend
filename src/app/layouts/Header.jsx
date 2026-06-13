@@ -1,16 +1,52 @@
-import { Bell, Menu, Search, User, LogOut } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { Bell, LogOut, Menu, Search, User } from 'lucide-react'
 
-export function Header({ user, onToggleSidebar, onLogout }) {
-  const displayName = user?.firstName
-    ? `${user.firstName} ${user.lastName || ''}`.trim()
-    : user?.email || 'User'
-
-  const initials = displayName
+function getInitials(name) {
+  return (name || 'U')
     .split(' ')
+    .filter(Boolean)
     .map((word) => word[0])
     .join('')
     .slice(0, 2)
     .toUpperCase()
+}
+
+export function Header({ user, onToggleSidebar, onLogout }) {
+  const navigate = useNavigate()
+  const [open, setOpen] = useState(false)
+  const menuRef = useRef(null)
+
+  const displayName =
+    user?.fullName ||
+    [user?.firstName, user?.lastName].filter(Boolean).join(' ') ||
+    user?.email ||
+    'User'
+  const initials = getInitials(displayName)
+  const role = user?.role || 'user'
+
+  useEffect(() => {
+    function handleClick(event) {
+      if (menuRef.current && !menuRef.current.contains(event.target)) {
+        setOpen(false)
+      }
+    }
+    if (open) {
+      document.addEventListener('mousedown', handleClick)
+      return () => document.removeEventListener('mousedown', handleClick)
+    }
+    return undefined
+  }, [open])
+
+  function handleProfile() {
+    setOpen(false)
+    navigate('/profile')
+  }
+
+  function handleLogout() {
+    setOpen(false)
+    onLogout?.()
+  }
 
   return (
     <header className="app-header">
@@ -76,22 +112,21 @@ export function Header({ user, onToggleSidebar, onLogout }) {
                 href="/profile"
                 className="app-header__user-menu-item"
               >
-                <User size={16} />
-                Profile
-              </a>
-
+                <User size={16} /> Profile
+              </button>
+              <div className="user-menu__divider" />
               <button
                 type="button"
                 onClick={onLogout}
                 className="app-header__user-menu-item app-header__user-menu-item--danger"
               >
-                <LogOut size={16} />
-                Logout
+                <LogOut size={16} /> Logout
               </button>
             </div>
-          </div>
+          )}
         </div>
       </div>
     </header>
   )
 }
+

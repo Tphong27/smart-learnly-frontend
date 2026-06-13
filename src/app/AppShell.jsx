@@ -1,9 +1,18 @@
-import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
-import { AppLayout } from "./layouts/AppLayout";
-import { ProtectedRoute } from "./routes/ProtectedRoute";
-import { RoleGuard } from "./routes/RoleGuard";
-import { HomePage } from "../features/home/HomePage";
-import { ROLES } from "../shared/constants/roles";
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
+import { PublicLayout } from './layouts/PublicLayout'
+import { AppLayout } from './layouts/AppLayout'
+import { ProtectedRoute } from './routes/ProtectedRoute'
+import { RoleGuard } from './routes/RoleGuard'
+import { HomePage } from '../features/home/HomePage'
+import {
+  LoginPage,
+  RegisterPage,
+  ForgotPasswordPage,
+  ResetPasswordPage,
+  VerifyEmailPage,
+  ProfilePage,
+} from '../features/auth'
+import { ROLES } from '@/shared/constants/roles'
 
 // =========================================================
 // IMPORT CÁC TRANG BÁO LỖI XỊN TỪ THƯ MỤC PAGES
@@ -15,13 +24,11 @@ import { ServerErrorPage } from "./pages/error/ServerErrorPage";
 // Hàm hiển thị tạm thời (BẮT BUỘC PHẢI CÓ để các trang dưới không bị crash)
 function PlaceholderPage({ title }) {
   return (
-    <section
-      className="app-placeholder"
-      style={{ padding: "40px", textAlign: "center" }}
-    >
-      <h1>{title} Màn Hình Phẳng</h1>
-      <p>
-        Đây là giao diện tạm thời cho trang <strong>{title}</strong>.
+    <section className="placeholder-page">
+      <span className="placeholder-page__eyebrow">Coming soon</span>
+      <h1 className="placeholder-page__title">{title}</h1>
+      <p className="placeholder-page__text">
+        This is a placeholder page for <strong>{title}</strong>. Content will be added in future sprints.
       </p>
     </section>
   );
@@ -42,30 +49,29 @@ export function AppShell() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* ========================================================= */}
-        {/* 1. PUBLIC ROUTES: Hiển thị phẳng trực tiếp, không bọc gì cả */}
-        {/* ========================================================= */}
-        <Route path="/" element={<HomePage />} />
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/register" element={<RegisterPage />} />
+        <Route
+          path="/"
+          element={
+            <PublicLayout>
+              <HomePage />
+            </PublicLayout>
+          }
+        />
+
+        <Route path="/login" element={<PublicLayout><LoginPage /></PublicLayout>} />
+        <Route path="/register" element={<PublicLayout><RegisterPage /></PublicLayout>} />
+        <Route path="/forgot-password" element={<PublicLayout><ForgotPasswordPage /></PublicLayout>} />
+        <Route path="/reset-password" element={<PublicLayout><ResetPasswordPage /></PublicLayout>} />
+        <Route path="/verify-email" element={<PublicLayout><VerifyEmailPage /></PublicLayout>} />
 
         {/* ========================================================= */}
         {/* 2. PROTECTED ROUTES: Luồng đăng nhập kiểm tra quyền        */}
         {/* ========================================================= */}
         <Route element={<ProtectedRoute />}>
           <Route element={<AppLayout />}>
-            <Route
-              path="/dashboard"
-              element={<PlaceholderPage title="Dashboard" />}
-            />
-            <Route
-              path="/profile"
-              element={<PlaceholderPage title="Profile" />}
-            />
-            <Route
-              path="/my-courses"
-              element={<PlaceholderPage title="My Courses" />}
-            />
+            <Route path="/dashboard" element={<PlaceholderPage title="Dashboard" />} />
+            <Route path="/profile" element={<ProfilePage />} />
+            <Route path="/my-courses" element={<PlaceholderPage title="My Courses" />} />
             <Route path="/tests" element={<PlaceholderPage title="Tests" />} />
 
             {/* Phân quyền: SME & ADMIN */}
@@ -127,5 +133,5 @@ export function AppShell() {
         <Route path="*" element={<Navigate to="/404" replace />} />
       </Routes>
     </BrowserRouter>
-  );
+  )
 }

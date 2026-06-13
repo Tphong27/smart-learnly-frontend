@@ -1,9 +1,8 @@
 import axios from 'axios'
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api'
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api/v1'
 
 const ACCESS_TOKEN_KEY = 'accessToken'
-const REFRESH_TOKEN_KEY = 'refreshToken'
 const USER_KEY = 'user'
 
 let isRefreshing = false
@@ -25,17 +24,9 @@ export function getAccessToken() {
   return localStorage.getItem(ACCESS_TOKEN_KEY)
 }
 
-export function getRefreshToken() {
-  return localStorage.getItem(REFRESH_TOKEN_KEY)
-}
-
-export function setAuthSession({ accessToken, refreshToken, user }) {
+export function setAuthSession({ accessToken, user }) {
   if (accessToken) {
     localStorage.setItem(ACCESS_TOKEN_KEY, accessToken)
-  }
-
-  if (refreshToken) {
-    localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken)
   }
 
   if (user) {
@@ -45,7 +36,6 @@ export function setAuthSession({ accessToken, refreshToken, user }) {
 
 export function clearAuthSession() {
   localStorage.removeItem(ACCESS_TOKEN_KEY)
-  localStorage.removeItem(REFRESH_TOKEN_KEY)
   localStorage.removeItem(USER_KEY)
 }
 
@@ -77,6 +67,7 @@ function redirectToForbidden() {
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
   timeout: 30000,
+  withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -85,6 +76,7 @@ export const apiClient = axios.create({
 const refreshClient = axios.create({
   baseURL: API_BASE_URL,
   timeout: 30000,
+  withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -117,16 +109,11 @@ apiClient.interceptors.response.use(
       })
     }
 
-    if (status === 401 && !originalRequest._retry) {
+    const isAuthEndpoint = typeof originalRequest?.url === 'string'
+      && /\/auth\/(login|register|google|refresh|forgot-password|reset-password|verify-email|resend-verification)/.test(originalRequest.url)
+
+    if (status === 401 && !originalRequest._retry && !isAuthEndpoint) {
       originalRequest._retry = true
-
-      const refreshToken = getRefreshToken()
-
-      if (!refreshToken) {
-        clearAuthSession()
-        redirectToLogin()
-        return Promise.reject(error)
-      }
 
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
@@ -142,22 +129,17 @@ apiClient.interceptors.response.use(
       isRefreshing = true
 
       try {
-        const refreshResponse = await refreshClient.post('/auth/refresh', {
-          refreshToken,
-        })
-
+        const refreshResponse = await refreshClient.post('/auth/refresh')
         const responseData = refreshResponse.data?.data || refreshResponse.data
 
         const newAccessToken = responseData.accessToken
-        const newRefreshToken = responseData.refreshToken
 
-        if (!newAccessToken || !newRefreshToken) {
+        if (!newAccessToken) {
           throw new Error('Invalid refresh token response')
         }
 
         setAuthSession({
           accessToken: newAccessToken,
-          refreshToken: newRefreshToken,
           user: responseData.user || getCurrentUser(),
         })
 
