@@ -1,160 +1,177 @@
-import { useEffect, useMemo, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
-import { courseService } from '../services'
-import { CourseCard } from '../components/CourseCard'
-import { CourseFilters } from '../components/CourseFilters'
-import { CourseListToolbar } from '../components/CourseListToolbar'
-import '../course.css'
+import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
+import { courseService } from "../services";
+import { CourseCard } from "../components/CourseCard";
+import { CourseFilters } from "../components/CourseFilters";
+import { CourseListToolbar } from "../components/CourseListToolbar";
+import "../course.css";
 
-const DEFAULT_PAGE_SIZE = 3
+const DEFAULT_PAGE_SIZE = 3;
 
-export function CourseListPage() {
-  const [searchParams, setSearchParams] = useSearchParams()
+export function CourseListPage({
+  embedded = false,
+  showHero = true,
+  pageSize = DEFAULT_PAGE_SIZE,
+  showToolbar = true,
+  showFilters = true,
+  detailState,
+}) {
+  const [searchParams, setSearchParams] = useSearchParams();
 
-  const [courses, setCourses] = useState([])
-  const [categories, setCategories] = useState([])
+  const [courses, setCourses] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [pageInfo, setPageInfo] = useState({
     page: 0,
-    size: DEFAULT_PAGE_SIZE,
+    size: pageSize,
     totalElements: 0,
     totalPages: 1,
-  })
+  });
   const [viewMode, setViewMode] = useState(
-    localStorage.getItem('courseViewMode') || 'grid',
-  )
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
+    localStorage.getItem("courseViewMode") || "grid",
+  );
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  const keyword = searchParams.get('keyword') || ''
-  const categoryId = searchParams.get('categoryId') || ''
-  const page = Number(searchParams.get('page') || 0)
+  const keyword = searchParams.get("keyword") || "";
+  const categorySlug = searchParams.get("categorySlug") || "";
+  const page = Number(searchParams.get("page") || 0);
 
   useEffect(() => {
-    let mounted = true
+    let mounted = true;
 
     async function loadCategories() {
       try {
-        const data = await courseService.getCategories()
+        const data = await courseService.getCategories();
         if (mounted) {
-          setCategories(Array.isArray(data) ? data : [])
+          setCategories(Array.isArray(data) ? data : []);
         }
       } catch {
         if (mounted) {
-          setCategories([])
+          setCategories([]);
         }
       }
     }
 
-    loadCategories()
+    loadCategories();
 
     return () => {
-      mounted = false
-    }
-  }, [])
+      mounted = false;
+    };
+  }, []);
 
   useEffect(() => {
-    let mounted = true
+    let mounted = true;
 
     async function loadCourses() {
-      setLoading(true)
-      setError('')
+      setLoading(true);
+      setError("");
 
       try {
         const data = await courseService.getPublicCourses({
           page,
-          size: DEFAULT_PAGE_SIZE,
+          size: pageSize,
           keyword,
-          categoryId,
-        })
+          categorySlug,
+        });
 
         if (mounted) {
-          setCourses(data.items)
-          setPageInfo(data)
+          setCourses(data.items);
+          setPageInfo(data);
         }
       } catch (err) {
         if (mounted) {
-          setError(err?.message || 'Can not load courses right now.')
-          setCourses([])
+          setError(err?.message || "Can not load courses right now.");
+          setCourses([]);
         }
       } finally {
         if (mounted) {
-          setLoading(false)
+          setLoading(false);
         }
       }
     }
 
-    loadCourses()
+    loadCourses();
 
     return () => {
-      mounted = false
-    }
-  }, [keyword, categoryId, page])
+      mounted = false;
+    };
+  }, [keyword, categorySlug, page, pageSize]);
 
   function updateQuery(nextValues) {
     const next = {
       keyword,
-      categoryId,
+      categorySlug,
       page: String(page),
       ...nextValues,
-    }
+    };
 
     Object.keys(next).forEach((key) => {
-      if (!next[key] || next[key] === '0') {
-        delete next[key]
+      if (!next[key] || next[key] === "0") {
+        delete next[key];
       }
-    })
+    });
 
-    setSearchParams(next)
+    setSearchParams(next);
   }
 
   function handleKeywordChange(value) {
     updateQuery({
       keyword: value,
-      page: '0',
-    })
+      page: "0",
+    });
   }
 
   function handleCategoryChange(value) {
     updateQuery({
-      categoryId: value,
-      page: '0',
-    })
+      categorySlug: value,
+      page: "0",
+    });
   }
 
   function handleViewModeChange(mode) {
-    setViewMode(mode)
-    localStorage.setItem('courseViewMode', mode)
+    setViewMode(mode);
+    localStorage.setItem("courseViewMode", mode);
   }
 
   const pageNumbers = useMemo(() => {
-    return Array.from({ length: pageInfo.totalPages }, (_, index) => index)
-  }, [pageInfo.totalPages])
+    return Array.from({ length: pageInfo.totalPages }, (_, index) => index);
+  }, [pageInfo.totalPages]);
 
-  return (
-    <main className="course-page">
-      <section className="course-hero">
-        <span className="course-hero__eyebrow">Course catalog</span>
-        <h1>Explore courses that match your learning goals</h1>
-        <p>
-          Browse published courses, filter by category, and open course details
-          before enrollment.
-        </p>
-      </section>
+  const content = (
+    <>
+      {showHero && (
+        <section className="course-hero">
+          <span className="course-hero__eyebrow">Course catalog</span>
+          <h1>Explore courses that match your learning goals</h1>
+          <p>
+            Browse published courses, filter by category, and open course
+            details before enrollment.
+          </p>
+        </section>
+      )}
 
-      <section className="course-panel">
-        <CourseFilters
-          keyword={keyword}
-          categoryId={categoryId}
-          categories={categories}
-          onKeywordChange={handleKeywordChange}
-          onCategoryChange={handleCategoryChange}
-        />
+      <section
+        className={
+          embedded ? "course-panel course-panel--embedded" : "course-panel"
+        }
+      >
+        {showFilters && (
+          <CourseFilters
+            keyword={keyword}
+            categorySlug={categorySlug}
+            categories={categories}
+            onKeywordChange={handleKeywordChange}
+            onCategoryChange={handleCategoryChange}
+          />
+        )}
 
-        <CourseListToolbar
-          totalElements={pageInfo.totalElements}
-          viewMode={viewMode}
-          onViewModeChange={handleViewModeChange}
-        />
+        {showToolbar && (
+          <CourseListToolbar
+            totalElements={pageInfo.totalElements}
+            viewMode={viewMode}
+            onViewModeChange={handleViewModeChange}
+          />
+        )}
 
         {loading && (
           <div className="course-state">
@@ -165,7 +182,10 @@ export function CourseListPage() {
         {!loading && error && (
           <div className="course-state course-state--error">
             <p>{error}</p>
-            <button type="button" onClick={() => updateQuery({ page: String(page) })}>
+            <button
+              type="button"
+              onClick={() => updateQuery({ page: String(page) })}
+            >
               Try again
             </button>
           </div>
@@ -186,6 +206,7 @@ export function CourseListPage() {
                   key={course.id || course.slug}
                   course={course}
                   viewMode={viewMode}
+                  detailState={detailState}
                 />
               ))}
             </div>
@@ -196,7 +217,7 @@ export function CourseListPage() {
                   <button
                     key={pageNumber}
                     type="button"
-                    className={pageNumber === page ? 'is-active' : ''}
+                    className={pageNumber === page ? "is-active" : ""}
                     onClick={() => updateQuery({ page: String(pageNumber) })}
                   >
                     {pageNumber + 1}
@@ -207,6 +228,12 @@ export function CourseListPage() {
           </>
         )}
       </section>
-    </main>
-  )
+    </>
+  );
+
+  if (embedded) {
+    return <div className="course-catalog-embedded">{content}</div>;
+  }
+
+  return <main className="course-page">{content}</main>;
 }

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { BookOpen, GraduationCap } from "lucide-react";
 import { CourseCard } from "../components/CourseCard";
+import { CourseListPage } from "./CourseListPage";
 import { courseService } from "../services";
 import "../course.css";
 
@@ -11,13 +12,8 @@ export function MyCoursesPage() {
   const [activeTab, setActiveTab] = useState(TAB_ENROLLED);
 
   const [enrolledCourses, setEnrolledCourses] = useState([]);
-  const [catalogCourses, setCatalogCourses] = useState([]);
-
   const [loadingEnrolled, setLoadingEnrolled] = useState(false);
-  const [loadingCatalog, setLoadingCatalog] = useState(false);
-
   const [enrolledError, setEnrolledError] = useState("");
-  const [catalogError, setCatalogError] = useState("");
 
   useEffect(() => {
     let mounted = true;
@@ -47,35 +43,7 @@ export function MyCoursesPage() {
       }
     }
 
-    async function loadCatalogCourses() {
-      setLoadingCatalog(true);
-      setCatalogError("");
-
-      try {
-        const data = await courseService.getPublicCourses({
-          page: 0,
-          size: 8,
-        });
-
-        if (mounted) {
-          setCatalogCourses(data.items || []);
-        }
-      } catch (error) {
-        if (mounted) {
-          setCatalogError(
-            error?.message || "Can not load course catalog right now.",
-          );
-          setCatalogCourses([]);
-        }
-      } finally {
-        if (mounted) {
-          setLoadingCatalog(false);
-        }
-      }
-    }
-
     loadEnrolledCourses();
-    loadCatalogCourses();
 
     return () => {
       mounted = false;
@@ -88,8 +56,7 @@ export function MyCoursesPage() {
         <span className="course-hero__eyebrow">Learning space</span>
         <h1>My Courses</h1>
         <p>
-          Continue enrolled courses or explore the course catalog to find your
-          next learning path.
+          Continue enrolled courses or browse the course catalog in one place.
         </p>
       </section>
 
@@ -156,6 +123,10 @@ export function MyCoursesPage() {
                   key={course.id || course.slug}
                   course={course}
                   viewMode="grid"
+                  detailState={{
+                    from: "/my-courses",
+                    backLabel: "Back to My Courses",
+                  }}
                 />
               ))}
             </div>
@@ -168,44 +139,19 @@ export function MyCoursesPage() {
           <div className="my-courses-section__header">
             <div>
               <h2>Course Catalog</h2>
-              <p>Explore published courses and choose what to learn next.</p>
+              <p>Browse published courses directly inside My Courses.</p>
             </div>
-
-            <a href="/courses" className="my-courses-section__link">
-              View full catalog
-            </a>
           </div>
 
-          {loadingCatalog && (
-            <div className="course-state">
-              <p>Loading course catalog...</p>
-            </div>
-          )}
-
-          {!loadingCatalog && catalogError && (
-            <div className="course-state course-state--error">
-              <p>{catalogError}</p>
-            </div>
-          )}
-
-          {!loadingCatalog && !catalogError && catalogCourses.length === 0 && (
-            <div className="course-state">
-              <h3>No courses found</h3>
-              <p>There are no published courses available right now.</p>
-            </div>
-          )}
-
-          {!loadingCatalog && !catalogError && catalogCourses.length > 0 && (
-            <div className="course-list course-list--grid">
-              {catalogCourses.map((course) => (
-                <CourseCard
-                  key={course.id || course.slug}
-                  course={course}
-                  viewMode="grid"
-                />
-              ))}
-            </div>
-          )}
+          <CourseListPage
+            embedded
+            showHero={false}
+            pageSize={6}
+            detailState={{
+              from: "/my-courses",
+              backLabel: "Back to My Courses",
+            }}
+          />
         </section>
       )}
     </main>

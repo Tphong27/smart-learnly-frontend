@@ -25,7 +25,7 @@ export function CourseFilters({
       >
         <option value="">All categories</option>
         {categories.map((category) => (
-          <option key={category.id} value={category.id}>
+          <option key={category.id} value={category.slug}>
             {category.name}
           </option>
         ))}

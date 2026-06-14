@@ -18,7 +18,6 @@ import {
   Play,
   ShieldCheck,
   Sparkles,
-  Star,
   Target,
   TrendingUp,
   Users,
@@ -26,8 +25,7 @@ import {
   Zap,
 } from "lucide-react";
 import { useDocumentTitle } from "../../shared/hooks/useDocumentTitle";
-import { featuredCourses } from "../../mocks/landingPage";
-
+import { CourseListPage } from "../course/pages/CourseListPage";
 const challenges = [
   {
     icon: Target,
@@ -314,45 +312,6 @@ function SectionHeading({ eyebrow, title, text, align = "center" }) {
   );
 }
 
-function CourseCard({ course }) {
-  return (
-    <article className="course-card">
-      <div className={`course-cover ${course.accent}`}>
-        <span className="course-category">{course.category}</span>
-        <div className="course-cover-art">
-          <span>
-            <BookOpen size={28} />
-          </span>
-          <span>
-            <Sparkles size={18} />
-          </span>
-        </div>
-      </div>
-      <div className="course-card-body">
-        <div className="course-meta">
-          <span>{course.level}</span>
-          <span>
-            <Star size={13} fill="currentColor" /> {course.rating}
-          </span>
-        </div>
-        <h3>{course.title}</h3>
-        <p>{course.description}</p>
-        <div className="course-details">
-          <span>
-            <BookOpen size={14} /> {course.lessons} lessons
-          </span>
-          <span>
-            <Clock3 size={14} /> {course.duration}
-          </span>
-        </div>
-        <a href="/courses">
-          View course <ArrowRight size={15} />
-        </a>
-      </div>
-    </article>
-  );
-}
-
 export function HomePage() {
   useDocumentTitle("Learn smarter. Achieve faster.");
 
@@ -380,7 +339,7 @@ export function HomePage() {
               <div className="hero-actions">
                 <a
                   className="button button-primary button-large"
-                  href="/courses"
+                  href="#courses"
                 >
                   Explore courses <ArrowRight size={17} />
                 </a>
@@ -420,15 +379,23 @@ export function HomePage() {
                 text="Start with practical programs designed to build confidence and capability."
                 align="left"
               />
-              <a className="text-link" href="/courses">
+              <a className="text-link" href="/my-courses">
                 Browse all courses <ArrowRight size={16} />
               </a>
             </div>
-            <div className="course-grid">
-              {featuredCourses.map((course) => (
-                <CourseCard course={course} key={course.title} />
-              ))}
-            </div>
+
+            <CourseListPage
+              embedded
+              showHero={false}
+              showFilters={true}
+              showToolbar={true}
+              pageSize={6}
+              detailState={{
+                from: "/",
+                fromHash: "#courses",
+                backLabel: "Back to homepage",
+              }}
+            />
           </div>
         </section>
 
@@ -493,7 +460,7 @@ export function HomePage() {
                       ))}
                     </ul>
                     <a
-                      href={eyebrow === "For trainees" ? "/courses" : "#about"}
+                      href={eyebrow === "For trainees" ? "#courses" : "#about"}
                     >
                       Learn more <ArrowRight size={15} />
                     </a>
@@ -609,7 +576,7 @@ export function HomePage() {
               </p>
             </div>
             <div className="cta-actions">
-              <a className="button button-primary button-large" href="/courses">
+              <a className="button button-primary button-large" href="#courses">
                 Explore courses <ArrowRight size={17} />
               </a>
               <a
@@ -633,7 +600,7 @@ export function HomePage() {
           <div>
             <strong>Platform</strong>
             <a href="#features">Features</a>
-            <a href="/courses">Courses</a>
+            <a href="#courses">Courses</a>
             <a href="#how-it-works">How it works</a>
           </div>
           <div>

@@ -1,6 +1,6 @@
 import axios from 'axios'
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api/v1'
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api'
 
 const ACCESS_TOKEN_KEY = 'accessToken'
 const USER_KEY = 'user'
@@ -130,7 +130,9 @@ apiClient.interceptors.response.use(
     const isAuthEndpoint = typeof originalRequest?.url === 'string'
       && /\/auth\/(login|register|google|refresh|forgot-password|reset-password|verify-email|resend-verification)/.test(originalRequest.url)
 
-    if (status === 401 && !originalRequest._retry && !isAuthEndpoint) {
+    const shouldSkipAuthRedirect = originalRequest?.skipAuthRedirect === true
+
+    if (status === 401 && !originalRequest._retry && !isAuthEndpoint && !shouldSkipAuthRedirect) {
       originalRequest._retry = true
 
       if (isRefreshing) {
@@ -175,7 +177,7 @@ apiClient.interceptors.response.use(
       }
     }
 
-    if (status === 403) {
+    if (status === 403 && !shouldSkipAuthRedirect) {
       redirectToForbidden()
     }
 

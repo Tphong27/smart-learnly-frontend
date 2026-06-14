@@ -28,21 +28,46 @@ function normalizeCourse(payload) {
 
 export const courseService = {
   async getPublicCourses(params = {}) {
-    const response = await apiClient.get("/courses", {
-      params: {
-        page: params.page ?? 0,
-        size: params.size ?? 12,
-        keyword: params.keyword || undefined,
-        categoryId: params.categoryId || undefined,
-        sort: params.sort || "createdAt,desc",
-      },
-    });
+    const page = params.page ?? 0;
+    const size = params.size ?? 12;
+    const keyword = params.keyword?.trim();
+    const categorySlug = params.categorySlug || params.categoryId;
+
+    let response;
+
+    if (keyword) {
+      response = await apiClient.get("/courses/search", {
+        skipAuthRedirect: true,
+        params: {
+          keyword,
+          page,
+          size,
+        },
+      });
+    } else if (categorySlug) {
+      response = await apiClient.get(`/courses/category/${categorySlug}`, {
+        skipAuthRedirect: true,
+        params: {
+          page,
+          size,
+        },
+      });
+    } else {
+      response = await apiClient.get("/courses", {
+        skipAuthRedirect: true,
+        params: {
+          page,
+          size,
+        },
+      });
+    }
 
     return normalizePage(response);
   },
 
   async getCategories() {
     const response = await apiClient.get("/categories", {
+    skipAuthRedirect: true,
       params: {
         active: true,
       },

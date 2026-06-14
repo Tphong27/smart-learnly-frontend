@@ -508,3 +508,19 @@
     flex-direction: column;
   }
 }
+
+.course-catalog-embedded {
+  width: 100%;
+}
+
+.course-panel--embedded {
+  margin-top: 0;
+}
+
+.course-panel--embedded .course-filters {
+  margin-top: 0;
+}
+
+.my-courses-section .course-panel {
+  margin-top: 0;
+}

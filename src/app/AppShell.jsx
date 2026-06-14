@@ -5,7 +5,6 @@ import { ProtectedRoute } from "./routes/ProtectedRoute";
 import { RoleGuard } from "./routes/RoleGuard";
 import { HomePage } from "../features/home/HomePage";
 import {
-  CourseListPage,
   CourseDetailPage,
   MyCoursesPage,
 } from '../features/course'
@@ -49,14 +48,6 @@ export function AppShell() {
           element={
             <PublicLayout>
               <HomePage />
-            </PublicLayout>
-          }
-        />
-        <Route
-          path="/courses"
-          element={
-            <PublicLayout>
-              <CourseListPage />
             </PublicLayout>
           }
         />

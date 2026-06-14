@@ -41,6 +41,12 @@ export function CourseDetailPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
+const backTo = location.state?.from
+  ? `${location.state.from}${location.state.fromHash || ''}`
+  : '/#courses'
+
+const backLabel = location.state?.backLabel || 'Back to courses'
+
   useEffect(() => {
     let mounted = true
 
@@ -101,9 +107,9 @@ export function CourseDetailPage() {
 
   return (
     <main className="course-page">
-      <Link to="/courses" className="course-back-link">
+      <Link to={backTo} className="course-back-link">
         <ArrowLeft size={16} />
-        Back to courses
+        {backLabel}
       </Link>
 
       <section className="course-detail-hero">

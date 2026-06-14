@@ -1,42 +1,37 @@
-import { Link } from 'react-router-dom'
-import {
-  ArrowRight,
-  BookOpen,
-  Clock3,
-  Layers3,
-  Star,
-} from 'lucide-react'
+import { Link } from "react-router-dom";
+import { ArrowRight, BookOpen, Clock3, Layers3, Star } from "lucide-react";
 
 function formatPrice(course) {
   if (course.isFree || course.is_free || Number(course.price) === 0) {
-    return 'Free'
+    return "Free";
   }
 
-  const price = course.discountedPrice ?? course.discounted_price ?? course.price
+  const price =
+    course.discountedPrice ?? course.discounted_price ?? course.price;
 
-  return new Intl.NumberFormat('vi-VN', {
-    style: 'currency',
-    currency: 'VND',
+  return new Intl.NumberFormat("vi-VN", {
+    style: "currency",
+    currency: "VND",
     maximumFractionDigits: 0,
-  }).format(Number(price || 0))
+  }).format(Number(price || 0));
 }
 
 function getCoursePath(course) {
-  return `/courses/${course.slug || course.id}`
+  return `/courses/${course.slug || course.id}`;
 }
 
-export function CourseCard({ course, viewMode = 'grid' }) {
-  const title = course.title || 'Untitled course'
+export function CourseCard({ course, viewMode = "grid", detailState }) {
+  const title = course.title || "Untitled course";
   const shortDescription =
     course.shortDescription ||
     course.short_description ||
     course.description ||
-    'No description available.'
+    "No description available.";
 
-  const thumbnailUrl = course.thumbnailUrl || course.thumbnail_url
-  const categoryName = course.category?.name || course.categoryName || 'Course'
-  const lessonCount = course.lessonCount ?? course.totalLessons ?? 0
-  const durationText = course.durationText || course.duration || 'Self-paced'
+  const thumbnailUrl = course.thumbnailUrl || course.thumbnail_url;
+  const categoryName = course.category?.name || course.categoryName || "Course";
+  const lessonCount = course.lessonCount ?? course.totalLessons ?? 0;
+  const durationText = course.durationText || course.duration || "Self-paced";
 
   return (
     <article className={`course-card course-card--${viewMode}`}>
@@ -81,11 +76,15 @@ export function CourseCard({ course, viewMode = 'grid' }) {
 
         <div className="course-card__footer">
           <strong>{formatPrice(course)}</strong>
-          <Link to={getCoursePath(course)} className="course-card__link">
+          <Link
+            to={`/courses/${course.slug || course.id}`}
+            state={detailState}
+            className="course-card__link"
+          >
             View course <ArrowRight size={15} />
           </Link>
         </div>
       </div>
     </article>
-  )
+  );
 }
