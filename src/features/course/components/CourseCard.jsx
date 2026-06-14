@@ -35,7 +35,11 @@ export function CourseCard({ course, viewMode = "grid", detailState }) {
 
   return (
     <article className={`course-card course-card--${viewMode}`}>
-      <Link to={getCoursePath(course)} className="course-card__media">
+      <Link
+        to={getCoursePath(course)}
+        state={detailState}
+        className="course-card__media"
+      >
         {thumbnailUrl ? (
           <img src={thumbnailUrl} alt={title} />
         ) : (
@@ -52,7 +56,9 @@ export function CourseCard({ course, viewMode = "grid", detailState }) {
         </div>
 
         <h3>
-          <Link to={getCoursePath(course)}>{title}</Link>
+          <Link to={getCoursePath(course)} state={detailState}>
+            {title}
+          </Link>
         </h3>
 
         <p>{shortDescription}</p>
@@ -77,7 +83,7 @@ export function CourseCard({ course, viewMode = "grid", detailState }) {
         <div className="course-card__footer">
           <strong>{formatPrice(course)}</strong>
           <Link
-            to={`/courses/${course.slug || course.id}`}
+            to={getCoursePath(course)}
             state={detailState}
             className="course-card__link"
           >

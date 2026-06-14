@@ -1,81 +1,83 @@
-import { useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { useEffect, useState } from "react";
+import { Link, useParams, useLocation } from "react-router-dom";
 import {
   ArrowLeft,
   BookOpen,
   CheckCircle2,
   Clock3,
   Layers3,
-} from 'lucide-react'
-import { courseService } from '../services'
-import { CourseCurriculum } from '../components/CourseCurriculum'
-import '../course.css'
+} from "lucide-react";
+import { courseService } from "../services";
+import { CourseCurriculum } from "../components/CourseCurriculum";
+import "../course.css";
 
 function formatPrice(course) {
   if (course?.isFree || course?.is_free || Number(course?.price) === 0) {
-    return 'Free'
+    return "Free";
   }
 
-  const price = course.discountedPrice ?? course.discounted_price ?? course.price
+  const price =
+    course.discountedPrice ?? course.discounted_price ?? course.price;
 
-  return new Intl.NumberFormat('vi-VN', {
-    style: 'currency',
-    currency: 'VND',
+  return new Intl.NumberFormat("vi-VN", {
+    style: "currency",
+    currency: "VND",
     maximumFractionDigits: 0,
-  }).format(Number(price || 0))
+  }).format(Number(price || 0));
 }
 
 function splitText(value) {
-  if (!value) return []
-  if (Array.isArray(value)) return value
+  if (!value) return [];
+  if (Array.isArray(value)) return value;
   return String(value)
     .split(/\n|;/)
     .map((item) => item.trim())
-    .filter(Boolean)
+    .filter(Boolean);
 }
 
 export function CourseDetailPage() {
-  const { slug } = useParams()
+  const { slug } = useParams();
+  const location = useLocation();
 
-  const [course, setCourse] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
+  const [course, setCourse] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-const backTo = location.state?.from
-  ? `${location.state.from}${location.state.fromHash || ''}`
-  : '/#courses'
+  const backTo = location.state?.from
+    ? `${location.state.from}${location.state.fromHash || ""}`
+    : "/#courses";
 
-const backLabel = location.state?.backLabel || 'Back to courses'
+  const backLabel = location.state?.backLabel || "Back to courses";
 
   useEffect(() => {
-    let mounted = true
+    let mounted = true;
 
     async function loadCourse() {
-      setLoading(true)
-      setError('')
+      setLoading(true);
+      setError("");
 
       try {
-        const data = await courseService.getCourseDetail(slug)
+        const data = await courseService.getCourseDetail(slug);
         if (mounted) {
-          setCourse(data)
+          setCourse(data);
         }
       } catch (err) {
         if (mounted) {
-          setError(err?.message || 'Can not load course detail right now.')
+          setError(err?.message || "Can not load course detail right now.");
         }
       } finally {
         if (mounted) {
-          setLoading(false)
+          setLoading(false);
         }
       }
     }
 
-    loadCourse()
+    loadCourse();
 
     return () => {
-      mounted = false
-    }
-  }, [slug])
+      mounted = false;
+    };
+  }, [slug]);
 
   if (loading) {
     return (
@@ -84,7 +86,7 @@ const backLabel = location.state?.backLabel || 'Back to courses'
           <p>Loading course detail...</p>
         </div>
       </main>
-    )
+    );
   }
 
   if (error || !course) {
@@ -92,18 +94,18 @@ const backLabel = location.state?.backLabel || 'Back to courses'
       <main className="course-page">
         <div className="course-state course-state--error">
           <h1>Course unavailable</h1>
-          <p>{error || 'This course does not exist or is not published.'}</p>
-          <Link to="/courses">Back to courses</Link>
+          <p>{error || "This course does not exist or is not published."}</p>
+          <Link to={backTo}>{backLabel}</Link>
         </div>
       </main>
-    )
+    );
   }
 
-  const thumbnailUrl = course.thumbnailUrl || course.thumbnail_url
-  const categoryName = course.category?.name || course.categoryName || 'Course'
-  const sections = course.sections || course.courseSections || []
-  const outcomes = splitText(course.outcomes)
-  const requirements = splitText(course.requirements)
+  const thumbnailUrl = course.thumbnailUrl || course.thumbnail_url;
+  const categoryName = course.category?.name || course.categoryName || "Course";
+  const sections = course.sections || course.courseSections || [];
+  const outcomes = splitText(course.outcomes);
+  const requirements = splitText(course.requirements);
 
   return (
     <main className="course-page">
@@ -120,7 +122,7 @@ const backLabel = location.state?.backLabel || 'Back to courses'
             {course.shortDescription ||
               course.short_description ||
               course.description ||
-              'No description available.'}
+              "No description available."}
           </p>
 
           <div className="course-detail-hero__meta">
@@ -136,7 +138,7 @@ const backLabel = location.state?.backLabel || 'Back to courses'
             </span>
             <span>
               <Clock3 size={16} />
-              {course.durationText || course.duration || 'Self-paced'}
+              {course.durationText || course.duration || "Self-paced"}
             </span>
           </div>
         </div>
@@ -166,7 +168,11 @@ const backLabel = location.state?.backLabel || 'Back to courses'
         <div className="course-detail-main">
           <article className="course-detail-section">
             <h2>About this course</h2>
-            <p>{course.description || course.shortDescription || course.short_description}</p>
+            <p>
+              {course.description ||
+                course.shortDescription ||
+                course.short_description}
+            </p>
           </article>
 
           {outcomes.length > 0 && (
@@ -203,5 +209,5 @@ const backLabel = location.state?.backLabel || 'Back to courses'
         </aside>
       </section>
     </main>
-  )
+  );
 }
