@@ -8,7 +8,6 @@ import {
   Layers3,
   Settings,
   ShieldCheck,
-  Sparkles,
   Users,
   X,
   Zap,

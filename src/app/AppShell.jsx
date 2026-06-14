@@ -1,9 +1,11 @@
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
-import { PublicLayout } from './layouts/PublicLayout'
-import { AppLayout } from './layouts/AppLayout'
-import { ProtectedRoute } from './routes/ProtectedRoute'
-import { RoleGuard } from './routes/RoleGuard'
-import { HomePage } from '../features/home/HomePage'
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import { PublicLayout } from "./layouts/PublicLayout";
+import { AppLayout } from "./layouts/AppLayout";
+import { ProtectedRoute } from "./routes/ProtectedRoute";
+import { RoleGuard } from "./routes/RoleGuard";
+import { HomePage } from "../features/home/HomePage";
+import { CourseListPage } from "../features/course/pages/CourseListPage";
+import { CourseDetailPage } from "../features/course/pages/CourseDetailPage";
 import {
   LoginPage,
   RegisterPage,
@@ -11,8 +13,8 @@ import {
   ResetPasswordPage,
   VerifyEmailPage,
   ProfilePage,
-} from '../features/auth'
-import { ROLES } from '@/shared/constants/roles'
+} from "../features/auth";
+import { ROLES } from "@/shared/constants/roles";
 
 // =========================================================
 // IMPORT CÁC TRANG BÁO LỖI XỊN TỪ THƯ MỤC PAGES
@@ -28,7 +30,8 @@ function PlaceholderPage({ title }) {
       <span className="placeholder-page__eyebrow">Coming soon</span>
       <h1 className="placeholder-page__title">{title}</h1>
       <p className="placeholder-page__text">
-        This is a placeholder page for <strong>{title}</strong>. Content will be added in future sprints.
+        This is a placeholder page for <strong>{title}</strong>. Content will be
+        added in future sprints.
       </p>
     </section>
   );
@@ -46,21 +49,79 @@ export function AppShell() {
             </PublicLayout>
           }
         />
+        <Route
+          path="/courses"
+          element={
+            <PublicLayout>
+              <CourseListPage />
+            </PublicLayout>
+          }
+        />
 
-        <Route path="/login" element={<PublicLayout><LoginPage /></PublicLayout>} />
-        <Route path="/register" element={<PublicLayout><RegisterPage /></PublicLayout>} />
-        <Route path="/forgot-password" element={<PublicLayout><ForgotPasswordPage /></PublicLayout>} />
-        <Route path="/reset-password" element={<PublicLayout><ResetPasswordPage /></PublicLayout>} />
-        <Route path="/verify-email" element={<PublicLayout><VerifyEmailPage /></PublicLayout>} />
+        <Route
+          path="/courses/:slug"
+          element={
+            <PublicLayout>
+              <CourseDetailPage />
+            </PublicLayout>
+          }
+        />
+
+        <Route
+          path="/login"
+          element={
+            <PublicLayout>
+              <LoginPage />
+            </PublicLayout>
+          }
+        />
+        <Route
+          path="/register"
+          element={
+            <PublicLayout>
+              <RegisterPage />
+            </PublicLayout>
+          }
+        />
+        <Route
+          path="/forgot-password"
+          element={
+            <PublicLayout>
+              <ForgotPasswordPage />
+            </PublicLayout>
+          }
+        />
+        <Route
+          path="/reset-password"
+          element={
+            <PublicLayout>
+              <ResetPasswordPage />
+            </PublicLayout>
+          }
+        />
+        <Route
+          path="/verify-email"
+          element={
+            <PublicLayout>
+              <VerifyEmailPage />
+            </PublicLayout>
+          }
+        />
 
         {/* ========================================================= */}
         {/* 2. PROTECTED ROUTES: Luồng đăng nhập kiểm tra quyền        */}
         {/* ========================================================= */}
         <Route element={<ProtectedRoute />}>
           <Route element={<AppLayout />}>
-            <Route path="/dashboard" element={<PlaceholderPage title="Dashboard" />} />
+            <Route
+              path="/dashboard"
+              element={<PlaceholderPage title="Dashboard" />}
+            />
             <Route path="/profile" element={<ProfilePage />} />
-            <Route path="/my-courses" element={<PlaceholderPage title="My Courses" />} />
+            <Route
+              path="/my-courses"
+              element={<PlaceholderPage title="My Courses" />}
+            />
             <Route path="/tests" element={<PlaceholderPage title="Tests" />} />
 
             {/* Phân quyền: SME & ADMIN */}
@@ -122,5 +183,5 @@ export function AppShell() {
         <Route path="*" element={<Navigate to="/404" replace />} />
       </Routes>
     </BrowserRouter>
-  )
+  );
 }
