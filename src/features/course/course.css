@@ -402,3 +402,109 @@
     flex-direction: column;
   }
 }
+
+.my-courses-hero {
+  border-radius: 28px;
+  padding: 36px 40px;
+  background:
+    radial-gradient(circle at top right, rgba(79, 70, 229, 0.12), transparent 32%),
+    linear-gradient(135deg, #ffffff, #f8fafc);
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  box-shadow: 0 24px 80px rgba(15, 23, 42, 0.08);
+}
+
+.my-courses-hero h1 {
+  margin: 0;
+  color: #0f172a;
+  font-size: clamp(2rem, 4vw, 3.2rem);
+  line-height: 1.08;
+}
+
+.my-courses-hero p {
+  max-width: 720px;
+  color: #64748b;
+  font-size: 1.05rem;
+  line-height: 1.7;
+}
+
+.my-courses-tabs {
+  display: inline-flex;
+  gap: 8px;
+  margin: 24px 0;
+  padding: 6px;
+  border: 1px solid #dbe3ef;
+  border-radius: 18px;
+  background: #ffffff;
+}
+
+.my-courses-tabs button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 42px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 14px;
+  color: #475569;
+  background: transparent;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.my-courses-tabs button.is-active {
+  color: #ffffff;
+  background: #2563eb;
+  box-shadow: 0 10px 24px rgba(37, 99, 235, 0.24);
+}
+
+.my-courses-section {
+  padding: 24px;
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  border-radius: 24px;
+  background: #ffffff;
+  box-shadow: 0 16px 50px rgba(15, 23, 42, 0.06);
+}
+
+.my-courses-section__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.my-courses-section__header h2 {
+  margin: 0 0 6px;
+  color: #0f172a;
+}
+
+.my-courses-section__header p {
+  margin: 0;
+  color: #64748b;
+}
+
+.my-courses-section__link {
+  color: #2563eb;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+@media (max-width: 640px) {
+  .my-courses-hero {
+    padding: 24px;
+    border-radius: 22px;
+  }
+
+  .my-courses-tabs {
+    display: grid;
+    width: 100%;
+  }
+
+  .my-courses-section {
+    padding: 18px;
+  }
+
+  .my-courses-section__header {
+    flex-direction: column;
+  }
+}

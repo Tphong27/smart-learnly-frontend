@@ -4,8 +4,11 @@ import { AppLayout } from "./layouts/AppLayout";
 import { ProtectedRoute } from "./routes/ProtectedRoute";
 import { RoleGuard } from "./routes/RoleGuard";
 import { HomePage } from "../features/home/HomePage";
-import { CourseListPage } from "../features/course/pages/CourseListPage";
-import { CourseDetailPage } from "../features/course/pages/CourseDetailPage";
+import {
+  CourseListPage,
+  CourseDetailPage,
+  MyCoursesPage,
+} from '../features/course'
 import {
   LoginPage,
   RegisterPage,
@@ -118,10 +121,7 @@ export function AppShell() {
               element={<PlaceholderPage title="Dashboard" />}
             />
             <Route path="/profile" element={<ProfilePage />} />
-            <Route
-              path="/my-courses"
-              element={<PlaceholderPage title="My Courses" />}
-            />
+            <Route path="/my-courses" element={<MyCoursesPage />} />
             <Route path="/tests" element={<PlaceholderPage title="Tests" />} />
 
             {/* Phân quyền: SME & ADMIN */}
