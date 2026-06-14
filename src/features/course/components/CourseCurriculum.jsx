@@ -1,15 +1,15 @@
-import { BookOpen, FileText, PlayCircle } from 'lucide-react'
+import { BookOpen, FileText, PlayCircle } from "lucide-react";
 
 function getLessonIcon(type) {
-  if (type === 'video') return PlayCircle
-  if (type === 'pdf') return FileText
-  return BookOpen
+  if (type === "video") return PlayCircle;
+  if (type === "pdf") return FileText;
+  return BookOpen;
 }
 
 function formatDuration(seconds) {
-  if (!seconds) return ''
-  const minutes = Math.ceil(Number(seconds) / 60)
-  return `${minutes} min`
+  if (!seconds) return "";
+  const minutes = Math.ceil(Number(seconds) / 60);
+  return `${minutes} min`;
 }
 
 export function CourseCurriculum({ sections = [] }) {
@@ -18,7 +18,7 @@ export function CourseCurriculum({ sections = [] }) {
       <div className="course-state">
         <p>No curriculum has been published for this course yet.</p>
       </div>
-    )
+    );
   }
 
   return (
@@ -26,12 +26,14 @@ export function CourseCurriculum({ sections = [] }) {
       {sections.map((section, sectionIndex) => (
         <article key={section.id || sectionIndex} className="course-section">
           <h3>
-            Section {sectionIndex + 1}: {section.title}
+            Module {sectionIndex + 1}: {section.title}
           </h3>
 
           <div className="course-lessons">
             {(section.lessons || []).map((lesson, lessonIndex) => {
-              const Icon = getLessonIcon(lesson.lessonType || lesson.lesson_type)
+              const Icon = getLessonIcon(
+                lesson.lessonType || lesson.lesson_type,
+              );
 
               return (
                 <div key={lesson.id || lessonIndex} className="course-lesson">
@@ -41,17 +43,21 @@ export function CourseCurriculum({ sections = [] }) {
                   </span>
 
                   <small>
-                    {lesson.isPreview || lesson.is_preview ? 'Preview' : 'Locked'}
-                    {formatDuration(lesson.durationSeconds || lesson.duration_seconds)
+                    {lesson.preview || lesson.isPreview || lesson.is_preview
+                      ? "Preview"
+                      : "Locked"}
+                    {formatDuration(
+                      lesson.durationSeconds || lesson.duration_seconds,
+                    )
                       ? ` · ${formatDuration(lesson.durationSeconds || lesson.duration_seconds)}`
-                      : ''}
+                      : ""}
                   </small>
                 </div>
-              )
+              );
             })}
           </div>
         </article>
       ))}
     </div>
-  )
+  );
 }

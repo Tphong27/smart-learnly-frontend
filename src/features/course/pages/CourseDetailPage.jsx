@@ -103,7 +103,7 @@ export function CourseDetailPage() {
 
   const thumbnailUrl = course.thumbnailUrl || course.thumbnail_url;
   const categoryName = course.category?.name || course.categoryName || "Course";
-  const sections = course.sections || course.courseSections || [];
+  const curriculum = course.modules || course.sections || course.courseSections || [];
   const outcomes = splitText(course.outcomes);
   const requirements = splitText(course.requirements);
 
@@ -191,7 +191,7 @@ export function CourseDetailPage() {
 
           <article className="course-detail-section">
             <h2>Course curriculum</h2>
-            <CourseCurriculum sections={sections} />
+            <CourseCurriculum sections={curriculum} />
           </article>
         </div>
 
