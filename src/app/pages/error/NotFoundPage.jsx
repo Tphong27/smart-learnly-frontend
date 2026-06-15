@@ -23,7 +23,7 @@ export function NotFoundPage() {
           fontWeight: "900",
           color: "#1d4ed8",
           margin: "0",
-          tracking: "widest",
+          letterSpacing: "0.1em", // Đã sửa lại thành letterSpacing cho đúng chuẩn React
         }}
       >
         404
@@ -40,7 +40,7 @@ export function NotFoundPage() {
           textTransform: "uppercase",
         }}
       >
-        Trang không tồn tại
+        Page Not Found
       </div>
       <p
         style={{
@@ -52,7 +52,7 @@ export function NotFoundPage() {
           lineHeight: "1.5",
         }}
       >
-        Xin lỗi, chúng tôi không tìm thấy trang bạn đang yêu cầu.
+        Sorry, we couldn't find the page you're looking for.
       </p>
       <button
         onClick={() => navigate("/")}
@@ -72,7 +72,7 @@ export function NotFoundPage() {
         onMouseOver={(e) => (e.target.style.backgroundColor = "#1d4ed8")}
         onMouseOut={(e) => (e.target.style.backgroundColor = "#2563eb")}
       >
-        Quay lại trang chủ
+        Back to Home
       </button>
     </div>
   );
