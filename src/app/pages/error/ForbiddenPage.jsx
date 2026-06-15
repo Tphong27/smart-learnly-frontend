@@ -23,7 +23,7 @@ export function ForbiddenPage() {
           fontWeight: "900",
           color: "#dc2626",
           margin: "0",
-          tracking: "widest",
+          tracking: "widest", // Lưu ý nhỏ: React style không hỗ trợ 'tracking', bạn có thể đổi thành 'letterSpacing: "0.1em"' nếu muốn chữ thưa ra nhé.
         }}
       >
         403
@@ -40,7 +40,7 @@ export function ForbiddenPage() {
           textTransform: "uppercase",
         }}
       >
-        Truy cập bị chặn
+        Access Denied
       </div>
       <p
         style={{
@@ -52,7 +52,7 @@ export function ForbiddenPage() {
           lineHeight: "1.5",
         }}
       >
-        Bạn không có quyền hạn để truy cập vào khu vực này!
+        You do not have permission to access this area!
       </p>
       <button
         onClick={() => navigate(-1)}
@@ -72,7 +72,7 @@ export function ForbiddenPage() {
         onMouseOver={(e) => (e.target.style.backgroundColor = "#111827")}
         onMouseOut={(e) => (e.target.style.backgroundColor = "#1f2937")}
       >
-        Quay lại trang trước
+        Go Back
       </button>
     </div>
   );

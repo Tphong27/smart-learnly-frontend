@@ -20,7 +20,7 @@ export function ServerErrorPage() {
           fontWeight: "900",
           color: "#1d4ed8",
           margin: "0",
-          tracking: "widest",
+          letterSpacing: "0.1em", // Đã sửa từ tracking thành letterSpacing
         }}
       >
         500
@@ -37,7 +37,7 @@ export function ServerErrorPage() {
           textTransform: "uppercase",
         }}
       >
-        Lỗi Hệ Thống
+        Server Error
       </div>
       <p
         style={{
@@ -49,7 +49,7 @@ export function ServerErrorPage() {
           lineHeight: "1.5",
         }}
       >
-        Ối! Server đang gặp sự cố. Chúng tôi đang nhanh chóng sửa chữa.
+        Oops! The server encountered an issue. We are working quickly to fix it.
       </p>
       <button
         onClick={() => window.location.reload()}
@@ -69,7 +69,7 @@ export function ServerErrorPage() {
         onMouseOver={(e) => (e.target.style.backgroundColor = "#1d4ed8")}
         onMouseOut={(e) => (e.target.style.backgroundColor = "#2563eb")}
       >
-        Tải lại trang
+        Reload Page
       </button>
     </div>
   );
