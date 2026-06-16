@@ -67,7 +67,6 @@ function CategoryFormModal({ open, mode, initial, categories, onClose, onSaved }
   useEffect(() => {
     if (!open) return
     reset(defaultValues)
-    setServerError(null)
   }, [open, defaultValues, reset])
 
   async function onSubmit(values) {
@@ -221,6 +220,7 @@ export function AdminCategoriesPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [keyword, setKeyword] = useState('')
+  const [submittedKeyword, setSubmittedKeyword] = useState('')
   const [activeFilter, setActiveFilter] = useState('all')
   const [refreshKey, setRefreshKey] = useState(0)
 
@@ -234,7 +234,7 @@ export function AdminCategoriesPage() {
       setError(null)
       try {
         const params = {}
-        if (keyword.trim()) params.keyword = keyword.trim()
+        if (submittedKeyword) params.keyword = submittedKeyword
         if (activeFilter === 'active') params.active = true
         if (activeFilter === 'inactive') params.active = false
         const data = await categoryService.list(params)
@@ -252,10 +252,11 @@ export function AdminCategoriesPage() {
     return () => {
       cancelled = true
     }
-  }, [refreshKey, activeFilter, toast])
+  }, [refreshKey, activeFilter, submittedKeyword, toast])
 
   function handleSearchSubmit(event) {
     event.preventDefault()
+    setSubmittedKeyword(keyword.trim())
     setRefreshKey((k) => k + 1)
   }
 
@@ -372,14 +373,16 @@ export function AdminCategoriesPage() {
         </div>
       </section>
 
-      <CategoryFormModal
-        open={formState.open}
-        mode={formState.mode}
-        initial={formState.initial}
-        categories={items}
-        onClose={() => setFormState({ open: false, mode: 'create', initial: null })}
-        onSaved={handleSaved}
-      />
+      {formState.open && (
+        <CategoryFormModal
+          open={formState.open}
+          mode={formState.mode}
+          initial={formState.initial}
+          categories={items}
+          onClose={() => setFormState({ open: false, mode: 'create', initial: null })}
+          onSaved={handleSaved}
+        />
+      )}
 
       <DeleteConfirmModal
         open={deleteState.open}

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useLocation, useParams } from 'react-router-dom'
 import { ArrowLeft, BookOpen, Clock3, FileText, PlayCircle } from 'lucide-react'
 import { Button, useToast } from '@/shared/components/ui'
 import { courseService, previewLessonService } from '@/services'
@@ -88,7 +88,9 @@ function LessonContent({ lesson }) {
 
 export function CoursePreviewLessonsPage() {
   const { courseId } = useParams()
+  const location = useLocation()
   const toast = useToast()
+  const isAdminRoute = location.pathname.startsWith('/admin/')
 
   const [lessons, setLessons] = useState([])
   const [course, setCourse] = useState(null)
@@ -126,6 +128,8 @@ export function CoursePreviewLessonsPage() {
   useEffect(() => {
     let cancelled = false
     async function loadCourse() {
+      if (!isAdminRoute) return
+
       try {
         const detail = await courseService.getAdmin(courseId)
         if (!cancelled) setCourse(detail)
@@ -137,7 +141,7 @@ export function CoursePreviewLessonsPage() {
     return () => {
       cancelled = true
     }
-  }, [courseId])
+  }, [courseId, isAdminRoute])
 
   const sections = useMemo(() => groupBySection(lessons), [lessons])
   const activeLesson = useMemo(
@@ -166,7 +170,7 @@ export function CoursePreviewLessonsPage() {
               : 'Lessons marked as preview will appear here.'}
           </p>
         </div>
-        {course && (
+        {isAdminRoute && course && (
           <Link to={`/admin/courses/${course.id}`} className="button button--secondary button--sm">
             Open course page
           </Link>

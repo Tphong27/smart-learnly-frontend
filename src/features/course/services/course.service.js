@@ -4,6 +4,13 @@ function unwrapResponse(response) {
   return response?.data ?? response;
 }
 
+function normalizeList(payload) {
+  const data = unwrapResponse(payload);
+  const items = data?.items ?? data?.categories ?? data;
+
+  return Array.isArray(items) ? items : [];
+}
+
 function normalizePage(payload) {
   const data = unwrapResponse(payload);
 
@@ -67,26 +74,26 @@ export const courseService = {
 
   async getCategories() {
     const response = await apiClient.get("/categories", {
-    skipAuthRedirect: true,
-      params: {
-        active: true,
-      },
+      skipAuthRedirect: true,
     });
 
-    const data = unwrapResponse(response);
-    return data?.items ?? data?.categories ?? data ?? [];
+    return normalizeList(response);
   },
 
   async getCourseDetail(slugOrId) {
-    const response = await apiClient.get(`/courses/${slugOrId}`);
+    const response = await apiClient.get(`/courses/${slugOrId}`, {
+      skipAuthRedirect: true,
+    });
     return normalizeCourse(response);
   },
 
   async getMyCourses() {
+    if (import.meta.env.VITE_ENABLE_MY_COURSES_API !== "true") {
+      return [];
+    }
+
     const response = await apiClient.get("/enrollments/my-courses");
 
-    const data = unwrapResponse(response);
-
-    return data?.items ?? data?.courses ?? data?.data ?? data ?? [];
+    return normalizeList(response);
   },
 };
