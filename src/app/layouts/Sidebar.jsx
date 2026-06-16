@@ -3,6 +3,7 @@ import {
   BookOpen,
   ClipboardCheck,
   FileQuestion,
+  FolderTree,
   GraduationCap,
   Home,
   Layers3,
@@ -23,14 +24,16 @@ const navItems = [
   { label: 'Classes', path: '/trainer/classes', icon: Users, roles: [ROLES.TRAINER, ROLES.SME, ROLES.ADMIN, ROLES.TMO] },
   { label: 'Course Content', path: '/sme/content', icon: Layers3, roles: [ROLES.SME, ROLES.ADMIN, ROLES.TRAINER, ROLES.TMO] },
   { label: 'Question Bank', path: '/sme/questions', icon: FileQuestion, roles: [ROLES.SME, ROLES.ADMIN, ROLES.TRAINER, ROLES.TMO] },
-  { label: 'Course Management', path: '/admin/courses', icon: BookOpen, roles: [ROLES.ADMIN, ROLES.TMO, ROLES.TRAINER, ROLES.SME] },
+  { label: 'Course Management', path: '/admin/courses', icon: BookOpen, roles: [ROLES.ADMIN] },
+  { label: 'Categories', path: '/admin/categories', icon: FolderTree, roles: [ROLES.ADMIN] },
   { label: 'Users & Roles', path: '/admin/users', icon: ShieldCheck, roles: [ROLES.ADMIN] },
   { label: 'Reports', path: '/reports', icon: BarChart3, roles: [ROLES.TMO, ROLES.ADMIN, ROLES.TRAINER, ROLES.SME] },
   { label: 'Settings', path: '/settings', icon: Settings, roles: [ROLES.ADMIN] },
 ]
 
 export function Sidebar({ userRole, open, onClose }) {
-  const visibleItems = navItems.filter((item) => item.roles.includes(userRole))
+  const normalizedRole = typeof userRole === 'string' ? userRole.toLowerCase() : userRole
+  const visibleItems = navItems.filter((item) => item.roles.includes(normalizedRole))
 
   return (
     <>

@@ -12,6 +12,12 @@ import {
   VerifyEmailPage,
   ProfilePage,
 } from '../features/auth'
+import {
+  AdminCategoriesPage,
+  AdminCoursesPage,
+  AdminCourseFormPage,
+} from '../features/admin'
+import { CoursePreviewLessonsPage } from '../features/course'
 import { ROLES } from '@/shared/constants/roles'
 
 function PlaceholderPage({ title }) {
@@ -27,11 +33,11 @@ function PlaceholderPage({ title }) {
 }
 
 function ForbiddenPage() {
-  return <PlaceholderPage title="403 - Bạn không có quyền truy cập" />
+  return <PlaceholderPage title="403 - You do not have access to this page" />
 }
 
 function NotFoundPage() {
-  return <PlaceholderPage title="404 - Trang không tồn tại" />
+  return <PlaceholderPage title="404 - Page not found" />
 }
 
 export function AppShell() {
@@ -52,6 +58,10 @@ export function AppShell() {
         <Route path="/forgot-password" element={<PublicLayout><ForgotPasswordPage /></PublicLayout>} />
         <Route path="/reset-password" element={<PublicLayout><ResetPasswordPage /></PublicLayout>} />
         <Route path="/verify-email" element={<PublicLayout><VerifyEmailPage /></PublicLayout>} />
+        <Route
+          path="/courses/:courseId/preview"
+          element={<PublicLayout><CoursePreviewLessonsPage /></PublicLayout>}
+        />
 
         <Route element={<ProtectedRoute />}>
           <Route element={<AppLayout />}>
@@ -74,16 +84,36 @@ export function AppShell() {
               <Route path="/sme/questions" element={<PlaceholderPage title="Question Bank" />} />
             </Route>
 
-            <Route
-              element={
-                <RoleGuard
-                  allowedRoles={[ROLES.ADMIN]}
-                />
-              }
-            >
-              <Route path="/admin/courses" element={<PlaceholderPage title="Admin Course Management" />} />
-              <Route path="/admin/users" element={<PlaceholderPage title="Users & Roles" />} />
-              <Route path="/settings" element={<PlaceholderPage title="System Settings" />} />
+            {/* Access control: ADMIN only */}
+            <Route element={<RoleGuard allowedRoles={[ROLES.ADMIN]} />}>
+              <Route
+                path="/admin/courses"
+                element={<AdminCoursesPage />}
+              />
+              <Route
+                path="/admin/courses/new"
+                element={<AdminCourseFormPage />}
+              />
+              <Route
+                path="/admin/courses/:courseId"
+                element={<AdminCourseFormPage />}
+              />
+              <Route
+                path="/admin/courses/:courseId/preview"
+                element={<CoursePreviewLessonsPage />}
+              />
+              <Route
+                path="/admin/categories"
+                element={<AdminCategoriesPage />}
+              />
+              <Route
+                path="/admin/users"
+                element={<PlaceholderPage title="Users & Roles" />}
+              />
+              <Route
+                path="/settings"
+                element={<PlaceholderPage title="System Settings" />}
+              />
             </Route>
 
             <Route

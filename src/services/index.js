@@ -1,5 +1,6 @@
 export { default as apiClient } from './api-client'
 export * from './api-client'
 export { authService } from './auth.service'
-
-//import { apiClient, authService } from '@/services'
+export { categoryService } from './category.service'
+export { courseService } from './course.service'
+export { previewLessonService } from './preview-lesson.service'
