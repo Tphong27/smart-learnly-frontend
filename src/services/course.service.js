@@ -33,12 +33,11 @@ export const courseService = {
   // Public catalog endpoints (used by preview lessons UX)
   async listPublic({ page = 0, size = 20 } = {}) {
     // /courses returns Spring Page<CourseListItemResponse> directly (not ApiResponse wrapper)
-    const response = await apiClient.get('/courses', { params: { page, size } })
-    return response?.data ?? response
+    return apiClient.get('/courses', { params: { page, size } })
   },
 
   async getPublicDetail(slug) {
-    const response = await apiClient.get(`/courses/${slug}`)
-    return response?.data ?? response
+    // /courses/{slug} returns CourseDetailResponse directly (not ApiResponse wrapper)
+    return apiClient.get(`/courses/${slug}`)
   },
 }

@@ -17,7 +17,7 @@ import {
   AdminCoursesPage,
   AdminCourseFormPage,
 } from '../features/admin'
-import { CoursePreviewLessonsPage } from '../features/course'
+import { CoursePreviewLessonsPage, CourseDetailPage } from '../features/course'
 import { ROLES } from '@/shared/constants/roles'
 
 function PlaceholderPage({ title }) {
@@ -61,6 +61,10 @@ export function AppShell() {
         <Route
           path="/courses/:courseId/preview"
           element={<PublicLayout><CoursePreviewLessonsPage /></PublicLayout>}
+        />
+        <Route
+          path="/courses/:slug"
+          element={<PublicLayout><CourseDetailPage /></PublicLayout>}
         />
 
         <Route element={<ProtectedRoute />}>
