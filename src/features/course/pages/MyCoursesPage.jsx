@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { BookOpen, GraduationCap } from "lucide-react";
 import { CourseCard } from "../components/CourseCard";
 import { CourseListPage } from "./CourseListPage";
-import { courseService } from "../services";
+import { courseService } from "@/services";
 import "../course.css";
 
 const TAB_ENROLLED = "enrolled";

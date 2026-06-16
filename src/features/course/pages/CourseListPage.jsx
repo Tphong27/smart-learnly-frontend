@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { courseService } from "../services";
+import { courseService } from "@/services";
 import { CourseCard } from "../components/CourseCard";
 import { CourseFilters } from "../components/CourseFilters";
 import { CourseListToolbar } from "../components/CourseListToolbar";
