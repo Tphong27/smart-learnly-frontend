@@ -28,8 +28,14 @@ export const courseSchema = z.object({
     .url('Thumbnail URL is invalid')
     .or(z.literal(''))
     .optional(),
-  price: z.coerce.number().min(0, 'Price must be >= 0').optional(),
-  discountedPrice: z.coerce.number().min(0, 'Discounted price must be >= 0').optional(),
+  price: z.preprocess(
+    (val) => (val === '' || val === null || val === undefined || (typeof val === 'number' && Number.isNaN(val)) ? undefined : val),
+    z.coerce.number({ message: 'Price must be a number' }).min(0, 'Price must be >= 0').optional(),
+  ),
+  discountedPrice: z.preprocess(
+    (val) => (val === '' || val === null || val === undefined || (typeof val === 'number' && Number.isNaN(val)) ? undefined : val),
+    z.coerce.number({ message: 'Discounted price must be a number' }).min(0, 'Discounted price must be >= 0').optional(),
+  ),
   isFree: z.boolean().optional(),
   status: z.enum(['draft', 'published', 'inactive']).optional(),
 })
