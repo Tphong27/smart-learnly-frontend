@@ -7,6 +7,7 @@ import "../course.css";
 
 const TAB_ENROLLED = "enrolled";
 const TAB_CATALOG = "catalog";
+const ENABLE_MY_COURSES_API = import.meta.env.VITE_ENABLE_MY_COURSES_API === "true";
 
 export function MyCoursesPage() {
   const [activeTab, setActiveTab] = useState(TAB_ENROLLED);
@@ -19,6 +20,12 @@ export function MyCoursesPage() {
     let mounted = true;
 
     async function loadEnrolledCourses() {
+      if (!ENABLE_MY_COURSES_API) {
+        setEnrolledCourses([]);
+        setEnrolledError("");
+        return;
+      }
+
       setLoadingEnrolled(true);
       setEnrolledError("");
 

@@ -26,7 +26,7 @@ export function AppLayout() {
     <div className="app-layout-shell">
       <div className="app-layout-shell__inner">
         <Sidebar
-          userRole={user.role}
+          userRole={userRole}
           open={sidebarOpen}
           onClose={() => setSidebarOpen(false)}
         />

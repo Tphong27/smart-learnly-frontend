@@ -2,7 +2,7 @@ import { Search } from 'lucide-react'
 
 export function CourseFilters({
   keyword,
-  categoryId,
+  categorySlug,
   categories,
   onKeywordChange,
   onCategoryChange,
@@ -19,7 +19,7 @@ export function CourseFilters({
       </label>
 
       <select
-        value={categoryId}
+        value={categorySlug}
         onChange={(event) => onCategoryChange(event.target.value)}
         aria-label="Filter by category"
       >
