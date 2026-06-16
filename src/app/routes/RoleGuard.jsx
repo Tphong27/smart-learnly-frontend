@@ -8,7 +8,10 @@ export function RoleGuard({ allowedRoles = [] }) {
     return <Navigate to="/login" replace />
   }
 
-  if (!allowedRoles.includes(user.role)) {
+  const userRole = typeof user.role === 'string' ? user.role.toLowerCase() : user.role
+  const normalized = allowedRoles.map((r) => (typeof r === 'string' ? r.toLowerCase() : r))
+
+  if (!normalized.includes(userRole)) {
     return <Navigate to="/403" replace />
   }
 

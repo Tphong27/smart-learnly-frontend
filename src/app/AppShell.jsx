@@ -15,8 +15,14 @@ import {
   ResetPasswordPage,
   VerifyEmailPage,
   ProfilePage,
-} from "../features/auth";
-import { ROLES } from "@/shared/constants/roles";
+} from '../features/auth'
+import {
+  AdminCategoriesPage,
+  AdminCoursesPage,
+  AdminCourseFormPage,
+} from '../features/admin'
+import { CoursePreviewLessonsPage, CourseDetailPage } from '../features/course'
+import { ROLES } from '@/shared/constants/roles'
 
 // =========================================================
 // IMPORT CÁC TRANG BÁO LỖI XỊN TỪ THƯ MỤC PAGES
@@ -36,7 +42,15 @@ function PlaceholderPage({ title }) {
         added in future sprints.
       </p>
     </section>
-  );
+  )
+}
+
+function ForbiddenPage() {
+  return <PlaceholderPage title="403 - You do not have access to this page" />
+}
+
+function NotFoundPage() {
+  return <PlaceholderPage title="404 - Page not found" />
 }
 
 export function AppShell() {
@@ -52,13 +66,18 @@ export function AppShell() {
           }
         />
 
+        <Route path="/login" element={<PublicLayout><LoginPage /></PublicLayout>} />
+        <Route path="/register" element={<PublicLayout><RegisterPage /></PublicLayout>} />
+        <Route path="/forgot-password" element={<PublicLayout><ForgotPasswordPage /></PublicLayout>} />
+        <Route path="/reset-password" element={<PublicLayout><ResetPasswordPage /></PublicLayout>} />
+        <Route path="/verify-email" element={<PublicLayout><VerifyEmailPage /></PublicLayout>} />
+        <Route
+          path="/courses/:courseId/preview"
+          element={<PublicLayout><CoursePreviewLessonsPage /></PublicLayout>}
+        />
         <Route
           path="/courses/:slug"
-          element={
-            <PublicLayout>
-              <CourseDetailPage />
-            </PublicLayout>
-          }
+          element={<PublicLayout><CourseDetailPage /></PublicLayout>}
         />
 
         <Route
@@ -129,11 +148,27 @@ export function AppShell() {
               />
             </Route>
 
-            {/* Phân quyền: Chỉ ADMIN */}
+            {/* Access control: ADMIN only */}
             <Route element={<RoleGuard allowedRoles={[ROLES.ADMIN]} />}>
               <Route
                 path="/admin/courses"
-                element={<PlaceholderPage title="Admin Course Management" />}
+                element={<AdminCoursesPage />}
+              />
+              <Route
+                path="/admin/courses/new"
+                element={<AdminCourseFormPage />}
+              />
+              <Route
+                path="/admin/courses/:courseId"
+                element={<AdminCourseFormPage />}
+              />
+              <Route
+                path="/admin/courses/:courseId/preview"
+                element={<CoursePreviewLessonsPage />}
+              />
+              <Route
+                path="/admin/categories"
+                element={<AdminCategoriesPage />}
               />
               <Route
                 path="/admin/users"
