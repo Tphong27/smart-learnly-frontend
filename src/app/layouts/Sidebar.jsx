@@ -20,7 +20,7 @@ const navItems = [
   { label: 'Dashboard', path: '/dashboard', icon: Home, roles: [ROLES.TRAINEE, ROLES.TRAINER, ROLES.TMO, ROLES.SME, ROLES.ADMIN] },
   { label: 'My Courses', path: '/my-courses', icon: GraduationCap, roles: [ROLES.TRAINEE, ROLES.TRAINER, ROLES.SME, ROLES.ADMIN, ROLES.TMO] },
   { label: 'Tests', path: '/tests', icon: ClipboardCheck, roles: [ROLES.TRAINEE, ROLES.TRAINER, ROLES.SME, ROLES.ADMIN, ROLES.TMO] },
-  { label: 'Classes', path: '/trainer/classes', icon: Users, roles: [ROLES.TRAINER, ROLES.SME, ROLES.ADMIN, ROLES.TMO] },
+  { label: 'Classes', path: '/trainer/classes', icon: Users, roles: [ROLES.TRAINER, ROLES.SME, ROLES.ADMIN, ROLES.TMO, ROLES.TRAINEE] },
   { label: 'Course Content', path: '/sme/content', icon: Layers3, roles: [ROLES.SME, ROLES.ADMIN, ROLES.TRAINER, ROLES.TMO] },
   { label: 'Question Bank', path: '/sme/questions', icon: FileQuestion, roles: [ROLES.SME, ROLES.ADMIN, ROLES.TRAINER, ROLES.TMO] },
   { label: 'Course Management', path: '/admin/courses', icon: BookOpen, roles: [ROLES.ADMIN] },
