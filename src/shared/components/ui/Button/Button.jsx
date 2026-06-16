@@ -37,7 +37,7 @@ export function Button({
         leftIcon && <span className="button__icon">{leftIcon}</span>
       )}
 
-      <span>{loading ? 'Đang xử lý...' : children}</span>
+      <span>{loading ? 'Loading...' : children}</span>
 
       {!loading && rightIcon && (
         <span className="button__icon">{rightIcon}</span>

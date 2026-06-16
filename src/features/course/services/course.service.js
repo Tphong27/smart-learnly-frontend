@@ -88,12 +88,7 @@ export const courseService = {
   },
 
   async getMyCourses() {
-    if (import.meta.env.VITE_ENABLE_MY_COURSES_API !== "true") {
-      return [];
-    }
-
     const response = await apiClient.get("/enrollments/my-courses");
-
     return normalizeList(response);
   },
 };
