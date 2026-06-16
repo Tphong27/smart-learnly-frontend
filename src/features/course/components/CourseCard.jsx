@@ -28,7 +28,11 @@ export function CourseCard({ course, viewMode = "grid", detailState }) {
 
   const thumbnailUrl = course.thumbnailUrl;
   const categoryName = course.category?.name || course.categoryName || "Course";
-  const lessonCount = course.lessonCount ?? course.totalLessons ?? 0;
+  // const lessonCount = course.lessonCount ?? course.totalLessons ?? 0;
+  const lessonCount = course.totalLessons ?? course.modules?.reduce(
+    (sum, m) => sum + (m.lessons?.length || 0),
+    0,
+  ) ?? 0;
   const durationText = course.durationText || course.duration || "Self-paced";
 
   return (
