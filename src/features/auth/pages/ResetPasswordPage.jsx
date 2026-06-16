@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Eye, EyeOff, KeyRound, Lock } from 'lucide-react'
+import { Eye, EyeOff, Lock } from 'lucide-react'
 import { Form, FormField, Button, useToast } from '@/shared/components/ui'
 import { authService } from '@/services'
 import { resetPasswordSchema } from '../schemas/auth-schemas'
@@ -53,11 +53,33 @@ export function ResetPasswordPage() {
     }
   }
 
+  if (!initialToken) {
+    return (
+      <AuthPage>
+        <AuthCard
+          title="Invalid reset link"
+          subtitle="The reset link is missing or invalid. Please request a new password reset email."
+          alert={{ type: 'error', message: 'Reset token not found in URL.' }}
+          footer={
+            <>
+              <Link to="/forgot-password">Request a new link</Link> or back to{' '}
+              <Link to="/login">sign in</Link>
+            </>
+          }
+        >
+          <Button fullWidth size="lg" onClick={() => navigate('/forgot-password')}>
+            Request new reset link
+          </Button>
+        </AuthCard>
+      </AuthPage>
+    )
+  }
+
   return (
     <AuthPage>
       <AuthCard
         title="Reset your password"
-        subtitle="Paste the reset token from your email and enter your new password."
+        subtitle="Enter your new password below."
         alert={serverError ? { type: 'error', message: serverError } : null}
         footer={
           <>
@@ -66,15 +88,7 @@ export function ResetPasswordPage() {
         }
       >
         <Form onSubmit={handleSubmit(onSubmit)}>
-          <FormField
-            label="Reset token"
-            placeholder="Paste the token from your email"
-            required
-            registration={register('token')}
-            error={errors.token?.message}
-            leftIcon={<KeyRound size={16} />}
-            autoComplete="one-time-code"
-          />
+          <input type="hidden" {...register('token')} />
 
           <div>
             <FormField
