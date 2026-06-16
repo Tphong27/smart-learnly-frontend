@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Bell, LogOut, Menu, Search, User, ChevronDown } from "lucide-react";
-import "./Header.css"; // Đảm bảo dòng này trỏ đúng đến vị trí file CSS cũ của bạn
+import "./Header.css";
 
 function getInitials(name) {
   return (name || "U")
@@ -42,7 +42,7 @@ export function Header({ user, onToggleSidebar, onLogout }) {
   return (
     <header className="app-header">
       <div className="app-header__inner">
-        {/* Khối bên trái: Menu và Tìm kiếm */}
+        {/* Menu và Tìm kiếm */}
         <div className="app-header__left">
           <button
             type="button"
@@ -53,7 +53,6 @@ export function Header({ user, onToggleSidebar, onLogout }) {
             <Menu size={20} />
           </button>
 
-          {/* Sửa lại class container bọc ô input cho khớp với CSS cũ */}
           <div className="app-header__search-container">
             <Search size={16} className="app-header__search-icon" />
             <input
@@ -64,7 +63,7 @@ export function Header({ user, onToggleSidebar, onLogout }) {
           </div>
         </div>
 
-        {/* Khối bên phải: Chuông thông báo & Profile */}
+        {/* Chuông thông báo & Profile */}
         <div className="app-header__actions">
           <button
             type="button"
@@ -101,14 +100,12 @@ export function Header({ user, onToggleSidebar, onLogout }) {
                 <span className="app-header__user-role">{role}</span>
               </span>
 
-              {/* Bổ sung icon Chevron Down để chạy hiệu ứng xoay mượt mà */}
               <ChevronDown
                 size={14}
                 className={`app-header__chevron ${open ? "app-header__chevron--rotate" : ""}`}
               />
             </button>
 
-            {/* Dropdown Menu đồng bộ cấu trúc CSS */}
             {open && (
               <div className="app-header__user-menu">
                 <div className="app-header__dropdown-header">
