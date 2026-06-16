@@ -34,6 +34,11 @@ export function Sidebar({ userRole, open, onClose }) {
   const normalizedRole = typeof userRole === 'string' ? userRole.toLowerCase() : userRole
   const visibleItems = navItems.filter((item) => item.roles.includes(normalizedRole))
 
+  const overlayClassName = open
+    ? 'app-sidebar-overlay app-sidebar-overlay--open'
+    : 'app-sidebar-overlay'
+  const sidebarClassName = open ? 'app-sidebar app-sidebar--open' : 'app-sidebar'
+
   return (
     <>
       <div

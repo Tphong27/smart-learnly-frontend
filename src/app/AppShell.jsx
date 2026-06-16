@@ -6,6 +6,7 @@ import { RoleGuard } from "./routes/RoleGuard";
 import { HomePage } from "../features/home/HomePage";
 import {
   CourseDetailPage,
+  CoursePreviewLessonsPage,
   MyCoursesPage,
 } from '../features/course'
 import {
@@ -21,17 +22,12 @@ import {
   AdminCoursesPage,
   AdminCourseFormPage,
 } from '../features/admin'
-import { CoursePreviewLessonsPage, CourseDetailPage } from '../features/course'
 import { ROLES } from '@/shared/constants/roles'
 
-// =========================================================
-// IMPORT CÁC TRANG BÁO LỖI XỊN TỪ THƯ MỤC PAGES
-// =========================================================
 import { NotFoundPage } from "./pages/error/NotFoundPage";
 import { ForbiddenPage } from "./pages/error/ForbiddenPage";
 import { ServerErrorPage } from "./pages/error/ServerErrorPage";
 
-// Hàm hiển thị tạm thời (BẮT BUỘC PHẢI CÓ để các trang dưới không bị crash)
 function PlaceholderPage({ title }) {
   return (
     <section className="placeholder-page">
@@ -43,14 +39,6 @@ function PlaceholderPage({ title }) {
       </p>
     </section>
   )
-}
-
-function ForbiddenPage() {
-  return <PlaceholderPage title="403 - You do not have access to this page" />
-}
-
-function NotFoundPage() {
-  return <PlaceholderPage title="404 - Page not found" />
 }
 
 export function AppShell() {
@@ -80,50 +68,6 @@ export function AppShell() {
           element={<PublicLayout><CourseDetailPage /></PublicLayout>}
         />
 
-        <Route
-          path="/login"
-          element={
-            <PublicLayout>
-              <LoginPage />
-            </PublicLayout>
-          }
-        />
-        <Route
-          path="/register"
-          element={
-            <PublicLayout>
-              <RegisterPage />
-            </PublicLayout>
-          }
-        />
-        <Route
-          path="/forgot-password"
-          element={
-            <PublicLayout>
-              <ForgotPasswordPage />
-            </PublicLayout>
-          }
-        />
-        <Route
-          path="/reset-password"
-          element={
-            <PublicLayout>
-              <ResetPasswordPage />
-            </PublicLayout>
-          }
-        />
-        <Route
-          path="/verify-email"
-          element={
-            <PublicLayout>
-              <VerifyEmailPage />
-            </PublicLayout>
-          }
-        />
-
-        {/* ========================================================= */}
-        {/* 2. PROTECTED ROUTES: Luồng đăng nhập kiểm tra quyền        */}
-        {/* ========================================================= */}
         <Route element={<ProtectedRoute />}>
           <Route element={<AppLayout />}>
             <Route
@@ -134,7 +78,6 @@ export function AppShell() {
             <Route path="/my-courses" element={<MyCoursesPage />} />
             <Route path="/tests" element={<PlaceholderPage title="Tests" />} />
 
-            {/* Phân quyền: SME & ADMIN */}
             <Route
               element={<RoleGuard allowedRoles={[ROLES.ADMIN, ROLES.SME]} />}
             >
@@ -148,7 +91,6 @@ export function AppShell() {
               />
             </Route>
 
-            {/* Access control: ADMIN only */}
             <Route element={<RoleGuard allowedRoles={[ROLES.ADMIN]} />}>
               <Route
                 path="/admin/courses"
@@ -180,7 +122,6 @@ export function AppShell() {
               />
             </Route>
 
-            {/* Phân quyền: TMO & ADMIN */}
             <Route
               element={<RoleGuard allowedRoles={[ROLES.TMO, ROLES.ADMIN]} />}
             >
@@ -190,7 +131,6 @@ export function AppShell() {
               />
             </Route>
 
-            {/* Phân quyền: TRAINER */}
             <Route element={<RoleGuard allowedRoles={[ROLES.TRAINER]} />}>
               <Route
                 path="/trainer/classes"
@@ -200,9 +140,6 @@ export function AppShell() {
           </Route>
         </Route>
 
-        {/* ========================================================= */}
-        {/* 3. ERROR ROUTES: Trả trực tiếp các trang lỗi phẳng        */}
-        {/* ========================================================= */}
         <Route path="/403" element={<ForbiddenPage />} />
         <Route path="/500" element={<ServerErrorPage />} />
         <Route path="/404" element={<NotFoundPage />} />
