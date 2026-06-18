@@ -4,9 +4,14 @@ const API_BASE_URL =
   ?? "http://localhost:8080/api/v1";
 
 export async function request(path, options = {}) {
-  // 1. Tự động lấy Token từ Storage để gắn vào Request (Chuẩn bị cho quyền Admin)
-  const token = localStorage.getItem("accessToken"); // Tùy chỉnh tên key nếu team bạn đặt khác
-  const authHeader = token ? { Authorization: `Bearer ${token}` } : {};
+  // 1. Tự động lấy Token từ Storage để gắn vào Request
+  const token = localStorage.getItem("accessToken");
+
+  // SỬA TẠI ĐÂY: Chỉ gắn Header Authorization nếu có token thực sự (không chấp nhận chuỗi "undefined" hoặc "null")
+  const authHeader =
+    token && token !== "undefined" && token !== "null"
+      ? { Authorization: `Bearer ${token}` }
+      : {};
 
   // 2. Kỹ thuật xử lý Header cho việc Upload File
   const isFormData = options.body instanceof FormData;
@@ -26,16 +31,35 @@ export async function request(path, options = {}) {
     headers: customHeaders,
   });
 
+  // Tự động xóa token rác và đá về trang login nếu Backend trả về 401 khi đang gọi các API cần quyền hạn khác
+  if (
+    response.status === 401 &&
+    !path.includes("/auth/login") &&
+    !path.includes("/auth/register")
+  ) {
+    localStorage.removeItem("accessToken");
+    window.location.href = "/login";
+    return null;
+  }
+
+  // SỬA TẠI ĐÂY: Cải tiến bộ bắt lỗi để đẩy đủ dữ liệu về cho giao diện (UI) hiển thị
   if (!response.ok) {
-    // Cố gắng đọc thông báo lỗi từ Backend trả về (Ví dụ: "File quá lớn")
+    let errorData = null;
     let errorMessage = `Request failed with status ${response.status}`;
+
     try {
-      const errorData = await response.json();
+      errorData = await response.json();
       errorMessage = errorData.message || errorMessage;
     } catch {
       // Bỏ qua nếu lỗi không phải dạng JSON
     }
-    throw new Error(errorMessage);
+
+    // Tạo custom error mang theo thông tin status và data của lỗi
+    const customError = new Error(errorMessage);
+    customError.status = response.status;
+    customError.data = errorData;
+
+    throw customError;
   }
 
   if (response.status === 204) {

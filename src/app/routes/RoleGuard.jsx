@@ -1,11 +1,13 @@
-import { Navigate, Outlet } from 'react-router-dom'
-import { getCurrentUser } from '@/services'
+import { Navigate, Outlet } from "react-router-dom";
+import { getCurrentUser } from "@/services";
+import { ROLES } from "@/shared/constants/roles"; // Đảm bảo đúng đường dẫn tới file roles.js
 
 export function RoleGuard({ allowedRoles = [] }) {
-  const user = getCurrentUser()
+  const user = getCurrentUser();
 
+  // 1. Chưa đăng nhập -> Đẩy về login
   if (!user) {
-    return <Navigate to="/login" replace />
+    return <Navigate to="/login" replace />;
   }
 
   const userRole = typeof user.role === 'string' ? user.role.toLowerCase() : user.role
@@ -15,5 +17,5 @@ export function RoleGuard({ allowedRoles = [] }) {
     return <Navigate to="/403" replace />
   }
 
-  return <Outlet />
+  return <Outlet />;
 }
