@@ -12,9 +12,10 @@ import {
   Users,
   X,
   Zap,
-} from 'lucide-react'
-import { NavLink } from 'react-router-dom'
-import { ROLES } from '@/shared/constants/roles'
+  MessageSquare, // Dùng thay cho Bot để tránh lỗi phiên bản cũ
+} from "lucide-react";
+import { NavLink } from "react-router-dom";
+import { ROLES } from "@/shared/constants/roles";
 
 const navItems = [
   { label: 'Dashboard', path: '/dashboard', icon: Home, roles: [ROLES.TRAINEE, ROLES.TRAINER, ROLES.TMO, ROLES.SME, ROLES.ADMIN] },
@@ -41,16 +42,12 @@ export function Sidebar({ userRole, open, onClose }) {
 
   return (
     <>
-      <div
-        className={overlayClassName}
-        onClick={onClose}
-        aria-hidden="true"
-      />
+      <div className={overlayClassName} onClick={onClose} aria-hidden="true" />
 
       <aside className={sidebarClassName}>
-        <div className="app-sidebar__brand-row">
-          <a href="/dashboard" className="app-sidebar__brand">
-            <span className="app-sidebar__brand-mark">
+        <div className="app-sidebar__brand-row sidebar__brand-row">
+          <a href="/dashboard" className="app-sidebar__brand sidebar__brand">
+            <span className="app-sidebar__brand-mark sidebar__brand-mark">
               <Zap size={18} />
             </span>
             Smart Learnly
@@ -59,21 +56,23 @@ export function Sidebar({ userRole, open, onClose }) {
           <button
             type="button"
             onClick={onClose}
-            className="app-sidebar__close-button"
+            className="app-sidebar__close-button sidebar__close-button"
             aria-label="Close sidebar"
           >
             <X size={18} />
           </button>
         </div>
 
-        <nav className="app-sidebar__nav">
+        <nav className="app-sidebar__nav sidebar__nav">
           {visibleItems.map(({ label, path, icon: Icon }) => (
             <NavLink
               key={path}
               to={path}
               onClick={onClose}
               className={({ isActive }) =>
-                isActive ? 'app-sidebar__link app-sidebar__link--active' : 'app-sidebar__link'
+                isActive
+                  ? "app-sidebar__link sidebar__link app-sidebar__link--active sidebar__link--active"
+                  : "app-sidebar__link sidebar__link"
               }
             >
               <Icon size={18} />
@@ -82,16 +81,15 @@ export function Sidebar({ userRole, open, onClose }) {
           ))}
         </nav>
 
-        <div className="app-sidebar__footer">
-          <div className="app-sidebar__summary">
+        <div className="app-sidebar__footer sidebar__footer">
+          <div className="app-sidebar__summary sidebar__summary">
             <p>SLP</p>
             <small>
-                A learning management system for the SLP program at Accenture.
+              A learning management system for the SLP program at Accenture.
             </small>
           </div>
         </div>
       </aside>
     </>
-  )
+  );
 }
-
