@@ -1,24 +1,29 @@
-import { useState } from 'react'
-import { Outlet, useNavigate } from 'react-router-dom'
-import { Header } from './Header'
-import { Sidebar } from './Sidebar'
-import { authService, getCurrentUser } from '@/services'
-import { ROLES } from '@/shared/constants/roles'
-import './app-layout.css'
+import { useState } from "react";
+import { Outlet, useNavigate } from "react-router-dom";
+import { Header } from "./Header";
+import { Sidebar } from "./Sidebar";
+import { authService, getCurrentUser } from "@/services";
+import { ROLES } from "@/shared/constants/roles";
+import "./app-layout.css";
 
 export function AppLayout() {
-  const [sidebarOpen, setSidebarOpen] = useState(false)
-  const navigate = useNavigate()
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const navigate = useNavigate();
 
-  const storedUser = getCurrentUser()
-  const user = storedUser ?? { fullName: 'Guest', email: '', role: ROLES.TRAINEE }
-  const userRole = user.role || ROLES.TRAINEE
+  const storedUser = getCurrentUser();
+  const user = storedUser ?? {
+    fullName: "Guest",
+    email: "",
+    role: ROLES.TRAINEE,
+  };
+
+  const userRole = user.role || ROLES.TRAINEE;
 
   async function handleLogout() {
     try {
-      await authService.logout()
+      await authService.logout();
     } finally {
-      navigate('/login', { replace: true })
+      navigate("/login", { replace: true });
     }
   }
 
@@ -26,7 +31,7 @@ export function AppLayout() {
     <div className="app-layout-shell">
       <div className="app-layout-shell__inner">
         <Sidebar
-          userRole={user.role}
+          userRole={userRole}
           open={sidebarOpen}
           onClose={() => setSidebarOpen(false)}
         />
@@ -44,5 +49,5 @@ export function AppLayout() {
         </div>
       </div>
     </div>
-  )
+  );
 }
