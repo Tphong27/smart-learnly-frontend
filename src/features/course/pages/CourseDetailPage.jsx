@@ -164,6 +164,12 @@ export function CourseDetailPage() {
             >
               View preview lessons
             </Link>
+            <Link
+              to={`/courses/${course.id || course.slug}/enroll`}
+              className="button button--primary course-detail__cta"
+            >
+              Enroll now
+            </Link>
             <ul className="course-detail__sidecard-list">
               <li>
                 <CheckCircle2 size={14} /> Lifetime access to course materials
