@@ -2,12 +2,11 @@ import { Link } from "react-router-dom";
 import { ArrowRight, BookOpen, Clock3, Layers3, Star } from "lucide-react";
 
 function formatPrice(course) {
-  if (course.isFree || course.is_free || Number(course.price) === 0) {
+  if (Number(course.price) === 0) {
     return "Free";
   }
 
-  const price =
-    course.discountedPrice ?? course.discounted_price ?? course.price;
+  const price = course.discountedPrice ?? course.price;
 
   return new Intl.NumberFormat("vi-VN", {
     style: "currency",
@@ -24,13 +23,16 @@ export function CourseCard({ course, viewMode = "grid", detailState }) {
   const title = course.title || "Untitled course";
   const shortDescription =
     course.shortDescription ||
-    course.short_description ||
     course.description ||
     "No description available.";
 
-  const thumbnailUrl = course.thumbnailUrl || course.thumbnail_url;
+  const thumbnailUrl = course.thumbnailUrl;
   const categoryName = course.category?.name || course.categoryName || "Course";
-  const lessonCount = course.lessonCount ?? course.totalLessons ?? 0;
+  // const lessonCount = course.lessonCount ?? course.totalLessons ?? 0;
+  const lessonCount = course.totalLessons ?? course.modules?.reduce(
+    (sum, m) => sum + (m.lessons?.length || 0),
+    0,
+  ) ?? 0;
   const durationText = course.durationText || course.duration || "Self-paced";
 
   return (

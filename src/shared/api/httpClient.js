@@ -1,5 +1,7 @@
 const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8080/api/v1";
+  import.meta.env.VITE_API_URL
+  ?? import.meta.env.VITE_API_BASE_URL
+  ?? "http://localhost:8080/api/v1";
 
 export async function request(path, options = {}) {
   // 1. Tự động lấy Token từ Storage để gắn vào Request
@@ -48,7 +50,7 @@ export async function request(path, options = {}) {
     try {
       errorData = await response.json();
       errorMessage = errorData.message || errorMessage;
-    } catch (e) {
+    } catch {
       // Bỏ qua nếu lỗi không phải dạng JSON
     }
 

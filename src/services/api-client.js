@@ -1,6 +1,9 @@
 import axios from 'axios'
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api'
+const API_BASE_URL =
+  import.meta.env.VITE_API_URL
+  || import.meta.env.VITE_API_BASE_URL
+  || 'http://localhost:8080/api/v1'
 
 const ACCESS_TOKEN_KEY = 'accessToken'
 const USER_KEY = 'user'
@@ -194,11 +197,6 @@ apiClient.interceptors.response.use(
       redirectToForbidden()
     }
 
-    if (status >= 500) {
-      console.error('Server error:', error.response?.data)
-    }
-
-    // Đẩy dữ liệu lỗi chuẩn từ Backend về cho Component React nhận diện
     const apiError = error.response?.data?.error || error.response?.data || {
       code: 'UNKNOWN_ERROR',
       message: 'An unknown error occurred. Please try again.',

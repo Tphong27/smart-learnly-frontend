@@ -10,15 +10,11 @@ export function RoleGuard({ allowedRoles = [] }) {
     return <Navigate to="/login" replace />;
   }
 
-  // 2. Đặc quyền: ADMIN được vào tất cả mọi nơi
-  if (user.role === ROLES.ADMIN) {
-    return <Outlet />;
-  }
+  const userRole = typeof user.role === 'string' ? user.role.toLowerCase() : user.role
+  const normalized = allowedRoles.map((r) => (typeof r === 'string' ? r.toLowerCase() : r))
 
-  // 3. Kiểm tra các Role khác
-  if (!allowedRoles.includes(user.role)) {
-    // Đổi "/403" thành path bạn định nghĩa cho ForbiddenPage (ví dụ: /forbidden)
-    return <Navigate to="/403" replace />;
+  if (!normalized.includes(userRole)) {
+    return <Navigate to="/403" replace />
   }
 
   return <Outlet />;

@@ -6,6 +6,7 @@ import { RoleGuard } from "./routes/RoleGuard";
 import { HomePage } from "../features/home/HomePage";
 import {
   CourseDetailPage,
+  CoursePreviewLessonsPage,
   MyCoursesPage,
 } from '../features/course'
 import {
@@ -15,17 +16,18 @@ import {
   ResetPasswordPage,
   VerifyEmailPage,
   ProfilePage,
-} from "../features/auth";
-import { ROLES } from "@/shared/constants/roles";
+} from '../features/auth'
+import {
+  AdminCategoriesPage,
+  AdminCoursesPage,
+  AdminCourseFormPage,
+} from '../features/admin'
+import { ROLES } from '@/shared/constants/roles'
 
-// =========================================================
-// IMPORT CÁC TRANG BÁO LỖI XỊN TỪ THƯ MỤC PAGES
-// =========================================================
 import { NotFoundPage } from "./pages/error/NotFoundPage";
 import { ForbiddenPage } from "./pages/error/ForbiddenPage";
 import { ServerErrorPage } from "./pages/error/ServerErrorPage";
 
-// Hàm hiển thị tạm thời (BẮT BUỘC PHẢI CÓ để các trang dưới không bị crash)
 function PlaceholderPage({ title }) {
   return (
     <section className="placeholder-page">
@@ -36,7 +38,7 @@ function PlaceholderPage({ title }) {
         added in future sprints.
       </p>
     </section>
-  );
+  )
 }
 
 export function AppShell() {
@@ -52,59 +54,20 @@ export function AppShell() {
           }
         />
 
+        <Route path="/login" element={<PublicLayout><LoginPage /></PublicLayout>} />
+        <Route path="/register" element={<PublicLayout><RegisterPage /></PublicLayout>} />
+        <Route path="/forgot-password" element={<PublicLayout><ForgotPasswordPage /></PublicLayout>} />
+        <Route path="/reset-password" element={<PublicLayout><ResetPasswordPage /></PublicLayout>} />
+        <Route path="/verify-email" element={<PublicLayout><VerifyEmailPage /></PublicLayout>} />
+        <Route
+          path="/courses/:courseId/preview"
+          element={<PublicLayout><CoursePreviewLessonsPage /></PublicLayout>}
+        />
         <Route
           path="/courses/:slug"
-          element={
-            <PublicLayout>
-              <CourseDetailPage />
-            </PublicLayout>
-          }
+          element={<PublicLayout><CourseDetailPage /></PublicLayout>}
         />
 
-        <Route
-          path="/login"
-          element={
-            <PublicLayout>
-              <LoginPage />
-            </PublicLayout>
-          }
-        />
-        <Route
-          path="/register"
-          element={
-            <PublicLayout>
-              <RegisterPage />
-            </PublicLayout>
-          }
-        />
-        <Route
-          path="/forgot-password"
-          element={
-            <PublicLayout>
-              <ForgotPasswordPage />
-            </PublicLayout>
-          }
-        />
-        <Route
-          path="/reset-password"
-          element={
-            <PublicLayout>
-              <ResetPasswordPage />
-            </PublicLayout>
-          }
-        />
-        <Route
-          path="/verify-email"
-          element={
-            <PublicLayout>
-              <VerifyEmailPage />
-            </PublicLayout>
-          }
-        />
-
-        {/* ========================================================= */}
-        {/* 2. PROTECTED ROUTES: Luồng đăng nhập kiểm tra quyền        */}
-        {/* ========================================================= */}
         <Route element={<ProtectedRoute />}>
           <Route element={<AppLayout />}>
             <Route
@@ -115,7 +78,6 @@ export function AppShell() {
             <Route path="/my-courses" element={<MyCoursesPage />} />
             <Route path="/tests" element={<PlaceholderPage title="Tests" />} />
 
-            {/* Phân quyền: SME & ADMIN */}
             <Route
               element={<RoleGuard allowedRoles={[ROLES.ADMIN, ROLES.SME]} />}
             >
@@ -129,11 +91,26 @@ export function AppShell() {
               />
             </Route>
 
-            {/* Phân quyền: Chỉ ADMIN */}
             <Route element={<RoleGuard allowedRoles={[ROLES.ADMIN]} />}>
               <Route
                 path="/admin/courses"
-                element={<PlaceholderPage title="Admin Course Management" />}
+                element={<AdminCoursesPage />}
+              />
+              <Route
+                path="/admin/courses/new"
+                element={<AdminCourseFormPage />}
+              />
+              <Route
+                path="/admin/courses/:courseId"
+                element={<AdminCourseFormPage />}
+              />
+              <Route
+                path="/admin/courses/:courseId/preview"
+                element={<CoursePreviewLessonsPage />}
+              />
+              <Route
+                path="/admin/categories"
+                element={<AdminCategoriesPage />}
               />
               <Route
                 path="/admin/users"
@@ -145,7 +122,6 @@ export function AppShell() {
               />
             </Route>
 
-            {/* Phân quyền: TMO & ADMIN */}
             <Route
               element={<RoleGuard allowedRoles={[ROLES.TMO, ROLES.ADMIN]} />}
             >
@@ -155,7 +131,6 @@ export function AppShell() {
               />
             </Route>
 
-            {/* Phân quyền: TRAINER */}
             <Route element={<RoleGuard allowedRoles={[ROLES.TRAINER]} />}>
               <Route
                 path="/trainer/classes"
@@ -165,9 +140,6 @@ export function AppShell() {
           </Route>
         </Route>
 
-        {/* ========================================================= */}
-        {/* 3. ERROR ROUTES: Trả trực tiếp các trang lỗi phẳng        */}
-        {/* ========================================================= */}
         <Route path="/403" element={<ForbiddenPage />} />
         <Route path="/500" element={<ServerErrorPage />} />
         <Route path="/404" element={<NotFoundPage />} />

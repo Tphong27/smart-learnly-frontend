@@ -3,6 +3,7 @@ import {
   BookOpen,
   ClipboardCheck,
   FileQuestion,
+  FolderTree,
   GraduationCap,
   Home,
   Layers3,
@@ -17,91 +18,27 @@ import { NavLink } from "react-router-dom";
 import { ROLES } from "@/shared/constants/roles";
 
 const navItems = [
-  {
-    label: "Dashboard",
-    path: "/dashboard",
-    icon: Home,
-    roles: [ROLES.TRAINEE, ROLES.TRAINER, ROLES.TMO, ROLES.SME],
-  },
-  {
-    label: "My Courses",
-    path: "/my-courses",
-    icon: GraduationCap,
-    roles: [ROLES.TRAINEE, ROLES.TRAINER, ROLES.SME, ROLES.TMO],
-  },
-  {
-    label: "Classes",
-    path: "/trainer/classes",
-    icon: Users,
-    roles: [ROLES.TRAINER, ROLES.TMO, ROLES.TRAINEE],
-  },
-  {
-    label: "Tests",
-    path: "/tests",
-    icon: ClipboardCheck,
-    roles: [ROLES.TRAINEE, ROLES.TRAINER, ROLES.SME, ROLES.TMO],
-  },
-  {
-    label: "Flashcards",
-    path: "/flashcards",
-    icon: Layers3,
-    roles: [ROLES.TRAINEE, ROLES.TRAINER, ROLES.SME, ROLES.TMO],
-  },
-  {
-    label: "AI Chatbot",
-    path: "/ai-chatbot",
-    icon: MessageSquare,
-    roles: [ROLES.TRAINEE, ROLES.SME, ROLES.TMO],
-  },
-  {
-    label: "Course Content",
-    path: "/sme/content",
-    icon: Layers3,
-    roles: [ROLES.SME, ROLES.TRAINER, ROLES.TMO],
-  },
-  {
-    label: "Question Bank",
-    path: "/sme/questions",
-    icon: FileQuestion,
-    roles: [ROLES.SME, ROLES.TRAINER, ROLES.TMO],
-  },
-  {
-    label: "Course Management",
-    path: "/admin/courses",
-    icon: BookOpen,
-    roles: [ROLES.TMO, ROLES.TRAINER, ROLES.SME],
-  },
-  {
-    label: "Users & Roles",
-    path: "/admin/users",
-    icon: ShieldCheck,
-    roles: [],
-  },
-  { label: "Reports", path: "/reports", icon: BarChart3, roles: [ROLES.TMO] },
-  { label: "Settings", path: "/settings", icon: Settings, roles: [] },
-];
+  { label: 'Dashboard', path: '/dashboard', icon: Home, roles: [ROLES.TRAINEE, ROLES.TRAINER, ROLES.TMO, ROLES.SME, ROLES.ADMIN] },
+  { label: 'My Courses', path: '/my-courses', icon: GraduationCap, roles: [ROLES.TRAINEE, ROLES.TRAINER, ROLES.SME, ROLES.ADMIN, ROLES.TMO] },
+  { label: 'Tests', path: '/tests', icon: ClipboardCheck, roles: [ROLES.TRAINEE, ROLES.TRAINER, ROLES.SME, ROLES.ADMIN, ROLES.TMO] },
+  { label: 'Classes', path: '/trainer/classes', icon: Users, roles: [ROLES.TRAINER, ROLES.SME, ROLES.ADMIN, ROLES.TMO, ROLES.TRAINEE] },
+  { label: 'Course Content', path: '/sme/content', icon: Layers3, roles: [ROLES.SME, ROLES.ADMIN, ROLES.TRAINER, ROLES.TMO] },
+  { label: 'Question Bank', path: '/sme/questions', icon: FileQuestion, roles: [ROLES.SME, ROLES.ADMIN, ROLES.TRAINER, ROLES.TMO] },
+  { label: 'Course Management', path: '/admin/courses', icon: BookOpen, roles: [ROLES.ADMIN] },
+  { label: 'Categories', path: '/admin/categories', icon: FolderTree, roles: [ROLES.ADMIN] },
+  { label: 'Users & Roles', path: '/admin/users', icon: ShieldCheck, roles: [ROLES.ADMIN] },
+  { label: 'Reports', path: '/reports', icon: BarChart3, roles: [ROLES.TMO, ROLES.ADMIN, ROLES.TRAINER, ROLES.SME] },
+  { label: 'Settings', path: '/settings', icon: Settings, roles: [ROLES.ADMIN] },
+]
 
 export function Sidebar({ userRole, open, onClose }) {
-  // Chuẩn hóa role về chữ thường
-  const standardizedRole = userRole?.toString().toLowerCase();
-  const adminRoleTarget = ROLES.ADMIN?.toString().toLowerCase() || "admin";
+  const normalizedRole = typeof userRole === 'string' ? userRole.toLowerCase() : userRole
+  const visibleItems = navItems.filter((item) => item.roles.includes(normalizedRole))
 
-  // Bộ lọc tính năng: Hạ tất cả quyền xuống chữ thường để so sánh chính xác tuyệt đối
-  const visibleItems = navItems.filter((item) => {
-    if (standardizedRole === adminRoleTarget) return true;
-    return item.roles
-      .map((r) => r?.toString().toLowerCase())
-      .includes(standardizedRole);
-  });
-
-  // Gộp cả hai loại class CSS (app-sidebar và sidebar) để file CSS nào cũng ăn khớp
   const overlayClassName = open
-    ? "app-sidebar-overlay sidebar-overlay app-sidebar-overlay--open sidebar-overlay--open"
-    : "app-sidebar-overlay sidebar-overlay";
-
-  const sidebarClassName = open
-    ? "app-sidebar sidebar app-sidebar--open sidebar--open"
-    : "app-sidebar sidebar";
+    ? 'app-sidebar-overlay app-sidebar-overlay--open'
+    : 'app-sidebar-overlay'
+  const sidebarClassName = open ? 'app-sidebar app-sidebar--open' : 'app-sidebar'
 
   return (
     <>
