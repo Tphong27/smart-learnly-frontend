@@ -18,6 +18,8 @@ import {
   AdminCourseFormPage,
 } from '../features/admin'
 import { CoursePreviewLessonsPage, CourseDetailPage } from '../features/course'
+import { MyEnrollmentsPage } from '../features/enrollment'
+import { MyTransactionsPage, PaymentResultPage } from '../features/payment'
 import { ROLES } from '@/shared/constants/roles'
 
 function PlaceholderPage({ title }) {
@@ -72,6 +74,9 @@ export function AppShell() {
             <Route path="/dashboard" element={<PlaceholderPage title="Dashboard" />} />
             <Route path="/profile" element={<ProfilePage />} />
             <Route path="/my-courses" element={<PlaceholderPage title="My Courses" />} />
+            <Route path="/my-enrollments" element={<MyEnrollmentsPage />} />
+            <Route path="/my-transactions" element={<MyTransactionsPage />} />
+            <Route path="/payment-result" element={<PaymentResultPage />} />
             <Route path="/tests" element={<PlaceholderPage title="Tests" />} />
 
             <Route
