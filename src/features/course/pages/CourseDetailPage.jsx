@@ -12,6 +12,7 @@ import {
 } from 'lucide-react'
 import { useToast } from '@/shared/components/ui'
 import { courseService } from '@/services'
+import { FreeEnrollButton } from '@/features/enrollment'
 import '../../admin/admin-shared.css'
 import './CourseDetailPage.css'
 
@@ -85,6 +86,8 @@ export function CourseDetailPage() {
 
   const objectives = course.learningObjectives || []
   const modules = course.modules || []
+  const priceNum = Number(course.price)
+  const isFree = course.price == null || Number.isNaN(priceNum) || priceNum <= 0
   const totalLessons = modules.reduce((sum, m) => sum + (m.lessons?.length || 0), 0)
   const previewLessons = modules.flatMap((m) => (m.lessons || []).filter((l) => l.preview))
 
@@ -140,6 +143,11 @@ export function CourseDetailPage() {
           </div>
           <div className="course-detail__sidecard-body">
             <div className="course-detail__price">{formatPrice(course.price)}</div>
+            {isFree ? (
+              <div style={{ marginBottom: 12 }}>
+                <FreeEnrollButton courseId={course.id} />
+              </div>
+            ) : null}
             <Link
               to={`/courses/${course.id || course.slug}/preview`}
               className="button button--primary course-detail__cta"
