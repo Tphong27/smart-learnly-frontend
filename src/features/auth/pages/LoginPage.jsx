@@ -6,6 +6,7 @@ import { GoogleLogin } from '@react-oauth/google'
 import { Eye, EyeOff, Lock, Mail } from 'lucide-react'
 import { Form, FormField, Button, useToast } from '@/shared/components/ui'
 import { authService } from '@/services'
+import { ROLES } from '@/shared/constants/roles'
 import { loginSchema } from '../schemas/auth-schemas'
 import { AuthPage, AuthCard } from '../components/AuthCard'
 import { SocialDivider } from '../components/SocialDivider'
@@ -13,8 +14,31 @@ import { SocialDivider } from '../components/SocialDivider'
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID
 const isGoogleConfigured = Boolean(GOOGLE_CLIENT_ID && GOOGLE_CLIENT_ID !== '__SET_ME__')
 
-function getRedirectPath(location) {
-  return location.state?.from?.pathname || '/dashboard'
+const ROLE_RESTRICTED_PREFIXES = [
+  { prefix: '/admin', allow: [ROLES.ADMIN] },
+  { prefix: '/settings', allow: [ROLES.ADMIN] },
+  { prefix: '/sme', allow: [ROLES.ADMIN, ROLES.SME] },
+  { prefix: '/reports', allow: [ROLES.ADMIN, ROLES.TMO] },
+  { prefix: '/trainer', allow: [ROLES.TRAINER] },
+]
+
+function isPathAllowedForRole(pathname, role) {
+  if (!pathname) return false
+  const normalizedRole = typeof role === 'string' ? role.toLowerCase() : role
+  for (const { prefix, allow } of ROLE_RESTRICTED_PREFIXES) {
+    if (pathname === prefix || pathname.startsWith(prefix + '/')) {
+      return allow.includes(normalizedRole)
+    }
+  }
+  return true
+}
+
+function getRedirectPath(location, user) {
+  const requested = location.state?.from?.pathname
+  if (requested && isPathAllowedForRole(requested, user?.role)) {
+    return requested
+  }
+  return '/dashboard'
 }
 
 export function LoginPage() {
@@ -37,17 +61,17 @@ export function LoginPage() {
     mode: 'onBlur',
   })
 
-  function handleSuccess() {
+  function handleSuccess(loggedInUser) {
     toast.success('Signed in successfully')
-    navigate(getRedirectPath(location), { replace: true })
+    navigate(getRedirectPath(location, loggedInUser), { replace: true })
   }
 
   async function onSubmit(values) {
     setServerError(null)
     setUnverifiedEmail(null)
     try {
-      await authService.login(values)
-      handleSuccess()
+      const data = await authService.login(values)
+      handleSuccess(data?.user)
     } catch (error) {
       const code = error?.code
       const message = error?.message || 'Invalid email or password.'
@@ -70,8 +94,8 @@ export function LoginPage() {
     setServerError(null)
     setGoogleLoading(true)
     try {
-      await authService.loginGoogle(idToken)
-      handleSuccess()
+      const data = await authService.loginGoogle(idToken)
+      handleSuccess(data?.user)
     } catch (error) {
       setServerError(error?.message || 'Google sign-in failed.')
     } finally {

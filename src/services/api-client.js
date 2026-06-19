@@ -69,12 +69,6 @@ function redirectToLogin() {
   }
 }
 
-function redirectToForbidden() {
-  if (window.location.pathname !== '/403') {
-    window.location.href = '/403'
-  }
-}
-
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
   timeout: 30000,
@@ -178,10 +172,6 @@ apiClient.interceptors.response.use(
       } finally {
         isRefreshing = false
       }
-    }
-
-    if (status === 403 && !shouldSkipAuthRedirect) {
-      redirectToForbidden()
     }
 
     const apiError = error.response?.data?.error || error.response?.data || {
