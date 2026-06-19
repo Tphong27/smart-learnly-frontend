@@ -28,11 +28,19 @@ export function CourseCard({ course, viewMode = "grid", detailState }) {
 
   const thumbnailUrl = course.thumbnailUrl;
   const categoryName = course.category?.name || course.categoryName || "Course";
-  // const lessonCount = course.lessonCount ?? course.totalLessons ?? 0;
-  const lessonCount = course.totalLessons ?? course.modules?.reduce(
-    (sum, m) => sum + (m.lessons?.length || 0),
-    0,
-  ) ?? 0;
+  const modules = Array.isArray(course.modules) ? course.modules : [];
+
+  const moduleCount = Number(
+    course.moduleCount ?? course.totalModules ?? modules.length ?? 0,
+  );
+
+  const lessonCount = Number(
+    course.lessonCount ??
+      course.totalLessons ??
+      modules.reduce((sum, module) => sum + (module.lessons?.length || 0), 0) ??
+      0,
+  );
+
   const durationText = course.durationText || course.duration || "Self-paced";
 
   return (
@@ -68,7 +76,12 @@ export function CourseCard({ course, viewMode = "grid", detailState }) {
         <div className="course-card__details">
           <span>
             <Layers3 size={15} />
-            {lessonCount} lessons
+            {moduleCount} {moduleCount === 1 ? "module" : "modules"}
+          </span>
+
+          <span>
+            <BookOpen size={15} />
+            {lessonCount} {lessonCount === 1 ? "lesson" : "lessons"}
           </span>
           <span>
             <Clock3 size={15} />

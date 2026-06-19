@@ -113,6 +113,47 @@ export const courseService = {
     return normalizePage(response);
   },
 
+  async getPublicCoursesWithDetails(params = {}) {
+    const pageData = await this.getPublicCourses(params);
+
+    const enrichedItems = await Promise.allSettled(
+      pageData.items.map(async (course) => {
+        const slugOrId = course.slug || course.id;
+
+        if (!slugOrId) {
+          return course;
+        }
+
+        const detail = await this.getPublicDetail(slugOrId);
+
+        const modules = Array.isArray(detail?.modules) ? detail.modules : [];
+
+        const lessonCount = modules.reduce(
+          (sum, module) => sum + (module.lessons?.length || 0),
+          0,
+        );
+
+        return {
+          ...course,
+          modules,
+          moduleCount: modules.length,
+          lessonCount,
+        };
+      }),
+    );
+
+    return {
+      ...pageData,
+      items: enrichedItems.map((result, index) => {
+        if (result.status === "fulfilled") {
+          return result.value;
+        }
+
+        return pageData.items[index];
+      }),
+    };
+  },
+
   async getCategories() {
     const response = await apiClient.get("/categories", {
       skipAuthRedirect: true,

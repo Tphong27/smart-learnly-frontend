@@ -67,7 +67,7 @@ export function CourseListPage({
       setError("");
 
       try {
-        const data = await courseService.getPublicCourses({
+        const data = await courseService.getPublicCoursesWithDetails({
           page,
           size: pageSize,
           keyword,
