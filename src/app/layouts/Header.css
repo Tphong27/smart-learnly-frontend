@@ -1,14 +1,28 @@
-/* --- Khung Header Tổng Thể --- */
+/* ==========================================================================
+   Thanh Header Tổng Thể Cố Định - Cơ Chế Cưỡng Chế Tuyệt Đối Cấp Cao
+   ========================================================================== */
 .app-header {
-  background: #ffffff;
-  border-bottom: 1px solid #f1f5f9;
-  position: sticky;
-  top: 0;
-  z-index: 40;
-  height: 68px;
-  display: flex;
-  align-items: center;
-  padding: 0 24px;
+  background: #ffffff !important;
+  border-bottom: 1px solid #f1f5f9 !important;
+
+  /* 📌 KHÓA CHẶT VỊ TRÍ TRÊN ĐỈNH BÊN PHẢI */
+  position: fixed !important;
+  top: 0 !important;
+  right: 0 !important;
+  left: 260px !important; /* Đẩy lùi sang phải để nhường không gian cố định cho Sidebar */
+  width: calc(
+    100vw - 260px
+  ) !important; /* Chiếm trọn không gian chiều ngang còn lại */
+  height: 70px !important;
+
+  /* 🔥 ÉP NỔI TRÊN CÙNG HỆ THỐNG: Dùng giá trị Z-Index tối đa mà trình duyệt hỗ trợ */
+  z-index: 2147483647 !important;
+
+  display: flex !important;
+  align-items: center !important;
+  padding: 0 24px !important;
+  box-sizing: border-box !important;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04) !important;
 }
 
 .app-header__inner {
@@ -23,25 +37,6 @@
   display: flex;
   align-items: center;
   gap: 16px;
-}
-
-/* --- Nút Bấm Menu Sidebar --- */
-.app-header__menu-button {
-  background: transparent;
-  border: none;
-  color: #64748b;
-  cursor: pointer;
-  padding: 8px;
-  border-radius: 8px;
-  transition: all 0.2s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.app-header__menu-button:hover {
-  background: #f1f5f9;
-  color: #0f172a;
 }
 
 /* --- Thanh Tìm Kiếm Hiện Đại --- */
@@ -59,9 +54,9 @@
 
 .app-header__search-container:focus-within {
   background: #ffffff;
-  border-color: #6366f1; /* Đổi sang viền màu Indigo cực sang */
+  border-color: #6366f1;
   box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
-  width: 300px; /* Hiệu ứng co giãn nhẹ khi focus */
+  width: 300px;
 }
 
 .app-header__search-icon {
@@ -107,7 +102,7 @@
   right: 6px;
   width: 8px;
   height: 8px;
-  background-color: #ef4444; /* Đỏ rực cảnh báo */
+  background-color: #ef4444;
   border: 2px solid #ffffff;
   border-radius: 50%;
 }
@@ -118,7 +113,7 @@
   background-color: #e2e8f0;
 }
 
-/* --- Profile Button Khách Hàng --- */
+/* --- Profile Button --- */
 .app-header__user {
   position: relative;
 }
@@ -189,7 +184,7 @@
   transform: rotate(180deg);
 }
 
-/* --- Dropdown Menu Đổ Bóng Cực Đẹp --- */
+/* --- Dropdown Menu Đổ Bóng --- */
 .app-header__user-menu {
   position: absolute;
   top: calc(100% + 8px);
@@ -203,6 +198,8 @@
     0 8px 10px -6px rgba(0, 0, 0, 0.05);
   padding: 6px;
   animation: fadeInHeaderDropdown 0.15s ease-out;
+  /* Giữ Dropdown menu của User luôn nổi trên bề mặt Header */
+  z-index: 2147483647 !important;
 }
 
 .app-header__dropdown-header {
@@ -263,7 +260,6 @@
   color: #dc2626;
 }
 
-/* Animation khi hiện Dropdown */
 @keyframes fadeInHeaderDropdown {
   from {
     opacity: 0;

@@ -66,7 +66,6 @@ export const courseService = {
 
   // Public catalog endpoints (used by preview lessons UX)
   async listPublic({ page = 0, size = 20 } = {}) {
-    // /courses returns Spring Page<CourseListItemResponse> directly (not ApiResponse wrapper)
     return apiClient.get("/courses", {
       skipAuthorization: true,
       skipAuthRedirect: true,
@@ -75,7 +74,6 @@ export const courseService = {
   },
 
   async getPublicDetail(slug) {
-    // /courses/{slug} returns CourseDetailResponse directly (not ApiResponse wrapper)
     return apiClient.get(`/courses/${slug}`, {
       skipAuthorization: true,
       skipAuthRedirect: true,
@@ -150,7 +148,7 @@ export const courseService = {
           lessonCount,
         };
       }),
-    );
+    ); // ✔️ ĐÃ SỬA: Sửa lại định dạng đóng ngoặc chuẩn xác của Promise.allSettled ở đây
 
     return {
       ...pageData,
@@ -184,5 +182,118 @@ export const courseService = {
   async getMyCourses() {
     const response = await apiClient.get("/enrollments/my-courses");
     return normalizeList(response);
+  },
+
+  // =====================================================================
+  // CÁC API KHỚP CHUẨN VỚI AdminCourseContentController.java
+  // =====================================================================
+
+  async uploadThumbnail(file) {
+    const formData = new FormData();
+    formData.append("file", file);
+    const response = await apiClient.post(
+      "/admin/uploads/course-thumbnail",
+      formData,
+      {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      },
+    );
+    return unwrap(response);
+  },
+
+  // Khớp với @GetMapping("/courses/{courseId}/sections")
+  async getCourseContent(courseId) {
+    const response = await apiClient.get(`/admin/courses/${courseId}/sections`);
+    return unwrap(response);
+  },
+
+  // Khớp với @PostMapping("/courses/{courseId}/sections")
+  async createSection(courseId, payload) {
+    const response = await apiClient.post(
+      `/admin/courses/${courseId}/sections`,
+      payload,
+    );
+    return unwrap(response);
+  },
+
+  // Khớp với @PutMapping("/sections/{sectionId}")
+  async updateSection(sectionId, payload) {
+    const response = await apiClient.put(
+      `/admin/sections/${sectionId}`,
+      payload,
+    );
+    return unwrap(response);
+  },
+
+  // Khớp với @DeleteMapping("/sections/{sectionId}")
+  async deleteSection(sectionId) {
+    const response = await apiClient.delete(`/admin/sections/${sectionId}`);
+    return unwrap(response);
+  },
+
+  // Khớp với @PutMapping("/courses/{courseId}/sections/order")
+  async reorderSections(courseId, orderedIds) {
+    const response = await apiClient.put(
+      `/admin/courses/${courseId}/sections/order`,
+      { orderedIds },
+    );
+    return unwrap(response);
+  },
+
+  // Khớp với @PostMapping("/sections/{sectionId}/lessons")
+  async createLesson(sectionId, payload) {
+    const response = await apiClient.post(
+      `/admin/sections/${sectionId}/lessons`,
+      payload,
+    );
+    return unwrap(response);
+  },
+
+  // Khớp với endpoint lấy chi tiết 1 bài học của Spring Boot Admin
+  async getLessonDetail(lessonId) {
+    const response = await apiClient.get(`/admin/lessons/${lessonId}`);
+    return unwrap(response);
+  },
+
+  // Cập nhật cấu hình Header cho phép nhận cả FormData (chứa File dữ liệu) xuống backend
+  // Khớp với @PutMapping("/lessons/{lessonId}") của Spring Boot
+  // Khớp chuẩn xác với @PutMapping("/lessons/{lessonId}") nhận @RequestBody của Spring Boot
+  async updateLesson(lessonId, payload) {
+    const response = await apiClient.put(
+      `/admin/lessons/${lessonId}`,
+      payload,
+      {
+        headers: {
+          "Content-Type": "application/json",
+        },
+      },
+    );
+    return unwrap(response);
+  },
+
+  // Khớp với @DeleteMapping("/lessons/{lessonId}")
+  async deleteLesson(lessonId) {
+    const response = await apiClient.delete(`/admin/lessons/${lessonId}`);
+    return unwrap(response);
+  },
+
+  // Khớp với @PutMapping("/sections/{sectionId}/lessons/order")
+  async reorderLessons(sectionId, orderedIds) {
+    const response = await apiClient.put(
+      `/admin/sections/${sectionId}/lessons/order`,
+      { orderedIds },
+    );
+    return unwrap(response);
+  },
+
+  // Khớp với @GetMapping("/sections/{sectionId}/lessons")
+  async getLessonsBySection(sectionId) {
+    const response = await apiClient.get(
+      `/admin/sections/${sectionId}/lessons`,
+    );
+    const data = unwrap(response);
+    return Array.isArray(data) ? data : data?.items || data?.content || [];
   },
 };

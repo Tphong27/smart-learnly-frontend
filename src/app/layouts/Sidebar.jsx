@@ -34,6 +34,12 @@ const navItems = [
     roles: [ROLES.ADMIN],
   },
   {
+    label: "Course Management",
+    path: "/admin/courses",
+    icon: FolderTree, // Sử dụng icon FolderTree trực quan cho quản trị cấu trúc khóa học
+    roles: [ROLES.ADMIN, ROLES.TMO, ROLES.SME], // Phân quyền khớp chuẩn với RoleGuard trong adminRoutes.jsx
+  },
+  {
     label: "Orders Management",
     path: "/admin/orders",
     icon: Receipt,

@@ -1,0 +1,48 @@
+/* =====================================================================
+   CẤU CỦA TRANG FORM KHÓA HỌC - TRÁNH XUNG ĐỘT HEADER VÀ LAYOUT
+   ===================================================================== */
+
+.app-page-inner.admin-course-form-page {
+  width: 100% !important;
+  box-sizing: border-box !important;
+
+  /* 📌 ĐẨY LÙI XUỐNG: Khoảng cách an toàn để thanh Header cố định không che khuất */
+  padding-top: 94px !important;
+  padding-left: 24px !important;
+  padding-right: 24px !important;
+  padding-bottom: 40px !important;
+
+  /* Đảm bảo Stacking Context nằm dưới tầm tương tác của Header Dropdown */
+  position: relative !important;
+  z-index: 1 !important;
+  display: block !important;
+}
+
+/* Kiểu dáng chung cho các ô input và select của form */
+.admin-course-form-page .form-custom-input {
+  width: 100% !important;
+  padding: 10px 12px !important;
+  border-radius: 6px !important;
+  border: 1px solid #cbd5e1 !important;
+  font-size: 14px !important;
+  color: #334155 !important;
+  outline: none !important;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease !important;
+  box-sizing: border-box !important;
+  background-color: #ffffff !important;
+}
+
+.admin-course-form-page .form-custom-input:focus {
+  border-color: #2563eb !important;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15) !important;
+}
+
+/* Wrapper bao bọc từng cụm input */
+.admin-course-form-page .form-group-item {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: flex-start !important;
+  width: 100% !important;
+}
