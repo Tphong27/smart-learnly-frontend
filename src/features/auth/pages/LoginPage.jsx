@@ -1,55 +1,66 @@
-import { useState } from 'react'
-import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
-import { GoogleLogin } from '@react-oauth/google'
-import { Eye, EyeOff, Lock, Mail } from 'lucide-react'
-import { Form, FormField, Button, useToast } from '@/shared/components/ui'
-import { authService } from '@/services'
-import { ROLES } from '@/shared/constants/roles'
-import { loginSchema } from '../schemas/auth-schemas'
-import { AuthPage, AuthCard } from '../components/AuthCard'
-import { SocialDivider } from '../components/SocialDivider'
+import { useState } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { GoogleLogin } from "@react-oauth/google";
+import { Eye, EyeOff, Lock, Mail } from "lucide-react";
+import { Form, FormField, Button, useToast } from "@/shared/components/ui";
+import { authService } from "@/services";
+import { ROLES } from "@/shared/constants/roles";
+import { loginSchema } from "../schemas/auth-schemas";
+import { AuthPage, AuthCard } from "../components/AuthCard";
+import { SocialDivider } from "../components/SocialDivider";
 
-const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID
-const isGoogleConfigured = Boolean(GOOGLE_CLIENT_ID && GOOGLE_CLIENT_ID !== '__SET_ME__')
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+const isGoogleConfigured = Boolean(
+  GOOGLE_CLIENT_ID && GOOGLE_CLIENT_ID !== "__SET_ME__",
+);
 
 const ROLE_RESTRICTED_PREFIXES = [
-  { prefix: '/admin', allow: [ROLES.ADMIN] },
-  { prefix: '/settings', allow: [ROLES.ADMIN] },
-  { prefix: '/sme', allow: [ROLES.ADMIN, ROLES.SME] },
-  { prefix: '/reports', allow: [ROLES.ADMIN, ROLES.TMO] },
-  { prefix: '/trainer', allow: [ROLES.TRAINER] },
-]
+  { prefix: "/admin", allow: [ROLES.ADMIN] },
+  { prefix: "/settings", allow: [ROLES.ADMIN] },
+  { prefix: "/sme", allow: [ROLES.ADMIN, ROLES.SME] },
+  { prefix: "/reports", allow: [ROLES.ADMIN, ROLES.TMO] },
+  { prefix: "/trainer", allow: [ROLES.TRAINER] },
+];
 
 function isPathAllowedForRole(pathname, role) {
-  if (!pathname) return false
-  const normalizedRole = typeof role === 'string' ? role.toLowerCase() : role
+  if (!pathname) return false;
+  const normalizedRole = typeof role === "string" ? role.toLowerCase() : role;
   for (const { prefix, allow } of ROLE_RESTRICTED_PREFIXES) {
-    if (pathname === prefix || pathname.startsWith(prefix + '/')) {
-      return allow.includes(normalizedRole)
+    if (pathname === prefix || pathname.startsWith(prefix + "/")) {
+      return allow.includes(normalizedRole);
     }
   }
-  return true
+  return true;
 }
 
 function getRedirectPath(location, user) {
-  const requested = location.state?.from?.pathname
+  const requested = location.state?.from?.pathname;
   if (requested && isPathAllowedForRole(requested, user?.role)) {
-    return requested
+    return requested;
   }
-  return '/dashboard'
+
+  // Trỏ chuẩn xác về Dashboard của từng Role
+  const role = user?.role;
+  if (role === ROLES.ADMIN) return "/admin/dashboard";
+  if (role === ROLES.SME) return "/sme/dashboard";
+  if (role === ROLES.TMO) return "/tmo/dashboard";
+  if (role === ROLES.TRAINER) return "/trainer/dashboard";
+
+  // Mặc định (cho Trainee hoặc không rõ role) về dashboard chung
+  return "/dashboard";
 }
 
 export function LoginPage() {
-  const navigate = useNavigate()
-  const location = useLocation()
-  const toast = useToast()
+  const navigate = useNavigate();
+  const location = useLocation();
+  const toast = useToast();
 
-  const [serverError, setServerError] = useState(null)
-  const [showPassword, setShowPassword] = useState(false)
-  const [unverifiedEmail, setUnverifiedEmail] = useState(null)
-  const [googleLoading, setGoogleLoading] = useState(false)
+  const [serverError, setServerError] = useState(null);
+  const [showPassword, setShowPassword] = useState(false);
+  const [unverifiedEmail, setUnverifiedEmail] = useState(null);
+  const [googleLoading, setGoogleLoading] = useState(false);
 
   const {
     register,
@@ -57,49 +68,49 @@ export function LoginPage() {
     formState: { errors, isSubmitting },
   } = useForm({
     resolver: zodResolver(loginSchema),
-    defaultValues: { email: '', password: '' },
-    mode: 'onBlur',
-  })
+    defaultValues: { email: "", password: "" },
+    mode: "onBlur",
+  });
 
   function handleSuccess(loggedInUser) {
-    toast.success('Signed in successfully')
-    navigate(getRedirectPath(location, loggedInUser), { replace: true })
+    toast.success("Signed in successfully");
+    navigate(getRedirectPath(location, loggedInUser), { replace: true });
   }
 
   async function onSubmit(values) {
-    setServerError(null)
-    setUnverifiedEmail(null)
+    setServerError(null);
+    setUnverifiedEmail(null);
     try {
-      const data = await authService.login(values)
-      handleSuccess(data?.user)
+      const data = await authService.login(values);
+      handleSuccess(data?.user);
     } catch (error) {
-      const code = error?.code
-      const message = error?.message || 'Invalid email or password.'
+      const code = error?.code;
+      const message = error?.message || "Invalid email or password.";
 
-      if (code === 'EMAIL_NOT_VERIFIED' || /verif/i.test(message)) {
-        setUnverifiedEmail(values.email)
-        return
+      if (code === "EMAIL_NOT_VERIFIED" || /verif/i.test(message)) {
+        setUnverifiedEmail(values.email);
+        return;
       }
 
-      setServerError(message)
+      setServerError(message);
     }
   }
 
   async function handleGoogleSuccess(credentialResponse) {
-    const idToken = credentialResponse?.credential
+    const idToken = credentialResponse?.credential;
     if (!idToken) {
-      setServerError('Could not retrieve a Google ID token.')
-      return
+      setServerError("Could not retrieve a Google ID token.");
+      return;
     }
-    setServerError(null)
-    setGoogleLoading(true)
+    setServerError(null);
+    setGoogleLoading(true);
     try {
-      const data = await authService.loginGoogle(idToken)
-      handleSuccess(data?.user)
+      const data = await authService.loginGoogle(idToken);
+      handleSuccess(data?.user);
     } catch (error) {
-      setServerError(error?.message || 'Google sign-in failed.')
+      setServerError(error?.message || "Google sign-in failed.");
     } finally {
-      setGoogleLoading(false)
+      setGoogleLoading(false);
     }
   }
 
@@ -108,7 +119,7 @@ export function LoginPage() {
       <AuthCard
         title="Welcome back"
         subtitle="Sign in to continue your learning journey."
-        alert={serverError ? { type: 'error', message: serverError } : null}
+        alert={serverError ? { type: "error", message: serverError } : null}
         footer={
           <>
             Don&apos;t have an account? <Link to="/register">Sign up</Link>
@@ -117,8 +128,15 @@ export function LoginPage() {
       >
         {unverifiedEmail && (
           <div className="auth-card__alert auth-card__alert--info">
-            Your email is not verified yet.{' '}
-            <Link to={`/verify-email?email=${encodeURIComponent(unverifiedEmail)}`} style={{ color: 'inherit', textDecoration: 'underline', fontWeight: 700 }}>
+            Your email is not verified yet.{" "}
+            <Link
+              to={`/verify-email?email=${encodeURIComponent(unverifiedEmail)}`}
+              style={{
+                color: "inherit",
+                textDecoration: "underline",
+                fontWeight: 700,
+              }}
+            >
               Verify now
             </Link>
           </div>
@@ -130,7 +148,7 @@ export function LoginPage() {
             type="email"
             placeholder="you@example.com"
             required
-            registration={register('email')}
+            registration={register("email")}
             error={errors.email?.message}
             leftIcon={<Mail size={16} />}
             autoComplete="email"
@@ -138,17 +156,17 @@ export function LoginPage() {
 
           <FormField
             label="Password"
-            type={showPassword ? 'text' : 'password'}
+            type={showPassword ? "text" : "password"}
             placeholder="Enter your password"
             required
-            registration={register('password')}
+            registration={register("password")}
             error={errors.password?.message}
             leftIcon={<Lock size={16} />}
             rightIcon={
               <button
                 type="button"
                 onClick={() => setShowPassword((s) => !s)}
-                aria-label={showPassword ? 'Hide password' : 'Show password'}
+                aria-label={showPassword ? "Hide password" : "Show password"}
                 className="auth-toggle-eye"
               >
                 {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -163,7 +181,12 @@ export function LoginPage() {
             </Link>
           </div>
 
-          <Button type="submit" fullWidth size="lg" loading={isSubmitting || googleLoading}>
+          <Button
+            type="submit"
+            fullWidth
+            size="lg"
+            loading={isSubmitting || googleLoading}
+          >
             Sign in
           </Button>
         </Form>
@@ -174,7 +197,9 @@ export function LoginPage() {
             <div className="auth-google-mount">
               <GoogleLogin
                 onSuccess={handleGoogleSuccess}
-                onError={() => setServerError('Google sign-in was cancelled or failed.')}
+                onError={() =>
+                  setServerError("Google sign-in was cancelled or failed.")
+                }
                 useOneTap={false}
                 theme="outline"
                 shape="rectangular"
@@ -186,10 +211,11 @@ export function LoginPage() {
           </>
         ) : (
           <p className="auth-google-fallback">
-            Google sign-in is being configured. Set VITE_GOOGLE_CLIENT_ID in .env to enable it.
+            Google sign-in is being configured. Set VITE_GOOGLE_CLIENT_ID in
+            .env to enable it.
           </p>
         )}
       </AuthCard>
     </AuthPage>
-  )
+  );
 }

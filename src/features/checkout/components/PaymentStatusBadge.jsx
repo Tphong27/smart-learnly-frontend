@@ -1,23 +1,31 @@
-const STATUS_LABELS = {
-  PENDING: 'Waiting for payment',
-  PROCESSING: 'Processing',
-  SUCCESS: 'Payment successful',
-  PAID: 'Paid',
-  FAILED: 'Payment failed',
-  EXPIRED: 'Expired',
-  CANCELLED: 'Cancelled',
-  MISMATCHED: 'Need review',
-  WAITING_PAYMENT: 'Waiting for payment',
-  MATCHED: 'Matched',
-}
+import React from "react";
+
+const STATUS_STYLES = {
+  pending: { label: "Pending", color: "#f59e0b" },
+  completed: { label: "Completed", color: "#10b981" },
+  failed: { label: "Failed", color: "#ef4444" },
+  refunded: { label: "Refunded", color: "#3b82f6" },
+  unknown: { label: "Unknown", color: "#6b7280" },
+};
 
 export function PaymentStatusBadge({ status }) {
-  const normalized = String(status || 'PENDING').toUpperCase()
-  const label = STATUS_LABELS[normalized] || normalized
+  const key = String(status || "unknown").toLowerCase();
+  const { label, color } = STATUS_STYLES[key] || STATUS_STYLES.unknown;
 
   return (
-    <span className={`payment-status payment-status--${normalized.toLowerCase()}`}>
+    <span
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        padding: "0.25rem 0.5rem",
+        borderRadius: "999px",
+        backgroundColor: `${color}20`,
+        color,
+        fontWeight: 600,
+        fontSize: "0.85rem",
+      }}
+    >
       {label}
     </span>
-  )
+  );
 }
