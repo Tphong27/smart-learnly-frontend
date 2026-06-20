@@ -32,7 +32,7 @@ const navItems = [
 ]
 
 export function Sidebar({ userRole, open, onClose }) {
-  const normalizedRole = typeof userRole === 'string' ? userRole.toLowerCase() : userRole
+  const normalizedRole = typeof userRole === 'string' ? userRole.toUpperCase() : userRole
   const visibleItems = navItems.filter((item) => item.roles.includes(normalizedRole))
 
   const overlayClassName = open

@@ -25,7 +25,7 @@ function processQueue(error, token = null) {
 
 export function getAccessToken() {
   const token = localStorage.getItem(ACCESS_TOKEN_KEY)
-  // SỬA TẠI ĐÂY: Loại bỏ triệt để chuỗi rác lọt vào hệ thống
+  // Loại bỏ triệt để chuỗi rác lọt vào hệ thống
   if (!token || token === 'undefined' || token === 'null') {
     return null
   }
@@ -36,7 +36,7 @@ function normalizeUser(user) {
   if (!user) return user
   return {
     ...user,
-    role: typeof user.role === 'string' ? user.role.toLowerCase() : user.role,
+    role: typeof user.role === 'string' ? user.role.toUpperCase() : user.role,
   }
 }
 
