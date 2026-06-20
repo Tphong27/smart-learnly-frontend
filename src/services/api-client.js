@@ -25,7 +25,7 @@ function processQueue(error, token = null) {
 
 export function getAccessToken() {
   const token = localStorage.getItem(ACCESS_TOKEN_KEY)
-  // SỬA TẠI ĐÂY: Loại bỏ triệt để chuỗi rác lọt vào hệ thống
+  // Loại bỏ triệt để chuỗi rác lọt vào hệ thống
   if (!token || token === 'undefined' || token === 'null') {
     return null
   }
@@ -36,7 +36,7 @@ function normalizeUser(user) {
   if (!user) return user
   return {
     ...user,
-    role: typeof user.role === 'string' ? user.role.toLowerCase() : user.role,
+    role: typeof user.role === 'string' ? user.role.toUpperCase() : user.role,
   }
 }
 
@@ -74,12 +74,6 @@ function redirectToLogin() {
   }
 }
 
-function redirectToForbidden() {
-  if (window.location.pathname !== '/403') {
-    window.location.href = '/403'
-  }
-}
-
 // Cấu hình instance chính dùng axios
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
@@ -103,16 +97,27 @@ const refreshClient = axios.create({
 // SỬA TẠI ĐÂY: Nới lỏng Regex, bỏ dấu gạch chéo đầu để ăn khớp chính xác tuyệt đối
 const PUBLIC_AUTH_ENDPOINTS = /auth\/(login|register|google|refresh|forgot-password|reset-password|verify-email|resend-verification)/
 
+function removeAuthorizationHeader(config) {
+  if (!config.headers) return
+
+  if (typeof config.headers.delete === 'function') {
+    config.headers.delete('Authorization')
+    return
+  }
+
+  delete config.headers.Authorization
+  delete config.headers.authorization
+}
+
 apiClient.interceptors.request.use(
   (config) => {
     const url = config?.url || ''
     const isPublicAuth = PUBLIC_AUTH_ENDPOINTS.test(url)
+    const shouldSkipAuthorization = config?.skipAuthorization === true
 
-    // Nếu gọi endpoint công khai (Login/Register), xóa sạch header Authorization để tránh bị chặn 401 ngầm
-    if (isPublicAuth) {
-      if (config.headers) {
-        delete config.headers.Authorization
-      }
+    // Public requests must never carry a stale or invalid bearer token.
+    if (isPublicAuth || shouldSkipAuthorization) {
+      removeAuthorizationHeader(config)
       return config
     }
 
@@ -120,9 +125,7 @@ apiClient.interceptors.request.use(
     if (accessToken) {
       config.headers.Authorization = `Bearer ${accessToken}`
     } else {
-      if (config.headers) {
-        delete config.headers.Authorization
-      }
+      removeAuthorizationHeader(config)
     }
     return config
   },
@@ -146,9 +149,16 @@ apiClient.interceptors.response.use(
     const url = originalRequest?.url || ''
     const isAuthEndpoint = PUBLIC_AUTH_ENDPOINTS.test(url)
     const shouldSkipAuthRedirect = originalRequest?.skipAuthRedirect === true
+    const shouldSkipAuthorization = originalRequest?.skipAuthorization === true
 
     // Xử lý tự động Refresh Token khi hết hạn (Mã 401)
-    if (status === 401 && !originalRequest._retry && !isAuthEndpoint && !shouldSkipAuthRedirect) {
+    if (
+      status === 401
+      && !originalRequest._retry
+      && !isAuthEndpoint
+      && !shouldSkipAuthRedirect
+      && !shouldSkipAuthorization
+    ) {
       originalRequest._retry = true
 
       if (isRefreshing) {

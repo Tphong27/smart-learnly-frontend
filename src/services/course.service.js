@@ -67,12 +67,19 @@ export const courseService = {
   // Public catalog endpoints (used by preview lessons UX)
   async listPublic({ page = 0, size = 20 } = {}) {
     // /courses returns Spring Page<CourseListItemResponse> directly (not ApiResponse wrapper)
-    return apiClient.get("/courses", { params: { page, size } });
+    return apiClient.get("/courses", {
+      skipAuthorization: true,
+      skipAuthRedirect: true,
+      params: { page, size },
+    });
   },
 
   async getPublicDetail(slug) {
     // /courses/{slug} returns CourseDetailResponse directly (not ApiResponse wrapper)
-    return apiClient.get(`/courses/${slug}`);
+    return apiClient.get(`/courses/${slug}`, {
+      skipAuthorization: true,
+      skipAuthRedirect: true,
+    });
   },
 
   async getPublicCourses(params = {}) {
@@ -85,6 +92,7 @@ export const courseService = {
 
     if (keyword) {
       response = await apiClient.get("/courses/search", {
+        skipAuthorization: true,
         skipAuthRedirect: true,
         params: {
           keyword,
@@ -94,6 +102,7 @@ export const courseService = {
       });
     } else if (categorySlug) {
       response = await apiClient.get(`/courses/category/${categorySlug}`, {
+        skipAuthorization: true,
         skipAuthRedirect: true,
         params: {
           page,
@@ -102,6 +111,7 @@ export const courseService = {
       });
     } else {
       response = await apiClient.get("/courses", {
+        skipAuthorization: true,
         skipAuthRedirect: true,
         params: {
           page,
@@ -156,6 +166,7 @@ export const courseService = {
 
   async getCategories() {
     const response = await apiClient.get("/categories", {
+      skipAuthorization: true,
       skipAuthRedirect: true,
     });
 
@@ -164,6 +175,7 @@ export const courseService = {
 
   async getCourseDetail(slugOrId) {
     const response = await apiClient.get(`/courses/${slugOrId}`, {
+      skipAuthorization: true,
       skipAuthRedirect: true,
     });
     return normalizeCourse(response);
