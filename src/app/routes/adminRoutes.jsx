@@ -1,20 +1,70 @@
 import { RoleGuard } from "./RoleGuard";
 import { ROLES } from "@/shared/constants/roles";
-import AdminLayout from "@/app/layouts/AdminLayout";
+import { AdminLayout } from "@/app/layouts/AdminLayout";
+import {
+  AdminCategoriesPage,
+  AdminCoursesPage,
+  AdminCourseFormPage,
+} from "@/features/admin";
+import { CoursePreviewLessonsPage } from "@/features/course";
+import AdminOrdersPage from "@/features/checkout/pages/AdminOrdersPage";
+import AdminTransactionsPage from "@/features/checkout/pages/AdminTransactionsPage";
 
-export const adminRoutes = [
-  {
-    path: "/admin",
-    element: <RoleGuard allowedRoles={[ROLES.ADMIN]} />,
-    children: [
-      {
-        element: <AdminLayout />,
-        children: [
-          { path: "dashboard", element: <div>Admin Dashboard</div> },
-          { path: "users-management", element: <div>Quản lý Users</div> },
-          // Thêm các tính năng riêng của Admin tại đây
-        ],
-      },
-    ],
-  },
-];
+function PlaceholderPage({ title }) {
+  return (
+    <section className="placeholder-page">
+      <span className="placeholder-page__eyebrow">Coming soon</span>
+      <h1 className="placeholder-page__title">{title}</h1>
+      <p className="placeholder-page__text">
+        This is a placeholder page for <strong>{title}</strong>. Content will be
+        added in future sprints.
+      </p>
+    </section>
+  );
+}
+
+// 🟩 ĐỔI THÀNH HÀM giống y hệt getTraineeRoutes
+function getAdminRoutes() {
+  return [
+    {
+      path: "/admin",
+      element: <AdminLayout />,
+      children: [
+        {
+          // 🟩 ĐÃ SỬA: Mở khóa Frontend cho TMO và SME vào quản lý khóa học
+          element: (
+            <RoleGuard allowedRoles={[ROLES.ADMIN, ROLES.TMO, ROLES.SME]} />
+          ),
+          children: [
+            {
+              path: "dashboard",
+              element: <PlaceholderPage title="Admin Dashboard" />,
+            },
+            {
+              path: "users-management",
+              element: <PlaceholderPage title="Users & Roles" />,
+            },
+            { path: "courses", element: <AdminCoursesPage /> },
+            { path: "courses/new", element: <AdminCourseFormPage /> },
+            { path: "courses/:courseId", element: <AdminCourseFormPage /> },
+            {
+              path: "courses/:courseId/preview",
+              element: <CoursePreviewLessonsPage />,
+            },
+            { path: "categories", element: <AdminCategoriesPage /> },
+          ],
+        },
+        {
+          element: <RoleGuard allowedRoles={[ROLES.ADMIN, ROLES.TMO]} />,
+          children: [
+            { path: "orders", element: <AdminOrdersPage /> },
+            { path: "transactions", element: <AdminTransactionsPage /> },
+          ],
+        },
+      ],
+    },
+  ];
+}
+
+// Xuất bản mặc định hàm
+export default getAdminRoutes;
