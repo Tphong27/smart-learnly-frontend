@@ -8,7 +8,7 @@ import {
   CourseDetailPage,
   CoursePreviewLessonsPage,
   MyCoursesPage,
-} from '../features/course'
+} from "../features/course";
 import {
   LoginPage,
   RegisterPage,
@@ -16,13 +16,15 @@ import {
   ResetPasswordPage,
   VerifyEmailPage,
   ProfilePage,
-} from '../features/auth'
+} from "../features/auth";
 import {
   AdminCategoriesPage,
   AdminCoursesPage,
   AdminCourseFormPage,
-} from '../features/admin'
-import { ROLES } from '@/shared/constants/roles'
+} from "../features/admin";
+import { CartPage } from "../features/cart";
+import { CheckoutPage, PaymentResultPage } from "../features/checkout";
+import { ROLES } from "@/shared/constants/roles";
 
 import { NotFoundPage } from "./pages/error/NotFoundPage";
 import { ForbiddenPage } from "./pages/error/ForbiddenPage";
@@ -38,7 +40,7 @@ function PlaceholderPage({ title }) {
         added in future sprints.
       </p>
     </section>
-  )
+  );
 }
 
 export function AppShell() {
@@ -54,18 +56,61 @@ export function AppShell() {
           }
         />
 
-        <Route path="/login" element={<PublicLayout><LoginPage /></PublicLayout>} />
-        <Route path="/register" element={<PublicLayout><RegisterPage /></PublicLayout>} />
-        <Route path="/forgot-password" element={<PublicLayout><ForgotPasswordPage /></PublicLayout>} />
-        <Route path="/reset-password" element={<PublicLayout><ResetPasswordPage /></PublicLayout>} />
-        <Route path="/verify-email" element={<PublicLayout><VerifyEmailPage /></PublicLayout>} />
+        <Route
+          path="/login"
+          element={
+            <PublicLayout>
+              <LoginPage />
+            </PublicLayout>
+          }
+        />
+        <Route
+          path="/register"
+          element={
+            <PublicLayout>
+              <RegisterPage />
+            </PublicLayout>
+          }
+        />
+        <Route
+          path="/forgot-password"
+          element={
+            <PublicLayout>
+              <ForgotPasswordPage />
+            </PublicLayout>
+          }
+        />
+        <Route
+          path="/reset-password"
+          element={
+            <PublicLayout>
+              <ResetPasswordPage />
+            </PublicLayout>
+          }
+        />
+        <Route
+          path="/verify-email"
+          element={
+            <PublicLayout>
+              <VerifyEmailPage />
+            </PublicLayout>
+          }
+        />
         <Route
           path="/courses/:courseId/preview"
-          element={<PublicLayout><CoursePreviewLessonsPage /></PublicLayout>}
+          element={
+            <PublicLayout>
+              <CoursePreviewLessonsPage />
+            </PublicLayout>
+          }
         />
         <Route
           path="/courses/:slug"
-          element={<PublicLayout><CourseDetailPage /></PublicLayout>}
+          element={
+            <PublicLayout>
+              <CourseDetailPage />
+            </PublicLayout>
+          }
         />
 
         <Route element={<ProtectedRoute />}>
@@ -76,6 +121,12 @@ export function AppShell() {
             />
             <Route path="/profile" element={<ProfilePage />} />
             <Route path="/my-courses" element={<MyCoursesPage />} />
+            <Route path="/cart" element={<CartPage />} />
+            <Route path="/checkout/:orderId" element={<CheckoutPage />} />
+            <Route
+              path="/checkout/:orderId/result"
+              element={<PaymentResultPage />}
+            />
             <Route path="/tests" element={<PlaceholderPage title="Tests" />} />
 
             <Route
@@ -92,10 +143,7 @@ export function AppShell() {
             </Route>
 
             <Route element={<RoleGuard allowedRoles={[ROLES.ADMIN]} />}>
-              <Route
-                path="/admin/courses"
-                element={<AdminCoursesPage />}
-              />
+              <Route path="/admin/courses" element={<AdminCoursesPage />} />
               <Route
                 path="/admin/courses/new"
                 element={<AdminCourseFormPage />}
