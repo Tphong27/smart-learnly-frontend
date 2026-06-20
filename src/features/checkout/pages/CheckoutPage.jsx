@@ -22,8 +22,6 @@ export function CheckoutPage() {
   const [loading, setLoading] = useState(!initialCheckout);
   const [error, setError] = useState(null);
 
-  const transactionId = payment?.transactionId;
-
   const isFinalStatus = useMemo(
     () => paymentStatusService.isFinal(payment?.status),
     [payment?.status],
@@ -67,42 +65,49 @@ export function CheckoutPage() {
   }, [orderId, initialCheckout, toast]);
 
   useEffect(() => {
-    if (!transactionId || isFinalStatus) {
+    if (!orderId || isFinalStatus) {
       return undefined;
     }
 
-    const timer = window.setInterval(async () => {
+    let cancelled = false;
+
+    async function pollOrderStatus() {
       try {
-        const statusPayload =
-          await paymentStatusService.getStatus(transactionId);
-        const nextStatus = statusPayload.status;
+        const orderPayment = await orderService.getOrder(orderId);
+        const nextStatus = orderPayment.status;
+
+        if (cancelled) return;
 
         setPayment((current) => ({
           ...current,
-          ...statusPayload,
+          ...orderPayment,
           status: nextStatus,
         }));
 
         if (paymentStatusService.isFinal(nextStatus)) {
-          window.clearInterval(timer);
-
           navigate(`/checkout/${orderId}/result`, {
             replace: true,
             state: {
               orderId,
-              transactionId,
+              transactionId: orderPayment.transactionId,
               status: nextStatus,
-              message: statusPayload.message,
             },
           });
         }
       } catch {
         // Không toast liên tục khi polling lỗi tạm thời.
       }
-    }, POLLING_INTERVAL_MS);
+    }
 
-    return () => window.clearInterval(timer);
-  }, [transactionId, isFinalStatus, navigate, orderId]);
+    pollOrderStatus();
+
+    const timer = window.setInterval(pollOrderStatus, POLLING_INTERVAL_MS);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, [orderId, isFinalStatus, navigate]);
 
   async function handleCopy(value) {
     if (!value) return;

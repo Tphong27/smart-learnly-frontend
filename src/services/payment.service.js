@@ -9,10 +9,12 @@ export const PAYMENT_STATUS = {
   PROCESSING: 'PROCESSING',
   SUCCESS: 'SUCCESS',
   PAID: 'PAID',
+  MATCHED: 'MATCHED',
   FAILED: 'FAILED',
   EXPIRED: 'EXPIRED',
   CANCELLED: 'CANCELLED',
   MISMATCHED: 'MISMATCHED',
+  REFUNDED: 'REFUNDED',
 }
 
 export function normalizePaymentStatus(payload) {
@@ -41,16 +43,19 @@ export const paymentStatusService = {
   },
 
   isSuccess(status) {
-    return ['SUCCESS', 'PAID'].includes(String(status || '').toUpperCase())
+    return ['SUCCESS', 'PAID', 'MATCHED'].includes(String(status || '').toUpperCase())
   },
 
   isFinal(status) {
     return [
       'SUCCESS',
       'PAID',
+      'MATCHED',
       'FAILED',
       'EXPIRED',
       'CANCELLED',
+      'MISMATCHED',
+      'REFUNDED',
     ].includes(String(status || '').toUpperCase())
   },
 
@@ -60,6 +65,7 @@ export const paymentStatusService = {
       'EXPIRED',
       'CANCELLED',
       'MISMATCHED',
+      'REFUNDED',
     ].includes(String(status || '').toUpperCase())
   },
 }
