@@ -1,21 +1,50 @@
+function toNumber(value, fallback = 0) {
+  if (value === null || value === undefined || value === '') {
+    return fallback
+  }
+
+  const numberValue = Number(value)
+
+  if (Number.isNaN(numberValue)) {
+    return fallback
+  }
+
+  return numberValue
+}
+
 function formatMoney(value, currency = 'VND') {
   return new Intl.NumberFormat('vi-VN', {
     style: 'currency',
     currency,
     maximumFractionDigits: 0,
-  }).format(Number(value || 0))
+  }).format(toNumber(value, 0))
+}
+
+function getItemAmount(item) {
+  return (
+    item?.finalAmount ??
+    item?.amount ??
+    item?.totalAmount ??
+    item?.price ??
+    item?.unitPrice ??
+    item?.course?.price ??
+    0
+  )
 }
 
 export function CartSummary({ cart, loading, onCheckout }) {
   const items = cart?.items ?? []
 
-  const totalAmount =
-    cart?.totalAmount ??
-    items.reduce(
-      (sum, item) =>
-        sum + Number(item?.finalAmount ?? item?.price ?? item?.unitPrice ?? 0),
-      0,
-    )
+  const calculatedTotal = items.reduce(
+    (sum, item) => sum + toNumber(getItemAmount(item), 0),
+    0,
+  )
+
+  const cartTotalAmount = toNumber(cart?.totalAmount, 0)
+
+  const totalAmount = cartTotalAmount > 0
+    ? cartTotalAmount
+    : calculatedTotal
 
   return (
     <aside className="cart-summary">

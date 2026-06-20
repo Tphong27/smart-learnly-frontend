@@ -1,91 +1,90 @@
-import { useEffect, useMemo, useState } from 'react'
-import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
-import { Clock3 } from 'lucide-react'
-import {
-  orderService,
-  paymentStatusService,
-} from '@/services'
-import { useToast } from '@/shared/components/ui'
-import { PaymentInstructionCard } from '../components/PaymentInstructionCard'
-import { CheckoutSummary } from '../components/CheckoutSummary'
-import '../checkout.css'
+import { useEffect, useMemo, useState } from "react";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
+import { Clock3 } from "lucide-react";
+import { orderService, paymentStatusService } from "@/services";
+import { useToast } from "@/shared/components/ui";
+import { PaymentInstructionCard } from "../components/PaymentInstructionCard";
+import { CheckoutSummary } from "../components/CheckoutSummary";
+import "../checkout.css";
 
-const POLLING_INTERVAL_MS = 5000
+const POLLING_INTERVAL_MS = 5000;
 
 export function CheckoutPage() {
-  const { orderId } = useParams()
-  const location = useLocation()
-  const navigate = useNavigate()
-  const toast = useToast()
+  const { orderId } = useParams();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const toast = useToast();
 
-  const initialCheckout = location.state?.checkout ?? null
+  const initialCheckout = location.state?.checkout ?? null;
+  const expectedCourse = location.state?.expectedCourse ?? null;
 
-  const [payment, setPayment] = useState(initialCheckout)
-  const [loading, setLoading] = useState(!initialCheckout)
-  const [error, setError] = useState(null)
+  const [payment, setPayment] = useState(initialCheckout);
+  const [loading, setLoading] = useState(!initialCheckout);
+  const [error, setError] = useState(null);
 
-  const transactionId = payment?.transactionId
+  const transactionId = payment?.transactionId;
 
   const isFinalStatus = useMemo(
     () => paymentStatusService.isFinal(payment?.status),
     [payment?.status],
-  )
+  );
 
   useEffect(() => {
-    let cancelled = false
+    let cancelled = false;
 
     async function loadOrder() {
-      if (!orderId) return
+      if (!orderId) return;
 
-      setLoading(true)
-      setError(null)
+      setLoading(true);
+      setError(null);
 
       try {
-        const data = await orderService.getOrder(orderId)
+        const data = await orderService.getOrder(orderId);
 
         if (!cancelled) {
-          setPayment(data)
+          setPayment(data);
         }
       } catch (err) {
         if (!cancelled) {
-          const message = err?.message || 'Could not load checkout order.'
-          setError(message)
-          toast.error(message)
+          const message = err?.message || "Could not load checkout order.";
+          setError(message);
+          toast.error(message);
         }
       } finally {
         if (!cancelled) {
-          setLoading(false)
+          setLoading(false);
         }
       }
     }
 
     if (!initialCheckout) {
-      loadOrder()
+      loadOrder();
     }
 
     return () => {
-      cancelled = true
-    }
-  }, [orderId, initialCheckout, toast])
+      cancelled = true;
+    };
+  }, [orderId, initialCheckout, toast]);
 
   useEffect(() => {
     if (!transactionId || isFinalStatus) {
-      return undefined
+      return undefined;
     }
 
     const timer = window.setInterval(async () => {
       try {
-        const statusPayload = await paymentStatusService.getStatus(transactionId)
-        const nextStatus = statusPayload.status
+        const statusPayload =
+          await paymentStatusService.getStatus(transactionId);
+        const nextStatus = statusPayload.status;
 
         setPayment((current) => ({
           ...current,
           ...statusPayload,
           status: nextStatus,
-        }))
+        }));
 
         if (paymentStatusService.isFinal(nextStatus)) {
-          window.clearInterval(timer)
+          window.clearInterval(timer);
 
           navigate(`/checkout/${orderId}/result`, {
             replace: true,
@@ -95,43 +94,43 @@ export function CheckoutPage() {
               status: nextStatus,
               message: statusPayload.message,
             },
-          })
+          });
         }
       } catch {
         // Không toast liên tục khi polling lỗi tạm thời.
       }
-    }, POLLING_INTERVAL_MS)
+    }, POLLING_INTERVAL_MS);
 
-    return () => window.clearInterval(timer)
-  }, [transactionId, isFinalStatus, navigate, orderId])
+    return () => window.clearInterval(timer);
+  }, [transactionId, isFinalStatus, navigate, orderId]);
 
   async function handleCopy(value) {
-    if (!value) return
+    if (!value) return;
 
     try {
-      await navigator.clipboard.writeText(value)
-      toast.success('Copied.')
+      await navigator.clipboard.writeText(value);
+      toast.success("Copied.");
     } catch {
-      toast.error('Could not copy.')
+      toast.error("Could not copy.");
     }
   }
 
   if (loading) {
-    return <div className="admin-loading">Loading checkout...</div>
+    return <div className="admin-loading">Loading checkout...</div>;
   }
 
   if (error || !payment) {
     return (
       <section className="checkout-page">
         <div className="admin-error">
-          {error || 'Checkout order not found.'}
+          {error || "Checkout order not found."}
         </div>
 
         <Link to="/cart" className="button button--primary">
           Back to cart
         </Link>
       </section>
-    )
+    );
   }
 
   return (
@@ -140,9 +139,7 @@ export function CheckoutPage() {
         <div>
           <span className="checkout-page__eyebrow">VietQR payment</span>
           <h1>Complete your checkout</h1>
-          <p>
-            Order {payment.orderCode || payment.orderId}
-          </p>
+          <p>Order {payment.orderCode || payment.orderId}</p>
         </div>
 
         <div className="checkout-page__hint">
@@ -152,18 +149,16 @@ export function CheckoutPage() {
       </header>
 
       <div className="checkout-layout">
-        <PaymentInstructionCard
-          payment={payment}
-          onCopy={handleCopy}
-        />
+        <PaymentInstructionCard payment={payment} onCopy={handleCopy} />
 
-        <CheckoutSummary payment={payment} />
+        <CheckoutSummary payment={payment} expectedCourse={expectedCourse} />
       </div>
 
       <div className="checkout-warning">
         <strong>Important:</strong> Please transfer the exact amount and exact
-        payment code. Partial or overpayment will not be automatically confirmed.
+        payment code. Partial or overpayment will not be automatically
+        confirmed.
       </div>
     </section>
-  )
+  );
 }

@@ -146,7 +146,6 @@ export function MyCoursesPage() {
           <div className="my-courses-section__header">
             <div>
               <h2>Course Catalog</h2>
-              <p>Browse published courses directly inside My Courses.</p>
             </div>
           </div>
 

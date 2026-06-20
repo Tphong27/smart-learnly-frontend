@@ -1,12 +1,34 @@
+function toNumber(value, fallback = 0) {
+  if (value === null || value === undefined || value === '') {
+    return fallback
+  }
+
+  const numberValue = Number(value)
+
+  if (Number.isNaN(numberValue)) {
+    return fallback
+  }
+
+  return numberValue
+}
+
 function formatMoney(value, currency = 'VND') {
+  const amount = toNumber(value, 0)
+
+  if (amount <= 0) {
+    return 'Free'
+  }
+
   return new Intl.NumberFormat('vi-VN', {
     style: 'currency',
     currency,
     maximumFractionDigits: 0,
-  }).format(Number(value || 0))
+  }).format(amount)
 }
 
 export function CheckoutSummary({ payment }) {
+  const paymentAmount = toNumber(payment?.amount, 0)
+
   return (
     <aside className="checkout-summary">
       <h2>Checkout summary</h2>
@@ -22,14 +44,9 @@ export function CheckoutSummary({ payment }) {
       </div>
 
       <div className="checkout-summary__row checkout-summary__row--total">
-        <span>Total</span>
-        <strong>{formatMoney(payment?.amount, payment?.currency)}</strong>
+        <span>Payment amount</span>
+        <strong>{formatMoney(paymentAmount, payment?.currency)}</strong>
       </div>
-
-      <p className="checkout-summary__note">
-        The system will confirm your payment automatically after the bank
-        transaction is matched.
-      </p>
     </aside>
   )
 }

@@ -1,49 +1,41 @@
-import { Trash2 } from 'lucide-react'
+import { Trash2 } from "lucide-react";
 
-function formatMoney(value, currency = 'VND') {
-  const amount = Number(value || 0)
+function formatMoney(value, currency = "VND") {
+  const amount = Number(value || 0);
 
   if (amount <= 0) {
-    return 'Free'
+    return "Free";
   }
 
-  return new Intl.NumberFormat('vi-VN', {
-    style: 'currency',
+  return new Intl.NumberFormat("vi-VN", {
+    style: "currency",
     currency,
     maximumFractionDigits: 0,
-  }).format(amount)
+  }).format(amount);
 }
 
 export function CartItem({ item, removing, onRemove }) {
-  const title =
-    item?.courseTitle ??
-    item?.itemTitle ??
-    item?.title ??
-    'Course'
+  const title = item?.courseTitle ?? item?.itemTitle ?? item?.title ?? "Course";
 
-  const className =
-    item?.className ??
-    item?.classTitle ??
-    null
+  const className = item?.className ?? item?.classTitle ?? null;
 
   const amount =
     item?.finalAmount ??
+    item?.amount ??
+    item?.totalAmount ??
     item?.price ??
     item?.unitPrice ??
-    0
+    item?.course?.price ??
+    0;
 
   return (
     <article className="cart-item">
       <div className="cart-item__main">
         <h3>{title}</h3>
 
-        {className && (
-          <p className="cart-item__class">Class: {className}</p>
-        )}
+        {className && <p className="cart-item__class">Class: {className}</p>}
 
-        {item?.courseCode && (
-          <small>Course code: {item.courseCode}</small>
-        )}
+        {item?.courseCode && <small>Course code: {item.courseCode}</small>}
       </div>
 
       <div className="cart-item__side">
@@ -56,9 +48,9 @@ export function CartItem({ item, removing, onRemove }) {
           disabled={removing}
         >
           <Trash2 size={16} />
-          {removing ? 'Removing...' : 'Remove'}
+          {removing ? "Removing..." : "Remove"}
         </button>
       </div>
     </article>
-  )
+  );
 }

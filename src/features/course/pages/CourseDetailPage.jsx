@@ -11,20 +11,21 @@ import {
   Star,
 } from "lucide-react";
 import { useToast } from "@/shared/components/ui";
-import { courseService, cartService, orderService } from "@/services";
+import {
+  formatVnd,
+  getDiscountPercent,
+  getDisplayPrice,
+  getOriginalPrice,
+  hasValidDiscount,
+} from "../utils/course-price";
+import {
+  courseService,
+  cartService,
+  orderService,
+  cartPriceCacheService,
+} from "@/services";
 import "../../admin/admin-shared.css";
 import "./CourseDetailPage.css";
-
-function formatPrice(value) {
-  if (value == null) return "Free";
-  const num = Number(value);
-  if (Number.isNaN(num) || num <= 0) return "Free";
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "VND",
-    maximumFractionDigits: 0,
-  }).format(num);
-}
 
 function LessonIcon({ type }) {
   const t = (type || "").toLowerCase();
@@ -101,7 +102,10 @@ export function CourseDetailPage() {
   const previewLessons = modules.flatMap((m) =>
     (m.lessons || []).filter((l) => l.preview),
   );
-
+  const originalPrice = getOriginalPrice(course);
+  const displayPrice = getDisplayPrice(course);
+  const hasDiscount = hasValidDiscount(course);
+  const discountPercent = getDiscountPercent(course);
   function hasAccessToken() {
     const token = localStorage.getItem("accessToken");
     return token && token !== "undefined" && token !== "null";
@@ -160,6 +164,8 @@ export function CourseDetailPage() {
         classId: null,
       });
 
+      cartPriceCacheService.saveCourse(course);
+
       toast.success("Course added to cart.");
       navigate("/cart");
     } catch (err) {
@@ -188,6 +194,8 @@ export function CourseDetailPage() {
         classId: null,
       });
 
+      cartPriceCacheService.saveCourse(course);
+
       const latestCart = await cartService.getCart();
 
       if (!latestCart?.id) {
@@ -201,6 +209,15 @@ export function CourseDetailPage() {
       navigate(`/checkout/${checkout.orderId}`, {
         state: {
           checkout,
+          expectedCourse: {
+            courseId,
+            title: course.title,
+            originalPrice,
+            displayPrice,
+            hasDiscount,
+            discountPercent,
+            currency: course.currency ?? "VND",
+          },
         },
       });
     } catch (err) {
@@ -266,29 +283,33 @@ export function CourseDetailPage() {
             )}
           </div>
           <div className="course-detail__sidecard-body">
-            <div className="course-detail__price">
-              {formatPrice(course.price)}
-            </div>
-            <Link
-              to={`/courses/${course.id || course.slug}/preview`}
-              className="button button--primary course-detail__cta"
-            >
-              View preview lessons
-            </Link>
-            <div className="course-detail__purchase-actions">
-              <button
-                type="button"
-                onClick={handleAddToCartClick}
-                disabled={addToCartLoading || buyNowLoading}
-                className="button button--secondary course-detail__cta"
-              >
-                {addToCartLoading
-                  ? "Adding..."
-                  : isFreeCourse(course)
-                    ? "Enroll for free"
-                    : "Add to cart"}
-              </button>
+            <div className="course-detail__price-block">
+              {hasDiscount ? (
+                <>
+                  <div className="course-detail__price-row">
+                    <span className="course-detail__price-current">
+                      <span>Discount price</span>
+                      {formatVnd(displayPrice)}
+                    </span>
 
+                    <span className="course-detail__discount-badge">
+                      -{discountPercent}%
+                    </span>
+                  </div>
+
+                  <div className="course-detail__price-original">
+                    <span>Original price</span>
+                    <s>{formatVnd(originalPrice)}</s>
+                  </div>
+                </>
+              ) : (
+                <div className="course-detail__price-current">
+                  <span>Course price</span>
+                  {formatVnd(displayPrice)}
+                </div>
+              )}
+            </div>
+            <div className="course-detail__action-grid">
               <button
                 type="button"
                 onClick={handleBuyNowClick}
@@ -297,9 +318,30 @@ export function CourseDetailPage() {
                 }
                 className="button button--primary course-detail__cta"
               >
-                {buyNowLoading ? "Processing..." : "Buy now"}
+                {buyNowLoading ? "Processing..." : "Buy Now"}
+              </button>
+
+              <Link
+                to={`/courses/${course.id || course.slug}/preview`}
+                className="button button--primary course-detail__cta"
+              >
+                Preview Lesson
+              </Link>
+
+              <button
+                type="button"
+                onClick={handleAddToCartClick}
+                disabled={addToCartLoading || buyNowLoading}
+                className="button button--outline course-detail__cta course-detail__cta--full"
+              >
+                {addToCartLoading
+                  ? "Adding..."
+                  : isFreeCourse(course)
+                    ? "Enroll for free"
+                    : "Add to Cart"}
               </button>
             </div>
+
             <ul className="course-detail__sidecard-list">
               <li>
                 <CheckCircle2 size={14} /> Lifetime access to course materials

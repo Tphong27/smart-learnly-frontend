@@ -1,19 +1,13 @@
 import { Link } from "react-router-dom";
 import { ArrowRight, BookOpen, Clock3, Layers3, Star } from "lucide-react";
-
-function formatPrice(course) {
-  if (Number(course.price) === 0) {
-    return "Free";
-  }
-
-  const price = course.discountedPrice ?? course.price;
-
-  return new Intl.NumberFormat("vi-VN", {
-    style: "currency",
-    currency: "VND",
-    maximumFractionDigits: 0,
-  }).format(Number(price || 0));
-}
+import {
+  formatVnd,
+  getDiscountPercent,
+  getDisplayPrice,
+  getOriginalPrice,
+  hasValidDiscount,
+} from "../utils/course-price";
+import "../course.css";
 
 function getCoursePath(course) {
   return `/courses/${course.slug || course.id}`;
@@ -42,6 +36,10 @@ export function CourseCard({ course, viewMode = "grid", detailState }) {
   );
 
   const durationText = course.durationText || course.duration || "Self-paced";
+  const originalPrice = getOriginalPrice(course);
+  const displayPrice = getDisplayPrice(course);
+  const hasDiscount = hasValidDiscount(course);
+  const discountPercent = getDiscountPercent(course);
 
   return (
     <article className={`course-card course-card--${viewMode}`}>
@@ -96,7 +94,33 @@ export function CourseCard({ course, viewMode = "grid", detailState }) {
         </div>
 
         <div className="course-card__footer">
-          <strong>{formatPrice(course)}</strong>
+          <div className="course-card__price-block">
+            {hasDiscount ? (
+              <>
+                <div className="course-card__price-row">
+                  <strong className="course-card__price-current">
+                    <span>Discount price</span>
+                    {formatVnd(displayPrice)}
+                  </strong>
+
+                  <span className="course-card__discount-badge">
+                    -{discountPercent}%
+                  </span>
+                </div>
+
+                <span className="course-card__price-original">
+                  <span>Original price</span>
+                  <s>{formatVnd(originalPrice)}</s>
+                </span>
+              </>
+            ) : (
+              <strong className="course-card__price-current">
+                <span>Course price</span>
+                {formatVnd(displayPrice)}
+              </strong>
+            )}
+          </div>
+
           <Link
             to={getCoursePath(course)}
             state={detailState}
