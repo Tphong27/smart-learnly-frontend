@@ -10,6 +10,12 @@ import { CoursePreviewLessonsPage } from "@/features/course";
 import AdminOrdersPage from "@/features/checkout/pages/AdminOrdersPage";
 import AdminTransactionsPage from "@/features/checkout/pages/AdminTransactionsPage";
 
+// IMPORT TRANG KÉO THẢ NỘI DUNG CỦA DEV F VÀO ĐÂY
+import AdminCourseContentPage from "@/features/course/pages/AdminCourseContentPage";
+
+// 🛠️ THÊM MỚI: Import trang cấu hình chi tiết nội dung bài học
+import AdminLessonDetailPage from "@/features/course/pages/AdminLessonDetailPage";
+
 function PlaceholderPage({ title }) {
   return (
     <section className="placeholder-page">
@@ -47,6 +53,19 @@ function getAdminRoutes() {
             { path: "courses", element: <AdminCoursesPage /> },
             { path: "courses/new", element: <AdminCourseFormPage /> },
             { path: "courses/:courseId", element: <AdminCourseFormPage /> },
+
+            // 🛠️ THÊM ROUTE NÀY: Trang cấu trúc chương & bài học (Dev F - Sprint 2)
+            {
+              path: "courses/:courseId/content",
+              element: <AdminCourseContentPage />,
+            },
+
+            // 🛠️ THÊM ROUTE NÀY: Trang cấu hình chi tiết bài học (Sửa lỗi 404)
+            {
+              path: "courses/:courseId/lessons/:lessonId",
+              element: <AdminLessonDetailPage />,
+            },
+
             {
               path: "courses/:courseId/preview",
               element: <CoursePreviewLessonsPage />,

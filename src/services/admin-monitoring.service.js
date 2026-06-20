@@ -15,29 +15,33 @@ const httpClient = {
 
 export const adminMonitoringService = {
   getOrders: async (params) => {
-    // 🟩 ĐÃ SỬA: Bỏ chữ /admin/ (Mặc dù backend chưa code logic trả về list, nhưng sửa để hết lỗi 404)
-    const response = await httpClient.get("/api/v1/orders", { params });
+    // 🟩 ĐÃ SỬA: Xóa "/api/v1", chỉ để lại "/orders"
+    const response = await httpClient.get("/orders", { params });
     return response;
   },
   getOrderById: async (id) => {
-    const response = await httpClient.get(`/api/v1/orders/${id}`);
+    // 🟩 ĐÃ SỬA: Xóa "/api/v1"
+    const response = await httpClient.get(`/orders/${id}`);
     return response;
   },
   getTransactions: async (params) => {
-    // 🟩 ĐÃ SỬA: Bỏ chữ /admin/ để gọi đúng endpoint backend
-    const response = await httpClient.get("/api/v1/transactions", { params });
+    // 🟩 ĐÃ SỬA: Xóa "/api/v1", chỉ để lại "/transactions"
+    const response = await httpClient.get("/transactions", { params });
     return response;
   },
   getTransactionById: async (id) => {
-    const response = await httpClient.get(`/api/v1/transactions/${id}`);
+    // 🟩 ĐÃ SỬA: Xóa "/api/v1"
+    const response = await httpClient.get(`/transactions/${id}`);
     return response;
   },
   getSepayEvents: async (params) => {
-    const response = await httpClient.get("/api/v1/sepay-events", { params });
+    // 🟩 ĐÃ SỬA: Xóa "/api/v1", chỉ để lại "/sepay-events"
+    const response = await httpClient.get("/sepay-events", { params });
     return response;
   },
   getReconciliationRuns: async (params) => {
-    const response = await httpClient.get("/api/v1/reconciliation-runs", {
+    // 🟩 ĐÃ SỬA: Xóa "/api/v1", chỉ để lại "/reconciliation-runs"
+    const response = await httpClient.get("/reconciliation-runs", {
       params,
     });
     return response;

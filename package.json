@@ -10,10 +10,11 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@hello-pangea/dnd": "^18.0.1",
     "@hookform/resolvers": "^5.4.0",
     "@react-oauth/google": "^0.13.5",
     "axios": "^1.17.0",
-    "lucide-react": "^1.17.0",
+    "lucide-react": "^1.21.0",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
     "react-hook-form": "^7.77.0",

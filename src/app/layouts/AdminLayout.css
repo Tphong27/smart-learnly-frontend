@@ -1,44 +1,114 @@
-/* Bố cục Wrapper tổng của Layout Admin */
+/* ==========================================================================
+   BỘ KHUNG LAYOUT ADMIN CỐ ĐỊNH - KHÔNG SỬ DỤNG ĐÓNG MỞ SIDEBAR
+   ========================================================================== */
+
+:root {
+  --surface: #f8fafc;
+  --line: #e2e8f0;
+}
+
+/* Khung bao ngoài toàn màn hình - Thiết lập hiển thị hàng ngang Flexbox */
 .app-layout-wrapper {
-  display: flex;
-  height: 100vh;
-  width: 100vw;
-  overflow: hidden;
-  background-color: var(--surface); /* Dùng biến màu ở index.css của bạn */
+  display: flex !important;
+  flex-direction: row !important;
+  height: 100vh !important;
+  width: 100vw !important;
+  overflow: hidden !important;
+  background-color: var(--surface);
+  position: relative !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  box-sizing: border-box !important;
 }
 
-/* Khối chính chứa Header và Content */
+/* 📌 SIDEBAR CỐ ĐỊNH: Luôn chiếm đúng 260px bên trái màn hình */
+.app-sidebar,
+[class*="sidebar-wrapper"],
+aside {
+  width: 260px !important;
+  min-width: 260px !important;
+  max-width: 260px !important;
+  height: 100vh !important;
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  z-index: 1000 !important; /* Đặt chỉ số nổi cao để luôn nằm trên cùng */
+  background: #ffffff !important;
+  border-right: 1px solid var(--line) !important;
+  box-sizing: border-box !important;
+}
+
+/* 📌 KHỐI CHỨA CHÍNH BÊN PHẢI: Tự động dịch lề 260px để không bị trùng lấp lề */
 .app-main-wrapper {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  min-width: 0; /* Chống tràn content ngang */
+  flex: 1 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  min-width: 0 !important;
+  height: 100vh !important;
+  margin-left: 260px !important;
+  position: relative !important;
+  box-sizing: border-box !important;
 }
 
-/* Vùng cuộn chứa nội dung */
+/* 📌 THANH HEADER: Khóa cứng độ cao 70px cố định trên đỉnh bên phải */
+.app-admin-header-zone,
+.app-admin-header-zone > header,
+.app-main-wrapper > header,
+.app-main-wrapper .header,
+header {
+  height: 70px !important;
+  min-height: 70px !important;
+  max-height: 70px !important;
+  position: fixed !important;
+  top: 0 !important;
+  right: 0 !important;
+  left: 260px !important; /* Bắt đầu từ rìa phải của Sidebar */
+  width: calc(
+    100vw - 260px
+  ) !important; /* Chiếm trọn phần chiều rộng còn lại */
+  z-index: 999 !important; /* Thấp hơn Sidebar nhưng bắt buộc phải cao hơn vùng Content Area */
+  background-color: #ffffff !important;
+  border-bottom: 1px solid var(--line) !important;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04) !important;
+  display: flex !important;
+  align-items: center !important;
+  box-sizing: border-box !important;
+}
+
+/* ==========================================================================
+   VÙNG KHÔNG GIAN CUỘN NỘI DUNG (MAIN CONTENT AREA)
+   ========================================================================== */
+
+/* Thụt lề margin-top đúng 70px để nội dung tự động đẩy xuống dưới thanh Header */
 .app-content-area {
-  flex: 1;
-  overflow-y: auto;
-  overflow-x: hidden;
-  padding: 24px;
+  flex: 1 !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  padding: 24px !important;
+  margin-top: 70px !important;
+  height: calc(100vh - 70px) !important;
+  box-sizing: border-box !important;
+  background-color: var(--surface) !important;
 }
 
-/* Khung giới hạn độ rộng cho các màn hình quá to (Tùy chọn) */
+/* Khung bọc giới hạn nội dung */
 .app-content-inner {
   max-width: 1600px;
   margin: 0 auto;
   display: flex;
   flex-direction: column;
   gap: 16px;
-  height: 100%;
+  width: 100%;
+  box-sizing: border-box;
 }
 
-/* Thẻ bọc trắng cho từng trang tính năng con */
+/* Container bọc các trang tính năng bên trong Outlet */
 .app-page-container {
   background: #ffffff;
   border: 1px solid var(--line);
   border-radius: 12px;
   padding: 24px;
-  flex: 1; /* Đẩy dài khung trắng ra hết phần còn lại */
+  width: 100%;
+  box-sizing: border-box;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
 }

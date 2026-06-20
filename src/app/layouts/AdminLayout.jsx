@@ -1,23 +1,21 @@
-import { useState } from "react";
+import React from "react";
 import { Outlet, useNavigate } from "react-router-dom";
 import { Sidebar } from "./Sidebar";
 import { Header } from "./Header";
-import Breadcrumb from "../../shared/components/Breadcrumb"; // Dùng đường dẫn tương đối để tránh lỗi alias thương hiệu
+import Breadcrumb from "../../shared/components/Breadcrumb";
 import { getCurrentUser } from "@/services";
+import "./AdminLayout.css";
 
 export function AdminLayout() {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const navigate = useNavigate();
 
+  // Lấy thông tin user hiện tại hoặc dùng dữ liệu mặc định hệ thống
   const user = getCurrentUser() || {
     role: "admin",
     firstName: "System",
     lastName: "Admin",
     email: "admin@smartlearnly.com",
   };
-
-  const handleToggleSidebar = () => setIsSidebarOpen((prev) => !prev);
-  const handleCloseSidebar = () => setIsSidebarOpen(false);
 
   const handleLogout = () => {
     localStorage.removeItem("user");
@@ -26,23 +24,20 @@ export function AdminLayout() {
 
   return (
     <div className="app-layout-wrapper">
-      <Sidebar
-        userRole={user.role}
-        open={isSidebarOpen}
-        onClose={handleCloseSidebar}
-      />
+      {/* 📌 SIDEBAR CỐ ĐỊNH BÊN TRÁI */}
+      <Sidebar userRole={user.role} />
 
+      {/* ⚙️ KHỐI CHỨA NỘI DUNG CHÍNH BÊN PHẢI */}
       <div className="app-main-wrapper">
-        <Header
-          user={user}
-          onToggleSidebar={handleToggleSidebar}
-          onLogout={handleLogout}
-        />
+        {/* VÙNG CHỨA HEADER */}
+        <div className="app-admin-header-zone">
+          <Header user={user} onLogout={handleLogout} />
+        </div>
 
+        {/* VÙNG HIỂN THỊ NỘI DUNG CÁC TRANG CON */}
         <main className="app-content-area">
           <div className="app-content-inner">
             <Breadcrumb />
-
             <div className="app-page-container">
               <Outlet />
             </div>
