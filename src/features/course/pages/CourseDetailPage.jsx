@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useLocation, useParams } from "react-router-dom";
+import { Link, useLocation, useParams, useNavigate } from "react-router-dom";
 import {
   ArrowLeft,
   BookOpen,
@@ -11,7 +11,7 @@ import {
   Star,
 } from "lucide-react";
 import { useToast } from "@/shared/components/ui";
-import { courseService } from "@/services";
+import { courseService, cartService, orderService } from "@/services";
 import "../../admin/admin-shared.css";
 import "./CourseDetailPage.css";
 
@@ -35,6 +35,9 @@ function LessonIcon({ type }) {
 
 export function CourseDetailPage() {
   const { slug } = useParams();
+  const navigate = useNavigate();
+  const [addToCartLoading, setAddToCartLoading] = useState(false);
+  const [buyNowLoading, setBuyNowLoading] = useState(false);
   const toast = useToast();
   const location = useLocation();
   const [course, setCourse] = useState(null);
@@ -98,6 +101,114 @@ export function CourseDetailPage() {
   const previewLessons = modules.flatMap((m) =>
     (m.lessons || []).filter((l) => l.preview),
   );
+
+  function hasAccessToken() {
+    const token = localStorage.getItem("accessToken");
+    return token && token !== "undefined" && token !== "null";
+  }
+
+  function isFreeCourse(courseData) {
+    return courseData?.isFree === true || Number(courseData?.price || 0) <= 0;
+  }
+
+  function getCourseId() {
+    return course?.id;
+  }
+
+  function ensureAuthenticated() {
+    if (hasAccessToken()) {
+      return true;
+    }
+
+    navigate("/login", {
+      state: {
+        from: `/courses/${course.slug || course.id}`,
+      },
+    });
+
+    return false;
+  }
+
+  function ensurePaidCourse() {
+    if (!isFreeCourse(course)) {
+      return true;
+    }
+
+    toast.error(
+      "Free enrollment is handled by the enrollment flow. Please use the free enrollment action when integrated.",
+    );
+
+    return false;
+  }
+
+  async function handleAddToCartClick() {
+    if (!ensureAuthenticated()) return;
+    if (!ensurePaidCourse()) return;
+
+    const courseId = getCourseId();
+
+    if (!courseId) {
+      toast.error("Course information is missing.");
+      return;
+    }
+
+    setAddToCartLoading(true);
+
+    try {
+      await cartService.addItem({
+        courseId,
+        classId: null,
+      });
+
+      toast.success("Course added to cart.");
+      navigate("/cart");
+    } catch (err) {
+      toast.error(err?.message || "Could not add course to cart.");
+    } finally {
+      setAddToCartLoading(false);
+    }
+  }
+
+  async function handleBuyNowClick() {
+    if (!ensureAuthenticated()) return;
+    if (!ensurePaidCourse()) return;
+
+    const courseId = getCourseId();
+
+    if (!courseId) {
+      toast.error("Course information is missing.");
+      return;
+    }
+
+    setBuyNowLoading(true);
+
+    try {
+      await cartService.addItem({
+        courseId,
+        classId: null,
+      });
+
+      const latestCart = await cartService.getCart();
+
+      if (!latestCart?.id) {
+        throw new Error("Cart is not ready.");
+      }
+
+      const checkout = await orderService.checkout(latestCart.id);
+
+      toast.success("Checkout created.");
+
+      navigate(`/checkout/${checkout.orderId}`, {
+        state: {
+          checkout,
+        },
+      });
+    } catch (err) {
+      toast.error(err?.message || "Could not start checkout.");
+    } finally {
+      setBuyNowLoading(false);
+    }
+  }
 
   return (
     <div className="course-detail">
@@ -164,12 +275,31 @@ export function CourseDetailPage() {
             >
               View preview lessons
             </Link>
-            <Link
-              to={`/courses/${course.id || course.slug}/enroll`}
-              className="button button--primary course-detail__cta"
-            >
-              Enroll now
-            </Link>
+            <div className="course-detail__purchase-actions">
+              <button
+                type="button"
+                onClick={handleAddToCartClick}
+                disabled={addToCartLoading || buyNowLoading}
+                className="button button--secondary course-detail__cta"
+              >
+                {addToCartLoading
+                  ? "Adding..."
+                  : isFreeCourse(course)
+                    ? "Enroll for free"
+                    : "Add to cart"}
+              </button>
+
+              <button
+                type="button"
+                onClick={handleBuyNowClick}
+                disabled={
+                  addToCartLoading || buyNowLoading || isFreeCourse(course)
+                }
+                className="button button--primary course-detail__cta"
+              >
+                {buyNowLoading ? "Processing..." : "Buy now"}
+              </button>
+            </div>
             <ul className="course-detail__sidecard-list">
               <li>
                 <CheckCircle2 size={14} /> Lifetime access to course materials
