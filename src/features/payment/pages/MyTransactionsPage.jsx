@@ -127,6 +127,47 @@ function InvoiceModal({ open, transactionId, onClose }) {
   )
 }
 
+function CancelOrderModal({ open, target, onClose, onConfirmed }) {
+  const toast = useToast()
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(null)
+
+  async function handleConfirm() {
+    if (!target?.orderId) return
+    setError(null)
+    setLoading(true)
+    try {
+      await orderService.cancel(target.orderId)
+      toast.success('Order cancelled successfully')
+      onConfirmed(target)
+    } catch (err) {
+      setError(err?.message || 'Could not cancel this order.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <Modal
+      open={open}
+      title='Confirm order cancellation'
+      size='sm'
+      onClose={loading ? undefined : onClose}
+    >
+      <p style={{ margin: 0, color: '#475569', fontSize: 14, lineHeight: 1.6 }}>
+        Are you sure you want to cancel order
+        {' '}<strong>{target?.invoiceNumber || target?.orderId?.slice(0, 8)}</strong>?
+        This will release any pending payment session and cannot be undone.
+      </p>
+      {error && <div className='auth-card__alert' style={{ marginTop: 14 }}>{error}</div>}
+      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 18 }}>
+        <Button type='button' variant='ghost' onClick={onClose} disabled={loading}>Keep order</Button>
+        <Button type='button' variant='danger' onClick={handleConfirm} loading={loading}>Cancel order</Button>
+      </div>
+    </Modal>
+  )
+}
+
 export function MyTransactionsPage() {
   const toast = useToast()
   const [items, setItems] = useState([])
@@ -137,6 +178,8 @@ export function MyTransactionsPage() {
   const [error, setError] = useState(null)
   const [pageRequest, setPageRequest] = useState(0)
   const [invoiceTarget, setInvoiceTarget] = useState(null)
+  const [cancelTarget, setCancelTarget] = useState(null)
+  const [refreshKey, setRefreshKey] = useState(0)
 
   useEffect(() => {
     let cancelled = false
@@ -162,7 +205,7 @@ export function MyTransactionsPage() {
     return () => {
       cancelled = true
     }
-  }, [pageRequest, toast])
+  }, [pageRequest, toast, refreshKey])
 
   return (
     <div className="history-page">
@@ -199,6 +242,7 @@ export function MyTransactionsPage() {
             <tbody>
               {items.map((tx) => {
                 const isPaid = (tx.status || '').toUpperCase() === 'SUCCESS'
+                const isPending = (tx.status || '').toUpperCase() === 'PENDING'
                 return (
                   <tr key={tx.id}>
                     <td>
@@ -221,6 +265,16 @@ export function MyTransactionsPage() {
                           onClick={() => setInvoiceTarget(tx.id)}
                         >
                           View invoice
+                        </button>
+                      )}
+                      {isPending && tx.orderId && (
+                        <button
+                          type="button"
+                          className="history-table__link"
+                          style={{ background: 'none', border: 0, cursor: 'pointer', padding: 0, color: '#dc2626' }}
+                          onClick={() => setCancelTarget(tx)}
+                        >
+                          Cancel order
                         </button>
                       )}
                     </td>
@@ -260,6 +314,16 @@ export function MyTransactionsPage() {
         open={Boolean(invoiceTarget)}
         transactionId={invoiceTarget}
         onClose={() => setInvoiceTarget(null)}
+      />
+
+      <CancelOrderModal
+        open={Boolean(cancelTarget)}
+        target={cancelTarget}
+        onClose={() => setCancelTarget(null)}
+        onConfirmed={() => {
+          setCancelTarget(null)
+          setRefreshKey((k) => k + 1)
+        }}
       />
     </div>
   )
