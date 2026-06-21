@@ -1,119 +1,141 @@
-import { useEffect, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { Bell, LogOut, Menu, Search, User } from 'lucide-react'
+import { useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { Bell, LogOut, Search, User, ChevronDown } from "lucide-react";
+import "./Header.css";
 
 function getInitials(name) {
-  return (name || 'U')
-    .split(' ')
+  return (name || "U")
+    .split(" ")
     .filter(Boolean)
     .map((word) => word[0])
-    .join('')
+    .join("")
     .slice(0, 2)
-    .toUpperCase()
+    .toUpperCase();
 }
 
-export function Header({ user, onToggleSidebar, onLogout }) {
-  const navigate = useNavigate()
-  const [open, setOpen] = useState(false)
-  const menuRef = useRef(null)
+export function Header({ user, onLogout }) {
+  const navigate = useNavigate();
+  const [open, setOpen] = useState(false);
+  const menuRef = useRef(null);
 
   const displayName =
     user?.fullName ||
-    [user?.firstName, user?.lastName].filter(Boolean).join(' ') ||
+    [user?.firstName, user?.lastName].filter(Boolean).join(" ") ||
     user?.email ||
-    'User'
-  const initials = getInitials(displayName)
-  const role = user?.role || 'user'
+    "User";
+  const initials = getInitials(displayName);
+  const role = user?.role || "user";
 
   useEffect(() => {
     function handleClick(event) {
       if (menuRef.current && !menuRef.current.contains(event.target)) {
-        setOpen(false)
+        setOpen(false);
       }
     }
     if (open) {
-      document.addEventListener('mousedown', handleClick)
-      return () => document.removeEventListener('mousedown', handleClick)
+      document.addEventListener("mousedown", handleClick);
+      return () => document.removeEventListener("mousedown", handleClick);
     }
-    return undefined
-  }, [open])
-
-  function handleProfile() {
-    setOpen(false)
-    navigate('/profile')
-  }
-
-  function handleLogout() {
-    setOpen(false)
-    onLogout?.()
-  }
+    return undefined;
+  }, [open]);
 
   return (
     <header className="app-header">
-      <div className="app-header__left">
-        <button
-          type="button"
-          onClick={onToggleSidebar}
-          className="app-header__menu-btn"
-          aria-label="Open sidebar"
-        >
-          <Menu size={20} />
-        </button>
+      <div className="app-header__inner">
+        {/* Thanh tìm kiếm bên trái */}
+        <div className="app-header__left">
+          <div className="app-header__search-container">
+            <Search size={16} className="app-header__search-icon" />
+            <input
+              type="text"
+              placeholder="Search..."
+              className="app-header__search-input"
+            />
+          </div>
+        </div>
 
-        <label className="app-header__search">
-          <Search size={16} />
-          <input type="text" placeholder="Search courses, lessons, questions..." />
-        </label>
-      </div>
-
-      <div className="app-header__right">
-        <button type="button" className="icon-button" aria-label="Notifications">
-          <Bell size={18} />
-          <span className="icon-button__dot" />
-        </button>
-
-        <div className="user-menu" ref={menuRef}>
+        {/* Chuông thông báo & Profile bên phải */}
+        <div className="app-header__actions">
           <button
             type="button"
-            className="user-menu__trigger"
-            onClick={() => setOpen((s) => !s)}
-            aria-haspopup="true"
-            aria-expanded={open}
+            className="app-header__icon-button"
+            aria-label="Notifications"
           >
-            <span className="user-menu__avatar">
-              {user?.avatarUrl ? (
-                <img src={user.avatarUrl} alt={displayName} />
-              ) : (
-                initials
-              )}
-            </span>
-            <span className="user-menu__meta">
-              <span className="user-menu__meta-name">{displayName}</span>
-              <span className="user-menu__meta-role">{role}</span>
-            </span>
+            <Bell size={18} />
+            <span className="app-header__notification-dot" />
           </button>
 
-          {open && (
-            <div className="user-menu__panel" role="menu">
-              <button
-                type="button"
-                className="user-menu__panel-item"
-                onClick={handleProfile}
-              >
-                <User size={16} /> Profile
-              </button>
-              <div className="user-menu__divider" />
-              <button
-                type="button"
-                className="user-menu__panel-item user-menu__panel-item--danger"
-                onClick={handleLogout}
-              >
-                <LogOut size={16} /> Logout
-              </button>
-            </div>
-          )}
+          <div className="app-header__divider" />
+
+          {/* Khối User Profile Dropdown */}
+          <div className="app-header__user" ref={menuRef}>
+            <button
+              type="button"
+              onClick={() => setOpen((value) => !value)}
+              className={`app-header__user-button ${open ? "app-header__user-button--active" : ""}`}
+            >
+              {user?.avatarUrl ? (
+                <img
+                  src={user.avatarUrl}
+                  alt={displayName}
+                  className="app-header__avatar"
+                />
+              ) : (
+                <span className="app-header__avatar app-header__avatar--initials">
+                  {initials}
+                </span>
+              )}
+
+              <span className="app-header__user-copy">
+                <span className="app-header__user-name">{displayName}</span>
+                <span className="app-header__user-role">{role}</span>
+              </span>
+
+              <ChevronDown
+                size={14}
+                className={`app-header__chevron ${open ? "app-header__chevron--rotate" : ""}`}
+              />
+            </button>
+
+            {open && (
+              <div className="app-header__user-menu">
+                <div className="app-header__dropdown-header">
+                  <p className="dropdown-user-name">{displayName}</p>
+                  <p className="dropdown-user-email">
+                    {user?.email || "No email"}
+                  </p>
+                </div>
+
+                <div className="user-menu__divider" />
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpen(false);
+                    navigate("/profile");
+                  }}
+                  className="app-header__user-menu-item"
+                >
+                  <User size={16} /> Profile
+                </button>
+
+                <div className="user-menu__divider" />
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpen(false);
+                    onLogout?.();
+                  }}
+                  className="app-header__user-menu-item app-header__user-menu-item--danger"
+                >
+                  <LogOut size={16} /> Logout
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </header>
-  )
+  );
 }

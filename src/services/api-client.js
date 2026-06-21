@@ -1,6 +1,9 @@
 import axios from 'axios'
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api/v1'
+const API_BASE_URL =
+  import.meta.env.VITE_API_URL
+  || import.meta.env.VITE_API_BASE_URL
+  || 'http://localhost:8080/api/v1'
 
 const ACCESS_TOKEN_KEY = 'accessToken'
 const USER_KEY = 'user'
@@ -21,7 +24,20 @@ function processQueue(error, token = null) {
 }
 
 export function getAccessToken() {
-  return localStorage.getItem(ACCESS_TOKEN_KEY)
+  const token = localStorage.getItem(ACCESS_TOKEN_KEY)
+  // Loại bỏ triệt để chuỗi rác lọt vào hệ thống
+  if (!token || token === 'undefined' || token === 'null') {
+    return null
+  }
+  return token
+}
+
+function normalizeUser(user) {
+  if (!user) return user
+  return {
+    ...user,
+    role: typeof user.role === 'string' ? user.role.toUpperCase() : user.role,
+  }
 }
 
 export function setAuthSession({ accessToken, user }) {
@@ -30,7 +46,7 @@ export function setAuthSession({ accessToken, user }) {
   }
 
   if (user) {
-    localStorage.setItem(USER_KEY, JSON.stringify(user))
+    localStorage.setItem(USER_KEY, JSON.stringify(normalizeUser(user)))
   }
 }
 
@@ -58,12 +74,7 @@ function redirectToLogin() {
   }
 }
 
-function redirectToForbidden() {
-  if (window.location.pathname !== '/403') {
-    window.location.href = '/403'
-  }
-}
-
+// Cấu hình instance chính dùng axios
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
   timeout: 30000,
@@ -73,6 +84,7 @@ export const apiClient = axios.create({
   },
 })
 
+// Cấu hình instance phục vụ riêng việc làm mới token
 const refreshClient = axios.create({
   baseURL: API_BASE_URL,
   timeout: 30000,
@@ -82,14 +94,39 @@ const refreshClient = axios.create({
   },
 })
 
+// SỬA TẠI ĐÂY: Nới lỏng Regex, bỏ dấu gạch chéo đầu để ăn khớp chính xác tuyệt đối
+const PUBLIC_AUTH_ENDPOINTS = /auth\/(login|register|google|refresh|forgot-password|reset-password|verify-email|resend-verification)/
+
+function removeAuthorizationHeader(config) {
+  if (!config.headers) return
+
+  if (typeof config.headers.delete === 'function') {
+    config.headers.delete('Authorization')
+    return
+  }
+
+  delete config.headers.Authorization
+  delete config.headers.authorization
+}
+
 apiClient.interceptors.request.use(
   (config) => {
-    const accessToken = getAccessToken()
+    const url = config?.url || ''
+    const isPublicAuth = PUBLIC_AUTH_ENDPOINTS.test(url)
+    const shouldSkipAuthorization = config?.skipAuthorization === true
 
-    if (accessToken) {
-      config.headers.Authorization = `Bearer ${accessToken}`
+    // Public requests must never carry a stale or invalid bearer token.
+    if (isPublicAuth || shouldSkipAuthorization) {
+      removeAuthorizationHeader(config)
+      return config
     }
 
+    const accessToken = getAccessToken()
+    if (accessToken) {
+      config.headers.Authorization = `Bearer ${accessToken}`
+    } else {
+      removeAuthorizationHeader(config)
+    }
     return config
   },
   (error) => Promise.reject(error),
@@ -99,8 +136,7 @@ apiClient.interceptors.response.use(
   (response) => response.data,
   async (error) => {
     const originalRequest = error.config
-    const status = error.response?.status
-
+    
     if (!error.response) {
       return Promise.reject({
         code: 'NETWORK_ERROR',
@@ -109,10 +145,20 @@ apiClient.interceptors.response.use(
       })
     }
 
-    const isAuthEndpoint = typeof originalRequest?.url === 'string'
-      && /\/auth\/(login|register|google|refresh|forgot-password|reset-password|verify-email|resend-verification)/.test(originalRequest.url)
+    const status = error.response?.status
+    const url = originalRequest?.url || ''
+    const isAuthEndpoint = PUBLIC_AUTH_ENDPOINTS.test(url)
+    const shouldSkipAuthRedirect = originalRequest?.skipAuthRedirect === true
+    const shouldSkipAuthorization = originalRequest?.skipAuthorization === true
 
-    if (status === 401 && !originalRequest._retry && !isAuthEndpoint) {
+    // Xử lý tự động Refresh Token khi hết hạn (Mã 401)
+    if (
+      status === 401
+      && !originalRequest._retry
+      && !isAuthEndpoint
+      && !shouldSkipAuthRedirect
+      && !shouldSkipAuthorization
+    ) {
       originalRequest._retry = true
 
       if (isRefreshing) {
@@ -155,14 +201,6 @@ apiClient.interceptors.response.use(
       } finally {
         isRefreshing = false
       }
-    }
-
-    if (status === 403) {
-      redirectToForbidden()
-    }
-
-    if (status >= 500) {
-      console.error('Server error:', error.response?.data)
     }
 
     const apiError = error.response?.data?.error || error.response?.data || {

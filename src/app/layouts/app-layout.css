@@ -175,7 +175,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  padding: 0 32px;
+  padding: 0 12px 0 32px;
   border-bottom: 1px solid var(--line, #e7ecf4);
   background: rgba(255, 255, 255, 0.85);
   backdrop-filter: blur(14px);
@@ -234,6 +234,33 @@
 @media (max-width: 700px) { .app-header__search { display: none; } }
 
 .app-header__right { display: flex; align-items: center; gap: 10px; }
+
+/*  push user area to the far right */
+.app-header__inner {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  height: 100%;
+}
+
+.app-header__left {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+}
+
+.app-header__actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-left: auto;
+}
+
+.app-header__search {
+  display: none;
+}
 
 .icon-button {
   position: relative;

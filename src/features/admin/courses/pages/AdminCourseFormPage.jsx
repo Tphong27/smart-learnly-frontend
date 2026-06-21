@@ -1,25 +1,25 @@
-import { useEffect, useMemo, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
-import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
-import { ArrowLeft, Save } from 'lucide-react'
-import { Button, Form, FormField, useToast } from '@/shared/components/ui'
-import { categoryService, courseService } from '@/services'
-import { courseSchema } from '../schemas/course-schemas'
-import '../../admin-shared.css'
+import { useEffect, useMemo, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { ArrowLeft, Save } from "lucide-react";
+import { Button, Form, FormField, useToast } from "@/shared/components/ui";
+import { categoryService, courseService } from "@/services";
+import { courseSchema } from "../schemas/course-schemas";
+import "../../admin-shared.css";
 
 const STATUS_OPTIONS = [
-  { value: 'draft', label: 'Draft' },
-  { value: 'published', label: 'Published' },
-  { value: 'inactive', label: 'Inactive' },
-]
+  { value: "draft", label: "Draft" },
+  { value: "published", label: "Published" },
+  { value: "inactive", label: "Inactive" },
+];
 
 const LEVEL_OPTIONS = [
-  { value: '', label: 'Unspecified' },
-  { value: 'beginner', label: 'Beginner' },
-  { value: 'intermediate', label: 'Intermediate' },
-  { value: 'advanced', label: 'Advanced' },
-]
+  { value: "", label: "Unspecified" },
+  { value: "beginner", label: "Beginner" },
+  { value: "intermediate", label: "Intermediate" },
+  { value: "advanced", label: "Advanced" },
+];
 
 function buildPayload(values, mode) {
   const payload = {
@@ -33,49 +33,58 @@ function buildPayload(values, mode) {
     language: values.language?.trim() || undefined,
     level: values.level?.trim() || undefined,
     thumbnailUrl: values.thumbnailUrl?.trim() || undefined,
-    price: values.price === '' || values.price == null || Number.isNaN(values.price) ? 0 : Number(values.price),
-    discountedPrice: values.discountedPrice === '' || values.discountedPrice == null || Number.isNaN(values.discountedPrice)
-      ? undefined
-      : Number(values.discountedPrice),
+    price:
+      values.price === "" || values.price == null || Number.isNaN(values.price)
+        ? 0
+        : Number(values.price),
+    discountedPrice:
+      values.discountedPrice === "" ||
+      values.discountedPrice == null ||
+      Number.isNaN(values.discountedPrice)
+        ? undefined
+        : Number(values.discountedPrice),
     isFree: !!values.isFree,
-    status: values.status || 'draft',
-  }
-  if (mode === 'edit') {
+    status: values.status || "draft",
+  };
+  if (mode === "edit") {
     Object.keys(payload).forEach((k) => {
-      if (payload[k] === undefined) delete payload[k]
-    })
+      if (payload[k] === undefined) delete payload[k];
+    });
   }
-  return payload
+  return payload;
 }
 
 export function AdminCourseFormPage() {
-  const params = useParams()
-  const navigate = useNavigate()
-  const toast = useToast()
+  const params = useParams();
+  const navigate = useNavigate();
+  const toast = useToast();
 
-  const courseId = params.courseId
-  const isEdit = Boolean(courseId)
+  const courseId = params.courseId;
+  const isEdit = Boolean(courseId);
 
-  const [categories, setCategories] = useState([])
-  const [loading, setLoading] = useState(isEdit)
-  const [serverError, setServerError] = useState(null)
+  const [categories, setCategories] = useState([]);
+  const [loading, setLoading] = useState(isEdit);
+  const [serverError, setServerError] = useState(null);
 
-  const defaultValues = useMemo(() => ({
-    categoryId: '',
-    title: '',
-    slug: '',
-    shortDescription: '',
-    description: '',
-    outcomes: '',
-    requirements: '',
-    language: 'en',
-    level: '',
-    thumbnailUrl: '',
-    price: 0,
-    discountedPrice: '',
-    isFree: false,
-    status: 'draft',
-  }), [])
+  const defaultValues = useMemo(
+    () => ({
+      categoryId: "",
+      title: "",
+      slug: "",
+      shortDescription: "",
+      description: "",
+      outcomes: "",
+      requirements: "",
+      language: "en",
+      level: "",
+      thumbnailUrl: "",
+      price: 0,
+      discountedPrice: "",
+      isFree: false,
+      status: "draft",
+    }),
+    [],
+  );
 
   const {
     register,
@@ -87,198 +96,359 @@ export function AdminCourseFormPage() {
   } = useForm({
     resolver: zodResolver(courseSchema),
     defaultValues,
-    mode: 'onBlur',
-  })
+    mode: "onBlur",
+  });
 
-  const isFree = watch('isFree')
+  const isFree = watch("isFree");
 
   useEffect(() => {
-    let cancelled = false
+    let cancelled = false;
     async function loadAll() {
       try {
-        const cats = await categoryService.list({ active: true })
-        if (cancelled) return
-        setCategories(cats || [])
+        const cats = await categoryService.list({ active: true });
+        if (cancelled) return;
+        setCategories(cats || []);
       } catch (err) {
-        toast.error(err?.message || 'Could not load categories.')
+        toast.error(err?.message || "Could not load categories.");
       }
 
-      if (!isEdit) return
+      if (!isEdit) return;
 
       try {
-        const detail = await courseService.getAdmin(courseId)
-        if (cancelled) return
+        const detail = await courseService.getAdmin(courseId);
+        if (cancelled) return;
         reset({
-          categoryId: detail.categoryId || '',
-          title: detail.title || '',
-          slug: detail.slug || '',
-          shortDescription: detail.shortDescription || '',
-          description: detail.description || '',
-          outcomes: detail.outcomes || '',
-          requirements: detail.requirements || '',
-          language: detail.language || 'en',
-          level: detail.level || '',
-          thumbnailUrl: detail.thumbnailUrl || '',
+          categoryId: detail.categoryId || "",
+          title: detail.title || "",
+          slug: detail.slug || "",
+          shortDescription: detail.shortDescription || "",
+          description: detail.description || "",
+          outcomes: detail.outcomes || "",
+          requirements: detail.requirements || "",
+          language: detail.language || "en",
+          level: detail.level || "",
+          thumbnailUrl: detail.thumbnailUrl || "",
           price: detail.price ?? 0,
-          discountedPrice: detail.discountedPrice ?? '',
+          discountedPrice: detail.discountedPrice ?? "",
           isFree: !!detail.isFree,
-          status: detail.status?.toLowerCase() || 'draft',
-        })
+          status: detail.status?.toLowerCase() || "draft",
+        });
       } catch (err) {
-        setServerError(err?.message || 'Could not load course details.')
+        setServerError(err?.message || "Could not load course details.");
       } finally {
-        if (!cancelled) setLoading(false)
+        if (!cancelled) setLoading(false);
       }
     }
-    loadAll()
+    loadAll();
     return () => {
-      cancelled = true
-    }
-  }, [courseId, isEdit, reset, toast])
+      cancelled = true;
+    };
+  }, [courseId, isEdit, reset, toast]);
 
   useEffect(() => {
-    if (isFree) setValue('price', 0)
-  }, [isFree, setValue])
+    if (isFree) setValue("price", 0);
+  }, [isFree, setValue]);
 
   async function onSubmit(values) {
-    setServerError(null)
+    setServerError(null);
     try {
-      const payload = buildPayload(values, isEdit ? 'edit' : 'create')
+      const payload = buildPayload(values, isEdit ? "edit" : "create");
       if (isEdit) {
-        await courseService.update(courseId, payload)
-        toast.success('Course updated successfully')
+        await courseService.update(courseId, payload);
+        toast.success("Course updated successfully");
+        navigate(`/admin/courses/${courseId}/content`);
+        return;
       } else {
-        const created = await courseService.create(payload)
-        toast.success('Course created successfully')
-        navigate(`/admin/courses/${created.id}`, { replace: true })
-        return
+        const created = await courseService.create(payload);
+        toast.success("Course created successfully");
+        navigate(`/admin/courses/${created.id}/content`, { replace: true });
+        return;
       }
     } catch (error) {
-      setServerError(error?.message || 'Something went wrong. Please try again.')
+      setServerError(
+        error?.message || "Something went wrong. Please try again.",
+      );
     }
   }
 
   if (loading) {
-    return <div className="admin-loading">Loading course...</div>
+    return (
+      <div
+        className="admin-loading"
+        style={{ padding: "40px", textAlign: "center" }}
+      >
+        Loading course...
+      </div>
+    );
   }
 
   return (
-    <div className="admin-page">
-      <header className="admin-page__header">
-        <div>
-          <Button variant="ghost" size="sm" leftIcon={<ArrowLeft size={14} />} onClick={() => navigate('/admin/courses')}>
-            Back
-          </Button>
-          <h1 className="admin-page__title" style={{ marginTop: 8 }}>
-            {isEdit ? 'Update course' : 'Create new course'}
-          </h1>
-          <p className="admin-page__subtitle">
-            Provide the main course details. Sections and lessons can be managed in the next step.
-          </p>
-        </div>
-      </header>
+    // 📌 SỬA TẠI ĐÂY: Sử dụng display block thuần để chống hiện tượng dính chữ đè dòng từ layout cha
+    <div
+      style={{
+        display: "block",
+        width: "100%",
+        padding: "24px",
+        boxSizing: "border-box",
+      }}
+    >
+      {/* Khối Header độc lập */}
+      <div style={{ display: "block", marginBottom: "24px" }}>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          leftIcon={<ArrowLeft size={14} />}
+          onClick={() => navigate("/admin/courses")}
+        >
+          Back
+        </Button>
+        <h1
+          style={{
+            marginTop: "12px",
+            marginBottom: "4px",
+            fontSize: "24px",
+            fontWeight: "700",
+            color: "#0f172a",
+            display: "block",
+            lineHeight: "1.2",
+          }}
+        >
+          {isEdit ? "Update course" : "Create new course"}
+        </h1>
+        <p
+          style={{
+            color: "#64748b",
+            margin: 0,
+            fontSize: "14px",
+            display: "block",
+          }}
+        >
+          Provide the main course details. Sections and lessons can be managed
+          in the next step hehe.
+        </p>
+      </div>
 
-      <section className="admin-card">
+      {/* Khối Form container độc lập */}
+      <div
+        style={{
+          display: "block",
+          background: "#ffffff",
+          borderRadius: "8px",
+          border: "1px solid #e2e8f0",
+          padding: "24px",
+          boxShadow: "0 1px 3px 0 rgba(0, 0, 0, 0.1)",
+          maxWidth: "1000px",
+        }}
+      >
         {serverError && (
-          <div className="auth-card__alert" style={{ marginBottom: 16 }}>{serverError}</div>
+          <div
+            className="auth-card__alert"
+            style={{ marginBottom: 16, color: "red" }}
+          >
+            {serverError}
+          </div>
         )}
 
         <Form onSubmit={handleSubmit(onSubmit)}>
-          <div className="admin-form-grid">
-            <div className="admin-form-grid__full">
+          <div
+            className="admin-form-grid"
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1fr 1fr",
+              gap: "20px",
+            }}
+          >
+            <div style={{ gridColumn: "span 2" }}>
               <FormField
                 label="Course title"
                 required
                 placeholder="e.g. Mastering React from A to Z"
-                registration={register('title')}
+                registration={register("title")}
                 error={errors.title?.message}
               />
             </div>
 
-            <div className="input-field">
-              <label className="input-field__label" htmlFor="course-category">
-                Category <span className="input-field__required">*</span>
+            <div
+              className="input-field"
+              style={{ display: "flex", flexDirection: "column", gap: "6px" }}
+            >
+              <label
+                className="input-field__label"
+                htmlFor="course-category"
+                style={{ fontWeight: "500", fontSize: "14px" }}
+              >
+                Category{" "}
+                <span
+                  className="input-field__required"
+                  style={{ color: "red" }}
+                >
+                  *
+                </span>
               </label>
               <select
                 id="course-category"
-                className="admin-toolbar__select"
-                {...register('categoryId')}
-                style={{ width: '100%' }}
+                {...register("categoryId")}
+                style={{
+                  width: "100%",
+                  padding: "10px 12px",
+                  borderRadius: "6px",
+                  border: "1px solid #cbd5e1",
+                  background: "#fff",
+                  height: "40px",
+                }}
               >
                 <option value="">-- Select a category --</option>
                 {categories.map((cat) => (
-                  <option key={cat.id} value={cat.id}>{cat.name}</option>
+                  <option key={cat.id} value={cat.id}>
+                    {cat.name}
+                  </option>
                 ))}
               </select>
-              {errors.categoryId && <p className="input-field__error">{errors.categoryId.message}</p>}
+              {errors.categoryId && (
+                <p
+                  style={{ color: "red", fontSize: "12px", margin: "4px 0 0" }}
+                >
+                  {errors.categoryId.message}
+                </p>
+              )}
             </div>
 
             <FormField
               label="Slug"
               placeholder="e.g. react-from-zero"
-              registration={register('slug')}
+              registration={register("slug")}
               error={errors.slug?.message}
               helperText="Leave blank to auto-generate from the title"
             />
 
-            <div className="admin-form-grid__full">
+            <div style={{ gridColumn: "span 2" }}>
               <FormField
                 label="Short description"
                 placeholder="A 1-2 sentence summary of the course"
-                registration={register('shortDescription')}
+                registration={register("shortDescription")}
                 error={errors.shortDescription?.message}
               />
             </div>
 
-            <div className="admin-form-grid__full">
-              <div className="input-field">
-                <label className="input-field__label" htmlFor="course-description">Detailed description</label>
+            <div style={{ gridColumn: "span 2" }}>
+              <div
+                className="input-field"
+                style={{ display: "flex", flexDirection: "column", gap: "6px" }}
+              >
+                <label
+                  className="input-field__label"
+                  htmlFor="course-description"
+                  style={{ fontWeight: "500", fontSize: "14px" }}
+                >
+                  Detailed description
+                </label>
                 <textarea
                   id="course-description"
-                  className={'admin-textarea' + (errors.description ? ' admin-textarea--error' : '')}
                   rows={5}
-                  {...register('description')}
+                  {...register("description")}
+                  style={{
+                    width: "100%",
+                    padding: "10px 12px",
+                    borderRadius: "6px",
+                    border: "1px solid #cbd5e1",
+                  }}
                 />
-                {errors.description && <p className="input-field__error">{errors.description.message}</p>}
+                {errors.description && (
+                  <p
+                    style={{
+                      color: "red",
+                      fontSize: "12px",
+                      margin: "4px 0 0",
+                    }}
+                  >
+                    {errors.description.message}
+                  </p>
+                )}
               </div>
             </div>
 
-            <div className="admin-form-grid__full">
-              <div className="input-field">
-                <label className="input-field__label" htmlFor="course-outcomes">Learning outcomes</label>
+            <div style={{ gridColumn: "span 2" }}>
+              <div
+                className="input-field"
+                style={{ display: "flex", flexDirection: "column", gap: "6px" }}
+              >
+                <label
+                  className="input-field__label"
+                  htmlFor="course-outcomes"
+                  style={{ fontWeight: "500", fontSize: "14px" }}
+                >
+                  Learning outcomes
+                </label>
                 <textarea
                   id="course-outcomes"
-                  className="admin-textarea"
                   rows={3}
                   placeholder="One outcome per line"
-                  {...register('outcomes')}
+                  {...register("outcomes")}
+                  style={{
+                    width: "100%",
+                    padding: "10px 12px",
+                    borderRadius: "6px",
+                    border: "1px solid #cbd5e1",
+                  }}
                 />
               </div>
             </div>
 
-            <div className="admin-form-grid__full">
-              <div className="input-field">
-                <label className="input-field__label" htmlFor="course-requirements">Prerequisites</label>
+            <div style={{ gridColumn: "span 2" }}>
+              <div
+                className="input-field"
+                style={{ display: "flex", flexDirection: "column", gap: "6px" }}
+              >
+                <label
+                  className="input-field__label"
+                  htmlFor="course-requirements"
+                  style={{ fontWeight: "500", fontSize: "14px" }}
+                >
+                  Prerequisites
+                </label>
                 <textarea
                   id="course-requirements"
-                  className="admin-textarea"
                   rows={3}
                   placeholder="One requirement per line"
-                  {...register('requirements')}
+                  {...register("requirements")}
+                  style={{
+                    width: "100%",
+                    padding: "10px 12px",
+                    borderRadius: "6px",
+                    border: "1px solid #cbd5e1",
+                  }}
                 />
               </div>
             </div>
 
-            <div className="input-field">
-              <label className="input-field__label" htmlFor="course-level">Level</label>
+            <div
+              className="input-field"
+              style={{ display: "flex", flexDirection: "column", gap: "6px" }}
+            >
+              <label
+                className="input-field__label"
+                htmlFor="course-level"
+                style={{ fontWeight: "500", fontSize: "14px" }}
+              >
+                Level
+              </label>
               <select
                 id="course-level"
-                className="admin-toolbar__select"
-                {...register('level')}
-                style={{ width: '100%' }}
+                {...register("level")}
+                style={{
+                  width: "100%",
+                  padding: "10px 12px",
+                  borderRadius: "6px",
+                  border: "1px solid #cbd5e1",
+                  background: "#fff",
+                  height: "40px",
+                }}
               >
                 {LEVEL_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
                 ))}
               </select>
             </div>
@@ -286,15 +456,15 @@ export function AdminCourseFormPage() {
             <FormField
               label="Language"
               placeholder="e.g. en, vi"
-              registration={register('language')}
+              registration={register("language")}
               error={errors.language?.message}
             />
 
-            <div className="admin-form-grid__full">
+            <div style={{ gridColumn: "span 2" }}>
               <FormField
                 label="Thumbnail URL"
                 placeholder="https://..."
-                registration={register('thumbnailUrl')}
+                registration={register("thumbnailUrl")}
                 error={errors.thumbnailUrl?.message}
               />
             </div>
@@ -302,50 +472,113 @@ export function AdminCourseFormPage() {
             <FormField
               label="Price (VND)"
               type="number"
-              registration={register('price', { valueAsNumber: true })}
+              registration={register("price", { valueAsNumber: true })}
               error={errors.price?.message}
               disabled={isFree}
-              helperText={isFree ? 'Course is free; price will be set to 0' : 'Enter 0 for a free course'}
+              helperText={
+                isFree
+                  ? "Course is free; price will be set to 0"
+                  : "Enter 0 for a free course"
+              }
             />
 
             <FormField
               label="Discounted price (VND)"
               type="number"
-              registration={register('discountedPrice', { valueAsNumber: true })}
+              registration={register("discountedPrice", {
+                valueAsNumber: true,
+              })}
               error={errors.discountedPrice?.message}
               helperText="Leave blank if there is no discount"
             />
 
-            <label className="admin-checkbox" style={{ alignSelf: 'center' }}>
-              <input type="checkbox" {...register('isFree')} />
-              Free course
-            </label>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                marginTop: "12px",
+              }}
+            >
+              <label
+                className="admin-checkbox"
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  cursor: "pointer",
+                  fontSize: "14px",
+                  fontWeight: "500",
+                }}
+              >
+                <input
+                  type="checkbox"
+                  {...register("isFree")}
+                  style={{ marginRight: "8px", width: "16px", height: "16px" }}
+                />
+                Free course
+              </label>
+            </div>
 
-            <div className="input-field">
-              <label className="input-field__label" htmlFor="course-status">Status</label>
+            <div
+              className="input-field"
+              style={{ display: "flex", flexDirection: "column", gap: "6px" }}
+            >
+              <label
+                className="input-field__label"
+                htmlFor="course-status"
+                style={{ fontWeight: "500", fontSize: "14px" }}
+              >
+                Status
+              </label>
               <select
                 id="course-status"
-                className="admin-toolbar__select"
-                {...register('status')}
-                style={{ width: '100%' }}
+                {...register("status")}
+                style={{
+                  width: "100%",
+                  padding: "10px 12px",
+                  borderRadius: "6px",
+                  border: "1px solid #cbd5e1",
+                  background: "#fff",
+                  height: "40px",
+                }}
               >
                 {STATUS_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
                 ))}
               </select>
             </div>
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 22, paddingTop: 18, borderTop: '1px solid #e7ecf4' }}>
-            <Button type="button" variant="ghost" onClick={() => navigate('/admin/courses')}>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "flex-end",
+              gap: 12,
+              marginTop: 28,
+              paddingTop: 20,
+              borderTop: "1px solid #e2e8f0",
+            }}
+          >
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => navigate("/admin/courses")}
+            >
               Cancel
             </Button>
-            <Button type="submit" loading={isSubmitting} leftIcon={<Save size={16} />}>
-              {isEdit ? 'Save changes' : 'Create course'}
+            <Button
+              type="submit"
+              loading={isSubmitting}
+              leftIcon={<Save size={16} />}
+            >
+              {isEdit ? "Save changes" : "Create course"}
             </Button>
           </div>
         </Form>
-      </section>
+      </div>
+
+      <div style={{ height: "40px" }}></div>
     </div>
-  )
+  );
 }

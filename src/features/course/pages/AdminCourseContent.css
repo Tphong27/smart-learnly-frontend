@@ -1,0 +1,212 @@
+/* =====================================================================
+   GIẢI PHÓNG KHÔNG GIAN TRANG CON KHÔNG CHO ĐÈ LÊN HEADER
+   ===================================================================== */
+.app-page-inner {
+  width: 100% !important;
+  box-sizing: border-box !important;
+
+  /* 📌 ĐẨY LÙI TOP: Nhường đúng 70px chiều cao cho thanh Header cố định */
+  padding-top: 94px !important;
+  padding-left: 24px !important;
+  padding-right: 24px !important;
+  padding-bottom: 40px !important;
+
+  /* Hủy bỏ cô lập hiển thị nếu hệ thống cha có cài đặt nhầm */
+  position: relative !important;
+  z-index: 1 !important;
+}
+
+/* Khung loading đồng bộ khoảng cách */
+.admin-loading-wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 200px;
+  padding-top: 94px;
+}
+
+/* Trạng thái khi đang kéo thả hàng loạt */
+.dragging {
+  opacity: 0.5;
+  background: #f8fafc;
+  border: 2px dashed #6366f1 !important;
+}
+
+/* =====================================================================
+   MÃ CSS CHO MODAL POPUP COMPONENTS (Đã cô lập z-index để không đè Header)
+   ===================================================================== */
+
+/* Lớp nền tối mờ bọc ngoài */
+.modal-overlay {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  background-color: rgba(15, 23, 42, 0.6) !important;
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+
+  /* Đặt dưới z-index tối đa của Header một chút để thanh dropdown profile vẫn đè được lên Modal nếu cần */
+  z-index: 9999999 !important;
+  backdrop-filter: blur(4px) !important;
+  animation: fadeIn 0.2s ease-out;
+}
+
+/* Khối nội dung chính giữa của Modal */
+.modal-content {
+  background: #ffffff !important;
+  border-radius: 12px !important;
+  width: 100% !important;
+  max-width: 480px !important;
+  box-shadow:
+    0 20px 25px -5px rgba(0, 0, 0, 0.1),
+    0 10px 10px -5px rgba(0, 0, 0, 0.04) !important;
+  overflow: hidden !important;
+  animation: slideUp 0.25s ease-out;
+}
+
+/* Header Modal */
+.modal-header {
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  padding: 16px 20px !important;
+  border-bottom: 1px solid #f1f5f9 !important;
+}
+
+.modal-header h3 {
+  margin: 0 !important;
+  font-size: 16px !important;
+  font-weight: 700 !important;
+  color: #1e293b !important;
+}
+
+.close-modal-btn {
+  background: none !important;
+  border: none !important;
+  color: #94a3b8 !important;
+  cursor: pointer !important;
+  padding: 4px !important;
+  border-radius: 4px !important;
+  display: flex !important;
+  align-items: center !important;
+}
+
+.close-modal-btn:hover {
+  background-color: #f1f5f9 !important;
+  color: #475569 !important;
+}
+
+/* Thân Modal */
+.modal-body {
+  padding: 20px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 16px !important;
+}
+
+.form-group-modal {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 6px !important;
+}
+
+.form-group-modal label {
+  font-size: 14px !important;
+  font-weight: 600 !important;
+  color: #475569 !important;
+  text-align: left !important;
+}
+
+.form-group-modal input[type="text"],
+.form-group-modal select {
+  width: 100% !important;
+  padding: 10px 12px !important;
+  border-radius: 6px !important;
+  border: 1px solid #cbd5e1 !important;
+  font-size: 14px !important;
+  color: #334155 !important;
+  outline: none !important;
+  transition: border-color 0.2s !important;
+  box-sizing: border-box !important;
+}
+
+.form-group-modal input[type="text"]:focus,
+.form-group-modal select:focus {
+  border-color: #2563eb !important;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15) !important;
+}
+
+/* Checkbox alignment */
+.checkbox-group {
+  margin-top: 4px !important;
+}
+.checkbox-group input[type="checkbox"] {
+  width: 16px !important;
+  height: 16px !important;
+  accent-color: #2563eb !important;
+  margin: 0 !important;
+}
+
+/* Footer Modal */
+.modal-footer {
+  display: flex !important;
+  justify-content: flex-end !important;
+  gap: 12px !important;
+  padding: 14px 20px !important;
+  background-color: #f8fafc !important;
+  border-top: 1px solid #f1f5f9 !important;
+}
+
+.btn-modal-secondary {
+  padding: 8px 16px !important;
+  background: #ffffff !important;
+  border: 1px solid #cbd5e1 !important;
+  color: #475569 !important;
+  border-radius: 6px !important;
+  font-weight: 600 !important;
+  font-size: 14px !important;
+  cursor: pointer !important;
+}
+
+.btn-modal-secondary:hover {
+  background: #f1f5f9 !important;
+}
+
+.btn-modal-primary {
+  padding: 8px 16px !important;
+  background: #2563eb !important;
+  color: white !important;
+  border: none !important;
+  border-radius: 6px !important;
+  font-weight: 600 !important;
+  font-size: 14px !important;
+  cursor: pointer !important;
+}
+
+.btn-modal-primary:hover {
+  background: #1d4ed8 !important;
+}
+
+/* Keyframes Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(16px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
