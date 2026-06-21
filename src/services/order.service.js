@@ -4,18 +4,15 @@ function unwrap(response) {
   return response?.data ?? response
 }
 
-export const orderService = {
-  async checkout(cartId) {
-    const response = await apiClient.post('/orders/checkout', { cartId })
-    return unwrap(response)
-  },
+function toNumber(value, fallback = 0) {
+  if (value === null || value === undefined || value === '') {
+    return fallback
+  }
 
-  async get(orderId) {
-    const response = await apiClient.get(`/orders/${orderId}`)
-    return unwrap(response)
-  },
+  const numberValue = Number(value)
+  return Number.isNaN(numberValue) ? fallback : numberValue
+}
 
-  async cancel(orderId) {
 export function normalizeCheckout(payload) {
   const data = unwrap(payload)
 
@@ -25,7 +22,7 @@ export function normalizeCheckout(payload) {
     transactionId: data?.transactionId,
     paymentGateway: data?.paymentGateway ?? 'SEPAY',
     paymentCode: data?.paymentCode,
-    amount: Number(data?.amount ?? data?.totalAmount ?? 0),
+    amount: toNumber(data?.amount ?? data?.totalAmount),
     currency: data?.currency ?? 'VND',
     bankAccountNumber: data?.bankAccountNumber,
     bankName: data?.bankName,
@@ -38,66 +35,55 @@ export function normalizeCheckout(payload) {
 
 export function normalizeOrderPayment(payload) {
   const data = unwrap(payload)
+  const transaction = data?.transaction
+  const sepayOrder = data?.sepayOrder
 
   return {
+    ...data,
     orderId: data?.orderId ?? data?.id,
     orderCode: data?.orderCode,
-    transactionId: data?.transactionId ?? data?.transaction?.id,
-    paymentGateway:
-      data?.paymentGateway ??
-      data?.transaction?.paymentGateway ??
-      'SEPAY',
-    paymentCode:
-      data?.paymentCode ??
-      data?.sepayOrder?.paymentCode,
-    amount: Number(
-      data?.amount ??
-      data?.totalAmount ??
-      data?.transaction?.amount ??
-      data?.sepayOrder?.amount ??
-      0,
+    transactionId: data?.transactionId ?? transaction?.id,
+    paymentGateway: data?.paymentGateway ?? transaction?.paymentGateway ?? 'SEPAY',
+    paymentCode: data?.paymentCode ?? sepayOrder?.paymentCode,
+    amount: toNumber(
+      data?.amount
+        ?? data?.totalAmount
+        ?? transaction?.amount
+        ?? sepayOrder?.amount,
     ),
-    currency: data?.currency ?? 'VND',
-    bankAccountNumber:
-      data?.bankAccountNumber ??
-      data?.sepayOrder?.bankAccountNumber,
-    bankName:
-      data?.bankName ??
-      data?.sepayOrder?.bankName,
-    accountName:
-      data?.accountName ??
-      data?.sepayOrder?.accountName,
-    qrUrl:
-      data?.qrUrl ??
-      data?.sepayOrder?.qrUrl,
-    status:
-      data?.transaction?.status ??
-      data?.status ??
-      data?.sepayOrder?.status ??
-      'PENDING',
-    expiresAt:
-      data?.expiresAt ??
-      data?.transaction?.expiresAt ??
-      data?.sepayOrder?.expiresAt,
+    currency: data?.currency ?? transaction?.currency ?? 'VND',
+    bankAccountNumber: data?.bankAccountNumber ?? sepayOrder?.bankAccountNumber,
+    bankName: data?.bankName ?? sepayOrder?.bankName,
+    accountName: data?.accountName ?? sepayOrder?.accountName,
+    qrUrl: data?.qrUrl ?? sepayOrder?.qrUrl,
+    status: data?.status ?? transaction?.status ?? sepayOrder?.status ?? 'PENDING',
+    transactionStatus: transaction?.status,
+    sepayOrderStatus: sepayOrder?.status,
+    expiresAt: data?.expiresAt ?? transaction?.expiresAt ?? sepayOrder?.expiresAt,
   }
 }
 
 export const orderService = {
   async checkout(cartId) {
-    const response = await apiClient.post('/orders/checkout', {
-      cartId,
-    })
-
+    const response = await apiClient.post('/orders/checkout', { cartId })
     return normalizeCheckout(response)
   },
 
-  async getOrder(orderId) {
+  async get(orderId) {
     const response = await apiClient.get(`/orders/${orderId}`)
     return normalizeOrderPayment(response)
   },
 
-  async cancelOrder(orderId) {
+  async getOrder(orderId) {
+    return this.get(orderId)
+  },
+
+  async cancel(orderId) {
     const response = await apiClient.post(`/orders/${orderId}/cancel`)
-    return unwrap(response)
+    return normalizeOrderPayment(response)
+  },
+
+  async cancelOrder(orderId) {
+    return this.cancel(orderId)
   },
 }

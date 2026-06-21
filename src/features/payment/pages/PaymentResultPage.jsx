@@ -33,7 +33,6 @@ export function PaymentResultPage() {
 
   useEffect(() => {
     if (!orderId) {
-      setError('Missing order id.')
       pollingRef.current = false
       return undefined
     }
@@ -97,7 +96,7 @@ export function PaymentResultPage() {
           <XCircle size={48} />
           <h1>Missing order</h1>
           <p>We could not find the order to verify. Please return to your transactions.</p>
-          <Button onClick={() => navigate('/my-transactions')}>Go to transactions</Button>
+          <Button onClick={() => navigate('/learning/transactions')}>Go to transactions</Button>
         </div>
       </div>
     )
@@ -110,7 +109,7 @@ export function PaymentResultPage() {
           <XCircle size={48} />
           <h1>Could not load order</h1>
           <p>{error}</p>
-          <Button onClick={() => navigate('/my-transactions')}>Go to transactions</Button>
+          <Button onClick={() => navigate('/learning/transactions')}>Go to transactions</Button>
         </div>
       </div>
     )
@@ -124,8 +123,8 @@ export function PaymentResultPage() {
           <h1>Payment successful</h1>
           <p>Your order <strong>{order?.orderCode || orderId}</strong> has been confirmed.</p>
           <div className="payment-result__actions">
-            <Link to="/my-courses" className="button button--primary">Go to my courses</Link>
-            <Link to="/my-transactions" className="button button--ghost">View transactions</Link>
+            <Link to="/learning/courses" className="button button--primary">Go to my courses</Link>
+            <Link to="/learning/transactions" className="button button--ghost">View transactions</Link>
           </div>
         </div>
       </div>
@@ -147,7 +146,7 @@ export function PaymentResultPage() {
           <h1>Payment not completed</h1>
           <p>{reason}</p>
           <div className="payment-result__actions">
-            <Link to="/my-transactions" className="button button--primary">View transactions</Link>
+            <Link to="/learning/transactions" className="button button--primary">View transactions</Link>
             <Link to="/" className="button button--ghost">Browse courses</Link>
           </div>
         </div>
@@ -168,7 +167,7 @@ export function PaymentResultPage() {
             : 'Please keep this page open. We are checking with the payment gateway.'}
         </p>
         <div className="payment-result__actions">
-          <Link to="/my-transactions" className="button button--ghost">View transactions</Link>
+          <Link to="/learning/transactions" className="button button--ghost">View transactions</Link>
         </div>
       </div>
     </div>

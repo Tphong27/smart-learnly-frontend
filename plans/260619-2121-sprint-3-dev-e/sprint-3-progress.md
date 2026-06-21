@@ -1,8 +1,9 @@
 # Sprint 3 - Dev E (Frontend) - Trạng thái dở dang
 
-> Cập nhật: 2026-06-19 21:21 (Asia/Saigon)
+> Cập nhật: 2026-06-21 20:05 (Asia/Saigon)
 > Branch: `long`
-> Build: `npm run build` PASS
+> Build: `npm run build` PASS sau merge main
+> Lint changed files: PASS
 
 ## Phạm vi Sprint 3 (Dev E)
 
@@ -11,7 +12,7 @@
 | F3.4 | Đăng ký khoá học miễn phí (1 click) | B3.7 `POST /enrollments/free` | DONE |
 | F3.5 | Trang lịch sử đăng ký + huỷ đơn | B3.8 `GET /enrollments`, `POST /orders/{id}/cancel` | PARTIAL (chưa có cancel UI - chờ BE thêm orderId vào response) |
 | F3.6 | Trang lịch sử giao dịch + invoice | B3.9 `GET /transactions`, `GET /transactions/{id}/invoice` | DONE |
-| F3.7 | Notification thanh toán thành công/thất bại | B3.5 webhook + `GET /orders/{id}` (polling) | DONE (giả định status enum, cần Dev C confirm) |
+| F3.7 | Notification thanh toán thành công/thất bại | B3.5 webhook + `GET /orders/{id}` (polling) | DONE (đã đối chiếu BE enum `PENDING`, `PAID`, `EXPIRED`, `CANCELLED`) |
 
 ---
 
@@ -74,30 +75,34 @@ function resolveOutcome(order) {
 }
 ```
 
-### Routes (`src/app/AppShell.jsx`)
+### Routes (`src/app/routes/traineeRoutes.jsx`)
 
-Đã thêm 3 route trong block `ProtectedRoute` + `AppLayout`:
+Sau merge main, trainee routes chuyển về namespace `/learning`. Đã thêm:
 ```jsx
-<Route path="/my-enrollments" element={<MyEnrollmentsPage />} />
-<Route path="/my-transactions" element={<MyTransactionsPage />} />
-<Route path="/payment-result" element={<PaymentResultPage />} />
+{ path: "enrollments", element: <MyEnrollmentsPage /> }
+{ path: "transactions", element: <MyTransactionsPage /> }
+{ path: "/cart", element: <CartPage /> }
+{ path: "/checkout/:orderId", element: <CheckoutPage /> }
+{ path: "/checkout/:orderId/result", element: <CheckoutPaymentResultPage /> }
+{ path: "/payment-result", element: <PaymentResultPage /> }
 ```
 
-Imports đã thêm:
+Đã giữ alias cũ để không gãy link đã tạo trước đó:
 ```jsx
-import { MyEnrollmentsPage } from '../features/enrollment'
-import { MyTransactionsPage, PaymentResultPage } from '../features/payment'
+/my-courses -> /learning/courses
+/my-enrollments -> /learning/enrollments
+/my-transactions -> /learning/transactions
 ```
 
 ### Sidebar (`src/app/layouts/Sidebar.jsx`)
 
-Thêm 2 menu cho TRAINEE:
+Thêm 2 menu cho TRAINEE theo namespace `/learning`:
 ```js
-{ label: 'My Enrollments', path: '/my-enrollments', icon: History, roles: [ROLES.TRAINEE] }
-{ label: 'My Transactions', path: '/my-transactions', icon: Receipt, roles: [ROLES.TRAINEE] }
+{ label: 'My Enrollments', path: '/learning/enrollments', icon: History, roles: [ROLES.TRAINEE] }
+{ label: 'My Transactions', path: '/learning/transactions', icon: Receipt, roles: [ROLES.TRAINEE] }
 ```
 
-Icons mới import từ `lucide-react`: `History`, `Receipt`.
+Đã sửa import trùng `Receipt` sau merge.
 
 ---
 
@@ -112,31 +117,26 @@ Icons mới import từ `lucide-react`: `History`, `Receipt`.
 - Confirm modal trước khi gọi `orderService.cancel(orderId)`
 - Sau khi cancel: refresh page hoặc patch state in-place
 
-### 2. F3.7 - Confirm enum order status với Dev C
-Hiện đang **giả định** các giá trị: `PAID`, `CANCELLED`, `EXPIRED`, `FAILED`, `PENDING`.
-**Action:** Đọc `OrderStatus` enum ở `E:/KLTN/back-end/smart-learnly-backend/src/main/java/com/smartlearnly/backend/commerce/entity/` và update `TERMINAL_STATUSES` + `resolveOutcome()` trong `PaymentResultPage.jsx` nếu khác.
+### 2. F3.7 - Wire từ checkout
+Hiện `/payment-result` đứng độc lập và nhận `orderId` từ query string. Khi Dev F xong trang Checkout (F3.2), cần redirect sang `/payment-result?orderId={orderId}` sau khi tạo order nếu dùng result page canonical của Dev E.
 
-### 3. F3.7 - Wire từ checkout
-Hiện `/payment-result` đứng độc lập. Khi Dev F xong trang Checkout (F3.2), cần redirect sang `/payment-result?orderId={orderId}` sau khi tạo order.
-
-### 4. Trang `/my-courses`
-Đang là `PlaceholderPage`. `FreeEnrollButton` đang redirect tới đó - sẽ thấy placeholder cho tới khi Dev D làm xong (F4.1 ở Sprint 4 mới làm trang này).
+### 3. Trang `/learning/courses`
+`FreeEnrollButton` đã redirect về `/learning/courses`, alias `/my-courses` vẫn còn để tương thích link cũ.
 
 ---
 
 ## Cách test thủ công khi BE up
 
-1. **F3.4:** vào `/courses/{slug}` của 1 course free (`price = 0` hoặc null). Click "Enroll for free". Kỳ vọng: toast success + redirect `/my-courses`.
-2. **F3.5:** vào `/my-enrollments`. Kỳ vọng: list enrollments của trainee, status badge đúng màu.
-3. **F3.6:** vào `/my-transactions`. Click "View invoice" ở transaction status SUCCESS. Modal hiện invoice + order items.
+1. **F3.4:** vào `/courses/{slug}` của 1 course free (`price = 0` hoặc null). Click "Enroll for free". Kỳ vọng: toast success + redirect `/learning/courses`.
+2. **F3.5:** vào `/learning/enrollments`. Kỳ vọng: list enrollments của trainee, status badge đúng màu.
+3. **F3.6:** vào `/learning/transactions`. Click "View invoice" ở transaction status SUCCESS. Modal hiện invoice + order items.
 4. **F3.7:** truy cập trực tiếp `/payment-result?orderId=<UUID>`. Kỳ vọng: hiện loading, polling, đổi sang success/failed khi BE update.
 
 ---
 
 ## Câu hỏi chưa giải quyết
 
-1. **`OrderResponse.status` enum chính xác là gì?** — `PAID` hay `SUCCESS`? `CANCELLED` hay `CANCELED`? Đọc entity ở BE để confirm.
-2. **`EnrollmentHistoryResponse` có nên trả `orderId`?** — Cần để FE wire feature cancel. Đề xuất với Dev A.
-3. **Free enrollment khi user chưa login** — hiện tại `FreeEnrollButton` redirect `/login` nhưng không lưu intent. Có cần lưu `redirect=/courses/{slug}` để sau login quay lại tự enroll không?
-4. **Polling timeout (3 phút)** đủ không? SePay timeout default thường 15 phút. Có thể cần tăng `MAX_POLL_ATTEMPTS` hoặc đổi sang trang "check later".
-5. **Format invoice in/download PDF** — F3.6 hiện chỉ render modal. Dev F task `Invoice PDF generation` (Sprint 3) có blob PDF endpoint không? Nếu có, cần thêm nút "Download PDF" ở `InvoiceModal`.
+1. **`EnrollmentHistoryResponse` có nên trả `orderId`?** — Cần để FE wire feature cancel từ enrollment history. Đề xuất với Dev A.
+2. **Free enrollment khi user chưa login** — hiện tại `FreeEnrollButton` redirect `/login` nhưng không lưu intent. Có cần lưu `redirect=/courses/{slug}` để sau login quay lại tự enroll không?
+3. **Polling timeout (3 phút)** đủ không? BE checkout expiration đang là `PT30M`; có thể cần tăng `MAX_POLL_ATTEMPTS` hoặc đổi sang trang "check later".
+4. **Format invoice in/download PDF** — F3.6 hiện chỉ render modal. Dev F task `Invoice PDF generation` (Sprint 3) có blob PDF endpoint không? Nếu có, cần thêm nút "Download PDF" ở `InvoiceModal`.

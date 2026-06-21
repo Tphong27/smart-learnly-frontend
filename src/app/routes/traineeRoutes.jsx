@@ -1,8 +1,13 @@
+/* eslint-disable react-refresh/only-export-components */
 import { Navigate } from "react-router-dom";
 import { RoleGuard } from "./RoleGuard";
 import { ROLES } from "@/shared/constants/roles";
 import { AppLayout } from "../layouts/AppLayout";
+import { CartPage } from "@/features/cart";
 import { MyCoursesPage } from "@/features/course";
+import { CheckoutPage, PaymentResultPage as CheckoutPaymentResultPage } from "@/features/checkout";
+import { MyEnrollmentsPage } from "@/features/enrollment";
+import { MyTransactionsPage, PaymentResultPage } from "@/features/payment";
 
 function PlaceholderPage({ title }) {
   return (
@@ -28,6 +33,8 @@ function getTraineeRoutes() {
           element: <AppLayout />,
           children: [
             { path: "courses", element: <MyCoursesPage /> },
+            { path: "enrollments", element: <MyEnrollmentsPage /> },
+            { path: "transactions", element: <MyTransactionsPage /> },
             {
               path: "classrooms",
               element: <PlaceholderPage title="Classrooms" />,
@@ -44,6 +51,23 @@ function getTraineeRoutes() {
               path: "ai-chatbot",
               element: <PlaceholderPage title="AI Chatbot" />,
             },
+          ],
+        },
+      ],
+    },
+    {
+      element: <RoleGuard allowedRoles={[ROLES.TRAINEE]} />,
+      children: [
+        {
+          element: <AppLayout />,
+          children: [
+            { path: "/my-courses", element: <Navigate to="/learning/courses" replace /> },
+            { path: "/my-enrollments", element: <Navigate to="/learning/enrollments" replace /> },
+            { path: "/my-transactions", element: <Navigate to="/learning/transactions" replace /> },
+            { path: "/cart", element: <CartPage /> },
+            { path: "/checkout/:orderId", element: <CheckoutPage /> },
+            { path: "/checkout/:orderId/result", element: <CheckoutPaymentResultPage /> },
+            { path: "/payment-result", element: <PaymentResultPage /> },
           ],
         },
       ],

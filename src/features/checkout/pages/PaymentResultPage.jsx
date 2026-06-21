@@ -14,7 +14,7 @@ function getResultContent(status) {
       message:
         'Your payment has been confirmed. Your course access will be available in My Courses.',
       actionLabel: 'Go to My Courses',
-      actionPath: '/my-courses',
+      actionPath: '/learning/courses',
     }
   }
 

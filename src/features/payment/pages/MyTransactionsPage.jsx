@@ -39,9 +39,6 @@ function InvoiceModal({ open, transactionId, onClose }) {
 
   useEffect(() => {
     if (!open || !transactionId) {
-      setInvoice(null)
-      setOrder(null)
-      setError(null)
       return undefined
     }
     let cancelled = false
