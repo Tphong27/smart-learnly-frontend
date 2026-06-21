@@ -44,6 +44,12 @@ export function CourseDetailPage() {
   const [course, setCourse] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [isEnrolled, setIsEnrolled] = useState(false);
+
+  function hasAccessToken() {
+    const token = localStorage.getItem("accessToken");
+    return token && token !== "undefined" && token !== "null";
+  }
 
   const backTo = location.state?.from
     ? `${location.state.from}${location.state.fromHash || ""}`
@@ -53,22 +59,51 @@ export function CourseDetailPage() {
 
   useEffect(() => {
     let cancelled = false;
+
     async function load() {
       setLoading(true);
       setError(null);
+      setIsEnrolled(false);
+
       try {
         const data = await courseService.getPublicDetail(slug);
-        if (!cancelled) setCourse(data);
+
+        if (cancelled) return;
+
+        setCourse(data);
+
+        if (hasAccessToken()) {
+          try {
+            const enrolled = await courseService.isCourseEnrolled(
+              data?.id || data?.slug || slug,
+            );
+
+            if (!cancelled) {
+              setIsEnrolled(enrolled);
+            }
+          } catch {
+            if (!cancelled) {
+              setIsEnrolled(false);
+            }
+          }
+        }
       } catch (err) {
         if (cancelled) return;
+
         const message = err?.message || "Could not load this course.";
         setError(message);
         toast.error(message);
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
     }
-    if (slug) load();
+
+    if (slug) {
+      load();
+    }
+
     return () => {
       cancelled = true;
     };
@@ -106,11 +141,6 @@ export function CourseDetailPage() {
   const displayPrice = getDisplayPrice(course);
   const hasDiscount = hasValidDiscount(course);
   const discountPercent = getDiscountPercent(course);
-
-  function hasAccessToken() {
-    const token = localStorage.getItem("accessToken");
-    return token && token !== "undefined" && token !== "null";
-  }
 
   function isFreeCourse(courseData) {
     return courseData?.isFree === true || Number(courseData?.price || 0) <= 0;
@@ -310,38 +340,49 @@ export function CourseDetailPage() {
                 </div>
               )}
             </div>
-            <div className="course-detail__action-grid">
-              <button
-                type="button"
-                onClick={handleBuyNowClick}
-                disabled={
-                  addToCartLoading || buyNowLoading || isFreeCourse(course)
-                }
-                className="button button--primary course-detail__cta"
-              >
-                {buyNowLoading ? "Processing..." : "Buy Now"}
-              </button>
+            {!isEnrolled && (
+              <div className="course-detail__action-grid">
+                <button
+                  type="button"
+                  onClick={handleBuyNowClick}
+                  disabled={
+                    addToCartLoading || buyNowLoading || isFreeCourse(course)
+                  }
+                  className="button button--primary course-detail__cta"
+                >
+                  {buyNowLoading ? "Processing..." : "Buy Now"}
+                </button>
 
-              <Link
-                to={`/courses/${course.id || course.slug}/preview`}
-                className="button button--primary course-detail__cta"
-              >
-                Preview Lesson
-              </Link>
+                <Link
+                  to={`/courses/${course.id || course.slug}/preview`}
+                  className="button button--primary course-detail__cta"
+                >
+                  Preview Lesson
+                </Link>
 
-              <button
-                type="button"
-                onClick={handleAddToCartClick}
-                disabled={addToCartLoading || buyNowLoading}
-                className="button button--outline course-detail__cta course-detail__cta--full"
-              >
-                {addToCartLoading
-                  ? "Adding..."
-                  : isFreeCourse(course)
-                    ? "Enroll for free"
-                    : "Add to Cart"}
-              </button>
-            </div>
+                <button
+                  type="button"
+                  onClick={handleAddToCartClick}
+                  disabled={addToCartLoading || buyNowLoading}
+                  className="button button--outline course-detail__cta course-detail__cta--full"
+                >
+                  {addToCartLoading
+                    ? "Adding..."
+                    : isFreeCourse(course)
+                      ? "Enroll for free"
+                      : "Add to Cart"}
+                </button>
+              </div>
+            )}
+            {isEnrolled && (
+              <div className="course-detail__enrolled-box">
+                <CheckCircle2 size={18} />
+                <div>
+                  <strong>You are already enrolled in this course.</strong>
+                  <span>You can continue learning from My Courses.</span>
+                </div>
+              </div>
+            )}
 
             <ul className="course-detail__sidecard-list">
               <li>

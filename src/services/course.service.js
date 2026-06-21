@@ -184,4 +184,29 @@ export const courseService = {
     const response = await apiClient.get("/enrollments/my-courses");
     return normalizeList(response);
   },
+
+    async getMyEnrolledCourseIds() {
+    const courses = await this.getMyCourses();
+
+    return new Set(
+      courses
+        .map((course) => course.id)
+        .filter(Boolean),
+    );
+  },
+
+  async isCourseEnrolled(courseIdOrSlug) {
+    if (!courseIdOrSlug) {
+      return false;
+    }
+
+    const courses = await this.getMyCourses();
+
+    return courses.some((course) => {
+      return (
+        course.id === courseIdOrSlug ||
+        course.slug === courseIdOrSlug
+      );
+    });
+  },
 };
