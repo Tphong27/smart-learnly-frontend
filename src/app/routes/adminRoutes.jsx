@@ -1,6 +1,6 @@
 import { RoleGuard } from "./RoleGuard";
 import { ROLES } from "@/shared/constants/roles";
-import { AdminLayout } from "@/app/layouts/AdminLayout";
+import { AppLayout } from "@/app/layouts/AppLayout";
 import {
   AdminCategoriesPage,
   AdminCoursesPage,
@@ -34,7 +34,7 @@ function getAdminRoutes() {
   return [
     {
       path: "/admin",
-      element: <AdminLayout />,
+      element: <AppLayout />,
       children: [
         {
           // 🟩 ĐÃ SỬA: Mở khóa Frontend cho TMO và SME vào quản lý khóa học

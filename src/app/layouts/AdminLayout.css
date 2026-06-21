@@ -22,9 +22,7 @@
 }
 
 /* 📌 SIDEBAR CỐ ĐỊNH: Luôn chiếm đúng 260px bên trái màn hình */
-.app-sidebar,
-[class*="sidebar-wrapper"],
-aside {
+.app-sidebar {
   width: 260px !important;
   min-width: 260px !important;
   max-width: 260px !important;
@@ -51,11 +49,7 @@ aside {
 }
 
 /* 📌 THANH HEADER: Khóa cứng độ cao 70px cố định trên đỉnh bên phải */
-.app-admin-header-zone,
-.app-admin-header-zone > header,
-.app-main-wrapper > header,
-.app-main-wrapper .header,
-header {
+.app-admin-header-zone > .app-header {
   height: 70px !important;
   min-height: 70px !important;
   max-height: 70px !important;

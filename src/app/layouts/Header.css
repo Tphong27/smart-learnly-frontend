@@ -1,28 +1,19 @@
 /* ==========================================================================
-   Thanh Header Tổng Thể Cố Định - Cơ Chế Cưỡng Chế Tuyệt Đối Cấp Cao
+   Header component style for AppLayout
    ========================================================================== */
 .app-header {
-  background: #ffffff !important;
-  border-bottom: 1px solid #f1f5f9 !important;
-
-  /* 📌 KHÓA CHẶT VỊ TRÍ TRÊN ĐỈNH BÊN PHẢI */
-  position: fixed !important;
-  top: 0 !important;
-  right: 0 !important;
-  left: 260px !important; /* Đẩy lùi sang phải để nhường không gian cố định cho Sidebar */
-  width: calc(
-    100vw - 260px
-  ) !important; /* Chiếm trọn không gian chiều ngang còn lại */
-  height: 70px !important;
-
-  /* 🔥 ÉP NỔI TRÊN CÙNG HỆ THỐNG: Dùng giá trị Z-Index tối đa mà trình duyệt hỗ trợ */
-  z-index: 2147483647 !important;
-
-  display: flex !important;
-  align-items: center !important;
-  padding: 0 24px !important;
-  box-sizing: border-box !important;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04) !important;
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  height: 70px;
+  padding: 0 24px;
+  border-bottom: 1px solid #e7ecf4;
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(14px);
+  box-sizing: border-box;
 }
 
 .app-header__inner {
@@ -30,13 +21,39 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 16px;
 }
 
-.app-header__left,
+.app-header__left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  flex: 1;
+}
+
 .app-header__actions {
   display: flex;
   align-items: center;
-  gap: 16px;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.app-header__menu-button {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: 1px solid #dfe6f1;
+  border-radius: 10px;
+  background: white;
+  color: #526078;
+  cursor: pointer;
+}
+
+.app-header__menu-button:hover {
+  background: #f7f9fc;
 }
 
 /* --- Thanh Tìm Kiếm Hiện Đại --- */
@@ -47,8 +64,8 @@
   border: 1px solid #e2e8f0;
   border-radius: 10px;
   padding: 0 14px;
-  width: 260px;
-  height: 38px;
+  width: min(360px, 100%);
+  height: 42px;
   transition: all 0.2s ease;
 }
 
@@ -198,8 +215,7 @@
     0 8px 10px -6px rgba(0, 0, 0, 0.05);
   padding: 6px;
   animation: fadeInHeaderDropdown 0.15s ease-out;
-  /* Giữ Dropdown menu của User luôn nổi trên bề mặt Header */
-  z-index: 2147483647 !important;
+  z-index: 60;
 }
 
 .app-header__dropdown-header {
@@ -268,5 +284,27 @@
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+@media (max-width: 1024px) {
+  .app-header__menu-button {
+    display: inline-grid;
+  }
+}
+
+@media (max-width: 700px) {
+  .app-header {
+    padding: 0 16px;
+  }
+
+  .app-header__search-container {
+    display: none;
+  }
+
+  .app-header__user-copy,
+  .app-header__chevron,
+  .app-header__divider {
+    display: none;
   }
 }

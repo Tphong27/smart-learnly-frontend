@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Bell, LogOut, Search, User, ChevronDown } from "lucide-react";
+import { Bell, LogOut, Search, User, ChevronDown, Menu } from "lucide-react";
 import "./Header.css";
 
 function getInitials(name) {
@@ -13,7 +13,7 @@ function getInitials(name) {
     .toUpperCase();
 }
 
-export function Header({ user, onLogout }) {
+export function Header({ user, onLogout, onToggleSidebar }) {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const menuRef = useRef(null);
@@ -44,6 +44,15 @@ export function Header({ user, onLogout }) {
       <div className="app-header__inner">
         {/* Thanh tìm kiếm bên trái */}
         <div className="app-header__left">
+          <button
+            type="button"
+            className="app-header__menu-button"
+            onClick={onToggleSidebar}
+            aria-label="Open sidebar"
+          >
+            <Menu size={18} />
+          </button>
+
           <div className="app-header__search-container">
             <Search size={16} className="app-header__search-icon" />
             <input
