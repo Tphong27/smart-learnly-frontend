@@ -2,21 +2,16 @@ import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { courseService } from "../../../services/course.service";
 import { useToast } from "../../../shared/components/ui/Toast/useToast";
-import { ArrowLeft, Video, FileText, HelpCircle, X, Plus } from "lucide-react";
 import "./AdminCourseContent.css";
 
 // ==========================================
-// COMPONENT CON: XỬ LÝ HIỂN THỊ VÀ TỰ ĐỘNG GỌI API LẤY BÀI HỌC CHO TỪNG CHƯƠNG
+// SUB-COMPONENT: SECTION
 // ==========================================
 function SectionItem({
   section,
   index,
-  handleSectionDragStart,
-  handleSectionDragEnd,
-  handleSectionDrop,
   setTargetSectionId,
   setIsLessonModalOpen,
-  getLessonIcon,
   courseId,
   navigate,
 }) {
@@ -29,184 +24,138 @@ function SectionItem({
       courseService
         .getLessonsBySection(section.id)
         .then((data) => {
-          if (data && Array.isArray(data)) {
-            setLessons(data);
-          } else {
-            setLessons([]);
-          }
+          if (data && Array.isArray(data)) setLessons(data);
+          else setLessons([]);
         })
-        .catch((err) => {
-          console.error("Lỗi lấy bài học của chương học " + section.id, err);
-        })
+        .catch((err) =>
+          console.error("Error fetching lessons: " + section.id, err),
+        )
         .finally(() => setLoadingLessons(false));
     }
   }, [section?.id]);
 
+  const renderLessonIcon = (type) => {
+    const t = String(type).toLowerCase();
+    if (t === "video") {
+      return (
+        <div className="lesson-icon video">
+          <span className="material-symbols-outlined">play_circle</span>
+        </div>
+      );
+    }
+    if (["document", "text", "pdf"].includes(t)) {
+      return (
+        <div className="lesson-icon doc">
+          <span className="material-symbols-outlined">description</span>
+        </div>
+      );
+    }
+    return (
+      <div className="lesson-icon quiz">
+        <span className="material-symbols-outlined">quiz</span>
+      </div>
+    );
+  };
+
   return (
-    <div
-      draggable
-      onDragStart={(e) => handleSectionDragStart(e, index)}
-      onDragEnd={handleSectionDragEnd}
-      onDragOver={(e) => e.preventDefault()}
-      onDrop={(e) => handleSectionDrop(e, index)}
-      style={{
-        border: "1px solid #cbd5e1",
-        background: "#ffffff",
-        borderRadius: "8px",
-        overflow: "hidden",
-        boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
-      }}
-    >
-      {/* Header của Chương */}
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          padding: "14px 16px",
-          background: "#f1f5f9",
-          cursor: "grab",
-          borderBottom: "1px solid #e2e8f0",
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-          <span
-            style={{ color: "#94a3b8", fontSize: "18px", userSelect: "none" }}
-          >
-            ⣿
+    <div className="section-item">
+      <div className="section-header">
+        <div className="section-title-wrapper">
+          <span className="material-symbols-outlined drag-handle">
+            drag_indicator
           </span>
-          <h3
-            style={{
-              margin: 0,
-              fontSize: "15px",
-              fontWeight: "600",
-              color: "#334155",
-            }}
-          >
-            Chương {index + 1}: {section?.title}
+          <h3>
+            Section {index + 1}: {section?.title}
           </h3>
         </div>
-        <button
-          onClick={() => {
-            setTargetSectionId(section.id);
-            setIsLessonModalOpen(true);
-          }}
-          style={{
-            background: "#ffffff",
-            border: "1px solid #cbd5e1",
-            color: "#2563eb",
-            padding: "6px 12px",
-            borderRadius: "4px",
-            cursor: "pointer",
-            fontSize: "13px",
-            fontWeight: "500",
-          }}
-        >
-          + Thêm Bài học
-        </button>
+
+        <div className="section-actions">
+          <button className="icon-btn" title="Edit section">
+            <span className="material-symbols-outlined">edit</span>
+          </button>
+          <button className="icon-btn delete" title="Delete section">
+            <span className="material-symbols-outlined">delete</span>
+          </button>
+          <button
+            onClick={() => {
+              setTargetSectionId(section.id);
+              setIsLessonModalOpen(true);
+            }}
+            className="btn-outline"
+          >
+            + Add Lesson
+          </button>
+        </div>
       </div>
 
-      {/* Danh sách Bài học của riêng chương này */}
-      <ul style={{ listStyle: "none", padding: "0", margin: "0" }}>
+      <div className="lessons-container">
         {loadingLessons ? (
-          <li
-            style={{ padding: "12px 40px", color: "#94a3b8", fontSize: "13px" }}
+          <div
+            style={{
+              padding: "16px 48px",
+              color: "#737686",
+              fontStyle: "italic",
+              fontSize: "14px",
+            }}
           >
-            Đang tải danh sách bài học...
-          </li>
+            Loading lessons...
+          </div>
         ) : lessons.length > 0 ? (
           lessons.map((lesson, lIndex) => (
-            <li
-              key={lesson?.id || lIndex}
-              style={{
-                padding: "12px 16px 12px 40px",
-                borderBottom: "1px solid #f1f5f9",
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                background: "#ffffff",
-              }}
-            >
-              <div
-                style={{ display: "flex", alignItems: "center", gap: "12px" }}
-              >
-                <span
-                  style={{
-                    color: "#64748b",
-                    fontSize: "13px",
-                    fontWeight: "500",
-                  }}
-                >
-                  {index + 1}.{lIndex + 1}
+            <div key={lesson?.id || lIndex} className="lesson-item">
+              <div className="lesson-info">
+                <span className="material-symbols-outlined drag-handle">
+                  drag_indicator
                 </span>
-                <div
-                  style={{ display: "flex", alignItems: "center", gap: "6px" }}
-                >
-                  {getLessonIcon(lesson?.lessonType)}
-                  <span
-                    style={{
-                      fontWeight: "500",
-                      color: "#475569",
-                      fontSize: "14px",
-                    }}
-                  >
-                    {lesson?.title}
-                  </span>
-                </div>
-                <span
-                  style={{
-                    fontSize: "11px",
-                    padding: "2px 8px",
-                    background: "#f1f5f9",
-                    borderRadius: "12px",
-                    color: "#64748b",
-                    fontWeight: "500",
-                  }}
-                >
+                {renderLessonIcon(lesson?.lessonType)}
+                <span className="lesson-title">
+                  {index + 1}.{lIndex + 1}. {lesson?.title}
+                </span>
+                <span className="badge type">
                   {lesson?.lessonType || "VIDEO"}
                 </span>
+                {lesson?.isPreview && (
+                  <span className="badge preview">Preview</span>
+                )}
               </div>
 
-              <button
-                onClick={() => {
-                  if (lesson?.id) {
-                    navigate(`/admin/courses/${courseId}/lessons/${lesson.id}`);
+              <div className="lesson-actions">
+                <span className="lesson-duration">
+                  {lesson?.durationSeconds
+                    ? `${Math.floor(lesson.durationSeconds / 60)} mins`
+                    : "--"}
+                </span>
+                <button
+                  onClick={() =>
+                    lesson?.id &&
+                    navigate(`/admin/courses/${courseId}/lessons/${lesson.id}`)
                   }
-                }}
-                style={{
-                  color: "#2563eb",
-                  background: "none",
-                  border: "none",
-                  cursor: "pointer",
-                  fontSize: "13px",
-                  fontWeight: "500",
-                }}
-              >
-                Sửa nội dung
-              </button>
-            </li>
+                  className="btn-outline"
+                >
+                  Edit content
+                </button>
+              </div>
+            </div>
           ))
         ) : (
-          <li
+          <div
             style={{
               padding: "20px",
               textAlign: "center",
-              color: "#94a3b8",
-              fontStyle: "italic",
-              fontSize: "13px",
-              background: "#fafafa",
+              color: "#737686",
+              fontSize: "14px",
             }}
           >
-            Chương này chưa có bài học nào.
-          </li>
+            This section has no lessons yet.
+          </div>
         )}
-      </ul>
+      </div>
     </div>
   );
 }
 
 // ==========================================
-// COMPONENT CHÍNH
+// MAIN COMPONENT
 // ==========================================
 export default function AdminCourseContentPage() {
   const params = useParams();
@@ -224,35 +173,25 @@ export default function AdminCourseContentPage() {
   const [targetSectionId, setTargetSectionId] = useState(null);
   const [newLessonData, setNewLessonData] = useState({
     title: "",
-    lessonType: "VIDEO",
+    lessonType: "video",
     isPreview: false,
   });
 
-  const [draggedSectionIndex, setDraggedSectionIndex] = useState(null);
-
   useEffect(() => {
-    if (courseId) {
-      fetchContent();
-    } else {
-      setLoading(false);
-    }
+    if (courseId) fetchContent();
+    else setLoading(false);
   }, [courseId]);
 
   const fetchContent = async () => {
     setLoading(true);
     try {
       const data = await courseService.getCourseContent(courseId);
-      if (data && Array.isArray(data)) {
-        setSections(data);
-      } else {
-        setSections([]);
-      }
+      setSections(Array.isArray(data) ? data : []);
     } catch (error) {
-      const errorMsg =
-        error.response?.data?.message ||
-        error.message ||
-        "Lỗi khi tải nội dung khóa học";
-      showToast(errorMsg, "error");
+      showToast(
+        error.response?.data?.message || "Error loading content",
+        "error",
+      );
     } finally {
       setLoading(false);
     }
@@ -261,349 +200,297 @@ export default function AdminCourseContentPage() {
   const handleCreateSection = async (e) => {
     e.preventDefault();
     if (!newSectionTitle.trim()) return;
-
     try {
       await courseService.createSection(courseId, {
         title: newSectionTitle,
         isActive: true,
       });
-
-      showToast("Đã thêm chương học mới thành công!", "success");
+      showToast("Section added successfully!", "success");
       setNewSectionTitle("");
       setIsSectionModalOpen(false);
       fetchContent();
     } catch (error) {
-      const errorMsg =
-        error.response?.data?.message ||
-        error.message ||
-        "Lỗi khi tạo chương học";
-      showToast(errorMsg, "error");
+      showToast("Error creating section", "error");
     }
   };
 
   const handleCreateLesson = async (e) => {
     e.preventDefault();
     if (!newLessonData.title.trim() || !targetSectionId) return;
-
     try {
       let mappedType = String(newLessonData.lessonType).toLowerCase();
-      if (mappedType === "document") {
-        mappedType = "pdf";
-      } else if (mappedType === "quiz") {
-        mappedType = "rich_text";
-      }
+      if (mappedType === "document") mappedType = "pdf";
+      else if (mappedType === "quiz") mappedType = "rich_text";
 
-      const payload = {
+      await courseService.createLesson(targetSectionId, {
         title: newLessonData.title.trim(),
         lessonType: mappedType,
         isPreview: !!newLessonData.isPreview,
         status: "draft",
         durationSeconds: 0,
         sortOrder: 0,
-      };
+      });
 
-      await courseService.createLesson(targetSectionId, payload);
-
-      showToast("Đã thêm bài học mới thành công!", "success");
-      setNewLessonData({ title: "", lessonType: "VIDEO", isPreview: false });
+      showToast("Lesson added successfully!", "success");
+      setNewLessonData({ title: "", lessonType: "video", isPreview: false });
       setIsLessonModalOpen(false);
       setTargetSectionId(null);
       fetchContent();
     } catch (error) {
-      const errorMsg =
-        error.response?.data?.message || error.message || "Lỗi khi tạo bài học";
-      showToast(errorMsg, "error");
+      showToast("Error creating lesson", "error");
     }
   };
 
-  const handleSectionDragStart = (e, index) => {
-    setDraggedSectionIndex(index);
-    e.dataTransfer.effectAllowed = "move";
-  };
-
-  const handleSectionDragEnd = () => {
-    setDraggedSectionIndex(null);
-  };
-
-  const handleSectionDrop = async (e, targetIndex) => {
-    e.preventDefault();
-    if (draggedSectionIndex === null || draggedSectionIndex === targetIndex)
-      return;
-
-    const newSections = [...sections];
-    const itemToMove = newSections.splice(draggedSectionIndex, 1)[0];
-    newSections.splice(targetIndex, 0, itemToMove);
-
-    setSections(newSections);
-
-    try {
-      const orderedIds = newSections.map((s) => s.id);
-      await courseService.reorderSections(courseId, orderedIds);
-      showToast("Đã cập nhật vị trí chương!", "success");
-    } catch (error) {
-      showToast("Lỗi khi lưu vị trí chương", "error");
-      fetchContent();
-    }
-  };
-
-  const getLessonIcon = (type) => {
-    const formattedType = String(type).toLowerCase();
-    if (formattedType === "video")
-      return <Video size={16} color="#1890ff" style={{ marginRight: "4px" }} />;
-    if (
-      formattedType === "document" ||
-      formattedType === "text" ||
-      formattedType === "pdf" ||
-      formattedType === "rich_text"
-    )
-      return (
-        <FileText size={16} color="#52c41a" style={{ marginRight: "4px" }} />
-      );
+  if (loading)
     return (
-      <HelpCircle size={16} color="#faad14" style={{ marginRight: "4px" }} />
-    );
-  };
-
-  if (loading) {
-    return (
-      <div className="admin-loading-wrapper">
-        <div className="modern-spinner">Đang tải...</div>
+      <div style={{ padding: "50px", textAlign: "center" }}>
+        Loading data...
       </div>
     );
-  }
 
   return (
-    <div className="app-page-inner">
-      <div
-        className="admin-container"
-        style={{ width: "100%", maxWidth: "900px", margin: "0 auto" }}
-      >
-        {/* Header điều hướng */}
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            marginBottom: "24px",
-          }}
-        >
-          <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-            <button
-              className="back-btn"
-              onClick={() => navigate("/admin/courses")}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "6px",
-                background: "none",
-                border: "none",
-                color: "#64748b",
-                cursor: "pointer",
-                padding: 0,
-              }}
-            >
-              <ArrowLeft size={16} /> Quay lại danh sách
-            </button>
-            <h2
-              style={{
-                fontSize: "22px",
-                fontWeight: "700",
-                margin: 0,
-                color: "#1e293b",
-              }}
-            >
-              Quản lý Cấu trúc Khóa học
-            </h2>
-          </div>
+    <div className="admin-course-page">
+      <div className="page-container">
+        <div className="page-header">
           <button
-            onClick={() => setIsSectionModalOpen(true)}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "6px",
-              padding: "10px 16px",
-              background: "#2563eb",
-              color: "white",
-              border: "none",
-              borderRadius: "6px",
-              cursor: "pointer",
-              fontWeight: "600",
-              fontSize: "14px",
-            }}
+            onClick={() => navigate("/admin/courses")}
+            className="back-btn"
           >
-            <Plus size={16} /> Thêm Chương Mới
-          </button>
-        </div>
-
-        {/* Danh sách phân tầng chương học */}
-        <div
-          className="sections-list"
-          style={{ display: "flex", flexDirection: "column", gap: "16px" }}
-        >
-          {Array.isArray(sections) && sections.length > 0 ? (
-            sections.map((section, index) => (
-              <SectionItem
-                key={section?.id || index}
-                section={section}
-                index={index}
-                handleSectionDragStart={handleSectionDragStart}
-                handleSectionDragEnd={handleSectionDragEnd}
-                handleSectionDrop={handleSectionDrop}
-                setTargetSectionId={setTargetSectionId}
-                setIsLessonModalOpen={setIsLessonModalOpen}
-                getLessonIcon={getLessonIcon}
-                courseId={courseId}
-                navigate={navigate}
-              />
-            ))
-          ) : (
-            <div
-              style={{ textAlign: "center", color: "#64748b", padding: "40px" }}
+            <span
+              className="material-symbols-outlined"
+              style={{ fontSize: "18px" }}
             >
-              Khóa học này hiện tại chưa có cấu trúc nội dung. Hãy tạo chương
-              học đầu tiên!
+              arrow_back
+            </span>
+            Back to list
+          </button>
+          <div className="header-title-wrapper">
+            <div>
+              <h2>Course Structure</h2>
+              <p>Organize and manage your course content</p>
             </div>
-          )}
+            <button
+              onClick={() => setIsSectionModalOpen(true)}
+              className="btn-primary"
+            >
+              <span className="material-symbols-outlined">add</span> Add New
+              Section
+            </button>
+          </div>
         </div>
 
-        {/* MODAL THÊM CHƯƠNG MỚI */}
-        {isSectionModalOpen && (
-          <div className="modal-overlay">
-            <div className="modal-content">
-              <div className="modal-header">
-                <h3>Thêm Chương Học Mới</h3>
+        <div className="workspace-card">
+          <div className="sections-list">
+            {sections.length > 0 ? (
+              sections.map((section, index) => (
+                <SectionItem
+                  key={section?.id || index}
+                  section={section}
+                  index={index}
+                  setTargetSectionId={setTargetSectionId}
+                  setIsLessonModalOpen={setIsLessonModalOpen}
+                  courseId={courseId}
+                  navigate={navigate}
+                />
+              ))
+            ) : (
+              <div
+                style={{
+                  textAlign: "center",
+                  color: "#737686",
+                  padding: "40px",
+                }}
+              >
+                The course has no content structure yet. Let's create the first
+                section!
+              </div>
+            )}
+          </div>
+
+          <div
+            onClick={() => setIsSectionModalOpen(true)}
+            className="empty-add-area"
+          >
+            <div className="icon-circle">
+              <span className="material-symbols-outlined">add</span>
+            </div>
+            <h4 style={{ margin: "0 0 8px 0", fontSize: "16px" }}>
+              Add a new section
+            </h4>
+            <p style={{ margin: 0, color: "#434655", fontSize: "14px" }}>
+              Build a logical structure to help students follow along easily.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* SECTION MODAL */}
+      {isSectionModalOpen && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <div className="modal-header">
+              <h3>Add New Section</h3>
+              <button
+                className="icon-btn"
+                onClick={() => setIsSectionModalOpen(false)}
+              >
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+            <form onSubmit={handleCreateSection}>
+              <div className="modal-body">
+                <div className="form-group">
+                  <label>
+                    Section Name <span style={{ color: "#ba1a1a" }}>*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={newSectionTitle}
+                    onChange={(e) => setNewSectionTitle(e.target.value)}
+                    placeholder="e.g., Section 1: Environment Setup..."
+                  />
+                </div>
+              </div>
+              <div className="modal-footer">
                 <button
-                  className="close-modal-btn"
+                  type="button"
                   onClick={() => setIsSectionModalOpen(false)}
+                  className="btn-outline"
                 >
-                  <X size={18} />
+                  Cancel
+                </button>
+                <button type="submit" className="btn-primary">
+                  Save Section
                 </button>
               </div>
-              <form onSubmit={handleCreateSection}>
-                <div className="modal-body">
-                  <div className="form-group-modal">
-                    <label>Tên chương học *</label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="Ví dụ: Giới thiệu cấu trúc ứng dụng..."
-                      value={newSectionTitle}
-                      onChange={(e) => setNewSectionTitle(e.target.value)}
-                    />
-                  </div>
-                </div>
-                <div className="modal-footer">
-                  <button
-                    type="button"
-                    className="btn-modal-secondary"
-                    onClick={() => setIsSectionModalOpen(false)}
-                  >
-                    Hủy bỏ
-                  </button>
-                  <button type="submit" className="btn-modal-primary">
-                    Tạo chương
-                  </button>
-                </div>
-              </form>
-            </div>
+            </form>
           </div>
-        )}
+        </div>
+      )}
 
-        {/* MODAL THÊM BÀI HỌC */}
-        {isLessonModalOpen && (
-          <div className="modal-overlay">
-            <div className="modal-content">
-              <div className="modal-header">
-                <h3>Thêm Bài Học Mới</h3>
+      {/* LESSON MODAL */}
+      {isLessonModalOpen && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <div className="modal-header">
+              <h3>Add New Lesson</h3>
+              <button
+                className="icon-btn"
+                onClick={() => {
+                  setIsLessonModalOpen(false);
+                  setTargetSectionId(null);
+                }}
+              >
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+            <form onSubmit={handleCreateLesson}>
+              <div className="modal-body">
+                <div className="form-group">
+                  <label>
+                    Lesson Title <span style={{ color: "#ba1a1a" }}>*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={newLessonData.title}
+                    onChange={(e) =>
+                      setNewLessonData({
+                        ...newLessonData,
+                        title: e.target.value,
+                      })
+                    }
+                    placeholder="e.g., 1.1. ReactJS Overview"
+                  />
+                </div>
+                <div className="form-group">
+                  <label>
+                    Lesson Type <span style={{ color: "#ba1a1a" }}>*</span>
+                  </label>
+                  <select
+                    value={newLessonData.lessonType}
+                    onChange={(e) =>
+                      setNewLessonData({
+                        ...newLessonData,
+                        lessonType: e.target.value,
+                      })
+                    }
+                  >
+                    <option value="video">Video Lecture</option>
+                    <option value="document">
+                      Reading Material (Text/PDF)
+                    </option>
+                    <option value="quiz">Quiz</option>
+                  </select>
+                </div>
+                <div
+                  style={{
+                    display: "flex",
+                    gap: "12px",
+                    background: "#f3f3fe",
+                    padding: "16px",
+                    borderRadius: "8px",
+                    border: "1px solid #c3c6d7",
+                  }}
+                >
+                  <input
+                    id="previewMode"
+                    type="checkbox"
+                    checked={newLessonData.isPreview}
+                    onChange={(e) =>
+                      setNewLessonData({
+                        ...newLessonData,
+                        isPreview: e.target.checked,
+                      })
+                    }
+                    style={{ width: "16px", height: "16px", marginTop: "2px" }}
+                  />
+                  <label
+                    htmlFor="previewMode"
+                    style={{ cursor: "pointer", margin: 0 }}
+                  >
+                    <div
+                      style={{
+                        fontWeight: 600,
+                        fontSize: "14px",
+                        color: "#191b23",
+                      }}
+                    >
+                      Allow preview
+                    </div>
+                    <div
+                      style={{
+                        fontSize: "12px",
+                        color: "#434655",
+                        marginTop: "4px",
+                      }}
+                    >
+                      Students who haven't purchased the course can still view
+                      this.
+                    </div>
+                  </label>
+                </div>
+              </div>
+              <div className="modal-footer">
                 <button
-                  className="close-modal-btn"
+                  type="button"
                   onClick={() => {
                     setIsLessonModalOpen(false);
                     setTargetSectionId(null);
                   }}
+                  className="btn-outline"
                 >
-                  <X size={18} />
+                  Cancel
+                </button>
+                <button type="submit" className="btn-primary">
+                  Create Lesson
                 </button>
               </div>
-              <form onSubmit={handleCreateLesson}>
-                <div className="modal-body">
-                  <div className="form-group-modal">
-                    <label>Tiêu đề bài học *</label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="Ví dụ: Cài đặt môi trường NodeJS..."
-                      value={newLessonData.title}
-                      onChange={(e) =>
-                        setNewLessonData({
-                          ...newLessonData,
-                          title: e.target.value,
-                        })
-                      }
-                    />
-                  </div>
-
-                  <div className="form-group-modal">
-                    <label>Loại bài học</label>
-                    <select
-                      value={newLessonData.lessonType}
-                      onChange={(e) =>
-                        setNewLessonData({
-                          ...newLessonData,
-                          lessonType: e.target.value,
-                        })
-                      }
-                    >
-                      <option value="VIDEO">Video Bài Giảng</option>
-                      <option value="DOCUMENT">Tài Liệu Đọc (Text/PDF)</option>
-                      <option value="QUIZ">Bài Kiểm Tra (Quiz)</option>
-                    </select>
-                  </div>
-
-                  <div className="form-group-modal checkbox-group">
-                    <label
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "8px",
-                        cursor: "pointer",
-                        fontWeight: "normal",
-                      }}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={newLessonData.isPreview}
-                        onChange={(e) =>
-                          setNewLessonData({
-                            ...newLessonData,
-                            isPreview: e.target.checked,
-                          })
-                        }
-                      />
-                      Cho phép học thử miễn phí (Preview)
-                    </label>
-                  </div>
-                </div>
-                <div className="modal-footer">
-                  <button
-                    type="button"
-                    className="btn-modal-secondary"
-                    onClick={() => {
-                      setIsLessonModalOpen(false);
-                      setTargetSectionId(null);
-                    }}
-                  >
-                    Hủy bỏ
-                  </button>
-                  <button type="submit" className="btn-modal-primary">
-                    Tạo bài học
-                  </button>
-                </div>
-              </form>
-            </div>
+            </form>
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }
