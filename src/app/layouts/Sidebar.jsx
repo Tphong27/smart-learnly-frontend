@@ -12,8 +12,9 @@ import {
   Users,
   X,
   Zap,
-  Receipt, // Thêm icon cho Hóa đơn
-  CreditCard, // Thêm icon cho Giao dịch
+  Receipt,
+  CreditCard,
+  ShoppingCart,
 } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import { ROLES } from "@/shared/constants/roles";
@@ -95,6 +96,12 @@ const navItems = [
     label: "My Courses",
     path: "/learning/courses",
     icon: GraduationCap,
+    roles: [ROLES.TRAINEE],
+  },
+  {
+    label: "Cart",
+    path: "/cart",
+    icon: ShoppingCart,
     roles: [ROLES.TRAINEE],
   },
   {

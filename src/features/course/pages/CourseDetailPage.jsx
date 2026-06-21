@@ -121,8 +121,8 @@ export function CourseDetailPage() {
     return (
       <div className="course-detail">
         <div className="admin-error">{error || "Course not found."}</div>
-        <Link to="/" className="course-detail__back-link">
-          <ArrowLeft size={14} /> Back to home
+        <Link to={backTo} className="course-detail__back-link">
+          <ArrowLeft size={14} /> {backLabel}
         </Link>
       </div>
     );
@@ -220,10 +220,18 @@ export function CourseDetailPage() {
     setBuyNowLoading(true);
 
     try {
-      await cartService.addItem({
-        courseId,
-        classId: null,
-      });
+      try {
+        await cartService.addItem({
+          courseId,
+          classId: null,
+        });
+      } catch (err) {
+        const message = String(err?.message || "").toLowerCase();
+
+        if (!message.includes("already exists")) {
+          throw err;
+        }
+      }
 
       cartPriceCacheService.saveCourse(course);
 
