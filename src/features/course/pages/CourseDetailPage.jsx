@@ -106,6 +106,7 @@ export function CourseDetailPage() {
   const displayPrice = getDisplayPrice(course);
   const hasDiscount = hasValidDiscount(course);
   const discountPercent = getDiscountPercent(course);
+
   function hasAccessToken() {
     const token = localStorage.getItem("accessToken");
     return token && token !== "undefined" && token !== "null";
@@ -266,7 +267,7 @@ export function CourseDetailPage() {
             </span>
             {previewLessons.length > 0 && (
               <span className="course-detail__meta-item">
-                <Sparkles size={14} /> {previewLessons.length} preview available
+                <Sparkles size={14} /> {previewLessons.length} Preview available
               </span>
             )}
           </div>

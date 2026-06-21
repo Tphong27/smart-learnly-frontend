@@ -1,61 +1,121 @@
-import { useEffect, useState } from "react";
-import { BookOpen, GraduationCap } from "lucide-react";
-import { CourseCard } from "../components/CourseCard";
+import { useEffect, useState, useMemo } from "react";
+import { BookOpen, GraduationCap, RotateCcw } from "lucide-react";
+import { EnrolledCourseCard } from "../components/EnrolledCourseCard";
+import { CourseFilters } from "../components/CourseFilters";
+import { CourseListToolbar } from "../components/CourseListToolbar";
 import { CourseListPage } from "./CourseListPage";
 import { courseService } from "@/services";
 import "../course.css";
 
 const TAB_ENROLLED = "enrolled";
 const TAB_CATALOG = "catalog";
-const ENABLE_MY_COURSES_API = import.meta.env.VITE_ENABLE_MY_COURSES_API === "true";
 
 export function MyCoursesPage() {
   const [activeTab, setActiveTab] = useState(TAB_ENROLLED);
 
+  const [enrolledKeyword, setEnrolledKeyword] = useState("");
+  const [enrolledCategorySlug, setEnrolledCategorySlug] = useState("");
+  const [enrolledViewMode, setEnrolledViewMode] = useState(
+    localStorage.getItem("enrolledCourseViewMode") || "grid",
+  );
   const [enrolledCourses, setEnrolledCourses] = useState([]);
-  const [loadingEnrolled, setLoadingEnrolled] = useState(false);
+  const [reloadEnrolledKey, setReloadEnrolledKey] = useState(0);
+  const [loadingEnrolled, setLoadingEnrolled] = useState(true);
   const [enrolledError, setEnrolledError] = useState("");
+
+  function normalizeEnrolledCourse(course) {
+    return {
+      ...course,
+      avatarUrl: course.avatarUrl,
+      categoryName: course.category?.name,
+    };
+  }
+
+  function handleEnrolledViewModeChange(mode) {
+    setEnrolledViewMode(mode);
+    localStorage.setItem("enrolledCourseViewMode", mode);
+  }
+
+  function refreshEnrolledCourses() {
+    setLoadingEnrolled(true);
+    setEnrolledError("");
+    setReloadEnrolledKey((currentValue) => currentValue + 1);
+  }
 
   useEffect(() => {
     let mounted = true;
 
-    async function loadEnrolledCourses() {
-      if (!ENABLE_MY_COURSES_API) {
-        setEnrolledCourses([]);
+    courseService
+      .getMyCourses()
+      .then((data) => {
+        if (!mounted) return;
+
+        setEnrolledCourses(
+          Array.isArray(data) ? data.map(normalizeEnrolledCourse) : [],
+        );
         setEnrolledError("");
-        return;
-      }
+      })
+      .catch((error) => {
+        if (!mounted) return;
 
-      setLoadingEnrolled(true);
-      setEnrolledError("");
+        setEnrolledError(
+          error?.message ||
+            "My Courses API is not available yet. This section will be connected when enrollment API is ready.",
+        );
+        setEnrolledCourses([]);
+      })
+      .finally(() => {
+        if (!mounted) return;
 
-      try {
-        const data = await courseService.getMyCourses();
-
-        if (mounted) {
-          setEnrolledCourses(Array.isArray(data) ? data : []);
-        }
-      } catch (error) {
-        if (mounted) {
-          setEnrolledError(
-            error?.message ||
-              "My Courses API is not available yet. This section will be connected when enrollment API is ready.",
-          );
-          setEnrolledCourses([]);
-        }
-      } finally {
-        if (mounted) {
-          setLoadingEnrolled(false);
-        }
-      }
-    }
-
-    loadEnrolledCourses();
+        setLoadingEnrolled(false);
+      });
 
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [reloadEnrolledKey]);
+
+  const enrolledCategories = useMemo(() => {
+    const categoryMap = new Map();
+
+    enrolledCourses.forEach((course) => {
+      const category = course.category;
+
+      if (!category?.slug) {
+        return;
+      }
+
+      categoryMap.set(category.slug, {
+        id: category.id || category.slug,
+        name: category.name || "Course",
+        slug: category.slug,
+      });
+    });
+
+    return Array.from(categoryMap.values());
+  }, [enrolledCourses]);
+
+  const filteredEnrolledCourses = useMemo(() => {
+    const keyword = enrolledKeyword.trim().toLowerCase();
+
+    return enrolledCourses.filter((course) => {
+      const title = course.title?.toLowerCase() || "";
+      const description = course.description?.toLowerCase() || "";
+      const categoryName = course.category?.name?.toLowerCase() || "";
+      const categorySlug = course.category?.slug || "";
+
+      const matchesKeyword =
+        !keyword ||
+        title.includes(keyword) ||
+        description.includes(keyword) ||
+        categoryName.includes(keyword);
+
+      const matchesCategory =
+        !enrolledCategorySlug || categorySlug === enrolledCategorySlug;
+
+      return matchesKeyword && matchesCategory;
+    });
+  }, [enrolledCourses, enrolledKeyword, enrolledCategorySlug]);
 
   return (
     <main className="course-page">
@@ -94,6 +154,16 @@ export function MyCoursesPage() {
               <h2>Enrolled Courses</h2>
               <p>Courses that you have enrolled in or have access to.</p>
             </div>
+
+            <button
+              type="button"
+              className="my-courses-section__refresh"
+              onClick={refreshEnrolledCourses}
+              disabled={loadingEnrolled}
+            >
+              <RotateCcw size={16} />
+              Refresh
+            </button>
           </div>
 
           {loadingEnrolled && (
@@ -105,7 +175,28 @@ export function MyCoursesPage() {
           {!loadingEnrolled && enrolledError && (
             <div className="course-state course-state--error">
               <p>{enrolledError}</p>
+              <button type="button" onClick={refreshEnrolledCourses}>
+                Try again
+              </button>
             </div>
+          )}
+
+          {!loadingEnrolled && !enrolledError && enrolledCourses.length > 0 && (
+            <>
+              <CourseFilters
+                keyword={enrolledKeyword}
+                categorySlug={enrolledCategorySlug}
+                categories={enrolledCategories}
+                onKeywordChange={setEnrolledKeyword}
+                onCategoryChange={setEnrolledCategorySlug}
+              />
+
+              <CourseListToolbar
+                totalElements={filteredEnrolledCourses.length}
+                viewMode={enrolledViewMode}
+                onViewModeChange={handleEnrolledViewModeChange}
+              />
+            </>
           )}
 
           {!loadingEnrolled &&
@@ -123,21 +214,40 @@ export function MyCoursesPage() {
               </div>
             )}
 
-          {!loadingEnrolled && !enrolledError && enrolledCourses.length > 0 && (
-            <div className="course-list course-list--grid">
-              {enrolledCourses.map((course) => (
-                <CourseCard
-                  key={course.id || course.slug}
-                  course={course}
-                  viewMode="grid"
-                  detailState={{
-                    from: "/my-courses",
-                    backLabel: "Back to My Courses",
+          {!loadingEnrolled &&
+            !enrolledError &&
+            enrolledCourses.length > 0 &&
+            filteredEnrolledCourses.length === 0 && (
+              <div className="course-state">
+                <h3>No matching enrolled courses</h3>
+                <p>Try another keyword or category.</p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEnrolledKeyword("");
+                    setEnrolledCategorySlug("");
                   }}
-                />
-              ))}
-            </div>
-          )}
+                >
+                  Clear filters
+                </button>
+              </div>
+            )}
+
+          {!loadingEnrolled &&
+            !enrolledError &&
+            filteredEnrolledCourses.length > 0 && (
+              <div
+                className={`enrolled-course-list enrolled-course-list--${enrolledViewMode}`}
+              >
+                {filteredEnrolledCourses.map((course) => (
+                  <EnrolledCourseCard
+                    key={course.enrollmentId || course.id || course.slug}
+                    course={course}
+                    viewMode={enrolledViewMode}
+                  />
+                ))}
+              </div>
+            )}
         </section>
       )}
 

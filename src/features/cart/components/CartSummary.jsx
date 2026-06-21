@@ -1,50 +1,40 @@
 function toNumber(value, fallback = 0) {
-  if (value === null || value === undefined || value === '') {
-    return fallback
+  if (value === null || value === undefined || value === "") {
+    return fallback;
   }
 
-  const numberValue = Number(value)
+  const numberValue = Number(value);
 
   if (Number.isNaN(numberValue)) {
-    return fallback
+    return fallback;
   }
 
-  return numberValue
+  return numberValue;
 }
 
-function formatMoney(value, currency = 'VND') {
-  return new Intl.NumberFormat('vi-VN', {
-    style: 'currency',
+function formatMoney(value, currency = "VND") {
+  return new Intl.NumberFormat("vi-VN", {
+    style: "currency",
     currency,
     maximumFractionDigits: 0,
-  }).format(toNumber(value, 0))
+  }).format(toNumber(value, 0));
 }
 
 function getItemAmount(item) {
-  return (
-    item?.finalAmount ??
-    item?.amount ??
-    item?.totalAmount ??
-    item?.price ??
-    item?.unitPrice ??
-    item?.course?.price ??
-    0
-  )
+  return item?.finalAmount;
 }
 
 export function CartSummary({ cart, loading, onCheckout }) {
-  const items = cart?.items ?? []
+  const items = cart?.items ?? [];
 
   const calculatedTotal = items.reduce(
     (sum, item) => sum + toNumber(getItemAmount(item), 0),
     0,
-  )
+  );
 
-  const cartTotalAmount = toNumber(cart?.totalAmount, 0)
+  const cartTotalAmount = toNumber(cart?.totalAmount, 0);
 
-  const totalAmount = cartTotalAmount > 0
-    ? cartTotalAmount
-    : calculatedTotal
+  const totalAmount = cartTotalAmount > 0 ? cartTotalAmount : calculatedTotal;
 
   return (
     <aside className="cart-summary">
@@ -66,8 +56,8 @@ export function CartSummary({ cart, loading, onCheckout }) {
         disabled={loading || items.length === 0}
         onClick={onCheckout}
       >
-        {loading ? 'Creating order...' : 'Proceed to checkout'}
+        {loading ? "Creating order..." : "Proceed to checkout"}
       </button>
     </aside>
-  )
+  );
 }

@@ -6,8 +6,7 @@ function unwrap(response) {
 
 function normalizeList(payload) {
   const data = unwrap(payload);
-  const items = data?.items ?? data?.categories ?? data;
-
+  const items = data?.data ?? data?.items ?? data?.categories ?? data?.courses ?? data;
   return Array.isArray(items) ? items : [];
 }
 

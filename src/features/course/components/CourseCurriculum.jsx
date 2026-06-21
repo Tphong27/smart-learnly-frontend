@@ -23,33 +23,27 @@ export function CourseCurriculum({ sections = [] }) {
 
   return (
     <div className="course-curriculum">
-      {sections.map((section, sectionIndex) => (
-        <article key={section.id || sectionIndex} className="course-section">
+      {sections.map((section) => (
+        <article key={section.id} className="course-section">
           <h3>
-            Module {sectionIndex + 1}: {section.title}
+            Module {section.id}: {section.title}
           </h3>
 
           <div className="course-lessons">
-            {(section.lessons || []).map((lesson, lessonIndex) => {
-              const Icon = getLessonIcon(
-                lesson.lessonType || lesson.lesson_type,
-              );
+            {(section.lessons || []).map((lesson) => {
+              const Icon = getLessonIcon(lesson.lessonType);
 
               return (
-                <div key={lesson.id || lessonIndex} className="course-lesson">
+                <div key={lesson.id} className="course-lesson">
                   <span>
                     <Icon size={18} />
                     {lesson.title}
                   </span>
 
                   <small>
-                    {lesson.preview || lesson.isPreview || lesson.is_preview
-                      ? "Preview"
-                      : "Locked"}
-                    {formatDuration(
-                      lesson.durationSeconds || lesson.duration_seconds,
-                    )
-                      ? ` · ${formatDuration(lesson.durationSeconds || lesson.duration_seconds)}`
+                    {lesson.isPreview ? "Preview" : "Locked"}
+                    {formatDuration(lesson.durationSeconds)
+                      ? ` · ${formatDuration(lesson.durationSeconds)}`
                       : ""}
                   </small>
                 </div>

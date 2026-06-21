@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { ArrowRight, BookOpen, Clock3, Layers3, Star } from "lucide-react";
+import { ArrowRight, BookOpen, Layers3, Star } from "lucide-react";
 import {
   formatVnd,
   getDiscountPercent,
@@ -15,13 +15,10 @@ function getCoursePath(course) {
 
 export function CourseCard({ course, viewMode = "grid", detailState }) {
   const title = course.title || "Untitled course";
-  const shortDescription =
-    course.shortDescription ||
-    course.description ||
-    "No description available.";
+  const shortDescription = course.description || "No description available.";
 
-  const thumbnailUrl = course.thumbnailUrl;
-  const categoryName = course.category?.name || course.categoryName || "Course";
+  const avatarUrl = course.avatarUrl;
+  const categoryName = course.category?.name || "Course";
   const modules = Array.isArray(course.modules) ? course.modules : [];
 
   const moduleCount = Number(
@@ -35,7 +32,6 @@ export function CourseCard({ course, viewMode = "grid", detailState }) {
       0,
   );
 
-  const durationText = course.durationText || course.duration || "Self-paced";
   const originalPrice = getOriginalPrice(course);
   const displayPrice = getDisplayPrice(course);
   const hasDiscount = hasValidDiscount(course);
@@ -48,8 +44,18 @@ export function CourseCard({ course, viewMode = "grid", detailState }) {
         state={detailState}
         className="course-card__media"
       >
-        {thumbnailUrl ? (
-          <img src={thumbnailUrl} alt={title} />
+        {avatarUrl ? (
+          <img
+            src={avatarUrl}
+            alt={title}
+            loading="lazy"
+            onError={(event) => {
+              event.currentTarget.style.display = "none";
+              event.currentTarget
+                .closest(".course-card__media")
+                ?.classList.add("course-card__media--fallback");
+            }}
+          />
         ) : (
           <div className="course-card__placeholder">
             <BookOpen size={32} />
@@ -80,10 +86,6 @@ export function CourseCard({ course, viewMode = "grid", detailState }) {
           <span>
             <BookOpen size={15} />
             {lessonCount} {lessonCount === 1 ? "lesson" : "lessons"}
-          </span>
-          <span>
-            <Clock3 size={15} />
-            {durationText}
           </span>
           {course.rating && (
             <span>

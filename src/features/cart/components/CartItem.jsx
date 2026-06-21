@@ -15,18 +15,11 @@ function formatMoney(value, currency = "VND") {
 }
 
 export function CartItem({ item, removing, onRemove }) {
-  const title = item?.courseTitle ?? item?.itemTitle ?? item?.title ?? "Course";
+  const title = item?.courseTitle ?? "Course";
 
-  const className = item?.className ?? item?.classTitle ?? null;
+  const className = item?.className ?? null;
 
-  const amount =
-    item?.finalAmount ??
-    item?.amount ??
-    item?.totalAmount ??
-    item?.price ??
-    item?.unitPrice ??
-    item?.course?.price ??
-    0;
+  const amount = item?.finalAmount ?? 0;
 
   return (
     <article className="cart-item">
