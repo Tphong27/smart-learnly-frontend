@@ -41,6 +41,7 @@ export function normalizeOrderPayment(payload) {
     amount: Number(
       data?.amount ??
       data?.totalAmount ??
+      data?.transaction?.amount ??
       data?.sepayOrder?.amount ??
       0,
     ),
@@ -58,8 +59,8 @@ export function normalizeOrderPayment(payload) {
       data?.qrUrl ??
       data?.sepayOrder?.qrUrl,
     status:
-      data?.status ??
       data?.transaction?.status ??
+      data?.status ??
       data?.sepayOrder?.status ??
       'PENDING',
     expiresAt:
