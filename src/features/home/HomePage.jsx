@@ -379,7 +379,7 @@ export function HomePage() {
                 text="Start with practical programs designed to build confidence and capability."
                 align="left"
               />
-              <a className="text-link" href="/my-courses">
+              <a className="text-link" href="/learning/courses">
                 Browse all courses <ArrowRight size={16} />
               </a>
             </div>

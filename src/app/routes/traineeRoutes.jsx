@@ -3,6 +3,9 @@ import { RoleGuard } from "./RoleGuard";
 import { ROLES } from "@/shared/constants/roles";
 import { AppLayout } from "../layouts/AppLayout";
 import { MyCoursesPage } from "@/features/course";
+import { CartPage } from "@/features/cart/pages/CartPage";
+import { CheckoutPage } from "@/features/checkout/pages/CheckoutPage";
+import { PaymentResultPage } from "@/features/checkout/pages/PaymentResultPage";
 
 function PlaceholderPage({ title }) {
   return (
@@ -17,7 +20,6 @@ function PlaceholderPage({ title }) {
   );
 }
 
-// 🟩 ĐỔI THÀNH: Hàm thường không export trực tiếp trên dòng này
 function getTraineeRoutes() {
   return [
     {
@@ -48,6 +50,40 @@ function getTraineeRoutes() {
         },
       ],
     },
+
+    {
+      path: "/cart",
+      element: <RoleGuard allowedRoles={[ROLES.TRAINEE]} />,
+      children: [
+        {
+          element: <AppLayout />,
+          children: [{ index: true, element: <CartPage /> }],
+        },
+      ],
+    },
+
+    {
+      path: "/checkout/:orderId",
+      element: <RoleGuard allowedRoles={[ROLES.TRAINEE]} />,
+      children: [
+        {
+          element: <AppLayout />,
+          children: [{ index: true, element: <CheckoutPage /> }],
+        },
+      ],
+    },
+
+    {
+      path: "/checkout/:orderId/result",
+      element: <RoleGuard allowedRoles={[ROLES.TRAINEE]} />,
+      children: [
+        {
+          element: <AppLayout />,
+          children: [{ index: true, element: <PaymentResultPage /> }],
+        },
+      ],
+    },
+
     {
       path: "/dashboard",
       element: <Navigate to="/learning/courses" replace />,
@@ -55,5 +91,4 @@ function getTraineeRoutes() {
   ];
 }
 
-// 🟩 THÊM DÒNG NÀY Ở CUỐI FILE: Xuất bản mặc định để loại bỏ lỗi "does not provide an export"
 export default getTraineeRoutes;

@@ -26,7 +26,9 @@ export function EnrolledCourseCard({ course, viewMode = "grid" }) {
   const accessAllowed = course.accessAllowed !== false;
 
   return (
-    <article className={`enrolled-course-card enrolled-course-card--${viewMode}`}>
+    <article
+      className={`enrolled-course-card enrolled-course-card--${viewMode}`}
+    >
       <div className="course-card__media">
         {imageUrl ? (
           <img src={imageUrl} alt={title} loading="lazy" />
@@ -35,7 +37,6 @@ export function EnrolledCourseCard({ course, viewMode = "grid" }) {
             <BookOpen size={34} />
           </div>
         )}
-
       </div>
       <div className="enrolled-course-card__body">
         <div className="enrolled-course-card__top">
@@ -82,8 +83,8 @@ export function EnrolledCourseCard({ course, viewMode = "grid" }) {
           <Link
             to={getCourseDetailPath(course)}
             state={{
-                from: "/my-courses",
-                backLabel: "Back to My Courses",
+              from: "/learning/courses",
+              backLabel: "Back to My Courses",
             }}
             className="course-card__link"
           >
