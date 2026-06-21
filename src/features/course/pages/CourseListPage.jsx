@@ -15,6 +15,7 @@ export function CourseListPage({
   showToolbar = true,
   showFilters = true,
   detailState,
+  excludeEnrolled = false,
 }) {
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -31,6 +32,11 @@ export function CourseListPage({
   );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+
+  function hasAccessToken() {
+    const token = localStorage.getItem("accessToken");
+    return token && token !== "undefined" && token !== "null";
+  }
 
   const keyword = searchParams.get("keyword") || "";
   const categorySlug = searchParams.get("categorySlug") || "";
@@ -62,20 +68,95 @@ export function CourseListPage({
   useEffect(() => {
     let mounted = true;
 
+    async function loadAllCatalogExcludingEnrolled({
+      currentPage,
+      size,
+      keyword,
+      categorySlug,
+    }) {
+      const enrolledIds = hasAccessToken()
+        ? await courseService.getMyEnrolledCourseIds()
+        : new Set();
+
+      const allItems = [];
+      let backendPage = 0;
+      let hasMorePages = true;
+
+      while (hasMorePages) {
+        const pageData = await courseService.getPublicCoursesWithDetails({
+          page: backendPage,
+          size,
+          keyword,
+          categorySlug,
+        });
+
+        const pageItems = Array.isArray(pageData.items) ? pageData.items : [];
+
+        allItems.push(...pageItems);
+
+        const totalPages = Number(pageData.totalPages || 1);
+
+        backendPage += 1;
+        hasMorePages = backendPage < totalPages;
+      }
+
+      const uniqueItemsMap = new Map();
+
+      allItems.forEach((course) => {
+        const key = course.id || course.slug;
+
+        if (key) {
+          uniqueItemsMap.set(key, course);
+        }
+      });
+
+      const uniqueItems = Array.from(uniqueItemsMap.values());
+
+      const filteredItems = uniqueItems.filter((course) => {
+        return !enrolledIds.has(course.id);
+      });
+
+      const totalElements = filteredItems.length;
+      const totalPages = Math.max(1, Math.ceil(totalElements / size));
+
+      const safePage = Math.min(currentPage, totalPages - 1);
+      const startIndex = safePage * size;
+      const endIndex = startIndex + size;
+
+      return {
+        items: filteredItems.slice(startIndex, endIndex),
+        page: safePage,
+        size,
+        totalElements,
+        totalPages,
+      };
+    }
+
     async function loadCourses() {
       setLoading(true);
       setError("");
 
       try {
-        const data = await courseService.getPublicCoursesWithDetails({
-          page,
-          size: pageSize,
-          keyword,
-          categorySlug,
-        });
+        let data;
+
+        if (excludeEnrolled) {
+          data = await loadAllCatalogExcludingEnrolled({
+            currentPage: page,
+            size: pageSize,
+            keyword,
+            categorySlug,
+          });
+        } else {
+          data = await courseService.getPublicCoursesWithDetails({
+            page,
+            size: pageSize,
+            keyword,
+            categorySlug,
+          });
+        }
 
         if (mounted) {
-          setCourses(data.items);
+          setCourses(Array.isArray(data.items) ? data.items : []);
           setPageInfo(data);
         }
       } catch (err) {
@@ -95,7 +176,7 @@ export function CourseListPage({
     return () => {
       mounted = false;
     };
-  }, [keyword, categorySlug, page, pageSize]);
+  }, [keyword, categorySlug, page, pageSize, excludeEnrolled]);
 
   function updateQuery(nextValues) {
     const next = {
@@ -217,7 +298,7 @@ export function CourseListPage({
                   <button
                     key={pageNumber}
                     type="button"
-                    className={pageNumber === page ? "is-active" : ""}
+                    className={pageNumber === pageInfo.page ? "is-active" : ""}
                     onClick={() => updateQuery({ page: String(pageNumber) })}
                   >
                     {pageNumber + 1}

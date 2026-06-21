@@ -263,6 +263,7 @@ export function MyCoursesPage() {
             embedded
             showHero={false}
             pageSize={6}
+            excludeEnrolled={true}
             detailState={{
               from: "/my-courses",
               backLabel: "Back to My Courses",

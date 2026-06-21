@@ -6,7 +6,8 @@ function unwrap(response) {
 
 function normalizeList(payload) {
   const data = unwrap(payload);
-  const items = data?.data ?? data?.items ?? data?.categories ?? data?.courses ?? data;
+  const items =
+    data?.data ?? data?.items ?? data?.categories ?? data?.courses ?? data;
   return Array.isArray(items) ? items : [];
 }
 
@@ -181,6 +182,24 @@ export const courseService = {
   async getMyCourses() {
     const response = await apiClient.get("/enrollments/my-courses");
     return normalizeList(response);
+  },
+
+  async getMyEnrolledCourseIds() {
+    const courses = await this.getMyCourses();
+
+    return new Set(courses.map((course) => course.id).filter(Boolean));
+  },
+
+  async isCourseEnrolled(courseIdOrSlug) {
+    if (!courseIdOrSlug) {
+      return false;
+    }
+
+    const courses = await this.getMyCourses();
+
+    return courses.some((course) => {
+      return course.id === courseIdOrSlug || course.slug === courseIdOrSlug;
+    });
   },
 
   // =====================================================================
