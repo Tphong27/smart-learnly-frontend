@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AlertCircle, Loader } from "lucide-react";
 import { Button } from "@/shared/components/ui";
-import { courseService } from "@/services";
+import { courseService, userService } from "@/services";
 import { useClassForm } from "../hooks/useClassForm";
 import { todayString } from "../utils/classValidator";
 import { WeeklySchedulePicker } from "../components/WeeklySchedulePicker";
@@ -12,6 +12,8 @@ export function TmoCreateClassPage() {
 
   const [courses, setCourses] = useState([]);
   const [loadingCourses, setLoadingCourses] = useState(true);
+  const [trainers, setTrainers] = useState([]);
+  const [loadingTrainers, setLoadingTrainers] = useState(true);
 
   const form = useClassForm(null, () => {
     navigate("/staff/classrooms");
@@ -54,6 +56,41 @@ export function TmoCreateClassPage() {
     }
 
     fetchCourses();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let mounted = true;
+
+    async function fetchActiveTrainers() {
+      try {
+        setLoadingTrainers(true);
+
+        const data = await userService.listActiveTrainers({
+          page: 0,
+          size: 100,
+        });
+
+        if (mounted) {
+          setTrainers(data.content || []);
+        }
+      } catch (error) {
+        console.error("Error loading trainers:", error);
+
+        if (mounted) {
+          setTrainers([]);
+        }
+      } finally {
+        if (mounted) {
+          setLoadingTrainers(false);
+        }
+      }
+    }
+
+    fetchActiveTrainers();
 
     return () => {
       mounted = false;
@@ -107,7 +144,7 @@ export function TmoCreateClassPage() {
                 disabled={loadingCourses}
                 className={form.errors.courseId ? "input-error" : ""}
               >
-                <option value="">-- Select Course --</option>
+                <option value="">Select Course</option>
                 {courses.map((course) => (
                   <option key={course.id} value={course.id}>
                     {course.title || course.name}
@@ -123,13 +160,28 @@ export function TmoCreateClassPage() {
 
             <div className="form-group">
               <label htmlFor="trainerId">Trainer</label>
-              <input
+
+              <select
                 id="trainerId"
-                type="text"
-                placeholder="Enter trainer UUID if available, can be left empty"
                 {...form.register("trainerId")}
+                disabled={loadingTrainers}
                 className={form.errors.trainerId ? "input-error" : ""}
-              />
+              >
+                <option value="">Select Trainer</option>
+
+                {!loadingTrainers && trainers.length === 0 && (
+                  <option value="" disabled>
+                    No active trainers available
+                  </option>
+                )}
+
+                {trainers.map((trainer) => (
+                  <option key={trainer.id} value={trainer.id}>
+                    {trainer.fullName || trainer.email} ({trainer.email})
+                  </option>
+                ))}
+              </select>
+
               {form.errors.trainerId && (
                 <span className="form-error-text">
                   {form.errors.trainerId.message}
