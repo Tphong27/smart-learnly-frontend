@@ -2,8 +2,13 @@ import { Navigate } from "react-router-dom";
 import { RoleGuard } from "./RoleGuard";
 import { ROLES } from "@/shared/constants/roles";
 import { AppLayout } from "../layouts/AppLayout";
-import { StaffLayout } from "@/app/layouts/StaffLayout";
+// import { StaffLayout } from "@/app/layouts/StaffLayout";
 import { AdminCoursesPage } from "@/features/admin";
+import {
+  StaffClassListPage,
+  TmoCreateClassPage,
+  TrainerClassWorkspacePage,
+} from "@/features/classroom";
 
 function PlaceholderPage({ title }) {
   return (
@@ -48,7 +53,16 @@ function getStaffRoutes() {
           children: [
             {
               path: "classrooms",
-              element: <PlaceholderPage title="Classrooms" />,
+              element: <StaffClassListPage />,
+            },
+            {
+              path: "classrooms/create",
+              element: <RoleGuard allowedRoles={[ROLES.TMO]} />,
+              children: [{ index: true, element: <TmoCreateClassPage /> }],
+            },
+            {
+              path: "classrooms/:classId/workspace",
+              element: <TrainerClassWorkspacePage />,
             },
           ],
         },

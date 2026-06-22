@@ -1,27 +1,27 @@
-import './Button.css'
+import "./Button.css";
 
 export function Button({
   children,
-  type = 'button',
-  variant = 'primary',
-  size = 'md',
+  type = "button",
+  variant = "primary",
+  size = "md",
   fullWidth = false,
   loading = false,
   disabled = false,
   leftIcon = null,
   rightIcon = null,
-  className = '',
+  className = "",
   ...props
 }) {
   const buttonClassName = [
-    'button',
+    "button",
     `button--${variant}`,
     `button--${size}`,
-    fullWidth ? 'button--full' : '',
+    fullWidth ? "button--full" : "",
     className,
   ]
     .filter(Boolean)
-    .join(' ')
+    .join(" ");
 
   return (
     <button
@@ -37,11 +37,13 @@ export function Button({
         leftIcon && <span className="button__icon">{leftIcon}</span>
       )}
 
-      <span>{loading ? 'Loading...' : children}</span>
-
+      <span className="button__content">
+        {loading ? "Loading..." : children}
+      </span>
+      
       {!loading && rightIcon && (
         <span className="button__icon">{rightIcon}</span>
       )}
     </button>
-  )
+  );
 }

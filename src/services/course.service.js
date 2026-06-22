@@ -38,8 +38,17 @@ export const courseService = {
     const response = await apiClient.get("/admin/courses", {
       params: { page, size },
     });
-    const data = unwrap(response);
-    return data || { items: [], page: 0, size, totalItems: 0, totalPages: 0 };
+
+    const root = unwrap(response);
+    const data = root?.data ?? root;
+
+    return {
+      items: Array.isArray(data?.items) ? data.items : [],
+      page: Number(data?.page ?? page),
+      size: Number(data?.size ?? size),
+      totalItems: Number(data?.totalItems ?? data?.totalElements ?? 0),
+      totalPages: Number(data?.totalPages ?? 1),
+    };
   },
 
   async getAdmin(courseId) {
