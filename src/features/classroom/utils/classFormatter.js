@@ -1,0 +1,82 @@
+export function formatDate(dateString) {
+  if (!dateString) return "--";
+
+  try {
+    return new Date(dateString).toLocaleDateString("vi-VN", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    });
+  } catch {
+    return "--";
+  }
+}
+
+export function formatDateTime(dateString) {
+  if (!dateString) return "--";
+
+  try {
+    return new Date(dateString).toLocaleDateString("vi-VN", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  } catch {
+    return "--";
+  }
+}
+
+export function formatCapacity(activeEnrollmentCount, maxStudents) {
+  return `${Number(activeEnrollmentCount || 0)}/${Number(maxStudents || 0)}`;
+}
+
+export function formatVnd(value) {
+  const amount = Number(value || 0);
+
+  if (amount <= 0) {
+    return "--";
+  }
+
+  return new Intl.NumberFormat("vi-VN", {
+    style: "currency",
+    currency: "VND",
+    maximumFractionDigits: 0,
+  }).format(amount);
+}
+
+export function getStatusColorClass(status) {
+  const normalized = (status || "").toUpperCase();
+
+  const colorMap = {
+    UPCOMING: "status-upcoming",
+    ONGOING: "status-active",
+    ACTIVE: "status-active",
+    COMPLETED: "status-completed",
+    CANCELLED: "status-cancelled",
+    DRAFT: "status-draft",
+  };
+
+  return colorMap[normalized] || "status-default";
+}
+
+export function getStatusLabel(status) {
+  const normalized = (status || "").toUpperCase();
+
+  const labels = {
+    UPCOMING: "Upcoming",
+    ONGOING: "Ongoing",
+    ACTIVE: "Active",
+    COMPLETED: "Completed",
+    CANCELLED: "Cancelled",
+    DRAFT: "Draft",
+  };
+
+  return labels[normalized] || status || "Unknown";
+}
+
+export function formatSchedule(scheduleDescription) {
+  if (!scheduleDescription) return "Not specified";
+  return scheduleDescription;
+}
