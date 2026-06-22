@@ -14,7 +14,9 @@ import {
   Users,
   X,
   Zap,
+  Receipt,
   CreditCard,
+  ShoppingCart,
 } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import { ROLES } from "@/shared/constants/roles";
@@ -108,6 +110,9 @@ const navItems = [
     label: "My Transactions",
     path: "/learning/transactions",
     icon: Receipt,
+    label: "Cart",
+    path: "/cart",
+    icon: ShoppingCart,
     roles: [ROLES.TRAINEE],
   },
   {

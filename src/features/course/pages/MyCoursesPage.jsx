@@ -265,7 +265,7 @@ export function MyCoursesPage() {
             pageSize={6}
             excludeEnrolled={true}
             detailState={{
-              from: "/my-courses",
+              from: "/learning/courses",
               backLabel: "Back to My Courses",
             }}
           />

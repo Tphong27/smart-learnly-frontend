@@ -14,9 +14,14 @@ function SectionItem({
   setIsLessonModalOpen,
   courseId,
   navigate,
+  onEditSection,
+  onDeleteSection,
 }) {
   const [lessons, setLessons] = useState([]);
   const [loadingLessons, setLoadingLessons] = useState(false);
+
+  // 📌 MỚI THÊM: State quản lý việc ẩn/hiện danh sách bài học (Mặc định là true - hiện)
+  const [isExpanded, setIsExpanded] = useState(true);
 
   useEffect(() => {
     if (section?.id) {
@@ -60,24 +65,61 @@ function SectionItem({
   return (
     <div className="section-item">
       <div className="section-header">
-        <div className="section-title-wrapper">
-          <span className="material-symbols-outlined drag-handle">
+        <div
+          className="section-title-wrapper"
+          style={{ display: "flex", alignItems: "center", gap: "8px" }}
+        >
+          <span
+            className="material-symbols-outlined drag-handle"
+            style={{ cursor: "grab" }}
+          >
             drag_indicator
           </span>
-          <h3>
+
+          {/* 📌 MỚI THÊM: Nút bấm mũi tên Thu gọn/Mở rộng */}
+          <span
+            className="material-symbols-outlined toggle-expand"
+            onClick={() => setIsExpanded(!isExpanded)}
+            style={{
+              cursor: "pointer",
+              userSelect: "none",
+              color: "#434655",
+              transition: "transform 0.2s ease", // Hiệu ứng xoay nhẹ nếu muốn
+            }}
+          >
+            {isExpanded ? "expand_more" : "chevron_right"}
+          </span>
+
+          {/* 📌 MỚI THÊM: Bấm vào tiêu đề cũng có thể ẩn/hiện cho tiện */}
+          <h3
+            onClick={() => setIsExpanded(!isExpanded)}
+            style={{ cursor: "pointer", userSelect: "none", margin: 0 }}
+          >
             Section {index + 1}: {section?.title}
           </h3>
         </div>
 
         <div className="section-actions">
-          <button className="icon-btn" title="Edit section">
+          <button
+            className="icon-btn"
+            title="Edit section"
+            onClick={() => onEditSection(section)}
+          >
             <span className="material-symbols-outlined">edit</span>
           </button>
-          <button className="icon-btn delete" title="Delete section">
+
+          <button
+            className="icon-btn delete"
+            title="Delete section"
+            onClick={() => onDeleteSection(section.id, section.title)}
+          >
             <span className="material-symbols-outlined">delete</span>
           </button>
+
           <button
             onClick={() => {
+              // Khi thêm bài học mới thì tự động mở section đó ra
+              setIsExpanded(true);
               setTargetSectionId(section.id);
               setIsLessonModalOpen(true);
             }}
@@ -88,68 +130,73 @@ function SectionItem({
         </div>
       </div>
 
-      <div className="lessons-container">
-        {loadingLessons ? (
-          <div
-            style={{
-              padding: "16px 48px",
-              color: "#737686",
-              fontStyle: "italic",
-              fontSize: "14px",
-            }}
-          >
-            Loading lessons...
-          </div>
-        ) : lessons.length > 0 ? (
-          lessons.map((lesson, lIndex) => (
-            <div key={lesson?.id || lIndex} className="lesson-item">
-              <div className="lesson-info">
-                <span className="material-symbols-outlined drag-handle">
-                  drag_indicator
-                </span>
-                {renderLessonIcon(lesson?.lessonType)}
-                <span className="lesson-title">
-                  {index + 1}.{lIndex + 1}. {lesson?.title}
-                </span>
-                <span className="badge type">
-                  {lesson?.lessonType || "VIDEO"}
-                </span>
-                {lesson?.isPreview && (
-                  <span className="badge preview">Preview</span>
-                )}
-              </div>
-
-              <div className="lesson-actions">
-                <span className="lesson-duration">
-                  {lesson?.durationSeconds
-                    ? `${Math.floor(lesson.durationSeconds / 60)} mins`
-                    : "--"}
-                </span>
-                <button
-                  onClick={() =>
-                    lesson?.id &&
-                    navigate(`/admin/courses/${courseId}/lessons/${lesson.id}`)
-                  }
-                  className="btn-outline"
-                >
-                  Edit content
-                </button>
-              </div>
+      {/* 📌 MỚI THÊM: Đặt điều kiện isExpanded để ẩn hoặc hiện danh sách bài học */}
+      {isExpanded && (
+        <div className="lessons-container">
+          {loadingLessons ? (
+            <div
+              style={{
+                padding: "16px 48px",
+                color: "#737686",
+                fontStyle: "italic",
+                fontSize: "14px",
+              }}
+            >
+              Loading lessons...
             </div>
-          ))
-        ) : (
-          <div
-            style={{
-              padding: "20px",
-              textAlign: "center",
-              color: "#737686",
-              fontSize: "14px",
-            }}
-          >
-            This section has no lessons yet.
-          </div>
-        )}
-      </div>
+          ) : lessons.length > 0 ? (
+            lessons.map((lesson, lIndex) => (
+              <div key={lesson?.id || lIndex} className="lesson-item">
+                <div className="lesson-info">
+                  <span className="material-symbols-outlined drag-handle">
+                    drag_indicator
+                  </span>
+                  {renderLessonIcon(lesson?.lessonType)}
+                  <span className="lesson-title">
+                    {index + 1}.{lIndex + 1}. {lesson?.title}
+                  </span>
+                  <span className="badge type">
+                    {lesson?.lessonType || "VIDEO"}
+                  </span>
+                  {lesson?.isPreview && (
+                    <span className="badge preview">Preview</span>
+                  )}
+                </div>
+
+                <div className="lesson-actions">
+                  <span className="lesson-duration">
+                    {lesson?.durationSeconds
+                      ? `${Math.floor(lesson.durationSeconds / 60)} mins`
+                      : "--"}
+                  </span>
+                  <button
+                    onClick={() =>
+                      lesson?.id &&
+                      navigate(
+                        `/admin/courses/${courseId}/lessons/${lesson.id}`,
+                      )
+                    }
+                    className="btn-outline"
+                  >
+                    Edit content
+                  </button>
+                </div>
+              </div>
+            ))
+          ) : (
+            <div
+              style={{
+                padding: "20px",
+                textAlign: "center",
+                color: "#737686",
+                fontSize: "14px",
+              }}
+            >
+              This section has no lessons yet.
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -166,9 +213,16 @@ export default function AdminCourseContentPage() {
   const [sections, setSections] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  // States cho việc Tạo mới Section
   const [isSectionModalOpen, setIsSectionModalOpen] = useState(false);
   const [newSectionTitle, setNewSectionTitle] = useState("");
 
+  // States cho việc Chỉnh sửa Section
+  const [isEditSectionModalOpen, setIsEditSectionModalOpen] = useState(false);
+  const [editingSectionId, setEditingSectionId] = useState(null);
+  const [editSectionTitle, setEditSectionTitle] = useState("");
+
+  // States cho Lesson
   const [isLessonModalOpen, setIsLessonModalOpen] = useState(false);
   const [targetSectionId, setTargetSectionId] = useState(null);
   const [newLessonData, setNewLessonData] = useState({
@@ -194,6 +248,46 @@ export default function AdminCourseContentPage() {
       );
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleOpenEditSection = (section) => {
+    setEditingSectionId(section.id);
+    setEditSectionTitle(section.title);
+    setIsEditSectionModalOpen(true);
+  };
+
+  const handleUpdateSection = async (e) => {
+    e.preventDefault();
+    if (!editSectionTitle.trim() || !editingSectionId) return;
+    try {
+      await courseService.updateSection(editingSectionId, {
+        title: editSectionTitle.trim(),
+        isActive: true,
+      });
+      showToast("Section updated successfully!", "success");
+      setIsEditSectionModalOpen(false);
+      setEditingSectionId(null);
+      setEditSectionTitle("");
+      fetchContent();
+    } catch (error) {
+      showToast("Error updating section", "error");
+    }
+  };
+
+  const handleDeleteSection = async (sectionId, sectionTitle) => {
+    if (
+      window.confirm(
+        `Are you sure you want to delete "${sectionTitle}"? All lessons inside will be deleted.`,
+      )
+    ) {
+      try {
+        await courseService.deleteSection(sectionId);
+        showToast("Section deleted successfully!", "success");
+        fetchContent();
+      } catch (error) {
+        showToast("Error deleting section", "error");
+      }
     }
   };
 
@@ -291,6 +385,8 @@ export default function AdminCourseContentPage() {
                   setIsLessonModalOpen={setIsLessonModalOpen}
                   courseId={courseId}
                   navigate={navigate}
+                  onEditSection={handleOpenEditSection}
+                  onDeleteSection={handleDeleteSection}
                 />
               ))
             ) : (
@@ -324,7 +420,7 @@ export default function AdminCourseContentPage() {
         </div>
       </div>
 
-      {/* SECTION MODAL */}
+      {/* CREATE SECTION MODAL */}
       {isSectionModalOpen && (
         <div className="modal-overlay">
           <div className="modal-content">
@@ -362,6 +458,57 @@ export default function AdminCourseContentPage() {
                 </button>
                 <button type="submit" className="btn-primary">
                   Save Section
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* EDIT SECTION MODAL */}
+      {isEditSectionModalOpen && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <div className="modal-header">
+              <h3>Edit Section</h3>
+              <button
+                className="icon-btn"
+                onClick={() => {
+                  setIsEditSectionModalOpen(false);
+                  setEditingSectionId(null);
+                }}
+              >
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+            <form onSubmit={handleUpdateSection}>
+              <div className="modal-body">
+                <div className="form-group">
+                  <label>
+                    Section Name <span style={{ color: "#ba1a1a" }}>*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={editSectionTitle}
+                    onChange={(e) => setEditSectionTitle(e.target.value)}
+                    placeholder="e.g., Section 1: Environment Setup..."
+                  />
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsEditSectionModalOpen(false);
+                    setEditingSectionId(null);
+                  }}
+                  className="btn-outline"
+                >
+                  Cancel
+                </button>
+                <button type="submit" className="btn-primary">
+                  Update Section
                 </button>
               </div>
             </form>

@@ -22,7 +22,6 @@ function PlaceholderPage({ title }) {
   );
 }
 
-// 🟩 ĐỔI THÀNH: Hàm thường không export trực tiếp trên dòng này
 function getTraineeRoutes() {
   return [
     {
@@ -55,6 +54,40 @@ function getTraineeRoutes() {
         },
       ],
     },
+
+    {
+      path: "/cart",
+      element: <RoleGuard allowedRoles={[ROLES.TRAINEE]} />,
+      children: [
+        {
+          element: <AppLayout />,
+          children: [{ index: true, element: <CartPage /> }],
+        },
+      ],
+    },
+
+    {
+      path: "/checkout/:orderId",
+      element: <RoleGuard allowedRoles={[ROLES.TRAINEE]} />,
+      children: [
+        {
+          element: <AppLayout />,
+          children: [{ index: true, element: <CheckoutPage /> }],
+        },
+      ],
+    },
+
+    {
+      path: "/checkout/:orderId/result",
+      element: <RoleGuard allowedRoles={[ROLES.TRAINEE]} />,
+      children: [
+        {
+          element: <AppLayout />,
+          children: [{ index: true, element: <PaymentResultPage /> }],
+        },
+      ],
+    },
+
     {
       element: <RoleGuard allowedRoles={[ROLES.TRAINEE]} />,
       children: [
@@ -79,5 +112,4 @@ function getTraineeRoutes() {
   ];
 }
 
-// 🟩 THÊM DÒNG NÀY Ở CUỐI FILE: Xuất bản mặc định để loại bỏ lỗi "does not provide an export"
 export default getTraineeRoutes;
