@@ -1,7 +1,7 @@
 import "./classroom.css";
 
 export { TmoCreateClassPage } from "./pages/TmoCreateClassPage";
-export { StaffClassRouterPage } from "./pages/StaffClassRouterPage";
+export { StaffClassListPage } from "./pages/StaffClassListPage";
 export { TrainerClassWorkspacePage } from "./pages/TrainerClassWorkspacePage";
 
 export { ClassCard } from "./components/ClassCard";

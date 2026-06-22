@@ -5,7 +5,7 @@ import { AppLayout } from "../layouts/AppLayout";
 // import { StaffLayout } from "@/app/layouts/StaffLayout";
 import { AdminCoursesPage } from "@/features/admin";
 import {
-  StaffClassRouterPage,
+  StaffClassListPage,
   TmoCreateClassPage,
   TrainerClassWorkspacePage,
 } from "@/features/classroom";
@@ -53,7 +53,7 @@ function getStaffRoutes() {
           children: [
             {
               path: "classrooms",
-              element: <StaffClassRouterPage />,
+              element: <StaffClassListPage />,
             },
             {
               path: "classrooms/create",

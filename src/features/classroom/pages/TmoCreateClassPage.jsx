@@ -5,6 +5,7 @@ import { Button } from "@/shared/components/ui";
 import { courseService } from "@/services";
 import { useClassForm } from "../hooks/useClassForm";
 import { todayString } from "../utils/classValidator";
+import { WeeklySchedulePicker } from "../components/WeeklySchedulePicker";
 
 export function TmoCreateClassPage() {
   const navigate = useNavigate();
@@ -32,7 +33,13 @@ export function TmoCreateClassPage() {
         });
 
         if (mounted) {
-          setCourses(data.items || data.content || []);
+          const rawCourses = data.items || data.content || [];
+
+          const publishedCourses = rawCourses.filter((course) => {
+            return String(course.status || "").toLowerCase() === "published";
+          });
+
+          setCourses(publishedCourses);
         }
       } catch (error) {
         console.error("Error loading courses:", error);
@@ -169,19 +176,12 @@ export function TmoCreateClassPage() {
             </div>
 
             <div className="form-group">
-              <label htmlFor="scheduleDescription">Schedule</label>
-              <textarea
-                id="scheduleDescription"
-                rows={3}
-                placeholder="Example: Tuesday, Thursday, Saturday from 7:00 PM to 9:00 PM"
-                {...form.register("scheduleDescription")}
-                className={form.errors.scheduleDescription ? "input-error" : ""}
+              <label>Schedule</label>
+              <WeeklySchedulePicker
+                control={form.control}
+                name="scheduleDescription"
+                error={form.errors.scheduleDescription}
               />
-              {form.errors.scheduleDescription && (
-                <span className="form-error-text">
-                  {form.errors.scheduleDescription.message}
-                </span>
-              )}
             </div>
 
             <div className="form-row">
@@ -207,7 +207,7 @@ export function TmoCreateClassPage() {
                 <input
                   id="price"
                   type="number"
-                  min="1"
+                  min="1000"
                   step="1000"
                   {...form.register("price", { valueAsNumber: true })}
                   className={form.errors.price ? "input-error" : ""}

@@ -5,7 +5,6 @@ import {
   Eye,
   Loader,
   Plus,
-  RotateCcw,
   Trash2,
 } from "lucide-react";
 import { Button } from "@/shared/components/ui";
@@ -24,7 +23,7 @@ function getCurrentRole() {
   }
 }
 
-export function StaffClassRouterPage() {
+export function StaffClassListPage() {
   const navigate = useNavigate();
 
   const userRole = getCurrentRole();
@@ -36,7 +35,7 @@ export function StaffClassRouterPage() {
 
   const [filters, setFilters] = useState({
     page: 0,
-    size: 20,
+    size: 15,
     keyword: "",
     status: "",
   });
@@ -116,20 +115,6 @@ export function StaffClassRouterPage() {
       return next;
     });
   }, []);
-
-  async function handleCancelClass(classId) {
-    const confirmed = window.confirm(
-      "Are you sure you want to cancel this class?",
-    );
-    if (!confirmed) return;
-
-    try {
-      await classService.cancel(classId);
-      reloadClasses();
-    } catch (err) {
-      window.alert(err.message || "Error canceling class");
-    }
-  }
 
   async function handleDeleteClass(classId) {
     const confirmed = window.confirm(
@@ -240,18 +225,6 @@ export function StaffClassRouterPage() {
                       }}
                     >
                       <Eye size={18} />
-                    </button>
-
-                    <button
-                      type="button"
-                      className="btn-icon"
-                      title="Cancel Class"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        handleCancelClass(classItem.id);
-                      }}
-                    >
-                      <RotateCcw size={18} />
                     </button>
 
                     <button

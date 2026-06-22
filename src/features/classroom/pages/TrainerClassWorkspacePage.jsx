@@ -1,9 +1,14 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { AlertCircle, Loader, Save, Trash2, X } from "lucide-react";
+import { AlertCircle, Loader, Save, SquarePen, Trash2, X } from "lucide-react";
 import { Button } from "@/shared/components/ui";
 import { classService } from "@/services";
-import { formatCapacity, formatDate, formatVnd } from "../utils/classFormatter";
+import {
+  formatCapacity,
+  formatDate,
+  formatSchedule,
+  formatVnd,
+} from "../utils/classFormatter";
 import { ClassStatusBadge } from "../components/ClassStatusBadge";
 
 function toInputDate(value) {
@@ -123,21 +128,6 @@ export function TrainerClassWorkspacePage() {
     }
   }
 
-  async function cancelClass() {
-    const confirmed = window.confirm(
-      "Do you want to cancel this class? This action cannot be undone.",
-    );
-    if (!confirmed) return;
-
-    try {
-      const updated = await classService.cancel(classId);
-      setClassData(updated);
-      setEditForm(toEditForm(updated));
-    } catch (err) {
-      setError(err.message || "Can not cancel class");
-    }
-  }
-
   async function deleteClass() {
     const confirmed = window.confirm(
       "Do you want to soft delete this class? This action cannot be undone.",
@@ -197,7 +187,9 @@ export function TrainerClassWorkspacePage() {
 
         <div className="workspace-header__actions">
           {!isEditing ? (
-            <Button onClick={startEdit}>Edit</Button>
+            <Button onClick={startEdit}>
+              <SquarePen size={16} />
+            </Button>
           ) : (
             <>
               <Button type="button" onClick={saveChanges} disabled={saving}>
@@ -212,13 +204,8 @@ export function TrainerClassWorkspacePage() {
             </>
           )}
 
-          <Button type="button" variant="secondary" onClick={cancelClass}>
-            Cancel Class
-          </Button>
-
           <Button type="button" variant="danger" onClick={deleteClass}>
             <Trash2 size={16} />
-            Soft Delete
           </Button>
         </div>
       </div>
@@ -250,7 +237,7 @@ export function TrainerClassWorkspacePage() {
                 </p>
                 <p>
                   <strong>Schedule:</strong>{" "}
-                  {classData.scheduleDescription || "Not specified"}
+                  {formatSchedule(classData.scheduleDescription)}
                 </p>
                 <p>
                   <strong>Capacity:</strong>{" "}
@@ -356,18 +343,6 @@ export function TrainerClassWorkspacePage() {
                 </div>
               </div>
             )}
-          </div>
-
-          <div className="class-detail-card">
-            <h3>Deployment Notes</h3>
-            <p>
-              Workspace hiện làm thật phần thông tin lớp, edit, cancel và soft
-              delete theo API backend hiện có.
-            </p>
-            <p>
-              Test, Assignment, Flashcard trong class chưa kết nối vì backend
-              classroom hiện chưa có API tương ứng.
-            </p>
           </div>
         </div>
       </div>

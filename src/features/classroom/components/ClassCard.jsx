@@ -3,6 +3,7 @@ import {
   formatCapacity,
   formatDate,
   formatVnd,
+  formatSchedule,
 } from "../utils/classFormatter";
 import { ClassStatusBadge } from "./ClassStatusBadge";
 
@@ -25,7 +26,7 @@ export function ClassCard({
     <article className="class-card">
       <button type="button" className="class-card__main" onClick={onClick}>
         <div className="class-card__header">
-          <div>
+          <div className="class-card__heading">
             <h3 className="class-card__title">
               {className || "Untitled class"}
             </h3>
@@ -38,7 +39,9 @@ export function ClassCard({
             )}
           </div>
 
-          <ClassStatusBadge status={status} />
+          <div className="class-card__status">
+            <ClassStatusBadge status={status} />
+          </div>
         </div>
 
         <div className="class-card__meta">
@@ -59,7 +62,7 @@ export function ClassCard({
           <div className="class-card__meta-item">
             <MapPin size={16} />
             <span className="class-card__meta-value">
-              {scheduleDescription || "Schedule empty"}
+              {formatSchedule(scheduleDescription)}
             </span>
           </div>
 
@@ -72,9 +75,7 @@ export function ClassCard({
 
           <div className="class-card__meta-item">
             <WalletCards size={16} />
-            <span className="class-card__meta-value">
-              {formatVnd(price)}
-            </span>
+            <span className="class-card__meta-value">{formatVnd(price)}</span>
           </div>
 
           <div className="class-card__meta-item">
