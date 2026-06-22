@@ -46,7 +46,7 @@ export function ClassListFilters({ onFilterChange }) {
         onChange={(event) => updateFilter("status", event.target.value)}
         className="class-filters__select"
       >
-        <option value="">All Statuses</option>
+        <option value="">All Status</option>
         <option value="upcoming">Upcoming</option>
         <option value="ongoing">Ongoing</option>
         <option value="completed">Completed</option>

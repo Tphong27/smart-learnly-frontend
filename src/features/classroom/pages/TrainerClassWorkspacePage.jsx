@@ -161,8 +161,15 @@ export function TrainerClassWorkspacePage() {
         </div>
 
         <div className="workspace-header__actions">
-          <Button type="button" variant="danger" onClick={deleteClass}>
-            <Trash2 size={16} />
+          <Button
+            type="button"
+            variant="delete"
+            size="icon"
+            title="Soft Delete"
+            aria-label="Soft Delete class"
+            onClick={deleteClass}
+          >
+            <Trash2 size={16} strokeWidth={2.2} />
           </Button>
         </div>
       </div>

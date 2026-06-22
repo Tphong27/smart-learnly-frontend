@@ -1,9 +1,8 @@
-import { Calendar, Users, MapPin, BookOpen, WalletCards } from "lucide-react";
+import { Calendar, Users, BookOpen, WalletCards } from "lucide-react";
 import {
   formatCapacity,
   formatDate,
   formatVnd,
-  formatSchedule,
 } from "../utils/classFormatter";
 import { ClassStatusBadge } from "./ClassStatusBadge";
 
@@ -17,7 +16,6 @@ export function ClassCard({
   activeEnrollmentCount,
   availableSeats,
   status,
-  scheduleDescription,
   price,
   onClick,
   actionButtons,
@@ -39,8 +37,12 @@ export function ClassCard({
             )}
           </div>
 
-          <div className="class-card__status">
+          <div className="class-card__top-actions">
             <ClassStatusBadge status={status} />
+
+            {actionButtons && (
+              <div className="class-card__action-buttons">{actionButtons}</div>
+            )}
           </div>
         </div>
 
@@ -56,13 +58,6 @@ export function ClassCard({
             <Calendar size={16} />
             <span className="class-card__meta-value">
               {formatDate(startDate)} - {formatDate(endDate)}
-            </span>
-          </div>
-
-          <div className="class-card__meta-item">
-            <MapPin size={16} />
-            <span className="class-card__meta-value">
-              {formatSchedule(scheduleDescription)}
             </span>
           </div>
 
@@ -86,10 +81,6 @@ export function ClassCard({
           </div>
         </div>
       </button>
-
-      {actionButtons && (
-        <div className="class-card__actions">{actionButtons}</div>
-      )}
     </article>
   );
 }

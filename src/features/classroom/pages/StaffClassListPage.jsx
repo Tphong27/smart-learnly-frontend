@@ -1,12 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import {
-  AlertCircle,
-  Eye,
-  Loader,
-  Plus,
-  Trash2,
-} from "lucide-react";
+import { AlertCircle, Loader, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/shared/components/ui";
 import { classService } from "@/services";
 import { ROLES } from "@/shared/constants/roles";
@@ -167,8 +161,13 @@ export function StaffClassListPage() {
           <h1>Class Management</h1>
         </div>
 
-        <Button onClick={() => navigate("/staff/classrooms/create")}>
-          <Plus size={18} />
+        <Button
+          type="button"
+          variant="create"
+          size="sm"
+          leftIcon={<Plus size={16} strokeWidth={2.4} />}
+          onClick={() => navigate("/staff/classrooms/create")}
+        >
           New Class
         </Button>
       </div>
@@ -215,29 +214,19 @@ export function StaffClassListPage() {
                 }
                 actionButtons={
                   <>
-                    <button
+                    <Button
                       type="button"
-                      className="btn-icon"
-                      title="View Details"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        navigate(`/staff/classrooms/${classItem.id}/workspace`);
-                      }}
-                    >
-                      <Eye size={18} />
-                    </button>
-
-                    <button
-                      type="button"
-                      className="btn-icon btn-icon--danger"
+                      variant="delete"
+                      size="xs-icon"
                       title="Soft Delete"
+                      aria-label="Soft Delete class"
                       onClick={(event) => {
                         event.stopPropagation();
                         handleDeleteClass(classItem.id);
                       }}
                     >
-                      <Trash2 size={18} />
-                    </button>
+                      <Trash2 size={16} strokeWidth={2.2} />
+                    </Button>
                   </>
                 }
               />

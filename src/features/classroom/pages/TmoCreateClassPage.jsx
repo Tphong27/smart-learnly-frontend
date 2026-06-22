@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AlertCircle, Loader } from "lucide-react";
 import { Button } from "@/shared/components/ui";
-import { courseService, userService } from "@/services";
+import { courseService } from "@/services";
+import { useActiveTrainers } from "../hooks/useActiveTrainers";
 import { useClassForm } from "../hooks/useClassForm";
 import { todayString } from "../utils/classValidator";
 import { WeeklySchedulePicker } from "../components/WeeklySchedulePicker";
@@ -12,8 +13,7 @@ export function TmoCreateClassPage() {
 
   const [courses, setCourses] = useState([]);
   const [loadingCourses, setLoadingCourses] = useState(true);
-  const [trainers, setTrainers] = useState([]);
-  const [loadingTrainers, setLoadingTrainers] = useState(true);
+  const { trainers, loadingTrainers, reloadTrainers } = useActiveTrainers();
 
   const form = useClassForm(null, () => {
     navigate("/staff/classrooms");
@@ -63,48 +63,15 @@ export function TmoCreateClassPage() {
   }, []);
 
   useEffect(() => {
-    let mounted = true;
-
-    async function fetchActiveTrainers() {
-      try {
-        setLoadingTrainers(true);
-
-        const data = await userService.listActiveTrainers({
-          page: 0,
-          size: 100,
-        });
-
-        if (mounted) {
-          setTrainers(data.content || []);
-        }
-      } catch (error) {
-        console.error("Error loading trainers:", error);
-
-        if (mounted) {
-          setTrainers([]);
-        }
-      } finally {
-        if (mounted) {
-          setLoadingTrainers(false);
-        }
-      }
-    }
-
-    fetchActiveTrainers();
-
-    return () => {
-      mounted = false;
-    };
-  }, []);
+    reloadTrainers();
+  }, [reloadTrainers]);
 
   return (
     <section className="tmo-create-class">
       <div className="section-header">
         <div>
           <h1>Create Class</h1>
-          <p className="section-header__subtitle">
-            Create a new class based on an existing course in the system.
-          </p>
+          <p>Set up a new class by providing the details below.</p>
         </div>
       </div>
 

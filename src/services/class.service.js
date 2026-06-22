@@ -19,7 +19,7 @@ function normalizePage(response) {
     page: Number(data?.page ?? data?.number ?? 0),
     size: Number(data?.size ?? 20),
     totalElements: Number(
-      data?.totalElements ?? data?.total ?? content.length ?? 0
+      data?.totalElements ?? data?.total ?? content.length ?? 0,
     ),
     totalPages: Number(data?.totalPages ?? 1),
   };
@@ -59,7 +59,23 @@ export const classService = {
   },
 
   async update(classId, payload) {
-    const response = await apiClient.patch(`/admin/classes/${classId}`, payload);
+    if (!classId) {
+      throw new Error("Class ID is required");
+    }
+
+    const cleanedPayload = Object.fromEntries(
+      Object.entries(payload || {}).filter(([, value]) => value !== undefined),
+    );
+
+    if (Object.keys(cleanedPayload).length === 0) {
+      throw new Error("No class field was changed");
+    }
+
+    const response = await apiClient.patch(
+      `/admin/classes/${classId}`,
+      cleanedPayload,
+    );
+
     return unwrapData(response);
   },
 

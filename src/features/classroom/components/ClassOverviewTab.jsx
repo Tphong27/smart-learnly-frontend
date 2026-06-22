@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
-import { Save, X } from "lucide-react";
+import { useState } from "react";
+import { Edit3, Save, X } from "lucide-react";
 import { Button } from "@/shared/components/ui";
-import { classService, userService } from "@/services";
+import { classService } from "@/services";
+import { useActiveTrainers } from "../hooks/useActiveTrainers";
 import { formatCapacity, formatDate, formatVnd } from "../utils/classFormatter";
 import { ClassStatusBadge } from "./ClassStatusBadge";
 import { ScheduleCalendar } from "./ScheduleCalendar";
@@ -24,23 +25,105 @@ function toEditForm(classData) {
   };
 }
 
-function toUpdatePayload(form) {
-  const payload = {
-    className: form.className?.trim(),
-    scheduleDescription: form.scheduleDescription || null,
-    startDate: form.startDate || null,
-    endDate: form.endDate || null,
-    maxStudents: Number(form.maxStudents),
-    price: Number(form.price),
-  };
+function emptyToUndefined(value) {
+  if (value === null || value === undefined) return undefined;
 
-  if (form.trainerId) {
-    payload.trainerId = form.trainerId;
-  } else {
-    payload.trainerId = null;
+  const normalized = String(value).trim();
+  return normalized === "" ? undefined : normalized;
+}
+
+function numberOrUndefined(value) {
+  if (value === "" || value === null || value === undefined) {
+    return undefined;
+  }
+
+  const numericValue = Number(value);
+
+  if (Number.isNaN(numericValue)) {
+    return undefined;
+  }
+
+  return numericValue;
+}
+
+function toUpdatePayload(form, originalClassData) {
+  const payload = {};
+
+  const className = emptyToUndefined(form.className);
+  if (className && className !== originalClassData.className) {
+    payload.className = className;
+  }
+
+  const trainerId = emptyToUndefined(form.trainerId);
+  const originalTrainerId = originalClassData.trainerId || undefined;
+  if (trainerId !== originalTrainerId) {
+    payload.trainerId = trainerId ?? null;
+  }
+
+  const scheduleDescription = emptyToUndefined(form.scheduleDescription);
+  const originalScheduleDescription = emptyToUndefined(
+    originalClassData.scheduleDescription,
+  );
+  if (scheduleDescription !== originalScheduleDescription) {
+    payload.scheduleDescription = scheduleDescription ?? null;
+  }
+
+  const startDate = emptyToUndefined(form.startDate);
+  const originalStartDate = emptyToUndefined(
+    toInputDate(originalClassData.startDate),
+  );
+  if (startDate !== originalStartDate) {
+    payload.startDate = startDate ?? null;
+  }
+
+  const endDate = emptyToUndefined(form.endDate);
+  const originalEndDate = emptyToUndefined(
+    toInputDate(originalClassData.endDate),
+  );
+  if (endDate !== originalEndDate) {
+    payload.endDate = endDate ?? null;
+  }
+
+  const maxStudents = numberOrUndefined(form.maxStudents);
+  if (
+    maxStudents !== undefined &&
+    maxStudents !== Number(originalClassData.maxStudents)
+  ) {
+    payload.maxStudents = maxStudents;
+  }
+
+  const price = numberOrUndefined(form.price);
+  if (price !== undefined && price !== Number(originalClassData.price)) {
+    payload.price = price;
   }
 
   return payload;
+}
+
+function buildTrainerOptions(trainers, classData) {
+  const safeTrainers = Array.isArray(trainers) ? trainers : [];
+
+  if (!classData?.trainerId) {
+    return safeTrainers;
+  }
+
+  const hasCurrentTrainer = safeTrainers.some(
+    (trainer) => trainer.id === classData.trainerId,
+  );
+
+  if (hasCurrentTrainer) {
+    return safeTrainers;
+  }
+
+  return [
+    {
+      id: classData.trainerId,
+      fullName: classData.trainerName || "Current trainer",
+      email: "",
+      isCurrentTrainer: true,
+    },
+    ...safeTrainers,
+  ];
 }
 
 export function ClassOverviewTab({ classData, classId, onClassUpdated }) {
@@ -48,8 +131,10 @@ export function ClassOverviewTab({ classData, classId, onClassUpdated }) {
   const [editForm, setEditForm] = useState(() => toEditForm(classData));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  const [trainers, setTrainers] = useState([]);
-  const [loadingTrainers, setLoadingTrainers] = useState(false);
+  const { trainers, loadingTrainers, reloadTrainers } = useActiveTrainers({
+    autoLoad: false,
+  });
+  const trainerOptions = buildTrainerOptions(trainers, classData);
 
   function updateField(key, value) {
     setEditForm((current) => ({
@@ -62,6 +147,7 @@ export function ClassOverviewTab({ classData, classId, onClassUpdated }) {
     setEditForm(toEditForm(classData));
     setError("");
     setIsEditing(true);
+    reloadTrainers();
   }
 
   function cancelEdit() {
@@ -75,57 +161,26 @@ export function ClassOverviewTab({ classData, classId, onClassUpdated }) {
       setSaving(true);
       setError("");
 
-      const payload = toUpdatePayload(editForm);
+      const payload = toUpdatePayload(editForm, classData);
+
+      if (Object.keys(payload).length === 0) {
+        setIsEditing(false);
+        return;
+      }
+
       const updatedClass = await classService.update(classId, payload);
 
       onClassUpdated?.(updatedClass);
       setEditForm(toEditForm(updatedClass));
       setIsEditing(false);
     } catch (err) {
-      setError(err.message || "Can not save class changes");
+      console.error("Update class failed:", err);
+
+      setError(err?.message || err?.error || "Can not save class changes");
     } finally {
       setSaving(false);
     }
   }
-
-  useEffect(() => {
-    if (!isEditing) {
-      return undefined;
-    }
-
-    let mounted = true;
-
-    async function fetchActiveTrainers() {
-      try {
-        setLoadingTrainers(true);
-
-        const data = await userService.listActiveTrainers({
-          page: 0,
-          size: 100,
-        });
-
-        if (mounted) {
-          setTrainers(data.content || []);
-        }
-      } catch (err) {
-        console.error("Error loading active trainers:", err);
-
-        if (mounted) {
-          setTrainers([]);
-        }
-      } finally {
-        if (mounted) {
-          setLoadingTrainers(false);
-        }
-      }
-    }
-
-    fetchActiveTrainers();
-
-    return () => {
-      mounted = false;
-    };
-  }, [isEditing]);
 
   return (
     <div className="class-overview-tab">
@@ -134,18 +189,36 @@ export function ClassOverviewTab({ classData, classId, onClassUpdated }) {
           <h3>Class Information</h3>
 
           {!isEditing ? (
-            <Button type="button" onClick={startEdit}>
+            <Button
+              type="button"
+              variant="edit"
+              size="sm"
+              leftIcon={<Edit3 size={16} strokeWidth={2.2} />}
+              onClick={startEdit}
+            >
               Edit
             </Button>
           ) : (
             <div className="class-overview-card-header__actions">
-              <Button type="button" onClick={saveChanges} disabled={saving}>
-                <Save size={16} />
-                {saving ? "Saving..." : "Save"}
+              <Button
+                type="button"
+                variant="save"
+                size="sm"
+                loading={saving}
+                loadingText="Saving..."
+                leftIcon={<Save size={16} strokeWidth={2.2} />}
+                onClick={saveChanges}
+              >
+                Save
               </Button>
 
-              <Button type="button" variant="secondary" onClick={cancelEdit}>
-                <X size={16} />
+              <Button
+                type="button"
+                variant="cancel"
+                size="sm"
+                leftIcon={<X size={16} strokeWidth={2.2} />}
+                onClick={cancelEdit}
+              >
                 Cancel
               </Button>
             </div>
@@ -217,15 +290,17 @@ export function ClassOverviewTab({ classData, classId, onClassUpdated }) {
               >
                 <option value="">Select Trainer</option>
 
-                {!loadingTrainers && trainers.length === 0 && (
+                {!loadingTrainers && trainerOptions.length === 0 && (
                   <option value="" disabled>
                     No active trainers available
                   </option>
                 )}
 
-                {trainers.map((trainer) => (
+                {trainerOptions.map((trainer) => (
                   <option key={trainer.id} value={trainer.id}>
-                    {trainer.fullName || trainer.email} ({trainer.email})
+                    {trainer.fullName || trainer.email}
+                    {trainer.email ? ` (${trainer.email})` : ""}
+                    {trainer.isCurrentTrainer ? " - current" : ""}
                   </option>
                 ))}
               </select>

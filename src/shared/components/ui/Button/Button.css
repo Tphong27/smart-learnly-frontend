@@ -125,6 +125,15 @@
   justify-content: center;
 }
 
+.button--xs-icon {
+  width: 32px;
+  min-width: 32px;
+  height: 32px;
+  min-height: 32px;
+  padding: 0;
+  border-radius: 8px;
+}
+
 .button__spinner {
   width: 16px;
   height: 16px;
@@ -138,4 +147,162 @@
   to {
     transform: rotate(360deg);
   }
+}
+
+.button__content {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.button--toolbar {
+  --button-bg: #ffffff;
+  --button-color: #1f2937;
+  --button-border: #e2e8f0;
+  --button-hover-bg: #f8fafc;
+  --button-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  --button-shadow-hover: 0 2px 6px rgba(15, 23, 42, 0.08);
+
+  border-radius: 7px;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+.button--toolbar:hover:not(:disabled) {
+  --button-color: #2563eb;
+}
+
+.button--toolbar-danger {
+  --button-bg: #ffffff;
+  --button-color: #b91c1c;
+  --button-border: #e2e8f0;
+  --button-hover-bg: #fff1f2;
+  --button-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  --button-shadow-hover: 0 2px 6px rgba(220, 38, 38, 0.08);
+
+  border-radius: 7px;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+.button--toolbar-danger:hover:not(:disabled) {
+  --button-color: #dc2626;
+  --button-border: #fecaca;
+}
+
+.button--icon {
+  width: 36px;
+  min-width: 36px;
+  height: 36px;
+  min-height: 36px;
+  padding: 0;
+  border-radius: 7px;
+}
+
+.button--toolbar.button--sm {
+  min-height: 38px;
+  padding: 0 14px;
+  font-size: 14px;
+}
+
+.button--toolbar-danger.button--sm {
+  min-height: 38px;
+  padding: 0 14px;
+  font-size: 14px;
+}
+
+/* Action outline buttons: white background, colored border + text */
+.button--create,
+.button--save {
+  --button-bg: #ffffff;
+  --button-color: #2563eb;
+  --button-border: #93c5fd;
+  --button-hover-bg: #eff6ff;
+  --button-shadow: 0 1px 2px rgba(37, 99, 235, 0.06);
+  --button-shadow-hover: 0 3px 8px rgba(37, 99, 235, 0.12);
+
+  border-radius: 7px;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+.button--create:hover:not(:disabled),
+.button--save:hover:not(:disabled) {
+  --button-color: #1d4ed8;
+  --button-border: #60a5fa;
+}
+
+.button--edit {
+  --button-bg: #ffffff;
+  --button-color: #b45309;
+  --button-border: #facc15;
+  --button-hover-bg: #fefce8;
+  --button-shadow: 0 1px 2px rgba(180, 83, 9, 0.06);
+  --button-shadow-hover: 0 3px 8px rgba(180, 83, 9, 0.12);
+
+  border-radius: 7px;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+.button--edit:hover:not(:disabled) {
+  --button-color: #92400e;
+  --button-border: #eab308;
+}
+
+.button--delete {
+  --button-bg: #ffffff;
+  --button-color: #dc2626;
+  --button-border: #fca5a5;
+  --button-hover-bg: #fff1f2;
+  --button-shadow: 0 1px 2px rgba(220, 38, 38, 0.06);
+  --button-shadow-hover: 0 3px 8px rgba(220, 38, 38, 0.12);
+
+  border-radius: 7px;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+.button--delete:hover:not(:disabled) {
+  --button-color: #b91c1c;
+  --button-border: #f87171;
+}
+
+.button--cancel {
+  --button-bg: #ffffff;
+  --button-color: #475569;
+  --button-border: #cbd5e1;
+  --button-hover-bg: #f8fafc;
+  --button-shadow: 0 1px 2px rgba(71, 85, 105, 0.05);
+  --button-shadow-hover: 0 3px 8px rgba(71, 85, 105, 0.1);
+
+  border-radius: 7px;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+.button--cancel:hover:not(:disabled) {
+  --button-color: #334155;
+  --button-border: #94a3b8;
+}
+
+/* Compact icon-only button */
+.button--icon {
+  width: 36px;
+  min-width: 36px;
+  height: 36px;
+  min-height: 36px;
+  padding: 0;
+  border-radius: 7px;
+}
+
+/* Small action button giống toolbar */
+.button--create.button--sm,
+.button--save.button--sm,
+.button--edit.button--sm,
+.button--delete.button--sm,
+.button--cancel.button--sm {
+  min-height: 38px;
+  padding: 0 14px;
+  font-size: 14px;
 }
