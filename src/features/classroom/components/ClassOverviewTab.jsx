@@ -5,7 +5,7 @@ import { classService, userService } from "@/services";
 import { formatCapacity, formatDate, formatVnd } from "../utils/classFormatter";
 import { ClassStatusBadge } from "./ClassStatusBadge";
 import { ScheduleCalendar } from "./ScheduleCalendar";
-import { WeeklySchedulePicker } from "./WeeklySchedulePicker";
+import { WeeklyScheduleEditor } from "./WeeklySchedulePicker";
 
 function toInputDate(value) {
   if (!value) return "";
@@ -25,15 +25,22 @@ function toEditForm(classData) {
 }
 
 function toUpdatePayload(form) {
-  return {
+  const payload = {
     className: form.className?.trim(),
-    trainerId: form.trainerId || null,
     scheduleDescription: form.scheduleDescription || null,
     startDate: form.startDate || null,
     endDate: form.endDate || null,
     maxStudents: Number(form.maxStudents),
     price: Number(form.price),
   };
+
+  if (form.trainerId) {
+    payload.trainerId = form.trainerId;
+  } else {
+    payload.trainerId = null;
+  }
+
+  return payload;
 }
 
 export function ClassOverviewTab({ classData, classId, onClassUpdated }) {
@@ -184,9 +191,6 @@ export function ClassOverviewTab({ classData, classId, onClassUpdated }) {
               <ClassStatusBadge status={classData.status} />
             </p>
           </div>
-
-
-
         ) : (
           <div className="class-form class-form--compact class-overview-edit-form">
             <div className="form-group">
@@ -283,7 +287,7 @@ export function ClassOverviewTab({ classData, classId, onClassUpdated }) {
             <div className="form-group">
               <label>Schedule</label>
 
-              <WeeklySchedulePicker
+              <WeeklyScheduleEditor
                 value={editForm.scheduleDescription}
                 onChange={(value) => updateField("scheduleDescription", value)}
               />
