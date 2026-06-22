@@ -344,4 +344,21 @@ export const courseService = {
     const data = unwrap(response);
     return Array.isArray(data) ? data : data?.items || data?.content || [];
   },
+
+  // =====================================================================
+  // API lấy lịch sử Audit Log cho Lesson
+  // =====================================================================
+  async getLessonAuditLogs(lessonId, page = 0, size = 50) {
+    const response = await apiClient.get("/admin/audit-logs", {
+      params: {
+        targetType: "LESSON",
+        targetId: lessonId,
+        page: page,
+        size: size,
+      },
+    });
+    // Trả về normalizePage để đồng bộ chuẩn PageResponse với các list khác
+    // Nếu API trả thẳng mảng hoặc dạng khác, bạn có thể sửa thành return unwrap(response)
+    return normalizePage(response);
+  },
 };
