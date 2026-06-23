@@ -35,6 +35,7 @@ export default function AdminLessonDetailPage() {
   const [pageLoading, setPageLoading] = useState(true);
   const [textContent, setTextContent] = useState("");
   const [lessonType, setLessonType] = useState("VIDEO");
+  const [existingLessonData, setExistingLessonData] = useState(null);
 
   const [videoUrl, setVideoUrl] = useState("");
   const [mainContentFile, setMainContentFile] = useState(null);
@@ -90,6 +91,7 @@ export default function AdminLessonDetailPage() {
         const lessonData = response?.data || response;
 
         if (lessonData) {
+          setExistingLessonData(lessonData);
           setTitle(lessonData.title || "");
           setTextContent(lessonData.content || "");
           setVideoUrl(lessonData.videoUrl || "");
@@ -99,7 +101,7 @@ export default function AdminLessonDetailPage() {
           ).toUpperCase();
 
           if (typeFromServer === "PDF" || typeFromServer === "DOCUMENT") {
-            setLessonType("DOCUMENT");
+            setLessonType("PDF");
             setUploadedFileUrl(
               lessonData.attachmentUrl || lessonData.fileUrl || "",
             );
@@ -305,10 +307,10 @@ export default function AdminLessonDetailPage() {
         type: lessonType === "VIDEO" ? "VIDEO" : lessonType === "QUIZ" ? "QUIZ" : "PDF",
         videoUrl: lessonType === "VIDEO" ? videoUrl.trim() : "",
         content: contentToSave,
-        attachmentUrl: lessonType === "DOCUMENT" ? uploadedFileUrl : "",
+        attachmentUrl: lessonType === "PDF" ? uploadedFileUrl : "",
         resources: normalizedResources,
         durationSeconds: 0,
-        isPreview: false,
+        isPreview: existingLessonData?.isPreview ?? false,
         status: "PUBLISHED",
       };
 
@@ -509,7 +511,7 @@ export default function AdminLessonDetailPage() {
                     }}
                   >
                     <option value="VIDEO">Video Lecture</option>
-                    <option value="DOCUMENT">Document / Reading</option>
+                    <option value="PDF">Document / Reading</option>
                     <option value="QUIZ">Quiz</option>
                   </select>
                 </div>
@@ -828,7 +830,7 @@ export default function AdminLessonDetailPage() {
                     )}
                   </div>
                 )}
-                {lessonType === "DOCUMENT" && (
+                {lessonType === "PDF" && (
                   <div
                     onDragOver={handleDragOver}
                     onDrop={handleDropMainFile}

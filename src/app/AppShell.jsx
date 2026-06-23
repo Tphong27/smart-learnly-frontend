@@ -2,8 +2,8 @@ import { BrowserRouter, Navigate, useRoutes } from "react-router-dom";
 import { PublicLayout } from "./layouts/PublicLayout";
 import { AppLayout } from "./layouts/AppLayout";
 import { ProtectedRoute } from "./routes/ProtectedRoute";
-// import { RoleGuard } from "./routes/RoleGuard";
-// import { ROLES } from "@/shared/constants/roles";
+import { RoleGuard } from "./routes/RoleGuard";
+import { ROLES } from "@/shared/constants/roles";
 import { HomePage } from "../features/home/HomePage";
 import { CourseDetailPage, CoursePreviewLessonsPage, LearningWorkspacePage } from "../features/course";
 import {
@@ -101,6 +101,17 @@ const appRoutes = [
   {
     element: <ProtectedRoute />,
     children: [
+      // Admin Course Learning Preview - fullscreen, outside AppLayout
+      {
+        element: (
+          <RoleGuard allowedRoles={[ROLES.ADMIN, ROLES.TMO, ROLES.SME]} />
+        ),
+        children: [
+          { path: "/admin/courses/:courseId/preview",
+            element: <LearningWorkspacePage mode="admin-preview" /> },
+        ],
+      },
+
       // Nhóm 1: Trang cá nhân dùng chung AppLayout hệ thống
       {
         element: <AppLayout />,

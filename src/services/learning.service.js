@@ -17,4 +17,9 @@ export const learningService = {
     })
     return unwrap(response)
   },
+
+  async getAdminPreviewContent(courseId) {
+    const response = await apiClient.get(`/admin/courses/${courseId}/learning-preview`)
+    return unwrap(response)
+  },
 }

@@ -8,7 +8,7 @@ import {
   AdminCoursesPage,
   AdminCourseFormPage,
 } from "@/features/admin";
-import { CoursePreviewLessonsPage } from "@/features/course";
+// IMPORT TRANG KÉO THẢ NỘI DUNG CỦA DEV F VÀO ĐÂY
 import AdminOrdersPage from "@/features/checkout/pages/AdminOrdersPage";
 import AdminTransactionsPage from "@/features/checkout/pages/AdminTransactionsPage";
 
@@ -66,11 +66,6 @@ function getAdminRoutes() {
             {
               path: "courses/:courseId/lessons/:lessonId",
               element: <AdminLessonDetailPage />,
-            },
-
-            {
-              path: "courses/:courseId/preview",
-              element: <CoursePreviewLessonsPage />,
             },
             { path: "categories", element: <AdminCategoriesPage /> },
           ],

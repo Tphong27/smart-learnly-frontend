@@ -1,15 +1,19 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import {
     ArrowLeft,
-    ArrowRight,
+    CheckCircle2,
     PlayCircle,
     FileText,
     HelpCircle,
-    Clock,
     Menu,
     X,
+    ChevronDown,
+    Circle,
+    BookOpen,
 } from "lucide-react";
+import { LearningLessonMedia } from "@/features/course/components/LearningLessonMedia";
+import { LearningLessonTabs } from "@/features/course/components/LearningLessonTabs";
 import { learningService } from "@/services";
 import "./LearningWorkspacePage.css";
 
@@ -33,13 +37,21 @@ function groupLessonsBySection(data) {
     return data?.sections || [];
 }
 
-export function LearningWorkspacePage({ previewMode = false }) {
+// ─── Main Component ───────────────────────────────────────────────────────────
+
+export function LearningWorkspacePage({
+    previewMode = false,
+    mode = "student",
+}) {
     const { courseId } = useParams();
     const navigate = useNavigate();
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [sidebarOpen, setSidebarOpen] = useState(true);
+    const [activeLessonTab, setActiveLessonTab] = useState("overview");
+    const [completedLessonIds, setCompletedLessonIds] = useState(() => new Set());
+    const [lessonNotesById, setLessonNotesById] = useState({});
 
     useEffect(() => {
         let cancelled = false;
@@ -47,15 +59,21 @@ export function LearningWorkspacePage({ previewMode = false }) {
             setLoading(true);
             setError(null);
             try {
-                const result = previewMode
-                    ? await learningService.getPreviewContent(courseId)
-                    : await learningService.getLearningContent(courseId);
-                if (cancelled) return;
-                setData(result);
+                let result;
+                if (mode === "student") {
+                    result = await learningService.getLearningContent(courseId);
+                } else if (mode === "guest") {
+                    result = await learningService.getPreviewContent(courseId);
+                } else if (mode === "admin-preview") {
+                    result =
+                        await learningService.getAdminPreviewContent(courseId);
+                } else {
+                    result = await learningService.getLearningContent(courseId);
+                }
+                if (!cancelled) setData(result);
             } catch (err) {
-                if (cancelled) return;
-                const msg = err?.message || "Failed to load course content";
-                setError(msg);
+                if (!cancelled)
+                    setError(err?.message || "Failed to load course content");
             } finally {
                 if (!cancelled) setLoading(false);
             }
@@ -64,7 +82,7 @@ export function LearningWorkspacePage({ previewMode = false }) {
         return () => {
             cancelled = true;
         };
-    }, [courseId, previewMode]);
+    }, [courseId, mode]);
 
     const sections = useMemo(() => groupLessonsBySection(data), [data]);
 
@@ -72,122 +90,76 @@ export function LearningWorkspacePage({ previewMode = false }) {
         return sections.flatMap((s) => s.lessons || []);
     }, [sections]);
 
-    const [activeLesson, setActiveLesson] = useState(null);
+    const [activeLessonId, setActiveLessonId] = useState(null);
 
-    useEffect(() => {
-        if (allLessons.length > 0 && !activeLesson) {
-            setActiveLesson(allLessons[0]);
-        }
-    }, [allLessons, activeLesson]);
+    const handleSelectLesson = useCallback((lesson) => {
+        setActiveLessonId(lesson?.lessonId ?? null);
+        setActiveLessonTab("overview");
+    }, []);
 
-    const currentIndex = useMemo(() => {
-        return allLessons.findIndex(
-            (l) => l.lessonId === activeLesson?.lessonId,
-        );
-    }, [allLessons, activeLesson]);
-
-    const goToPrev = () => {
-        if (currentIndex > 0) {
-            setActiveLesson(allLessons[currentIndex - 1]);
-        }
-    };
-
-    const goToNext = () => {
-        if (currentIndex < allLessons.length - 1) {
-            setActiveLesson(allLessons[currentIndex + 1]);
-        }
-    };
-
-    useEffect(() => {
-        const handleKeyDown = (e) => {
-            if (e.key === "ArrowLeft") goToPrev();
-            if (e.key === "ArrowRight") goToNext();
-        };
-        window.addEventListener("keydown", handleKeyDown);
-        return () => window.removeEventListener("keydown", handleKeyDown);
-    }, [currentIndex, allLessons]);
-
-    const renderLessonContent = (lesson) => {
-        if (!lesson) return null;
-        const type = (lesson.lessonType || "").toLowerCase();
-
+    const activeLesson = useMemo(() => {
+        if (allLessons.length === 0) return null;
         return (
-            <div className="learning-lesson">
-                <header className="learning-lesson__header">
-                    <h1 className="learning-lesson__title">{lesson.title}</h1>
-                    <div className="learning-lesson__meta">
-                        <span className="learning-lesson__type-badge">
-                            {lesson.lessonType}
-                        </span>
-                        <span className="learning-lesson__meta-item">
-                            <Clock size={14} />
-                            {formatDuration(lesson.durationSeconds)}
-                        </span>
-                    </div>
-                </header>
-
-                {type.includes("video") && lesson.videoUrl && (
-                    <div className="learning-lesson__video-container">
-                        <video controls src={lesson.videoUrl} />
-                    </div>
-                )}
-
-                {lesson.content && (
-                    <div className="learning-lesson__content">
-                        {lesson.content.split("\n").map((line, idx) => (
-                            <p key={idx}>{line}</p>
-                        ))}
-                    </div>
-                )}
-
-                {type.includes("quiz") && lesson.content && (
-                    <div className="learning-quiz">
-                        <QuizDisplay content={lesson.content} />
-                    </div>
-                )}
-
-                {lesson.attachmentUrl && (
-                    <a
-                        className="learning-lesson__attachment"
-                        href={lesson.attachmentUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                    >
-                        <FileText size={18} />
-                        Download Attachment
-                    </a>
-                )}
-
-                {lesson.resources && lesson.resources.length > 0 && (
-                    <div className="learning-lesson__resources">
-                        <h4 className="learning-lesson__resources-title">
-                            Resources
-                        </h4>
-                        <div className="learning-lesson__resources-list">
-                            {lesson.resources.map((r, idx) => (
-                                <a
-                                    key={idx}
-                                    className="learning-lesson__resource"
-                                    href={r.url}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                >
-                                    <FileText size={14} />
-                                    {r.name || "Resource"}
-                                </a>
-                            ))}
-                        </div>
-                    </div>
-                )}
-            </div>
+            allLessons.find((lesson) => lesson.lessonId === activeLessonId) ||
+            allLessons[0]
         );
-    };
+    }, [allLessons, activeLessonId]);
+
+    const currentIndex = useMemo(
+        () =>
+            allLessons.findIndex(
+                (lesson) => lesson.lessonId === activeLesson?.lessonId,
+            ),
+        [activeLesson?.lessonId, allLessons],
+    );
+
+    const nextLesson = useMemo(() => {
+        if (currentIndex < 0 || currentIndex >= allLessons.length - 1) {
+            return null;
+        }
+        return allLessons[currentIndex + 1];
+    }, [allLessons, currentIndex]);
+
+    const handleGoToNextLesson = useCallback(() => {
+        if (!nextLesson) return;
+        handleSelectLesson(nextLesson);
+    }, [handleSelectLesson, nextLesson]);
+
+    const toggleLessonCompleted = useCallback((lessonId) => {
+        if (!lessonId) return;
+        setCompletedLessonIds((currentIds) => {
+            const nextIds = new Set(currentIds);
+            if (nextIds.has(lessonId)) {
+                nextIds.delete(lessonId);
+            } else {
+                nextIds.add(lessonId);
+            }
+            return nextIds;
+        });
+    }, []);
+
+    const activeLessonIdForNote = activeLesson?.lessonId;
+    const activeLessonNote = activeLessonIdForNote
+        ? lessonNotesById[activeLessonIdForNote] || ""
+        : "";
+
+    const handleActiveLessonNoteChange = useCallback(
+        (note) => {
+            if (!activeLessonIdForNote) return;
+            setLessonNotesById((currentNotes) => ({
+                ...currentNotes,
+                [activeLessonIdForNote]: note,
+            }));
+        },
+        [activeLessonIdForNote],
+    );
 
     if (loading) {
         return (
             <div className="learning-workspace">
                 <div className="learning-workspace__loading">
-                    Loading course content...
+                    <div className="learning-workspace__spinner" />
+                    <span>Loading course content...</span>
                 </div>
             </div>
         );
@@ -218,15 +190,13 @@ export function LearningWorkspacePage({ previewMode = false }) {
         <div className="learning-workspace">
             {previewMode && (
                 <div className="learning-workspace__preview-banner">
-                    <span>Preview mode - You are viewing sample content</span>
-                    {!previewMode && (
-                        <Link
-                            to={`/courses/${courseId}`}
-                            className="learning-workspace__preview-cta"
-                        >
-                            View Course Details
-                        </Link>
-                    )}
+                    <span>Preview mode — You are viewing sample content</span>
+                    <Link
+                        to={`/courses/${courseId}`}
+                        className="learning-workspace__preview-cta"
+                    >
+                        View Course Details
+                    </Link>
                 </div>
             )}
 
@@ -238,21 +208,27 @@ export function LearningWorkspacePage({ previewMode = false }) {
                         className="learning-workspace__sidebar-back"
                         onClick={() =>
                             navigate(
-                                previewMode
-                                    ? `/courses/${courseId}`
-                                    : "/learning/courses",
+                                mode === "admin-preview"
+                                    ? `/admin/courses/${courseId}/content`
+                                    : previewMode
+                                      ? `/courses/${courseId}`
+                                      : "/learning/courses",
                             )
                         }
+                        title="Back"
                     >
                         <ArrowLeft size={18} />
                     </button>
-                    <h2 className="learning-workspace__sidebar-title">
+                    <h2
+                        className="learning-workspace__sidebar-title"
+                        title={courseTitle}
+                    >
                         {courseTitle}
                     </h2>
                     <button
                         className="learning-workspace__sidebar-back"
                         onClick={() => setSidebarOpen(false)}
-                        style={{ marginLeft: "auto" }}
+                        title="Close sidebar"
                     >
                         <X size={18} />
                     </button>
@@ -290,7 +266,9 @@ export function LearningWorkspacePage({ previewMode = false }) {
                                 section={section}
                                 sIdx={sIdx}
                                 activeLesson={activeLesson}
-                                onSelectLesson={setActiveLesson}
+                                onSelectLesson={handleSelectLesson}
+                                completedLessonIds={completedLessonIds}
+                                onToggleLessonComplete={toggleLessonCompleted}
                             />
                         </div>
                     ))}
@@ -300,22 +278,9 @@ export function LearningWorkspacePage({ previewMode = false }) {
             <main className="learning-workspace__main">
                 {!sidebarOpen && (
                     <button
+                        className="learning-workspace__sidebar-toggle"
                         onClick={() => setSidebarOpen(true)}
-                        style={{
-                            position: "absolute",
-                            top: 12,
-                            left: 12,
-                            zIndex: 50,
-                            background: "#313244",
-                            border: "none",
-                            borderRadius: 8,
-                            padding: "8px 12px",
-                            color: "#cdd6f4",
-                            cursor: "pointer",
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 6,
-                        }}
+                        title="Open sidebar"
                     >
                         <Menu size={18} />
                     </button>
@@ -323,47 +288,46 @@ export function LearningWorkspacePage({ previewMode = false }) {
 
                 <div className="learning-workspace__content">
                     {activeLesson ? (
-                        renderLessonContent(activeLesson)
+                        <div className="learning-lesson">
+                            <LearningLessonMedia
+                                key={`media-${activeLesson.lessonId}`}
+                                lesson={activeLesson}
+                            />
+
+                            <LearningLessonTabs
+                                key={`tabs-${activeLesson.lessonId}`}
+                                lesson={activeLesson}
+                                activeTab={activeLessonTab}
+                                onTabChange={setActiveLessonTab}
+                                note={activeLessonNote}
+                                onNoteChange={handleActiveLessonNoteChange}
+                                nextLesson={nextLesson}
+                                onNextLesson={handleGoToNextLesson}
+                            />
+                        </div>
                     ) : (
-                        <div
-                            style={{
-                                textAlign: "center",
-                                color: "#6c7086",
-                                padding: "48px",
-                            }}
-                        >
-                            Select a lesson from the sidebar to begin
+                        <div className="learning-lesson__empty">
+                            <BookOpen size={48} />
+                            <p>Select a lesson from the sidebar to begin</p>
                         </div>
                     )}
                 </div>
 
-                <nav className="learning-workspace__nav">
-                    <button
-                        className="learning-workspace__nav-btn learning-workspace__nav-btn--prev"
-                        onClick={goToPrev}
-                        disabled={currentIndex <= 0}
-                    >
-                        <ArrowLeft size={16} />
-                        Previous
-                    </button>
-                    <span style={{ color: "#6c7086", fontSize: 13 }}>
-                        {currentIndex + 1} / {allLessons.length}
-                    </span>
-                    <button
-                        className="learning-workspace__nav-btn learning-workspace__nav-btn--next"
-                        onClick={goToNext}
-                        disabled={currentIndex >= allLessons.length - 1}
-                    >
-                        Next
-                        <ArrowRight size={16} />
-                    </button>
-                </nav>
             </main>
         </div>
     );
 }
 
-function SectionAccordion({ section, sIdx, activeLesson, onSelectLesson }) {
+// ─── Section Accordion ───────────────────────────────────────────────────────
+
+function SectionAccordion({
+    section,
+    sIdx,
+    activeLesson,
+    onSelectLesson,
+    completedLessonIds,
+    onToggleLessonComplete,
+}) {
     const [expanded, setExpanded] = useState(true);
     const lessons = section.lessons || [];
 
@@ -374,14 +338,12 @@ function SectionAccordion({ section, sIdx, activeLesson, onSelectLesson }) {
                 onClick={() => setExpanded(!expanded)}
             >
                 <span className="curriculum-section__title">
-                    <span>
-                        Section {sIdx + 1}: {section.title}
-                    </span>
+                    Section {sIdx + 1}: {section.title}
                 </span>
                 <span
                     className={`curriculum-section__toggle ${expanded ? "expanded" : ""}`}
                 >
-                    &#9660;
+                    <ChevronDown size={16} />
                 </span>
             </div>
 
@@ -390,13 +352,40 @@ function SectionAccordion({ section, sIdx, activeLesson, onSelectLesson }) {
                     {lessons.map((lesson, lIdx) => {
                         const isActive =
                             lesson.lessonId === activeLesson?.lessonId;
+                        const isCompleted = completedLessonIds.has(
+                            lesson.lessonId,
+                        );
                         const type = (lesson.lessonType || "").toLowerCase();
                         return (
                             <div
                                 key={lesson.lessonId || lIdx}
-                                className={`curriculum-lesson ${isActive ? "curriculum-lesson--active" : ""}`}
+                                className={`curriculum-lesson ${isActive ? "curriculum-lesson--active" : ""} ${isCompleted ? "curriculum-lesson--completed" : ""}`}
                                 onClick={() => onSelectLesson(lesson)}
                             >
+                                <button
+                                    type="button"
+                                    className="curriculum-lesson__complete"
+                                    aria-label={
+                                        isCompleted
+                                            ? "Mark lesson as incomplete"
+                                            : "Mark lesson as complete"
+                                    }
+                                    title={
+                                        isCompleted
+                                            ? "Completed"
+                                            : "Mark as complete"
+                                    }
+                                    onClick={(event) => {
+                                        event.stopPropagation();
+                                        onToggleLessonComplete(lesson.lessonId);
+                                    }}
+                                >
+                                    {isCompleted ? (
+                                        <CheckCircle2 size={17} />
+                                    ) : (
+                                        <Circle size={17} />
+                                    )}
+                                </button>
                                 <div
                                     className={`curriculum-lesson__icon curriculum-lesson__icon--${type}`}
                                 >
@@ -427,86 +416,6 @@ function SectionAccordion({ section, sIdx, activeLesson, onSelectLesson }) {
                     })}
                 </div>
             )}
-        </div>
-    );
-}
-
-function QuizDisplay({ content }) {
-    let quizData = null;
-    try {
-        quizData = JSON.parse(content);
-    } catch {
-        return <p>{content}</p>;
-    }
-
-    if (!quizData || !quizData.questions) {
-        return <p>{content}</p>;
-    }
-
-    return (
-        <div>
-            {quizData.title && (
-                <h3 style={{ margin: "0 0 16px", color: "#cdd6f4" }}>
-                    {quizData.title}
-                </h3>
-            )}
-            {quizData.questions.map((q, qIdx) => (
-                <div key={qIdx} className="learning-quiz__question">
-                    <p className="learning-quiz__question-text">
-                        {qIdx + 1}. {q.question}
-                    </p>
-                    {q.options && Array.isArray(q.options) && (
-                        <div
-                            style={{
-                                display: "flex",
-                                flexDirection: "column",
-                                gap: 8,
-                            }}
-                        >
-                            {q.options.map((opt, oIdx) => (
-                                <div
-                                    key={oIdx}
-                                    style={{
-                                        padding: "10px 14px",
-                                        background: "#11111b",
-                                        borderRadius: 8,
-                                        border: `2px solid ${q.correctIndex === oIdx ? "#a6e3a1" : "#313244"}`,
-                                        color: "#bac2de",
-                                        fontSize: 14,
-                                    }}
-                                >
-                                    {opt}
-                                    {q.correctIndex === oIdx && (
-                                        <span
-                                            style={{
-                                                color: "#a6e3a1",
-                                                marginLeft: 8,
-                                                fontSize: 12,
-                                            }}
-                                        >
-                                            (Correct)
-                                        </span>
-                                    )}
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                    {q.explanation && (
-                        <div
-                            style={{
-                                marginTop: 12,
-                                padding: 12,
-                                background: "#1e3a2f",
-                                borderRadius: 8,
-                                fontSize: 13,
-                                color: "#a6e3a1",
-                            }}
-                        >
-                            <strong>Explanation:</strong> {q.explanation}
-                        </div>
-                    )}
-                </div>
-            ))}
         </div>
     );
 }
