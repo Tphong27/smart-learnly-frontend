@@ -8,6 +8,7 @@ import { MyCoursesPage } from "@/features/course";
 import { CheckoutPage, PaymentResultPage as CheckoutPaymentResultPage } from "@/features/checkout";
 import { MyEnrollmentsPage } from "@/features/enrollment";
 import { MyTransactionsPage, PaymentResultPage } from "@/features/payment";
+import { LearningWorkspacePage } from "@/features/course";
 
 function PlaceholderPage({ title }) {
   return (
@@ -32,6 +33,7 @@ function getTraineeRoutes() {
           element: <AppLayout />,
           children: [
             { path: "courses", element: <MyCoursesPage /> },
+            { path: "courses/:courseId", element: <LearningWorkspacePage /> },
             { path: "enrollments", element: <MyEnrollmentsPage /> },
             { path: "transactions", element: <MyTransactionsPage /> },
             {

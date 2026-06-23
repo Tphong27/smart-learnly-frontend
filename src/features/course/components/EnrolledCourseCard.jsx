@@ -6,7 +6,7 @@ function getCourseDetailPath(course) {
 }
 
 function getLearningWorkspacePath(course) {
-  return `/learning?courseId=${course.id}`;
+  return `/learning/courses/${course.id}`;
 }
 
 function getCategoryName(course) {

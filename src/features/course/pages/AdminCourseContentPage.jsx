@@ -1,12 +1,17 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { courseService } from "../../../services/course.service";
 import { useToast } from "../../../shared/components/ui/Toast/useToast";
 import "./AdminCourseContent.css";
 
-// ==========================================
-// SUB-COMPONENT: SECTION
-// ==========================================
+const reorder = (list, startIndex, endIndex) => {
+  const result = Array.from(list);
+  const [removed] = result.splice(startIndex, 1);
+  result.splice(endIndex, 0, removed);
+  return result;
+};
+
 function SectionItem({
   section,
   index,
@@ -16,28 +21,13 @@ function SectionItem({
   navigate,
   onEditSection,
   onDeleteSection,
+  lessons,
+  loadingLessons,
+  onLessonClick,
+  onDeleteLesson,
+  dragHandleProps,
 }) {
-  const [lessons, setLessons] = useState([]);
-  const [loadingLessons, setLoadingLessons] = useState(false);
-
-  // 📌 MỚI THÊM: State quản lý việc ẩn/hiện danh sách bài học (Mặc định là true - hiện)
   const [isExpanded, setIsExpanded] = useState(true);
-
-  useEffect(() => {
-    if (section?.id) {
-      setLoadingLessons(true);
-      courseService
-        .getLessonsBySection(section.id)
-        .then((data) => {
-          if (data && Array.isArray(data)) setLessons(data);
-          else setLessons([]);
-        })
-        .catch((err) =>
-          console.error("Error fetching lessons: " + section.id, err),
-        )
-        .finally(() => setLoadingLessons(false));
-    }
-  }, [section?.id]);
 
   const renderLessonIcon = (type) => {
     const t = String(type).toLowerCase();
@@ -70,13 +60,13 @@ function SectionItem({
           style={{ display: "flex", alignItems: "center", gap: "8px" }}
         >
           <span
+            {...dragHandleProps}
             className="material-symbols-outlined drag-handle"
             style={{ cursor: "grab" }}
           >
             drag_indicator
           </span>
 
-          {/* 📌 MỚI THÊM: Nút bấm mũi tên Thu gọn/Mở rộng */}
           <span
             className="material-symbols-outlined toggle-expand"
             onClick={() => setIsExpanded(!isExpanded)}
@@ -84,13 +74,12 @@ function SectionItem({
               cursor: "pointer",
               userSelect: "none",
               color: "#434655",
-              transition: "transform 0.2s ease", // Hiệu ứng xoay nhẹ nếu muốn
+              transition: "transform 0.2s ease",
             }}
           >
             {isExpanded ? "expand_more" : "chevron_right"}
           </span>
 
-          {/* 📌 MỚI THÊM: Bấm vào tiêu đề cũng có thể ẩn/hiện cho tiện */}
           <h3
             onClick={() => setIsExpanded(!isExpanded)}
             style={{ cursor: "pointer", userSelect: "none", margin: 0 }}
@@ -118,7 +107,6 @@ function SectionItem({
 
           <button
             onClick={() => {
-              // Khi thêm bài học mới thì tự động mở section đó ra
               setIsExpanded(true);
               setTargetSectionId(section.id);
               setIsLessonModalOpen(true);
@@ -130,80 +118,113 @@ function SectionItem({
         </div>
       </div>
 
-      {/* 📌 MỚI THÊM: Đặt điều kiện isExpanded để ẩn hoặc hiện danh sách bài học */}
       {isExpanded && (
-        <div className="lessons-container">
-          {loadingLessons ? (
+        <Droppable droppableId={`section-${section.id}`} type="LESSON">
+          {(provided) => (
             <div
-              style={{
-                padding: "16px 48px",
-                color: "#737686",
-                fontStyle: "italic",
-                fontSize: "14px",
-              }}
+              className="lessons-container"
+              ref={provided.innerRef}
+              {...provided.droppableProps}
             >
-              Loading lessons...
-            </div>
-          ) : lessons.length > 0 ? (
-            lessons.map((lesson, lIndex) => (
-              <div key={lesson?.id || lIndex} className="lesson-item">
-                <div className="lesson-info">
-                  <span className="material-symbols-outlined drag-handle">
-                    drag_indicator
-                  </span>
-                  {renderLessonIcon(lesson?.lessonType)}
-                  <span className="lesson-title">
-                    {index + 1}.{lIndex + 1}. {lesson?.title}
-                  </span>
-                  <span className="badge type">
-                    {lesson?.lessonType || "VIDEO"}
-                  </span>
-                  {lesson?.isPreview && (
-                    <span className="badge preview">Preview</span>
-                  )}
+              {loadingLessons ? (
+                <div
+                  style={{
+                    padding: "16px 48px",
+                    color: "#737686",
+                    fontStyle: "italic",
+                    fontSize: "14px",
+                  }}
+                >
+                  Loading lessons...
                 </div>
-
-                <div className="lesson-actions">
-                  <span className="lesson-duration">
-                    {lesson?.durationSeconds
-                      ? `${Math.floor(lesson.durationSeconds / 60)} mins`
-                      : "--"}
-                  </span>
-                  <button
-                    onClick={() =>
-                      lesson?.id &&
-                      navigate(
-                        `/admin/courses/${courseId}/lessons/${lesson.id}`,
-                      )
-                    }
-                    className="btn-outline"
+              ) : lessons.length > 0 ? (
+                lessons.map((lesson, lIndex) => (
+                  <Draggable
+                    key={lesson?.id || lIndex}
+                    draggableId={`lesson-${lesson.id}`}
+                    index={lIndex}
                   >
-                    Edit content
-                  </button>
+                    {(provided, snapshot) => (
+                      <div
+                        ref={provided.innerRef}
+                        {...provided.draggableProps}
+                        {...provided.dragHandleProps}
+                        className="lesson-item"
+                        style={{
+                          ...provided.draggableProps.style,
+                          background: snapshot.isDragging
+                            ? "#e8eaff"
+                            : undefined,
+                        }}
+                      >
+                        <div className="lesson-info">
+                          <span className="material-symbols-outlined drag-handle">
+                            drag_indicator
+                          </span>
+                          {renderLessonIcon(lesson?.lessonType)}
+                          <span className="lesson-title">
+                            {index + 1}.{lIndex + 1}. {lesson?.title}
+                          </span>
+                          <span className="badge type">
+                            {lesson?.lessonType || "VIDEO"}
+                          </span>
+                          {lesson?.isPreview && (
+                            <span className="badge preview">Preview</span>
+                          )}
+                        </div>
+
+                        <div className="lesson-actions">
+                          <span className="lesson-duration">
+                            {lesson?.durationSeconds
+                              ? `${Math.floor(lesson.durationSeconds / 60)} mins`
+                              : "--"}
+                          </span>
+                          <button
+                            onClick={() =>
+                              lesson?.id &&
+                              navigate(
+                                `/admin/courses/${courseId}/lessons/${lesson.id}`
+                              )
+                            }
+                            className="btn-outline"
+                          >
+                            Edit content
+                          </button>
+                          <button
+                            className="icon-btn delete"
+                            title="Delete lesson"
+                            onClick={() =>
+                              lesson?.id && onDeleteLesson(lesson.id, lesson.title)
+                            }
+                          >
+                            <span className="material-symbols-outlined">delete</span>
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </Draggable>
+                ))
+              ) : (
+                <div
+                  style={{
+                    padding: "20px",
+                    textAlign: "center",
+                    color: "#737686",
+                    fontSize: "14px",
+                  }}
+                >
+                  This section has no lessons yet.
                 </div>
-              </div>
-            ))
-          ) : (
-            <div
-              style={{
-                padding: "20px",
-                textAlign: "center",
-                color: "#737686",
-                fontSize: "14px",
-              }}
-            >
-              This section has no lessons yet.
+              )}
+              {provided.placeholder}
             </div>
           )}
-        </div>
+        </Droppable>
       )}
     </div>
   );
 }
 
-// ==========================================
-// MAIN COMPONENT
-// ==========================================
 export default function AdminCourseContentPage() {
   const params = useParams();
   const courseId = params.courseId || params.id;
@@ -211,18 +232,17 @@ export default function AdminCourseContentPage() {
   const { showToast } = useToast();
 
   const [sections, setSections] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [sectionLessons, setSectionLessons] = useState({});
+  const [loadingSections, setLoadingSections] = useState(true);
+  const [loadingLessons, setLoadingLessons] = useState({});
 
-  // States cho việc Tạo mới Section
   const [isSectionModalOpen, setIsSectionModalOpen] = useState(false);
   const [newSectionTitle, setNewSectionTitle] = useState("");
 
-  // States cho việc Chỉnh sửa Section
   const [isEditSectionModalOpen, setIsEditSectionModalOpen] = useState(false);
   const [editingSectionId, setEditingSectionId] = useState(null);
   const [editSectionTitle, setEditSectionTitle] = useState("");
 
-  // States cho Lesson
   const [isLessonModalOpen, setIsLessonModalOpen] = useState(false);
   const [targetSectionId, setTargetSectionId] = useState(null);
   const [newLessonData, setNewLessonData] = useState({
@@ -231,25 +251,47 @@ export default function AdminCourseContentPage() {
     isPreview: false,
   });
 
-  useEffect(() => {
-    if (courseId) fetchContent();
-    else setLoading(false);
-  }, [courseId]);
-
-  const fetchContent = async () => {
-    setLoading(true);
+  const fetchSections = useCallback(async () => {
+    setLoadingSections(true);
     try {
       const data = await courseService.getCourseContent(courseId);
       setSections(Array.isArray(data) ? data : []);
     } catch (error) {
       showToast(
         error.response?.data?.message || "Error loading content",
-        "error",
+        "error"
       );
     } finally {
-      setLoading(false);
+      setLoadingSections(false);
     }
-  };
+  }, [courseId, showToast]);
+
+  const fetchLessonsForSection = useCallback(async (sectionId) => {
+    setLoadingLessons((prev) => ({ ...prev, [sectionId]: true }));
+    try {
+      const data = await courseService.getLessonsBySection(sectionId);
+      setSectionLessons((prev) => ({
+        ...prev,
+        [sectionId]: Array.isArray(data) ? data : [],
+      }));
+    } catch (err) {
+      console.error("Error fetching lessons for section " + sectionId, err);
+    } finally {
+      setLoadingLessons((prev) => ({ ...prev, [sectionId]: false }));
+    }
+  }, []);
+
+  useEffect(() => {
+    if (courseId) fetchSections();
+  }, [courseId, fetchSections]);
+
+  useEffect(() => {
+    sections.forEach((section) => {
+      if (!sectionLessons[section.id]) {
+        fetchLessonsForSection(section.id);
+      }
+    });
+  }, [sections, sectionLessons, fetchLessonsForSection]);
 
   const handleOpenEditSection = (section) => {
     setEditingSectionId(section.id);
@@ -269,7 +311,7 @@ export default function AdminCourseContentPage() {
       setIsEditSectionModalOpen(false);
       setEditingSectionId(null);
       setEditSectionTitle("");
-      fetchContent();
+      fetchSections();
     } catch (error) {
       showToast("Error updating section", "error");
     }
@@ -278,15 +320,37 @@ export default function AdminCourseContentPage() {
   const handleDeleteSection = async (sectionId, sectionTitle) => {
     if (
       window.confirm(
-        `Are you sure you want to delete "${sectionTitle}"? All lessons inside will be deleted.`,
+        `Are you sure you want to delete "${sectionTitle}"? All lessons inside will be deleted.`
       )
     ) {
       try {
         await courseService.deleteSection(sectionId);
         showToast("Section deleted successfully!", "success");
-        fetchContent();
+        fetchSections();
       } catch (error) {
         showToast("Error deleting section", "error");
+      }
+    }
+  };
+
+  const handleDeleteLesson = async (lessonId, lessonTitle) => {
+    if (
+      window.confirm(
+        `Are you sure you want to delete "${lessonTitle}"?`
+      )
+    ) {
+      try {
+        await courseService.deleteLesson(lessonId);
+        showToast("Lesson deleted successfully!", "success");
+        setSectionLessons((prev) => {
+          const updated = { ...prev };
+          for (const key of Object.keys(updated)) {
+            updated[key] = updated[key].filter((l) => l.id !== lessonId);
+          }
+          return updated;
+        });
+      } catch (error) {
+        showToast("Error deleting lesson", "error");
       }
     }
   };
@@ -302,7 +366,7 @@ export default function AdminCourseContentPage() {
       showToast("Section added successfully!", "success");
       setNewSectionTitle("");
       setIsSectionModalOpen(false);
-      fetchContent();
+      fetchSections();
     } catch (error) {
       showToast("Error creating section", "error");
     }
@@ -314,7 +378,6 @@ export default function AdminCourseContentPage() {
     try {
       let mappedType = String(newLessonData.lessonType).toLowerCase();
       if (mappedType === "document") mappedType = "pdf";
-      else if (mappedType === "quiz") mappedType = "rich_text";
 
       await courseService.createLesson(targetSectionId, {
         title: newLessonData.title.trim(),
@@ -329,13 +392,83 @@ export default function AdminCourseContentPage() {
       setNewLessonData({ title: "", lessonType: "video", isPreview: false });
       setIsLessonModalOpen(false);
       setTargetSectionId(null);
-      fetchContent();
+      fetchLessonsForSection(targetSectionId);
     } catch (error) {
       showToast("Error creating lesson", "error");
     }
   };
 
-  if (loading)
+  const onDragEnd = async (result) => {
+    const { destination, source, draggableId, type } = result;
+    if (!destination) return;
+    if (destination.droppableId === source.droppableId && destination.index === source.index) return;
+
+    if (type === "SECTION") {
+      const reordered = reorder(sections, source.index, destination.index);
+      const newSections = reordered.map((s, idx) => ({ ...s, sortOrder: idx }));
+      setSections(newSections);
+
+      try {
+        await courseService.reorderSections(
+          courseId,
+          newSections.map((s) => s.id)
+        );
+        showToast("Sections reordered successfully!", "success");
+      } catch (error) {
+        showToast("Error reordering sections", "error");
+        fetchSections();
+      }
+    } else if (type === "LESSON") {
+      const sourceSectionId = source.droppableId.replace("section-", "");
+      const destSectionId = destination.droppableId.replace("section-", "");
+
+      if (sourceSectionId === destSectionId) {
+        const lessons = [...(sectionLessons[sourceSectionId] || [])];
+        const reordered = reorder(lessons, source.index, destination.index);
+        const newLessons = reordered.map((l, idx) => ({ ...l, sortOrder: idx }));
+
+        setSectionLessons((prev) => ({
+          ...prev,
+          [sourceSectionId]: newLessons,
+        }));
+
+        try {
+          await courseService.reorderLessons(
+            sourceSectionId,
+            newLessons.map((l) => l.id)
+          );
+          showToast("Lessons reordered successfully!", "success");
+        } catch (error) {
+          showToast("Error reordering lessons", "error");
+          fetchLessonsForSection(sourceSectionId);
+        }
+      }
+    }
+  };
+
+  const stats = React.useMemo(() => {
+    let totalVideos = 0;
+    let totalDocs = 0;
+    let totalQuizzes = 0;
+    for (const section of sections) {
+      const lessons = sectionLessons[section.id] || [];
+      for (const lesson of lessons) {
+        const t = (lesson.lessonType || "").toLowerCase();
+        if (t === "video") totalVideos++;
+        else if (t === "pdf" || t === "document") totalDocs++;
+        else if (t === "quiz") totalQuizzes++;
+      }
+    }
+    return {
+      totalSections: sections.length,
+      totalLessons: Object.values(sectionLessons).reduce((sum, l) => sum + l.length, 0),
+      totalVideos,
+      totalDocuments: totalDocs,
+      totalQuizzes,
+    };
+  }, [sections, sectionLessons]);
+
+  if (loadingSections)
     return (
       <div style={{ padding: "50px", textAlign: "center" }}>
         Loading data...
@@ -343,301 +476,360 @@ export default function AdminCourseContentPage() {
     );
 
   return (
-    <div className="admin-course-page">
-      <div className="page-container">
-        <div className="page-header">
-          <button
-            onClick={() => navigate("/admin/courses")}
-            className="back-btn"
-          >
-            <span
-              className="material-symbols-outlined"
-              style={{ fontSize: "18px" }}
-            >
-              arrow_back
-            </span>
-            Back to list
-          </button>
-          <div className="header-title-wrapper">
-            <div>
-              <h2>Course Structure</h2>
-              <p>Organize and manage your course content</p>
-            </div>
+    <DragDropContext onDragEnd={onDragEnd}>
+      <div className="admin-course-page">
+        <div className="page-container">
+          <div className="page-header">
             <button
-              onClick={() => setIsSectionModalOpen(true)}
-              className="btn-primary"
+              onClick={() => navigate("/admin/courses")}
+              className="back-btn"
             >
-              <span className="material-symbols-outlined">add</span> Add New
-              Section
-            </button>
-          </div>
-        </div>
-
-        <div className="workspace-card">
-          <div className="sections-list">
-            {sections.length > 0 ? (
-              sections.map((section, index) => (
-                <SectionItem
-                  key={section?.id || index}
-                  section={section}
-                  index={index}
-                  setTargetSectionId={setTargetSectionId}
-                  setIsLessonModalOpen={setIsLessonModalOpen}
-                  courseId={courseId}
-                  navigate={navigate}
-                  onEditSection={handleOpenEditSection}
-                  onDeleteSection={handleDeleteSection}
-                />
-              ))
-            ) : (
-              <div
-                style={{
-                  textAlign: "center",
-                  color: "#737686",
-                  padding: "40px",
-                }}
+              <span
+                className="material-symbols-outlined"
+                style={{ fontSize: "18px" }}
               >
-                The course has no content structure yet. Let's create the first
-                section!
+                arrow_back
+              </span>
+              Back to list
+            </button>
+            <div className="header-title-wrapper">
+              <div>
+                <h2>Course Structure</h2>
+                <p>Organize and manage your course content</p>
+              </div>
+              <button
+                onClick={() => setIsSectionModalOpen(true)}
+                className="btn-primary"
+              >
+                <span className="material-symbols-outlined">add</span> Add New
+                Section
+              </button>
+            </div>
+          </div>
+
+          <div className="stats-bar">
+            <div className="stat-item">
+              <span className="stat-value">{stats.totalSections}</span>
+              <span className="stat-label">Sections</span>
+            </div>
+            <div className="stat-item">
+              <span className="stat-value">{stats.totalLessons}</span>
+              <span className="stat-label">Total Lessons</span>
+            </div>
+            <div className="stat-item">
+              <span className="stat-value">{stats.totalVideos}</span>
+              <span className="stat-label">Videos</span>
+            </div>
+            <div className="stat-item">
+              <span className="stat-value">{stats.totalDocuments}</span>
+              <span className="stat-label">Documents</span>
+            </div>
+            <div className="stat-item">
+              <span className="stat-value">{stats.totalQuizzes}</span>
+              <span className="stat-label">Quizzes</span>
+            </div>
+          </div>
+
+          <Droppable droppableId="sections" type="SECTION">
+            {(provided) => (
+              <div
+                className="workspace-card"
+                ref={provided.innerRef}
+                {...provided.droppableProps}
+              >
+                <div className="sections-list">
+                  {sections.length > 0 ? (
+                    sections.map((section, index) => (
+                      <Draggable
+                        key={section.id}
+                        draggableId={`section-${section.id}`}
+                        index={index}
+                      >
+                        {(provided, snapshot) => (
+                          <div
+                            ref={provided.innerRef}
+                            {...provided.draggableProps}
+                            style={{
+                              ...provided.draggableProps.style,
+                              marginBottom: 16,
+                            }}
+                          >
+                            <SectionItem
+                              section={section}
+                              index={index}
+                              setTargetSectionId={setTargetSectionId}
+                              setIsLessonModalOpen={setIsLessonModalOpen}
+                              courseId={courseId}
+                              navigate={navigate}
+                              onEditSection={handleOpenEditSection}
+                              onDeleteSection={handleDeleteSection}
+                              onDeleteLesson={handleDeleteLesson}
+                              lessons={sectionLessons[section.id] || []}
+                              loadingLessons={loadingLessons[section.id] || false}
+                              onLessonClick={(lesson) =>
+                                navigate(
+                                  `/admin/courses/${courseId}/lessons/${lesson.id}`
+                                )
+                              }
+                              dragHandleProps={provided.dragHandleProps}
+                            />
+                          </div>
+                        )}
+                      </Draggable>
+                    ))
+                  ) : (
+                    <div
+                      style={{
+                        textAlign: "center",
+                        color: "#737686",
+                        padding: "40px",
+                      }}
+                    >
+                      The course has no content structure yet. Let's create the first
+                      section!
+                    </div>
+                  )}
+                  {provided.placeholder}
+                </div>
+
+                <div
+                  onClick={() => setIsSectionModalOpen(true)}
+                  className="empty-add-area"
+                >
+                  <div className="icon-circle">
+                    <span className="material-symbols-outlined">add</span>
+                  </div>
+                  <h4 style={{ margin: "0 0 8px 0", fontSize: "16px" }}>
+                    Add a new section
+                  </h4>
+                  <p style={{ margin: 0, color: "#434655", fontSize: "14px" }}>
+                    Build a logical structure to help students follow along easily.
+                  </p>
+                </div>
               </div>
             )}
-          </div>
-
-          <div
-            onClick={() => setIsSectionModalOpen(true)}
-            className="empty-add-area"
-          >
-            <div className="icon-circle">
-              <span className="material-symbols-outlined">add</span>
-            </div>
-            <h4 style={{ margin: "0 0 8px 0", fontSize: "16px" }}>
-              Add a new section
-            </h4>
-            <p style={{ margin: 0, color: "#434655", fontSize: "14px" }}>
-              Build a logical structure to help students follow along easily.
-            </p>
-          </div>
+          </Droppable>
         </div>
-      </div>
 
-      {/* CREATE SECTION MODAL */}
-      {isSectionModalOpen && (
-        <div className="modal-overlay">
-          <div className="modal-content">
-            <div className="modal-header">
-              <h3>Add New Section</h3>
-              <button
-                className="icon-btn"
-                onClick={() => setIsSectionModalOpen(false)}
-              >
-                <span className="material-symbols-outlined">close</span>
-              </button>
-            </div>
-            <form onSubmit={handleCreateSection}>
-              <div className="modal-body">
-                <div className="form-group">
-                  <label>
-                    Section Name <span style={{ color: "#ba1a1a" }}>*</span>
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={newSectionTitle}
-                    onChange={(e) => setNewSectionTitle(e.target.value)}
-                    placeholder="e.g., Section 1: Environment Setup..."
-                  />
-                </div>
-              </div>
-              <div className="modal-footer">
+        {/* CREATE SECTION MODAL */}
+        {isSectionModalOpen && (
+          <div className="modal-overlay">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h3>Add New Section</h3>
                 <button
-                  type="button"
+                  className="icon-btn"
                   onClick={() => setIsSectionModalOpen(false)}
-                  className="btn-outline"
                 >
-                  Cancel
-                </button>
-                <button type="submit" className="btn-primary">
-                  Save Section
+                  <span className="material-symbols-outlined">close</span>
                 </button>
               </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* EDIT SECTION MODAL */}
-      {isEditSectionModalOpen && (
-        <div className="modal-overlay">
-          <div className="modal-content">
-            <div className="modal-header">
-              <h3>Edit Section</h3>
-              <button
-                className="icon-btn"
-                onClick={() => {
-                  setIsEditSectionModalOpen(false);
-                  setEditingSectionId(null);
-                }}
-              >
-                <span className="material-symbols-outlined">close</span>
-              </button>
-            </div>
-            <form onSubmit={handleUpdateSection}>
-              <div className="modal-body">
-                <div className="form-group">
-                  <label>
-                    Section Name <span style={{ color: "#ba1a1a" }}>*</span>
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={editSectionTitle}
-                    onChange={(e) => setEditSectionTitle(e.target.value)}
-                    placeholder="e.g., Section 1: Environment Setup..."
-                  />
+              <form onSubmit={handleCreateSection}>
+                <div className="modal-body">
+                  <div className="form-group">
+                    <label>
+                      Section Name <span style={{ color: "#ba1a1a" }}>*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={newSectionTitle}
+                      onChange={(e) => setNewSectionTitle(e.target.value)}
+                      placeholder="e.g., Section 1: Environment Setup..."
+                    />
+                  </div>
                 </div>
-              </div>
-              <div className="modal-footer">
+                <div className="modal-footer">
+                  <button
+                    type="button"
+                    onClick={() => setIsSectionModalOpen(false)}
+                    className="btn-outline"
+                  >
+                    Cancel
+                  </button>
+                  <button type="submit" className="btn-primary">
+                    Save Section
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* EDIT SECTION MODAL */}
+        {isEditSectionModalOpen && (
+          <div className="modal-overlay">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h3>Edit Section</h3>
                 <button
-                  type="button"
+                  className="icon-btn"
                   onClick={() => {
                     setIsEditSectionModalOpen(false);
                     setEditingSectionId(null);
                   }}
-                  className="btn-outline"
                 >
-                  Cancel
-                </button>
-                <button type="submit" className="btn-primary">
-                  Update Section
+                  <span className="material-symbols-outlined">close</span>
                 </button>
               </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* LESSON MODAL */}
-      {isLessonModalOpen && (
-        <div className="modal-overlay">
-          <div className="modal-content">
-            <div className="modal-header">
-              <h3>Add New Lesson</h3>
-              <button
-                className="icon-btn"
-                onClick={() => {
-                  setIsLessonModalOpen(false);
-                  setTargetSectionId(null);
-                }}
-              >
-                <span className="material-symbols-outlined">close</span>
-              </button>
+              <form onSubmit={handleUpdateSection}>
+                <div className="modal-body">
+                  <div className="form-group">
+                    <label>
+                      Section Name <span style={{ color: "#ba1a1a" }}>*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={editSectionTitle}
+                      onChange={(e) => setEditSectionTitle(e.target.value)}
+                      placeholder="e.g., Section 1: Environment Setup..."
+                    />
+                  </div>
+                </div>
+                <div className="modal-footer">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsEditSectionModalOpen(false);
+                      setEditingSectionId(null);
+                    }}
+                    className="btn-outline"
+                  >
+                    Cancel
+                  </button>
+                  <button type="submit" className="btn-primary">
+                    Update Section
+                  </button>
+                </div>
+              </form>
             </div>
-            <form onSubmit={handleCreateLesson}>
-              <div className="modal-body">
-                <div className="form-group">
-                  <label>
-                    Lesson Title <span style={{ color: "#ba1a1a" }}>*</span>
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={newLessonData.title}
-                    onChange={(e) =>
-                      setNewLessonData({
-                        ...newLessonData,
-                        title: e.target.value,
-                      })
-                    }
-                    placeholder="e.g., 1.1. ReactJS Overview"
-                  />
-                </div>
-                <div className="form-group">
-                  <label>
-                    Lesson Type <span style={{ color: "#ba1a1a" }}>*</span>
-                  </label>
-                  <select
-                    value={newLessonData.lessonType}
-                    onChange={(e) =>
-                      setNewLessonData({
-                        ...newLessonData,
-                        lessonType: e.target.value,
-                      })
-                    }
-                  >
-                    <option value="video">Video Lecture</option>
-                    <option value="document">
-                      Reading Material (Text/PDF)
-                    </option>
-                    <option value="quiz">Quiz</option>
-                  </select>
-                </div>
-                <div
-                  style={{
-                    display: "flex",
-                    gap: "12px",
-                    background: "#f3f3fe",
-                    padding: "16px",
-                    borderRadius: "8px",
-                    border: "1px solid #c3c6d7",
-                  }}
-                >
-                  <input
-                    id="previewMode"
-                    type="checkbox"
-                    checked={newLessonData.isPreview}
-                    onChange={(e) =>
-                      setNewLessonData({
-                        ...newLessonData,
-                        isPreview: e.target.checked,
-                      })
-                    }
-                    style={{ width: "16px", height: "16px", marginTop: "2px" }}
-                  />
-                  <label
-                    htmlFor="previewMode"
-                    style={{ cursor: "pointer", margin: 0 }}
-                  >
-                    <div
-                      style={{
-                        fontWeight: 600,
-                        fontSize: "14px",
-                        color: "#191b23",
-                      }}
-                    >
-                      Allow preview
-                    </div>
-                    <div
-                      style={{
-                        fontSize: "12px",
-                        color: "#434655",
-                        marginTop: "4px",
-                      }}
-                    >
-                      Students who haven't purchased the course can still view
-                      this.
-                    </div>
-                  </label>
-                </div>
-              </div>
-              <div className="modal-footer">
+          </div>
+        )}
+
+        {/* LESSON MODAL */}
+        {isLessonModalOpen && (
+          <div className="modal-overlay">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h3>Add New Lesson</h3>
                 <button
-                  type="button"
+                  className="icon-btn"
                   onClick={() => {
                     setIsLessonModalOpen(false);
                     setTargetSectionId(null);
                   }}
-                  className="btn-outline"
                 >
-                  Cancel
-                </button>
-                <button type="submit" className="btn-primary">
-                  Create Lesson
+                  <span className="material-symbols-outlined">close</span>
                 </button>
               </div>
-            </form>
+              <form onSubmit={handleCreateLesson}>
+                <div className="modal-body">
+                  <div className="form-group">
+                    <label>
+                      Lesson Title <span style={{ color: "#ba1a1a" }}>*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={newLessonData.title}
+                      onChange={(e) =>
+                        setNewLessonData({
+                          ...newLessonData,
+                          title: e.target.value,
+                        })
+                      }
+                      placeholder="e.g., 1.1. ReactJS Overview"
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>
+                      Lesson Type <span style={{ color: "#ba1a1a" }}>*</span>
+                    </label>
+                    <select
+                      value={newLessonData.lessonType}
+                      onChange={(e) =>
+                        setNewLessonData({
+                          ...newLessonData,
+                          lessonType: e.target.value,
+                        })
+                      }
+                    >
+                      <option value="video">Video Lecture</option>
+                      <option value="document">
+                        Reading Material (Text/PDF)
+                      </option>
+                      <option value="quiz">Quiz</option>
+                    </select>
+                  </div>
+                  <div
+                    style={{
+                      display: "flex",
+                      gap: "12px",
+                      background: "#f3f3fe",
+                      padding: "16px",
+                      borderRadius: "8px",
+                      border: "1px solid #c3c6d7",
+                    }}
+                  >
+                    <input
+                      id="previewMode"
+                      type="checkbox"
+                      checked={newLessonData.isPreview}
+                      onChange={(e) =>
+                        setNewLessonData({
+                          ...newLessonData,
+                          isPreview: e.target.checked,
+                        })
+                      }
+                      style={{ width: "16px", height: "16px", marginTop: "2px" }}
+                    />
+                    <label
+                      htmlFor="previewMode"
+                      style={{ cursor: "pointer", margin: 0 }}
+                    >
+                      <div
+                        style={{
+                          fontWeight: 600,
+                          fontSize: "14px",
+                          color: "#191b23",
+                        }}
+                      >
+                        Allow preview
+                      </div>
+                      <div
+                        style={{
+                          fontSize: "12px",
+                          color: "#434655",
+                          marginTop: "4px",
+                        }}
+                      >
+                        Students who haven't purchased the course can still view
+                        this.
+                      </div>
+                    </label>
+                  </div>
+                </div>
+                <div className="modal-footer">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsLessonModalOpen(false);
+                      setTargetSectionId(null);
+                    }}
+                    className="btn-outline"
+                  >
+                    Cancel
+                  </button>
+                  <button type="submit" className="btn-primary">
+                    Create Lesson
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
-        </div>
-      )}
-    </div>
+        )}
+      </div>
+    </DragDropContext>
   );
 }

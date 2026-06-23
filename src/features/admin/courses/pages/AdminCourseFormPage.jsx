@@ -160,7 +160,6 @@ export function AdminCourseFormPage() {
       if (isEdit) {
         await courseService.update(courseId, payload);
         toast.success("Course updated successfully");
-        navigate(`/admin/courses/${courseId}/content`);
         return;
       } else {
         const created = await courseService.create(payload);
@@ -569,27 +568,40 @@ export function AdminCourseFormPage() {
           <div
             style={{
               display: "flex",
-              justifyContent: "flex-end",
+              justifyContent: "space-between",
               gap: 12,
               marginTop: 28,
               paddingTop: 20,
               borderTop: "1px solid #e2e8f0",
             }}
           >
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => navigate("/admin/courses")}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              loading={isSubmitting}
-              leftIcon={<Save size={16} />}
-            >
-              {isEdit ? "Save changes" : "Create course"}
-            </Button>
+            <div>
+              {isEdit && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => navigate(`/admin/courses/${courseId}/content`)}
+                >
+                  Course Structure
+                </Button>
+              )}
+            </div>
+            <div style={{ display: "flex", gap: 12 }}>
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => navigate("/admin/courses")}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                loading={isSubmitting}
+                leftIcon={<Save size={16} />}
+              >
+                {isEdit ? "Save changes" : "Create course"}
+              </Button>
+            </div>
           </div>
         </Form>
       </div>

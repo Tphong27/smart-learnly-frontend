@@ -5,7 +5,7 @@ import { ProtectedRoute } from "./routes/ProtectedRoute";
 // import { RoleGuard } from "./routes/RoleGuard";
 // import { ROLES } from "@/shared/constants/roles";
 import { HomePage } from "../features/home/HomePage";
-import { CourseDetailPage, CoursePreviewLessonsPage } from "../features/course";
+import { CourseDetailPage, CoursePreviewLessonsPage, LearningWorkspacePage } from "../features/course";
 import {
   LoginPage,
   RegisterPage,
@@ -75,6 +75,14 @@ const appRoutes = [
     element: (
       <PublicLayout>
         <CoursePreviewLessonsPage />
+      </PublicLayout>
+    ),
+  },
+  {
+    path: "/courses/:courseId/learn",
+    element: (
+      <PublicLayout>
+        <LearningWorkspacePage previewMode={true} />
       </PublicLayout>
     ),
   },
