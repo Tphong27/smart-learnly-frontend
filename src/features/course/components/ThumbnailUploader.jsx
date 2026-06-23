@@ -38,7 +38,11 @@ export default function ThumbnailUploader({ value, onUploadSuccess }) {
 
     try {
       const uploaded = await courseService.uploadThumbnail(file);
-      const uploadedUrl = uploaded?.url;
+      const uploadedUrl =
+        uploaded?.url ||
+        uploaded?.thumbnailUrl ||
+        uploaded?.data?.url ||
+        uploaded?.data?.thumbnailUrl;
 
       if (!uploadedUrl) {
         throw new Error("Upload response does not include thumbnail URL.");
