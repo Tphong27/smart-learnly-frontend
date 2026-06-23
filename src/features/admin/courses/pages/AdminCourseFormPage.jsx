@@ -24,6 +24,7 @@ const LEVEL_OPTIONS = [
 ];
 
 function buildPayload(values, mode) {
+  const thumbnailUrl = values.thumbnailUrl?.trim();
   const payload = {
     categoryId: values.categoryId,
     title: values.title?.trim(),
@@ -34,7 +35,7 @@ function buildPayload(values, mode) {
     requirements: values.requirements?.trim() || undefined,
     language: values.language?.trim() || undefined,
     level: values.level?.trim() || undefined,
-    thumbnailUrl: values.thumbnailUrl?.trim() || undefined,
+    thumbnailUrl: mode === "edit" ? thumbnailUrl : thumbnailUrl || undefined,
     price:
       values.price === "" || values.price == null || Number.isNaN(values.price)
         ? 0
@@ -470,6 +471,7 @@ export function AdminCourseFormPage() {
                   Course thumbnail
                 </label>
                 <ThumbnailUploader
+                  key={thumbnailUrl || "empty-thumbnail"}
                   value={thumbnailUrl}
                   onUploadSuccess={(url) => {
                     setValue("thumbnailUrl", url, { shouldDirty: true, shouldValidate: true });
