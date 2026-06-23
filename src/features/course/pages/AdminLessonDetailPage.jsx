@@ -2,8 +2,6 @@ import { useCallback, useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { courseService } from "@/services/course.service";
 import { useToast } from "@/shared/components/ui/Toast/useToast";
-
-
 import {
   ArrowLeft,
   Save,
@@ -17,6 +15,8 @@ import {
   Loader2,
   ChevronLeft,
   ChevronRight,
+  Plus,
+  Trash2,
 } from "lucide-react";
 import { useRef } from "react";
 
@@ -29,14 +29,10 @@ export default function AdminLessonDetailPage() {
     [emitToast],
   );
 
-  // Active Tab state: 'edit' or 'history'
   const [activeTab, setActiveTab] = useState("edit");
-
-  // Basic lesson info state
   const [title, setTitle] = useState("");
   const [loading, setLoading] = useState(false);
   const [pageLoading, setPageLoading] = useState(true);
-
   const [textContent, setTextContent] = useState("");
   const [lessonType, setLessonType] = useState("VIDEO");
 
@@ -47,11 +43,8 @@ export default function AdminLessonDetailPage() {
   const [uploadingMainFile, setUploadingMainFile] = useState(false);
   const [uploadingResources, setUploadingResources] = useState(false);
 
-  // Audit Logs State
   const [editHistory, setEditHistory] = useState([]);
   const [historyLoading, setHistoryLoading] = useState(false);
-
-  // Pagination State
   const [currentPage, setCurrentPage] = useState(0);
   const [pageSize] = useState(10);
   const [totalPages, setTotalPages] = useState(1);
@@ -72,7 +65,6 @@ export default function AdminLessonDetailPage() {
     return validationDetails || error?.message || fallbackMessage;
   };
 
-  // Format Instant from Spring Boot
   const formatDateTime = (isoString) => {
     if (!isoString) return "---";
     try {
@@ -90,7 +82,6 @@ export default function AdminLessonDetailPage() {
     }
   };
 
-  // Fetch initial lesson details
   useEffect(() => {
     const fetchLessonDetail = async () => {
       try {
@@ -112,6 +103,8 @@ export default function AdminLessonDetailPage() {
             setUploadedFileUrl(
               lessonData.attachmentUrl || lessonData.fileUrl || "",
             );
+          } else if (typeFromServer === "QUIZ") {
+            setLessonType("QUIZ");
           } else {
             setLessonType("VIDEO");
           }
@@ -135,12 +128,10 @@ export default function AdminLessonDetailPage() {
     }
   }, [lessonId, showToast]);
 
-  // Fetch Audit Logs with Pagination
   useEffect(() => {
     const fetchAuditLogs = async () => {
       try {
         setHistoryLoading(true);
-        // Note: Make sure courseService.getLessonAuditLogs accepts pagination params
         const response = await courseService.getLessonAuditLogs(
           lessonId,
           currentPage,
@@ -154,7 +145,6 @@ export default function AdminLessonDetailPage() {
           [];
         setEditHistory(logData);
 
-        // Extract pagination info based on your console log format
         const totalElems =
           response?.totalElements ??
           response?.data?.totalElements ??
@@ -180,7 +170,6 @@ export default function AdminLessonDetailPage() {
       fetchAuditLogs();
     }
   }, [activeTab, lessonId, currentPage, pageSize, showToast]);
-
 
   const handleDragOver = (e) => e.preventDefault();
 
@@ -210,6 +199,9 @@ export default function AdminLessonDetailPage() {
     try {
       const uploadedFile = await courseService.uploadLessonMaterial(file);
       setUploadedFileUrl(uploadedFile.url);
+      if (lessonType === "VIDEO") {
+        setVideoUrl(uploadedFile.url);
+      }
       showToast(`Successfully uploaded ${file.name}!`, "success");
     } catch (error) {
       setMainContentFile(null);
@@ -309,8 +301,8 @@ export default function AdminLessonDetailPage() {
 
       const payload = {
         title: title.trim(),
-        lessonType: lessonType === "VIDEO" ? "VIDEO" : "PDF",
-        type: lessonType === "VIDEO" ? "VIDEO" : "PDF",
+        lessonType: lessonType === "VIDEO" ? "VIDEO" : lessonType === "QUIZ" ? "QUIZ" : "PDF",
+        type: lessonType === "VIDEO" ? "VIDEO" : lessonType === "QUIZ" ? "QUIZ" : "PDF",
         videoUrl: lessonType === "VIDEO" ? videoUrl.trim() : "",
         content: contentToSave,
         attachmentUrl: lessonType === "DOCUMENT" ? uploadedFileUrl : "",
@@ -388,7 +380,6 @@ export default function AdminLessonDetailPage() {
         Update Lesson
       </h1>
 
-      {/* TABS HEADER */}
       <div
         style={{
           display: "flex",
@@ -449,11 +440,9 @@ export default function AdminLessonDetailPage() {
         </button>
       </div>
 
-      {/* CONTENT BY TAB */}
       {activeTab === "edit" ? (
         <form onSubmit={handleSave}>
           <div style={{ display: "flex", gap: "40px" }}>
-            {/* LEFT COLUMN */}
             <div
               style={{
                 flex: "3",
@@ -519,42 +508,50 @@ export default function AdminLessonDetailPage() {
                       backgroundColor: "#fff",
                     }}
                   >
-                    <option value="VIDEO">📹 Video</option>
-                    <option value="DOCUMENT">📄 Document</option>
+                    <option value="VIDEO">Video Lecture</option>
+                    <option value="DOCUMENT">Document / Reading</option>
+                    <option value="QUIZ">Quiz</option>
                   </select>
                 </div>
               </div>
 
-              <div>
-                <label
-                  style={{
-                    display: "block",
-                    marginBottom: "8px",
-                    fontWeight: "600",
-                    color: "#1e293b",
-                    fontSize: "14px",
-                  }}
-                >
-                  Summary <span style={{ color: "#ef4444" }}>*</span>
-                </label>
-                <textarea
+              {lessonType === "QUIZ" ? (
+                <QuizEditor
                   value={textContent}
-                  onChange={(event) => setTextContent(event.target.value)}
-                  placeholder="Enter summary here..."
-                  rows={10}
-                  style={{
-                    width: "100%",
-                    minHeight: "250px",
-                    padding: "12px",
-                    border: "1px solid #cbd5e1",
-                    borderRadius: "10px",
-                    fontSize: "15px",
-                    lineHeight: 1.6,
-                    boxSizing: "border-box",
-                    backgroundColor: "#fff",
-                  }}
+                  onChange={setTextContent}
                 />
-              </div>
+              ) : (
+                <div>
+                  <label
+                    style={{
+                      display: "block",
+                      marginBottom: "8px",
+                      fontWeight: "600",
+                      color: "#1e293b",
+                      fontSize: "14px",
+                    }}
+                  >
+                    Summary
+                  </label>
+                  <textarea
+                    value={textContent}
+                    onChange={(event) => setTextContent(event.target.value)}
+                    placeholder="Enter summary here..."
+                    rows={10}
+                    style={{
+                      width: "100%",
+                      minHeight: "250px",
+                      padding: "12px",
+                      border: "1px solid #cbd5e1",
+                      borderRadius: "10px",
+                      fontSize: "15px",
+                      lineHeight: 1.6,
+                      boxSizing: "border-box",
+                      backgroundColor: "#fff",
+                    }}
+                  />
+                </div>
+              )}
 
               <div>
                 <label
@@ -651,7 +648,6 @@ export default function AdminLessonDetailPage() {
               </div>
             </div>
 
-            {/* RIGHT COLUMN */}
             <div
               style={{
                 flex: "2",
@@ -693,22 +689,143 @@ export default function AdminLessonDetailPage() {
                       }}
                     >
                       <Video size={24} />
-                      <span style={{ fontWeight: "600" }}>Video URL</span>
+                      <span style={{ fontWeight: "600" }}>Upload Video</span>
                     </div>
-                    <input
-                      type="url"
-                      value={videoUrl}
-                      onChange={(e) => setVideoUrl(e.target.value)}
-                      placeholder="Enter video link..."
+                    <div
+                      onDragOver={handleDragOver}
+                      onDrop={handleDropMainFile}
+                      onClick={() =>
+                        !uploadingMainFile && mainFileInputRef.current?.click()
+                      }
                       style={{
-                        width: "100%",
-                        padding: "11px 16px",
-                        borderRadius: "8px",
-                        border: "1px solid #cbd5e1",
-                        fontSize: "14px",
-                        boxSizing: "border-box",
+                        display: "flex",
+                        flexDirection: "column",
+                        justifyContent: "center",
+                        alignItems: "center",
+                        gap: "16px",
+                        height: "200px",
+                        borderRadius: "12px",
+                        border:
+                          mainContentFile || uploadedFileUrl || videoUrl
+                            ? "2px solid #10b981"
+                            : "2px dashed #cbd5e1",
+                        backgroundColor:
+                          mainContentFile || uploadedFileUrl || videoUrl
+                            ? "#f0fdf4"
+                            : "#fff",
+                        cursor: uploadingMainFile ? "wait" : "pointer",
+                        textAlign: "center",
+                        padding: "20px",
                       }}
-                    />
+                    >
+                      {uploadingMainFile ? (
+                        <>
+                          <CloudUpload size={36} color="#2563eb" />
+                          <p style={{ margin: 0, color: "#2563eb" }}>
+                            Uploading...
+                          </p>
+                        </>
+                      ) : mainContentFile || uploadedFileUrl || videoUrl ? (
+                        <>
+                          <Video size={36} color="#10b981" />
+                          <p
+                            style={{
+                              margin: 0,
+                              fontSize: "14px",
+                              fontWeight: "600",
+                              color: "#065f46",
+                            }}
+                          >
+                            {mainContentFile
+                              ? mainContentFile.name
+                              : getFileNameFromUrl(uploadedFileUrl || videoUrl)}
+                          </p>
+                          <p
+                            style={{
+                              margin: 0,
+                              fontSize: "12px",
+                              color: "#059669",
+                            }}
+                          >
+                            Click to replace
+                          </p>
+                        </>
+                      ) : (
+                        <>
+                          <div
+                            style={{
+                              width: "48px",
+                              height: "48px",
+                              backgroundColor: "#e2e8f0",
+                              borderRadius: "12px",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                            }}
+                          >
+                            <FileText size={24} color="#64748b" />
+                          </div>
+                          <p
+                            style={{
+                              margin: 0,
+                              fontSize: "14px",
+                              fontWeight: "600",
+                              color: "#1e293b",
+                            }}
+                          >
+                            Drag and drop or{" "}
+                            <span style={{ color: "#2563eb", fontWeight: 700 }}>
+                              Browse
+                            </span>
+                          </p>
+                          <p
+                            style={{
+                              margin: 0,
+                              fontSize: "12px",
+                              color: "#64748b",
+                            }}
+                          >
+                            Supports MP4, WebM, MOV
+                          </p>
+                        </>
+                      )}
+                      <input
+                        type="file"
+                        ref={mainFileInputRef}
+                        onChange={handleMainFileSelect}
+                        disabled={uploadingMainFile}
+                        style={{ display: "none" }}
+                        accept=".mp4,.webm,.mov,.avi,.mkv"
+                      />
+                    </div>
+                    {videoUrl && (
+                      <div style={{ marginTop: 12 }}>
+                        <label
+                          style={{
+                            fontSize: 12,
+                            color: "#64748b",
+                            display: "block",
+                            marginBottom: 4,
+                          }}
+                        >
+                          Or paste video URL
+                        </label>
+                        <input
+                          type="url"
+                          value={videoUrl}
+                          onChange={(e) => setVideoUrl(e.target.value)}
+                          placeholder="https://..."
+                          style={{
+                            width: "100%",
+                            padding: "8px 12px",
+                            borderRadius: "6px",
+                            border: "1px solid #cbd5e1",
+                            fontSize: "13px",
+                            boxSizing: "border-box",
+                          }}
+                        />
+                      </div>
+                    )}
                   </div>
                 )}
                 {lessonType === "DOCUMENT" && (
@@ -809,6 +926,22 @@ export default function AdminLessonDetailPage() {
                     />
                   </div>
                 )}
+                {lessonType === "QUIZ" && (
+                  <div
+                    style={{
+                      backgroundColor: "#fff",
+                      padding: "20px",
+                      borderRadius: "12px",
+                      border: "1px solid #cbd5e1",
+                      textAlign: "center",
+                    }}
+                  >
+                    <p style={{ color: "#64748b", margin: 0, fontSize: "14px" }}>
+                      Quiz content is edited in the left panel. Add questions and
+                      options using the Quiz Editor.
+                    </p>
+                  </div>
+                )}
               </div>
 
               <div
@@ -860,7 +993,6 @@ export default function AdminLessonDetailPage() {
           </div>
         </form>
       ) : (
-        /* AUDIT HISTORY TAB */
         <div
           style={{
             backgroundColor: "#fff",
@@ -987,7 +1119,6 @@ export default function AdminLessonDetailPage() {
                 </table>
               </div>
 
-              {/* PAGINATION CONTROLS */}
               {totalElements > 0 && (
                 <div
                   style={{
@@ -1096,6 +1227,388 @@ export default function AdminLessonDetailPage() {
               )}
             </>
           )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function QuizEditor({ value, onChange }) {
+  const [quizData, setQuizData] = useState({ title: "", questions: [] });
+
+  useEffect(() => {
+    if (value) {
+      try {
+        const parsed = JSON.parse(value);
+        setQuizData(parsed);
+      } catch {
+        setQuizData({ title: "", questions: [] });
+      }
+    }
+  }, []);
+
+  const updateQuiz = (newData) => {
+    setQuizData(newData);
+    onChange(JSON.stringify(newData));
+  };
+
+  const addQuestion = () => {
+    const newQuestion = {
+      question: "",
+      options: ["", ""],
+      correctIndex: 0,
+      explanation: "",
+    };
+    updateQuiz({
+      ...quizData,
+      questions: [...quizData.questions, newQuestion],
+    });
+  };
+
+  const removeQuestion = (index) => {
+    const questions = quizData.questions.filter((_, i) => i !== index);
+    updateQuiz({ ...quizData, questions });
+  };
+
+  const updateQuestion = (index, field, newValue) => {
+    const questions = quizData.questions.map((q, i) => {
+      if (i !== index) return q;
+      return { ...q, [field]: newValue };
+    });
+    updateQuiz({ ...quizData, questions });
+  };
+
+  const addOption = (qIndex) => {
+    const questions = quizData.questions.map((q, i) => {
+      if (i !== qIndex) return q;
+      return { ...q, options: [...q.options, ""] };
+    });
+    updateQuiz({ ...quizData, questions });
+  };
+
+  const removeOption = (qIndex, oIndex) => {
+    const questions = quizData.questions.map((q, i) => {
+      if (i !== qIndex) return q;
+      const options = q.options.filter((_, oi) => oi !== oIndex);
+      const correctIndex = q.correctIndex >= options.length ? 0 : q.correctIndex;
+      return { ...q, options, correctIndex };
+    });
+    updateQuiz({ ...quizData, questions });
+  };
+
+  const updateOption = (qIndex, oIndex, value) => {
+    const questions = quizData.questions.map((q, i) => {
+      if (i !== qIndex) return q;
+      const options = q.options.map((opt, oi) => (oi === oIndex ? value : opt));
+      return { ...q, options };
+    });
+    updateQuiz({ ...quizData, questions });
+  };
+
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        gap: "20px",
+      }}
+    >
+      <div>
+        <label
+          style={{
+            display: "block",
+            marginBottom: "8px",
+            fontWeight: "600",
+            color: "#1e293b",
+            fontSize: "14px",
+          }}
+        >
+          Quiz Title
+        </label>
+        <input
+          type="text"
+          value={quizData.title}
+          onChange={(e) => updateQuiz({ ...quizData, title: e.target.value })}
+          placeholder="e.g., Chapter 1 Assessment"
+          style={{
+            width: "100%",
+            padding: "10px 14px",
+            borderRadius: "8px",
+            border: "1px solid #cbd5e1",
+            fontSize: "14px",
+            boxSizing: "border-box",
+          }}
+        />
+      </div>
+
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+        }}
+      >
+        <label
+          style={{
+            fontWeight: "600",
+            color: "#1e293b",
+            fontSize: "14px",
+          }}
+        >
+          Questions ({quizData.questions.length})
+        </label>
+        <button
+          type="button"
+          onClick={addQuestion}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "6px",
+            padding: "8px 16px",
+            background: "#2563eb",
+            color: "#fff",
+            border: "none",
+            borderRadius: "8px",
+            fontSize: "13px",
+            fontWeight: "600",
+            cursor: "pointer",
+          }}
+        >
+          <Plus size={16} /> Add Question
+        </button>
+      </div>
+
+      {quizData.questions.length === 0 ? (
+        <div
+          style={{
+            padding: "40px",
+            textAlign: "center",
+            background: "#f8fafc",
+            borderRadius: "12px",
+            border: "2px dashed #cbd5e1",
+            color: "#64748b",
+          }}
+        >
+          No questions yet. Click "Add Question" to create your first quiz question.
+        </div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+          {quizData.questions.map((question, qIndex) => (
+            <div
+              key={qIndex}
+              style={{
+                background: "#fff",
+                border: "1px solid #e2e8f0",
+                borderRadius: "12px",
+                padding: "20px",
+                boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "flex-start",
+                  marginBottom: "16px",
+                }}
+              >
+                <span
+                  style={{
+                    fontWeight: "700",
+                    color: "#2563eb",
+                    fontSize: "14px",
+                  }}
+                >
+                  Question {qIndex + 1}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => removeQuestion(qIndex)}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "4px",
+                    padding: "6px 12px",
+                    background: "#fee2e2",
+                    color: "#dc2626",
+                    border: "none",
+                    borderRadius: "6px",
+                    fontSize: "12px",
+                    fontWeight: "600",
+                    cursor: "pointer",
+                  }}
+                >
+                  <Trash2 size={14} /> Remove
+                </button>
+              </div>
+
+              <div style={{ marginBottom: "16px" }}>
+                <textarea
+                  value={question.question}
+                  onChange={(e) =>
+                    updateQuestion(qIndex, "question", e.target.value)
+                  }
+                  placeholder="Enter your question here..."
+                  rows={3}
+                  style={{
+                    width: "100%",
+                    padding: "10px 12px",
+                    borderRadius: "8px",
+                    border: "1px solid #cbd5e1",
+                    fontSize: "14px",
+                    lineHeight: 1.5,
+                    boxSizing: "border-box",
+                    resize: "vertical",
+                  }}
+                />
+              </div>
+
+              <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                <label
+                  style={{
+                    fontSize: "13px",
+                    fontWeight: "600",
+                    color: "#475569",
+                    marginBottom: "4px",
+                  }}
+                >
+                  Answer Options (click to set as correct)
+                </label>
+                {question.options.map((option, oIndex) => (
+                  <div
+                    key={oIndex}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                    }}
+                  >
+                    <button
+                      type="button"
+                      onClick={() =>
+                        updateQuestion(qIndex, "correctIndex", oIndex)
+                      }
+                      style={{
+                        width: "24px",
+                        height: "24px",
+                        borderRadius: "50%",
+                        border:
+                          question.correctIndex === oIndex
+                            ? "2px solid #16a34a"
+                            : "2px solid #cbd5e1",
+                        background:
+                          question.correctIndex === oIndex
+                            ? "#16a34a"
+                            : "#fff",
+                        cursor: "pointer",
+                        flexShrink: 0,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      {question.correctIndex === oIndex && (
+                        <span
+                          style={{
+                            width: "8px",
+                            height: "8px",
+                            borderRadius: "50%",
+                            background: "#fff",
+                          }}
+                        />
+                      )}
+                    </button>
+                    <input
+                      type="text"
+                      value={option}
+                      onChange={(e) =>
+                        updateOption(qIndex, oIndex, e.target.value)
+                      }
+                      placeholder={`Option ${oIndex + 1}`}
+                      style={{
+                        flex: 1,
+                        padding: "8px 12px",
+                        borderRadius: "6px",
+                        border: "1px solid #cbd5e1",
+                        fontSize: "13px",
+                        boxSizing: "border-box",
+                      }}
+                    />
+                    {question.options.length > 2 && (
+                      <button
+                        type="button"
+                        onClick={() => removeOption(qIndex, oIndex)}
+                        style={{
+                          padding: "6px",
+                          background: "#f1f5f9",
+                          border: "none",
+                          borderRadius: "4px",
+                          cursor: "pointer",
+                          color: "#64748b",
+                        }}
+                      >
+                        <X size={14} />
+                      </button>
+                    )}
+                  </div>
+                ))}
+                {question.options.length < 6 && (
+                  <button
+                    type="button"
+                    onClick={() => addOption(qIndex)}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "4px",
+                      padding: "6px 12px",
+                      background: "none",
+                      border: "1px dashed #cbd5e1",
+                      borderRadius: "6px",
+                      fontSize: "12px",
+                      color: "#64748b",
+                      cursor: "pointer",
+                      alignSelf: "flex-start",
+                    }}
+                  >
+                    <Plus size={14} /> Add Option
+                  </button>
+                )}
+              </div>
+
+              <div style={{ marginTop: "16px" }}>
+                <label
+                  style={{
+                    fontSize: "12px",
+                    fontWeight: "600",
+                    color: "#64748b",
+                    display: "block",
+                    marginBottom: "4px",
+                  }}
+                >
+                  Explanation (optional)
+                </label>
+                <textarea
+                  value={question.explanation}
+                  onChange={(e) =>
+                    updateQuestion(qIndex, "explanation", e.target.value)
+                  }
+                  placeholder="Explain why this answer is correct..."
+                  rows={2}
+                  style={{
+                    width: "100%",
+                    padding: "8px 12px",
+                    borderRadius: "6px",
+                    border: "1px solid #e2e8f0",
+                    fontSize: "13px",
+                    lineHeight: 1.5,
+                    boxSizing: "border-box",
+                    resize: "vertical",
+                    background: "#f8fafc",
+                  }}
+                />
+              </div>
+            </div>
+          ))}
         </div>
       )}
     </div>
