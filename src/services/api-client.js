@@ -129,13 +129,14 @@ const refreshClient = axios.create({
 
 // SỬA TẠI ĐÂY: Nới lỏng Regex, bỏ dấu gạch chéo đầu để ăn khớp chính xác tuyệt đối
 const PUBLIC_AUTH_ENDPOINTS = /auth\/(login|register|google|refresh|forgot-password|reset-password|verify-email|resend-verification)/
+const PUBLIC_COURSE_ENDPOINTS = /courses\/[^/]+\/(preview|preview-lessons)(?:\/[^/]+)?$/
 
 function removeAuthorizationHeader(config) {
   if (!config.headers) return
 
   if (typeof config.headers.delete === 'function') {
     config.headers.delete('Authorization')
-    return
+    config.headers.delete('authorization')
   }
 
   delete config.headers.Authorization
@@ -146,10 +147,11 @@ apiClient.interceptors.request.use(
   (config) => {
     const url = config?.url || ''
     const isPublicAuth = PUBLIC_AUTH_ENDPOINTS.test(url)
+    const isPublicCourseEndpoint = PUBLIC_COURSE_ENDPOINTS.test(url)
     const shouldSkipAuthorization = config?.skipAuthorization === true
 
     // Public requests must never carry a stale or invalid bearer token.
-    if (isPublicAuth || shouldSkipAuthorization) {
+    if (isPublicAuth || isPublicCourseEndpoint || shouldSkipAuthorization) {
       removeAuthorizationHeader(config)
       return config
     }
