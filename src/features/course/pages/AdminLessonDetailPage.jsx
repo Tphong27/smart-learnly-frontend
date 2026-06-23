@@ -2,1918 +2,1762 @@ import { useCallback, useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { courseService } from "@/services/course.service";
 import { useToast } from "@/shared/components/ui/Toast/useToast";
+import RichTextEditor from "@/shared/components/rich-text/RichTextEditor";
+import { sanitizeLessonHtml } from "@/shared/utils/htmlSanitizer";
 import {
-    ArrowLeft,
-    Save,
-    CloudUpload,
-    Video,
-    File as FileIcon,
-    X,
-    FileText,
-    History,
-    Edit3,
-    Loader2,
-    ChevronLeft,
-    ChevronRight,
-    Plus,
-    Trash2,
+  ArrowLeft,
+  Save,
+  CloudUpload,
+  Video,
+  File as FileIcon,
+  X,
+  FileText,
+  History,
+  Edit3,
+  Loader2,
+  ChevronLeft,
+  ChevronRight,
+  Plus,
+  Trash2,
 } from "lucide-react";
 import { useRef } from "react";
 
 export default function AdminLessonDetailPage() {
-    const { courseId, lessonId } = useParams();
-    const navigate = useNavigate();
-    const { showToast: emitToast } = useToast();
-    const showToast = useCallback(
-        (message, type) => emitToast({ message, type }),
-        [emitToast],
+  const { courseId, lessonId } = useParams();
+  const navigate = useNavigate();
+  const { showToast: emitToast } = useToast();
+  const showToast = useCallback(
+    (message, type) => emitToast({ message, type }),
+    [emitToast],
+  );
+
+  const [activeTab, setActiveTab] = useState("edit");
+  const [title, setTitle] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [pageLoading, setPageLoading] = useState(true);
+  const [textContent, setTextContent] = useState("");
+  const [lessonType, setLessonType] = useState("VIDEO");
+  const [existingLessonData, setExistingLessonData] = useState(null);
+
+  const [videoUrl, setVideoUrl] = useState("");
+  const [mainContentFile, setMainContentFile] = useState(null);
+  const [uploadedFileUrl, setUploadedFileUrl] = useState("");
+  const [resources, setResources] = useState([]);
+  const [uploadingMainFile, setUploadingMainFile] = useState(false);
+  const [uploadingResources, setUploadingResources] = useState(false);
+
+  const [editHistory, setEditHistory] = useState([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [currentPage, setCurrentPage] = useState(0);
+  const [pageSize] = useState(10);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalElements, setTotalElements] = useState(0);
+
+  const [summary, setSummary] = useState("");
+
+  const mainFileInputRef = useRef(null);
+  const resourceInputRef = useRef(null);
+
+  const getFileNameFromUrl = (url) => {
+    if (!url) return "";
+    return url.substring(url.lastIndexOf("/") + 1);
+  };
+
+  const getErrorMessage = (error, fallbackMessage) => {
+    const validationDetails = error?.errors
+      ?.map(({ field, message }) => `${field}: ${message}`)
+      .join(", ");
+    return validationDetails || error?.message || fallbackMessage;
+  };
+
+  const formatDateTime = (isoString) => {
+    if (!isoString) return "---";
+    try {
+      const date = new Date(isoString);
+      return date.toLocaleString("en-US", {
+        month: "short",
+        day: "2-digit",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+      });
+    } catch {
+      return isoString;
+    }
+  };
+
+  useEffect(() => {
+    const fetchLessonDetail = async () => {
+      try {
+        setPageLoading(true);
+        const response = await courseService.getLessonDetail(lessonId);
+        const lessonData = response?.data || response;
+
+        if (lessonData) {
+          setExistingLessonData(lessonData);
+          setTitle(lessonData.title || "");
+          setSummary(sanitizeLessonHtml(lessonData.content || ""));
+          setTextContent(lessonData.content || "");
+          setVideoUrl(lessonData.videoUrl || "");
+
+          const typeFromServer = String(
+            lessonData.lessonType || lessonData.type || "",
+          ).toUpperCase();
+
+          if (typeFromServer === "PDF" || typeFromServer === "DOCUMENT") {
+            setLessonType("PDF");
+            setUploadedFileUrl(
+              lessonData.attachmentUrl || lessonData.fileUrl || "",
+            );
+          } else if (typeFromServer === "QUIZ") {
+            setLessonType("QUIZ");
+          } else {
+            setLessonType("VIDEO");
+          }
+
+          const loadedResources =
+            lessonData.resources || lessonData.attachments || [];
+          if (Array.isArray(loadedResources)) {
+            setResources(loadedResources);
+          }
+        }
+      } catch (error) {
+        console.error("Error loading lesson details:", error);
+        showToast("Failed to load lesson details", "error");
+      } finally {
+        setPageLoading(false);
+      }
+    };
+
+    if (lessonId) {
+      fetchLessonDetail();
+    }
+  }, [lessonId, showToast]);
+
+  useEffect(() => {
+    const fetchAuditLogs = async () => {
+      try {
+        setHistoryLoading(true);
+        const response = await courseService.getLessonAuditLogs(
+          lessonId,
+          currentPage,
+          pageSize,
+        );
+
+        const logData =
+          response?.items ||
+          response?.data?.items ||
+          response?.data?.data?.items ||
+          [];
+        setEditHistory(logData);
+
+        const totalElems =
+          response?.totalElements ??
+          response?.data?.totalElements ??
+          response?.data?.data?.totalElements ??
+          0;
+        const totalPgs =
+          response?.totalPages ??
+          response?.data?.totalPages ??
+          response?.data?.data?.totalPages ??
+          1;
+
+        setTotalElements(totalElems);
+        setTotalPages(totalPgs);
+      } catch (error) {
+        console.error("Error loading audit logs:", error);
+        showToast("Failed to load audit history logs", "error");
+      } finally {
+        setHistoryLoading(false);
+      }
+    };
+
+    if (activeTab === "history" && lessonId) {
+      fetchAuditLogs();
+    }
+  }, [activeTab, lessonId, currentPage, pageSize, showToast]);
+
+  const handleDragOver = (e) => e.preventDefault();
+
+  const handleDropMainFile = async (e) => {
+    e.preventDefault();
+    if (
+      !uploadingMainFile &&
+      e.dataTransfer.files &&
+      e.dataTransfer.files.length > 0
+    ) {
+      const file = e.dataTransfer.files[0];
+      await uploadMainFile(file);
+    }
+  };
+
+  const handleMainFileSelect = async (e) => {
+    if (e.target.files && e.target.files.length > 0) {
+      const file = e.target.files[0];
+      await uploadMainFile(file);
+      e.target.value = "";
+    }
+  };
+
+  const uploadMainFile = async (file) => {
+    setUploadingMainFile(true);
+    setMainContentFile(file);
+    try {
+      const uploadedFile = await courseService.uploadLessonMaterial(file);
+      setUploadedFileUrl(uploadedFile.url);
+      if (lessonType === "VIDEO") {
+        setVideoUrl(uploadedFile.url);
+      }
+      showToast(`Successfully uploaded ${file.name}!`, "success");
+    } catch (error) {
+      setMainContentFile(null);
+      showToast(
+        getErrorMessage(error, "Error uploading file to the system"),
+        "error",
+      );
+    } finally {
+      setUploadingMainFile(false);
+    }
+  };
+
+  const uploadResourceFiles = async (files) => {
+    const availableSlots = 10 - resources.length;
+    if (availableSlots <= 0) {
+      showToast("A lesson can have at most 10 resource files", "error");
+      return;
+    }
+    const selectedFiles = Array.from(files).slice(0, availableSlots);
+    setUploadingResources(true);
+    try {
+      const uploadResults = await Promise.allSettled(
+        selectedFiles.map((file) => courseService.uploadLessonResource(file)),
+      );
+      const uploadedResources = uploadResults
+        .filter((result) => result.status === "fulfilled")
+        .map((result) => result.value);
+      if (uploadedResources.length > 0) {
+        setResources((currentResources) => [
+          ...currentResources,
+          ...uploadedResources,
+        ]);
+        showToast(
+          `Successfully uploaded ${uploadedResources.length} resource file(s)`,
+          "success",
+        );
+      }
+    } finally {
+      setUploadingResources(false);
+    }
+  };
+
+  const handleDropResources = async (e) => {
+    e.preventDefault();
+    if (
+      !uploadingResources &&
+      e.dataTransfer.files &&
+      e.dataTransfer.files.length > 0
+    ) {
+      await uploadResourceFiles(e.dataTransfer.files);
+    }
+  };
+
+  const handleResourceSelect = async (e) => {
+    if (e.target.files && e.target.files.length > 0) {
+      await uploadResourceFiles(e.target.files);
+      e.target.value = "";
+    }
+  };
+
+  const removeResource = (indexToRemove) => {
+    setResources((currentResources) =>
+      currentResources.filter((_, index) => index !== indexToRemove),
+    );
+  };
+
+  const handleSave = async (e) => {
+    e.preventDefault();
+
+    if (!title.trim()) {
+      showToast("Vui lòng nhập tiêu đề bài học", "error");
+      return;
+    }
+
+    const cleanSummary = sanitizeLessonHtml(summary);
+
+    if (!cleanSummary || cleanSummary === "<p></p>") {
+      showToast("Vui lòng nhập Summary cho bài học", "error");
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      let currentAttachmentUrl = oldFileUrl;
+
+      if (lessonType !== "video" && attachedFile) {
+        showToast("Đang tải tệp tin mới lên hệ thống...", "info");
+
+        const uploadResult = await courseService.uploadThumbnail(attachedFile);
+
+        currentAttachmentUrl =
+          uploadResult?.url ||
+          uploadResult?.fileUrl ||
+          uploadResult?.attachmentUrl ||
+          uploadResult;
+      }
+
+      const payload = {
+        title: title.trim(),
+        lessonType: lessonType.toUpperCase(),
+        content: cleanSummary,
+        isPreview: isPreviewable,
+        videoUrl: lessonType === "video" ? videoUrl.trim() : null,
+        attachmentUrl: lessonType !== "video" ? currentAttachmentUrl : null,
+      };
+
+      await courseService.updateLesson(lessonId, payload);
+
+      showToast("Cập nhật nội dung bài học thành công!", "success");
+      navigate(`/admin/courses/${courseId}/content`);
+    } catch (error) {
+      console.error("Lỗi cập nhật bài học chi tiết:", error);
+
+      let errorText = "Gặp lỗi trong quá trình lưu dữ liệu bài học";
+
+      if (error?.response?.data) {
+        if (typeof error.response.data === "string") {
+          errorText = error.response.data;
+        } else if (error.response.data.message) {
+          errorText = error.response.data.message;
+        } else {
+          errorText = JSON.stringify(error.response.data);
+        }
+      } else if (error?.message) {
+        errorText = error.message;
+      }
+
+      showToast(errorText, "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (pageLoading)
+    return (
+      <div
+        style={{
+          padding: "40px",
+          fontWeight: "bold",
+          color: "#64748b",
+          textAlign: "center",
+        }}
+      >
+        Loading lesson data...
+      </div>
     );
 
-    const [activeTab, setActiveTab] = useState("edit");
-    const [title, setTitle] = useState("");
-    const [loading, setLoading] = useState(false);
-    const [pageLoading, setPageLoading] = useState(true);
-    const [textContent, setTextContent] = useState("");
-    const [lessonType, setLessonType] = useState("VIDEO");
-    const [existingLessonData, setExistingLessonData] = useState(null);
+  return (
+    <div
+      style={{
+        padding: "30px",
+        maxWidth: "1350px",
+        margin: "0 auto",
+        fontFamily: "Inter, sans-serif",
+      }}
+    >
+      <button
+        type="button"
+        onClick={() => navigate(`/admin/courses/${courseId}/content`)}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "8px",
+          background: "none",
+          border: "none",
+          color: "#475569",
+          cursor: "pointer",
+          padding: 0,
+          marginBottom: "20px",
+          fontSize: "14px",
+          fontWeight: "500",
+        }}
+      >
+        <ArrowLeft size={16} /> Back to Course Structure
+      </button>
 
-    const [videoUrl, setVideoUrl] = useState("");
-    const [mainContentFile, setMainContentFile] = useState(null);
-    const [uploadedFileUrl, setUploadedFileUrl] = useState("");
-    const [resources, setResources] = useState([]);
-    const [uploadingMainFile, setUploadingMainFile] = useState(false);
-    const [uploadingResources, setUploadingResources] = useState(false);
+      <h1
+        style={{
+          marginBottom: "24px",
+          color: "#0f172a",
+          fontSize: "28px",
+          fontWeight: "700",
+        }}
+      >
+        Update Lesson
+      </h1>
 
-    const [editHistory, setEditHistory] = useState([]);
-    const [historyLoading, setHistoryLoading] = useState(false);
-    const [currentPage, setCurrentPage] = useState(0);
-    const [pageSize] = useState(10);
-    const [totalPages, setTotalPages] = useState(1);
-    const [totalElements, setTotalElements] = useState(0);
-
-    const mainFileInputRef = useRef(null);
-    const resourceInputRef = useRef(null);
-
-    const getFileNameFromUrl = (url) => {
-        if (!url) return "";
-        return url.substring(url.lastIndexOf("/") + 1);
-    };
-
-    const getErrorMessage = (error, fallbackMessage) => {
-        const validationDetails = error?.errors
-            ?.map(({ field, message }) => `${field}: ${message}`)
-            .join(", ");
-        return validationDetails || error?.message || fallbackMessage;
-    };
-
-    const formatDateTime = (isoString) => {
-        if (!isoString) return "---";
-        try {
-            const date = new Date(isoString);
-            return date.toLocaleString("en-US", {
-                month: "short",
-                day: "2-digit",
-                year: "numeric",
-                hour: "2-digit",
-                minute: "2-digit",
-                second: "2-digit",
-            });
-        } catch {
-            return isoString;
-        }
-    };
-
-    useEffect(() => {
-        const fetchLessonDetail = async () => {
-            try {
-                setPageLoading(true);
-                const response = await courseService.getLessonDetail(lessonId);
-                const lessonData = response?.data || response;
-
-                if (lessonData) {
-                    setExistingLessonData(lessonData);
-                    setTitle(lessonData.title || "");
-                    setTextContent(lessonData.content || "");
-                    setVideoUrl(lessonData.videoUrl || "");
-
-                    const typeFromServer = String(
-                        lessonData.lessonType || lessonData.type || "",
-                    ).toUpperCase();
-
-                    if (
-                        typeFromServer === "PDF" ||
-                        typeFromServer === "DOCUMENT"
-                    ) {
-                        setLessonType("PDF");
-                        setUploadedFileUrl(
-                            lessonData.attachmentUrl ||
-                                lessonData.fileUrl ||
-                                "",
-                        );
-                    } else if (typeFromServer === "QUIZ") {
-                        setLessonType("QUIZ");
-                    } else {
-                        setLessonType("VIDEO");
-                    }
-
-                    const loadedResources =
-                        lessonData.resources || lessonData.attachments || [];
-                    if (Array.isArray(loadedResources)) {
-                        setResources(loadedResources);
-                    }
-                }
-            } catch (error) {
-                console.error("Error loading lesson details:", error);
-                showToast("Failed to load lesson details", "error");
-            } finally {
-                setPageLoading(false);
-            }
-        };
-
-        if (lessonId) {
-            fetchLessonDetail();
-        }
-    }, [lessonId, showToast]);
-
-    useEffect(() => {
-        const fetchAuditLogs = async () => {
-            try {
-                setHistoryLoading(true);
-                const response = await courseService.getLessonAuditLogs(
-                    lessonId,
-                    currentPage,
-                    pageSize,
-                );
-
-                const logData =
-                    response?.items ||
-                    response?.data?.items ||
-                    response?.data?.data?.items ||
-                    [];
-                setEditHistory(logData);
-
-                const totalElems =
-                    response?.totalElements ??
-                    response?.data?.totalElements ??
-                    response?.data?.data?.totalElements ??
-                    0;
-                const totalPgs =
-                    response?.totalPages ??
-                    response?.data?.totalPages ??
-                    response?.data?.data?.totalPages ??
-                    1;
-
-                setTotalElements(totalElems);
-                setTotalPages(totalPgs);
-            } catch (error) {
-                console.error("Error loading audit logs:", error);
-                showToast("Failed to load audit history logs", "error");
-            } finally {
-                setHistoryLoading(false);
-            }
-        };
-
-        if (activeTab === "history" && lessonId) {
-            fetchAuditLogs();
-        }
-    }, [activeTab, lessonId, currentPage, pageSize, showToast]);
-
-    const handleDragOver = (e) => e.preventDefault();
-
-    const handleDropMainFile = async (e) => {
-        e.preventDefault();
-        if (
-            !uploadingMainFile &&
-            e.dataTransfer.files &&
-            e.dataTransfer.files.length > 0
-        ) {
-            const file = e.dataTransfer.files[0];
-            await uploadMainFile(file);
-        }
-    };
-
-    const handleMainFileSelect = async (e) => {
-        if (e.target.files && e.target.files.length > 0) {
-            const file = e.target.files[0];
-            await uploadMainFile(file);
-            e.target.value = "";
-        }
-    };
-
-    const uploadMainFile = async (file) => {
-        setUploadingMainFile(true);
-        setMainContentFile(file);
-        try {
-            const uploadedFile = await courseService.uploadLessonMaterial(file);
-            setUploadedFileUrl(uploadedFile.url);
-            if (lessonType === "VIDEO") {
-                setVideoUrl(uploadedFile.url);
-            }
-            showToast(`Successfully uploaded ${file.name}!`, "success");
-        } catch (error) {
-            setMainContentFile(null);
-            showToast(
-                getErrorMessage(error, "Error uploading file to the system"),
-                "error",
-            );
-        } finally {
-            setUploadingMainFile(false);
-        }
-    };
-
-    const uploadResourceFiles = async (files) => {
-        const availableSlots = 10 - resources.length;
-        if (availableSlots <= 0) {
-            showToast("A lesson can have at most 10 resource files", "error");
-            return;
-        }
-        const selectedFiles = Array.from(files).slice(0, availableSlots);
-        setUploadingResources(true);
-        try {
-            const uploadResults = await Promise.allSettled(
-                selectedFiles.map((file) =>
-                    courseService.uploadLessonResource(file),
-                ),
-            );
-            const uploadedResources = uploadResults
-                .filter((result) => result.status === "fulfilled")
-                .map((result) => result.value);
-            if (uploadedResources.length > 0) {
-                setResources((currentResources) => [
-                    ...currentResources,
-                    ...uploadedResources,
-                ]);
-                showToast(
-                    `Successfully uploaded ${uploadedResources.length} resource file(s)`,
-                    "success",
-                );
-            }
-        } finally {
-            setUploadingResources(false);
-        }
-    };
-
-    const handleDropResources = async (e) => {
-        e.preventDefault();
-        if (
-            !uploadingResources &&
-            e.dataTransfer.files &&
-            e.dataTransfer.files.length > 0
-        ) {
-            await uploadResourceFiles(e.dataTransfer.files);
-        }
-    };
-
-    const handleResourceSelect = async (e) => {
-        if (e.target.files && e.target.files.length > 0) {
-            await uploadResourceFiles(e.target.files);
-            e.target.value = "";
-        }
-    };
-
-    const removeResource = (indexToRemove) => {
-        setResources((currentResources) =>
-            currentResources.filter((_, index) => index !== indexToRemove),
-        );
-    };
-
-    const handleSave = async (e) => {
-        e.preventDefault();
-        const contentToSave =
-            textContent === "<p><br></p>" ? "" : textContent.trim();
-        if (loading || uploadingMainFile || uploadingResources) return;
-        setLoading(true);
-
-        try {
-            const normalizedResources = resources.map((resource, index) => {
-                const resourceUrl =
-                    typeof resource === "string" ? resource : resource.url;
-                return {
-                    url: resourceUrl,
-                    objectPath:
-                        typeof resource === "string"
-                            ? null
-                            : resource.objectPath || null,
-                    name:
-                        typeof resource === "string"
-                            ? getFileNameFromUrl(resource)
-                            : resource.name || resource.fileName || null,
-                    fileName:
-                        typeof resource === "string"
-                            ? getFileNameFromUrl(resource)
-                            : resource.fileName || resource.name || null,
-                    fileSize:
-                        typeof resource === "string"
-                            ? null
-                            : (resource.fileSize ?? null),
-                    contentType:
-                        typeof resource === "string"
-                            ? null
-                            : resource.contentType || null,
-                    sortOrder: index,
-                };
-            });
-
-            const payload = {
-                title: title.trim(),
-                lessonType:
-                    lessonType === "VIDEO"
-                        ? "VIDEO"
-                        : lessonType === "QUIZ"
-                          ? "QUIZ"
-                          : "PDF",
-                type:
-                    lessonType === "VIDEO"
-                        ? "VIDEO"
-                        : lessonType === "QUIZ"
-                          ? "QUIZ"
-                          : "PDF",
-                videoUrl: lessonType === "VIDEO" ? videoUrl.trim() : "",
-                content: contentToSave,
-                attachmentUrl: lessonType === "PDF" ? uploadedFileUrl : "",
-                resources: normalizedResources,
-                durationSeconds: 0,
-                isPreview: existingLessonData?.isPreview ?? false,
-                status: "PUBLISHED",
-            };
-
-            await courseService.updateLesson(lessonId, payload);
-            showToast("Lesson updated successfully!", "success");
-            navigate(`/admin/courses/${courseId}/content`);
-        } catch (error) {
-            console.error(error);
-            showToast(
-                getErrorMessage(error, "Error connecting to backend server"),
-                "error",
-            );
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    if (pageLoading)
-        return (
-            <div
-                style={{
-                    padding: "40px",
-                    fontWeight: "bold",
-                    color: "#64748b",
-                    textAlign: "center",
-                }}
-            >
-                Loading lesson data...
-            </div>
-        );
-
-    return (
-        <div
-            style={{
-                padding: "30px",
-                maxWidth: "1350px",
-                margin: "0 auto",
-                fontFamily: "Inter, sans-serif",
-            }}
+      <div
+        style={{
+          display: "flex",
+          gap: "8px",
+          borderBottom: "1px solid #e2e8f0",
+          marginBottom: "30px",
+          paddingBottom: "1px",
+        }}
+      >
+        <button
+          type="button"
+          onClick={() => {
+            setCurrentPage(0);
+            setActiveTab("edit");
+          }}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
+            padding: "12px 20px",
+            fontSize: "15px",
+            fontWeight: "600",
+            border: "none",
+            background: "none",
+            cursor: "pointer",
+            color: activeTab === "edit" ? "#2563eb" : "#64748b",
+            borderBottom:
+              activeTab === "edit"
+                ? "2px solid #2563eb"
+                : "2px solid transparent",
+            transition: "all 0.2s",
+          }}
         >
-            <button
-                type="button"
-                onClick={() => navigate(`/admin/courses/${courseId}/content`)}
-                style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "8px",
-                    background: "none",
-                    border: "none",
-                    color: "#475569",
-                    cursor: "pointer",
-                    padding: 0,
-                    marginBottom: "20px",
-                    fontSize: "14px",
-                    fontWeight: "500",
-                }}
-            >
-                <ArrowLeft size={16} /> Back to Course Structure
-            </button>
+          <Edit3 size={18} /> Edit Content
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab("history")}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
+            padding: "12px 20px",
+            fontSize: "15px",
+            fontWeight: "600",
+            border: "none",
+            background: "none",
+            cursor: "pointer",
+            color: activeTab === "history" ? "#2563eb" : "#64748b",
+            borderBottom:
+              activeTab === "history"
+                ? "2px solid #2563eb"
+                : "2px solid transparent",
+            transition: "all 0.2s",
+          }}
+        >
+          <History size={18} /> Audit History
+        </button>
+      </div>
 
-            <h1
-                style={{
-                    marginBottom: "24px",
-                    color: "#0f172a",
-                    fontSize: "28px",
-                    fontWeight: "700",
-                }}
-            >
-                Update Lesson
-            </h1>
-
+      {activeTab === "edit" ? (
+        <form onSubmit={handleSave}>
+          <div style={{ display: "flex", gap: "40px" }}>
             <div
-                style={{
-                    display: "flex",
-                    gap: "8px",
-                    borderBottom: "1px solid #e2e8f0",
-                    marginBottom: "30px",
-                    paddingBottom: "1px",
-                }}
-            >
-                <button
-                    type="button"
-                    onClick={() => {
-                        setCurrentPage(0);
-                        setActiveTab("edit");
-                    }}
-                    style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "8px",
-                        padding: "12px 20px",
-                        fontSize: "15px",
-                        fontWeight: "600",
-                        border: "none",
-                        background: "none",
-                        cursor: "pointer",
-                        color: activeTab === "edit" ? "#2563eb" : "#64748b",
-                        borderBottom:
-                            activeTab === "edit"
-                                ? "2px solid #2563eb"
-                                : "2px solid transparent",
-                        transition: "all 0.2s",
-                    }}
-                >
-                    <Edit3 size={18} /> Edit Content
-                </button>
-                <button
-                    type="button"
-                    onClick={() => setActiveTab("history")}
-                    style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "8px",
-                        padding: "12px 20px",
-                        fontSize: "15px",
-                        fontWeight: "600",
-                        border: "none",
-                        background: "none",
-                        cursor: "pointer",
-                        color: activeTab === "history" ? "#2563eb" : "#64748b",
-                        borderBottom:
-                            activeTab === "history"
-                                ? "2px solid #2563eb"
-                                : "2px solid transparent",
-                        transition: "all 0.2s",
-                    }}
-                >
-                    <History size={18} /> Audit History
-                </button>
-            </div>
-
-            {activeTab === "edit" ? (
-                <form onSubmit={handleSave}>
-                    <div style={{ display: "flex", gap: "40px" }}>
-                        <div
-                            style={{
-                                flex: "3",
-                                display: "flex",
-                                flexDirection: "column",
-                                gap: "28px",
-                                backgroundColor: "#fff",
-                                padding: "28px",
-                                borderRadius: "16px",
-                                boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
-                            }}
-                        >
-                            <div style={{ display: "flex", gap: "20px" }}>
-                                <div style={{ flex: "2" }}>
-                                    <label
-                                        style={{
-                                            display: "block",
-                                            marginBottom: "8px",
-                                            fontWeight: "600",
-                                            color: "#1e293b",
-                                            fontSize: "14px",
-                                        }}
-                                    >
-                                        Title{" "}
-                                        <span style={{ color: "#ef4444" }}>
-                                            *
-                                        </span>
-                                    </label>
-                                    <input
-                                        type="text"
-                                        value={title}
-                                        onChange={(e) =>
-                                            setTitle(e.target.value)
-                                        }
-                                        style={{
-                                            width: "100%",
-                                            padding: "11px 16px",
-                                            borderRadius: "8px",
-                                            border: "1px solid #cbd5e1",
-                                            fontSize: "15px",
-                                            boxSizing: "border-box",
-                                        }}
-                                        required
-                                    />
-                                </div>
-                                <div style={{ flex: "1" }}>
-                                    <label
-                                        style={{
-                                            display: "block",
-                                            marginBottom: "8px",
-                                            fontWeight: "600",
-                                            color: "#1e293b",
-                                            fontSize: "14px",
-                                        }}
-                                    >
-                                        Lesson Type{" "}
-                                        <span style={{ color: "#ef4444" }}>
-                                            *
-                                        </span>
-                                    </label>
-                                    <select
-                                        value={lessonType}
-                                        onChange={(e) =>
-                                            setLessonType(e.target.value)
-                                        }
-                                        style={{
-                                            width: "100%",
-                                            padding: "11px 16px",
-                                            borderRadius: "8px",
-                                            border: "1px solid #cbd5e1",
-                                            fontSize: "15px",
-                                            boxSizing: "border-box",
-                                            backgroundColor: "#fff",
-                                        }}
-                                    >
-                                        <option value="VIDEO">
-                                            Video Lecture
-                                        </option>
-                                        <option value="PDF">
-                                            Document / Reading
-                                        </option>
-                                        <option value="QUIZ">Quiz</option>
-                                    </select>
-                                </div>
-                            </div>
-
-                            {lessonType === "QUIZ" ? (
-                                <QuizEditor
-                                    value={textContent}
-                                    onChange={setTextContent}
-                                />
-                            ) : (
-                                <div>
-                                    <label
-                                        style={{
-                                            display: "block",
-                                            marginBottom: "8px",
-                                            fontWeight: "600",
-                                            color: "#1e293b",
-                                            fontSize: "14px",
-                                        }}
-                                    >
-                                        Summary
-                                    </label>
-                                    <textarea
-                                        value={textContent}
-                                        onChange={(event) =>
-                                            setTextContent(event.target.value)
-                                        }
-                                        placeholder="Enter summary here..."
-                                        rows={10}
-                                        style={{
-                                            width: "100%",
-                                            minHeight: "250px",
-                                            padding: "12px",
-                                            border: "1px solid #cbd5e1",
-                                            borderRadius: "10px",
-                                            fontSize: "15px",
-                                            lineHeight: 1.6,
-                                            boxSizing: "border-box",
-                                            backgroundColor: "#fff",
-                                        }}
-                                    />
-                                </div>
-                            )}
-
-                            <div>
-                                <label
-                                    style={{
-                                        display: "block",
-                                        marginBottom: "10px",
-                                        fontWeight: "600",
-                                        color: "#1e293b",
-                                        fontSize: "14px",
-                                    }}
-                                >
-                                    Resources ({resources.length}/10)
-                                </label>
-                                <div
-                                    onDragOver={handleDragOver}
-                                    onDrop={handleDropResources}
-                                    onClick={() =>
-                                        !uploadingResources &&
-                                        resourceInputRef.current?.click()
-                                    }
-                                    style={{
-                                        display: "flex",
-                                        flexDirection: "column",
-                                        justifyContent: "center",
-                                        alignItems: "center",
-                                        gap: "12px",
-                                        height: "120px",
-                                        borderRadius: "12px",
-                                        border: "2px dashed #cbd5e1",
-                                        backgroundColor: "#f8fafc",
-                                        cursor: uploadingResources
-                                            ? "wait"
-                                            : "pointer",
-                                        color: "#64748b",
-                                    }}
-                                >
-                                    <CloudUpload size={24} color="#64748b" />
-                                    <p
-                                        style={{
-                                            margin: 0,
-                                            fontSize: "14px",
-                                            color: "#475569",
-                                        }}
-                                    >
-                                        {uploadingResources ? (
-                                            "Uploading resource files..."
-                                        ) : (
-                                            <>
-                                                <span
-                                                    style={{
-                                                        color: "#2563eb",
-                                                        fontWeight: 600,
-                                                    }}
-                                                >
-                                                    Choose file
-                                                </span>
-                                            </>
-                                        )}
-                                    </p>
-                                    <input
-                                        type="file"
-                                        multiple
-                                        ref={resourceInputRef}
-                                        onChange={handleResourceSelect}
-                                        disabled={uploadingResources}
-                                        style={{ display: "none" }}
-                                    />
-                                </div>
-                                {resources.length > 0 && (
-                                    <div
-                                        style={{
-                                            marginTop: "12px",
-                                            display: "flex",
-                                            flexDirection: "column",
-                                            gap: "8px",
-                                        }}
-                                    >
-                                        {resources.map((file, index) => (
-                                            <div
-                                                key={index}
-                                                style={{
-                                                    display: "flex",
-                                                    justifyContent:
-                                                        "space-between",
-                                                    alignItems: "center",
-                                                    padding: "8px 12px",
-                                                    backgroundColor: "#f1f5f9",
-                                                    borderRadius: "6px",
-                                                    fontSize: "13px",
-                                                }}
-                                            >
-                                                <span
-                                                    style={{
-                                                        color: "#334155",
-                                                        fontWeight: "500",
-                                                    }}
-                                                >
-                                                    {file instanceof File
-                                                        ? file.name
-                                                        : typeof file ===
-                                                            "string"
-                                                          ? getFileNameFromUrl(
-                                                                file,
-                                                            )
-                                                          : file.name ||
-                                                            file.fileName ||
-                                                            "Document"}
-                                                </span>
-                                                <X
-                                                    size={14}
-                                                    color="#ef4444"
-                                                    style={{
-                                                        cursor: "pointer",
-                                                    }}
-                                                    onClick={() =>
-                                                        removeResource(index)
-                                                    }
-                                                />
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-
-                        <div
-                            style={{
-                                flex: "2",
-                                backgroundColor: "#f8fafc",
-                                padding: "30px",
-                                borderRadius: "16px",
-                                border: "1px solid #e2e8f0",
-                                display: "flex",
-                                flexDirection: "column",
-                            }}
-                        >
-                            <div
-                                style={{
-                                    flexGrow: 1,
-                                    display: "flex",
-                                    flexDirection: "column",
-                                    gap: "16px",
-                                }}
-                            >
-                                <h3
-                                    style={{
-                                        margin: 0,
-                                        fontSize: "16px",
-                                        color: "#0f172a",
-                                    }}
-                                >
-                                    Lesson Content
-                                </h3>
-                                {lessonType === "VIDEO" && (
-                                    <div
-                                        style={{
-                                            backgroundColor: "#fff",
-                                            padding: "24px",
-                                            borderRadius: "12px",
-                                            border: "1px solid #cbd5e1",
-                                        }}
-                                    >
-                                        <div
-                                            style={{
-                                                display: "flex",
-                                                alignItems: "center",
-                                                gap: "8px",
-                                                marginBottom: "16px",
-                                                color: "#2563eb",
-                                            }}
-                                        >
-                                            <Video size={24} />
-                                            <span style={{ fontWeight: "600" }}>
-                                                Upload Video
-                                            </span>
-                                        </div>
-                                        <div
-                                            onDragOver={handleDragOver}
-                                            onDrop={handleDropMainFile}
-                                            onClick={() =>
-                                                !uploadingMainFile &&
-                                                mainFileInputRef.current?.click()
-                                            }
-                                            style={{
-                                                display: "flex",
-                                                flexDirection: "column",
-                                                justifyContent: "center",
-                                                alignItems: "center",
-                                                gap: "16px",
-                                                height: "200px",
-                                                borderRadius: "12px",
-                                                border:
-                                                    mainContentFile ||
-                                                    uploadedFileUrl ||
-                                                    videoUrl
-                                                        ? "2px solid #10b981"
-                                                        : "2px dashed #cbd5e1",
-                                                backgroundColor:
-                                                    mainContentFile ||
-                                                    uploadedFileUrl ||
-                                                    videoUrl
-                                                        ? "#f0fdf4"
-                                                        : "#fff",
-                                                cursor: uploadingMainFile
-                                                    ? "wait"
-                                                    : "pointer",
-                                                textAlign: "center",
-                                                padding: "20px",
-                                            }}
-                                        >
-                                            {uploadingMainFile ? (
-                                                <>
-                                                    <CloudUpload
-                                                        size={36}
-                                                        color="#2563eb"
-                                                    />
-                                                    <p
-                                                        style={{
-                                                            margin: 0,
-                                                            color: "#2563eb",
-                                                        }}
-                                                    >
-                                                        Uploading...
-                                                    </p>
-                                                </>
-                                            ) : mainContentFile ||
-                                              uploadedFileUrl ||
-                                              videoUrl ? (
-                                                <>
-                                                    <Video
-                                                        size={36}
-                                                        color="#10b981"
-                                                    />
-                                                    <p
-                                                        style={{
-                                                            margin: 0,
-                                                            fontSize: "14px",
-                                                            fontWeight: "600",
-                                                            color: "#065f46",
-                                                        }}
-                                                    >
-                                                        {mainContentFile
-                                                            ? mainContentFile.name
-                                                            : getFileNameFromUrl(
-                                                                  uploadedFileUrl ||
-                                                                      videoUrl,
-                                                              )}
-                                                    </p>
-                                                    <p
-                                                        style={{
-                                                            margin: 0,
-                                                            fontSize: "12px",
-                                                            color: "#059669",
-                                                        }}
-                                                    >
-                                                        Click to replace
-                                                    </p>
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <div
-                                                        style={{
-                                                            width: "48px",
-                                                            height: "48px",
-                                                            backgroundColor:
-                                                                "#e2e8f0",
-                                                            borderRadius:
-                                                                "12px",
-                                                            display: "flex",
-                                                            alignItems:
-                                                                "center",
-                                                            justifyContent:
-                                                                "center",
-                                                        }}
-                                                    >
-                                                        <FileText
-                                                            size={24}
-                                                            color="#64748b"
-                                                        />
-                                                    </div>
-                                                    <p
-                                                        style={{
-                                                            margin: 0,
-                                                            fontSize: "14px",
-                                                            fontWeight: "600",
-                                                            color: "#1e293b",
-                                                        }}
-                                                    >
-                                                        Drag and drop or{" "}
-                                                        <span
-                                                            style={{
-                                                                color: "#2563eb",
-                                                                fontWeight: 700,
-                                                            }}
-                                                        >
-                                                            Browse
-                                                        </span>
-                                                    </p>
-                                                    <p
-                                                        style={{
-                                                            margin: 0,
-                                                            fontSize: "12px",
-                                                            color: "#64748b",
-                                                        }}
-                                                    >
-                                                        Supports MP4, WebM, MOV
-                                                    </p>
-                                                </>
-                                            )}
-                                            <input
-                                                type="file"
-                                                ref={mainFileInputRef}
-                                                onChange={handleMainFileSelect}
-                                                disabled={uploadingMainFile}
-                                                style={{ display: "none" }}
-                                                accept=".mp4,.webm,.mov,.avi,.mkv"
-                                            />
-                                        </div>
-                                        {videoUrl && (
-                                            <div style={{ marginTop: 12 }}>
-                                                <label
-                                                    style={{
-                                                        fontSize: 12,
-                                                        color: "#64748b",
-                                                        display: "block",
-                                                        marginBottom: 4,
-                                                    }}
-                                                >
-                                                    Or paste video URL
-                                                </label>
-                                                <input
-                                                    type="url"
-                                                    value={videoUrl}
-                                                    onChange={(e) =>
-                                                        setVideoUrl(
-                                                            e.target.value,
-                                                        )
-                                                    }
-                                                    placeholder="https://..."
-                                                    style={{
-                                                        width: "100%",
-                                                        padding: "8px 12px",
-                                                        borderRadius: "6px",
-                                                        border: "1px solid #cbd5e1",
-                                                        fontSize: "13px",
-                                                        boxSizing: "border-box",
-                                                    }}
-                                                />
-                                            </div>
-                                        )}
-                                    </div>
-                                )}
-                                {lessonType === "PDF" && (
-                                    <div
-                                        onDragOver={handleDragOver}
-                                        onDrop={handleDropMainFile}
-                                        onClick={() =>
-                                            !uploadingMainFile &&
-                                            mainFileInputRef.current?.click()
-                                        }
-                                        style={{
-                                            display: "flex",
-                                            flexDirection: "column",
-                                            justifyContent: "center",
-                                            alignItems: "center",
-                                            gap: "16px",
-                                            height: "300px",
-                                            borderRadius: "16px",
-                                            border:
-                                                mainContentFile ||
-                                                uploadedFileUrl
-                                                    ? "2px solid #10b981"
-                                                    : "2px dashed #cbd5e1",
-                                            backgroundColor:
-                                                mainContentFile ||
-                                                uploadedFileUrl
-                                                    ? "#f0fdf4"
-                                                    : "#fff",
-                                            cursor: uploadingMainFile
-                                                ? "wait"
-                                                : "pointer",
-                                            textAlign: "center",
-                                            padding: "40px",
-                                        }}
-                                    >
-                                        {uploadingMainFile ? (
-                                            <>
-                                                <CloudUpload
-                                                    size={48}
-                                                    color="#2563eb"
-                                                />
-                                                <p
-                                                    style={{
-                                                        margin: 0,
-                                                        color: "#2563eb",
-                                                    }}
-                                                >
-                                                    Uploading...
-                                                </p>
-                                            </>
-                                        ) : mainContentFile ||
-                                          uploadedFileUrl ? (
-                                            <>
-                                                <FileIcon
-                                                    size={48}
-                                                    color="#10b981"
-                                                />
-                                                <p
-                                                    style={{
-                                                        margin: 0,
-                                                        fontSize: "16px",
-                                                        fontWeight: "600",
-                                                        color: "#065f46",
-                                                    }}
-                                                >
-                                                    {mainContentFile
-                                                        ? mainContentFile.name
-                                                        : getFileNameFromUrl(
-                                                              uploadedFileUrl,
-                                                          )}
-                                                </p>
-                                                <p
-                                                    style={{
-                                                        margin: 0,
-                                                        fontSize: "13px",
-                                                        color: "#059669",
-                                                    }}
-                                                >
-                                                    Click to replace
-                                                </p>
-                                            </>
-                                        ) : (
-                                            <>
-                                                <div
-                                                    style={{
-                                                        width: "48px",
-                                                        height: "48px",
-                                                        backgroundColor:
-                                                            "#e2e8f0",
-                                                        borderRadius: "12px",
-                                                        display: "flex",
-                                                        alignItems: "center",
-                                                        justifyContent:
-                                                            "center",
-                                                    }}
-                                                >
-                                                    <FileText
-                                                        size={24}
-                                                        color="#64748b"
-                                                    />
-                                                </div>
-                                                <p
-                                                    style={{
-                                                        margin: 0,
-                                                        fontSize: "16px",
-                                                        fontWeight: "600",
-                                                        color: "#1e293b",
-                                                    }}
-                                                >
-                                                    Drag and drop or{" "}
-                                                    <span
-                                                        style={{
-                                                            color: "#2563eb",
-                                                            fontWeight: 700,
-                                                        }}
-                                                    >
-                                                        Browse
-                                                    </span>
-                                                </p>
-                                            </>
-                                        )}
-                                        <input
-                                            type="file"
-                                            ref={mainFileInputRef}
-                                            onChange={handleMainFileSelect}
-                                            disabled={uploadingMainFile}
-                                            style={{ display: "none" }}
-                                            accept=".pdf,.doc,.docx,.ppt,.pptx"
-                                        />
-                                    </div>
-                                )}
-                                {lessonType === "QUIZ" && (
-                                    <div
-                                        style={{
-                                            backgroundColor: "#fff",
-                                            padding: "20px",
-                                            borderRadius: "12px",
-                                            border: "1px solid #cbd5e1",
-                                            textAlign: "center",
-                                        }}
-                                    >
-                                        <p
-                                            style={{
-                                                color: "#64748b",
-                                                margin: 0,
-                                                fontSize: "14px",
-                                            }}
-                                        >
-                                            Quiz content is edited in the left
-                                            panel. Add questions and options
-                                            using the Quiz Editor.
-                                        </p>
-                                    </div>
-                                )}
-                            </div>
-
-                            <div
-                                style={{
-                                    display: "flex",
-                                    gap: "14px",
-                                    marginTop: "30px",
-                                    borderTop: "1px solid #e2e8f0",
-                                    paddingTop: "24px",
-                                }}
-                            >
-                                <button
-                                    type="submit"
-                                    disabled={
-                                        loading ||
-                                        uploadingMainFile ||
-                                        uploadingResources
-                                    }
-                                    style={{
-                                        display: "flex",
-                                        alignItems: "center",
-                                        gap: "10px",
-                                        backgroundColor: "#2563eb",
-                                        color: "#fff",
-                                        border: "none",
-                                        padding: "13px 28px",
-                                        borderRadius: "10px",
-                                        cursor: "pointer",
-                                        fontWeight: "600",
-                                        fontSize: "15px",
-                                    }}
-                                >
-                                    <Save size={18} />{" "}
-                                    {loading ? "Saving..." : "Save Changes"}
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() =>
-                                        navigate(
-                                            `/admin/courses/${courseId}/content`,
-                                        )
-                                    }
-                                    style={{
-                                        backgroundColor: "#fff",
-                                        border: "1px solid #cbd5e1",
-                                        padding: "13px 28px",
-                                        borderRadius: "10px",
-                                        cursor: "pointer",
-                                        color: "#475569",
-                                        fontWeight: "500",
-                                        fontSize: "15px",
-                                    }}
-                                >
-                                    Cancel
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </form>
-            ) : (
-                <div
-                    style={{
-                        backgroundColor: "#fff",
-                        padding: "28px",
-                        borderRadius: "16px",
-                        boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
-                    }}
-                >
-                    <h3
-                        style={{
-                            margin: "0 0 20px 0",
-                            fontSize: "18px",
-                            color: "#1e293b",
-                        }}
-                    >
-                        Lesson Audit Logs
-                    </h3>
-
-                    {historyLoading ? (
-                        <div
-                            style={{
-                                display: "flex",
-                                justifyContent: "center",
-                                alignItems: "center",
-                                padding: "40px",
-                                gap: "10px",
-                                color: "#64748b",
-                            }}
-                        >
-                            <Loader2 className="animate-spin" size={20} />
-                            <span>Loading audit logs from the system...</span>
-                        </div>
-                    ) : editHistory.length === 0 ? (
-                        <div
-                            style={{
-                                padding: "40px",
-                                textAlign: "center",
-                                color: "#94a3b8",
-                            }}
-                        >
-                            No audit logs found for this lesson.
-                        </div>
-                    ) : (
-                        <>
-                            <div style={{ overflowX: "auto" }}>
-                                <table
-                                    style={{
-                                        width: "100%",
-                                        borderCollapse: "collapse",
-                                        textAlign: "left",
-                                        fontSize: "14px",
-                                    }}
-                                >
-                                    <thead>
-                                        <tr
-                                            style={{
-                                                borderBottom:
-                                                    "2px solid #edf2f7",
-                                                color: "#64748b",
-                                            }}
-                                        >
-                                            <th
-                                                style={{
-                                                    padding: "12px 16px",
-                                                    fontWeight: "600",
-                                                }}
-                                            >
-                                                Timestamp
-                                            </th>
-                                            <th
-                                                style={{
-                                                    padding: "12px 16px",
-                                                    fontWeight: "600",
-                                                }}
-                                            >
-                                                Actor (Email)
-                                            </th>
-                                            <th
-                                                style={{
-                                                    padding: "12px 16px",
-                                                    fontWeight: "600",
-                                                }}
-                                            >
-                                                Role
-                                            </th>
-                                            <th
-                                                style={{
-                                                    padding: "12px 16px",
-                                                    fontWeight: "600",
-                                                }}
-                                            >
-                                                Action / Summary
-                                            </th>
-                                            <th
-                                                style={{
-                                                    padding: "12px 16px",
-                                                    fontWeight: "600",
-                                                }}
-                                            >
-                                                Status
-                                            </th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {editHistory.map((log) => (
-                                            <tr
-                                                key={log.id}
-                                                style={{
-                                                    borderBottom:
-                                                        "1px solid #edf2f7",
-                                                    color: "#334155",
-                                                }}
-                                            >
-                                                <td
-                                                    style={{
-                                                        padding: "16px",
-                                                        color: "#64748b",
-                                                    }}
-                                                >
-                                                    {formatDateTime(
-                                                        log.occurredAt,
-                                                    )}
-                                                </td>
-                                                <td
-                                                    style={{
-                                                        padding: "16px",
-                                                        fontWeight: "500",
-                                                    }}
-                                                >
-                                                    {log.actorEmail || "N/A"}
-                                                </td>
-                                                <td style={{ padding: "16px" }}>
-                                                    <span
-                                                        style={{
-                                                            padding: "4px 8px",
-                                                            backgroundColor:
-                                                                "#f1f5f9",
-                                                            borderRadius: "4px",
-                                                            fontSize: "12px",
-                                                            fontWeight: "500",
-                                                        }}
-                                                    >
-                                                        {log.actorRole}
-                                                    </span>
-                                                </td>
-                                                <td
-                                                    style={{
-                                                        padding: "16px",
-                                                        fontWeight: "500",
-                                                    }}
-                                                >
-                                                    {log.summary}
-                                                </td>
-                                                <td style={{ padding: "16px" }}>
-                                                    <span
-                                                        style={{
-                                                            padding: "4px 8px",
-                                                            borderRadius: "4px",
-                                                            fontSize: "12px",
-                                                            fontWeight: "600",
-                                                            backgroundColor:
-                                                                log.result ===
-                                                                "SUCCESS"
-                                                                    ? "#dcfce7"
-                                                                    : "#fee2e2",
-                                                            color:
-                                                                log.result ===
-                                                                "SUCCESS"
-                                                                    ? "#15803d"
-                                                                    : "#b91c1c",
-                                                        }}
-                                                    >
-                                                        {log.result}
-                                                    </span>
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-
-                            {totalElements > 0 && (
-                                <div
-                                    style={{
-                                        display: "flex",
-                                        justifyContent: "space-between",
-                                        alignItems: "center",
-                                        marginTop: "24px",
-                                        paddingTop: "16px",
-                                        borderTop: "1px solid #e2e8f0",
-                                    }}
-                                >
-                                    <div
-                                        style={{
-                                            fontSize: "14px",
-                                            color: "#64748b",
-                                        }}
-                                    >
-                                        Showing{" "}
-                                        <span
-                                            style={{
-                                                fontWeight: 600,
-                                                color: "#334155",
-                                            }}
-                                        >
-                                            {currentPage * pageSize + 1}
-                                        </span>{" "}
-                                        to{" "}
-                                        <span
-                                            style={{
-                                                fontWeight: 600,
-                                                color: "#334155",
-                                            }}
-                                        >
-                                            {Math.min(
-                                                (currentPage + 1) * pageSize,
-                                                totalElements,
-                                            )}
-                                        </span>{" "}
-                                        of{" "}
-                                        <span
-                                            style={{
-                                                fontWeight: 600,
-                                                color: "#334155",
-                                            }}
-                                        >
-                                            {totalElements}
-                                        </span>{" "}
-                                        entries
-                                    </div>
-
-                                    <div
-                                        style={{
-                                            display: "flex",
-                                            alignItems: "center",
-                                            gap: "8px",
-                                        }}
-                                    >
-                                        <button
-                                            onClick={() =>
-                                                setCurrentPage((prev) =>
-                                                    Math.max(0, prev - 1),
-                                                )
-                                            }
-                                            disabled={currentPage === 0}
-                                            style={{
-                                                display: "flex",
-                                                alignItems: "center",
-                                                gap: "4px",
-                                                padding: "6px 12px",
-                                                border: "1px solid #cbd5e1",
-                                                borderRadius: "6px",
-                                                backgroundColor:
-                                                    currentPage === 0
-                                                        ? "#f8fafc"
-                                                        : "#fff",
-                                                color:
-                                                    currentPage === 0
-                                                        ? "#94a3b8"
-                                                        : "#334155",
-                                                cursor:
-                                                    currentPage === 0
-                                                        ? "not-allowed"
-                                                        : "pointer",
-                                                fontSize: "13px",
-                                                fontWeight: "500",
-                                                transition: "all 0.2s",
-                                            }}
-                                        >
-                                            <ChevronLeft size={16} /> Previous
-                                        </button>
-
-                                        <div
-                                            style={{
-                                                fontSize: "13px",
-                                                fontWeight: "500",
-                                                color: "#475569",
-                                                padding: "0 8px",
-                                            }}
-                                        >
-                                            Page {currentPage + 1} of{" "}
-                                            {totalPages}
-                                        </div>
-
-                                        <button
-                                            onClick={() =>
-                                                setCurrentPage((prev) =>
-                                                    Math.min(
-                                                        totalPages - 1,
-                                                        prev + 1,
-                                                    ),
-                                                )
-                                            }
-                                            disabled={
-                                                currentPage >= totalPages - 1 ||
-                                                totalPages === 0
-                                            }
-                                            style={{
-                                                display: "flex",
-                                                alignItems: "center",
-                                                gap: "4px",
-                                                padding: "6px 12px",
-                                                border: "1px solid #cbd5e1",
-                                                borderRadius: "6px",
-                                                backgroundColor:
-                                                    currentPage >=
-                                                        totalPages - 1 ||
-                                                    totalPages === 0
-                                                        ? "#f8fafc"
-                                                        : "#fff",
-                                                color:
-                                                    currentPage >=
-                                                        totalPages - 1 ||
-                                                    totalPages === 0
-                                                        ? "#94a3b8"
-                                                        : "#334155",
-                                                cursor:
-                                                    currentPage >=
-                                                        totalPages - 1 ||
-                                                    totalPages === 0
-                                                        ? "not-allowed"
-                                                        : "pointer",
-                                                fontSize: "13px",
-                                                fontWeight: "500",
-                                                transition: "all 0.2s",
-                                            }}
-                                        >
-                                            Next <ChevronRight size={16} />
-                                        </button>
-                                    </div>
-                                </div>
-                            )}
-                        </>
-                    )}
-                </div>
-            )}
-        </div>
-    );
-}
-
-function QuizEditor({ value, onChange }) {
-    const [quizData, setQuizData] = useState({ title: "", questions: [] });
-
-    useEffect(() => {
-        if (value) {
-            try {
-                const parsed = JSON.parse(value);
-                setQuizData(parsed);
-            } catch {
-                setQuizData({ title: "", questions: [] });
-            }
-        }
-    }, []);
-
-    const updateQuiz = (newData) => {
-        setQuizData(newData);
-        onChange(JSON.stringify(newData));
-    };
-
-    const addQuestion = () => {
-        const newQuestion = {
-            question: "",
-            options: ["", ""],
-            correctIndex: 0,
-            explanation: "",
-        };
-        updateQuiz({
-            ...quizData,
-            questions: [...quizData.questions, newQuestion],
-        });
-    };
-
-    const removeQuestion = (index) => {
-        const questions = quizData.questions.filter((_, i) => i !== index);
-        updateQuiz({ ...quizData, questions });
-    };
-
-    const updateQuestion = (index, field, newValue) => {
-        const questions = quizData.questions.map((q, i) => {
-            if (i !== index) return q;
-            return { ...q, [field]: newValue };
-        });
-        updateQuiz({ ...quizData, questions });
-    };
-
-    const addOption = (qIndex) => {
-        const questions = quizData.questions.map((q, i) => {
-            if (i !== qIndex) return q;
-            return { ...q, options: [...q.options, ""] };
-        });
-        updateQuiz({ ...quizData, questions });
-    };
-
-    const removeOption = (qIndex, oIndex) => {
-        const questions = quizData.questions.map((q, i) => {
-            if (i !== qIndex) return q;
-            const options = q.options.filter((_, oi) => oi !== oIndex);
-            const correctIndex =
-                q.correctIndex >= options.length ? 0 : q.correctIndex;
-            return { ...q, options, correctIndex };
-        });
-        updateQuiz({ ...quizData, questions });
-    };
-
-    const updateOption = (qIndex, oIndex, value) => {
-        const questions = quizData.questions.map((q, i) => {
-            if (i !== qIndex) return q;
-            const options = q.options.map((opt, oi) =>
-                oi === oIndex ? value : opt,
-            );
-            return { ...q, options };
-        });
-        updateQuiz({ ...quizData, questions });
-    };
-
-    return (
-        <div
-            style={{
+              style={{
+                flex: "3",
                 display: "flex",
                 flexDirection: "column",
-                gap: "20px",
-            }}
-        >
-            <div>
-                <label
+                gap: "28px",
+                backgroundColor: "#fff",
+                padding: "28px",
+                borderRadius: "16px",
+                boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
+              }}
+            >
+              <div style={{ display: "flex", gap: "20px" }}>
+                <div style={{ flex: "2" }}>
+                  <label
                     style={{
+                      display: "block",
+                      marginBottom: "8px",
+                      fontWeight: "600",
+                      color: "#1e293b",
+                      fontSize: "14px",
+                    }}
+                  >
+                    Title <span style={{ color: "#ef4444" }}>*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    style={{
+                      width: "100%",
+                      padding: "11px 16px",
+                      borderRadius: "8px",
+                      border: "1px solid #cbd5e1",
+                      fontSize: "15px",
+                      boxSizing: "border-box",
+                    }}
+                    required
+                  />
+                </div>
+                <div style={{ flex: "1" }}>
+                  <label
+                    style={{
+                      display: "block",
+                      marginBottom: "8px",
+                      fontWeight: "600",
+                      color: "#1e293b",
+                      fontSize: "14px",
+                    }}
+                  >
+                    Lesson Type <span style={{ color: "#ef4444" }}>*</span>
+                  </label>
+                  <select
+                    value={lessonType}
+                    onChange={(e) => setLessonType(e.target.value)}
+                    style={{
+                      width: "100%",
+                      padding: "11px 16px",
+                      borderRadius: "8px",
+                      border: "1px solid #cbd5e1",
+                      fontSize: "15px",
+                      boxSizing: "border-box",
+                      backgroundColor: "#fff",
+                    }}
+                  >
+                    <option value="VIDEO">Video Lecture</option>
+                    <option value="PDF">Document / Reading</option>
+                    <option value="QUIZ">Quiz</option>
+                  </select>
+                </div>
+              </div>
+
+              {lessonType === "QUIZ" ? (
+                <QuizEditor value={textContent} onChange={setTextContent} />
+              ) : (
+                <div>
+                  <label
+                    style={{
+                      display: "block",
+                      marginBottom: "8px",
+                      fontWeight: "600",
+                      color: "#1e293b",
+                      fontSize: "14px",
+                    }}
+                  >
+                    Summary
+                  </label>
+                  <div>
+                    <label
+                      style={{
                         display: "block",
                         marginBottom: "8px",
                         fontWeight: "600",
                         color: "#1e293b",
                         fontSize: "14px",
-                    }}
+                      }}
+                    >
+                      Summary <span style={{ color: "#ef4444" }}>*</span>
+                    </label>
+
+                    <RichTextEditor
+                      value={summary}
+                      onChange={setSummary}
+                      placeholder="Nhập tóm tắt nội dung bài học..."
+                      minHeight={260}
+                    />
+                  </div>
+                </div>
+              )}
+
+              <div>
+                <label
+                  style={{
+                    display: "block",
+                    marginBottom: "10px",
+                    fontWeight: "600",
+                    color: "#1e293b",
+                    fontSize: "14px",
+                  }}
                 >
-                    Quiz Title
+                  Resources ({resources.length}/10)
                 </label>
-                <input
-                    type="text"
-                    value={quizData.title}
-                    onChange={(e) =>
-                        updateQuiz({ ...quizData, title: e.target.value })
-                    }
-                    placeholder="e.g., Chapter 1 Assessment"
+                <div
+                  onDragOver={handleDragOver}
+                  onDrop={handleDropResources}
+                  onClick={() =>
+                    !uploadingResources && resourceInputRef.current?.click()
+                  }
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    justifyContent: "center",
+                    alignItems: "center",
+                    gap: "12px",
+                    height: "120px",
+                    borderRadius: "12px",
+                    border: "2px dashed #cbd5e1",
+                    backgroundColor: "#f8fafc",
+                    cursor: uploadingResources ? "wait" : "pointer",
+                    color: "#64748b",
+                  }}
+                >
+                  <CloudUpload size={24} color="#64748b" />
+                  <p
                     style={{
-                        width: "100%",
-                        padding: "10px 14px",
-                        borderRadius: "8px",
-                        border: "1px solid #cbd5e1",
-                        fontSize: "14px",
-                        boxSizing: "border-box",
+                      margin: 0,
+                      fontSize: "14px",
+                      color: "#475569",
                     }}
-                />
+                  >
+                    {uploadingResources ? (
+                      "Uploading resource files..."
+                    ) : (
+                      <>
+                        <span
+                          style={{
+                            color: "#2563eb",
+                            fontWeight: 600,
+                          }}
+                        >
+                          Choose file
+                        </span>
+                      </>
+                    )}
+                  </p>
+                  <input
+                    type="file"
+                    multiple
+                    ref={resourceInputRef}
+                    onChange={handleResourceSelect}
+                    disabled={uploadingResources}
+                    style={{ display: "none" }}
+                  />
+                </div>
+                {resources.length > 0 && (
+                  <div
+                    style={{
+                      marginTop: "12px",
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: "8px",
+                    }}
+                  >
+                    {resources.map((file, index) => (
+                      <div
+                        key={index}
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                          padding: "8px 12px",
+                          backgroundColor: "#f1f5f9",
+                          borderRadius: "6px",
+                          fontSize: "13px",
+                        }}
+                      >
+                        <span
+                          style={{
+                            color: "#334155",
+                            fontWeight: "500",
+                          }}
+                        >
+                          {file instanceof File
+                            ? file.name
+                            : typeof file === "string"
+                              ? getFileNameFromUrl(file)
+                              : file.name || file.fileName || "Document"}
+                        </span>
+                        <X
+                          size={14}
+                          color="#ef4444"
+                          style={{
+                            cursor: "pointer",
+                          }}
+                          onClick={() => removeResource(index)}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
 
             <div
+              style={{
+                flex: "2",
+                backgroundColor: "#f8fafc",
+                padding: "30px",
+                borderRadius: "16px",
+                border: "1px solid #e2e8f0",
+                display: "flex",
+                flexDirection: "column",
+              }}
+            >
+              <div
                 style={{
+                  flexGrow: 1,
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "16px",
+                }}
+              >
+                <h3
+                  style={{
+                    margin: 0,
+                    fontSize: "16px",
+                    color: "#0f172a",
+                  }}
+                >
+                  Lesson Content
+                </h3>
+                {lessonType === "VIDEO" && (
+                  <div
+                    style={{
+                      backgroundColor: "#fff",
+                      padding: "24px",
+                      borderRadius: "12px",
+                      border: "1px solid #cbd5e1",
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "8px",
+                        marginBottom: "16px",
+                        color: "#2563eb",
+                      }}
+                    >
+                      <Video size={24} />
+                      <span style={{ fontWeight: "600" }}>Upload Video</span>
+                    </div>
+                    <div
+                      onDragOver={handleDragOver}
+                      onDrop={handleDropMainFile}
+                      onClick={() =>
+                        !uploadingMainFile && mainFileInputRef.current?.click()
+                      }
+                      style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        justifyContent: "center",
+                        alignItems: "center",
+                        gap: "16px",
+                        height: "200px",
+                        borderRadius: "12px",
+                        border:
+                          mainContentFile || uploadedFileUrl || videoUrl
+                            ? "2px solid #10b981"
+                            : "2px dashed #cbd5e1",
+                        backgroundColor:
+                          mainContentFile || uploadedFileUrl || videoUrl
+                            ? "#f0fdf4"
+                            : "#fff",
+                        cursor: uploadingMainFile ? "wait" : "pointer",
+                        textAlign: "center",
+                        padding: "20px",
+                      }}
+                    >
+                      {uploadingMainFile ? (
+                        <>
+                          <CloudUpload size={36} color="#2563eb" />
+                          <p
+                            style={{
+                              margin: 0,
+                              color: "#2563eb",
+                            }}
+                          >
+                            Uploading...
+                          </p>
+                        </>
+                      ) : mainContentFile || uploadedFileUrl || videoUrl ? (
+                        <>
+                          <Video size={36} color="#10b981" />
+                          <p
+                            style={{
+                              margin: 0,
+                              fontSize: "14px",
+                              fontWeight: "600",
+                              color: "#065f46",
+                            }}
+                          >
+                            {mainContentFile
+                              ? mainContentFile.name
+                              : getFileNameFromUrl(uploadedFileUrl || videoUrl)}
+                          </p>
+                          <p
+                            style={{
+                              margin: 0,
+                              fontSize: "12px",
+                              color: "#059669",
+                            }}
+                          >
+                            Click to replace
+                          </p>
+                        </>
+                      ) : (
+                        <>
+                          <div
+                            style={{
+                              width: "48px",
+                              height: "48px",
+                              backgroundColor: "#e2e8f0",
+                              borderRadius: "12px",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                            }}
+                          >
+                            <FileText size={24} color="#64748b" />
+                          </div>
+                          <p
+                            style={{
+                              margin: 0,
+                              fontSize: "14px",
+                              fontWeight: "600",
+                              color: "#1e293b",
+                            }}
+                          >
+                            Drag and drop or{" "}
+                            <span
+                              style={{
+                                color: "#2563eb",
+                                fontWeight: 700,
+                              }}
+                            >
+                              Browse
+                            </span>
+                          </p>
+                          <p
+                            style={{
+                              margin: 0,
+                              fontSize: "12px",
+                              color: "#64748b",
+                            }}
+                          >
+                            Supports MP4, WebM, MOV
+                          </p>
+                        </>
+                      )}
+                      <input
+                        type="file"
+                        ref={mainFileInputRef}
+                        onChange={handleMainFileSelect}
+                        disabled={uploadingMainFile}
+                        style={{ display: "none" }}
+                        accept=".mp4,.webm,.mov,.avi,.mkv"
+                      />
+                    </div>
+                    {videoUrl && (
+                      <div style={{ marginTop: 12 }}>
+                        <label
+                          style={{
+                            fontSize: 12,
+                            color: "#64748b",
+                            display: "block",
+                            marginBottom: 4,
+                          }}
+                        >
+                          Or paste video URL
+                        </label>
+                        <input
+                          type="url"
+                          value={videoUrl}
+                          onChange={(e) => setVideoUrl(e.target.value)}
+                          placeholder="https://..."
+                          style={{
+                            width: "100%",
+                            padding: "8px 12px",
+                            borderRadius: "6px",
+                            border: "1px solid #cbd5e1",
+                            fontSize: "13px",
+                            boxSizing: "border-box",
+                          }}
+                        />
+                      </div>
+                    )}
+                  </div>
+                )}
+                {lessonType === "PDF" && (
+                  <div
+                    onDragOver={handleDragOver}
+                    onDrop={handleDropMainFile}
+                    onClick={() =>
+                      !uploadingMainFile && mainFileInputRef.current?.click()
+                    }
+                    style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      justifyContent: "center",
+                      alignItems: "center",
+                      gap: "16px",
+                      height: "300px",
+                      borderRadius: "16px",
+                      border:
+                        mainContentFile || uploadedFileUrl
+                          ? "2px solid #10b981"
+                          : "2px dashed #cbd5e1",
+                      backgroundColor:
+                        mainContentFile || uploadedFileUrl ? "#f0fdf4" : "#fff",
+                      cursor: uploadingMainFile ? "wait" : "pointer",
+                      textAlign: "center",
+                      padding: "40px",
+                    }}
+                  >
+                    {uploadingMainFile ? (
+                      <>
+                        <CloudUpload size={48} color="#2563eb" />
+                        <p
+                          style={{
+                            margin: 0,
+                            color: "#2563eb",
+                          }}
+                        >
+                          Uploading...
+                        </p>
+                      </>
+                    ) : mainContentFile || uploadedFileUrl ? (
+                      <>
+                        <FileIcon size={48} color="#10b981" />
+                        <p
+                          style={{
+                            margin: 0,
+                            fontSize: "16px",
+                            fontWeight: "600",
+                            color: "#065f46",
+                          }}
+                        >
+                          {mainContentFile
+                            ? mainContentFile.name
+                            : getFileNameFromUrl(uploadedFileUrl)}
+                        </p>
+                        <p
+                          style={{
+                            margin: 0,
+                            fontSize: "13px",
+                            color: "#059669",
+                          }}
+                        >
+                          Click to replace
+                        </p>
+                      </>
+                    ) : (
+                      <>
+                        <div
+                          style={{
+                            width: "48px",
+                            height: "48px",
+                            backgroundColor: "#e2e8f0",
+                            borderRadius: "12px",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                          }}
+                        >
+                          <FileText size={24} color="#64748b" />
+                        </div>
+                        <p
+                          style={{
+                            margin: 0,
+                            fontSize: "16px",
+                            fontWeight: "600",
+                            color: "#1e293b",
+                          }}
+                        >
+                          Drag and drop or{" "}
+                          <span
+                            style={{
+                              color: "#2563eb",
+                              fontWeight: 700,
+                            }}
+                          >
+                            Browse
+                          </span>
+                        </p>
+                      </>
+                    )}
+                    <input
+                      type="file"
+                      ref={mainFileInputRef}
+                      onChange={handleMainFileSelect}
+                      disabled={uploadingMainFile}
+                      style={{ display: "none" }}
+                      accept=".pdf,.doc,.docx,.ppt,.pptx"
+                    />
+                  </div>
+                )}
+                {lessonType === "QUIZ" && (
+                  <div
+                    style={{
+                      backgroundColor: "#fff",
+                      padding: "20px",
+                      borderRadius: "12px",
+                      border: "1px solid #cbd5e1",
+                      textAlign: "center",
+                    }}
+                  >
+                    <p
+                      style={{
+                        color: "#64748b",
+                        margin: 0,
+                        fontSize: "14px",
+                      }}
+                    >
+                      Quiz content is edited in the left panel. Add questions
+                      and options using the Quiz Editor.
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              <div
+                style={{
+                  display: "flex",
+                  gap: "14px",
+                  marginTop: "30px",
+                  borderTop: "1px solid #e2e8f0",
+                  paddingTop: "24px",
+                }}
+              >
+                <button
+                  type="submit"
+                  disabled={loading || uploadingMainFile || uploadingResources}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "10px",
+                    backgroundColor: "#2563eb",
+                    color: "#fff",
+                    border: "none",
+                    padding: "13px 28px",
+                    borderRadius: "10px",
+                    cursor: "pointer",
+                    fontWeight: "600",
+                    fontSize: "15px",
+                  }}
+                >
+                  <Save size={18} /> {loading ? "Saving..." : "Save Changes"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => navigate(`/admin/courses/${courseId}/content`)}
+                  style={{
+                    backgroundColor: "#fff",
+                    border: "1px solid #cbd5e1",
+                    padding: "13px 28px",
+                    borderRadius: "10px",
+                    cursor: "pointer",
+                    color: "#475569",
+                    fontWeight: "500",
+                    fontSize: "15px",
+                  }}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </form>
+      ) : (
+        <div
+          style={{
+            backgroundColor: "#fff",
+            padding: "28px",
+            borderRadius: "16px",
+            boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
+          }}
+        >
+          <h3
+            style={{
+              margin: "0 0 20px 0",
+              fontSize: "18px",
+              color: "#1e293b",
+            }}
+          >
+            Lesson Audit Logs
+          </h3>
+
+          {historyLoading ? (
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "center",
+                alignItems: "center",
+                padding: "40px",
+                gap: "10px",
+                color: "#64748b",
+              }}
+            >
+              <Loader2 className="animate-spin" size={20} />
+              <span>Loading audit logs from the system...</span>
+            </div>
+          ) : editHistory.length === 0 ? (
+            <div
+              style={{
+                padding: "40px",
+                textAlign: "center",
+                color: "#94a3b8",
+              }}
+            >
+              No audit logs found for this lesson.
+            </div>
+          ) : (
+            <>
+              <div style={{ overflowX: "auto" }}>
+                <table
+                  style={{
+                    width: "100%",
+                    borderCollapse: "collapse",
+                    textAlign: "left",
+                    fontSize: "14px",
+                  }}
+                >
+                  <thead>
+                    <tr
+                      style={{
+                        borderBottom: "2px solid #edf2f7",
+                        color: "#64748b",
+                      }}
+                    >
+                      <th
+                        style={{
+                          padding: "12px 16px",
+                          fontWeight: "600",
+                        }}
+                      >
+                        Timestamp
+                      </th>
+                      <th
+                        style={{
+                          padding: "12px 16px",
+                          fontWeight: "600",
+                        }}
+                      >
+                        Actor (Email)
+                      </th>
+                      <th
+                        style={{
+                          padding: "12px 16px",
+                          fontWeight: "600",
+                        }}
+                      >
+                        Role
+                      </th>
+                      <th
+                        style={{
+                          padding: "12px 16px",
+                          fontWeight: "600",
+                        }}
+                      >
+                        Action / Summary
+                      </th>
+                      <th
+                        style={{
+                          padding: "12px 16px",
+                          fontWeight: "600",
+                        }}
+                      >
+                        Status
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {editHistory.map((log) => (
+                      <tr
+                        key={log.id}
+                        style={{
+                          borderBottom: "1px solid #edf2f7",
+                          color: "#334155",
+                        }}
+                      >
+                        <td
+                          style={{
+                            padding: "16px",
+                            color: "#64748b",
+                          }}
+                        >
+                          {formatDateTime(log.occurredAt)}
+                        </td>
+                        <td
+                          style={{
+                            padding: "16px",
+                            fontWeight: "500",
+                          }}
+                        >
+                          {log.actorEmail || "N/A"}
+                        </td>
+                        <td style={{ padding: "16px" }}>
+                          <span
+                            style={{
+                              padding: "4px 8px",
+                              backgroundColor: "#f1f5f9",
+                              borderRadius: "4px",
+                              fontSize: "12px",
+                              fontWeight: "500",
+                            }}
+                          >
+                            {log.actorRole}
+                          </span>
+                        </td>
+                        <td
+                          style={{
+                            padding: "16px",
+                            fontWeight: "500",
+                          }}
+                        >
+                          {log.summary}
+                        </td>
+                        <td style={{ padding: "16px" }}>
+                          <span
+                            style={{
+                              padding: "4px 8px",
+                              borderRadius: "4px",
+                              fontSize: "12px",
+                              fontWeight: "600",
+                              backgroundColor:
+                                log.result === "SUCCESS"
+                                  ? "#dcfce7"
+                                  : "#fee2e2",
+                              color:
+                                log.result === "SUCCESS"
+                                  ? "#15803d"
+                                  : "#b91c1c",
+                            }}
+                          >
+                            {log.result}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {totalElements > 0 && (
+                <div
+                  style={{
                     display: "flex",
                     justifyContent: "space-between",
                     alignItems: "center",
-                }}
-            >
-                <label
-                    style={{
-                        fontWeight: "600",
-                        color: "#1e293b",
-                        fontSize: "14px",
-                    }}
+                    marginTop: "24px",
+                    paddingTop: "16px",
+                    borderTop: "1px solid #e2e8f0",
+                  }}
                 >
-                    Questions ({quizData.questions.length})
-                </label>
-                <button
-                    type="button"
-                    onClick={addQuestion}
+                  <div
                     style={{
+                      fontSize: "14px",
+                      color: "#64748b",
+                    }}
+                  >
+                    Showing{" "}
+                    <span
+                      style={{
+                        fontWeight: 600,
+                        color: "#334155",
+                      }}
+                    >
+                      {currentPage * pageSize + 1}
+                    </span>{" "}
+                    to{" "}
+                    <span
+                      style={{
+                        fontWeight: 600,
+                        color: "#334155",
+                      }}
+                    >
+                      {Math.min((currentPage + 1) * pageSize, totalElements)}
+                    </span>{" "}
+                    of{" "}
+                    <span
+                      style={{
+                        fontWeight: 600,
+                        color: "#334155",
+                      }}
+                    >
+                      {totalElements}
+                    </span>{" "}
+                    entries
+                  </div>
+
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                    }}
+                  >
+                    <button
+                      onClick={() =>
+                        setCurrentPage((prev) => Math.max(0, prev - 1))
+                      }
+                      disabled={currentPage === 0}
+                      style={{
                         display: "flex",
                         alignItems: "center",
-                        gap: "6px",
-                        padding: "8px 16px",
-                        background: "#2563eb",
-                        color: "#fff",
-                        border: "none",
-                        borderRadius: "8px",
+                        gap: "4px",
+                        padding: "6px 12px",
+                        border: "1px solid #cbd5e1",
+                        borderRadius: "6px",
+                        backgroundColor: currentPage === 0 ? "#f8fafc" : "#fff",
+                        color: currentPage === 0 ? "#94a3b8" : "#334155",
+                        cursor: currentPage === 0 ? "not-allowed" : "pointer",
                         fontSize: "13px",
-                        fontWeight: "600",
-                        cursor: "pointer",
-                    }}
-                >
-                    <Plus size={16} /> Add Question
-                </button>
-            </div>
+                        fontWeight: "500",
+                        transition: "all 0.2s",
+                      }}
+                    >
+                      <ChevronLeft size={16} /> Previous
+                    </button>
 
-            {quizData.questions.length === 0 ? (
-                <div
-                    style={{
-                        padding: "40px",
-                        textAlign: "center",
-                        background: "#f8fafc",
-                        borderRadius: "12px",
-                        border: "2px dashed #cbd5e1",
-                        color: "#64748b",
-                    }}
-                >
-                    No questions yet. Click "Add Question" to create your first
-                    quiz question.
-                </div>
-            ) : (
-                <div
-                    style={{
+                    <div
+                      style={{
+                        fontSize: "13px",
+                        fontWeight: "500",
+                        color: "#475569",
+                        padding: "0 8px",
+                      }}
+                    >
+                      Page {currentPage + 1} of {totalPages}
+                    </div>
+
+                    <button
+                      onClick={() =>
+                        setCurrentPage((prev) =>
+                          Math.min(totalPages - 1, prev + 1),
+                        )
+                      }
+                      disabled={
+                        currentPage >= totalPages - 1 || totalPages === 0
+                      }
+                      style={{
                         display: "flex",
-                        flexDirection: "column",
-                        gap: "16px",
-                    }}
-                >
-                    {quizData.questions.map((question, qIndex) => (
-                        <div
-                            key={qIndex}
-                            style={{
-                                background: "#fff",
-                                border: "1px solid #e2e8f0",
-                                borderRadius: "12px",
-                                padding: "20px",
-                                boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
-                            }}
-                        >
-                            <div
-                                style={{
-                                    display: "flex",
-                                    justifyContent: "space-between",
-                                    alignItems: "flex-start",
-                                    marginBottom: "16px",
-                                }}
-                            >
-                                <span
-                                    style={{
-                                        fontWeight: "700",
-                                        color: "#2563eb",
-                                        fontSize: "14px",
-                                    }}
-                                >
-                                    Question {qIndex + 1}
-                                </span>
-                                <button
-                                    type="button"
-                                    onClick={() => removeQuestion(qIndex)}
-                                    style={{
-                                        display: "flex",
-                                        alignItems: "center",
-                                        gap: "4px",
-                                        padding: "6px 12px",
-                                        background: "#fee2e2",
-                                        color: "#dc2626",
-                                        border: "none",
-                                        borderRadius: "6px",
-                                        fontSize: "12px",
-                                        fontWeight: "600",
-                                        cursor: "pointer",
-                                    }}
-                                >
-                                    <Trash2 size={14} /> Remove
-                                </button>
-                            </div>
-
-                            <div style={{ marginBottom: "16px" }}>
-                                <textarea
-                                    value={question.question}
-                                    onChange={(e) =>
-                                        updateQuestion(
-                                            qIndex,
-                                            "question",
-                                            e.target.value,
-                                        )
-                                    }
-                                    placeholder="Enter your question here..."
-                                    rows={3}
-                                    style={{
-                                        width: "100%",
-                                        padding: "10px 12px",
-                                        borderRadius: "8px",
-                                        border: "1px solid #cbd5e1",
-                                        fontSize: "14px",
-                                        lineHeight: 1.5,
-                                        boxSizing: "border-box",
-                                        resize: "vertical",
-                                    }}
-                                />
-                            </div>
-
-                            <div
-                                style={{
-                                    display: "flex",
-                                    flexDirection: "column",
-                                    gap: "8px",
-                                }}
-                            >
-                                <label
-                                    style={{
-                                        fontSize: "13px",
-                                        fontWeight: "600",
-                                        color: "#475569",
-                                        marginBottom: "4px",
-                                    }}
-                                >
-                                    Answer Options (click to set as correct)
-                                </label>
-                                {question.options.map((option, oIndex) => (
-                                    <div
-                                        key={oIndex}
-                                        style={{
-                                            display: "flex",
-                                            alignItems: "center",
-                                            gap: "8px",
-                                        }}
-                                    >
-                                        <button
-                                            type="button"
-                                            onClick={() =>
-                                                updateQuestion(
-                                                    qIndex,
-                                                    "correctIndex",
-                                                    oIndex,
-                                                )
-                                            }
-                                            style={{
-                                                width: "24px",
-                                                height: "24px",
-                                                borderRadius: "50%",
-                                                border:
-                                                    question.correctIndex ===
-                                                    oIndex
-                                                        ? "2px solid #16a34a"
-                                                        : "2px solid #cbd5e1",
-                                                background:
-                                                    question.correctIndex ===
-                                                    oIndex
-                                                        ? "#16a34a"
-                                                        : "#fff",
-                                                cursor: "pointer",
-                                                flexShrink: 0,
-                                                display: "flex",
-                                                alignItems: "center",
-                                                justifyContent: "center",
-                                            }}
-                                        >
-                                            {question.correctIndex ===
-                                                oIndex && (
-                                                <span
-                                                    style={{
-                                                        width: "8px",
-                                                        height: "8px",
-                                                        borderRadius: "50%",
-                                                        background: "#fff",
-                                                    }}
-                                                />
-                                            )}
-                                        </button>
-                                        <input
-                                            type="text"
-                                            value={option}
-                                            onChange={(e) =>
-                                                updateOption(
-                                                    qIndex,
-                                                    oIndex,
-                                                    e.target.value,
-                                                )
-                                            }
-                                            placeholder={`Option ${oIndex + 1}`}
-                                            style={{
-                                                flex: 1,
-                                                padding: "8px 12px",
-                                                borderRadius: "6px",
-                                                border: "1px solid #cbd5e1",
-                                                fontSize: "13px",
-                                                boxSizing: "border-box",
-                                            }}
-                                        />
-                                        {question.options.length > 2 && (
-                                            <button
-                                                type="button"
-                                                onClick={() =>
-                                                    removeOption(qIndex, oIndex)
-                                                }
-                                                style={{
-                                                    padding: "6px",
-                                                    background: "#f1f5f9",
-                                                    border: "none",
-                                                    borderRadius: "4px",
-                                                    cursor: "pointer",
-                                                    color: "#64748b",
-                                                }}
-                                            >
-                                                <X size={14} />
-                                            </button>
-                                        )}
-                                    </div>
-                                ))}
-                                {question.options.length < 6 && (
-                                    <button
-                                        type="button"
-                                        onClick={() => addOption(qIndex)}
-                                        style={{
-                                            display: "flex",
-                                            alignItems: "center",
-                                            gap: "4px",
-                                            padding: "6px 12px",
-                                            background: "none",
-                                            border: "1px dashed #cbd5e1",
-                                            borderRadius: "6px",
-                                            fontSize: "12px",
-                                            color: "#64748b",
-                                            cursor: "pointer",
-                                            alignSelf: "flex-start",
-                                        }}
-                                    >
-                                        <Plus size={14} /> Add Option
-                                    </button>
-                                )}
-                            </div>
-
-                            <div style={{ marginTop: "16px" }}>
-                                <label
-                                    style={{
-                                        fontSize: "12px",
-                                        fontWeight: "600",
-                                        color: "#64748b",
-                                        display: "block",
-                                        marginBottom: "4px",
-                                    }}
-                                >
-                                    Explanation (optional)
-                                </label>
-                                <textarea
-                                    value={question.explanation}
-                                    onChange={(e) =>
-                                        updateQuestion(
-                                            qIndex,
-                                            "explanation",
-                                            e.target.value,
-                                        )
-                                    }
-                                    placeholder="Explain why this answer is correct..."
-                                    rows={2}
-                                    style={{
-                                        width: "100%",
-                                        padding: "8px 12px",
-                                        borderRadius: "6px",
-                                        border: "1px solid #e2e8f0",
-                                        fontSize: "13px",
-                                        lineHeight: 1.5,
-                                        boxSizing: "border-box",
-                                        resize: "vertical",
-                                        background: "#f8fafc",
-                                    }}
-                                />
-                            </div>
-                        </div>
-                    ))}
+                        alignItems: "center",
+                        gap: "4px",
+                        padding: "6px 12px",
+                        border: "1px solid #cbd5e1",
+                        borderRadius: "6px",
+                        backgroundColor:
+                          currentPage >= totalPages - 1 || totalPages === 0
+                            ? "#f8fafc"
+                            : "#fff",
+                        color:
+                          currentPage >= totalPages - 1 || totalPages === 0
+                            ? "#94a3b8"
+                            : "#334155",
+                        cursor:
+                          currentPage >= totalPages - 1 || totalPages === 0
+                            ? "not-allowed"
+                            : "pointer",
+                        fontSize: "13px",
+                        fontWeight: "500",
+                        transition: "all 0.2s",
+                      }}
+                    >
+                      Next <ChevronRight size={16} />
+                    </button>
+                  </div>
                 </div>
-            )}
+              )}
+            </>
+          )}
         </div>
-    );
+      )}
+    </div>
+  );
+}
+
+function QuizEditor({ value, onChange }) {
+  const [quizData, setQuizData] = useState({ title: "", questions: [] });
+
+  useEffect(() => {
+    if (value) {
+      try {
+        const parsed = JSON.parse(value);
+        setQuizData(parsed);
+      } catch {
+        setQuizData({ title: "", questions: [] });
+      }
+    }
+  }, []);
+
+  const updateQuiz = (newData) => {
+    setQuizData(newData);
+    onChange(JSON.stringify(newData));
+  };
+
+  const addQuestion = () => {
+    const newQuestion = {
+      question: "",
+      options: ["", ""],
+      correctIndex: 0,
+      explanation: "",
+    };
+    updateQuiz({
+      ...quizData,
+      questions: [...quizData.questions, newQuestion],
+    });
+  };
+
+  const removeQuestion = (index) => {
+    const questions = quizData.questions.filter((_, i) => i !== index);
+    updateQuiz({ ...quizData, questions });
+  };
+
+  const updateQuestion = (index, field, newValue) => {
+    const questions = quizData.questions.map((q, i) => {
+      if (i !== index) return q;
+      return { ...q, [field]: newValue };
+    });
+    updateQuiz({ ...quizData, questions });
+  };
+
+  const addOption = (qIndex) => {
+    const questions = quizData.questions.map((q, i) => {
+      if (i !== qIndex) return q;
+      return { ...q, options: [...q.options, ""] };
+    });
+    updateQuiz({ ...quizData, questions });
+  };
+
+  const removeOption = (qIndex, oIndex) => {
+    const questions = quizData.questions.map((q, i) => {
+      if (i !== qIndex) return q;
+      const options = q.options.filter((_, oi) => oi !== oIndex);
+      const correctIndex =
+        q.correctIndex >= options.length ? 0 : q.correctIndex;
+      return { ...q, options, correctIndex };
+    });
+    updateQuiz({ ...quizData, questions });
+  };
+
+  const updateOption = (qIndex, oIndex, value) => {
+    const questions = quizData.questions.map((q, i) => {
+      if (i !== qIndex) return q;
+      const options = q.options.map((opt, oi) => (oi === oIndex ? value : opt));
+      return { ...q, options };
+    });
+    updateQuiz({ ...quizData, questions });
+  };
+
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        gap: "20px",
+      }}
+    >
+      <div>
+        <label
+          style={{
+            display: "block",
+            marginBottom: "8px",
+            fontWeight: "600",
+            color: "#1e293b",
+            fontSize: "14px",
+          }}
+        >
+          Quiz Title
+        </label>
+        <input
+          type="text"
+          value={quizData.title}
+          onChange={(e) => updateQuiz({ ...quizData, title: e.target.value })}
+          placeholder="e.g., Chapter 1 Assessment"
+          style={{
+            width: "100%",
+            padding: "10px 14px",
+            borderRadius: "8px",
+            border: "1px solid #cbd5e1",
+            fontSize: "14px",
+            boxSizing: "border-box",
+          }}
+        />
+      </div>
+
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+        }}
+      >
+        <label
+          style={{
+            fontWeight: "600",
+            color: "#1e293b",
+            fontSize: "14px",
+          }}
+        >
+          Questions ({quizData.questions.length})
+        </label>
+        <button
+          type="button"
+          onClick={addQuestion}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "6px",
+            padding: "8px 16px",
+            background: "#2563eb",
+            color: "#fff",
+            border: "none",
+            borderRadius: "8px",
+            fontSize: "13px",
+            fontWeight: "600",
+            cursor: "pointer",
+          }}
+        >
+          <Plus size={16} /> Add Question
+        </button>
+      </div>
+
+      {quizData.questions.length === 0 ? (
+        <div
+          style={{
+            padding: "40px",
+            textAlign: "center",
+            background: "#f8fafc",
+            borderRadius: "12px",
+            border: "2px dashed #cbd5e1",
+            color: "#64748b",
+          }}
+        >
+          No questions yet. Click "Add Question" to create your first quiz
+          question.
+        </div>
+      ) : (
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: "16px",
+          }}
+        >
+          {quizData.questions.map((question, qIndex) => (
+            <div
+              key={qIndex}
+              style={{
+                background: "#fff",
+                border: "1px solid #e2e8f0",
+                borderRadius: "12px",
+                padding: "20px",
+                boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "flex-start",
+                  marginBottom: "16px",
+                }}
+              >
+                <span
+                  style={{
+                    fontWeight: "700",
+                    color: "#2563eb",
+                    fontSize: "14px",
+                  }}
+                >
+                  Question {qIndex + 1}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => removeQuestion(qIndex)}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "4px",
+                    padding: "6px 12px",
+                    background: "#fee2e2",
+                    color: "#dc2626",
+                    border: "none",
+                    borderRadius: "6px",
+                    fontSize: "12px",
+                    fontWeight: "600",
+                    cursor: "pointer",
+                  }}
+                >
+                  <Trash2 size={14} /> Remove
+                </button>
+              </div>
+
+              <div style={{ marginBottom: "16px" }}>
+                <textarea
+                  value={question.question}
+                  onChange={(e) =>
+                    updateQuestion(qIndex, "question", e.target.value)
+                  }
+                  placeholder="Enter your question here..."
+                  rows={3}
+                  style={{
+                    width: "100%",
+                    padding: "10px 12px",
+                    borderRadius: "8px",
+                    border: "1px solid #cbd5e1",
+                    fontSize: "14px",
+                    lineHeight: 1.5,
+                    boxSizing: "border-box",
+                    resize: "vertical",
+                  }}
+                />
+              </div>
+
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "8px",
+                }}
+              >
+                <label
+                  style={{
+                    fontSize: "13px",
+                    fontWeight: "600",
+                    color: "#475569",
+                    marginBottom: "4px",
+                  }}
+                >
+                  Answer Options (click to set as correct)
+                </label>
+                {question.options.map((option, oIndex) => (
+                  <div
+                    key={oIndex}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                    }}
+                  >
+                    <button
+                      type="button"
+                      onClick={() =>
+                        updateQuestion(qIndex, "correctIndex", oIndex)
+                      }
+                      style={{
+                        width: "24px",
+                        height: "24px",
+                        borderRadius: "50%",
+                        border:
+                          question.correctIndex === oIndex
+                            ? "2px solid #16a34a"
+                            : "2px solid #cbd5e1",
+                        background:
+                          question.correctIndex === oIndex ? "#16a34a" : "#fff",
+                        cursor: "pointer",
+                        flexShrink: 0,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      {question.correctIndex === oIndex && (
+                        <span
+                          style={{
+                            width: "8px",
+                            height: "8px",
+                            borderRadius: "50%",
+                            background: "#fff",
+                          }}
+                        />
+                      )}
+                    </button>
+                    <input
+                      type="text"
+                      value={option}
+                      onChange={(e) =>
+                        updateOption(qIndex, oIndex, e.target.value)
+                      }
+                      placeholder={`Option ${oIndex + 1}`}
+                      style={{
+                        flex: 1,
+                        padding: "8px 12px",
+                        borderRadius: "6px",
+                        border: "1px solid #cbd5e1",
+                        fontSize: "13px",
+                        boxSizing: "border-box",
+                      }}
+                    />
+                    {question.options.length > 2 && (
+                      <button
+                        type="button"
+                        onClick={() => removeOption(qIndex, oIndex)}
+                        style={{
+                          padding: "6px",
+                          background: "#f1f5f9",
+                          border: "none",
+                          borderRadius: "4px",
+                          cursor: "pointer",
+                          color: "#64748b",
+                        }}
+                      >
+                        <X size={14} />
+                      </button>
+                    )}
+                  </div>
+                ))}
+                {question.options.length < 6 && (
+                  <button
+                    type="button"
+                    onClick={() => addOption(qIndex)}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "4px",
+                      padding: "6px 12px",
+                      background: "none",
+                      border: "1px dashed #cbd5e1",
+                      borderRadius: "6px",
+                      fontSize: "12px",
+                      color: "#64748b",
+                      cursor: "pointer",
+                      alignSelf: "flex-start",
+                    }}
+                  >
+                    <Plus size={14} /> Add Option
+                  </button>
+                )}
+              </div>
+
+              <div style={{ marginTop: "16px" }}>
+                <label
+                  style={{
+                    fontSize: "12px",
+                    fontWeight: "600",
+                    color: "#64748b",
+                    display: "block",
+                    marginBottom: "4px",
+                  }}
+                >
+                  Explanation (optional)
+                </label>
+                <textarea
+                  value={question.explanation}
+                  onChange={(e) =>
+                    updateQuestion(qIndex, "explanation", e.target.value)
+                  }
+                  placeholder="Explain why this answer is correct..."
+                  rows={2}
+                  style={{
+                    width: "100%",
+                    padding: "8px 12px",
+                    borderRadius: "6px",
+                    border: "1px solid #e2e8f0",
+                    fontSize: "13px",
+                    lineHeight: 1.5,
+                    boxSizing: "border-box",
+                    resize: "vertical",
+                    background: "#f8fafc",
+                  }}
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
