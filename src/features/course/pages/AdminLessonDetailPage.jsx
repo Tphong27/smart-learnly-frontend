@@ -3,7 +3,10 @@ import { useParams, useNavigate } from "react-router-dom";
 import { courseService } from "@/services/course.service";
 import { useToast } from "@/shared/components/ui/Toast/useToast";
 import RichTextEditor from "@/shared/components/rich-text/RichTextEditor";
-import { sanitizeLessonHtml } from "@/shared/utils/htmlSanitizer";
+import {
+  sanitizeLessonHtml,
+  isEmptyLessonHtml,
+} from "@/shared/utils/htmlSanitizer";
 import {
   ArrowLeft,
   Save,
@@ -54,6 +57,9 @@ export default function AdminLessonDetailPage() {
   const [totalElements, setTotalElements] = useState(0);
 
   const [summary, setSummary] = useState("");
+  const [isPreview, setIsPreview] = useState(false);
+  const [status, setStatus] = useState("DRAFT");
+  const [durationSeconds, setDurationSeconds] = useState(0);
 
   const mainFileInputRef = useRef(null);
   const resourceInputRef = useRef(null);
@@ -96,20 +102,28 @@ export default function AdminLessonDetailPage() {
 
         if (lessonData) {
           setExistingLessonData(lessonData);
+
           setTitle(lessonData.title || "");
           setSummary(sanitizeLessonHtml(lessonData.content || ""));
           setTextContent(lessonData.content || "");
+
           setVideoUrl(lessonData.videoUrl || "");
+          setUploadedFileUrl(
+            lessonData.attachmentUrl || lessonData.fileUrl || "",
+          );
+
+          setIsPreview(
+            Boolean(lessonData.isPreview ?? lessonData.isPreviewable),
+          );
+          setStatus(String(lessonData.status || "DRAFT").toUpperCase());
+          setDurationSeconds(Number(lessonData.durationSeconds || 0));
 
           const typeFromServer = String(
-            lessonData.lessonType || lessonData.type || "",
+            lessonData.lessonType || lessonData.type || "VIDEO",
           ).toUpperCase();
 
           if (typeFromServer === "PDF" || typeFromServer === "DOCUMENT") {
             setLessonType("PDF");
-            setUploadedFileUrl(
-              lessonData.attachmentUrl || lessonData.fileUrl || "",
-            );
           } else if (typeFromServer === "QUIZ") {
             setLessonType("QUIZ");
           } else {
@@ -118,9 +132,7 @@ export default function AdminLessonDetailPage() {
 
           const loadedResources =
             lessonData.resources || lessonData.attachments || [];
-          if (Array.isArray(loadedResources)) {
-            setResources(loadedResources);
-          }
+          setResources(Array.isArray(loadedResources) ? loadedResources : []);
         }
       } catch (error) {
         console.error("Error loading lesson details:", error);
@@ -275,17 +287,50 @@ export default function AdminLessonDetailPage() {
     );
   };
 
+  const normalizeResourceForPayload = (resource, index) => {
+    if (!resource) {
+      return null;
+    }
+
+    if (typeof resource === "string") {
+      return {
+        url: resource,
+        name: getFileNameFromUrl(resource) || `resource-${index + 1}`,
+        sortOrder: index,
+      };
+    }
+
+    const url = resource.url || resource.fileUrl || resource.attachmentUrl;
+
+    if (!url) {
+      return null;
+    }
+
+    return {
+      url,
+      objectPath: resource.objectPath || null,
+      name:
+        resource.name ||
+        resource.fileName ||
+        getFileNameFromUrl(url) ||
+        `resource-${index + 1}`,
+      fileSize: resource.fileSize || resource.size || null,
+      contentType: resource.contentType || resource.type || null,
+      sortOrder: resource.sortOrder ?? index,
+    };
+  };
+
   const handleSave = async (e) => {
     e.preventDefault();
 
     if (!title.trim()) {
-      showToast("Vui lòng nhập tiêu đề bài học", "error");
+      showToast("Please enter tỉtle", "error");
       return;
     }
 
     const cleanSummary = sanitizeLessonHtml(summary);
 
-    if (!cleanSummary || cleanSummary === "<p></p>") {
+    if (isEmptyLessonHtml(cleanSummary)) {
       showToast("Vui lòng nhập Summary cho bài học", "error");
       return;
     }
@@ -293,27 +338,22 @@ export default function AdminLessonDetailPage() {
     setLoading(true);
 
     try {
-      let currentAttachmentUrl = oldFileUrl;
-
-      if (lessonType !== "video" && attachedFile) {
-        showToast("Đang tải tệp tin mới lên hệ thống...", "info");
-
-        const uploadResult = await courseService.uploadThumbnail(attachedFile);
-
-        currentAttachmentUrl =
-          uploadResult?.url ||
-          uploadResult?.fileUrl ||
-          uploadResult?.attachmentUrl ||
-          uploadResult;
-      }
+      const normalizedResources = resources
+        .map((resource, index) => normalizeResourceForPayload(resource, index))
+        .filter(Boolean)
+        .slice(0, 10);
 
       const payload = {
         title: title.trim(),
-        lessonType: lessonType.toUpperCase(),
+        lessonType,
         content: cleanSummary,
-        isPreview: isPreviewable,
-        videoUrl: lessonType === "video" ? videoUrl.trim() : null,
-        attachmentUrl: lessonType !== "video" ? currentAttachmentUrl : null,
+        videoUrl: lessonType === "VIDEO" ? videoUrl.trim() : null,
+        attachmentUrl: lessonType === "PDF" ? uploadedFileUrl : null,
+        durationSeconds: Number(durationSeconds || 0),
+        isPreview,
+        status,
+        resources: normalizedResources,
+        sortOrder: existingLessonData?.sortOrder ?? 0,
       };
 
       await courseService.updateLesson(lessonId, payload);
@@ -323,16 +363,17 @@ export default function AdminLessonDetailPage() {
     } catch (error) {
       console.error("Lỗi cập nhật bài học chi tiết:", error);
 
+      const responseData = error?.response?.data;
       let errorText = "Gặp lỗi trong quá trình lưu dữ liệu bài học";
 
-      if (error?.response?.data) {
-        if (typeof error.response.data === "string") {
-          errorText = error.response.data;
-        } else if (error.response.data.message) {
-          errorText = error.response.data.message;
-        } else {
-          errorText = JSON.stringify(error.response.data);
-        }
+      if (typeof responseData === "string") {
+        errorText = responseData;
+      } else if (responseData?.message) {
+        errorText = responseData.message;
+      } else if (responseData?.errors) {
+        errorText = responseData.errors
+          .map((item) => `${item.field}: ${item.message}`)
+          .join(", ");
       } else if (error?.message) {
         errorText = error.message;
       }
@@ -545,28 +586,15 @@ export default function AdminLessonDetailPage() {
                       fontSize: "14px",
                     }}
                   >
-                    Summary
+                    Summary <span style={{ color: "#ef4444" }}>*</span>
                   </label>
-                  <div>
-                    <label
-                      style={{
-                        display: "block",
-                        marginBottom: "8px",
-                        fontWeight: "600",
-                        color: "#1e293b",
-                        fontSize: "14px",
-                      }}
-                    >
-                      Summary <span style={{ color: "#ef4444" }}>*</span>
-                    </label>
 
-                    <RichTextEditor
-                      value={summary}
-                      onChange={setSummary}
-                      placeholder="Nhập tóm tắt nội dung bài học..."
-                      minHeight={260}
-                    />
-                  </div>
+                  <RichTextEditor
+                    value={summary}
+                    onChange={setSummary}
+                    placeholder="Nhập tóm tắt nội dung bài học..."
+                    minHeight={260}
+                  />
                 </div>
               )}
 

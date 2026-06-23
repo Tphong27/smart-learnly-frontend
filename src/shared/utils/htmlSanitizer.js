@@ -19,6 +19,7 @@ export function sanitizeLessonHtml(html) {
       "h1",
       "h2",
       "h3",
+      "h4",
       "ul",
       "ol",
       "li",
@@ -28,6 +29,7 @@ export function sanitizeLessonHtml(html) {
       "pre",
       "code",
       "span",
+      "div",
     ],
     ALLOWED_ATTR: [
       "href",
@@ -37,6 +39,24 @@ export function sanitizeLessonHtml(html) {
       "alt",
       "title",
       "style",
+      "class",
     ],
+    ALLOWED_URI_REGEXP:
+      /^(?:(?:(?:f|ht)tps?|mailto|tel|data:image\/(?:png|jpeg|jpg|gif|webp));|[^a-z]|[a-z+.-]+(?:[^a-z+.\-:]|$))/i,
   });
+}
+
+export function isEmptyLessonHtml(html) {
+  const cleanHtml = sanitizeLessonHtml(html);
+
+  if (!cleanHtml) {
+    return true;
+  }
+
+  const textOnly = cleanHtml
+    .replace(/<[^>]*>/g, "")
+    .replace(/&nbsp;/g, " ")
+    .trim();
+
+  return textOnly.length === 0;
 }

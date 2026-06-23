@@ -1,133 +1,47 @@
-.rte-wrapper {
+.lesson-summary-editor {
   width: 100%;
-  border: 1px solid #cbd5e1;
-  border-radius: 10px;
-  overflow: hidden;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.lesson-summary-editor .ql-toolbar {
+  border: 1px solid #dbe3ef;
+  border-bottom: none;
+  border-radius: 8px 8px 0 0;
   background: #ffffff;
 }
 
-.rte-toolbar {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 4px;
-  padding: 8px;
-  border-bottom: 1px solid #e2e8f0;
-  background: #f8fafc;
-}
-
-.rte-toolbar-button {
-  width: 34px;
-  height: 34px;
-  border: 1px solid transparent;
-  border-radius: 8px;
-  background: transparent;
-  color: #334155;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 700;
-}
-
-.rte-toolbar-button:hover {
-  background: #e2e8f0;
-}
-
-.rte-toolbar-button.active {
-  background: #dbeafe;
-  border-color: #93c5fd;
-  color: #2563eb;
-}
-
-.rte-toolbar-button:disabled {
-  cursor: not-allowed;
-  opacity: 0.45;
-}
-
-.rte-select {
-  height: 34px;
-  border: 1px solid #cbd5e1;
-  border-radius: 8px;
-  background: #ffffff;
-  color: #334155;
-  padding: 0 10px;
-  font-size: 14px;
-}
-
-.rte-color {
-  width: 34px;
-  height: 34px;
-  padding: 3px;
-  border: 1px solid #cbd5e1;
-  border-radius: 8px;
-  background: #ffffff;
-  cursor: pointer;
-}
-
-.rte-separator {
-  width: 1px;
-  height: 24px;
-  background: #cbd5e1;
-  margin: 0 4px;
-}
-
-.rte-content {
-  padding: 14px 16px;
-  outline: none;
+.lesson-summary-editor .ql-container {
+  border: 1px solid #dbe3ef;
+  border-radius: 0 0 8px 8px;
+  font-family: Inter, Arial, sans-serif;
   font-size: 15px;
+}
+
+.lesson-summary-editor .ql-editor {
+  min-height: var(--editor-min-height, 260px);
   line-height: 1.7;
   color: #0f172a;
 }
 
-.rte-content p {
-  margin: 0 0 10px;
+.lesson-summary-editor .ql-editor.ql-blank::before {
+  color: #94a3b8;
+  font-style: normal;
 }
 
-.rte-content h1,
-.rte-content h2,
-.rte-content h3,
-.rte-content h4 {
-  margin: 14px 0 10px;
-  font-weight: 700;
+.lesson-summary-editor .ql-editor h1,
+.lesson-summary-editor .ql-editor h2,
+.lesson-summary-editor .ql-editor h3 {
   color: #0f172a;
+  font-weight: 700;
 }
 
-.rte-content ul,
-.rte-content ol {
-  padding-left: 24px;
-  margin: 8px 0 12px;
+.lesson-summary-editor .ql-editor ul,
+.lesson-summary-editor .ql-editor ol {
+  padding-left: 1.5em;
 }
 
-.rte-content blockquote {
-  margin: 12px 0;
-  padding-left: 14px;
-  border-left: 4px solid #cbd5e1;
-  color: #475569;
-}
-
-.rte-content pre {
-  background: #0f172a;
-  color: #e2e8f0;
-  padding: 12px;
-  border-radius: 8px;
-  overflow-x: auto;
-}
-
-.rte-content img {
+.lesson-summary-editor .ql-editor img {
   max-width: 100%;
   border-radius: 8px;
-}
-
-.rte-content a {
-  color: #2563eb;
-  text-decoration: underline;
-}
-
-.rte-content .is-editor-empty:first-child::before {
-  content: attr(data-placeholder);
-  color: #94a3b8;
-  float: left;
-  height: 0;
-  pointer-events: none;
 }
