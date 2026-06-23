@@ -1,7 +1,9 @@
+/* eslint-disable react-refresh/only-export-components */
 import { RoleGuard } from "./RoleGuard";
 import { ROLES } from "@/shared/constants/roles";
 import { AppLayout } from "@/app/layouts/AppLayout";
 import {
+  AdminAuditLogPage,
   AdminCategoriesPage,
   AdminCoursesPage,
   AdminCourseFormPage,
@@ -71,6 +73,12 @@ function getAdminRoutes() {
               element: <CoursePreviewLessonsPage />,
             },
             { path: "categories", element: <AdminCategoriesPage /> },
+          ],
+        },
+        {
+          element: <RoleGuard allowedRoles={[ROLES.ADMIN]} />,
+          children: [
+            { path: "audit-log", element: <AdminAuditLogPage /> },
           ],
         },
         {

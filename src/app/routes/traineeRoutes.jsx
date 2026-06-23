@@ -83,7 +83,7 @@ function getTraineeRoutes() {
       children: [
         {
           element: <AppLayout />,
-          children: [{ index: true, element: <PaymentResultPage /> }],
+          children: [{ index: true, element: <CheckoutPaymentResultPage /> }],
         },
       ],
     },
@@ -97,9 +97,6 @@ function getTraineeRoutes() {
             { path: "/my-courses", element: <Navigate to="/learning/courses" replace /> },
             { path: "/my-enrollments", element: <Navigate to="/learning/enrollments" replace /> },
             { path: "/my-transactions", element: <Navigate to="/learning/transactions" replace /> },
-            { path: "/cart", element: <CartPage /> },
-            { path: "/checkout/:orderId", element: <CheckoutPage /> },
-            { path: "/checkout/:orderId/result", element: <CheckoutPaymentResultPage /> },
             { path: "/payment-result", element: <PaymentResultPage /> },
           ],
         },

@@ -3,8 +3,6 @@ import { useParams, useNavigate } from "react-router-dom";
 import { courseService } from "@/services/course.service";
 import { useToast } from "@/shared/components/ui/Toast/useToast";
 
-import ReactQuill from "react-quill-new";
-import "react-quill-new/dist/quill.snow.css";
 
 import {
   ArrowLeft,
@@ -21,24 +19,6 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { useRef } from "react";
-
-const quillModules = {
-  toolbar: [
-    ["bold", "italic", "underline", "strike"],
-    ["blockquote", "code-block"],
-    [{ list: "ordered" }, { list: "bullet" }],
-    [{ script: "sub" }, { script: "super" }],
-    [{ indent: "-1" }, { indent: "+1" }],
-    [{ direction: "rtl" }],
-    [{ size: ["small", false, "large", "huge"] }],
-    [{ header: [1, 2, 3, 4, 5, 6, false] }],
-    [{ color: [] }, { background: [] }],
-    [{ font: [] }],
-    [{ align: [] }],
-    ["link", "image", "video"],
-    ["clean"],
-  ],
-};
 
 export default function AdminLessonDetailPage() {
   const { courseId, lessonId } = useParams();
@@ -105,7 +85,7 @@ export default function AdminLessonDetailPage() {
         minute: "2-digit",
         second: "2-digit",
       });
-    } catch (e) {
+    } catch {
       return isoString;
     }
   };
@@ -201,12 +181,6 @@ export default function AdminLessonDetailPage() {
     }
   }, [activeTab, lessonId, currentPage, pageSize, showToast]);
 
-  // Reset page when switching tabs
-  useEffect(() => {
-    if (activeTab !== "history") {
-      setCurrentPage(0);
-    }
-  }, [activeTab]);
 
   const handleDragOver = (e) => e.preventDefault();
 
@@ -426,7 +400,10 @@ export default function AdminLessonDetailPage() {
       >
         <button
           type="button"
-          onClick={() => setActiveTab("edit")}
+          onClick={() => {
+            setCurrentPage(0);
+            setActiveTab("edit");
+          }}
           style={{
             display: "flex",
             alignItems: "center",
@@ -560,16 +537,23 @@ export default function AdminLessonDetailPage() {
                 >
                   Summary <span style={{ color: "#ef4444" }}>*</span>
                 </label>
-                <div style={{ backgroundColor: "#fff" }}>
-                  <ReactQuill
-                    theme="snow"
-                    value={textContent}
-                    onChange={setTextContent}
-                    modules={quillModules}
-                    placeholder="Enter summary here..."
-                    style={{ height: "250px", marginBottom: "40px" }}
-                  />
-                </div>
+                <textarea
+                  value={textContent}
+                  onChange={(event) => setTextContent(event.target.value)}
+                  placeholder="Enter summary here..."
+                  rows={10}
+                  style={{
+                    width: "100%",
+                    minHeight: "250px",
+                    padding: "12px",
+                    border: "1px solid #cbd5e1",
+                    borderRadius: "10px",
+                    fontSize: "15px",
+                    lineHeight: 1.6,
+                    boxSizing: "border-box",
+                    backgroundColor: "#fff",
+                  }}
+                />
               </div>
 
               <div>

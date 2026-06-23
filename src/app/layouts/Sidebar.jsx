@@ -9,14 +9,14 @@ import {
   Home,
   Layers3,
   Receipt,
+  ScrollText,
   Settings,
   ShieldCheck,
+  ShoppingCart,
   Users,
   X,
   Zap,
-  Receipt,
   CreditCard,
-  ShoppingCart,
 } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import { ROLES } from "@/shared/constants/roles";
@@ -53,6 +53,12 @@ const navItems = [
     path: "/admin/transactions",
     icon: CreditCard,
     roles: [ROLES.ADMIN, ROLES.TMO], // Cấp quyền cho Admin và TMO
+  },
+  {
+    label: "System Activity Log",
+    path: "/admin/audit-log",
+    icon: ScrollText,
+    roles: [ROLES.ADMIN],
   },
 
   // STAFF ROUTES (TRAINER, TMO, SME)
@@ -110,6 +116,9 @@ const navItems = [
     label: "My Transactions",
     path: "/learning/transactions",
     icon: Receipt,
+    roles: [ROLES.TRAINEE],
+  },
+  {
     label: "Cart",
     path: "/cart",
     icon: ShoppingCart,

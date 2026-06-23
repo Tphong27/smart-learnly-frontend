@@ -210,7 +210,7 @@ export const courseService = {
     const formData = new FormData();
     formData.append("file", file);
     const response = await apiClient.post(
-      "/admin/uploads/course-thumbnail",
+      "/admin/uploads/course-thumbnails",
       formData,
       {
         headers: {

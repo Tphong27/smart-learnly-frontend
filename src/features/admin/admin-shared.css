@@ -227,9 +227,20 @@
   color: #b91c1c;
 }
 
-.admin-status--active {
+.admin-status--active,
+.admin-status--success {
   background: #dcfce7;
   color: #15803d;
+}
+
+.admin-status--failure {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.admin-status--denied {
+  background: #fef3c7;
+  color: #92400e;
 }
 
 .admin-form-grid {

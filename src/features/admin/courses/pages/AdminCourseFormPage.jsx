@@ -5,7 +5,9 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { ArrowLeft, Save } from "lucide-react";
 import { Button, Form, FormField, useToast } from "@/shared/components/ui";
 import { categoryService, courseService } from "@/services";
+import ThumbnailUploader from "@/features/course/components/ThumbnailUploader";
 import { courseSchema } from "../schemas/course-schemas";
+import "@/features/course/components/ThumbnailUploader.css";
 import "../../admin-shared.css";
 
 const STATUS_OPTIONS = [
@@ -100,6 +102,7 @@ export function AdminCourseFormPage() {
   });
 
   const isFree = watch("isFree");
+  const thumbnailUrl = watch("thumbnailUrl");
 
   useEffect(() => {
     let cancelled = false;
@@ -461,12 +464,23 @@ export function AdminCourseFormPage() {
             />
 
             <div style={{ gridColumn: "span 2" }}>
-              <FormField
-                label="Thumbnail URL"
-                placeholder="https://..."
-                registration={register("thumbnailUrl")}
-                error={errors.thumbnailUrl?.message}
-              />
+              <input type="hidden" {...register("thumbnailUrl")} />
+              <div className="input-field" style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                <label className="input-field__label" style={{ fontWeight: "500", fontSize: "14px" }}>
+                  Course thumbnail
+                </label>
+                <ThumbnailUploader
+                  value={thumbnailUrl}
+                  onUploadSuccess={(url) => {
+                    setValue("thumbnailUrl", url, { shouldDirty: true, shouldValidate: true });
+                  }}
+                />
+                {errors.thumbnailUrl && (
+                  <p style={{ color: "red", fontSize: "12px", margin: "4px 0 0" }}>
+                    {errors.thumbnailUrl.message}
+                  </p>
+                )}
+              </div>
             </div>
 
             <FormField
