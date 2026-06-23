@@ -28,7 +28,7 @@ export const routeGroups = [
   {
     title: 'Admin',
     routes: [
-      { path: '/admin/users', label: 'Users & Roles' },
+      { path: '/admin/users-management', label: 'Users & Roles' },
       { path: '/admin/configuration', label: 'System Configuration' },
       { path: '/admin/audit', label: 'Audit Logs' },
     ],

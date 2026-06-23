@@ -22,25 +22,51 @@ function normalizeUserPage(response) {
   };
 }
 
+function cleanParams(params = {}) {
+  return Object.fromEntries(
+    Object.entries(params).filter(([, value]) => value !== "" && value !== null && value !== undefined),
+  );
+}
+
 export const userService = {
   async listAdmin({
     role = "",
-    status = "active",
+    status = "",
     keyword = "",
     page = 0,
-    size = 100,
+    size = 20,
   } = {}) {
     const response = await apiClient.get("/admin/users", {
-      params: {
+      params: cleanParams({
         page,
         size,
-        ...(role && { role }),
-        ...(status && { status }),
-        ...(keyword && { keyword }),
-      },
+        role,
+        status,
+        keyword,
+      }),
     });
 
     return normalizeUserPage(response);
+  },
+
+  async getAdmin(userId) {
+    const response = await apiClient.get(`/admin/users/${userId}`);
+    return unwrapData(response);
+  },
+
+  async create(payload) {
+    const response = await apiClient.post("/admin/users", payload);
+    return unwrapData(response);
+  },
+
+  async update(userId, payload) {
+    const response = await apiClient.patch(`/admin/users/${userId}`, payload);
+    return unwrapData(response);
+  },
+
+  async remove(userId) {
+    await apiClient.delete(`/admin/users/${userId}`);
+    return true;
   },
 
   async listActiveTrainers({ page = 0, size = 100, keyword = "" } = {}) {

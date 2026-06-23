@@ -7,6 +7,7 @@ import {
   AdminCategoriesPage,
   AdminCoursesPage,
   AdminCourseFormPage,
+  AdminUsersPage,
 } from "@/features/admin";
 // IMPORT TRANG KÉO THẢ NỘI DUNG CỦA DEV F VÀO ĐÂY
 import AdminOrdersPage from "@/features/checkout/pages/AdminOrdersPage";
@@ -48,10 +49,6 @@ function getAdminRoutes() {
               path: "dashboard",
               element: <PlaceholderPage title="Admin Dashboard" />,
             },
-            {
-              path: "users-management",
-              element: <PlaceholderPage title="Users & Roles" />,
-            },
             { path: "courses", element: <AdminCoursesPage /> },
             { path: "courses/new", element: <AdminCourseFormPage /> },
             { path: "courses/:courseId", element: <AdminCourseFormPage /> },
@@ -73,6 +70,7 @@ function getAdminRoutes() {
         {
           element: <RoleGuard allowedRoles={[ROLES.ADMIN]} />,
           children: [
+            { path: "users-management", element: <AdminUsersPage /> },
             { path: "audit-log", element: <AdminAuditLogPage /> },
           ],
         },

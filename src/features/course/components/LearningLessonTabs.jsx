@@ -5,11 +5,11 @@ import {
     File,
     FileText,
     FolderOpen,
-    HelpCircle,
     MessageSquare,
     StickyNote,
 } from "lucide-react";
 import { fileNameFromUrl, isHtmlContent } from "../utils/lesson-content";
+import { LearningQuizPlayer } from "./LearningQuizPlayer";
 
 const TABS = [
     { key: "overview", label: "Overview", icon: BookOpen },
@@ -18,72 +18,16 @@ const TABS = [
     { key: "notes", label: "Notes", icon: StickyNote },
 ];
 
-function QuizDisplay({ content }) {
-    let quizData;
-    try {
-        quizData = JSON.parse(content);
-    } catch {
-        quizData = null;
-    }
-
-    if (!quizData || !Array.isArray(quizData.questions)) {
-        return (
-            <div className="quiz-raw">
-                <HelpCircle size={24} />
-                <p>{content}</p>
-            </div>
-        );
-    }
-
-    return (
-        <div className="learning-quiz">
-            {quizData.title && (
-                <h3 className="learning-quiz__title">{quizData.title}</h3>
-            )}
-            {quizData.questions.map((question, questionIndex) => (
-                <div key={questionIndex} className="learning-quiz__question">
-                    <p className="learning-quiz__question-text">
-                        {questionIndex + 1}. {question.question}
-                    </p>
-                    {Array.isArray(question.options) && (
-                        <div className="learning-quiz__options">
-                            {question.options.map((option, optionIndex) => (
-                                <div
-                                    key={optionIndex}
-                                    className={`learning-quiz__option ${question.correctIndex === optionIndex ? "learning-quiz__option--correct" : ""}`}
-                                >
-                                    <span className="learning-quiz__option-letter">
-                                        {String.fromCharCode(65 + optionIndex)}
-                                    </span>
-                                    <span className="learning-quiz__option-text">
-                                        {option}
-                                    </span>
-                                    {question.correctIndex === optionIndex && (
-                                        <span className="learning-quiz__correct-badge">
-                                            Correct
-                                        </span>
-                                    )}
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                    {question.explanation && (
-                        <div className="learning-quiz__explanation">
-                            <strong>Explanation:</strong>{" "}
-                            {question.explanation}
-                        </div>
-                    )}
-                </div>
-            ))}
-        </div>
-    );
-}
-
 function OverviewContent({ lesson }) {
     const type = (lesson?.lessonType || "").toUpperCase();
 
     if (type === "QUIZ" && lesson?.content) {
-        return <QuizDisplay content={lesson.content} />;
+        return (
+            <LearningQuizPlayer
+                content={lesson.content}
+                durationSeconds={lesson.durationSeconds}
+            />
+        );
     }
 
     if (!lesson?.content) {
