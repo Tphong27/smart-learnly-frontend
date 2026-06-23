@@ -2,8 +2,8 @@ import { BrowserRouter, Navigate, useRoutes } from "react-router-dom";
 import { PublicLayout } from "./layouts/PublicLayout";
 import { AppLayout } from "./layouts/AppLayout";
 import { ProtectedRoute } from "./routes/ProtectedRoute";
-import { RoleGuard } from "./routes/RoleGuard";
-import { ROLES } from "@/shared/constants/roles";
+// import { RoleGuard } from "./routes/RoleGuard";
+// import { ROLES } from "@/shared/constants/roles";
 import { HomePage } from "../features/home/HomePage";
 import { CourseDetailPage, CoursePreviewLessonsPage } from "../features/course";
 import {

@@ -74,6 +74,39 @@ function redirectToLogin() {
   }
 }
 
+function normalizeApiError(error) {
+  const responseData = error.response?.data;
+
+  if (!responseData) {
+    return {
+      code: "UNKNOWN_ERROR",
+      message: "An unknown error occurred. Please try again.",
+      originalError: error,
+    };
+  }
+
+  if (responseData.error) {
+    return {
+      ...responseData.error,
+      message:
+        responseData.error.message ||
+        responseData.message ||
+        "An unknown error occurred. Please try again.",
+      originalError: error,
+    };
+  }
+
+  return {
+    ...responseData,
+    message:
+      responseData.message ||
+      responseData.errorMessage ||
+      responseData.detail ||
+      "An unknown error occurred. Please try again.",
+    originalError: error,
+  };
+}
+
 // Cấu hình instance chính dùng axios
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
@@ -203,12 +236,7 @@ apiClient.interceptors.response.use(
       }
     }
 
-    const apiError = error.response?.data?.error || error.response?.data || {
-      code: 'UNKNOWN_ERROR',
-      message: 'An unknown error occurred. Please try again.',
-    }
-
-    return Promise.reject(apiError)
+    return Promise.reject(normalizeApiError(error));
   },
 )
 
