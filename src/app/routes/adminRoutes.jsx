@@ -7,6 +7,7 @@ import {
   AdminCategoriesPage,
   AdminCoursesPage,
   AdminCourseFormPage,
+  AdminSystemSettingsPage,
 } from "@/features/admin";
 // IMPORT TRANG KÉO THẢ NỘI DUNG CỦA DEV F VÀO ĐÂY
 import AdminOrdersPage from "@/features/checkout/pages/AdminOrdersPage";
@@ -74,6 +75,7 @@ function getAdminRoutes() {
           element: <RoleGuard allowedRoles={[ROLES.ADMIN]} />,
           children: [
             { path: "audit-log", element: <AdminAuditLogPage /> },
+            { path: "settings", element: <AdminSystemSettingsPage /> },
           ],
         },
         {
