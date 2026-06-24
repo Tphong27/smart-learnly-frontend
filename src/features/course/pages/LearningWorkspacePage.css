@@ -630,6 +630,303 @@
     overflow-x: auto;
 }
 
+/* Rich content formatting from lesson editor */
+.learning-lesson__rich-content a {
+    color: #2563eb;
+    font-weight: 600;
+    text-decoration: underline;
+    text-decoration-thickness: 1.5px;
+    text-underline-offset: 3px;
+    cursor: pointer;
+    transition:
+        color 0.15s ease,
+        background-color 0.15s ease;
+}
+
+.learning-lesson__rich-content a:hover {
+    color: #1d4ed8;
+    background: #eff6ff;
+    border-radius: 4px;
+}
+
+.learning-lesson__rich-content a:visited {
+    color: #4f46e5;
+}
+
+.learning-lesson__rich-content em,
+.learning-lesson__rich-content i {
+    font-style: oblique 14deg !important;
+    font-synthesis-style: auto;
+}
+
+.learning-lesson__rich-content strong,
+.learning-lesson__rich-content b {
+    font-weight: 700;
+    color: #0f172a;
+}
+
+.learning-lesson__rich-content strong em,
+.learning-lesson__rich-content em strong,
+.learning-lesson__rich-content b i,
+.learning-lesson__rich-content i b {
+    font-weight: 700;
+    font-style: oblique 14deg !important;
+}
+
+.learning-lesson__rich-content u {
+    text-underline-offset: 3px;
+}
+
+.learning-lesson__rich-content s {
+    color: #64748b;
+}
+
+.learning-lesson__rich-content blockquote {
+    border-left: 4px solid #3b82f6;
+    background: #eff6ff;
+    color: #1e3a8a;
+    padding: 10px 14px;
+    margin: 14px 0;
+    border-radius: 0 10px 10px 0;
+}
+
+.learning-lesson__rich-content img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 10px;
+    box-shadow: 0 8px 22px rgba(15, 23, 42, 0.12);
+}
+
+/* ─── Rich Text Content from Quill Editor ─────────────────────────────── */
+
+.learning-lesson__rich-content {
+    color: var(--lw-text);
+    font-size: 15px;
+    line-height: 1.8;
+    word-break: break-word;
+}
+
+/* Paragraph */
+.learning-lesson__rich-content p {
+    margin: 0 0 14px;
+}
+
+.learning-lesson__rich-content p:last-child {
+    margin-bottom: 0;
+}
+
+/* Bold */
+.learning-lesson__rich-content strong,
+.learning-lesson__rich-content b {
+    font-weight: 700;
+    color: #0f172a;
+}
+
+/* Italic */
+.learning-lesson__rich-content em,
+.learning-lesson__rich-content i {
+    font-style: oblique 14deg !important;
+    font-synthesis-style: auto;
+}
+
+/* Bold + Italic */
+.learning-lesson__rich-content strong em,
+.learning-lesson__rich-content em strong,
+.learning-lesson__rich-content b i,
+.learning-lesson__rich-content i b {
+    font-weight: 700;
+    font-style: oblique 14deg !important;
+}
+
+/* Underline / Strike */
+.learning-lesson__rich-content u {
+    text-underline-offset: 3px;
+}
+
+.learning-lesson__rich-content s {
+    color: #64748b;
+}
+
+/* Links */
+.learning-lesson__rich-content a {
+    color: #2563eb;
+    font-weight: 700;
+    text-decoration: underline;
+    text-decoration-thickness: 1.5px;
+    text-underline-offset: 4px;
+    cursor: pointer;
+    transition:
+        color 0.15s ease,
+        background-color 0.15s ease;
+}
+
+.learning-lesson__rich-content a:hover {
+    color: #1d4ed8;
+    background: #eff6ff;
+    border-radius: 4px;
+}
+
+.learning-lesson__rich-content a:visited {
+    color: #4f46e5;
+}
+
+/* Headings */
+.learning-lesson__rich-content h1,
+.learning-lesson__rich-content h2,
+.learning-lesson__rich-content h3,
+.learning-lesson__rich-content h4 {
+    color: #0f172a;
+    font-weight: 750;
+    line-height: 1.3;
+    margin: 1.1em 0 0.45em;
+}
+
+.learning-lesson__rich-content h1 {
+    font-size: 30px;
+}
+
+.learning-lesson__rich-content h2 {
+    font-size: 24px;
+}
+
+.learning-lesson__rich-content h3 {
+    font-size: 20px;
+}
+
+.learning-lesson__rich-content h4 {
+    font-size: 17px;
+}
+
+/* Lists */
+.learning-lesson__rich-content ul,
+.learning-lesson__rich-content ol {
+    padding-left: 26px;
+    margin: 0 0 16px;
+}
+
+.learning-lesson__rich-content li {
+    margin-bottom: 6px;
+    padding-left: 2px;
+}
+
+.learning-lesson__rich-content li:last-child {
+    margin-bottom: 0;
+}
+
+/* Blockquote */
+.learning-lesson__rich-content blockquote {
+    border-left: 4px solid #3b82f6;
+    background: #eff6ff;
+    color: #1e3a8a;
+    padding: 10px 14px;
+    margin: 14px 0;
+    border-radius: 0 10px 10px 0;
+}
+
+/* Inline code */
+.learning-lesson__rich-content code {
+    background: #f1f5f9;
+    color: #0f172a;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 13px;
+}
+
+/* Code block */
+.learning-lesson__rich-content pre {
+    background: #0f172a;
+    color: #e5e7eb;
+    border-radius: 10px;
+    padding: 14px 16px;
+    overflow-x: auto;
+}
+
+/* Image */
+.learning-lesson__rich-content img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 10px;
+    box-shadow: 0 8px 22px rgba(15, 23, 42, 0.12);
+}
+
+/* Quill font classes */
+.learning-lesson__rich-content .ql-font-serif {
+    font-family: Georgia, "Times New Roman", Times, serif;
+}
+
+.learning-lesson__rich-content .ql-font-monospace {
+    font-family:
+        "Courier New",
+        Courier,
+        "SFMono-Regular",
+        Consolas,
+        monospace;
+}
+
+.learning-lesson__rich-content .ql-font-sans-serif,
+.learning-lesson__rich-content .ql-font-sans {
+    font-family: Inter, Arial, Helvetica, sans-serif;
+}
+
+/* Quill alignment classes */
+.learning-lesson__rich-content .ql-align-center {
+    text-align: center;
+}
+
+.learning-lesson__rich-content .ql-align-right {
+    text-align: right;
+}
+
+.learning-lesson__rich-content .ql-align-justify {
+    text-align: justify;
+}
+
+/* Quill size classes */
+.learning-lesson__rich-content .ql-size-small {
+    font-size: 0.85em;
+}
+
+.learning-lesson__rich-content .ql-size-large {
+    font-size: 1.25em;
+}
+
+.learning-lesson__rich-content .ql-size-huge {
+    font-size: 1.6em;
+}
+
+/* Quill indent classes */
+.learning-lesson__rich-content .ql-indent-1 {
+    padding-left: 3em;
+}
+
+.learning-lesson__rich-content .ql-indent-2 {
+    padding-left: 6em;
+}
+
+.learning-lesson__rich-content .ql-indent-3 {
+    padding-left: 9em;
+}
+
+.learning-lesson__rich-content .ql-indent-4 {
+    padding-left: 12em;
+}
+
+.learning-lesson__rich-content .ql-indent-5 {
+    padding-left: 15em;
+}
+
+.learning-lesson__rich-content .ql-indent-6 {
+    padding-left: 18em;
+}
+
+.learning-lesson__rich-content .ql-indent-7 {
+    padding-left: 21em;
+}
+
+.learning-lesson__rich-content .ql-indent-8 {
+    padding-left: 24em;
+}
+
 .tab-overview__empty {
     display: flex;
     flex-direction: column;

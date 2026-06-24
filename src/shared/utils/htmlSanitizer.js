@@ -1,11 +1,14 @@
 import DOMPurify from "dompurify";
 
+const SAFE_URI_REGEXP =
+  /^(?:(?:https?|mailto|tel):|data:image\/(?:png|jpeg|jpg|gif|webp);base64,|[^a-z]|[a-z+.-]+(?:[^a-z+.\-:]|$))/i;
+
 export function sanitizeLessonHtml(html) {
   if (!html || typeof html !== "string") {
     return "";
   }
 
-  return DOMPurify.sanitize(html, {
+  const cleanHtml = DOMPurify.sanitize(html, {
     USE_PROFILES: { html: true },
     ALLOWED_TAGS: [
       "p",
@@ -41,9 +44,20 @@ export function sanitizeLessonHtml(html) {
       "style",
       "class",
     ],
-    ALLOWED_URI_REGEXP:
-      /^(?:(?:(?:f|ht)tps?|mailto|tel|data:image\/(?:png|jpeg|jpg|gif|webp));|[^a-z]|[a-z+.-]+(?:[^a-z+.\-:]|$))/i,
+    ALLOWED_URI_REGEXP: SAFE_URI_REGEXP,
   });
+
+  return cleanHtml.replace(
+    /<a\s+([^>]*href=["'][^"']+["'][^>]*)>/gi,
+    (match, attrs) => {
+      const hasTarget = /\starget=/i.test(attrs);
+      const hasRel = /\srel=/i.test(attrs);
+
+      return `<a ${attrs}${hasTarget ? "" : ' target="_blank"'}${
+        hasRel ? "" : ' rel="noopener noreferrer"'
+      }>`;
+    },
+  );
 }
 
 export function isEmptyLessonHtml(html) {

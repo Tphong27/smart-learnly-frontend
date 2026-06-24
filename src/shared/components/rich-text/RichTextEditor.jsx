@@ -12,12 +12,10 @@ export default function RichTextEditor({
   const modules = useMemo(
     () => ({
       toolbar: [
-        [{ header: [1, 2, 3, false] }],
-        [{ font: [] }],
+        [{ header: [1, 2, 3, false] }, { font: [] }],
         ["bold", "italic", "underline", "strike"],
         [{ color: [] }, { background: [] }],
-        [{ list: "ordered" }, { list: "bullet" }],
-        [{ align: [] }],
+        [{ list: "ordered" }, { list: "bullet" }, { align: [] }],
         ["blockquote", "code-block"],
         ["link", "image", "video"],
         ["clean"],
@@ -46,7 +44,10 @@ export default function RichTextEditor({
   ];
 
   return (
-    <div className="lesson-summary-editor" style={{ "--editor-min-height": `${minHeight}px` }}>
+    <div
+      className="lesson-summary-editor"
+      style={{ "--editor-min-height": `${minHeight}px` }}
+    >
       <ReactQuill
         theme="snow"
         value={value || ""}
