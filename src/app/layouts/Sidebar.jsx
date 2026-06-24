@@ -60,6 +60,12 @@ const navItems = [
         icon: ScrollText,
         roles: [ROLES.ADMIN],
     },
+    {
+    label: "System Settings",
+    path: "/admin/settings",
+    icon: Settings,
+    roles: [ROLES.ADMIN],
+    },
 
     // STAFF ROUTES (TRAINER, TMO, SME)
     {

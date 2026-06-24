@@ -72,6 +72,7 @@ function getAdminRoutes() {
           children: [
             { path: "users-management", element: <AdminUsersPage /> },
             { path: "audit-log", element: <AdminAuditLogPage /> },
+            { path: "settings", element: <AdminSystemSettingsPage /> },
           ],
         },
         {
