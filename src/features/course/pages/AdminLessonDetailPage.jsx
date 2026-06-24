@@ -8,6 +8,10 @@ import {
   isEmptyLessonHtml,
 } from "@/shared/utils/htmlSanitizer";
 import {
+  validateSummaryImage,
+  validateSummaryVideo,
+} from "@/shared/utils/summaryUploadValidation";
+import {
   ArrowLeft,
   Save,
   CloudUpload,
@@ -263,6 +267,68 @@ export default function AdminLessonDetailPage() {
     }
   };
 
+  const uploadSummaryImage = async (file) => {
+    const validationError = validateSummaryImage(file);
+
+    if (validationError) {
+      showToast(validationError, "error");
+      return null;
+    }
+
+    try {
+      const uploadedImage = await courseService.uploadSummaryImage(file);
+      const uploadedUrl = uploadedImage?.url || uploadedImage?.data?.url;
+
+      if (!uploadedUrl) {
+        throw new Error("Invalid summary image upload response");
+      }
+
+      showToast("Summary image uploaded successfully", "success");
+
+      return {
+        ...uploadedImage,
+        url: uploadedUrl,
+      };
+    } catch (error) {
+      showToast(
+        getErrorMessage(error, "Error uploading summary image"),
+        "error",
+      );
+      throw error;
+    }
+  };
+
+  const uploadSummaryVideo = async (file) => {
+    const validationError = validateSummaryVideo(file);
+
+    if (validationError) {
+      showToast(validationError, "error");
+      return null;
+    }
+
+    try {
+      const uploadedVideo = await courseService.uploadSummaryVideo(file);
+      const uploadedUrl = uploadedVideo?.url || uploadedVideo?.data?.url;
+
+      if (!uploadedUrl) {
+        throw new Error("Invalid summary video upload response");
+      }
+
+      showToast("Summary video uploaded successfully", "success");
+
+      return {
+        ...uploadedVideo,
+        url: uploadedUrl,
+      };
+    } catch (error) {
+      showToast(
+        getErrorMessage(error, "Error uploading summary video"),
+        "error",
+      );
+      throw error;
+    }
+  };
+
   const handleDropResources = async (e) => {
     e.preventDefault();
     if (
@@ -331,7 +397,7 @@ export default function AdminLessonDetailPage() {
     const cleanSummary = sanitizeLessonHtml(summary);
 
     if (isEmptyLessonHtml(cleanSummary)) {
-      showToast("Vui lòng nhập Summary cho bài học", "error");
+      showToast("Lesson Summary Blank", "error");
       return;
     }
 
@@ -358,13 +424,13 @@ export default function AdminLessonDetailPage() {
 
       await courseService.updateLesson(lessonId, payload);
 
-      showToast("Cập nhật nội dung bài học thành công!", "success");
+      showToast("Update successfully!", "success");
       navigate(`/admin/courses/${courseId}/content`);
     } catch (error) {
-      console.error("Lỗi cập nhật bài học chi tiết:", error);
+      console.error("Error updating lesson details:", error);
 
       const responseData = error?.response?.data;
-      let errorText = "Gặp lỗi trong quá trình lưu dữ liệu bài học";
+      let errorText = "Encountered an error while saving lesson data";
 
       if (typeof responseData === "string") {
         errorText = responseData;
@@ -592,8 +658,10 @@ export default function AdminLessonDetailPage() {
                   <RichTextEditor
                     value={summary}
                     onChange={setSummary}
-                    placeholder="Nhập tóm tắt nội dung bài học..."
+                    placeholder="Content Learning..."
                     minHeight={260}
+                    imageUploader={uploadSummaryImage}
+                    videoUploader={uploadSummaryVideo}
                   />
                 </div>
               )}

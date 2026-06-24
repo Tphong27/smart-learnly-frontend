@@ -341,3 +341,22 @@
         max-height: none;
     }
 }
+
+.preview-lesson-content__rich-content img {
+    display: block;
+    max-width: min(100%, 760px);
+    height: auto;
+    margin: 14px 0;
+    border-radius: 10px;
+    box-shadow: 0 8px 22px rgba(15, 23, 42, 0.12);
+}
+
+.preview-lesson-content__rich-content video {
+    display: block;
+    width: min(100%, 760px);
+    max-height: 430px;
+    margin: 14px 0;
+    border-radius: 12px;
+    background: #0f172a;
+    box-shadow: 0 8px 22px rgba(15, 23, 42, 0.12);
+}

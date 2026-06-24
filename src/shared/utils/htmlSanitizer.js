@@ -28,6 +28,8 @@ export function sanitizeLessonHtml(html) {
       "li",
       "a",
       "img",
+      "video",
+      "source",
       "blockquote",
       "pre",
       "code",
@@ -43,6 +45,13 @@ export function sanitizeLessonHtml(html) {
       "title",
       "style",
       "class",
+      "controls",
+      "preload",
+      "poster",
+      "width",
+      "height",
+      "type",
+      "data-summary-video",
     ],
     ALLOWED_URI_REGEXP: SAFE_URI_REGEXP,
   });
@@ -68,6 +77,8 @@ export function isEmptyLessonHtml(html) {
   }
 
   const textOnly = cleanHtml
+    .replace(/<img[^>]*>/gi, " image ")
+    .replace(/<video[^>]*>.*?<\/video>/gis, " video ")
     .replace(/<[^>]*>/g, "")
     .replace(/&nbsp;/g, " ")
     .trim();
