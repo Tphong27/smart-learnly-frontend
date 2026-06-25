@@ -757,7 +757,7 @@ export default function AdminCourseContentPage() {
                     >
                       <option value="video">Video Lecture</option>
                       <option value="document">
-                        Reading Material (Text/PDF)
+                        Reading Material (PDF / Word)
                       </option>
                       <option value="quiz">Quiz</option>
                     </select>

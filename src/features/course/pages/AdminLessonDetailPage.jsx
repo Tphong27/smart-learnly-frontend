@@ -12,6 +12,10 @@ import {
   validateSummaryVideo,
 } from "@/shared/utils/summaryUploadValidation";
 import {
+  MATERIAL_DOC_EXTENSIONS,
+  getFileExtension,
+} from "@/features/course/utils/lesson-content";
+import {
   ArrowLeft,
   Save,
   CloudUpload,
@@ -217,6 +221,23 @@ export default function AdminLessonDetailPage() {
   };
 
   const uploadMainFile = async (file) => {
+    // Validate định dạng & kích thước cho material tài liệu (lesson type PDF).
+    if (lessonType === "PDF") {
+      const extension = getFileExtension(file.name);
+      if (!MATERIAL_DOC_EXTENSIONS.includes(extension)) {
+        showToast(
+          "Only PDF, DOC or DOCX files are supported for reading material",
+          "error",
+        );
+        return;
+      }
+    }
+    const MAX_MATERIAL_SIZE = 50 * 1024 * 1024; // 50MB, khớp giới hạn backend
+    if (file.size > MAX_MATERIAL_SIZE) {
+      showToast("File is too large. Maximum size is 50MB", "error");
+      return;
+    }
+
     setUploadingMainFile(true);
     setMainContentFile(file);
     try {
@@ -1079,7 +1100,7 @@ export default function AdminLessonDetailPage() {
                       onChange={handleMainFileSelect}
                       disabled={uploadingMainFile}
                       style={{ display: "none" }}
-                      accept=".pdf,.doc,.docx,.ppt,.pptx"
+                      accept=".pdf,.doc,.docx"
                     />
                   </div>
                 )}
