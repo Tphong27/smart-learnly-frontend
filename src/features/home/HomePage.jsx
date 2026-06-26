@@ -6,7 +6,6 @@ import {
     BrainCircuit,
     Building2,
     Check,
-    ChevronRight,
     ClipboardCheck,
     Clock3,
     FileQuestion,
@@ -44,45 +43,6 @@ const challenges = [
         title: "Centers lack visibility",
         text: "Scattered tools make progress and dropout risk difficult to understand.",
         tone: "orange",
-    },
-];
-
-const solutions = [
-    {
-        icon: GraduationCap,
-        eyebrow: "For trainees",
-        title: "A learning path that adapts",
-        text: "Learn, practice, and understand exactly where to focus next.",
-        items: [
-            "AI-supported study",
-            "Weakness-based review",
-            "Smart flashcard practice",
-        ],
-        tone: "blue",
-    },
-    {
-        icon: Users,
-        eyebrow: "For trainers & SMEs",
-        title: "More time for teaching",
-        text: "Create learning content faster while keeping educators in control.",
-        items: [
-            "AI-assisted question creation",
-            "Draft feedback workflows",
-            "Human review before publish",
-        ],
-        tone: "violet",
-    },
-    {
-        icon: Building2,
-        eyebrow: "For centers & admins",
-        title: "One clear operational view",
-        text: "Connect classes, learning outcomes, and business operations.",
-        items: [
-            "Class performance insights",
-            "Churn-risk monitoring",
-            "Enrollment and reporting",
-        ],
-        tone: "teal",
     },
 ];
 
@@ -496,12 +456,6 @@ export function HomePage() {
                                 href="#courses"
                             >
                                 Explore courses <ArrowRight size={17} />
-                            </a>
-                            <a
-                                className="button button-secondary button-large"
-                                href="mailto:hello@smartlearnly.com"
-                            >
-                                Request a demo
                             </a>
                         </div>
                     </div>
