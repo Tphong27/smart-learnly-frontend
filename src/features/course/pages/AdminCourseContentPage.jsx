@@ -502,7 +502,7 @@ export default function AdminCourseContentPage() {
                   type="button"
                   onClick={() =>
                     window.open(
-                      `/admin/courses/${courseId}/content/preview`,
+                      `/admin/courses/${courseId}/preview`,
                       "_blank",
                       "noopener,noreferrer"
                     )
