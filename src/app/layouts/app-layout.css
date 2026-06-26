@@ -63,7 +63,7 @@
     font-size: 14px;
     font-weight: 500;
     text-decoration: none;
-    border-radius: 8px;
+    border-radius: 18px;
     transition: all 150ms ease;
 }
 
@@ -148,7 +148,9 @@
     background: white;
     color: #526078;
     cursor: pointer;
-    transition: background 160ms ease, color 160ms ease;
+    transition:
+        background 160ms ease,
+        color 160ms ease;
 }
 
 .icon-button:hover {

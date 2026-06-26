@@ -1,50 +1,23 @@
 import { useState, useEffect } from "react";
 import {
     ArrowRight,
-    BarChart3,
     BookOpen,
     BrainCircuit,
-    Building2,
-    Check,
     ClipboardCheck,
-    Clock3,
     FileQuestion,
-    GraduationCap,
     Layers3,
     Menu,
     MessageCircleMore,
     Play,
     Search,
-    ShieldCheck,
     Target,
     TrendingUp,
-    Users,
     X,
     Zap,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useDocumentTitle } from "../../shared/hooks/useDocumentTitle";
 import { CourseListPage } from "../course/pages/CourseListPage";
-const challenges = [
-    {
-        icon: Target,
-        title: "Learners need direction",
-        text: "Studying hard is not enough when you do not know what to review next.",
-        tone: "blue",
-    },
-    {
-        icon: Clock3,
-        title: "Trainers lose valuable time",
-        text: "Creating questions, flashcards, and thoughtful feedback takes hours.",
-        tone: "violet",
-    },
-    {
-        icon: BarChart3,
-        title: "Centers lack visibility",
-        text: "Scattered tools make progress and dropout risk difficult to understand.",
-        tone: "orange",
-    },
-];
 
 const features = [
     {
