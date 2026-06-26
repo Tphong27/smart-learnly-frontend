@@ -20,6 +20,9 @@ import AdminCourseContentPage from "@/features/course/pages/AdminCourseContentPa
 // 🛠️ THÊM MỚI: Import trang cấu hình chi tiết nội dung bài học
 import AdminLessonDetailPage from "@/features/course/pages/AdminLessonDetailPage";
 
+// Import trang xem khóa học dưới góc nhìn học viên (View as User)
+import LearningWorkspacePage from "@/features/course/pages/LearningWorkspacePage";
+
 function PlaceholderPage({ title }) {
   return (
     <section className="placeholder-page">
@@ -58,6 +61,12 @@ function getAdminRoutes() {
             {
               path: "courses/:courseId/content",
               element: <AdminCourseContentPage />,
+            },
+
+            // Trang xem khóa học dưới góc nhìn học viên (View as User)
+            {
+              path: "courses/:courseId/content/preview",
+              element: <LearningWorkspacePage mode="admin-preview" />,
             },
 
             // 🛠️ THÊM ROUTE NÀY: Trang cấu hình chi tiết bài học (Sửa lỗi 404)

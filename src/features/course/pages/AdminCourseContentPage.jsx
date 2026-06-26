@@ -497,13 +497,29 @@ export default function AdminCourseContentPage() {
                 <h2>Course Structure</h2>
                 <p>Organize and manage your course content</p>
               </div>
-              <button
-                onClick={() => setIsSectionModalOpen(true)}
-                className="btn-primary"
-              >
-                <span className="material-symbols-outlined">add</span> Add New
-                Section
-              </button>
+              <div className="header-actions">
+                <button
+                  type="button"
+                  onClick={() =>
+                    window.open(
+                      `/admin/courses/${courseId}/content/preview`,
+                      "_blank",
+                      "noopener,noreferrer"
+                    )
+                  }
+                  className="btn-outline"
+                >
+                  <span className="material-symbols-outlined">visibility</span>{" "}
+                  View as User
+                </button>
+                <button
+                  onClick={() => setIsSectionModalOpen(true)}
+                  className="btn-primary"
+                >
+                  <span className="material-symbols-outlined">add</span> Add New
+                  Section
+                </button>
+              </div>
             </div>
           </div>
 
