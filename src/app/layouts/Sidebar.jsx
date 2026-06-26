@@ -4,6 +4,7 @@ import {
   ClipboardCheck,
   FileQuestion,
   FolderTree,
+  GraduationCap,
   History,
   Home,
   Layers3,
@@ -19,8 +20,6 @@ import {
 } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import { ROLES } from "@/shared/constants/roles";
-
-// Cấu hình chuẩn khớp 100% với adminRoutes, staffRoutes, traineeRoutes
 const navItems = [
   // ADMIN & MONITORING ROUTES
   {
@@ -38,20 +37,26 @@ const navItems = [
   {
     label: "Course Management",
     path: "/admin/courses",
-    icon: FolderTree, // Sử dụng icon FolderTree trực quan cho quản trị cấu trúc khóa học
-    roles: [ROLES.ADMIN, ROLES.TMO, ROLES.SME], // Phân quyền khớp chuẩn với RoleGuard trong adminRoutes.jsx
+    icon: FolderTree,
+    roles: [ROLES.ADMIN, ROLES.TMO, ROLES.SME],
+  },
+  {
+    label: "Question Bank",
+    path: "/admin/question-banks",
+    icon: FileQuestion,
+    roles: [ROLES.ADMIN, ROLES.TMO, ROLES.SME],
   },
   {
     label: "Categories",
     path: "/admin/categories",
     icon: Receipt,
-    roles: [ROLES.ADMIN, ROLES.TMO], // Cấp quyền cho Admin và TMO
+    roles: [ROLES.ADMIN, ROLES.TMO],
   },
   {
     label: "Transactions",
     path: "/admin/transactions",
     icon: CreditCard,
-    roles: [ROLES.ADMIN, ROLES.TMO], // Cấp quyền cho Admin và TMO
+    roles: [ROLES.ADMIN, ROLES.TMO],
   },
   {
     label: "System Activity Log",
@@ -106,6 +111,12 @@ const navItems = [
 
   // TRAINEE ROUTES (LEARNING Workspace)
   {
+    label: "My Courses",
+    path: "/learning/courses",
+    icon: GraduationCap,
+    roles: [ROLES.TRAINEE],
+  },
+  {
     label: "My Enrollments",
     path: "/learning/enrollments",
     icon: History,
@@ -150,7 +161,6 @@ const navItems = [
 ];
 
 export function Sidebar({ userRole, open, onClose }) {
-  // SỬA TẠI ĐÂY: Không dùng .toLowerCase() nữa để giữ nguyên dạng hoa khớp với ROLES hằng số
   const normalizedRole =
     typeof userRole === "string" ? userRole.toUpperCase() : userRole;
 
