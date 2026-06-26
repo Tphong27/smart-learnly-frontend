@@ -11,6 +11,7 @@ import {
     ChevronDown,
     Circle,
     BookOpen,
+    Eye,
 } from "lucide-react";
 import { LearningLessonMedia } from "@/features/course/components/LearningLessonMedia";
 import { LearningLessonTabs } from "@/features/course/components/LearningLessonTabs";
@@ -186,6 +187,8 @@ export function LearningWorkspacePage({
     const courseTitle = data?.courseTitle || "Course";
     const stats = data?.stats;
 
+    const isAdminPreview = mode === "admin-preview";
+
     return (
         <div className="learning-workspace">
             {previewMode && (
@@ -196,6 +199,19 @@ export function LearningWorkspacePage({
                         className="learning-workspace__preview-cta"
                     >
                         View Course Details
+                    </Link>
+                </div>
+            )}
+
+            {isAdminPreview && (
+                <div className="learning-workspace__preview-banner">
+                    <Eye size={15} />
+                    <span>Viewing as trainee — this is how learners see your course</span>
+                    <Link
+                        to={`/admin/courses/${courseId}/content`}
+                        className="learning-workspace__preview-cta"
+                    >
+                        Back to editor
                     </Link>
                 </div>
             )}
