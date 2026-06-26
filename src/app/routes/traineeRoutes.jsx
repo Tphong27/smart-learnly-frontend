@@ -4,11 +4,15 @@ import { RoleGuard } from "./RoleGuard";
 import { ROLES } from "@/shared/constants/roles";
 import { AppLayout } from "../layouts/AppLayout";
 import { CartPage } from "@/features/cart";
-import { MyCoursesPage } from "@/features/course";
-import { CheckoutPage, PaymentResultPage as CheckoutPaymentResultPage } from "@/features/checkout";
+// import { MyCoursesPage } from "@/features/course";
+import {
+  CheckoutPage,
+  PaymentResultPage as CheckoutPaymentResultPage,
+} from "@/features/checkout";
 import { MyEnrollmentsPage } from "@/features/enrollment";
 import { MyTransactionsPage, PaymentResultPage } from "@/features/payment";
-import { LearningWorkspacePage } from "@/features/course";
+import { CourseListPage, LearningWorkspacePage } from "@/features/course";
+import { TraineeDashboardPage } from "@/features/dashboard";
 
 function PlaceholderPage({ title }) {
   return (
@@ -32,7 +36,20 @@ function getTraineeRoutes() {
         {
           element: <AppLayout />,
           children: [
-            { path: "courses", element: <MyCoursesPage /> },
+            {
+              path: "courses",
+              element: (
+                <CourseListPage
+                  pageSize={6}
+                  excludeEnrolled={true}
+                  detailState={{
+                    from: "/learning/courses",
+                    backLabel: "Back to Course Catalog",
+                  }}
+                />
+              ),
+            },
+            // { path: "courses", element: <MyCoursesPage /> },
             { path: "courses/:courseId", element: <LearningWorkspacePage /> },
             { path: "enrollments", element: <MyEnrollmentsPage /> },
             { path: "transactions", element: <MyTransactionsPage /> },
@@ -96,9 +113,18 @@ function getTraineeRoutes() {
         {
           element: <AppLayout />,
           children: [
-            { path: "/my-courses", element: <Navigate to="/learning/courses" replace /> },
-            { path: "/my-enrollments", element: <Navigate to="/learning/enrollments" replace /> },
-            { path: "/my-transactions", element: <Navigate to="/learning/transactions" replace /> },
+            {
+              path: "/my-courses",
+              element: <Navigate to="/learning/courses" replace />,
+            },
+            {
+              path: "/my-enrollments",
+              element: <Navigate to="/learning/enrollments" replace />,
+            },
+            {
+              path: "/my-transactions",
+              element: <Navigate to="/learning/transactions" replace />,
+            },
             { path: "/payment-result", element: <PaymentResultPage /> },
           ],
         },
@@ -106,7 +132,13 @@ function getTraineeRoutes() {
     },
     {
       path: "/dashboard",
-      element: <Navigate to="/learning/courses" replace />,
+      element: <RoleGuard allowedRoles={[ROLES.TRAINEE]} />,
+      children: [
+        {
+          element: <AppLayout />,
+          children: [{ index: true, element: <TraineeDashboardPage /> }],
+        },
+      ],
     },
   ];
 }

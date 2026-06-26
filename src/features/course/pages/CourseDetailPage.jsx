@@ -45,6 +45,7 @@ export function CourseDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isEnrolled, setIsEnrolled] = useState(false);
+  const [selectedClassId, setSelectedClassId] = useState("");
 
   function hasAccessToken() {
     const token = localStorage.getItem("accessToken");
@@ -130,6 +131,8 @@ export function CourseDetailPage() {
 
   const objectives = course.learningObjectives || [];
   const modules = course.modules || [];
+  const classes = course.classes || [];
+  const selectedClass = classes.find((item) => item.id === selectedClassId);
   const totalLessons = modules.reduce(
     (sum, m) => sum + (m.lessons?.length || 0),
     0,
@@ -176,9 +179,24 @@ export function CourseDetailPage() {
     return false;
   }
 
+  function ensureClassSelected() {
+  if (classes.length === 0) {
+    toast.error("This course does not have any available class yet.");
+    return false;
+  }
+
+  if (!selectedClassId) {
+    toast.error("Please select a class before enrolling in this course.");
+    return false;
+  }
+
+  return true;
+}
+
   async function handleAddToCartClick() {
     if (!ensureAuthenticated()) return;
     if (!ensurePaidCourse()) return;
+    if (!ensureClassSelected()) return;
 
     const courseId = getCourseId();
 
@@ -192,7 +210,7 @@ export function CourseDetailPage() {
     try {
       await cartService.addItem({
         courseId,
-        classId: null,
+        classId: selectedClassId,
       });
 
       cartPriceCacheService.saveCourse(course);
@@ -209,6 +227,7 @@ export function CourseDetailPage() {
   async function handleBuyNowClick() {
     if (!ensureAuthenticated()) return;
     if (!ensurePaidCourse()) return;
+    if (!ensureClassSelected()) return;
 
     const courseId = getCourseId();
 
@@ -223,7 +242,7 @@ export function CourseDetailPage() {
       try {
         await cartService.addItem({
           courseId,
-          classId: null,
+          classId: selectedClassId,
         });
       } catch (err) {
         const message = String(err?.message || "").toLowerCase();
@@ -425,6 +444,80 @@ export function CourseDetailPage() {
           </ul>
         </section>
       )}
+
+      <section className="course-detail__section">
+        <h2 className="course-detail__section-title">Available classes</h2>
+        <p className="course-detail__section-sub">
+          Choose a class schedule that matches your learning plan.
+        </p>
+
+        {classes.length === 0 ? (
+          <div className="admin-empty">
+            No available classes are open for this course yet.
+          </div>
+        ) : (
+          <div className="course-detail__class-list">
+            {classes.map((classItem) => (
+              <article key={classItem.id} className="course-detail__class-card">
+                <div className="course-detail__class-main">
+                  <div>
+                    <h3>{classItem.className}</h3>
+                    <p>
+                      Trainer:{" "}
+                      <strong>
+                        {classItem.trainerName || "To be assigned"}
+                      </strong>
+                    </p>
+                  </div>
+
+                  <span className="course-detail__class-status">
+                    {classItem.status}
+                  </span>
+                </div>
+
+                <dl className="course-detail__class-meta">
+                  <div>
+                    <dt>Schedule</dt>
+                    <dd>{classItem.scheduleDescription || "Not specified"}</dd>
+                  </div>
+
+                  <div>
+                    <dt>Start date</dt>
+                    <dd>{classItem.startDate || "Not specified"}</dd>
+                  </div>
+
+                  <div>
+                    <dt>End date</dt>
+                    <dd>{classItem.endDate || "Not specified"}</dd>
+                  </div>
+
+                  <div>
+                    <dt>Available slots</dt>
+                    <dd>
+                      {classItem.availableSlots ?? 0}/
+                      {classItem.maxStudents ?? 0}
+                    </dd>
+                  </div>
+                </dl>
+
+                {!isEnrolled && (
+                  <button
+                    type="button"
+                    className="button button--outline button--md"
+                    onClick={() => {
+                      toast.error(
+                        "Class enrollment checkout is not connected yet. Please use course checkout for now.",
+                      );
+                    }}
+                  >
+                    Select this class
+                  </button>
+                )}
+              </article>
+            ))}
+          </div>
+        )}
+      </section>
 
       <section className="course-detail__section">
         <h2 className="course-detail__section-title">Course content</h2>

@@ -1,235 +1,236 @@
 import {
-    BarChart3,
-    BookOpen,
-    ClipboardCheck,
-    FileQuestion,
-    FolderTree,
-    GraduationCap,
-    History,
-    Home,
-    Layers3,
-    Receipt,
-    ScrollText,
-    Settings,
-    ShieldCheck,
-    ShoppingCart,
-    Users,
-    X,
-    Zap,
-    CreditCard,
+  BarChart3,
+  BookOpen,
+  ClipboardCheck,
+  FileQuestion,
+  FolderTree,
+  History,
+  Home,
+  Layers3,
+  Receipt,
+  ScrollText,
+  Settings,
+  ShieldCheck,
+  ShoppingCart,
+  Users,
+  X,
+  Zap,
+  CreditCard,
 } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import { ROLES } from "@/shared/constants/roles";
 
 // Cấu hình chuẩn khớp 100% với adminRoutes, staffRoutes, traineeRoutes
 const navItems = [
-    // ADMIN & MONITORING ROUTES
-    {
-        label: "Admin Dashboard",
-        path: "/admin/dashboard",
-        icon: Home,
-        roles: [ROLES.ADMIN],
-    },
-    {
-        label: "Users & Roles",
-        path: "/admin/users-management",
-        icon: ShieldCheck,
-        roles: [ROLES.ADMIN],
-    },
-    {
-        label: "Course Management",
-        path: "/admin/courses",
-        icon: FolderTree, // Sử dụng icon FolderTree trực quan cho quản trị cấu trúc khóa học
-        roles: [ROLES.ADMIN, ROLES.TMO, ROLES.SME], // Phân quyền khớp chuẩn với RoleGuard trong adminRoutes.jsx
-    },
-    {
-        label: "Categories",
-        path: "/admin/categories",
-        icon: Receipt,
-        roles: [ROLES.ADMIN, ROLES.TMO], // Cấp quyền cho Admin và TMO
-    },
-    {
-        label: "Transactions",
-        path: "/admin/transactions",
-        icon: CreditCard,
-        roles: [ROLES.ADMIN, ROLES.TMO], // Cấp quyền cho Admin và TMO
-    },
-    {
-        label: "System Activity Log",
-        path: "/admin/audit-log",
-        icon: ScrollText,
-        roles: [ROLES.ADMIN],
-    },
-    {
+  // ADMIN & MONITORING ROUTES
+  {
+    label: "Admin Dashboard",
+    path: "/admin/dashboard",
+    icon: Home,
+    roles: [ROLES.ADMIN],
+  },
+  {
+    label: "Users & Roles",
+    path: "/admin/users-management",
+    icon: ShieldCheck,
+    roles: [ROLES.ADMIN],
+  },
+  {
+    label: "Course Management",
+    path: "/admin/courses",
+    icon: FolderTree, // Sử dụng icon FolderTree trực quan cho quản trị cấu trúc khóa học
+    roles: [ROLES.ADMIN, ROLES.TMO, ROLES.SME], // Phân quyền khớp chuẩn với RoleGuard trong adminRoutes.jsx
+  },
+  {
+    label: "Categories",
+    path: "/admin/categories",
+    icon: Receipt,
+    roles: [ROLES.ADMIN, ROLES.TMO], // Cấp quyền cho Admin và TMO
+  },
+  {
+    label: "Transactions",
+    path: "/admin/transactions",
+    icon: CreditCard,
+    roles: [ROLES.ADMIN, ROLES.TMO], // Cấp quyền cho Admin và TMO
+  },
+  {
+    label: "System Activity Log",
+    path: "/admin/audit-log",
+    icon: ScrollText,
+    roles: [ROLES.ADMIN],
+  },
+  {
     label: "System Settings",
     path: "/admin/settings",
     icon: Settings,
     roles: [ROLES.ADMIN],
-    },
+  },
 
-    // STAFF ROUTES (TRAINER, TMO, SME)
-    {
-        label: "Course Content",
-        path: "/staff/courses",
-        icon: Layers3,
-        roles: [ROLES.TRAINER, ROLES.TMO, ROLES.SME],
-    },
-    {
-        label: "Tests & Questions",
-        path: "/staff/tests",
-        icon: FileQuestion,
-        roles: [ROLES.TRAINER, ROLES.TMO, ROLES.SME],
-    },
-    {
-        label: "Flashcards Management",
-        path: "/staff/flashcards",
-        icon: BookOpen,
-        roles: [ROLES.TRAINER, ROLES.TMO, ROLES.SME],
-    },
-    {
-        label: "Classrooms",
-        path: "/staff/classrooms",
-        icon: Users,
-        roles: [ROLES.TRAINER, ROLES.TMO],
-    },
-    {
-        label: "AI Chatbot Config",
-        path: "/staff/ai-chatbot",
-        icon: Settings,
-        roles: [ROLES.ADMIN],
-    },
-    {
-        label: "Reports & Analytics",
-        path: "/staff/reports",
-        icon: BarChart3,
-        roles: [ROLES.TMO],
-    },
+  // STAFF ROUTES (TRAINER, TMO, SME)
+  {
+    label: "Course Content",
+    path: "/staff/courses",
+    icon: Layers3,
+    roles: [ROLES.TRAINER, ROLES.TMO, ROLES.SME],
+  },
+  {
+    label: "Tests & Questions",
+    path: "/staff/tests",
+    icon: FileQuestion,
+    roles: [ROLES.TRAINER, ROLES.TMO, ROLES.SME],
+  },
+  {
+    label: "Flashcards Management",
+    path: "/staff/flashcards",
+    icon: BookOpen,
+    roles: [ROLES.TRAINER, ROLES.TMO, ROLES.SME],
+  },
+  {
+    label: "Classrooms",
+    path: "/staff/classrooms",
+    icon: Users,
+    roles: [ROLES.TRAINER, ROLES.TMO],
+  },
+  {
+    label: "AI Chatbot Config",
+    path: "/staff/ai-chatbot",
+    icon: Settings,
+    roles: [ROLES.ADMIN],
+  },
+  {
+    label: "Reports & Analytics",
+    path: "/staff/reports",
+    icon: BarChart3,
+    roles: [ROLES.TMO],
+  },
 
-    // TRAINEE ROUTES (LEARNING Workspace)
-    {
-        label: "My Courses",
-        path: "/learning/courses",
-        icon: GraduationCap,
-        roles: [ROLES.TRAINEE],
-    },
-    {
-        label: "My Enrollments",
-        path: "/learning/enrollments",
-        icon: History,
-        roles: [ROLES.TRAINEE],
-    },
-    {
-        label: "My Transactions",
-        path: "/learning/transactions",
-        icon: Receipt,
-        roles: [ROLES.TRAINEE],
-    },
-    {
-        label: "Cart",
-        path: "/cart",
-        icon: ShoppingCart,
-        roles: [ROLES.TRAINEE],
-    },
-    {
-        label: "My Classes",
-        path: "/learning/classrooms",
-        icon: Users,
-        roles: [ROLES.TRAINEE],
-    },
-    {
-        label: "My Tests",
-        path: "/learning/tests",
-        icon: ClipboardCheck,
-        roles: [ROLES.TRAINEE],
-    },
-    {
-        label: "Flashcards",
-        path: "/learning/flashcards",
-        icon: BookOpen,
-        roles: [ROLES.TRAINEE],
-    },
-    {
-        label: "AI Assistant",
-        path: "/learning/ai-chatbot",
-        icon: Settings,
-        roles: [ROLES.TRAINEE],
-    },
+  // TRAINEE ROUTES (LEARNING Workspace)
+  {
+    label: "My Enrollments",
+    path: "/learning/enrollments",
+    icon: History,
+    roles: [ROLES.TRAINEE],
+  },
+  {
+    label: "My Transactions",
+    path: "/learning/transactions",
+    icon: Receipt,
+    roles: [ROLES.TRAINEE],
+  },
+  {
+    label: "Cart",
+    path: "/cart",
+    icon: ShoppingCart,
+    roles: [ROLES.TRAINEE],
+  },
+  {
+    label: "My Classes",
+    path: "/learning/classrooms",
+    icon: Users,
+    roles: [ROLES.TRAINEE],
+  },
+  {
+    label: "My Tests",
+    path: "/learning/tests",
+    icon: ClipboardCheck,
+    roles: [ROLES.TRAINEE],
+  },
+  {
+    label: "Flashcards",
+    path: "/learning/flashcards",
+    icon: BookOpen,
+    roles: [ROLES.TRAINEE],
+  },
+  {
+    label: "AI Assistant",
+    path: "/learning/ai-chatbot",
+    icon: Settings,
+    roles: [ROLES.TRAINEE],
+  },
 ];
 
 export function Sidebar({ userRole, open, onClose }) {
-    // SỬA TẠI ĐÂY: Không dùng .toLowerCase() nữa để giữ nguyên dạng hoa khớp với ROLES hằng số
-    const normalizedRole =
-        typeof userRole === "string" ? userRole.toUpperCase() : userRole;
+  // SỬA TẠI ĐÂY: Không dùng .toLowerCase() nữa để giữ nguyên dạng hoa khớp với ROLES hằng số
+  const normalizedRole =
+    typeof userRole === "string" ? userRole.toUpperCase() : userRole;
 
-    const visibleItems = navItems.filter((item) =>
-        item.roles.includes(normalizedRole),
-    );
+  function getBrandHomePath(role) {
+    if (role === ROLES.ADMIN) return "/admin/dashboard";
+    if (role === ROLES.SME) return "/sme/dashboard";
+    if (role === ROLES.TMO) return "/tmo/dashboard";
+    if (role === ROLES.TRAINER) return "/trainer/dashboard";
+    if (role === ROLES.TRAINEE) return "/dashboard";
 
-    const overlayClassName = open
-        ? "app-sidebar-overlay app-sidebar-overlay--open"
-        : "app-sidebar-overlay";
-    const sidebarClassName = open
-        ? "app-sidebar app-sidebar--open"
-        : "app-sidebar";
+    return "/";
+  }
 
-    return (
-        <>
-            <div
-                className={overlayClassName}
-                onClick={onClose}
-                aria-hidden="true"
-            />
+  const brandHomePath = getBrandHomePath(normalizedRole);
 
-            <aside className={sidebarClassName}>
-                <div className="app-sidebar__brand-row sidebar__brand-row">
-                    <a
-                        href="/admin/dashboard"
-                        className="app-sidebar__brand sidebar__brand"
-                    >
-                        <span className="app-sidebar__brand-mark sidebar__brand-mark">
-                            <Zap size={18} />
-                        </span>
-                        Smart Learnly
-                    </a>
+  const visibleItems = navItems.filter((item) =>
+    item.roles.includes(normalizedRole),
+  );
 
-                    <button
-                        type="button"
-                        onClick={onClose}
-                        className="app-sidebar__close-button sidebar__close-button"
-                        aria-label="Close sidebar"
-                    >
-                        <X size={18} />
-                    </button>
-                </div>
+  const overlayClassName = open
+    ? "app-sidebar-overlay app-sidebar-overlay--open"
+    : "app-sidebar-overlay";
+  const sidebarClassName = open
+    ? "app-sidebar app-sidebar--open"
+    : "app-sidebar";
 
-                <nav className="app-sidebar__nav sidebar__nav">
-                    {visibleItems.map(({ label, path, icon: Icon }) => (
-                        <NavLink
-                            key={path}
-                            to={path}
-                            onClick={onClose}
-                            className={({ isActive }) =>
-                                isActive
-                                    ? "app-sidebar__link sidebar__link app-sidebar__link--active sidebar__link--active"
-                                    : "app-sidebar__link sidebar__link"
-                            }
-                        >
-                            <Icon size={18} />
-                            {label}
-                        </NavLink>
-                    ))}
-                </nav>
+  return (
+    <>
+      <div className={overlayClassName} onClick={onClose} aria-hidden="true" />
 
-                <div className="app-sidebar__footer sidebar__footer">
-                    <div className="app-sidebar__summary sidebar__summary">
-                        <p>SLP</p>
-                        <small>
-                            A learning management system for the SLP program at
-                            Accenture.
-                        </small>
-                    </div>
-                </div>
-            </aside>
-        </>
-    );
+      <aside className={sidebarClassName}>
+        <div className="app-sidebar__brand-row sidebar__brand-row">
+          <NavLink
+            to={brandHomePath}
+            onClick={onClose}
+            className="app-sidebar__brand sidebar__brand"
+          >
+            <span className="app-sidebar__brand-mark sidebar__brand-mark">
+              <Zap size={18} />
+            </span>
+            Smart Learnly
+          </NavLink>
+
+          <button
+            type="button"
+            onClick={onClose}
+            className="app-sidebar__close-button sidebar__close-button"
+            aria-label="Close sidebar"
+          >
+            <X size={18} />
+          </button>
+        </div>
+
+        <nav className="app-sidebar__nav sidebar__nav">
+          {visibleItems.map(({ label, path, icon: Icon }) => (
+            <NavLink
+              key={path}
+              to={path}
+              onClick={onClose}
+              className={({ isActive }) =>
+                isActive
+                  ? "app-sidebar__link sidebar__link app-sidebar__link--active sidebar__link--active"
+                  : "app-sidebar__link sidebar__link"
+              }
+            >
+              <Icon size={18} />
+              {label}
+            </NavLink>
+          ))}
+        </nav>
+
+        <div className="app-sidebar__footer sidebar__footer">
+          <div className="app-sidebar__summary sidebar__summary">
+            <p>SLP</p>
+            <small>
+              A learning management system for the SLP program at Accenture.
+            </small>
+          </div>
+        </div>
+      </aside>
+    </>
+  );
 }
