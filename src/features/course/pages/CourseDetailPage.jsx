@@ -18,12 +18,7 @@ import {
   getOriginalPrice,
   hasValidDiscount,
 } from "../utils/course-price";
-import {
-  courseService,
-  cartService,
-  orderService,
-  cartPriceCacheService,
-} from "@/services";
+import { courseService, orderService } from "@/services";
 import "../../admin/admin-shared.css";
 import "./CourseDetailPage.css";
 
@@ -37,7 +32,6 @@ function LessonIcon({ type }) {
 export function CourseDetailPage() {
   const { slug } = useParams();
   const navigate = useNavigate();
-  const [addToCartLoading, setAddToCartLoading] = useState(false);
   const [buyNowLoading, setBuyNowLoading] = useState(false);
   const toast = useToast();
   const location = useLocation();
@@ -180,48 +174,17 @@ export function CourseDetailPage() {
   }
 
   function ensureClassSelected() {
-  if (classes.length === 0) {
-    toast.error("This course does not have any available class yet.");
-    return false;
-  }
-
-  if (!selectedClassId) {
-    toast.error("Please select a class before enrolling in this course.");
-    return false;
-  }
-
-  return true;
-}
-
-  async function handleAddToCartClick() {
-    if (!ensureAuthenticated()) return;
-    if (!ensurePaidCourse()) return;
-    if (!ensureClassSelected()) return;
-
-    const courseId = getCourseId();
-
-    if (!courseId) {
-      toast.error("Course information is missing.");
-      return;
+    if (classes.length === 0) {
+      toast.error("This course does not have any available class yet.");
+      return false;
     }
 
-    setAddToCartLoading(true);
-
-    try {
-      await cartService.addItem({
-        courseId,
-        classId: selectedClassId,
-      });
-
-      cartPriceCacheService.saveCourse(course);
-
-      toast.success("Course added to cart.");
-      navigate("/cart");
-    } catch (err) {
-      toast.error(err?.message || "Could not add course to cart.");
-    } finally {
-      setAddToCartLoading(false);
+    if (!selectedClassId) {
+      toast.error("Please select a class before enrolling in this course.");
+      return false;
     }
+
+    return true;
   }
 
   async function handleBuyNowClick() {
@@ -239,28 +202,10 @@ export function CourseDetailPage() {
     setBuyNowLoading(true);
 
     try {
-      try {
-        await cartService.addItem({
-          courseId,
-          classId: selectedClassId,
-        });
-      } catch (err) {
-        const message = String(err?.message || "").toLowerCase();
-
-        if (!message.includes("already exists")) {
-          throw err;
-        }
-      }
-
-      cartPriceCacheService.saveCourse(course);
-
-      const latestCart = await cartService.getCart();
-
-      if (!latestCart?.id) {
-        throw new Error("Cart is not ready.");
-      }
-
-      const checkout = await orderService.checkout(latestCart.id);
+      const checkout = await orderService.buyNowCheckout({
+        courseId,
+        classId: selectedClassId,
+      });
 
       toast.success("Checkout created.");
 
@@ -269,6 +214,8 @@ export function CourseDetailPage() {
           checkout,
           expectedCourse: {
             courseId,
+            classId: selectedClassId,
+            className: selectedClass?.className,
             title: course.title,
             originalPrice,
             displayPrice,
@@ -369,36 +316,25 @@ export function CourseDetailPage() {
             </div>
             {!isEnrolled && (
               <div className="course-detail__action-grid">
-                <button
-                  type="button"
-                  onClick={handleBuyNowClick}
-                  disabled={
-                    addToCartLoading || buyNowLoading || isFreeCourse(course)
-                  }
-                  className="button button--primary course-detail__cta"
-                >
-                  {buyNowLoading ? "Processing..." : "Buy Now"}
-                </button>
+                {!isEnrolled && (
+                  <div className="course-detail__action-grid">
+                    <button
+                      type="button"
+                      onClick={handleBuyNowClick}
+                      disabled={buyNowLoading || isFreeCourse(course)}
+                      className="button button--primary course-detail__cta course-detail__cta--full"
+                    >
+                      {buyNowLoading ? "Processing..." : "Buy Now"}
+                    </button>
 
-                <Link
-                  to={`/courses/${course.id || course.slug}/preview`}
-                  className="button button--primary course-detail__cta"
-                >
-                  Preview Lesson
-                </Link>
-
-                <button
-                  type="button"
-                  onClick={handleAddToCartClick}
-                  disabled={addToCartLoading || buyNowLoading}
-                  className="button button--outline course-detail__cta course-detail__cta--full"
-                >
-                  {addToCartLoading
-                    ? "Adding..."
-                    : isFreeCourse(course)
-                      ? "Enroll for free"
-                      : "Add to Cart"}
-                </button>
+                    <Link
+                      to={`/courses/${course.id || course.slug}/preview`}
+                      className="button button--outline course-detail__cta course-detail__cta--full"
+                    >
+                      Preview Lesson
+                    </Link>
+                  </div>
+                )}
               </div>
             )}
             {isEnrolled && (
@@ -457,64 +393,69 @@ export function CourseDetailPage() {
           </div>
         ) : (
           <div className="course-detail__class-list">
-            {classes.map((classItem) => (
-              <article key={classItem.id} className="course-detail__class-card">
-                <div className="course-detail__class-main">
-                  <div>
-                    <h3>{classItem.className}</h3>
-                    <p>
-                      Trainer:{" "}
-                      <strong>
-                        {classItem.trainerName || "To be assigned"}
-                      </strong>
-                    </p>
+            {classes.map((classItem) => {
+              const isSelected = selectedClassId === classItem.id;
+
+              return (
+                <article
+                  key={classItem.id}
+                  className="course-detail__class-card"
+                >
+                  <div className="course-detail__class-main">
+                    <div>
+                      <h3>{classItem.className}</h3>
+                      <p>
+                        Trainer:
+                        <strong>
+                          {classItem.trainerName || "To be assigned"}
+                        </strong>
+                      </p>
+                    </div>
+
+                    <span className="course-detail__class-status">
+                      {classItem.status}
+                    </span>
                   </div>
 
-                  <span className="course-detail__class-status">
-                    {classItem.status}
-                  </span>
-                </div>
+                  <dl className="course-detail__class-meta">
+                    <div>
+                      <dt>Schedule</dt>
+                      <dd>
+                        {classItem.scheduleDescription || "Not specified"}
+                      </dd>
+                    </div>
 
-                <dl className="course-detail__class-meta">
-                  <div>
-                    <dt>Schedule</dt>
-                    <dd>{classItem.scheduleDescription || "Not specified"}</dd>
-                  </div>
+                    <div>
+                      <dt>Start date</dt>
+                      <dd>{classItem.startDate || "Not specified"}</dd>
+                    </div>
 
-                  <div>
-                    <dt>Start date</dt>
-                    <dd>{classItem.startDate || "Not specified"}</dd>
-                  </div>
+                    <div>
+                      <dt>End date</dt>
+                      <dd>{classItem.endDate || "Not specified"}</dd>
+                    </div>
 
-                  <div>
-                    <dt>End date</dt>
-                    <dd>{classItem.endDate || "Not specified"}</dd>
-                  </div>
+                    <div>
+                      <dt>Available slots</dt>
+                      <dd>
+                        {classItem.availableSlots ?? 0}/
+                        {classItem.maxStudents ?? 0}
+                      </dd>
+                    </div>
+                  </dl>
 
-                  <div>
-                    <dt>Available slots</dt>
-                    <dd>
-                      {classItem.availableSlots ?? 0}/
-                      {classItem.maxStudents ?? 0}
-                    </dd>
-                  </div>
-                </dl>
-
-                {!isEnrolled && (
-                  <button
-                    type="button"
-                    className="button button--outline button--md"
-                    onClick={() => {
-                      toast.error(
-                        "Class enrollment checkout is not connected yet. Please use course checkout for now.",
-                      );
-                    }}
-                  >
-                    Select this class
-                  </button>
-                )}
-              </article>
-            ))}
+                  {!isEnrolled && (
+                    <button
+                      type="button"
+                      className={`button ${isSelected ? "button--primary" : "button--outline"} button--md`}
+                      onClick={() => setSelectedClassId(classItem.id)}
+                    >
+                      {isSelected ? "Selected" : "Select this class"}
+                    </button>
+                  )}
+                </article>
+              );
+            })}
           </div>
         )}
       </section>

@@ -3,8 +3,6 @@ import { Navigate } from "react-router-dom";
 import { RoleGuard } from "./RoleGuard";
 import { ROLES } from "@/shared/constants/roles";
 import { AppLayout } from "../layouts/AppLayout";
-import { CartPage } from "@/features/cart";
-// import { MyCoursesPage } from "@/features/course";
 import {
   CheckoutPage,
   PaymentResultPage as CheckoutPaymentResultPage,
@@ -49,7 +47,6 @@ function getTraineeRoutes() {
                 />
               ),
             },
-            // { path: "courses", element: <MyCoursesPage /> },
             { path: "courses/:courseId", element: <LearningWorkspacePage /> },
             { path: "enrollments", element: <MyEnrollmentsPage /> },
             { path: "transactions", element: <MyTransactionsPage /> },
@@ -70,17 +67,6 @@ function getTraineeRoutes() {
               element: <PlaceholderPage title="AI Chatbot" />,
             },
           ],
-        },
-      ],
-    },
-
-    {
-      path: "/cart",
-      element: <RoleGuard allowedRoles={[ROLES.TRAINEE]} />,
-      children: [
-        {
-          element: <AppLayout />,
-          children: [{ index: true, element: <CartPage /> }],
         },
       ],
     },
