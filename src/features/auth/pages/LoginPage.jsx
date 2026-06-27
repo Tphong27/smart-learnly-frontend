@@ -11,7 +11,6 @@ import { loginSchema } from "../schemas/auth-schemas";
 import { AuthPage, AuthCard } from "../components/AuthCard";
 import { SocialDivider } from "../components/SocialDivider";
 import {
-  getDashboardPathByRole,
   isPathAllowedForRole,
 } from "@/app/routes/dashboard-path";
 
@@ -20,25 +19,6 @@ const isGoogleConfigured = Boolean(
   GOOGLE_CLIENT_ID && GOOGLE_CLIENT_ID !== "__SET_ME__",
 );
 
-const ROLE_RESTRICTED_PREFIXES = [
-  { prefix: "/admin", allow: [ROLES.ADMIN] },
-  { prefix: "/settings", allow: [ROLES.ADMIN] },
-  { prefix: "/sme", allow: [ROLES.ADMIN, ROLES.SME] },
-  { prefix: "/reports", allow: [ROLES.ADMIN, ROLES.TMO] },
-  { prefix: "/trainer", allow: [ROLES.TRAINER] },
-];
-
-function isPathAllowedForRole(pathname, role) {
-  if (!pathname) return false;
-  const normalizedRole = normalizeRole(role);
-  for (const { prefix, allow } of ROLE_RESTRICTED_PREFIXES) {
-    if (pathname === prefix || pathname.startsWith(prefix + "/")) {
-      return allow.includes(normalizedRole);
-    }
-  }
-  return true;
-}
-
 function getRedirectPath(location, user) {
   const requested = location.state?.from?.pathname;
 
@@ -46,16 +26,15 @@ function getRedirectPath(location, user) {
     return requested;
   }
 
-  // Trỏ chuẩn xác về Dashboard của từng Role
   const role = normalizeRole(user?.role);
-  if (role === ROLES.ADMIN) return "/admin/dashboard";
-  if (role === ROLES.SME) return "/sme/dashboard";
-  if (role === ROLES.TMO) return "/tmo/dashboard";
-  if (role === ROLES.TRAINER) return "/trainer/dashboard";
 
-  // Mặc định (cho Trainee hoặc không rõ role) về dashboard chung
-  return "/dashboard";
-  return getDashboardPathByRole(user?.role);
+  if (role === ROLES.ADMIN) return "/admin/dashboard";
+  if (role === ROLES.TMO) return "/admin/dashboard";
+  if (role === ROLES.SME) return "/admin/dashboard";
+  if (role === ROLES.TRAINER) return "/staff/courses";
+  if (role === ROLES.TRAINEE) return "/learning/progress";
+
+  return "/learning/courses";
 }
 
 export function LoginPage() {

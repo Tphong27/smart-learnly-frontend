@@ -3,15 +3,12 @@ import { Navigate } from "react-router-dom";
 import { RoleGuard } from "./RoleGuard";
 import { ROLES } from "@/shared/constants/roles";
 import { AppLayout } from "../layouts/AppLayout";
-import { CartPage } from "@/features/cart";
-import { MyCoursesPage } from "@/features/course";
 import {
   CheckoutPage,
   PaymentResultPage as CheckoutPaymentResultPage,
 } from "@/features/checkout";
 import { MyEnrollmentsPage } from "@/features/enrollment";
 import { MyTransactionsPage, PaymentResultPage } from "@/features/payment";
-import { LearningWorkspacePage } from "@/features/course";
 import {
   TraineeFlashTestListPage,
   TraineeFlashTestTakePage,

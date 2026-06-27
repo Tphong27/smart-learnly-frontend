@@ -6,16 +6,12 @@ export function getDashboardPathByRole(role) {
 
   switch (normalizedRole) {
     case ROLES.ADMIN:
+    case ROLES.TMO:
+    case ROLES.SME:
       return "/admin/dashboard";
 
-    case ROLES.TMO:
-      return "/tmo/dashboard";
-
-    case ROLES.SME:
-      return "/sme/dashboard";
-
     case ROLES.TRAINER:
-      return "/trainer/dashboard";
+      return "/staff/courses";
 
     case ROLES.TRAINEE:
       return "/dashboard";
@@ -41,23 +37,11 @@ export function isPathAllowedForRole(pathname, role) {
       allow: [ROLES.ADMIN, ROLES.TRAINER, ROLES.TMO, ROLES.SME],
     },
     {
-      prefix: "/trainer",
-      allow: [ROLES.TRAINER],
-    },
-    {
-      prefix: "/sme",
-      allow: [ROLES.SME],
-    },
-    {
-      prefix: "/tmo",
-      allow: [ROLES.TMO],
-    },
-    {
       prefix: "/learning",
       allow: [ROLES.TRAINEE],
     },
     {
-      prefix: "/dashboard",
+      prefix: "/cart",
       allow: [ROLES.TRAINEE],
     },
   ];
