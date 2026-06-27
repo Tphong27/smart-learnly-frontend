@@ -398,8 +398,8 @@ function QuizResultsScreen({ quizData, answers, onTryAgain }) {
 
 // ─── Main QuizPlayer Component ────────────────────────────────────────────────
 
-export function LearningQuizPlayer({ content, durationSeconds }) {
-  const quizData = parseQuizContent(content);
+export function LearningQuizPlayer({ content, durationSeconds, onCompleted }) {
+    const quizData = parseQuizContent(content);
 
   const [phase, setPhase] = useState("start");
   const [answers, setAnswers] = useState({});
@@ -429,8 +429,9 @@ export function LearningQuizPlayer({ content, durationSeconds }) {
   );
 
   const handleSubmit = useCallback(() => {
-    setPhase("results");
-  }, []);
+  setPhase("results");
+  onCompleted?.();
+}, [onCompleted]);
 
   const handleTryAgain = useCallback(() => {
     setAnswers({});

@@ -210,6 +210,32 @@ export function LearningWorkspacePage({
     [activeLessonIdForNote],
   );
 
+  const markLessonCompleted = useCallback(
+    async (lessonId) => {
+      if (!lessonId || mode !== "student") return;
+      if (completedLessonIds.has(lessonId)) return;
+
+      setCompletedLessonIds((currentIds) => {
+        const nextIds = new Set(currentIds);
+        nextIds.add(lessonId);
+        return nextIds;
+      });
+
+      try {
+        await learningService.updateLessonProgress(lessonId, true);
+      } catch (err) {
+        setCompletedLessonIds((currentIds) => {
+          const rollbackIds = new Set(currentIds);
+          rollbackIds.delete(lessonId);
+          return rollbackIds;
+        });
+
+        setError(err?.message || "Failed to update quiz progress");
+      }
+    },
+    [completedLessonIds, mode],
+  );
+
   if (loading) {
     return (
       <div className="learning-workspace">
@@ -388,6 +414,7 @@ export function LearningWorkspacePage({
                   onNoteChange={handleActiveLessonNoteChange}
                   nextLesson={nextLesson}
                   onNextLesson={handleGoToNextLesson}
+                  onQuizCompleted={markLessonCompleted}
                 />
               </div>
             ) : (
