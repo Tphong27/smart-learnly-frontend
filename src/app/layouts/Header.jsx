@@ -1,14 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import {
-    Bell,
-    LogOut,
-    Search,
-    User,
-    ChevronDown,
-    Menu,
-    Zap,
-} from "lucide-react";
+import { Bell, LogOut, User, ChevronDown, Menu, Zap } from "lucide-react";
 import "./Header.css";
 
 function getInitials(name) {
@@ -71,24 +63,11 @@ export function Header({ user, onLogout, onToggleSidebar }) {
                             <span className="app-header__logo-title">
                                 Smart Learnly
                             </span>
-                            <span className="app-header__logo-subtitle">
-                                Learning Platform
-                            </span>
                         </span>
                     </a>
 
                     {/* Vertical divider */}
                     <div className="app-header__divider-vertical" />
-
-                    {/* Search bar */}
-                    <div className="app-header__search-container">
-                        <Search size={16} className="app-header__search-icon" />
-                        <input
-                            type="text"
-                            placeholder="Search courses, lessons..."
-                            className="app-header__search-input"
-                        />
-                    </div>
                 </div>
 
                 {/* Right: Actions + Profile */}
