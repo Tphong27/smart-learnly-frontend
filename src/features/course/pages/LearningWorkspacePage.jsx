@@ -1,5 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useParams, useNavigate, Link, useSearchParams } from "react-router-dom";
+import {
+  useParams,
+  useNavigate,
+  Link,
+  useSearchParams,
+} from "react-router-dom";
 import {
   ArrowLeft,
   CheckCircle2,
@@ -128,8 +133,12 @@ export function LearningWorkspacePage({
     );
 
     if (requestedLesson) {
-      setActiveLessonId(getLessonId(requestedLesson));
-      setActiveLessonTab("overview");
+      const nextLessonId = getLessonId(requestedLesson);
+
+      if (nextLessonId) {
+        setActiveLessonId(nextLessonId);
+        setActiveLessonTab("overview");
+      }
     }
   }, [activeLessonId, allLessons, requestedLessonId]);
 
@@ -229,6 +238,32 @@ export function LearningWorkspacePage({
       }));
     },
     [activeLessonIdForNote],
+  );
+
+  const markLessonCompleted = useCallback(
+    async (lessonId) => {
+      if (!lessonId || mode !== "student") return;
+      if (completedLessonIds.has(lessonId)) return;
+
+      setCompletedLessonIds((currentIds) => {
+        const nextIds = new Set(currentIds);
+        nextIds.add(lessonId);
+        return nextIds;
+      });
+
+      try {
+        await learningService.updateLessonProgress(lessonId, true);
+      } catch (err) {
+        setCompletedLessonIds((currentIds) => {
+          const rollbackIds = new Set(currentIds);
+          rollbackIds.delete(lessonId);
+          return rollbackIds;
+        });
+
+        setError(err?.message || "Failed to update quiz progress");
+      }
+    },
+    [completedLessonIds, mode],
   );
 
   if (loading) {
@@ -410,6 +445,7 @@ export function LearningWorkspacePage({
                   nextLesson={nextLesson}
                   onNextLesson={handleGoToNextLesson}
                   workspaceMode={mode}
+                  onQuizCompleted={markLessonCompleted}
                 />
               </div>
             ) : (
