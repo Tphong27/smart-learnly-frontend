@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Bell, LogOut, User, ChevronDown, Menu, Zap } from "lucide-react";
 import { getDashboardPathByRole } from "@/app/routes/dashboard-path";
+import { ROLES, normalizeRole } from "@/shared/constants/roles";
 import "./Header.css";
 
 function getInitials(name) {
@@ -25,8 +26,8 @@ export function Header({ user, onLogout, onToggleSidebar }) {
     user?.email ||
     "User";
   const initials = getInitials(displayName);
-  const role = user?.role || "user";
-  const dashboardPath = getDashboardPathByRole(role);
+  const role = normalizeRole(user?.role);
+  const dashboardPath = role === ROLES.TRAINEE ? "/dashboard" : getDashboardPathByRole(role);
 
   useEffect(() => {
     function handleClick(event) {
