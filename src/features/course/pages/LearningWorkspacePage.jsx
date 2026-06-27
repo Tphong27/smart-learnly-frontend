@@ -262,16 +262,39 @@ export function LearningWorkspacePage({
   );
 
   const handleGoToNextLesson = useCallback(async () => {
-    if (!nextLesson) return;
+    if (!nextLesson || !activeLesson) return;
 
     const currentLessonId = getLessonId(activeLesson);
+    const currentLessonType = String(
+      activeLesson?.lessonType || "",
+    ).toUpperCase();
 
-    if (currentLessonId) {
+    const isActivityLesson = ["QUIZ", "FLASHCARD"].includes(currentLessonType);
+    const isCompleted = currentLessonId
+      ? completedLessonIds.has(currentLessonId)
+      : false;
+
+    if (isActivityLesson && !isCompleted) {
+      setError(
+        currentLessonType === "QUIZ"
+          ? "Please submit the quiz before moving to the next lesson."
+          : "Please complete all flashcards before moving to the next lesson.",
+      );
+      return;
+    }
+
+    if (currentLessonId && !isCompleted) {
       await markLessonCompleted(currentLessonId);
     }
 
     handleSelectLesson(nextLesson);
-  }, [activeLesson, handleSelectLesson, markLessonCompleted, nextLesson]);
+  }, [
+    activeLesson,
+    completedLessonIds,
+    handleSelectLesson,
+    markLessonCompleted,
+    nextLesson,
+  ]);
 
   if (loading) {
     return (
@@ -308,6 +331,17 @@ export function LearningWorkspacePage({
 
   const completedCount = completedLessonIds.size;
   const totalLessonCount = allLessons.length;
+
+  const currentLessonId = getLessonId(activeLesson);
+
+  const isActivityLesson = ["QUIZ", "FLASHCARD"].includes(
+    String(activeLesson?.lessonType || "").toUpperCase(),
+  );
+
+  const canGoNext =
+    !!nextLesson &&
+    (!isActivityLesson || completedLessonIds.has(currentLessonId));
+
   const progressPercent =
     totalLessonCount > 0
       ? Math.round((completedCount / totalLessonCount) * 100)
@@ -459,6 +493,8 @@ export function LearningWorkspacePage({
                   onNoteChange={handleActiveLessonNoteChange}
                   nextLesson={nextLesson}
                   onNextLesson={handleGoToNextLesson}
+                  canGoNext={canGoNext}
+                  isActivityLesson={isActivityLesson}
                   workspaceMode={mode}
                   onQuizCompleted={markLessonCompleted}
                   onFlashcardCompleted={markLessonCompleted}
