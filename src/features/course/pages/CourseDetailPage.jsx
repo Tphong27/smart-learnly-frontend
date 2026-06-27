@@ -6,6 +6,7 @@ import {
   CheckCircle2,
   Clock3,
   FileText,
+  Layers,
   PlayCircle,
   Sparkles,
   Star,
@@ -27,6 +28,7 @@ function LessonIcon({ type }) {
   const t = (type || "").toLowerCase();
   if (t.includes("video")) return <PlayCircle size={16} />;
   if (t.includes("quiz") || t.includes("test")) return <FileText size={16} />;
+  if (t.includes("flashcard")) return <Layers size={16} />;
   return <BookOpen size={16} />;
 }
 

@@ -222,6 +222,10 @@
   background: #ffdad6;
   color: #ba1a1a;
 }
+.lesson-icon.flashcard {
+  background: #dcfce7;
+  color: #15803d;
+}
 
 .lesson-title {
   font-size: 14px;
@@ -367,6 +371,7 @@
 /* Stats Bar */
 .stats-bar {
   display: flex;
+  flex-wrap: wrap;
   gap: 12px;
   margin-bottom: 24px;
   padding: 16px 20px;

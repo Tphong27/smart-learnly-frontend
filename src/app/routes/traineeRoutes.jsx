@@ -13,7 +13,11 @@ import {
   TraineeFlashTestListPage,
   TraineeFlashTestTakePage,
 } from "@/features/flashtest";
-import { CourseListPage, LearningWorkspacePage } from "@/features/course";
+import {
+  CourseListPage,
+  LearningFlashcardsPage,
+  LearningWorkspacePage,
+} from "@/features/course";
 import { TraineeDashboardPage } from "@/features/dashboard";
 import { TraineeProgressPage } from "@/features/progress";
 
@@ -69,7 +73,7 @@ function getTraineeRoutes() {
             },
             {
               path: "flashcards",
-              element: <PlaceholderPage title="Flashcards" />,
+              element: <LearningFlashcardsPage />,
             },
             {
               path: "ai-chatbot",

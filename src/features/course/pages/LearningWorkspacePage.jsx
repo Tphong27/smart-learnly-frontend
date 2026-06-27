@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { useParams, useNavigate, Link, useSearchParams } from "react-router-dom";
 import {
   ArrowLeft,
   CheckCircle2,
@@ -12,6 +12,7 @@ import {
   Circle,
   BookOpen,
   Eye,
+  Layers,
 } from "lucide-react";
 import { LearningLessonMedia } from "@/features/course/components/LearningLessonMedia";
 import { LearningLessonTabs } from "@/features/course/components/LearningLessonTabs";
@@ -27,10 +28,15 @@ function formatDuration(seconds) {
   return `${mins} min ${secs}s`;
 }
 
+function getLessonId(lesson) {
+  return lesson?.lessonId ?? lesson?.id ?? null;
+}
+
 function LessonIcon({ type, size = 16 }) {
   const t = (type || "").toLowerCase();
   if (t.includes("video")) return <PlayCircle size={size} />;
   if (t.includes("quiz")) return <HelpCircle size={size} />;
+  if (t.includes("flashcard")) return <Layers size={size} />;
   return <FileText size={size} />;
 }
 
@@ -38,14 +44,14 @@ function groupLessonsBySection(data) {
   return data?.sections || [];
 }
 
-// ─── Main Component ───────────────────────────────────────────────────────────
-
 export function LearningWorkspacePage({
   previewMode = false,
   mode = "student",
 }) {
   const { courseId } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const requestedLessonId = searchParams.get("lessonId");
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -81,7 +87,8 @@ export function LearningWorkspacePage({
           const completedIds = new Set(
             loadedLessons
               .filter((lesson) => lesson.completed)
-              .map((lesson) => lesson.lessonId),
+              .map((lesson) => getLessonId(lesson))
+              .filter(Boolean),
           );
 
           setCompletedLessonIds(completedIds);
@@ -108,14 +115,28 @@ export function LearningWorkspacePage({
   const [activeLessonId, setActiveLessonId] = useState(null);
 
   const handleSelectLesson = useCallback((lesson) => {
-    setActiveLessonId(lesson?.lessonId ?? null);
+    setActiveLessonId(getLessonId(lesson));
     setActiveLessonTab("overview");
   }, []);
+
+  useEffect(() => {
+    if (!requestedLessonId || allLessons.length === 0) return;
+    if (String(activeLessonId) === requestedLessonId) return;
+
+    const requestedLesson = allLessons.find(
+      (lesson) => String(getLessonId(lesson)) === requestedLessonId,
+    );
+
+    if (requestedLesson) {
+      setActiveLessonId(getLessonId(requestedLesson));
+      setActiveLessonTab("overview");
+    }
+  }, [activeLessonId, allLessons, requestedLessonId]);
 
   const activeLesson = useMemo(() => {
     if (allLessons.length === 0) return null;
     return (
-      allLessons.find((lesson) => lesson.lessonId === activeLessonId) ||
+      allLessons.find((lesson) => getLessonId(lesson) === activeLessonId) ||
       allLessons[0]
     );
   }, [allLessons, activeLessonId]);
@@ -123,9 +144,9 @@ export function LearningWorkspacePage({
   const currentIndex = useMemo(
     () =>
       allLessons.findIndex(
-        (lesson) => lesson.lessonId === activeLesson?.lessonId,
+        (lesson) => getLessonId(lesson) === getLessonId(activeLesson),
       ),
-    [activeLesson?.lessonId, allLessons],
+    [activeLesson, allLessons],
   );
 
   const nextLesson = useMemo(() => {
@@ -194,7 +215,7 @@ export function LearningWorkspacePage({
     [completedLessonIds, mode, updatingLessonIds],
   );
 
-  const activeLessonIdForNote = activeLesson?.lessonId;
+  const activeLessonIdForNote = getLessonId(activeLesson);
   const activeLessonNote = activeLessonIdForNote
     ? lessonNotesById[activeLessonIdForNote] || ""
     : "";
@@ -375,12 +396,12 @@ export function LearningWorkspacePage({
             {activeLesson ? (
               <div className="learning-lesson">
                 <LearningLessonMedia
-                  key={`media-${activeLesson.lessonId}`}
+                  key={`media-${getLessonId(activeLesson)}`}
                   lesson={activeLesson}
                 />
 
                 <LearningLessonTabs
-                  key={`tabs-${activeLesson.lessonId}`}
+                  key={`tabs-${getLessonId(activeLesson)}`}
                   lesson={activeLesson}
                   activeTab={activeLessonTab}
                   onTabChange={setActiveLessonTab}
@@ -388,6 +409,7 @@ export function LearningWorkspacePage({
                   onNoteChange={handleActiveLessonNoteChange}
                   nextLesson={nextLesson}
                   onNextLesson={handleGoToNextLesson}
+                  workspaceMode={mode}
                 />
               </div>
             ) : (
@@ -402,8 +424,6 @@ export function LearningWorkspacePage({
     </div>
   );
 }
-
-// ─── Section Accordion ───────────────────────────────────────────────────────
 
 function SectionAccordion({
   section,
@@ -436,13 +456,14 @@ function SectionAccordion({
       {expanded && (
         <div className="curriculum-section__lessons">
           {lessons.map((lesson, lIdx) => {
-            const isActive = lesson.lessonId === activeLesson?.lessonId;
-            const isCompleted = completedLessonIds.has(lesson.lessonId);
-            const isUpdating = updatingLessonIds.has(lesson.lessonId);
+            const lessonId = getLessonId(lesson);
+            const isActive = lessonId === getLessonId(activeLesson);
+            const isCompleted = completedLessonIds.has(lessonId);
+            const isUpdating = updatingLessonIds.has(lessonId);
             const type = (lesson.lessonType || "").toLowerCase();
             return (
               <div
-                key={lesson.lessonId || lIdx}
+                key={lessonId || lIdx}
                 className={`curriculum-lesson ${isActive ? "curriculum-lesson--active" : ""} ${isCompleted ? "curriculum-lesson--completed" : ""}`}
                 onClick={() => onSelectLesson(lesson)}
               >
@@ -458,7 +479,7 @@ function SectionAccordion({
                   title={isCompleted ? "Completed" : "Mark as complete"}
                   onClick={(event) => {
                     event.stopPropagation();
-                    onToggleLessonComplete(lesson.lessonId);
+                    onToggleLessonComplete(lessonId);
                   }}
                 >
                   {isCompleted ? (
