@@ -84,7 +84,7 @@ export function CourseProgressCard({ course }) {
             completed={course.flashcard.completed}
             total={course.flashcard.total}
             percent={course.flashcard.percent}
-            to="/learning/flashcards"
+            to={`/learning/flashcards?courseId=${course.courseId}`}
           />
         </div>
       )}

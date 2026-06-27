@@ -1,6 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { BookOpen, CheckCircle2, Clock3, Layers, RefreshCw } from "lucide-react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import {
+  BookOpen,
+  CheckCircle2,
+  Clock3,
+  Layers,
+  RefreshCw,
+} from "lucide-react";
 import { flashcardService } from "@/services/flashcard.service";
 import "./LearningFlashcardsPage.css";
 
@@ -22,7 +28,8 @@ function progressPercent(item) {
 }
 
 function actionLabel(item) {
-  const started = Number(item.knownCount || 0) + Number(item.stillLearningCount || 0);
+  const started =
+    Number(item.knownCount || 0) + Number(item.stillLearningCount || 0);
   return started > 0 ? "Continue" : "Study";
 }
 
@@ -44,9 +51,11 @@ function searchableText(item) {
 
 export function LearningFlashcardsPage() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const courseIdFromUrl = searchParams.get("courseId") || "";
   const [items, setItems] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedCourseId, setSelectedCourseId] = useState("");
+  const [selectedCourseId, setSelectedCourseId] = useState(courseIdFromUrl);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -65,6 +74,10 @@ export function LearningFlashcardsPage() {
   useEffect(() => {
     loadFlashcards();
   }, []);
+
+  useEffect(() => {
+    setSelectedCourseId(courseIdFromUrl);
+  }, [courseIdFromUrl]);
 
   const uniqueCourses = useMemo(() => {
     const coursesById = new Map();
@@ -110,6 +123,7 @@ export function LearningFlashcardsPage() {
   const clearFilters = () => {
     setSearchQuery("");
     setSelectedCourseId("");
+    setSearchParams({});
   };
 
   const goToSet = (item) => {
@@ -165,7 +179,16 @@ export function LearningFlashcardsPage() {
               />
               <select
                 value={selectedCourseId}
-                onChange={(event) => setSelectedCourseId(event.target.value)}
+                onChange={(event) => {
+                  const nextCourseId = event.target.value;
+                  setSelectedCourseId(nextCourseId);
+
+                  if (nextCourseId) {
+                    setSearchParams({ courseId: nextCourseId });
+                  } else {
+                    setSearchParams({});
+                  }
+                }}
                 aria-label="Filter by course"
               >
                 <option value="">All courses</option>
@@ -209,7 +232,10 @@ export function LearningFlashcardsPage() {
                       {item.sectionTitle} / {item.lessonTitle}
                     </p>
 
-                    <div className="learning-flashcard-progress" aria-label={`${percent}% known`}>
+                    <div
+                      className="learning-flashcard-progress"
+                      aria-label={`${percent}% known`}
+                    >
                       <div
                         className="learning-flashcard-progress__bar"
                         style={{ width: `${percent}%` }}
@@ -221,7 +247,8 @@ export function LearningFlashcardsPage() {
                         <CheckCircle2 size={14} /> {item.knownCount || 0} known
                       </span>
                       <span>
-                        <Clock3 size={14} /> {item.stillLearningCount || 0} learning
+                        <Clock3 size={14} /> {item.stillLearningCount || 0}{" "}
+                        learning
                       </span>
                       <span>
                         <BookOpen size={14} /> {item.notStartedCount || 0} new
@@ -229,7 +256,9 @@ export function LearningFlashcardsPage() {
                     </div>
 
                     <div className="learning-flashcard-card__footer">
-                      <span>Last reviewed: {formatDate(item.lastReviewedAt)}</span>
+                      <span>
+                        Last reviewed: {formatDate(item.lastReviewedAt)}
+                      </span>
                       <button type="button" onClick={() => goToSet(item)}>
                         {actionLabel(item)}
                       </button>
