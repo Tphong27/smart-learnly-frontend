@@ -276,6 +276,11 @@ export default function AdminCourseContentPage() {
       }));
     } catch (err) {
       console.error("Error fetching lessons for section " + sectionId, err);
+      // Đánh dấu section đã được fetch (dù lỗi) để tránh effect lặp fetch vô hạn
+      setSectionLessons((prev) => ({
+        ...prev,
+        [sectionId]: prev[sectionId] || [],
+      }));
     } finally {
       setLoadingLessons((prev) => ({ ...prev, [sectionId]: false }));
     }
