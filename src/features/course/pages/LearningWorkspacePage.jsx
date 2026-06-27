@@ -145,8 +145,169 @@ export function LearningWorkspacePage({
   const activeLesson = useMemo(() => {
     if (allLessons.length === 0) return null;
     return (
+<<<<<<< HEAD
       allLessons.find((lesson) => getLessonId(lesson) === activeLessonId) ||
       allLessons[0]
+=======
+        <div className="learning-workspace">
+            <header className="learning-workspace__topbar">
+                <button
+                    className="learning-workspace__topbar-back"
+                    onClick={() => {
+                        if (isAdminPreview) {
+                            navigate(`/admin/courses/${courseId}/content`);
+                        } else if (isGuestPreview || previewMode) {
+                            navigate(`/courses/${courseId}`);
+                        } else {
+                            // Student: quay lại trang trước đó (progress, enrollments...)
+                            // nếu có lịch sử; fallback về danh sách khóa học.
+                            navigate(-1);
+                        }
+                    }}
+                    title="Back"
+                >
+                    <ArrowLeft size={18} />
+                </button>
+
+                <h1 className="learning-workspace__course-title" title={courseTitle}>
+                    {courseTitle}
+                </h1>
+
+                {isAdminPreview && (
+                    <span className="learning-workspace__trainee-tag">
+                        <Eye size={14} />
+                        Viewing as trainee
+                    </span>
+                )}
+
+                {isGuestPreview && (
+                    <span className="learning-workspace__trainee-tag">
+                        <Eye size={14} />
+                        Preview mode
+                    </span>
+                )}
+
+                {(isGuestPreview || previewMode) && (
+                    <Link
+                        to={`/courses/${courseId}`}
+                        className="learning-workspace__topbar-cta"
+                    >
+                        View Course Details
+                    </Link>
+                )}
+
+                <div className="learning-workspace__topbar-progress">
+                    <div className="learning-workspace__progress-track">
+                        <div
+                            className="learning-workspace__progress-fill"
+                            style={{ width: `${progressPercent}%` }}
+                        />
+                    </div>
+                    <span className="learning-workspace__progress-label">
+                        {completedCount}/{totalLessonCount} done
+                    </span>
+                </div>
+            </header>
+
+            <div className="learning-workspace__body">
+                <aside
+                    className={`learning-workspace__sidebar ${sidebarOpen ? "open" : ""}`}
+                >
+                    <div className="learning-workspace__sidebar-header">
+                        <h2 className="learning-workspace__sidebar-title">
+                            Course content
+                        </h2>
+                        <button
+                            className="learning-workspace__sidebar-back"
+                            onClick={() => setSidebarOpen(false)}
+                            title="Close sidebar"
+                        >
+                            <X size={18} />
+                        </button>
+                    </div>
+
+                    {stats && (
+                        <div className="learning-workspace__stats">
+                            <span className="learning-workspace__stat">
+                                <span className="learning-workspace__stat-value">
+                                    {stats.totalSections}
+                                </span>{" "}
+                                sections
+                            </span>
+                            <span className="learning-workspace__stat">
+                                <span className="learning-workspace__stat-value">
+                                    {stats.totalLessons}
+                                </span>{" "}
+                                lessons
+                            </span>
+                            <span className="learning-workspace__stat">
+                                <span className="learning-workspace__stat-value">
+                                    {formatDuration(stats.totalDurationSeconds)}
+                                </span>
+                            </span>
+                        </div>
+                    )}
+
+                    <div className="learning-workspace__curriculum">
+                        {sections.map((section, sIdx) => (
+                            <div
+                                key={section.sectionId || sIdx}
+                                className="curriculum-section"
+                            >
+                                <SectionAccordion
+                                    section={section}
+                                    sIdx={sIdx}
+                                    activeLesson={activeLesson}
+                                    onSelectLesson={handleSelectLesson}
+                                    completedLessonIds={completedLessonIds}
+                                    onToggleLessonComplete={toggleLessonCompleted}
+                                />
+                            </div>
+                        ))}
+                    </div>
+                </aside>
+
+                <main className="learning-workspace__main">
+                    {!sidebarOpen && (
+                        <button
+                            className="learning-workspace__sidebar-toggle"
+                            onClick={() => setSidebarOpen(true)}
+                            title="Open sidebar"
+                        >
+                            <Menu size={18} />
+                        </button>
+                    )}
+
+                    <div className="learning-workspace__content">
+                        {activeLesson ? (
+                            <div className="learning-lesson">
+                                <LearningLessonMedia
+                                    key={`media-${activeLesson.lessonId}`}
+                                    lesson={activeLesson}
+                                />
+
+                                <LearningLessonTabs
+                                    key={`tabs-${activeLesson.lessonId}`}
+                                    lesson={activeLesson}
+                                    activeTab={activeLessonTab}
+                                    onTabChange={setActiveLessonTab}
+                                    note={activeLessonNote}
+                                    onNoteChange={handleActiveLessonNoteChange}
+                                    nextLesson={nextLesson}
+                                    onNextLesson={handleGoToNextLesson}
+                                />
+                            </div>
+                        ) : (
+                            <div className="learning-lesson__empty">
+                                <BookOpen size={48} />
+                                <p>Select a lesson from the sidebar to begin</p>
+                            </div>
+                        )}
+                    </div>
+                </main>
+            </div>
+        </div>
+>>>>>>> long
     );
   }, [allLessons, activeLessonId]);
 
