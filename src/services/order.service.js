@@ -67,8 +67,9 @@ export function normalizeOrderPayment(payload) {
 }
 
 export const orderService = {
-  async checkout(cartId) {
-    const response = await apiClient.post("/orders/checkout", { cartId });
+
+  async checkout(checkId) {
+    const response = await apiClient.post("/orders/checkout", { checkId });
     return normalizeCheckout(response);
   },
 
@@ -77,7 +78,6 @@ export const orderService = {
       courseId,
       classId,
     });
-
     return normalizeCheckout(response);
   },
 

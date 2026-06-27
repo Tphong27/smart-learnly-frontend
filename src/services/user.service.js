@@ -78,4 +78,12 @@ export const userService = {
       size,
     });
   },
+
+  async getPublicTrainerProfile(trainerId) {
+    const response = await apiClient.get(`/users/trainers/${trainerId}/profile`, {
+      skipAuthRedirect: true,
+    });
+
+    return unwrapData(response);
+  },
 };
