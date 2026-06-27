@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { courseService } from "../../../services/course.service";
 import { useToast } from "../../../shared/components/ui/Toast/useToast";
+import { QuizQuestionManager } from "../components/QuizQuestionManager";
 import "./AdminCourseContent.css";
 
 const reorder = (list, startIndex, endIndex) => {
@@ -25,6 +26,7 @@ function SectionItem({
   loadingLessons,
   onLessonClick,
   onDeleteLesson,
+  onManageQuestions,
   dragHandleProps,
 }) {
   const [isExpanded, setIsExpanded] = useState(true);
@@ -190,6 +192,17 @@ function SectionItem({
                           >
                             Edit content
                           </button>
+                          {String(lesson?.lessonType).toUpperCase() ===
+                            "QUIZ" && (
+                            <button
+                              onClick={() =>
+                                lesson?.id && onManageQuestions(lesson)
+                              }
+                              className="btn-outline"
+                            >
+                              Manage questions
+                            </button>
+                          )}
                           <button
                             className="icon-btn delete"
                             title="Delete lesson"
@@ -250,6 +263,8 @@ export default function AdminCourseContentPage() {
     lessonType: "video",
     isPreview: false,
   });
+
+  const [quizManagerLesson, setQuizManagerLesson] = useState(null);
 
   const fetchSections = useCallback(async () => {
     setLoadingSections(true);
@@ -585,6 +600,7 @@ export default function AdminCourseContentPage() {
                               onEditSection={handleOpenEditSection}
                               onDeleteSection={handleDeleteSection}
                               onDeleteLesson={handleDeleteLesson}
+                              onManageQuestions={setQuizManagerLesson}
                               lessons={sectionLessons[section.id] || []}
                               loadingLessons={loadingLessons[section.id] || false}
                               onLessonClick={(lesson) =>
@@ -851,6 +867,19 @@ export default function AdminCourseContentPage() {
           </div>
         )}
       </div>
+
+      <QuizQuestionManager
+        open={Boolean(quizManagerLesson)}
+        lesson={quizManagerLesson}
+        onClose={() => setQuizManagerLesson(null)}
+        onSaved={() => {
+          const sectionId =
+            quizManagerLesson?.sectionId || quizManagerLesson?.section?.id;
+          if (sectionId) {
+            fetchLessonsForSection(sectionId);
+          }
+        }}
+      />
     </DragDropContext>
   );
 }
