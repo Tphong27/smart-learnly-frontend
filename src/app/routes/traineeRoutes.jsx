@@ -18,6 +18,7 @@ import {
 } from "@/features/flashtest";
 import { CourseListPage, LearningWorkspacePage } from "@/features/course";
 import { TraineeDashboardPage } from "@/features/dashboard";
+import { TraineeProgressPage } from "@/features/progress";
 
 function PlaceholderPage({ title }) {
   return (
@@ -57,6 +58,10 @@ function getTraineeRoutes() {
             { path: "courses/:courseId", element: <LearningWorkspacePage /> },
             { path: "enrollments", element: <MyEnrollmentsPage /> },
             { path: "transactions", element: <MyTransactionsPage /> },
+            {
+              path: "progress",
+              element: <TraineeProgressPage />,
+            },
             {
               path: "classrooms",
               element: <PlaceholderPage title="Classrooms" />,

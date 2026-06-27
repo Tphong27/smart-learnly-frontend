@@ -16,4 +16,5 @@ export { classService } from './class.service'
 export { userService } from './user.service'
 export * from './flashtest.service'
 export { questionBankService } from './question-bank.service'
+export { traineeProgressService } from "./trainee-progress.service";
 
