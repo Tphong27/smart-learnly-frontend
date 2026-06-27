@@ -199,16 +199,6 @@ export function Sidebar({ userRole, open, onClose }) {
                         </NavLink>
                     ))}
                 </nav>
-
-                <div className="app-sidebar__footer sidebar__footer">
-                    <div className="app-sidebar__summary sidebar__summary">
-                        <p>SLP</p>
-                        <small>
-                            A learning management system for the SLP program at
-                            Accenture.
-                        </small>
-                    </div>
-                </div>
             </aside>
         </>
     );
