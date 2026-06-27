@@ -165,11 +165,6 @@ export function LearningWorkspacePage({
     return allLessons[currentIndex + 1];
   }, [allLessons, currentIndex]);
 
-  const handleGoToNextLesson = useCallback(() => {
-    if (!nextLesson) return;
-    handleSelectLesson(nextLesson);
-  }, [handleSelectLesson, nextLesson]);
-
   const toggleLessonCompleted = useCallback(
     async (lessonId) => {
       if (!lessonId || mode !== "student") return;
@@ -265,6 +260,18 @@ export function LearningWorkspacePage({
     },
     [completedLessonIds, mode],
   );
+
+  const handleGoToNextLesson = useCallback(async () => {
+    if (!nextLesson) return;
+
+    const currentLessonId = getLessonId(activeLesson);
+
+    if (currentLessonId) {
+      await markLessonCompleted(currentLessonId);
+    }
+
+    handleSelectLesson(nextLesson);
+  }, [activeLesson, handleSelectLesson, markLessonCompleted, nextLesson]);
 
   if (loading) {
     return (
@@ -446,6 +453,7 @@ export function LearningWorkspacePage({
                   onNextLesson={handleGoToNextLesson}
                   workspaceMode={mode}
                   onQuizCompleted={markLessonCompleted}
+                  onFlashcardCompleted={markLessonCompleted}
                 />
               </div>
             ) : (

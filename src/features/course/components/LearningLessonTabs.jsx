@@ -23,7 +23,7 @@ function getLessonId(lesson) {
   return lesson?.lessonId ?? lesson?.id ?? null;
 }
 
-function OverviewContent({ lesson, workspaceMode, onQuizCompleted }) {
+function OverviewContent({ lesson, workspaceMode, onQuizCompleted, onFlashcardCompleted }) {
   const type = (lesson?.lessonType || "").toUpperCase();
 
   if (type === "FLASHCARD") {
@@ -32,6 +32,7 @@ function OverviewContent({ lesson, workspaceMode, onQuizCompleted }) {
         lessonId={getLessonId(lesson)}
         adminMode={workspaceMode === "admin-preview"}
         readOnly={workspaceMode !== "student"}
+        onCompleted={() => onFlashcardCompleted?.(getLessonId(lesson))}
       />
     );
   }
@@ -155,6 +156,7 @@ export function LearningLessonTabs({
   onNextLesson,
   workspaceMode = "student",
   onQuizCompleted,
+  onFlashcardCompleted,
 }) {
   const resources = Array.isArray(lesson?.resources) ? lesson.resources : [];
   const totalResources = resources.length + (lesson?.attachmentUrl ? 1 : 0);
@@ -186,6 +188,7 @@ export function LearningLessonTabs({
               lesson={lesson}
               workspaceMode={workspaceMode}
               onQuizCompleted={onQuizCompleted}
+              onFlashcardCompleted={onFlashcardCompleted}
             />
           </div>
         )}

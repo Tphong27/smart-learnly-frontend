@@ -26,8 +26,9 @@ function progressStatus(card) {
 }
 
 function progressLabel(cards) {
-  const knownCount = cards.filter((card) => progressStatus(card) === "known")
-    .length;
+  const knownCount = cards.filter(
+    (card) => progressStatus(card) === "known",
+  ).length;
   return `${knownCount}/${cards.length} known`;
 }
 
@@ -44,12 +45,14 @@ export function FlashcardPractice({
   setId,
   adminMode = false,
   readOnly = false,
+  onCompleted,
 }) {
   const [flashcardSet, setFlashcardSet] = useState(null);
   const [selectedFilter, setSelectedFilter] = useState("all");
   const [loading, setLoading] = useState(true);
   const [submittingCardId, setSubmittingCardId] = useState(null);
   const [error, setError] = useState(null);
+  const [completionNotified, setCompletionNotified] = useState(false);
 
   const loadPractice = useCallback(async () => {
     setLoading(true);
@@ -77,10 +80,21 @@ export function FlashcardPractice({
     }
   }, [lessonId, loadPractice, setId]);
 
-  const cards = useMemo(
-    () => flashcardSet?.cards || [],
-    [flashcardSet?.cards],
-  );
+  const cards = useMemo(() => flashcardSet?.cards || [], [flashcardSet?.cards]);
+
+  const allCardsKnown = useMemo(() => {
+    return (
+      cards.length > 0 &&
+      cards.every((card) => progressStatus(card) === "known")
+    );
+  }, [cards]);
+
+  useEffect(() => {
+    if (readOnly || !lessonId || completionNotified || !allCardsKnown) return;
+
+    setCompletionNotified(true);
+    onCompleted?.(lessonId);
+  }, [allCardsKnown, completionNotified, lessonId, onCompleted, readOnly]);
 
   const progressCounts = useMemo(() => {
     const counts = { all: cards.length, new: 0, learning: 0, known: 0 };
