@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Client } from "@stomp/stompjs";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, CheckCircle, Clock, Download, RefreshCw, XCircle } from "lucide-react";
+import { ArrowLeft, CheckCircle, Clock, Download, RefreshCw, RotateCcw, XCircle } from "lucide-react";
 import {
   assignmentService,
   attemptService,
@@ -43,6 +43,7 @@ export function TeacherMonitorPage() {
   const [rows, setRows] = useState({});
   const [loading, setLoading] = useState(true);
   const [downloadingId, setDownloadingId] = useState(null);
+  const [reopeningId, setReopeningId] = useState(null);
   const [connected, setConnected] = useState(false);
   const [clockTick, setClockTick] = useState(Date.now());
 
@@ -58,6 +59,14 @@ export function TeacherMonitorPage() {
 
   const mergeEvent = (event) => {
     if (!event?.studentId) return;
+    if (String(event.status || "").toUpperCase() === "REOPENED") {
+      setRows((current) => {
+        const next = { ...current };
+        delete next[event.studentId];
+        return next;
+      });
+      return;
+    }
     setRows((current) => ({
       ...current,
       [event.studentId]: {
@@ -135,6 +144,29 @@ export function TeacherMonitorPage() {
     }
   };
 
+  const handleReopen = async (row) => {
+    if (!row.studentId || normalizedType !== "mcq") return;
+    const confirmed = window.confirm(
+      "Reopen this MCQ attempt? The student's previous answers and score will be cleared.",
+    );
+    if (!confirmed) return;
+
+    setReopeningId(row.studentId);
+    try {
+      await attemptService.reopen(id, row.studentId);
+      setRows((current) => {
+        const next = { ...current };
+        delete next[row.studentId];
+        return next;
+      });
+    } catch (error) {
+      console.error("Failed to reopen attempt", error);
+      alert(error.message || "Could not reopen this attempt.");
+    } finally {
+      setReopeningId(null);
+    }
+  };
+
   useEffect(() => {
     loadInitial();
   }, [id, normalizedType]);
@@ -202,6 +234,9 @@ export function TeacherMonitorPage() {
               <th>Started</th>
               <th>Remaining</th>
               <th>{normalizedType === "essay" ? "Submission" : "Score"}</th>
+              {normalizedType === "mcq" && (
+                <th className="ft-table-action">Action</th>
+              )}
             </tr>
           </thead>
           <tbody>
@@ -257,12 +292,33 @@ export function TeacherMonitorPage() {
                       <span className="ft-muted">Waiting for auto grade</span>
                     )}
                   </td>
+                  {normalizedType === "mcq" && (
+                    <td>
+                      <div className="ft-table-actions">
+                        {info.done ? (
+                          <button
+                            className="ft-button ft-button--secondary"
+                            type="button"
+                            disabled={reopeningId === row.studentId}
+                            onClick={() => handleReopen(row)}
+                          >
+                            <RotateCcw size={16} />
+                            {reopeningId === row.studentId ? "Opening..." : "Reopen"}
+                          </button>
+                        ) : (
+                          <span className="ft-muted">--</span>
+                        )}
+                      </div>
+                    </td>
+                  )}
                 </tr>
               );
             })}
             {!loading && rowList.length === 0 && (
               <tr>
-                <td colSpan={5}>No student activity yet.</td>
+                <td colSpan={normalizedType === "mcq" ? 6 : 5}>
+                  No student activity yet.
+                </td>
               </tr>
             )}
           </tbody>

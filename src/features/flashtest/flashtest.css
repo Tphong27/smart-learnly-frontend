@@ -411,7 +411,7 @@
 }
 
 .ft-table-action {
-  text-align: right;
+  text-align: center;
 }
 
 .ft-table-title {
@@ -436,7 +436,9 @@
 
 .ft-table-actions {
   display: flex;
-  justify-content: flex-end;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
 }
 
 .ft-take-header {

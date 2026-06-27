@@ -231,6 +231,9 @@ export const attemptService = {
     const response = await apiClient.get(`/test-attempts/test/${testId}`);
     return normalizeList(response);
   },
+  async reopen(testId, studentId) {
+    return apiClient.put(`/test-attempts/test/${testId}/student/${studentId}/reopen`);
+  },
 
   // Save answers
   async saveAnswer(attemptId, questionId, selectedAnswerId, essayAnswer = "") {

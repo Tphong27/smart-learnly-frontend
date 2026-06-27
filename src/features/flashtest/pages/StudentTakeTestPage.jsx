@@ -39,6 +39,11 @@ function getStudent() {
   };
 }
 
+function isCompletedAttempt(status) {
+  const normalized = String(status || "").toUpperCase();
+  return ["SUBMITTED", "GRADED", "EXPIRED", "TIMEOUT"].includes(normalized);
+}
+
 export function StudentTakeTestPage() {
   const { id, type } = useParams();
   const navigate = useNavigate();
@@ -99,6 +104,14 @@ export function StudentTakeTestPage() {
         if (normalizedType === "mcq") {
           const test = await testService.getById(id);
           const started = await attemptService.start(id, student.id, null, student.name);
+          if (isCompletedAttempt(started.status)) {
+            setTestData(test);
+            setAttempt(started);
+            setQuestions([]);
+            setTimeLeft(0);
+            setError("You have already completed this flash test.");
+            return;
+          }
           const mappings = await testService.getQuestions(id);
           const hydrated = mappings.map((mapping) => ({
             id: mapping.questionId,
@@ -311,7 +324,7 @@ export function StudentTakeTestPage() {
           <button
             className="ft-button ft-button--primary"
             type="button"
-            disabled={submitting || Boolean(error && normalizedType === "essay")}
+            disabled={submitting || Boolean(error)}
             onClick={handleSubmit}
           >
             <CheckCircle size={18} /> {submitting ? "Submitting..." : "Submit"}
