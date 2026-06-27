@@ -19,7 +19,7 @@ import {
   getOriginalPrice,
   hasValidDiscount,
 } from "../utils/course-price";
-import { courseService, orderService } from "@/services";
+import { courseService, orderService, enrollmentService } from "@/services";
 import { ClassSelectionPopup } from "../components/ClassSelectionPopup";
 import "../../admin/admin-shared.css";
 import "./CourseDetailPage.css";
@@ -44,6 +44,7 @@ export function CourseDetailPage() {
   const [isEnrolled, setIsEnrolled] = useState(false);
   const [classPopupOpen, setClassPopupOpen] = useState(false);
   const [checkoutClassId, setCheckoutClassId] = useState(null);
+  const [freeEnrollLoading, setFreeEnrollLoading] = useState(false);
 
   function hasAccessToken() {
     const token = localStorage.getItem("accessToken");
@@ -173,89 +174,111 @@ export function CourseDetailPage() {
     return false;
   }
 
-  function ensurePaidCourse() {
-    if (!isFreeCourse(course)) {
-      return true;
+  async function handleFreeEnroll() {
+    if (!ensureAuthenticated()) return;
+
+    const courseId = getCourseId();
+
+    if (!courseId) {
+      toast.error("Course information is missing.");
+      return;
     }
 
-    toast.error(
-      "Free enrollment is handled by the enrollment flow. Please use the free enrollment action when integrated.",
-    );
+    setFreeEnrollLoading(true);
 
-    return false;
+    try {
+      const enrollment = await enrollmentService.enrollFree(courseId);
+
+      setIsEnrolled(true);
+
+      toast.success(
+        enrollment?.alreadyEnrolled
+          ? "You are already enrolled in this course."
+          : "Enrollment completed successfully.",
+      );
+
+      navigate(`/learning/courses/${courseId}`);
+    } catch (err) {
+      toast.error(err?.message || "Could not enroll in this free course.");
+    } finally {
+      setFreeEnrollLoading(false);
+    }
   }
 
-function handleBuyNowClick() {
-  if (!ensureAuthenticated()) return;
-  if (!ensurePaidCourse()) return;
+  function handleBuyNowClick() {
+    if (!ensureAuthenticated()) return;
 
-  if (classes.length === 0) {
-    toast.error("This course does not have any available class yet.");
-    return;
+    if (isFreeCourse(course)) {
+      handleFreeEnroll();
+      return;
+    }
+
+    if (classes.length === 0) {
+      toast.error("This course does not have any available class yet.");
+      return;
+    }
+
+    setClassPopupOpen(true);
   }
 
-  setClassPopupOpen(true);
-}
+  async function handleCheckoutSelectedClass(classItem) {
+    if (!ensureAuthenticated()) return;
 
-async function handleCheckoutSelectedClass(classItem) {
-  if (!ensureAuthenticated()) return;
-  if (!ensurePaidCourse()) return;
+    const courseId = getCourseId();
 
-  const courseId = getCourseId();
+    if (!courseId) {
+      toast.error("Course information is missing.");
+      return;
+    }
 
-  if (!courseId) {
-    toast.error("Course information is missing.");
-    return;
-  }
+    if (!classItem?.id) {
+      toast.error("Class information is missing.");
+      return;
+    }
 
-  if (!classItem?.id) {
-    toast.error("Class information is missing.");
-    return;
-  }
+    if (!isClassSelectable(classItem)) {
+      toast.error("This class is not available for checkout.");
+      return;
+    }
 
-  if (!isClassSelectable(classItem)) {
-    toast.error("This class is not available for checkout.");
-    return;
-  }
+    setCheckoutClassId(classItem.id);
+    setBuyNowLoading(true);
 
-  setCheckoutClassId(classItem.id);
-  setBuyNowLoading(true);
+    try {
+      const checkout = await orderService.buyNowCheckout({
+        courseId,
+        classId: classItem.id,
+      });
 
-  try {
-    const checkout = await orderService.buyNowCheckout({
-      courseId,
-      classId: classItem.id,
-    });
+      toast.success("Checkout created.");
 
-    toast.success("Checkout created.");
-
-    navigate(`/checkout/${checkout.orderId}`, {
-      state: {
-        checkout,
-        expectedCourse: {
-          courseId,
-          classId: classItem.id,
-          title: course.title,
-          className: classItem.className,
-          trainerName: classItem.trainerName,
-          scheduleDescription: classItem.scheduleDescription,
-          startDate: classItem.startDate,
-          endDate: classItem.endDate,
-          originalPrice,
-          displayPrice,
-          hasDiscount,
-          discountPercent,
-          currency: course.currency ?? "VND",
+      navigate(`/checkout/${checkout.orderId}`, {
+        state: {
+          checkout,
+          expectedCourse: {
+            courseId,
+            classId: classItem.id,
+            title: course.title,
+            className: classItem.className,
+            trainerName: classItem.trainerName,
+            scheduleDescription: classItem.scheduleDescription,
+            startDate: classItem.startDate,
+            endDate: classItem.endDate,
+            originalPrice,
+            displayPrice,
+            hasDiscount,
+            discountPercent,
+            currency: course.currency ?? "VND",
+          },
         },
-      },
-    });
-  } catch (err) {
-    toast.error(err?.message || "Could not start checkout.");
-  } finally {
-    setBuyNowLoading(false);
-    setCheckoutClassId(null);
+      });
+    } catch (err) {
+      toast.error(err?.message || "Could not start checkout.");
+    } finally {
+      setBuyNowLoading(false);
+      setCheckoutClassId(null);
+    }
   }
-}
 
   return (
     <div className="course-detail">
@@ -344,10 +367,14 @@ async function handleCheckoutSelectedClass(classItem) {
                 <button
                   type="button"
                   onClick={handleBuyNowClick}
-                  disabled={buyNowLoading || isFreeCourse(course)}
+                  disabled={buyNowLoading || freeEnrollLoading}
                   className="button button--primary course-detail__cta"
                 >
-                  {buyNowLoading ? "Processing..." : "Buy Now"}
+                  {freeEnrollLoading || buyNowLoading
+                    ? "Processing..."
+                    : isFreeCourse(course)
+                      ? "Enroll Now"
+                      : "Buy Now"}
                 </button>
 
                 <Link
