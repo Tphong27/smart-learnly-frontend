@@ -23,7 +23,12 @@ function getLessonId(lesson) {
   return lesson?.lessonId ?? lesson?.id ?? null;
 }
 
-function OverviewContent({ lesson, workspaceMode, onQuizCompleted, onFlashcardCompleted }) {
+function OverviewContent({
+  lesson,
+  workspaceMode,
+  onQuizCompleted,
+  onFlashcardCompleted,
+}) {
   const type = (lesson?.lessonType || "").toUpperCase();
 
   if (type === "FLASHCARD") {
@@ -154,6 +159,8 @@ export function LearningLessonTabs({
   onNoteChange,
   nextLesson,
   onNextLesson,
+  canGoNext = true,
+  isActivityLesson = false,
   workspaceMode = "student",
   onQuizCompleted,
   onFlashcardCompleted,
@@ -239,10 +246,20 @@ export function LearningLessonTabs({
             type="button"
             className="lesson-tabs__next-btn"
             onClick={onNextLesson}
+            disabled={!canGoNext}
+            title={
+              !canGoNext && isActivityLesson
+                ? "Complete this activity before moving to the next lesson."
+                : undefined
+            }
           >
             <span>
               Next lesson
-              <small>{nextLesson.title}</small>
+              <small>
+                {!canGoNext && isActivityLesson
+                  ? "Complete this activity first"
+                  : nextLesson.title}
+              </small>
             </span>
             <ArrowRight size={18} />
           </button>
