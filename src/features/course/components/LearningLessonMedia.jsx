@@ -68,31 +68,37 @@ function PdfSlideViewer({ url }) {
     };
 
     if (error) {
+        // react-pdf tải PDF qua fetch/XHR nên bị chặn nếu storage (R2/Supabase) thiếu
+        // header CORS. Fallback sang iframe: trình duyệt render PDF qua navigation,
+        // không qua XHR, nên không bị CORS chặn với file public.
         return (
-            <div className="pdf-viewer-error">
-                <div className="pdf-viewer-error__card">
-                    <File size={48} className="pdf-viewer-error__icon" />
-                    <h3>Could not load PDF</h3>
-                    <p>
-                        This file could not be previewed. You can download or
-                        open it instead.
-                    </p>
-                    <div className="pdf-viewer-error__actions">
+            <div className="pdf-viewer">
+                <div className="pdf-viewer__toolbar">
+                    <span className="pdf-viewer__page-info">PDF document</span>
+                    <div className="pdf-viewer__toolbar-group">
                         <button
-                            className="pdf-viewer-error__btn pdf-viewer-error__btn--primary"
+                            className="pdf-viewer__tool-btn"
                             onClick={openDocument}
+                            title="Download PDF"
                         >
-                            <Download size={16} />
-                            Download PDF
+                            <Download size={18} />
                         </button>
                         <button
-                            className="pdf-viewer-error__btn"
+                            className="pdf-viewer__tool-btn"
                             onClick={openDocument}
+                            title="Open in new tab"
                         >
-                            <ExternalLink size={16} />
-                            Open in new tab
+                            <ExternalLink size={18} />
                         </button>
                     </div>
+                </div>
+                <div className="pdf-viewer__container">
+                    <iframe
+                        title="PDF preview"
+                        src={url}
+                        className="pdf-viewer__frame"
+                        style={{ width: "100%", height: "100%", border: "none" }}
+                    />
                 </div>
             </div>
         );

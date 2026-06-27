@@ -11,6 +11,7 @@ import {
   Star,
 } from "lucide-react";
 import { useToast } from "@/shared/components/ui";
+import { SiteHeader } from "@/shared/components/SiteHeader";
 import {
   formatVnd,
   getDiscountPercent,
@@ -108,20 +109,26 @@ export function CourseDetailPage() {
 
   if (loading) {
     return (
-      <div className="course-detail">
-        <div className="admin-loading">Loading course...</div>
-      </div>
+      <>
+        <SiteHeader />
+        <div className="course-detail">
+          <div className="admin-loading">Loading course...</div>
+        </div>
+      </>
     );
   }
 
   if (error || !course) {
     return (
-      <div className="course-detail">
-        <div className="admin-error">{error || "Course not found."}</div>
-        <Link to={backTo} className="course-detail__back-link">
-          <ArrowLeft size={14} /> {backLabel}
-        </Link>
-      </div>
+      <>
+        <SiteHeader />
+        <div className="course-detail">
+          <div className="admin-error">{error || "Course not found."}</div>
+          <Link to={backTo} className="course-detail__back-link">
+            <ArrowLeft size={14} /> {backLabel}
+          </Link>
+        </div>
+      </>
     );
   }
 
@@ -256,8 +263,10 @@ async function handleCheckoutSelectedClass(classItem) {
 }
 
   return (
-    <div className="course-detail">
-      <div className="course-detail__hero">
+    <>
+      <SiteHeader />
+      <div className="course-detail">
+        <div className="course-detail__hero">
         <div className="course-detail__hero-main">
           <Link to={backTo} className="course-detail__back-link">
             <ArrowLeft size={14} /> {backLabel}
@@ -474,16 +483,17 @@ async function handleCheckoutSelectedClass(classItem) {
         </Link>
       </section>
 
-      {classPopupOpen && (
-        <ClassSelectionPopup
-          classes={classes}
-          buyNowLoading={buyNowLoading}
-          checkoutClassId={checkoutClassId}
-          isClassSelectable={isClassSelectable}
-          onClose={() => setClassPopupOpen(false)}
-          onSelectClass={handleCheckoutSelectedClass}
-        />
-      )}
-    </div>
+        {classPopupOpen && (
+          <ClassSelectionPopup
+            classes={classes}
+            buyNowLoading={buyNowLoading}
+            checkoutClassId={checkoutClassId}
+            isClassSelectable={isClassSelectable}
+            onClose={() => setClassPopupOpen(false)}
+            onSelectClass={handleCheckoutSelectedClass}
+          />
+        )}
+      </div>
+    </>
   );
 }
