@@ -1,18 +1,17 @@
 import { useEffect, useMemo, useState } from "react";
-import { Pencil, Trash2, Plus } from "lucide-react";
+import { Pencil, Trash2, Plus, Upload } from "lucide-react";
 import { Modal, Button, useToast } from "@/shared/components/ui";
 import { courseService } from "@/services/course.service";
 import {
   QUESTION_TYPES,
   QUESTION_TYPE_LABELS,
-  SAMPLE_QUIZ_JSON,
   validateQuizQuestions,
-  normalizeImportedQuestions,
   sanitizeQuizHtml,
   parseQuizContent,
   serializeQuizContent,
 } from "../utils/quiz-question-schema";
 import { QuizQuestionEditModal } from "./QuizQuestionEditModal";
+import { QuizImportModal } from "./QuizImportModal";
 import "./QuizQuestionManager.css";
 
 function correctAnswerLabel(question) {
@@ -38,14 +37,13 @@ export function QuizQuestionManager({ open, lesson, onClose, onSaved }) {
 
   const [quizTitle, setQuizTitle] = useState("");
   const [questions, setQuestions] = useState([]);
-  const [jsonText, setJsonText] = useState("");
-  const [validateBeforeImport, setValidateBeforeImport] = useState(true);
   const [errors, setErrors] = useState([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const [editIndex, setEditIndex] = useState(null); // null = đóng, -1 = thêm mới
   const [editOpen, setEditOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
 
   // Load câu hỏi hiện có khi mở modal.
   useEffect(() => {
@@ -54,7 +52,6 @@ export function QuizQuestionManager({ open, lesson, onClose, onSaved }) {
     (async () => {
       setLoading(true);
       setErrors([]);
-      setJsonText("");
       try {
         const response = await courseService.getLessonDetail(lesson.id);
         const data = response?.data || response;
@@ -77,47 +74,10 @@ export function QuizQuestionManager({ open, lesson, onClose, onSaved }) {
     };
   }, [open, lesson?.id, toast]);
 
-  const parseJson = () => {
-    try {
-      return { data: JSON.parse(jsonText), parseError: null };
-    } catch (error) {
-      return { data: null, parseError: error.message };
-    }
-  };
-
-  const handleValidate = () => {
-    const { data, parseError } = parseJson();
-    if (parseError) {
-      setErrors([{ index: -1, field: "json", message: `Invalid JSON: ${parseError}` }]);
-      return false;
-    }
-    const { valid, errors: validationErrors } = validateQuizQuestions(data);
-    setErrors(validationErrors);
-    if (valid) {
-      toast.success("JSON is valid.");
-    }
-    return valid;
-  };
-
-  const handleImport = () => {
-    const { data, parseError } = parseJson();
-    if (parseError) {
-      setErrors([{ index: -1, field: "json", message: `Invalid JSON: ${parseError}` }]);
-      return;
-    }
-    if (validateBeforeImport) {
-      const { valid, errors: validationErrors } = validateQuizQuestions(data);
-      if (!valid) {
-        setErrors(validationErrors);
-        toast.error("Validation failed. Fix the errors before importing.");
-        return;
-      }
-    }
-    const normalized = normalizeImportedQuestions(data);
-    setQuestions(normalized);
-    setErrors([]);
-    setJsonText("");
-    toast.success(`Imported ${normalized.length} question(s).`);
+  const handleImported = (importedQuestions) => {
+    setQuestions(importedQuestions);
+    setImportOpen(false);
+    toast.success(`Imported ${importedQuestions.length} question(s).`);
   };
 
   const handleDelete = (idx) => {
@@ -225,55 +185,35 @@ export function QuizQuestionManager({ open, lesson, onClose, onSaved }) {
               placeholder="Quiz title"
             />
 
-            <div className="quiz-mgr__import">
-              <label className="quiz-mgr__label">Import questions (JSON)</label>
-              <textarea
-                className="quiz-mgr__textarea"
-                rows={8}
-                value={jsonText}
-                onChange={(e) => setJsonText(e.target.value)}
-                placeholder={SAMPLE_QUIZ_JSON}
-              />
-
-              <label className="quiz-mgr__checkbox">
-                <input
-                  type="checkbox"
-                  checked={validateBeforeImport}
-                  onChange={(e) => setValidateBeforeImport(e.target.checked)}
-                />
-                Validate JSON before import
-              </label>
-
-              <div className="quiz-mgr__import-actions">
-                <Button variant="secondary" onClick={handleValidate}>
-                  Validate JSON
-                </Button>
-                <Button variant="primary" onClick={handleImport}>
-                  Import Questions
-                </Button>
-              </div>
-
-              {errors.length > 0 && (
-                <ul className="quiz-mgr__errors">
-                  {errors.map((err, i) => (
-                    <li key={i}>{err.message}</li>
-                  ))}
-                </ul>
-              )}
-            </div>
-
             <div className="quiz-mgr__table-header">
               <span className="quiz-mgr__label">
                 Questions ({questions.length})
               </span>
-              <button
-                type="button"
-                className="quiz-mgr__add-btn"
-                onClick={() => openEdit(-1)}
-              >
-                <Plus size={15} /> Add question
-              </button>
+              <div className="quiz-mgr__header-actions">
+                <button
+                  type="button"
+                  className="quiz-mgr__add-btn"
+                  onClick={() => setImportOpen(true)}
+                >
+                  <Upload size={15} /> Import questions
+                </button>
+                <button
+                  type="button"
+                  className="quiz-mgr__add-btn"
+                  onClick={() => openEdit(-1)}
+                >
+                  <Plus size={15} /> Add question
+                </button>
+              </div>
             </div>
+
+            {errors.length > 0 && (
+              <ul className="quiz-mgr__errors">
+                {errors.map((err, i) => (
+                  <li key={i}>{err.message}</li>
+                ))}
+              </ul>
+            )}
 
             {questions.length === 0 ? (
               <div className="quiz-mgr__empty">
@@ -351,6 +291,13 @@ export function QuizQuestionManager({ open, lesson, onClose, onSaved }) {
           setEditIndex(null);
         }}
         onSubmit={handleEditSubmit}
+      />
+
+      <QuizImportModal
+        key={importOpen ? "import-open" : "import-closed"}
+        open={importOpen}
+        onClose={() => setImportOpen(false)}
+        onImport={handleImported}
       />
     </>
   );
