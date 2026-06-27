@@ -1,6 +1,6 @@
-﻿import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Archive, Eye, Plus, Search } from 'lucide-react'
+import { Archive, Edit2, Eye, Plus, Search } from 'lucide-react'
 import { Button, FormField, Modal, useToast } from '@/shared/components/ui'
 import { courseService, getCurrentUser, questionBankService } from '@/services'
 import '../../admin-shared.css'
@@ -19,17 +19,23 @@ function formatDate(value) {
   }
 }
 
-function BankModal({ open, courses, onClose, onSaved }) {
+function BankModal({ bank, open, courses, onClose, onSaved }) {
   const toast = useToast()
-  const [values, setValues] = useState({ courseId: '', name: '', description: '' })
+  const editing = Boolean(bank?.bankId || bank?.id)
+  const [values, setValues] = useState(() => ({
+    courseId: bank?.courseId || '',
+    name: bank?.name || '',
+    description: bank?.description || '',
+    status: bank?.status || 'draft',
+  }))
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState(null)
-
 
   async function handleSubmit(event) {
     event.preventDefault()
     const name = values.name.trim()
-    if (!values.courseId) {
+    const description = values.description.trim() || null
+    if (!editing && !values.courseId) {
       setError('Course is required.')
       return
     }
@@ -40,22 +46,32 @@ function BankModal({ open, courses, onClose, onSaved }) {
     setSubmitting(true)
     setError(null)
     try {
-      await questionBankService.createBank({
-        courseId: values.courseId,
-        name,
-        description: values.description.trim() || null,
-      })
-      toast.success('Question bank created')
+      if (editing) {
+        await questionBankService.updateBank(bank.bankId || bank.id, {
+          name,
+          description,
+          status: values.status || 'draft',
+        })
+        toast.success('Question bank updated')
+      } else {
+        await questionBankService.createBank({
+          courseId: values.courseId,
+          name,
+          description,
+          status: values.status || 'draft',
+        })
+        toast.success('Question bank created')
+      }
       onSaved()
     } catch (err) {
-      setError(err?.message || 'Could not create question bank.')
+      setError(err?.message || `Could not ${editing ? 'update' : 'create'} question bank.`)
     } finally {
       setSubmitting(false)
     }
   }
 
   return (
-    <Modal open={open} title="Create question bank" size="md" onClose={submitting ? undefined : onClose}>
+    <Modal open={open} title={editing ? 'Edit question bank' : 'Create question bank'} size="md" onClose={submitting ? undefined : onClose}>
       {error && <div className="auth-card__alert" style={{ marginBottom: 14 }}>{error}</div>}
       <form className="form" onSubmit={handleSubmit}>
         <div className="admin-form-grid">
@@ -65,6 +81,7 @@ function BankModal({ open, courses, onClose, onSaved }) {
               id="bank-course"
               className="admin-toolbar__select"
               value={values.courseId}
+              disabled={editing}
               onChange={(event) => setValues((current) => ({ ...current, courseId: event.target.value }))}
             >
               <option value="">Select course</option>
@@ -82,6 +99,19 @@ function BankModal({ open, courses, onClose, onSaved }) {
             />
           </div>
           <div className="input-field admin-form-grid__full">
+            <label className="input-field__label" htmlFor="bank-status">Status</label>
+            <select
+              id="bank-status"
+              className="admin-toolbar__select"
+              value={values.status}
+              onChange={(event) => setValues((current) => ({ ...current, status: event.target.value }))}
+            >
+              <option value="draft">Draft</option>
+              <option value="approved">Approved</option>
+              <option value="archived">Archived</option>
+            </select>
+          </div>
+          <div className="input-field admin-form-grid__full">
             <label className="input-field__label" htmlFor="bank-description">Description</label>
             <textarea
               id="bank-description"
@@ -94,7 +124,7 @@ function BankModal({ open, courses, onClose, onSaved }) {
         </div>
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 18 }}>
           <Button type="button" variant="ghost" onClick={onClose} disabled={submitting}>Cancel</Button>
-          <Button type="submit" loading={submitting}>Create</Button>
+          <Button type="submit" loading={submitting}>{editing ? 'Save changes' : 'Create'}</Button>
         </div>
       </form>
     </Modal>
@@ -109,10 +139,11 @@ export function AdminQuestionBanksPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [search, setSearch] = useState('')
-  const [status, setStatus] = useState('active')
+  const [status, setStatus] = useState('all')
   const [courseId, setCourseId] = useState('')
   const [refreshKey, setRefreshKey] = useState(0)
   const [modalOpen, setModalOpen] = useState(false)
+  const [editingBank, setEditingBank] = useState(null)
   const [archivingId, setArchivingId] = useState(null)
 
   useEffect(() => {
@@ -157,13 +188,29 @@ export function AdminQuestionBanksPage() {
     return new Map(courses.map((course) => [course.id, course.title]))
   }, [courses])
 
+  function openCreateModal() {
+    setEditingBank(null)
+    setModalOpen(true)
+  }
+
+  function openEditModal(bank) {
+    setEditingBank(bank)
+    setModalOpen(true)
+  }
+
+  function closeModal() {
+    setModalOpen(false)
+    setEditingBank(null)
+  }
+
   async function handleArchive(bank) {
-    if (!writable || !bank?.bankId) return
+    const bankId = bank?.bankId || bank?.id
+    if (!writable || !bankId) return
     const confirmed = window.confirm(`Archive question bank "${bank.name}"?`)
     if (!confirmed) return
-    setArchivingId(bank.bankId)
+    setArchivingId(bankId)
     try {
-      await questionBankService.archiveBank(bank.bankId)
+      await questionBankService.archiveBank(bankId)
       toast.success('Question bank archived')
       setRefreshKey((key) => key + 1)
     } catch (err) {
@@ -181,7 +228,7 @@ export function AdminQuestionBanksPage() {
           <p className="admin-page__subtitle">Manage course-scoped question banks for quiz and test authoring.</p>
         </div>
         {writable && (
-          <Button leftIcon={<Plus size={16} />} onClick={() => setModalOpen(true)}>Create bank</Button>
+          <Button leftIcon={<Plus size={16} />} onClick={openCreateModal}>Create bank</Button>
         )}
       </header>
 
@@ -196,9 +243,10 @@ export function AdminQuestionBanksPage() {
               {courses.map((course) => <option key={course.id} value={course.id}>{course.title}</option>)}
             </select>
             <select className="admin-toolbar__select" value={status} onChange={(event) => setStatus(event.target.value)}>
-              <option value="active">Active</option>
-              <option value="archived">Archived</option>
               <option value="all">All statuses</option>
+              <option value="draft">Draft</option>
+              <option value="approved">Approved</option>
+              <option value="archived">Archived</option>
             </select>
           </div>
           <span style={{ color: '#64748b', fontSize: 13 }}>{items.length} banks</span>
@@ -220,7 +268,7 @@ export function AdminQuestionBanksPage() {
                   <th>Status</th>
                   <th>Questions</th>
                   <th>Updated</th>
-                  <th style={{ width: 120, textAlign: 'right' }}>Actions</th>
+                  <th style={{ width: 140, textAlign: 'right' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -235,7 +283,12 @@ export function AdminQuestionBanksPage() {
                       <div className="admin-table__actions" style={{ justifyContent: 'flex-end' }}>
                         <Link className="admin-table__icon-btn" title="Open" to={`/admin/question-banks/${bank.bankId || bank.id}`}><Eye size={15} /></Link>
                         {writable && bank.status !== 'archived' && (
-                          <button type="button" className="admin-table__icon-btn admin-table__icon-btn--danger" title="Archive" disabled={archivingId === bank.bankId} onClick={() => handleArchive(bank)}>
+                          <button type="button" className="admin-table__icon-btn" title="Edit" onClick={() => openEditModal(bank)}>
+                            <Edit2 size={15} />
+                          </button>
+                        )}
+                        {writable && bank.status !== 'archived' && (
+                          <button type="button" className="admin-table__icon-btn admin-table__icon-btn--danger" title="Archive" disabled={archivingId === (bank.bankId || bank.id)} onClick={() => handleArchive(bank)}>
                             <Archive size={15} />
                           </button>
                         )}
@@ -249,16 +302,18 @@ export function AdminQuestionBanksPage() {
         </div>
       </section>
 
-      <BankModal
-        open={modalOpen}
-        courses={courses}
-        onClose={() => setModalOpen(false)}
-        onSaved={() => {
-          setModalOpen(false)
-          setRefreshKey((key) => key + 1)
-        }}
-      />
+      {modalOpen && (
+        <BankModal
+          bank={editingBank}
+          open={modalOpen}
+          courses={courses}
+          onClose={closeModal}
+          onSaved={() => {
+            closeModal()
+            setRefreshKey((key) => key + 1)
+          }}
+        />
+      )}
     </div>
   )
 }
-
