@@ -51,6 +51,83 @@
   font-weight: 800;
 }
 
+.learning-flashcards-filters {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 14px;
+  margin-bottom: 18px;
+}
+
+.learning-flashcards-filters__controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+}
+
+.learning-flashcards-filters input,
+.learning-flashcards-filters select {
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #0f172a;
+  font: inherit;
+  font-size: 14px;
+  padding: 9px 11px;
+}
+
+.learning-flashcards-filters input {
+  flex: 1;
+  min-width: 220px;
+}
+
+.learning-flashcards-filters select {
+  min-width: 180px;
+}
+
+.learning-flashcards-filters input:focus,
+.learning-flashcards-filters select:focus {
+  border-color: #2563eb;
+  outline: 3px solid #dbeafe;
+}
+
+.learning-flashcards-filters button,
+.learning-flashcards-empty--filtered button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #2563eb;
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  padding: 9px 12px;
+  white-space: nowrap;
+}
+
+.learning-flashcards-filters button:hover,
+.learning-flashcards-empty--filtered button:hover {
+  border-color: #2563eb;
+  background: #eff6ff;
+}
+
+.learning-flashcards-filters p {
+  margin: 0;
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
 .learning-flashcards-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
@@ -175,6 +252,10 @@
   font-size: 14px;
 }
 
+.learning-flashcards-empty--filtered {
+  margin-top: 0;
+}
+
 .learning-flashcards-spinner {
   width: 18px;
   height: 18px;
@@ -199,5 +280,21 @@
   .learning-flashcard-card__footer {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .learning-flashcards-filters,
+  .learning-flashcards-filters__controls {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .learning-flashcards-filters input,
+  .learning-flashcards-filters select {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .learning-flashcards-filters p {
+    white-space: normal;
   }
 }
