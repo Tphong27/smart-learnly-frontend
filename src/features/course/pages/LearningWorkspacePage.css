@@ -212,6 +212,7 @@
 .curriculum-lesson__icon--video { background: #dbeafe; color: #2563eb; }
 .curriculum-lesson__icon--pdf { background: #fef3c7; color: #d97706; }
 .curriculum-lesson__icon--quiz { background: #ede9fe; color: #7c3aed; }
+.curriculum-lesson__icon--flashcard { background: #dcfce7; color: #15803d; }
 
 .curriculum-lesson__info { flex: 1; min-width: 0; }
 

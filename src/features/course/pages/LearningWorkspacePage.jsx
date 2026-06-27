@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { useParams, useNavigate, Link, useSearchParams } from "react-router-dom";
 import {
     ArrowLeft,
     CheckCircle2,
@@ -11,6 +11,7 @@ import {
     ChevronDown,
     Circle,
     BookOpen,
+    Layers,
 } from "lucide-react";
 import { LearningLessonMedia } from "@/features/course/components/LearningLessonMedia";
 import { LearningLessonTabs } from "@/features/course/components/LearningLessonTabs";
@@ -30,6 +31,7 @@ function LessonIcon({ type, size = 16 }) {
     const t = (type || "").toLowerCase();
     if (t.includes("video")) return <PlayCircle size={size} />;
     if (t.includes("quiz")) return <HelpCircle size={size} />;
+    if (t.includes("flashcard")) return <Layers size={size} />;
     return <FileText size={size} />;
 }
 
@@ -45,6 +47,8 @@ export function LearningWorkspacePage({
 }) {
     const { courseId } = useParams();
     const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
+    const requestedLessonId = searchParams.get("lessonId");
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -96,6 +100,18 @@ export function LearningWorkspacePage({
         setActiveLessonId(lesson?.lessonId ?? null);
         setActiveLessonTab("overview");
     }, []);
+
+    useEffect(() => {
+        if (!requestedLessonId || allLessons.length === 0) return;
+        if (activeLessonId === requestedLessonId) return;
+        const requestedLesson = allLessons.find(
+            (lesson) => lesson.lessonId === requestedLessonId,
+        );
+        if (requestedLesson) {
+            setActiveLessonId(requestedLesson.lessonId);
+            setActiveLessonTab("overview");
+        }
+    }, [activeLessonId, allLessons, requestedLessonId]);
 
     const activeLesson = useMemo(() => {
         if (allLessons.length === 0) return null;
@@ -303,6 +319,7 @@ export function LearningWorkspacePage({
                                 onNoteChange={handleActiveLessonNoteChange}
                                 nextLesson={nextLesson}
                                 onNextLesson={handleGoToNextLesson}
+                                workspaceMode={mode}
                             />
                         </div>
                     ) : (

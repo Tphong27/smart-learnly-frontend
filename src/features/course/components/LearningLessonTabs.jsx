@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { fileNameFromUrl, isHtmlContent } from "../utils/lesson-content";
 import { LearningQuizPlayer } from "./LearningQuizPlayer";
+import { FlashcardPractice } from "./flashcards/FlashcardPractice";
 
 const TABS = [
     { key: "overview", label: "Overview", icon: BookOpen },
@@ -18,8 +19,18 @@ const TABS = [
     { key: "notes", label: "Notes", icon: StickyNote },
 ];
 
-function OverviewContent({ lesson }) {
+function OverviewContent({ lesson, workspaceMode }) {
     const type = (lesson?.lessonType || "").toUpperCase();
+
+    if (type === "FLASHCARD") {
+        return (
+            <FlashcardPractice
+                lessonId={lesson?.lessonId || lesson?.id}
+                adminMode={workspaceMode === "admin-preview"}
+                readOnly={workspaceMode !== "student"}
+            />
+        );
+    }
 
     if (type === "QUIZ" && lesson?.content) {
         return (
@@ -138,6 +149,7 @@ export function LearningLessonTabs({
     onNoteChange,
     nextLesson,
     onNextLesson,
+    workspaceMode = "student",
 }) {
     const resources = Array.isArray(lesson?.resources) ? lesson.resources : [];
     const totalResources = resources.length + (lesson?.attachmentUrl ? 1 : 0);
@@ -165,7 +177,10 @@ export function LearningLessonTabs({
             <div className="lesson-tabs__content">
                 {activeTab === "overview" && (
                     <div className="tab-overview">
-                        <OverviewContent lesson={lesson} />
+                        <OverviewContent
+                            lesson={lesson}
+                            workspaceMode={workspaceMode}
+                        />
                     </div>
                 )}
 

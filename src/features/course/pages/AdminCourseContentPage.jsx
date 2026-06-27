@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { courseService } from "../../../services/course.service";
+import { flashcardService } from "../../../services/flashcard.service";
 import { useToast } from "../../../shared/components/ui/Toast/useToast";
 import "./AdminCourseContent.css";
 
@@ -42,6 +43,13 @@ function SectionItem({
       return (
         <div className="lesson-icon doc">
           <span className="material-symbols-outlined">description</span>
+        </div>
+      );
+    }
+    if (t === "flashcard") {
+      return (
+        <div className="lesson-icon flashcard">
+          <span className="material-symbols-outlined">view_carousel</span>
         </div>
       );
     }
@@ -194,7 +202,8 @@ function SectionItem({
                             className="icon-btn delete"
                             title="Delete lesson"
                             onClick={() =>
-                              lesson?.id && onDeleteLesson(lesson.id, lesson.title)
+                              lesson?.id &&
+                              onDeleteLesson(lesson.id, lesson.title, lesson)
                             }
                           >
                             <span className="material-symbols-outlined">delete</span>
@@ -229,7 +238,11 @@ export default function AdminCourseContentPage() {
   const params = useParams();
   const courseId = params.courseId || params.id;
   const navigate = useNavigate();
-  const { showToast } = useToast();
+  const { showToast: emitToast } = useToast();
+  const showToast = useCallback(
+    (message, type) => emitToast({ message, type }),
+    [emitToast],
+  );
 
   const [sections, setSections] = useState([]);
   const [sectionLessons, setSectionLessons] = useState({});
@@ -333,14 +346,24 @@ export default function AdminCourseContentPage() {
     }
   };
 
-  const handleDeleteLesson = async (lessonId, lessonTitle) => {
+  const handleDeleteLesson = async (lessonId, lessonTitle, lesson = null) => {
     if (
       window.confirm(
         `Are you sure you want to delete "${lessonTitle}"?`
       )
     ) {
       try {
-        await courseService.deleteLesson(lessonId);
+        const isFlashcard =
+          String(lesson?.lessonType || "").toLowerCase() === "flashcard";
+
+        if (isFlashcard) {
+          const flashcardSet =
+            await flashcardService.getAdminSetByLesson(lessonId);
+          await flashcardService.deleteSet(flashcardSet.id);
+        } else {
+          await courseService.deleteLesson(lessonId);
+        }
+
         showToast("Lesson deleted successfully!", "success");
         setSectionLessons((prev) => {
           const updated = { ...prev };
@@ -378,6 +401,40 @@ export default function AdminCourseContentPage() {
     try {
       let mappedType = String(newLessonData.lessonType).toLowerCase();
       if (mappedType === "document") mappedType = "pdf";
+
+      if (mappedType === "flashcard") {
+        const createdLesson = await flashcardService.createLesson(
+          courseId,
+          targetSectionId,
+          {
+            title: newLessonData.title.trim(),
+            description: "",
+            isPreview: !!newLessonData.isPreview,
+            status: "draft",
+            sortOrder: 0,
+          },
+        );
+
+        if (createdLesson?.lessonId && createdLesson?.setId) {
+          sessionStorage.setItem(
+            `flashcard-set:${createdLesson.lessonId}`,
+            createdLesson.setId,
+          );
+        }
+
+        showToast("Flashcard lesson added successfully!", "success");
+        setNewLessonData({ title: "", lessonType: "video", isPreview: false });
+        setIsLessonModalOpen(false);
+        setTargetSectionId(null);
+        fetchLessonsForSection(targetSectionId);
+
+        if (createdLesson?.lessonId) {
+          navigate(`/admin/courses/${courseId}/lessons/${createdLesson.lessonId}`, {
+            state: { flashcardSetId: createdLesson.setId },
+          });
+        }
+        return;
+      }
 
       await courseService.createLesson(targetSectionId, {
         title: newLessonData.title.trim(),
@@ -450,6 +507,7 @@ export default function AdminCourseContentPage() {
     let totalVideos = 0;
     let totalDocs = 0;
     let totalQuizzes = 0;
+    let totalFlashcards = 0;
     for (const section of sections) {
       const lessons = sectionLessons[section.id] || [];
       for (const lesson of lessons) {
@@ -457,6 +515,7 @@ export default function AdminCourseContentPage() {
         if (t === "video") totalVideos++;
         else if (t === "pdf" || t === "document") totalDocs++;
         else if (t === "quiz") totalQuizzes++;
+        else if (t === "flashcard") totalFlashcards++;
       }
     }
     return {
@@ -465,6 +524,7 @@ export default function AdminCourseContentPage() {
       totalVideos,
       totalDocuments: totalDocs,
       totalQuizzes,
+      totalFlashcards,
     };
   }, [sections, sectionLessons]);
 
@@ -543,6 +603,10 @@ export default function AdminCourseContentPage() {
             <div className="stat-item">
               <span className="stat-value">{stats.totalQuizzes}</span>
               <span className="stat-label">Quizzes</span>
+            </div>
+            <div className="stat-item">
+              <span className="stat-value">{stats.totalFlashcards}</span>
+              <span className="stat-label">Flashcards</span>
             </div>
           </div>
 
@@ -776,6 +840,7 @@ export default function AdminCourseContentPage() {
                         Reading Material (PDF / Word)
                       </option>
                       <option value="quiz">Quiz</option>
+                      <option value="flashcard">Flashcard</option>
                     </select>
                   </div>
                   <div

@@ -9,7 +9,7 @@ import {
 } from "@/features/checkout";
 import { MyEnrollmentsPage } from "@/features/enrollment";
 import { MyTransactionsPage, PaymentResultPage } from "@/features/payment";
-import { CourseListPage, LearningWorkspacePage } from "@/features/course";
+import { CourseListPage, LearningFlashcardsPage, LearningWorkspacePage } from "@/features/course";
 import { TraineeDashboardPage } from "@/features/dashboard";
 
 function PlaceholderPage({ title }) {
@@ -60,7 +60,7 @@ function getTraineeRoutes() {
             },
             {
               path: "flashcards",
-              element: <PlaceholderPage title="Flashcards" />,
+              element: <LearningFlashcardsPage />,
             },
             {
               path: "ai-chatbot",
