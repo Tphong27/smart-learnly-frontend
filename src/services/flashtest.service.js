@@ -1,7 +1,7 @@
 import apiClient from "./api-client";
 
 // ==========================================
-// CÁC HÀM HELPER CHUẨN HÓA DỮ LIỆU
+// Data normalization helpers
 // ==========================================
 function unwrap(response) {
   return response?.data ?? response;
@@ -9,7 +9,7 @@ function unwrap(response) {
 
 function normalizeList(payload) {
   const data = unwrap(payload);
-  // SỬA ĐỔI: Thêm data?.content lên đầu để tránh nuốt mất mảng khi Backend trả về Page<T>
+  // Prefer paged content first so Page<T> responses are not swallowed.
   const items =
     data?.content ??
     data?.data ??
@@ -38,7 +38,7 @@ function normalizePage(payload) {
 }
 
 // ==========================================
-// CÁC SERVICES TÁCH BIỆT (Chuẩn hóa cấu trúc)
+// Split service modules
 // ==========================================
 
 export const assignmentService = {
@@ -136,6 +136,14 @@ export const testService = {
   },
   async getQuestions(testId) {
     const response = await apiClient.get(`/test-questions/test/${testId}`);
+    return normalizeList(response);
+  },
+  async getLearnerQuestions(testId) {
+    const response = await apiClient.get(`/test-questions/test/${testId}`);
+    return normalizeList(response);
+  },
+  async getStaffQuestions(testId) {
+    const response = await apiClient.get(`/admin/test-questions/test/${testId}`);
     return normalizeList(response);
   },
   async updateQuestionMarks(testId, questionId, data) {

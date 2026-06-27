@@ -6,14 +6,12 @@ import {
   FileQuestion,
   FolderTree,
   GraduationCap,
-  History,
   Home,
   Layers3,
   Receipt,
   ScrollText,
   Settings,
   ShieldCheck,
-  ShoppingCart,
   Timer,
   Users,
 } from "lucide-react";
@@ -44,7 +42,7 @@ const navItems = [
     label: "Question Bank",
     path: "/admin/question-banks",
     icon: FileQuestion,
-    roles: [ROLES.ADMIN, ROLES.TMO, ROLES.SME],
+    roles: [ROLES.ADMIN, ROLES.TMO, ROLES.SME, ROLES.TRAINER],
   },
   {
     label: "Categories",

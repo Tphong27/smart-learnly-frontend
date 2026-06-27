@@ -1,7 +1,6 @@
-﻿/* eslint-disable react-refresh/only-export-components */
+/* eslint-disable react-refresh/only-export-components */
 import { RoleGuard } from "./RoleGuard";
 import { ROLES } from "@/shared/constants/roles";
-import { StaffFlashTestListPage } from "@/features/flashtest";
 import { AppLayout } from "@/app/layouts/AppLayout";
 import {
   AdminAuditLogPage,
@@ -60,9 +59,24 @@ function getAdminRoutes() {
               element: <AdminLessonDetailPage />,
             },
             { path: "categories", element: <AdminCategoriesPage /> },
+          ],
+        },
+        {
+          element: (
+            <RoleGuard
+              allowedRoles={[ROLES.ADMIN, ROLES.TMO, ROLES.SME, ROLES.TRAINER]}
+            />
+          ),
+          children: [
             { path: "question-banks", element: <AdminQuestionBanksPage /> },
-            { path: "question-banks/:bankId", element: <AdminQuestionBankDetailPage /> },
-            { path: "question-banks/:bankId/questions/new", element: <AdminQuestionFormPage /> },
+            {
+              path: "question-banks/:bankId",
+              element: <AdminQuestionBankDetailPage />,
+            },
+            {
+              path: "question-banks/:bankId/questions/new",
+              element: <AdminQuestionFormPage />,
+            },
             { path: "questions/:questionId/edit", element: <AdminQuestionFormPage /> },
           ],
         },
@@ -90,5 +104,3 @@ function getAdminRoutes() {
   ];
 }
 export default getAdminRoutes;
-
-

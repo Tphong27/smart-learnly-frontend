@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Client } from "@stomp/stompjs";
 import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, CheckCircle, Clock, Download, FileUp, Loader2 } from "lucide-react";
@@ -112,7 +112,7 @@ export function StudentTakeTestPage() {
             setError("You have already completed this flash test.");
             return;
           }
-          const mappings = await testService.getQuestions(id);
+          const mappings = await testService.getLearnerQuestions(id);
           const hydrated = mappings.map((mapping) => ({
             id: mapping.questionId,
             questionText: mapping.questionText,
@@ -172,7 +172,7 @@ export function StudentTakeTestPage() {
       }
     }
     init();
-  }, [id, normalizedType]);
+  }, [id, normalizedType, publishMonitor, student.id, student.name]);
 
   const handleDownloadCurrentSubmission = async () => {
     if (!submission?.fileUrl) return;
@@ -370,7 +370,7 @@ export function StudentTakeTestPage() {
                 <p className="ft-muted">
                   {submission.fileName || "Submitted file"}
                   {submission.submittedAt
-                    ? ` · submitted ${new Date(submission.submittedAt).toLocaleString()}`
+                    ? ` - submitted ${new Date(submission.submittedAt).toLocaleString()}`
                     : ""}
                 </p>
               </div>
