@@ -23,15 +23,12 @@ export function VerifyEmailPage() {
   const {
     register,
     handleSubmit,
-    watch,
     formState: { errors, isSubmitting },
   } = useForm({
     resolver: zodResolver(verifyEmailSchema),
     defaultValues: { email: emailFromQuery, otpCode: '' },
     mode: 'onBlur',
   })
-
-  const watchedEmail = watch('email')
 
   useEffect(() => {
     if (resendCooldown <= 0) return undefined
@@ -91,16 +88,7 @@ export function VerifyEmailPage() {
         }
       >
         <Form onSubmit={handleSubmit(onSubmit)}>
-          <FormField
-            label="Email"
-            type="email"
-            placeholder="you@example.com"
-            required
-            registration={register('email')}
-            error={errors.email?.message}
-            leftIcon={<Mail size={16} />}
-            autoComplete="email"
-          />
+          <input type="hidden" {...register('email')} />
 
           <FormField
             label="6-digit verification code"
