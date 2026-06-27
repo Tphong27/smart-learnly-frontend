@@ -2,6 +2,12 @@ import { Navigate } from "react-router-dom";
 import { RoleGuard } from "./RoleGuard";
 import { ROLES } from "@/shared/constants/roles";
 import { AppLayout } from "../layouts/AppLayout";
+// ĐÃ SỬA: Import đầy đủ các trang quản lý bài test từ feature flashtest
+import {
+  StaffFlashTestListPage,
+  StaffFlashTestCreatePage,
+  StaffFlashTestMonitorPage,
+} from "@/features/flashtest";
 // import { StaffLayout } from "@/app/layouts/StaffLayout";
 import { AdminCoursesPage } from "@/features/admin";
 import {
@@ -44,6 +50,19 @@ function getStaffRoutes() {
             {
               path: "flashcards",
               element: <PlaceholderPage title="Flashcards Management" />,
+            },
+            // ĐÃ SỬA: Thay thế Placeholder bằng Page thật và bổ sung cụm Route con điều hướng ổn định
+            {
+              path: "flashtests",
+              element: <StaffFlashTestListPage />,
+            },
+            {
+              path: "flashtests/create",
+              element: <StaffFlashTestCreatePage />,
+            },
+            {
+              path: "flashtests/monitor/:id/:type",
+              element: <StaffFlashTestMonitorPage />,
             },
           ],
         },

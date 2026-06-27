@@ -1,8 +1,17 @@
 export const ROLES = {
-  GUEST: "GUEST",
-  ADMIN: "ADMIN",
-  TRAINER: "TRAINER",
-  TMO: "TMO",
-  SME: "SME",
-  TRAINEE: "TRAINEE",
+  GUEST: "guest",
+  TRAINEE: "trainee",
+  TRAINER: "trainer",
+  SME: "sme",
+  TMO: "tmo",
+  ADMIN: "admin",
 };
+
+export function normalizeRole(role) {
+  return typeof role === "string" ? role.toLowerCase() : role;
+}
+
+export function isRoleAllowed(role, allowedRoles = []) {
+  const normalizedRole = normalizeRole(role);
+  return allowedRoles.map(normalizeRole).includes(normalizedRole);
+}

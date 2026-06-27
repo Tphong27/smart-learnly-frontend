@@ -28,6 +28,19 @@ function normalizePage(payload) {
   };
 }
 
+function getPageItems(data) {
+  const items =
+    data?.items ??
+    data?.content ??
+    data?.courses ??
+    data?.data?.items ??
+    data?.data?.content ??
+    data?.data?.courses ??
+    data?.data;
+
+  return Array.isArray(items) ? items : [];
+}
+
 function normalizeCourse(payload) {
   const data = unwrap(payload);
   return data?.course ?? data;
@@ -41,12 +54,15 @@ export const courseService = {
 
     const root = unwrap(response);
     const data = root?.data ?? root;
+    const items = getPageItems(data);
 
     return {
-      items: Array.isArray(data?.items) ? data.items : [],
+      items,
       page: Number(data?.page ?? page),
       size: Number(data?.size ?? size),
-      totalItems: Number(data?.totalItems ?? data?.totalElements ?? 0),
+      totalItems: Number(
+        data?.totalItems ?? data?.totalElements ?? data?.total ?? items.length,
+      ),
       totalPages: Number(data?.totalPages ?? 1),
     };
   },

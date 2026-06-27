@@ -13,9 +13,17 @@ export default function AdminOrdersPage() {
       try {
         setLoading(true);
         const data = await adminMonitoringService.getOrders();
-        setOrders(data.content || data || []);
+        // 🟩 ĐÃ SỬA: Kiểm tra ép buộc phải là mảng (Array) mới được set, nếu không gán []
+        if (data?.content && Array.isArray(data.content)) {
+          setOrders(data.content);
+        } else if (Array.isArray(data)) {
+          setOrders(data);
+        } else {
+          setOrders([]);
+        }
       } catch (error) {
         console.error("Error fetching orders list:", error);
+        setOrders([]); // 🟩 ĐÃ SỬA: Lỗi phát là gán mảng rỗng luôn cho an toàn
       } finally {
         setLoading(false);
       }
@@ -41,12 +49,15 @@ export default function AdminOrdersPage() {
     {
       header: "Status",
       accessorKey: "status",
-      render: (row) => <PaymentStatusBadge status={row.status} />,
+      render: (row) => <PaymentStatusBadge status={row?.status} />, // Thêm dấu ? phòng hờ
     },
     {
       header: "Created At",
       accessorKey: "createdAt",
-      render: (row) => new Date(row.createdAt).toLocaleDateString("en-US"),
+      render: (row) =>
+        row?.createdAt
+          ? new Date(row.createdAt).toLocaleDateString("en-US")
+          : "N/A", // Thêm check null
     },
   ];
 

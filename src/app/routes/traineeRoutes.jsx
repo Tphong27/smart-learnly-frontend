@@ -3,12 +3,19 @@ import { Navigate } from "react-router-dom";
 import { RoleGuard } from "./RoleGuard";
 import { ROLES } from "@/shared/constants/roles";
 import { AppLayout } from "../layouts/AppLayout";
+import { CartPage } from "@/features/cart";
+import { MyCoursesPage } from "@/features/course";
 import {
   CheckoutPage,
   PaymentResultPage as CheckoutPaymentResultPage,
 } from "@/features/checkout";
 import { MyEnrollmentsPage } from "@/features/enrollment";
 import { MyTransactionsPage, PaymentResultPage } from "@/features/payment";
+import { LearningWorkspacePage } from "@/features/course";
+import {
+  TraineeFlashTestListPage,
+  TraineeFlashTestTakePage,
+} from "@/features/flashtest";
 import { CourseListPage, LearningWorkspacePage } from "@/features/course";
 import { TraineeDashboardPage } from "@/features/dashboard";
 
@@ -65,6 +72,14 @@ function getTraineeRoutes() {
             {
               path: "ai-chatbot",
               element: <PlaceholderPage title="AI Chatbot" />,
+            },
+            {
+              path: "flashtests",
+              element: <TraineeFlashTestListPage />,
+            },
+            {
+              path: "flashtests/take/:id/:type",
+              element: <TraineeFlashTestTakePage />,
             },
           ],
         },
