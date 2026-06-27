@@ -3,6 +3,7 @@
 
 .app-layout-shell {
     min-height: 100vh;
+    padding: 1px;
     background: #f7f9fc;
     box-sizing: border-box;
 }
@@ -33,11 +34,11 @@
 
 .app-sidebar {
     position: sticky;
-    top: 12px;
+    top: 80px;
     z-index: 40;
     display: flex;
     width: 260px;
-    height: calc(100vh - 24px);
+    height: calc(100% - 24px);
     flex: 0 0 260px;
     flex-direction: column;
     margin-left: 12px;
