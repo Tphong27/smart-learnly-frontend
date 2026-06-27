@@ -202,15 +202,17 @@ export function LearningWorkspacePage({
             <header className="learning-workspace__topbar">
                 <button
                     className="learning-workspace__topbar-back"
-                    onClick={() =>
-                        navigate(
-                            isAdminPreview
-                                ? `/admin/courses/${courseId}/content`
-                                : isGuestPreview || previewMode
-                                  ? `/courses/${courseId}`
-                                  : "/learning/courses",
-                        )
-                    }
+                    onClick={() => {
+                        if (isAdminPreview) {
+                            navigate(`/admin/courses/${courseId}/content`);
+                        } else if (isGuestPreview || previewMode) {
+                            navigate(`/courses/${courseId}`);
+                        } else {
+                            // Student: quay lại trang trước đó (progress, enrollments...)
+                            // nếu có lịch sử; fallback về danh sách khóa học.
+                            navigate(-1);
+                        }
+                    }}
                     title="Back"
                 >
                     <ArrowLeft size={18} />
