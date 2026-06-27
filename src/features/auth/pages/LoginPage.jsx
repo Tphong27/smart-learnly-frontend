@@ -41,14 +41,12 @@ function getRedirectPath(location, user) {
     return requested;
   }
 
-  // Trỏ chuẩn xác về Dashboard của từng Role
   const role = user?.role;
   if (role === ROLES.ADMIN) return "/admin/dashboard";
   if (role === ROLES.SME) return "/sme/dashboard";
   if (role === ROLES.TMO) return "/tmo/dashboard";
   if (role === ROLES.TRAINER) return "/trainer/dashboard";
 
-  // Mặc định (cho Trainee hoặc không rõ role) về dashboard chung
   return "/dashboard";
 }
 

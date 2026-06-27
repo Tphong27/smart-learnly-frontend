@@ -1,310 +1,447 @@
 /* ==========================================================================
-   Header component style for AppLayout
+   Header component style - Island UI Design
    ========================================================================== */
 .app-header {
-  position: sticky;
-  top: 0;
-  z-index: 30;
-  display: flex;
-  align-items: center;
-  width: 100%;
-  height: 70px;
-  padding: 0 24px;
-  border-bottom: 1px solid #e7ecf4;
-  background: rgba(255, 255, 255, 0.92);
-  backdrop-filter: blur(14px);
-  box-sizing: border-box;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    width: calc(100% - 24px);
+    height: 68px;
+    padding: 0 20px;
+    margin: 12px 12px 12px;
+    border-bottom: none;
+    border-radius: 18px;
+    background: linear-gradient(
+        180deg,
+        rgba(255, 255, 255, 0.98) 0%,
+        rgba(247, 249, 252, 0.95) 100%
+    );
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    box-shadow:
+        0 1px 2px rgba(20, 33, 61, 0.04),
+        0 4px 8px rgba(20, 33, 61, 0.04),
+        0 12px 24px rgba(20, 33, 61, 0.06);
+    box-sizing: border-box;
 }
 
 .app-header__inner {
-  width: 100%;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 16px;
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
 }
 
 .app-header__left {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  min-width: 0;
-  flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    min-width: 0;
+    flex: 1;
 }
 
-.app-header__actions {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 10px;
+/* Logo in header */
+.app-header__logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    text-decoration: none;
+    flex-shrink: 0;
+}
+
+.app-header__logo-mark {
+    display: grid;
+    width: 40px;
+    height: 40px;
+    place-items: center;
+    border-radius: 12px;
+    background: linear-gradient(145deg, #3478f6, #7047e8);
+    color: #ffffff;
+    box-shadow:
+        0 4px 12px rgba(52, 120, 246, 0.3),
+        0 6px 20px rgba(112, 71, 232, 0.2);
+}
+
+.app-header__logo-text {
+    display: flex;
+    flex-direction: column;
+}
+
+.app-header__logo-title {
+    font-family: "Manrope", sans-serif;
+    font-size: 15px;
+    font-weight: 800;
+    color: var(--ink, #14213d);
+    line-height: 1.1;
+}
+
+.app-header__logo-subtitle {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--muted, #64708a);
+    letter-spacing: 0.04em;
+}
+
+.app-header__divider-vertical {
+    width: 1px;
+    height: 32px;
+    background: linear-gradient(
+        180deg,
+        transparent 0%,
+        rgba(231, 236, 244, 0.8) 50%,
+        transparent 100%
+    );
+    flex-shrink: 0;
 }
 
 .app-header__menu-button {
-  display: none;
-  align-items: center;
-  justify-content: center;
-  width: 40px;
-  height: 40px;
-  border: 1px solid #dfe6f1;
-  border-radius: 10px;
-  background: white;
-  color: #526078;
-  cursor: pointer;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border: 1px solid var(--glass-border, rgba(231, 236, 244, 0.6));
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.8);
+    color: var(--muted, #64708a);
+    cursor: pointer;
+    box-shadow: var(--island-1, 0 1px 2px rgba(20, 33, 61, 0.02));
+    transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .app-header__menu-button:hover {
-  background: #f7f9fc;
+    background: rgba(255, 255, 255, 0.95);
+    border-color: rgba(52, 120, 246, 0.2);
+    box-shadow: var(--island-2, 0 4px 8px rgba(20, 33, 61, 0.06));
+    color: var(--ink, #14213d);
 }
 
-/* --- Thanh Tìm Kiếm Hiện Đại --- */
+/* --- Search Bar Island --- */
 .app-header__search-container {
-  display: flex;
-  align-items: center;
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
-  border-radius: 10px;
-  padding: 0 14px;
-  width: min(360px, 100%);
-  height: 42px;
-  transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.7);
+    border: 1px solid var(--glass-border, rgba(231, 236, 244, 0.6));
+    border-radius: 12px;
+    padding: 0 14px;
+    width: min(340px, 100%);
+    height: 42px;
+    box-shadow: var(--island-1, 0 1px 2px rgba(20, 33, 61, 0.02));
+    transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .app-header__search-container:focus-within {
-  background: #ffffff;
-  border-color: #6366f1;
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
-  width: 300px;
+    background: rgba(255, 255, 255, 0.95);
+    border-color: rgba(52, 120, 246, 0.3);
+    box-shadow:
+        0 4px 12px rgba(52, 120, 246, 0.1),
+        0 0 0 3px rgba(52, 120, 246, 0.08);
+    width: min(380px, 100%);
 }
 
 .app-header__search-icon {
-  color: #94a3b8;
-  margin-right: 10px;
+    color: var(--muted, #8493ae);
+    margin-right: 10px;
+    flex-shrink: 0;
 }
 
 .app-header__search-input {
-  border: none;
-  background: transparent;
-  outline: none;
-  width: 100%;
-  font-size: 14px;
-  color: #334155;
+    border: none;
+    background: transparent;
+    outline: none;
+    width: 100%;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--ink, #14213d);
 }
 
 .app-header__search-input::placeholder {
-  color: #94a3b8;
+    color: #a0aec0;
+    font-weight: 400;
 }
 
-/* --- Nút Thông Báo (Notification) --- */
+/* --- Actions Area --- */
+.app-header__actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+}
+
+/* --- Notification Button --- */
 .app-header__icon-button {
-  background: transparent;
-  border: none;
-  color: #64748b;
-  cursor: pointer;
-  padding: 8px;
-  border-radius: 8px;
-  position: relative;
-  transition: all 0.2s ease;
-  display: flex;
-  align-items: center;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 42px;
+    height: 42px;
+    border: 1px solid var(--glass-border, rgba(231, 236, 244, 0.6));
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.7);
+    color: var(--muted, #64708a);
+    cursor: pointer;
+    box-shadow: var(--island-1, 0 1px 2px rgba(20, 33, 61, 0.02));
+    transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .app-header__icon-button:hover {
-  background: #f1f5f9;
-  color: #0f172a;
+    background: rgba(255, 255, 255, 0.95);
+    border-color: rgba(52, 120, 246, 0.2);
+    box-shadow: var(--island-2, 0 4px 8px rgba(20, 33, 61, 0.06));
+    color: var(--blue, #2768ee);
+    transform: translateY(-1px);
 }
 
 .app-header__notification-dot {
-  position: absolute;
-  top: 6px;
-  right: 6px;
-  width: 8px;
-  height: 8px;
-  background-color: #ef4444;
-  border: 2px solid #ffffff;
-  border-radius: 50%;
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 8px;
+    height: 8px;
+    background: #ef4444;
+    border: 2px solid #ffffff;
+    border-radius: 50%;
+    box-shadow: 0 2px 4px rgba(239, 68, 68, 0.3);
 }
 
 .app-header__divider {
-  width: 1px;
-  height: 24px;
-  background-color: #e2e8f0;
+    width: 1px;
+    height: 28px;
+    background: linear-gradient(
+        180deg,
+        transparent 0%,
+        rgba(231, 236, 244, 0.6) 50%,
+        transparent 100%
+    );
+    margin: 0 4px;
 }
 
-/* --- Profile Button --- */
+/* --- Profile Section --- */
 .app-header__user {
-  position: relative;
+    position: relative;
 }
 
 .app-header__user-button {
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 6px 12px;
-  border-radius: 10px;
-  transition: all 0.2s ease;
-  text-align: left;
+    background: transparent;
+    border: 1px solid transparent;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 10px;
+    border-radius: 12px;
+    transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
+    text-align: left;
 }
 
 .app-header__user-button:hover,
 .app-header__user-button--active {
-  background: #f8fafc;
+    background: rgba(255, 255, 255, 0.8);
+    border-color: var(--glass-border, rgba(231, 236, 244, 0.6));
+    box-shadow: var(--island-1, 0 1px 2px rgba(20, 33, 61, 0.02));
 }
 
-/* --- Avatar & Chữ viết tắt --- */
+/* --- Avatar --- */
 .app-header__avatar {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  object-fit: cover;
-  border: 2px solid #e2e8f0;
+    width: 38px;
+    height: 38px;
+    border-radius: 12px;
+    object-fit: cover;
+    border: 2px solid rgba(255, 255, 255, 0.9);
+    box-shadow: 0 2px 8px rgba(20, 33, 61, 0.1);
 }
 
 .app-header__avatar--initials {
-  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
-  color: #ffffff;
-  font-weight: 600;
-  font-size: 13px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: none;
+    background: linear-gradient(145deg, #3478f6, #7047e8);
+    color: #ffffff;
+    font-weight: 700;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    box-shadow:
+        0 4px 12px rgba(52, 120, 246, 0.3),
+        0 6px 20px rgba(112, 71, 232, 0.2);
 }
 
 .app-header__user-copy {
-  display: flex;
-  flex-direction: column;
+    display: flex;
+    flex-direction: column;
 }
 
 .app-header__user-name {
-  font-size: 14px;
-  font-weight: 600;
-  color: #1e293b;
-  line-height: 1.2;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--ink, #14213d);
+    line-height: 1.2;
 }
 
 .app-header__user-role {
-  font-size: 12px;
-  color: #64748b;
-  font-weight: 500;
-  text-transform: capitalize;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--muted, #64708a);
+    text-transform: capitalize;
+    letter-spacing: 0.02em;
 }
 
 .app-header__chevron {
-  color: #94a3b8;
-  transition: transform 0.2s ease;
+    color: var(--muted, #8493ae);
+    transition: transform 200ms cubic-bezier(0.4, 0, 0.2, 1);
+    flex-shrink: 0;
 }
 
 .app-header__chevron--rotate {
-  transform: rotate(180deg);
+    transform: rotate(180deg);
 }
 
-/* --- Dropdown Menu Đổ Bóng --- */
+/* --- Dropdown Menu --- */
 .app-header__user-menu {
-  position: absolute;
-  top: calc(100% + 8px);
-  right: 0;
-  width: 220px;
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
-  border-radius: 12px;
-  box-shadow:
-    0 10px 25px -5px rgba(0, 0, 0, 0.05),
-    0 8px 10px -6px rgba(0, 0, 0, 0.05);
-  padding: 6px;
-  animation: fadeInHeaderDropdown 0.15s ease-out;
-  z-index: 60;
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    width: 240px;
+    background: rgba(255, 255, 255, 0.98);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid var(--glass-border, rgba(231, 236, 244, 0.6));
+    border-radius: 16px;
+    box-shadow:
+        0 4px 12px rgba(20, 33, 61, 0.08),
+        0 12px 32px rgba(20, 33, 61, 0.12);
+    padding: 8px;
+    animation: fadeInHeaderDropdown 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 60;
 }
 
 .app-header__dropdown-header {
-  padding: 10px 12px 8px 12px;
+    padding: 12px 14px 10px;
+    background: linear-gradient(
+        135deg,
+        rgba(52, 120, 246, 0.06) 0%,
+        rgba(112, 71, 232, 0.03) 100%
+    );
+    border-radius: 10px;
+    margin-bottom: 4px;
 }
 
 .dropdown-user-name {
-  font-size: 14px;
-  font-weight: 600;
-  color: #0f172a;
-  margin: 0;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--ink, #14213d);
+    margin: 0;
 }
 
 .dropdown-user-email {
-  font-size: 12px;
-  color: #94a3b8;
-  margin: 2px 0 0 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+    font-size: 12px;
+    color: var(--muted, #64708a);
+    margin: 2px 0 0 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .user-menu__divider {
-  height: 1px;
-  background-color: #f1f5f9;
-  margin: 6px 0;
+    height: 1px;
+    background: linear-gradient(
+        90deg,
+        transparent 0%,
+        rgba(231, 236, 244, 0.8) 50%,
+        transparent 100%
+    );
+    margin: 6px 0;
 }
 
-/* --- Các Action Items Trong Menu --- */
+/* --- Menu Items --- */
 .app-header__user-menu-item {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  background: transparent;
-  border: none;
-  padding: 9px 12px;
-  font-size: 14px;
-  font-weight: 500;
-  color: #475569;
-  cursor: pointer;
-  border-radius: 8px;
-  transition: all 0.15s ease;
-  text-align: left;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: transparent;
+    border: none;
+    padding: 10px 12px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--ink, #526078);
+    cursor: pointer;
+    border-radius: 10px;
+    transition: all 160ms ease;
+    text-align: left;
 }
 
 .app-header__user-menu-item:hover {
-  background: #f1f5f9;
-  color: #0f172a;
+    background: rgba(52, 120, 246, 0.08);
+    color: var(--blue-dark, #1d4ed8);
 }
 
 .app-header__user-menu-item--danger {
-  color: #ef4444;
+    color: #ef4444;
 }
 
 .app-header__user-menu-item--danger:hover {
-  background: #fef2f2;
-  color: #dc2626;
+    background: rgba(239, 68, 68, 0.08);
+    color: #dc2626;
 }
 
 @keyframes fadeInHeaderDropdown {
-  from {
-    opacity: 0;
-    transform: translateY(-4px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+    from {
+        opacity: 0;
+        transform: translateY(-8px) scale(0.96);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
 }
 
+/* --- Responsive --- */
 @media (max-width: 1024px) {
-  .app-header__menu-button {
-    display: inline-grid;
-  }
+    .app-header__menu-button {
+        display: inline-grid;
+    }
+
+    .app-header {
+        top: 0;
+        border-radius: 0;
+        margin: 0;
+        height: 64px;
+    }
 }
 
-@media (max-width: 700px) {
-  .app-header {
-    padding: 0 16px;
-  }
+@media (max-width: 768px) {
+    .app-header {
+        padding: 0 16px;
+    }
 
-  .app-header__search-container {
-    display: none;
-  }
+    .app-header__logo-text {
+        display: none;
+    }
 
-  .app-header__user-copy,
-  .app-header__chevron,
-  .app-header__divider {
-    display: none;
-  }
+    .app-header__search-container {
+        width: min(200px, 100%);
+    }
+
+    .app-header__search-container:focus-within {
+        width: min(240px, 100%);
+    }
+}
+
+@media (max-width: 600px) {
+    .app-header__search-container {
+        display: none;
+    }
+
+    .app-header__user-copy,
+    .app-header__chevron {
+        display: none;
+    }
+
+    .app-header__divider {
+        display: none;
+    }
 }

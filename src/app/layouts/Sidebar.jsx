@@ -14,14 +14,10 @@ import {
     ShieldCheck,
     ShoppingCart,
     Users,
-    X,
-    Zap,
     CreditCard,
 } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import { ROLES } from "@/shared/constants/roles";
-
-// Cấu hình chuẩn khớp 100% với adminRoutes, staffRoutes, traineeRoutes
 const navItems = [
     // ADMIN & MONITORING ROUTES
     {
@@ -39,20 +35,26 @@ const navItems = [
     {
         label: "Course Management",
         path: "/admin/courses",
-        icon: FolderTree, // Sử dụng icon FolderTree trực quan cho quản trị cấu trúc khóa học
-        roles: [ROLES.ADMIN, ROLES.TMO, ROLES.SME], // Phân quyền khớp chuẩn với RoleGuard trong adminRoutes.jsx
+        icon: FolderTree,
+        roles: [ROLES.ADMIN, ROLES.TMO, ROLES.SME],
+    },
+    {
+        label: "Question Bank",
+        path: "/admin/question-banks",
+        icon: FileQuestion,
+        roles: [ROLES.ADMIN, ROLES.TMO, ROLES.SME],
     },
     {
         label: "Categories",
         path: "/admin/categories",
         icon: Receipt,
-        roles: [ROLES.ADMIN, ROLES.TMO], // Cấp quyền cho Admin và TMO
+        roles: [ROLES.ADMIN, ROLES.TMO],
     },
     {
         label: "Transactions",
         path: "/admin/transactions",
         icon: CreditCard,
-        roles: [ROLES.ADMIN, ROLES.TMO], // Cấp quyền cho Admin và TMO
+        roles: [ROLES.ADMIN, ROLES.TMO],
     },
     {
         label: "System Activity Log",
@@ -61,10 +63,10 @@ const navItems = [
         roles: [ROLES.ADMIN],
     },
     {
-    label: "System Settings",
-    path: "/admin/settings",
-    icon: Settings,
-    roles: [ROLES.ADMIN],
+        label: "System Settings",
+        path: "/admin/settings",
+        icon: Settings,
+        roles: [ROLES.ADMIN],
     },
 
     // STAFF ROUTES (TRAINER, TMO, SME)
@@ -157,7 +159,6 @@ const navItems = [
 ];
 
 export function Sidebar({ userRole, open, onClose }) {
-    // SỬA TẠI ĐÂY: Không dùng .toLowerCase() nữa để giữ nguyên dạng hoa khớp với ROLES hằng số
     const normalizedRole =
         typeof userRole === "string" ? userRole.toUpperCase() : userRole;
 
@@ -181,27 +182,6 @@ export function Sidebar({ userRole, open, onClose }) {
             />
 
             <aside className={sidebarClassName}>
-                <div className="app-sidebar__brand-row sidebar__brand-row">
-                    <a
-                        href="/admin/dashboard"
-                        className="app-sidebar__brand sidebar__brand"
-                    >
-                        <span className="app-sidebar__brand-mark sidebar__brand-mark">
-                            <Zap size={18} />
-                        </span>
-                        Smart Learnly
-                    </a>
-
-                    <button
-                        type="button"
-                        onClick={onClose}
-                        className="app-sidebar__close-button sidebar__close-button"
-                        aria-label="Close sidebar"
-                    >
-                        <X size={18} />
-                    </button>
-                </div>
-
                 <nav className="app-sidebar__nav sidebar__nav">
                     {visibleItems.map(({ label, path, icon: Icon }) => (
                         <NavLink
@@ -219,16 +199,6 @@ export function Sidebar({ userRole, open, onClose }) {
                         </NavLink>
                     ))}
                 </nav>
-
-                <div className="app-sidebar__footer sidebar__footer">
-                    <div className="app-sidebar__summary sidebar__summary">
-                        <p>SLP</p>
-                        <small>
-                            A learning management system for the SLP program at
-                            Accenture.
-                        </small>
-                    </div>
-                </div>
             </aside>
         </>
     );
