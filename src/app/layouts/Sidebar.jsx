@@ -129,27 +129,9 @@ const navItems = [
     roles: [ROLES.TRAINEE],
   },
   {
-    label: "My Enrollments",
-    path: "/learning/enrollments",
-    icon: History,
-    roles: [ROLES.TRAINEE],
-  },
-  {
     label: "My Transactions",
     path: "/learning/transactions",
     icon: Receipt,
-    roles: [ROLES.TRAINEE],
-  },
-  {
-    label: "Cart",
-    path: "/cart",
-    icon: ShoppingCart,
-    roles: [ROLES.TRAINEE],
-  },
-  {
-    label: "My Classes",
-    path: "/learning/classrooms",
-    icon: Users,
     roles: [ROLES.TRAINEE],
   },
   {
@@ -162,18 +144,6 @@ const navItems = [
     label: "Flashcards",
     path: "/learning/flashcards",
     icon: BookOpen,
-    roles: [ROLES.TRAINEE],
-  },
-  {
-    label: "AI Assistant",
-    path: "/learning/ai-chatbot",
-    icon: Settings,
-    roles: [ROLES.TRAINEE],
-  },
-  {
-    label: "My Flash Tests",
-    path: "/learning/flashtests",
-    icon: Timer,
     roles: [ROLES.TRAINEE],
   },
 ];

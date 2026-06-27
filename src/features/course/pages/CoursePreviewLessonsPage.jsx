@@ -7,6 +7,7 @@ import {
   BookOpen,
   Clock3,
   FileText,
+  Layers,
   PlayCircle,
 } from "lucide-react";
 import { Button, useToast } from "@/shared/components/ui";
@@ -51,6 +52,7 @@ function LessonIcon({ type }) {
   const t = (type || "").toLowerCase();
   if (t.includes("video")) return <PlayCircle size={18} />;
   if (t.includes("quiz") || t.includes("test")) return <FileText size={18} />;
+  if (t.includes("flashcard")) return <Layers size={18} />;
   return <BookOpen size={18} />;
 }
 
@@ -137,7 +139,16 @@ export function CoursePreviewLessonsPage({ standalone = false }) {
         const data = await learningService.getPreviewContent(courseId);
         if (cancelled) return;
         const allLessons =
-          data?.sections?.flatMap((s) => s.lessons || []) || [];
+          data?.sections?.flatMap((section) =>
+            (section.lessons || []).map((lesson) => ({
+              ...lesson,
+              sectionId: lesson.sectionId ?? section.sectionId,
+              sectionTitle: lesson.sectionTitle ?? section.title,
+              sectionSortOrder:
+                lesson.sectionSortOrder ?? section.sortOrder ?? 0,
+              lessonSortOrder: lesson.lessonSortOrder ?? lesson.sortOrder ?? 0,
+            })),
+          ) || [];
         setLessons(allLessons);
         if (allLessons.length > 0) {
           setActiveId(allLessons[0].lessonId);

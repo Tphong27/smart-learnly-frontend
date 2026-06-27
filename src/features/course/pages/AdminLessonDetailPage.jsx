@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { courseService } from "@/services/course.service";
 import { useToast } from "@/shared/components/ui/Toast/useToast";
 import RichTextEditor from "@/shared/components/rich-text/RichTextEditor";
+import { FlashcardLessonEditor } from "@/features/course/components/flashcards/FlashcardLessonEditor";
 import {
   sanitizeLessonHtml,
   isEmptyLessonHtml,
@@ -38,11 +39,15 @@ import { useRef } from "react";
 export default function AdminLessonDetailPage() {
   const { courseId, lessonId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const { showToast: emitToast } = useToast();
   const showToast = useCallback(
     (message, type) => emitToast({ message, type }),
     [emitToast],
   );
+  const initialFlashcardSetId =
+    location.state?.flashcardSetId ||
+    new URLSearchParams(location.search).get("flashcardSetId");
 
   const [activeTab, setActiveTab] = useState("edit");
   const [title, setTitle] = useState("");
@@ -136,6 +141,8 @@ export default function AdminLessonDetailPage() {
             setLessonType("PDF");
           } else if (typeFromServer === "QUIZ") {
             setLessonType("QUIZ");
+          } else if (typeFromServer === "FLASHCARD") {
+            setLessonType("FLASHCARD");
           } else {
             setLessonType("VIDEO");
           }
@@ -599,6 +606,15 @@ export default function AdminLessonDetailPage() {
       </div>
 
       {activeTab === "edit" ? (
+        lessonType === "FLASHCARD" ? (
+          <FlashcardLessonEditor
+            lessonId={lessonId}
+            initialSetId={initialFlashcardSetId}
+            defaultTitle={title}
+            showToast={showToast}
+            onTitleSaved={setTitle}
+          />
+        ) : (
         <form onSubmit={handleSave}>
           <div style={{ display: "flex", gap: "40px" }}>
             <div
@@ -656,6 +672,7 @@ export default function AdminLessonDetailPage() {
                   <select
                     value={lessonType}
                     onChange={(e) => setLessonType(e.target.value)}
+                    disabled={lessonType === "FLASHCARD"}
                     style={{
                       width: "100%",
                       padding: "11px 16px",
@@ -669,6 +686,9 @@ export default function AdminLessonDetailPage() {
                     <option value="VIDEO">Video Lecture</option>
                     <option value="PDF">Document / Reading</option>
                     <option value="QUIZ">Quiz</option>
+                    {lessonType === "FLASHCARD" && (
+                      <option value="FLASHCARD">Flashcard</option>
+                    )}
                   </select>
                 </div>
               </div>
@@ -1232,6 +1252,7 @@ export default function AdminLessonDetailPage() {
             </div>
           </div>
         </form>
+        )
       ) : (
         <div
           style={{

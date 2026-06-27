@@ -4,6 +4,7 @@ export { TrainerProfilePage } from "./pages/TrainerProfilePage";
 export { CoursePreviewLessonsPage } from './pages/CoursePreviewLessonsPage'
 export { MyCoursesPage } from './pages/MyCoursesPage'
 export { LearningWorkspacePage } from './pages/LearningWorkspacePage'
+export { LearningFlashcardsPage } from './pages/LearningFlashcardsPage'
 export { CourseCard } from './components/CourseCard'
 export { EnrolledCourseCard } from "./components/EnrolledCourseCard";
 

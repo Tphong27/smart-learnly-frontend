@@ -370,6 +370,11 @@
     color: var(--lw-text-muted);
 }
 
+.curriculum-lesson__icon--flashcard {
+    background: #dcfce7;
+    color: #15803d;
+}
+
 .curriculum-lesson--active .curriculum-lesson__icon {
     background: var(--lw-accent);
     color: #fff;

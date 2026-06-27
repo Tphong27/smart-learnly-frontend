@@ -1,8 +1,12 @@
-import { BookOpen, FileText, PlayCircle } from "lucide-react";
+import { BookOpen, FileText, Layers, PlayCircle } from "lucide-react";
 
 function getLessonIcon(type) {
-  if (type === "video") return PlayCircle;
-  if (type === "pdf") return FileText;
+  const normalizedType = String(type || "").toLowerCase();
+  if (normalizedType.includes("video")) return PlayCircle;
+  if (normalizedType.includes("pdf") || normalizedType.includes("document")) {
+    return FileText;
+  }
+  if (normalizedType.includes("flashcard")) return Layers;
   return BookOpen;
 }
 
