@@ -145,10 +145,6 @@ export function LearningWorkspacePage({
   const activeLesson = useMemo(() => {
     if (allLessons.length === 0) return null;
     return (
-<<<<<<< HEAD
-      allLessons.find((lesson) => getLessonId(lesson) === activeLessonId) ||
-      allLessons[0]
-=======
         <div className="learning-workspace">
             <header className="learning-workspace__topbar">
                 <button
@@ -307,7 +303,6 @@ export function LearningWorkspacePage({
                 </main>
             </div>
         </div>
->>>>>>> long
     );
   }, [allLessons, activeLessonId]);
 
