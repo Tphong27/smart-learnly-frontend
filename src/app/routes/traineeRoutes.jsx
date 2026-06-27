@@ -5,10 +5,17 @@ import { ROLES } from "@/shared/constants/roles";
 import { AppLayout } from "../layouts/AppLayout";
 import { CartPage } from "@/features/cart";
 import { MyCoursesPage } from "@/features/course";
-import { CheckoutPage, PaymentResultPage as CheckoutPaymentResultPage } from "@/features/checkout";
+import {
+  CheckoutPage,
+  PaymentResultPage as CheckoutPaymentResultPage,
+} from "@/features/checkout";
 import { MyEnrollmentsPage } from "@/features/enrollment";
 import { MyTransactionsPage, PaymentResultPage } from "@/features/payment";
 import { LearningWorkspacePage } from "@/features/course";
+import {
+  TraineeFlashTestListPage,
+  TraineeFlashTestTakePage,
+} from "@/features/flashtest";
 
 function PlaceholderPage({ title }) {
   return (
@@ -51,6 +58,14 @@ function getTraineeRoutes() {
             {
               path: "ai-chatbot",
               element: <PlaceholderPage title="AI Chatbot" />,
+            },
+            {
+              path: "flashtests",
+              element: <TraineeFlashTestListPage />,
+            },
+            {
+              path: "flashtests/take/:id/:type",
+              element: <TraineeFlashTestTakePage />,
             },
           ],
         },
@@ -96,9 +111,18 @@ function getTraineeRoutes() {
         {
           element: <AppLayout />,
           children: [
-            { path: "/my-courses", element: <Navigate to="/learning/courses" replace /> },
-            { path: "/my-enrollments", element: <Navigate to="/learning/enrollments" replace /> },
-            { path: "/my-transactions", element: <Navigate to="/learning/transactions" replace /> },
+            {
+              path: "/my-courses",
+              element: <Navigate to="/learning/courses" replace />,
+            },
+            {
+              path: "/my-enrollments",
+              element: <Navigate to="/learning/enrollments" replace />,
+            },
+            {
+              path: "/my-transactions",
+              element: <Navigate to="/learning/transactions" replace />,
+            },
             { path: "/payment-result", element: <PaymentResultPage /> },
           ],
         },

@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { AlertCircle, Loader, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/shared/components/ui";
 import { classService } from "@/services";
-import { ROLES } from "@/shared/constants/roles";
+import { normalizeRole, ROLES } from "@/shared/constants/roles";
 import { ClassCard } from "../components/ClassCard";
 import { ClassListFilters } from "../components/ClassListFilters";
 
@@ -11,7 +11,7 @@ function getCurrentRole() {
   try {
     const raw = localStorage.getItem("user");
     const user = raw ? JSON.parse(raw) : null;
-    return typeof user?.role === "string" ? user.role.toUpperCase() : "";
+    return normalizeRole(user?.role) || "";
   } catch {
     return "";
   }
