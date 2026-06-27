@@ -142,194 +142,11 @@ export function LearningWorkspacePage({
     }
   }, [activeLessonId, allLessons, requestedLessonId]);
 
-    if (error) {
-        return (
-            <div className="learning-workspace">
-                <div className="learning-workspace__error">
-                    <span className="learning-workspace__error-msg">
-                        {error}
-                    </span>
-                    <button
-                        className="learning-workspace__error-btn"
-                        onClick={() => navigate(-1)}
-                    >
-                        Go Back
-                    </button>
-                </div>
-            </div>
-        );
-    }
-
-    const courseTitle = data?.courseTitle || "Course";
-    const stats = data?.stats;
-
-    const isAdminPreview = mode === "admin-preview";
-    const isGuestPreview = mode === "guest";
-
-    const completedCount = completedLessonIds.size;
-    const totalLessonCount = allLessons.length;
-    const progressPercent =
-        totalLessonCount > 0
-            ? Math.round((completedCount / totalLessonCount) * 100)
-            : 0;
-
+  const activeLesson = useMemo(() => {
+    if (allLessons.length === 0) return null;
     return (
-        <div className="learning-workspace">
-            <header className="learning-workspace__topbar">
-                <button
-                    className="learning-workspace__topbar-back"
-                    onClick={() =>
-                        navigate(
-                            isAdminPreview
-                                ? `/admin/courses/${courseId}/content`
-                                : isGuestPreview || previewMode
-                                  ? `/courses/${courseId}`
-                                  : "/learning/courses",
-                        )
-                    }
-                    title="Back"
-                >
-                    <ArrowLeft size={18} />
-                </button>
-
-                <h1 className="learning-workspace__course-title" title={courseTitle}>
-                    {courseTitle}
-                </h1>
-
-                {isAdminPreview && (
-                    <span className="learning-workspace__trainee-tag">
-                        <Eye size={14} />
-                        Viewing as trainee
-                    </span>
-                )}
-
-                {isGuestPreview && (
-                    <span className="learning-workspace__trainee-tag">
-                        <Eye size={14} />
-                        Preview mode
-                    </span>
-                )}
-
-                {(isGuestPreview || previewMode) && (
-                    <Link
-                        to={`/courses/${courseId}`}
-                        className="learning-workspace__topbar-cta"
-                    >
-                        View Course Details
-                    </Link>
-                )}
-
-                <div className="learning-workspace__topbar-progress">
-                    <div className="learning-workspace__progress-track">
-                        <div
-                            className="learning-workspace__progress-fill"
-                            style={{ width: `${progressPercent}%` }}
-                        />
-                    </div>
-                    <span className="learning-workspace__progress-label">
-                        {completedCount}/{totalLessonCount} done
-                    </span>
-                </div>
-            </header>
-
-            <div className="learning-workspace__body">
-                <aside
-                    className={`learning-workspace__sidebar ${sidebarOpen ? "open" : ""}`}
-                >
-                    <div className="learning-workspace__sidebar-header">
-                        <h2 className="learning-workspace__sidebar-title">
-                            Course content
-                        </h2>
-                        <button
-                            className="learning-workspace__sidebar-back"
-                            onClick={() => setSidebarOpen(false)}
-                            title="Close sidebar"
-                        >
-                            <X size={18} />
-                        </button>
-                    </div>
-
-                    {stats && (
-                        <div className="learning-workspace__stats">
-                            <span className="learning-workspace__stat">
-                                <span className="learning-workspace__stat-value">
-                                    {stats.totalSections}
-                                </span>{" "}
-                                sections
-                            </span>
-                            <span className="learning-workspace__stat">
-                                <span className="learning-workspace__stat-value">
-                                    {stats.totalLessons}
-                                </span>{" "}
-                                lessons
-                            </span>
-                            <span className="learning-workspace__stat">
-                                <span className="learning-workspace__stat-value">
-                                    {formatDuration(stats.totalDurationSeconds)}
-                                </span>
-                            </span>
-                        </div>
-                    )}
-
-                    <div className="learning-workspace__curriculum">
-                        {sections.map((section, sIdx) => (
-                            <div
-                                key={section.sectionId || sIdx}
-                                className="curriculum-section"
-                            >
-                                <SectionAccordion
-                                    section={section}
-                                    sIdx={sIdx}
-                                    activeLesson={activeLesson}
-                                    onSelectLesson={handleSelectLesson}
-                                    completedLessonIds={completedLessonIds}
-                                    onToggleLessonComplete={toggleLessonCompleted}
-                                />
-                            </div>
-                        ))}
-                    </div>
-                </aside>
-
-                <main className="learning-workspace__main">
-                    {!sidebarOpen && (
-                        <button
-                            className="learning-workspace__sidebar-toggle"
-                            onClick={() => setSidebarOpen(true)}
-                            title="Open sidebar"
-                        >
-                            <Menu size={18} />
-                        </button>
-                    )}
-
-                    <div className="learning-workspace__content">
-                        {activeLesson ? (
-                            <div className="learning-lesson">
-                                <LearningLessonMedia
-                                    key={`media-${activeLesson.lessonId}`}
-                                    lesson={activeLesson}
-                                />
-
-                                <LearningLessonTabs
-                                    key={`tabs-${activeLesson.lessonId}`}
-                                    lesson={activeLesson}
-                                    activeTab={activeLessonTab}
-                                    onTabChange={setActiveLessonTab}
-                                    note={activeLessonNote}
-                                    onNoteChange={handleActiveLessonNoteChange}
-                                    nextLesson={nextLesson}
-                                    onNextLesson={handleGoToNextLesson}
-                                />
-                            </div>
-                        ) : (
-                            <div className="learning-lesson__empty">
-                                <BookOpen size={48} />
-                                <p>Select a lesson from the sidebar to begin</p>
-                            </div>
-                        )}
-                    </div>
-                </main>
-            </div>
-        </div>
+      allLessons.find((lesson) => getLessonId(lesson) === activeLessonId) ||
+      allLessons[0]
     );
   }, [allLessons, activeLessonId]);
 
@@ -487,6 +304,7 @@ export function LearningWorkspacePage({
   const stats = data?.stats;
 
   const isAdminPreview = mode === "admin-preview";
+  const isGuestPreview = mode === "guest";
 
   const completedCount = completedLessonIds.size;
   const totalLessonCount = allLessons.length;
@@ -502,9 +320,9 @@ export function LearningWorkspacePage({
           className="learning-workspace__topbar-back"
           onClick={() =>
             navigate(
-              mode === "admin-preview"
+              isAdminPreview
                 ? `/admin/courses/${courseId}/content`
-                : previewMode
+                : isGuestPreview || previewMode
                   ? `/courses/${courseId}`
                   : "/learning/courses",
             )
@@ -525,7 +343,14 @@ export function LearningWorkspacePage({
           </span>
         )}
 
-        {previewMode && (
+        {isGuestPreview && (
+          <span className="learning-workspace__trainee-tag">
+            <Eye size={14} />
+            Preview mode
+          </span>
+        )}
+
+        {(isGuestPreview || previewMode) && (
           <Link
             to={`/courses/${courseId}`}
             className="learning-workspace__topbar-cta"
