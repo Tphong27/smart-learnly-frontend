@@ -15,4 +15,5 @@ export { cartPriceCacheService } from './cart-price-cache.service'
 export { classService } from './class.service'
 export { userService } from './user.service'
 export { questionBankService } from './question-bank.service'
+export { traineeProgressService } from "./trainee-progress.service";
 
