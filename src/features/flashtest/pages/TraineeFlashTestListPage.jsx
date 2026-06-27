@@ -11,8 +11,10 @@ import {
 } from "lucide-react";
 import {
   assignmentService,
+  attemptService,
   testService,
 } from "@/services/flashtest.service.js";
+import { getCurrentUser } from "@/services/api-client";
 import "../flashtest.css";
 
 function isFlashTest(item) {
@@ -39,8 +41,12 @@ function formatDate(value) {
 
 export function TraineeFlashTestListPage() {
   const navigate = useNavigate();
+  const currentUser = getCurrentUser();
+  const studentId =
+    currentUser?.id || currentUser?.userId || currentUser?.accountId || "";
   const [tests, setTests] = useState([]);
   const [assignments, setAssignments] = useState([]);
+  const [takenMap, setTakenMap] = useState({});
   const [loading, setLoading] = useState(false);
   const [keyword, setKeyword] = useState("");
 
@@ -51,8 +57,44 @@ export function TraineeFlashTestListPage() {
         testService.getAll(),
         assignmentService.getAll(),
       ]);
-      setTests((testData || []).filter(isFlashTest));
-      setAssignments((assignmentData || []).filter(isFlashTest));
+      const flashTests = (testData || []).filter(isFlashTest);
+      const flashAssignments = (assignmentData || []).filter(isFlashTest);
+      setTests(flashTests);
+      setAssignments(flashAssignments);
+
+      if (!studentId) {
+        setTakenMap({});
+        return;
+      }
+
+      const checks = await Promise.allSettled([
+        ...flashTests.map(async (test) => {
+          const attempts = await attemptService.getHistory(test.id, studentId);
+          return [`mcq-${test.id}`, attempts.length > 0];
+        }),
+        ...flashAssignments.map(async (assignment) => {
+          try {
+            const submission = await assignmentService.getSubmissionByStudent(
+              assignment.id,
+              studentId,
+            );
+            return [`essay-${assignment.id}`, Boolean(submission?.id)];
+          } catch (submissionError) {
+            if (submissionError?.originalError?.response?.status !== 404) {
+              console.warn("Could not load flash assignment status", submissionError);
+            }
+            return [`essay-${assignment.id}`, false];
+          }
+        }),
+      ]);
+
+      setTakenMap(
+        Object.fromEntries(
+          checks
+            .filter((result) => result.status === "fulfilled")
+            .map((result) => result.value),
+        ),
+      );
     } catch (error) {
       console.error("Failed to load available flash tests", error);
     } finally {
@@ -62,7 +104,7 @@ export function TraineeFlashTestListPage() {
 
   useEffect(() => {
     loadAvailableTests();
-  }, []);
+  }, [studentId]);
 
   const rows = useMemo(() => {
     const merged = [
@@ -173,6 +215,7 @@ export function TraineeFlashTestListPage() {
               <tbody>
                 {rows.map((item) => {
                   const isEssay = item.flashType === "essay";
+                  const taken = Boolean(takenMap[`${item.flashType}-${item.id}`]);
                   const dueDate = item.dueDate || item.due_date;
                   const expired =
                     isEssay && dueDate && new Date(dueDate).getTime() <= Date.now();
@@ -209,6 +252,8 @@ export function TraineeFlashTestListPage() {
                         <div className="ft-table-actions">
                           {expired ? (
                             <span className="ft-button ft-button--disabled">Expired</span>
+                          ) : taken ? (
+                            <span className="ft-button ft-button--disabled">Completed</span>
                           ) : (
                             <Link
                               to={`/learning/flashtests/take/${item.id}/${
