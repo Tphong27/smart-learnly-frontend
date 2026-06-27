@@ -131,8 +131,8 @@ export function CheckoutPage() {
           {error || "Checkout order not found."}
         </div>
 
-        <Link to="/cart" className="button button--primary">
-          Back to cart
+        <Link to="/learning/courses" className="button button--primary">
+          Back to Course Catalog
         </Link>
       </section>
     );

@@ -20,6 +20,7 @@ import {
   hasValidDiscount,
 } from "../utils/course-price";
 import { courseService, orderService } from "@/services";
+import { ClassSelectionPopup } from "../components/ClassSelectionPopup";
 import "../../admin/admin-shared.css";
 import "./CourseDetailPage.css";
 
@@ -41,7 +42,8 @@ export function CourseDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isEnrolled, setIsEnrolled] = useState(false);
-  const [selectedClassId, setSelectedClassId] = useState("");
+  const [classPopupOpen, setClassPopupOpen] = useState(false);
+  const [checkoutClassId, setCheckoutClassId] = useState(null);
 
   function hasAccessToken() {
     const token = localStorage.getItem("accessToken");
@@ -128,7 +130,6 @@ export function CourseDetailPage() {
   const objectives = course.learningObjectives || [];
   const modules = course.modules || [];
   const classes = course.classes || [];
-  const selectedClass = classes.find((item) => item.id === selectedClassId);
   const totalLessons = modules.reduce(
     (sum, m) => sum + (m.lessons?.length || 0),
     0,
@@ -147,6 +148,15 @@ export function CourseDetailPage() {
 
   function getCourseId() {
     return course?.id;
+  }
+
+  function isClassSelectable(classItem) {
+    const status = String(classItem?.status || "").toUpperCase();
+    const availableSlots = Number(classItem?.availableSlots ?? 0);
+
+    return (
+      status !== "CANCELLED" && status !== "COMPLETED" && availableSlots > 0
+    );
   }
 
   function ensureAuthenticated() {
@@ -175,64 +185,77 @@ export function CourseDetailPage() {
     return false;
   }
 
-  function ensureClassSelected() {
-    if (classes.length === 0) {
-      toast.error("This course does not have any available class yet.");
-      return false;
-    }
+function handleBuyNowClick() {
+  if (!ensureAuthenticated()) return;
+  if (!ensurePaidCourse()) return;
 
-    if (!selectedClassId) {
-      toast.error("Please select a class before enrolling in this course.");
-      return false;
-    }
-
-    return true;
+  if (classes.length === 0) {
+    toast.error("This course does not have any available class yet.");
+    return;
   }
 
-  async function handleBuyNowClick() {
-    if (!ensureAuthenticated()) return;
-    if (!ensurePaidCourse()) return;
-    if (!ensureClassSelected()) return;
+  setClassPopupOpen(true);
+}
 
-    const courseId = getCourseId();
+async function handleCheckoutSelectedClass(classItem) {
+  if (!ensureAuthenticated()) return;
+  if (!ensurePaidCourse()) return;
 
-    if (!courseId) {
-      toast.error("Course information is missing.");
-      return;
-    }
+  const courseId = getCourseId();
 
-    setBuyNowLoading(true);
+  if (!courseId) {
+    toast.error("Course information is missing.");
+    return;
+  }
 
-    try {
-      const checkout = await orderService.buyNowCheckout({
-        courseId,
-        classId: selectedClassId,
-      });
+  if (!classItem?.id) {
+    toast.error("Class information is missing.");
+    return;
+  }
 
-      toast.success("Checkout created.");
+  if (!isClassSelectable(classItem)) {
+    toast.error("This class is not available for checkout.");
+    return;
+  }
 
-      navigate(`/checkout/${checkout.orderId}`, {
-        state: {
-          checkout,
-          expectedCourse: {
-            courseId,
-            classId: selectedClassId,
-            className: selectedClass?.className,
-            title: course.title,
-            originalPrice,
-            displayPrice,
-            hasDiscount,
-            discountPercent,
-            currency: course.currency ?? "VND",
-          },
+  setCheckoutClassId(classItem.id);
+  setBuyNowLoading(true);
+
+  try {
+    const checkout = await orderService.buyNowCheckout({
+      courseId,
+      classId: classItem.id,
+    });
+
+    toast.success("Checkout created.");
+
+    navigate(`/checkout/${checkout.orderId}`, {
+      state: {
+        checkout,
+        expectedCourse: {
+          courseId,
+          classId: classItem.id,
+          title: course.title,
+          className: classItem.className,
+          trainerName: classItem.trainerName,
+          scheduleDescription: classItem.scheduleDescription,
+          startDate: classItem.startDate,
+          endDate: classItem.endDate,
+          originalPrice,
+          displayPrice,
+          hasDiscount,
+          discountPercent,
+          currency: course.currency ?? "VND",
         },
-      });
-    } catch (err) {
-      toast.error(err?.message || "Could not start checkout.");
-    } finally {
-      setBuyNowLoading(false);
-    }
+      },
+    });
+  } catch (err) {
+    toast.error(err?.message || "Could not start checkout.");
+  } finally {
+    setBuyNowLoading(false);
+    setCheckoutClassId(null);
   }
+}
 
   return (
     <div className="course-detail">
@@ -318,25 +341,21 @@ export function CourseDetailPage() {
             </div>
             {!isEnrolled && (
               <div className="course-detail__action-grid">
-                {!isEnrolled && (
-                  <div className="course-detail__action-grid">
-                    <button
-                      type="button"
-                      onClick={handleBuyNowClick}
-                      disabled={buyNowLoading || isFreeCourse(course)}
-                      className="button button--primary course-detail__cta course-detail__cta--full"
-                    >
-                      {buyNowLoading ? "Processing..." : "Buy Now"}
-                    </button>
+                <button
+                  type="button"
+                  onClick={handleBuyNowClick}
+                  disabled={buyNowLoading || isFreeCourse(course)}
+                  className="button button--primary course-detail__cta"
+                >
+                  {buyNowLoading ? "Processing..." : "Buy Now"}
+                </button>
 
-                    <Link
-                      to={`/courses/${course.id || course.slug}/preview`}
-                      className="button button--outline course-detail__cta course-detail__cta--full"
-                    >
-                      Preview Lesson
-                    </Link>
-                  </div>
-                )}
+                <Link
+                  to={`/courses/${course.id || course.slug}/preview`}
+                  className="button button--primary course-detail__cta"
+                >
+                  Preview Lesson
+                </Link>
               </div>
             )}
             {isEnrolled && (
@@ -382,85 +401,6 @@ export function CourseDetailPage() {
           </ul>
         </section>
       )}
-
-      <section className="course-detail__section">
-        <h2 className="course-detail__section-title">Available classes</h2>
-        <p className="course-detail__section-sub">
-          Choose a class schedule that matches your learning plan.
-        </p>
-
-        {classes.length === 0 ? (
-          <div className="admin-empty">
-            No available classes are open for this course yet.
-          </div>
-        ) : (
-          <div className="course-detail__class-list">
-            {classes.map((classItem) => {
-              const isSelected = selectedClassId === classItem.id;
-
-              return (
-                <article
-                  key={classItem.id}
-                  className="course-detail__class-card"
-                >
-                  <div className="course-detail__class-main">
-                    <div>
-                      <h3>{classItem.className}</h3>
-                      <p>
-                        Trainer:
-                        <strong>
-                          {classItem.trainerName || "To be assigned"}
-                        </strong>
-                      </p>
-                    </div>
-
-                    <span className="course-detail__class-status">
-                      {classItem.status}
-                    </span>
-                  </div>
-
-                  <dl className="course-detail__class-meta">
-                    <div>
-                      <dt>Schedule</dt>
-                      <dd>
-                        {classItem.scheduleDescription || "Not specified"}
-                      </dd>
-                    </div>
-
-                    <div>
-                      <dt>Start date</dt>
-                      <dd>{classItem.startDate || "Not specified"}</dd>
-                    </div>
-
-                    <div>
-                      <dt>End date</dt>
-                      <dd>{classItem.endDate || "Not specified"}</dd>
-                    </div>
-
-                    <div>
-                      <dt>Available slots</dt>
-                      <dd>
-                        {classItem.availableSlots ?? 0}/
-                        {classItem.maxStudents ?? 0}
-                      </dd>
-                    </div>
-                  </dl>
-
-                  {!isEnrolled && (
-                    <button
-                      type="button"
-                      className={`button ${isSelected ? "button--primary" : "button--outline"} button--md`}
-                      onClick={() => setSelectedClassId(classItem.id)}
-                    >
-                      {isSelected ? "Selected" : "Select this class"}
-                    </button>
-                  )}
-                </article>
-              );
-            })}
-          </div>
-        )}
-      </section>
 
       <section className="course-detail__section">
         <h2 className="course-detail__section-title">Course content</h2>
@@ -535,6 +475,17 @@ export function CourseDetailPage() {
           Start preview
         </Link>
       </section>
+
+      {classPopupOpen && (
+        <ClassSelectionPopup
+          classes={classes}
+          buyNowLoading={buyNowLoading}
+          checkoutClassId={checkoutClassId}
+          isClassSelectable={isClassSelectable}
+          onClose={() => setClassPopupOpen(false)}
+          onSelectClass={handleCheckoutSelectedClass}
+        />
+      )}
     </div>
   );
 }

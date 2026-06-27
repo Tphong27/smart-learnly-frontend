@@ -5,7 +5,7 @@ import { ProtectedRoute } from "./routes/ProtectedRoute";
 import { RoleGuard } from "./routes/RoleGuard";
 import { ROLES } from "@/shared/constants/roles";
 import { HomePage } from "../features/home/HomePage";
-import { CourseDetailPage, CoursePreviewLessonsPage, LearningWorkspacePage } from "../features/course";
+import { CourseDetailPage, CoursePreviewLessonsPage, LearningWorkspacePage, TrainerProfilePage } from "../features/course";
 import {
   LoginPage,
   RegisterPage,
@@ -14,7 +14,7 @@ import {
   VerifyEmailPage,
   ProfilePage,
 } from "../features/auth";
-import getTraineeRoutes from "./routes/traineeRoutes"; // 🟩 ĐÃ SỬA: Đổi sang hàm getTraineeRoutes
+import getTraineeRoutes from "./routes/traineeRoutes";
 import getStaffRoutes from "./routes/staffRoutes";
 import getAdminRoutes from "./routes/adminRoutes";
 import { NotFoundPage } from "./pages/error/NotFoundPage";
@@ -94,6 +94,15 @@ const appRoutes = [
       </PublicLayout>
     ),
   },
+
+  {
+  path: "/trainers/:trainerId",
+  element: (
+    <PublicLayout>
+      <TrainerProfilePage />
+    </PublicLayout>
+  ),
+},
 
   // =========================================================
   // BẢO VỆ CHẶT CHẼ: Cô lập không gian chạy của từng nhóm quyền

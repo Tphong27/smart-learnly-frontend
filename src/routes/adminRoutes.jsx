@@ -1,1 +1,1 @@
-export const adminRoutes = []
+export const adminRoutes = [];

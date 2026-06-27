@@ -9,8 +9,17 @@ import {
 } from "@/features/checkout";
 import { MyEnrollmentsPage } from "@/features/enrollment";
 import { MyTransactionsPage, PaymentResultPage } from "@/features/payment";
-import { CourseListPage, LearningFlashcardsPage, LearningWorkspacePage } from "@/features/course";
+import {
+  TraineeFlashTestListPage,
+  TraineeFlashTestTakePage,
+} from "@/features/flashtest";
+import {
+  CourseListPage,
+  LearningFlashcardsPage,
+  LearningWorkspacePage,
+} from "@/features/course";
 import { TraineeDashboardPage } from "@/features/dashboard";
+import { TraineeProgressPage } from "@/features/progress";
 
 function PlaceholderPage({ title }) {
   return (
@@ -51,6 +60,10 @@ function getTraineeRoutes() {
             { path: "enrollments", element: <MyEnrollmentsPage /> },
             { path: "transactions", element: <MyTransactionsPage /> },
             {
+              path: "progress",
+              element: <TraineeProgressPage />,
+            },
+            {
               path: "classrooms",
               element: <PlaceholderPage title="Classrooms" />,
             },
@@ -65,6 +78,14 @@ function getTraineeRoutes() {
             {
               path: "ai-chatbot",
               element: <PlaceholderPage title="AI Chatbot" />,
+            },
+            {
+              path: "flashtests",
+              element: <TraineeFlashTestListPage />,
+            },
+            {
+              path: "flashtests/take/:id/:type",
+              element: <TraineeFlashTestTakePage />,
             },
           ],
         },

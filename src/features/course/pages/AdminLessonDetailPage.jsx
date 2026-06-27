@@ -9,6 +9,10 @@ import {
   isEmptyLessonHtml,
 } from "@/shared/utils/htmlSanitizer";
 import {
+  parseQuizContent,
+  serializeQuizContent,
+} from "../utils/quiz-question-schema";
+import {
   validateSummaryImage,
   validateSummaryVideo,
 } from "@/shared/utils/summaryUploadValidation";
@@ -29,8 +33,6 @@ import {
   Loader2,
   ChevronLeft,
   ChevronRight,
-  Plus,
-  Trash2,
 } from "lucide-react";
 import { useRef } from "react";
 
@@ -422,9 +424,10 @@ export default function AdminLessonDetailPage() {
       return;
     }
 
+    const isQuiz = lessonType === "QUIZ";
     const cleanSummary = sanitizeLessonHtml(summary);
 
-    if (isEmptyLessonHtml(cleanSummary)) {
+    if (!isQuiz && isEmptyLessonHtml(cleanSummary)) {
       showToast("Lesson Summary Blank", "error");
       return;
     }
@@ -432,15 +435,25 @@ export default function AdminLessonDetailPage() {
     setLoading(true);
 
     try {
-      const normalizedResources = resources
-        .map((resource, index) => normalizeResourceForPayload(resource, index))
-        .filter(Boolean)
-        .slice(0, 10);
+      const normalizedResources = isQuiz
+        ? []
+        : resources
+            .map((resource, index) =>
+              normalizeResourceForPayload(resource, index),
+            )
+            .filter(Boolean)
+            .slice(0, 10);
+
+      // Với Quiz: giữ nguyên questions hiện có, chỉ cập nhật quiz title.
+      const parsedQuiz = isQuiz ? parseQuizContent(textContent) : null;
+      const content = isQuiz
+        ? serializeQuizContent(parsedQuiz.title, parsedQuiz.questions)
+        : cleanSummary;
 
       const payload = {
         title: title.trim(),
         lessonType,
-        content: cleanSummary,
+        content,
         videoUrl: lessonType === "VIDEO" ? videoUrl.trim() : null,
         attachmentUrl: lessonType === "PDF" ? uploadedFileUrl : null,
         durationSeconds: Number(durationSeconds || 0),
@@ -681,7 +694,48 @@ export default function AdminLessonDetailPage() {
               </div>
 
               {lessonType === "QUIZ" ? (
-                <QuizEditor value={textContent} onChange={setTextContent} />
+                <div>
+                  <label
+                    style={{
+                      display: "block",
+                      marginBottom: "8px",
+                      fontWeight: "600",
+                      color: "#1e293b",
+                      fontSize: "14px",
+                    }}
+                  >
+                    Quiz Title
+                  </label>
+                  <input
+                    type="text"
+                    value={parseQuizContent(textContent).title}
+                    onChange={(e) => {
+                      const parsed = parseQuizContent(textContent);
+                      setTextContent(
+                        serializeQuizContent(e.target.value, parsed.questions),
+                      );
+                    }}
+                    placeholder="Enter quiz title"
+                    style={{
+                      width: "100%",
+                      padding: "11px 16px",
+                      borderRadius: "8px",
+                      border: "1px solid #cbd5e1",
+                      fontSize: "15px",
+                      boxSizing: "border-box",
+                    }}
+                  />
+                  <p
+                    style={{
+                      marginTop: "10px",
+                      fontSize: "13px",
+                      color: "#64748b",
+                    }}
+                  >
+                    Manage quiz questions from the course content page using the
+                    "Manage questions" button.
+                  </p>
+                </div>
               ) : (
                 <div>
                   <label
@@ -707,7 +761,8 @@ export default function AdminLessonDetailPage() {
                 </div>
               )}
 
-              <div>
+              {lessonType !== "QUIZ" && (
+                <div>
                 <label
                   style={{
                     display: "block",
@@ -818,6 +873,7 @@ export default function AdminLessonDetailPage() {
                   </div>
                 )}
               </div>
+              )}
             </div>
 
             <div
@@ -1500,400 +1556,6 @@ export default function AdminLessonDetailPage() {
               )}
             </>
           )}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function QuizEditor({ value, onChange }) {
-  const [quizData, setQuizData] = useState({ title: "", questions: [] });
-
-  useEffect(() => {
-    if (value) {
-      try {
-        const parsed = JSON.parse(value);
-        setQuizData(parsed);
-      } catch {
-        setQuizData({ title: "", questions: [] });
-      }
-    }
-  }, []);
-
-  const updateQuiz = (newData) => {
-    setQuizData(newData);
-    onChange(JSON.stringify(newData));
-  };
-
-  const addQuestion = () => {
-    const newQuestion = {
-      question: "",
-      options: ["", ""],
-      correctIndex: 0,
-      explanation: "",
-    };
-    updateQuiz({
-      ...quizData,
-      questions: [...quizData.questions, newQuestion],
-    });
-  };
-
-  const removeQuestion = (index) => {
-    const questions = quizData.questions.filter((_, i) => i !== index);
-    updateQuiz({ ...quizData, questions });
-  };
-
-  const updateQuestion = (index, field, newValue) => {
-    const questions = quizData.questions.map((q, i) => {
-      if (i !== index) return q;
-      return { ...q, [field]: newValue };
-    });
-    updateQuiz({ ...quizData, questions });
-  };
-
-  const addOption = (qIndex) => {
-    const questions = quizData.questions.map((q, i) => {
-      if (i !== qIndex) return q;
-      return { ...q, options: [...q.options, ""] };
-    });
-    updateQuiz({ ...quizData, questions });
-  };
-
-  const removeOption = (qIndex, oIndex) => {
-    const questions = quizData.questions.map((q, i) => {
-      if (i !== qIndex) return q;
-      const options = q.options.filter((_, oi) => oi !== oIndex);
-      const correctIndex =
-        q.correctIndex >= options.length ? 0 : q.correctIndex;
-      return { ...q, options, correctIndex };
-    });
-    updateQuiz({ ...quizData, questions });
-  };
-
-  const updateOption = (qIndex, oIndex, value) => {
-    const questions = quizData.questions.map((q, i) => {
-      if (i !== qIndex) return q;
-      const options = q.options.map((opt, oi) => (oi === oIndex ? value : opt));
-      return { ...q, options };
-    });
-    updateQuiz({ ...quizData, questions });
-  };
-
-  return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        gap: "20px",
-      }}
-    >
-      <div>
-        <label
-          style={{
-            display: "block",
-            marginBottom: "8px",
-            fontWeight: "600",
-            color: "#1e293b",
-            fontSize: "14px",
-          }}
-        >
-          Quiz Title
-        </label>
-        <input
-          type="text"
-          value={quizData.title}
-          onChange={(e) => updateQuiz({ ...quizData, title: e.target.value })}
-          placeholder="e.g., Chapter 1 Assessment"
-          style={{
-            width: "100%",
-            padding: "10px 14px",
-            borderRadius: "8px",
-            border: "1px solid #cbd5e1",
-            fontSize: "14px",
-            boxSizing: "border-box",
-          }}
-        />
-      </div>
-
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-        }}
-      >
-        <label
-          style={{
-            fontWeight: "600",
-            color: "#1e293b",
-            fontSize: "14px",
-          }}
-        >
-          Questions ({quizData.questions.length})
-        </label>
-        <button
-          type="button"
-          onClick={addQuestion}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "6px",
-            padding: "8px 16px",
-            background: "#2563eb",
-            color: "#fff",
-            border: "none",
-            borderRadius: "8px",
-            fontSize: "13px",
-            fontWeight: "600",
-            cursor: "pointer",
-          }}
-        >
-          <Plus size={16} /> Add Question
-        </button>
-      </div>
-
-      {quizData.questions.length === 0 ? (
-        <div
-          style={{
-            padding: "40px",
-            textAlign: "center",
-            background: "#f8fafc",
-            borderRadius: "12px",
-            border: "2px dashed #cbd5e1",
-            color: "#64748b",
-          }}
-        >
-          No questions yet. Click "Add Question" to create your first quiz
-          question.
-        </div>
-      ) : (
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            gap: "16px",
-          }}
-        >
-          {quizData.questions.map((question, qIndex) => (
-            <div
-              key={qIndex}
-              style={{
-                background: "#fff",
-                border: "1px solid #e2e8f0",
-                borderRadius: "12px",
-                padding: "20px",
-                boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
-              }}
-            >
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "flex-start",
-                  marginBottom: "16px",
-                }}
-              >
-                <span
-                  style={{
-                    fontWeight: "700",
-                    color: "#2563eb",
-                    fontSize: "14px",
-                  }}
-                >
-                  Question {qIndex + 1}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => removeQuestion(qIndex)}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "4px",
-                    padding: "6px 12px",
-                    background: "#fee2e2",
-                    color: "#dc2626",
-                    border: "none",
-                    borderRadius: "6px",
-                    fontSize: "12px",
-                    fontWeight: "600",
-                    cursor: "pointer",
-                  }}
-                >
-                  <Trash2 size={14} /> Remove
-                </button>
-              </div>
-
-              <div style={{ marginBottom: "16px" }}>
-                <textarea
-                  value={question.question}
-                  onChange={(e) =>
-                    updateQuestion(qIndex, "question", e.target.value)
-                  }
-                  placeholder="Enter your question here..."
-                  rows={3}
-                  style={{
-                    width: "100%",
-                    padding: "10px 12px",
-                    borderRadius: "8px",
-                    border: "1px solid #cbd5e1",
-                    fontSize: "14px",
-                    lineHeight: 1.5,
-                    boxSizing: "border-box",
-                    resize: "vertical",
-                  }}
-                />
-              </div>
-
-              <div
-                style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: "8px",
-                }}
-              >
-                <label
-                  style={{
-                    fontSize: "13px",
-                    fontWeight: "600",
-                    color: "#475569",
-                    marginBottom: "4px",
-                  }}
-                >
-                  Answer Options (click to set as correct)
-                </label>
-                {question.options.map((option, oIndex) => (
-                  <div
-                    key={oIndex}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "8px",
-                    }}
-                  >
-                    <button
-                      type="button"
-                      onClick={() =>
-                        updateQuestion(qIndex, "correctIndex", oIndex)
-                      }
-                      style={{
-                        width: "24px",
-                        height: "24px",
-                        borderRadius: "50%",
-                        border:
-                          question.correctIndex === oIndex
-                            ? "2px solid #16a34a"
-                            : "2px solid #cbd5e1",
-                        background:
-                          question.correctIndex === oIndex ? "#16a34a" : "#fff",
-                        cursor: "pointer",
-                        flexShrink: 0,
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                      }}
-                    >
-                      {question.correctIndex === oIndex && (
-                        <span
-                          style={{
-                            width: "8px",
-                            height: "8px",
-                            borderRadius: "50%",
-                            background: "#fff",
-                          }}
-                        />
-                      )}
-                    </button>
-                    <input
-                      type="text"
-                      value={option}
-                      onChange={(e) =>
-                        updateOption(qIndex, oIndex, e.target.value)
-                      }
-                      placeholder={`Option ${oIndex + 1}`}
-                      style={{
-                        flex: 1,
-                        padding: "8px 12px",
-                        borderRadius: "6px",
-                        border: "1px solid #cbd5e1",
-                        fontSize: "13px",
-                        boxSizing: "border-box",
-                      }}
-                    />
-                    {question.options.length > 2 && (
-                      <button
-                        type="button"
-                        onClick={() => removeOption(qIndex, oIndex)}
-                        style={{
-                          padding: "6px",
-                          background: "#f1f5f9",
-                          border: "none",
-                          borderRadius: "4px",
-                          cursor: "pointer",
-                          color: "#64748b",
-                        }}
-                      >
-                        <X size={14} />
-                      </button>
-                    )}
-                  </div>
-                ))}
-                {question.options.length < 6 && (
-                  <button
-                    type="button"
-                    onClick={() => addOption(qIndex)}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "4px",
-                      padding: "6px 12px",
-                      background: "none",
-                      border: "1px dashed #cbd5e1",
-                      borderRadius: "6px",
-                      fontSize: "12px",
-                      color: "#64748b",
-                      cursor: "pointer",
-                      alignSelf: "flex-start",
-                    }}
-                  >
-                    <Plus size={14} /> Add Option
-                  </button>
-                )}
-              </div>
-
-              <div style={{ marginTop: "16px" }}>
-                <label
-                  style={{
-                    fontSize: "12px",
-                    fontWeight: "600",
-                    color: "#64748b",
-                    display: "block",
-                    marginBottom: "4px",
-                  }}
-                >
-                  Explanation (optional)
-                </label>
-                <textarea
-                  value={question.explanation}
-                  onChange={(e) =>
-                    updateQuestion(qIndex, "explanation", e.target.value)
-                  }
-                  placeholder="Explain why this answer is correct..."
-                  rows={2}
-                  style={{
-                    width: "100%",
-                    padding: "8px 12px",
-                    borderRadius: "6px",
-                    border: "1px solid #e2e8f0",
-                    fontSize: "13px",
-                    lineHeight: 1.5,
-                    boxSizing: "border-box",
-                    resize: "vertical",
-                    background: "#f8fafc",
-                  }}
-                />
-              </div>
-            </div>
-          ))}
         </div>
       )}
     </div>

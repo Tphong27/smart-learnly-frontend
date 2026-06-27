@@ -22,4 +22,11 @@ export const learningService = {
     const response = await apiClient.get(`/admin/courses/${courseId}/learning-preview`)
     return unwrap(response)
   },
+
+  async updateLessonProgress(lessonId, completed) {
+    const response = await apiClient.patch(`/learning/progress/lessons/${lessonId}`, {
+      completed,
+    })
+    return unwrap(response)
+  },
 }

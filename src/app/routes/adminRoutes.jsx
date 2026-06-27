@@ -1,6 +1,7 @@
 ﻿/* eslint-disable react-refresh/only-export-components */
 import { RoleGuard } from "./RoleGuard";
 import { ROLES } from "@/shared/constants/roles";
+import { StaffFlashTestListPage } from "@/features/flashtest";
 import { AppLayout } from "@/app/layouts/AppLayout";
 import {
   AdminAuditLogPage,
@@ -70,6 +71,10 @@ function getAdminRoutes() {
           children: [
             { path: "users-management", element: <AdminUsersPage /> },
             { path: "audit-log", element: <AdminAuditLogPage /> },
+            {
+              path: "flashtests",
+              element: <PlaceholderPage title="Flash Tests Management" />,
+            },
             { path: "settings", element: <AdminSystemSettingsPage /> },
           ],
         },
