@@ -80,6 +80,14 @@ export const orderService = {
     return normalizeCheckout(response);
   },
 
+  async buyNowCheckout({ courseId, classId }) {
+    const response = await apiClient.post('/orders/checkout/buy-now', {
+      courseId,
+      classId,
+    })
+    return normalizeCheckout(response)
+  },
+
   async get(orderId) {
     const response = await apiClient.get(`/orders/${orderId}`);
     return normalizeOrderPayment(response);
