@@ -1,4 +1,4 @@
-export { default as apiClient } from './api-client'
+﻿export { default as apiClient } from './api-client'
 export * from './api-client'
 export { authService } from './auth.service'
 export { categoryService } from './category.service'
@@ -15,3 +15,5 @@ export { cartPriceCacheService } from './cart-price-cache.service'
 export { classService } from './class.service'
 export { userService } from './user.service'
 export * from './flashtest.service'
+export { questionBankService } from './question-bank.service'
+

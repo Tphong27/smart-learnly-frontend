@@ -9,7 +9,12 @@ import {
     ZoomOut,
 } from "lucide-react";
 import { Document, Page, pdfjs } from "react-pdf";
-import { getPrimaryDocument, isPdfUrl } from "../utils/lesson-content";
+import {
+    getPrimaryDocument,
+    isPdfUrl,
+    isOfficeDocUrl,
+    officeViewerUrl,
+} from "../utils/lesson-content";
 
 pdfjs.GlobalWorkerOptions.workerSrc = new URL(
     "pdfjs-dist/build/pdf.worker.min.mjs",
@@ -185,6 +190,43 @@ function PdfSlideViewer({ url }) {
     );
 }
 
+function OfficeDocViewer({ url, name }) {
+    const openDocument = () => {
+        window.open(url, "_blank", "noopener,noreferrer");
+    };
+
+    return (
+        <div className="office-viewer">
+            <div className="office-viewer__toolbar">
+                <span className="office-viewer__title">{name || "Document"}</span>
+                <div className="office-viewer__toolbar-group">
+                    <button
+                        className="office-viewer__tool-btn"
+                        onClick={openDocument}
+                        title="Download"
+                    >
+                        <Download size={18} />
+                    </button>
+                    <button
+                        className="office-viewer__tool-btn"
+                        onClick={openDocument}
+                        title="Open in new tab"
+                    >
+                        <ExternalLink size={18} />
+                    </button>
+                </div>
+            </div>
+            <div className="office-viewer__container">
+                <iframe
+                    title={name || "Document preview"}
+                    src={officeViewerUrl(url)}
+                    className="office-viewer__frame"
+                />
+            </div>
+        </div>
+    );
+}
+
 function DocumentFallback({ lesson }) {
     const document = getPrimaryDocument(lesson);
     const url = document?.url || "";
@@ -247,6 +289,14 @@ export function LearningLessonMedia({ lesson }) {
             return (
                 <div className="learning-lesson-media learning-lesson-media--pdf">
                     <PdfSlideViewer url={document.url} />
+                </div>
+            );
+        }
+
+        if (isOfficeDocUrl(document.url, document.contentType)) {
+            return (
+                <div className="learning-lesson-media learning-lesson-media--office">
+                    <OfficeDocViewer url={document.url} name={document.name} />
                 </div>
             );
         }

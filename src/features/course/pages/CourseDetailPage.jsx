@@ -18,12 +18,8 @@ import {
   getOriginalPrice,
   hasValidDiscount,
 } from "../utils/course-price";
-import {
-  courseService,
-  cartService,
-  orderService,
-  cartPriceCacheService,
-} from "@/services";
+import { courseService, orderService } from "@/services";
+import { ClassSelectionPopup } from "../components/ClassSelectionPopup";
 import "../../admin/admin-shared.css";
 import "./CourseDetailPage.css";
 
@@ -37,7 +33,6 @@ function LessonIcon({ type }) {
 export function CourseDetailPage() {
   const { slug } = useParams();
   const navigate = useNavigate();
-  const [addToCartLoading, setAddToCartLoading] = useState(false);
   const [buyNowLoading, setBuyNowLoading] = useState(false);
   const toast = useToast();
   const location = useLocation();
@@ -45,6 +40,8 @@ export function CourseDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isEnrolled, setIsEnrolled] = useState(false);
+  const [classPopupOpen, setClassPopupOpen] = useState(false);
+  const [checkoutClassId, setCheckoutClassId] = useState(null);
 
   function hasAccessToken() {
     const token = localStorage.getItem("accessToken");
@@ -130,6 +127,7 @@ export function CourseDetailPage() {
 
   const objectives = course.learningObjectives || [];
   const modules = course.modules || [];
+  const classes = course.classes || [];
   const totalLessons = modules.reduce(
     (sum, m) => sum + (m.lessons?.length || 0),
     0,
@@ -148,6 +146,15 @@ export function CourseDetailPage() {
 
   function getCourseId() {
     return course?.id;
+  }
+
+  function isClassSelectable(classItem) {
+    const status = String(classItem?.status || "").toUpperCase();
+    const availableSlots = Number(classItem?.availableSlots ?? 0);
+
+    return (
+      status !== "CANCELLED" && status !== "COMPLETED" && availableSlots > 0
+    );
   }
 
   function ensureAuthenticated() {
@@ -176,95 +183,77 @@ export function CourseDetailPage() {
     return false;
   }
 
-  async function handleAddToCartClick() {
-    if (!ensureAuthenticated()) return;
-    if (!ensurePaidCourse()) return;
+function handleBuyNowClick() {
+  if (!ensureAuthenticated()) return;
+  if (!ensurePaidCourse()) return;
 
-    const courseId = getCourseId();
-
-    if (!courseId) {
-      toast.error("Course information is missing.");
-      return;
-    }
-
-    setAddToCartLoading(true);
-
-    try {
-      await cartService.addItem({
-        courseId,
-        classId: null,
-      });
-
-      cartPriceCacheService.saveCourse(course);
-
-      toast.success("Course added to cart.");
-      navigate("/cart");
-    } catch (err) {
-      toast.error(err?.message || "Could not add course to cart.");
-    } finally {
-      setAddToCartLoading(false);
-    }
+  if (classes.length === 0) {
+    toast.error("This course does not have any available class yet.");
+    return;
   }
 
-  async function handleBuyNowClick() {
-    if (!ensureAuthenticated()) return;
-    if (!ensurePaidCourse()) return;
+  setClassPopupOpen(true);
+}
 
-    const courseId = getCourseId();
+async function handleCheckoutSelectedClass(classItem) {
+  if (!ensureAuthenticated()) return;
+  if (!ensurePaidCourse()) return;
 
-    if (!courseId) {
-      toast.error("Course information is missing.");
-      return;
-    }
+  const courseId = getCourseId();
 
-    setBuyNowLoading(true);
+  if (!courseId) {
+    toast.error("Course information is missing.");
+    return;
+  }
 
-    try {
-      try {
-        await cartService.addItem({
+  if (!classItem?.id) {
+    toast.error("Class information is missing.");
+    return;
+  }
+
+  if (!isClassSelectable(classItem)) {
+    toast.error("This class is not available for checkout.");
+    return;
+  }
+
+  setCheckoutClassId(classItem.id);
+  setBuyNowLoading(true);
+
+  try {
+    const checkout = await orderService.buyNowCheckout({
+      courseId,
+      classId: classItem.id,
+    });
+
+    toast.success("Checkout created.");
+
+    navigate(`/checkout/${checkout.orderId}`, {
+      state: {
+        checkout,
+        expectedCourse: {
           courseId,
-          classId: null,
-        });
-      } catch (err) {
-        const message = String(err?.message || "").toLowerCase();
-
-        if (!message.includes("already exists")) {
-          throw err;
-        }
-      }
-
-      cartPriceCacheService.saveCourse(course);
-
-      const latestCart = await cartService.getCart();
-
-      if (!latestCart?.id) {
-        throw new Error("Cart is not ready.");
-      }
-
-      const checkout = await orderService.checkout(latestCart.id);
-
-      toast.success("Checkout created.");
-
-      navigate(`/checkout/${checkout.orderId}`, {
-        state: {
-          checkout,
-          expectedCourse: {
-            courseId,
-            title: course.title,
-            originalPrice,
-            displayPrice,
-            hasDiscount,
-            discountPercent,
-            currency: course.currency ?? "VND",
-          },
+          classId: classItem.id,
+          title: course.title,
+          className: classItem.className,
+          trainerName: classItem.trainerName,
+          scheduleDescription: classItem.scheduleDescription,
+          startDate: classItem.startDate,
+          endDate: classItem.endDate,
+          originalPrice,
+          displayPrice,
+          hasDiscount,
+          discountPercent,
+          currency: course.currency ?? "VND",
         },
-      });
-    } catch (err) {
-      toast.error(err?.message || "Could not start checkout.");
-    } finally {
-      setBuyNowLoading(false);
-    }
+      },
+    });
+  } catch (err) {
+    toast.error(err?.message || "Could not start checkout.");
+  } finally {
+    setBuyNowLoading(false);
+    setCheckoutClassId(null);
   }
+}
 
   return (
     <div className="course-detail">
@@ -353,9 +342,7 @@ export function CourseDetailPage() {
                 <button
                   type="button"
                   onClick={handleBuyNowClick}
-                  disabled={
-                    addToCartLoading || buyNowLoading || isFreeCourse(course)
-                  }
+                  disabled={buyNowLoading || isFreeCourse(course)}
                   className="button button--primary course-detail__cta"
                 >
                   {buyNowLoading ? "Processing..." : "Buy Now"}
@@ -367,19 +354,6 @@ export function CourseDetailPage() {
                 >
                   Preview Lesson
                 </Link>
-
-                <button
-                  type="button"
-                  onClick={handleAddToCartClick}
-                  disabled={addToCartLoading || buyNowLoading}
-                  className="button button--outline course-detail__cta course-detail__cta--full"
-                >
-                  {addToCartLoading
-                    ? "Adding..."
-                    : isFreeCourse(course)
-                      ? "Enroll for free"
-                      : "Add to Cart"}
-                </button>
               </div>
             )}
             {isEnrolled && (
@@ -499,6 +473,17 @@ export function CourseDetailPage() {
           Start preview
         </Link>
       </section>
+
+      {classPopupOpen && (
+        <ClassSelectionPopup
+          classes={classes}
+          buyNowLoading={buyNowLoading}
+          checkoutClassId={checkoutClassId}
+          isClassSelectable={isClassSelectable}
+          onClose={() => setClassPopupOpen(false)}
+          onSelectClass={handleCheckoutSelectedClass}
+        />
+      )}
     </div>
   );
 }

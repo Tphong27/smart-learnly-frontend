@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { Bell, LogOut, Search, User, ChevronDown, Menu } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
+import { Bell, LogOut, User, ChevronDown, Menu, Zap } from "lucide-react";
+import { getDashboardPathByRole } from "@/app/routes/dashboard-path";
 import "./Header.css";
 
 function getInitials(name) {
@@ -25,6 +26,7 @@ export function Header({ user, onLogout, onToggleSidebar }) {
     "User";
   const initials = getInitials(displayName);
   const role = user?.role || "user";
+  const dashboardPath = getDashboardPathByRole(role);
 
   useEffect(() => {
     function handleClick(event) {
@@ -42,8 +44,9 @@ export function Header({ user, onLogout, onToggleSidebar }) {
   return (
     <header className="app-header">
       <div className="app-header__inner">
-        {/* Thanh tìm kiếm bên trái */}
+        {/* Left: Logo + Search */}
         <div className="app-header__left">
+          {/* Mobile menu button */}
           <button
             type="button"
             className="app-header__menu-button"
@@ -53,18 +56,23 @@ export function Header({ user, onLogout, onToggleSidebar }) {
             <Menu size={18} />
           </button>
 
-          <div className="app-header__search-container">
-            <Search size={16} className="app-header__search-icon" />
-            <input
-              type="text"
-              placeholder="Search..."
-              className="app-header__search-input"
-            />
-          </div>
+          {/* Logo */}
+          <Link to={dashboardPath} className="app-header__logo">
+            <span className="app-header__logo-mark">
+              <Zap size={18} />
+            </span>
+            <span className="app-header__logo-text">
+              <span className="app-header__logo-title">Smart Learnly</span>
+            </span>
+          </Link>
+
+          {/* Vertical divider */}
+          <div className="app-header__divider-vertical" />
         </div>
 
-        {/* Chuông thông báo & Profile bên phải */}
+        {/* Right: Actions + Profile */}
         <div className="app-header__actions">
+          {/* Notification */}
           <button
             type="button"
             className="app-header__icon-button"
@@ -76,7 +84,7 @@ export function Header({ user, onLogout, onToggleSidebar }) {
 
           <div className="app-header__divider" />
 
-          {/* Khối User Profile Dropdown */}
+          {/* User Profile Dropdown */}
           <div className="app-header__user" ref={menuRef}>
             <button
               type="button"

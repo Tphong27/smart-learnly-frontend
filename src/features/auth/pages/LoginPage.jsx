@@ -10,6 +10,10 @@ import { normalizeRole, ROLES } from "@/shared/constants/roles";
 import { loginSchema } from "../schemas/auth-schemas";
 import { AuthPage, AuthCard } from "../components/AuthCard";
 import { SocialDivider } from "../components/SocialDivider";
+import {
+  getDashboardPathByRole,
+  isPathAllowedForRole,
+} from "@/app/routes/dashboard-path";
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 const isGoogleConfigured = Boolean(
@@ -37,6 +41,7 @@ function isPathAllowedForRole(pathname, role) {
 
 function getRedirectPath(location, user) {
   const requested = location.state?.from?.pathname;
+
   if (requested && isPathAllowedForRole(requested, user?.role)) {
     return requested;
   }
@@ -50,6 +55,7 @@ function getRedirectPath(location, user) {
 
   // Mặc định (cho Trainee hoặc không rõ role) về dashboard chung
   return "/dashboard";
+  return getDashboardPathByRole(user?.role);
 }
 
 export function LoginPage() {

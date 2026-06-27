@@ -61,6 +61,75 @@ const navItems = [
     icon: ScrollText,
     roles: [ROLES.ADMIN],
   },
+    BarChart3,
+    BookOpen,
+    ClipboardCheck,
+    FileQuestion,
+    FolderTree,
+    GraduationCap,
+    History,
+    Home,
+    Layers3,
+    Receipt,
+    ScrollText,
+    Settings,
+    ShieldCheck,
+    ShoppingCart,
+    Users,
+    CreditCard,
+} from "lucide-react";
+import { NavLink } from "react-router-dom";
+import { ROLES } from "@/shared/constants/roles";
+const navItems = [
+    // ADMIN & MONITORING ROUTES
+    {
+        label: "Admin Dashboard",
+        path: "/admin/dashboard",
+        icon: Home,
+        roles: [ROLES.ADMIN],
+    },
+    {
+        label: "Users & Roles",
+        path: "/admin/users-management",
+        icon: ShieldCheck,
+        roles: [ROLES.ADMIN],
+    },
+    {
+        label: "Course Management",
+        path: "/admin/courses",
+        icon: FolderTree,
+        roles: [ROLES.ADMIN, ROLES.TMO, ROLES.SME],
+    },
+    {
+        label: "Question Bank",
+        path: "/admin/question-banks",
+        icon: FileQuestion,
+        roles: [ROLES.ADMIN, ROLES.TMO, ROLES.SME],
+    },
+    {
+        label: "Categories",
+        path: "/admin/categories",
+        icon: Receipt,
+        roles: [ROLES.ADMIN, ROLES.TMO],
+    },
+    {
+        label: "Transactions",
+        path: "/admin/transactions",
+        icon: CreditCard,
+        roles: [ROLES.ADMIN, ROLES.TMO],
+    },
+    {
+        label: "System Activity Log",
+        path: "/admin/audit-log",
+        icon: ScrollText,
+        roles: [ROLES.ADMIN],
+    },
+    {
+        label: "System Settings",
+        path: "/admin/settings",
+        icon: Settings,
+        roles: [ROLES.ADMIN],
+    },
 
   // STAFF ROUTES (TRAINER, TMO, SME)
   {
@@ -165,6 +234,8 @@ const navItems = [
 
 export function Sidebar({ userRole, open, onClose }) {
   const normalizedRole = normalizeRole(userRole);
+    const normalizedRole =
+        typeof userRole === "string" ? userRole.toUpperCase() : userRole;
 
   const visibleItems = navItems.filter((item) =>
     isRoleAllowed(normalizedRole, item.roles),
@@ -232,4 +303,25 @@ export function Sidebar({ userRole, open, onClose }) {
       </aside>
     </>
   );
+            <aside className={sidebarClassName}>
+                <nav className="app-sidebar__nav sidebar__nav">
+                    {visibleItems.map(({ label, path, icon: Icon }) => (
+                        <NavLink
+                            key={path}
+                            to={path}
+                            onClick={onClose}
+                            className={({ isActive }) =>
+                                isActive
+                                    ? "app-sidebar__link sidebar__link app-sidebar__link--active sidebar__link--active"
+                                    : "app-sidebar__link sidebar__link"
+                            }
+                        >
+                            <Icon size={18} />
+                            {label}
+                        </NavLink>
+                    ))}
+                </nav>
+            </aside>
+        </>
+    );
 }

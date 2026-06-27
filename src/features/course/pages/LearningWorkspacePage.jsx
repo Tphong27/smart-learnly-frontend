@@ -11,6 +11,7 @@ import {
     ChevronDown,
     Circle,
     BookOpen,
+    Eye,
 } from "lucide-react";
 import { LearningLessonMedia } from "@/features/course/components/LearningLessonMedia";
 import { LearningLessonTabs } from "@/features/course/components/LearningLessonTabs";
@@ -186,53 +187,83 @@ export function LearningWorkspacePage({
     const courseTitle = data?.courseTitle || "Course";
     const stats = data?.stats;
 
+    const isAdminPreview = mode === "admin-preview";
+
+    const completedCount = completedLessonIds.size;
+    const totalLessonCount = allLessons.length;
+    const progressPercent =
+        totalLessonCount > 0
+            ? Math.round((completedCount / totalLessonCount) * 100)
+            : 0;
+
     return (
         <div className="learning-workspace">
-            {previewMode && (
-                <div className="learning-workspace__preview-banner">
-                    <span>Preview mode — You are viewing sample content</span>
+            <header className="learning-workspace__topbar">
+                <button
+                    className="learning-workspace__topbar-back"
+                    onClick={() =>
+                        navigate(
+                            mode === "admin-preview"
+                                ? `/admin/courses/${courseId}/content`
+                                : previewMode
+                                  ? `/courses/${courseId}`
+                                  : "/learning/courses",
+                        )
+                    }
+                    title="Back"
+                >
+                    <ArrowLeft size={18} />
+                </button>
+
+                <h1 className="learning-workspace__course-title" title={courseTitle}>
+                    {courseTitle}
+                </h1>
+
+                {isAdminPreview && (
+                    <span className="learning-workspace__trainee-tag">
+                        <Eye size={14} />
+                        Viewing as trainee
+                    </span>
+                )}
+
+                {previewMode && (
                     <Link
                         to={`/courses/${courseId}`}
-                        className="learning-workspace__preview-cta"
+                        className="learning-workspace__topbar-cta"
                     >
                         View Course Details
                     </Link>
-                </div>
-            )}
+                )}
 
-            <aside
-                className={`learning-workspace__sidebar ${sidebarOpen ? "open" : ""}`}
-            >
-                <div className="learning-workspace__sidebar-header">
-                    <button
-                        className="learning-workspace__sidebar-back"
-                        onClick={() =>
-                            navigate(
-                                mode === "admin-preview"
-                                    ? `/admin/courses/${courseId}/content`
-                                    : previewMode
-                                      ? `/courses/${courseId}`
-                                      : "/learning/courses",
-                            )
-                        }
-                        title="Back"
-                    >
-                        <ArrowLeft size={18} />
-                    </button>
-                    <h2
-                        className="learning-workspace__sidebar-title"
-                        title={courseTitle}
-                    >
-                        {courseTitle}
-                    </h2>
-                    <button
-                        className="learning-workspace__sidebar-back"
-                        onClick={() => setSidebarOpen(false)}
-                        title="Close sidebar"
-                    >
-                        <X size={18} />
-                    </button>
+                <div className="learning-workspace__topbar-progress">
+                    <div className="learning-workspace__progress-track">
+                        <div
+                            className="learning-workspace__progress-fill"
+                            style={{ width: `${progressPercent}%` }}
+                        />
+                    </div>
+                    <span className="learning-workspace__progress-label">
+                        {completedCount}/{totalLessonCount} done
+                    </span>
                 </div>
+            </header>
+
+            <div className="learning-workspace__body">
+                <aside
+                    className={`learning-workspace__sidebar ${sidebarOpen ? "open" : ""}`}
+                >
+                    <div className="learning-workspace__sidebar-header">
+                        <h2 className="learning-workspace__sidebar-title">
+                            Course content
+                        </h2>
+                        <button
+                            className="learning-workspace__sidebar-back"
+                            onClick={() => setSidebarOpen(false)}
+                            title="Close sidebar"
+                        >
+                            <X size={18} />
+                        </button>
+                    </div>
 
                 {stats && (
                     <div className="learning-workspace__stats">
@@ -314,6 +345,7 @@ export function LearningWorkspacePage({
                 </div>
 
             </main>
+            </div>
         </div>
     );
 }
@@ -395,8 +427,14 @@ function SectionAccordion({
                                     />
                                 </div>
                                 <div className="curriculum-lesson__info">
-                                    <div className="curriculum-lesson__title">
-                                        {sIdx + 1}.{lIdx + 1}. {lesson.title}
+                                    <div className="curriculum-lesson__index">
+                                        Lesson {sIdx + 1}.{lIdx + 1}
+                                    </div>
+                                    <div
+                                        className="curriculum-lesson__title"
+                                        title={lesson.title}
+                                    >
+                                        {lesson.title}
                                     </div>
                                     <div className="curriculum-lesson__meta">
                                         <span className="curriculum-lesson__duration">

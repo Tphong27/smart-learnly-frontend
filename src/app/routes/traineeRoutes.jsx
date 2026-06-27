@@ -16,6 +16,8 @@ import {
   TraineeFlashTestListPage,
   TraineeFlashTestTakePage,
 } from "@/features/flashtest";
+import { CourseListPage, LearningWorkspacePage } from "@/features/course";
+import { TraineeDashboardPage } from "@/features/dashboard";
 
 function PlaceholderPage({ title }) {
   return (
@@ -39,7 +41,19 @@ function getTraineeRoutes() {
         {
           element: <AppLayout />,
           children: [
-            { path: "courses", element: <MyCoursesPage /> },
+            {
+              path: "courses",
+              element: (
+                <CourseListPage
+                  pageSize={6}
+                  excludeEnrolled={true}
+                  detailState={{
+                    from: "/learning/courses",
+                    backLabel: "Back to Course Catalog",
+                  }}
+                />
+              ),
+            },
             { path: "courses/:courseId", element: <LearningWorkspacePage /> },
             { path: "enrollments", element: <MyEnrollmentsPage /> },
             { path: "transactions", element: <MyTransactionsPage /> },
@@ -68,17 +82,6 @@ function getTraineeRoutes() {
               element: <TraineeFlashTestTakePage />,
             },
           ],
-        },
-      ],
-    },
-
-    {
-      path: "/cart",
-      element: <RoleGuard allowedRoles={[ROLES.TRAINEE]} />,
-      children: [
-        {
-          element: <AppLayout />,
-          children: [{ index: true, element: <CartPage /> }],
         },
       ],
     },
@@ -130,7 +133,13 @@ function getTraineeRoutes() {
     },
     {
       path: "/dashboard",
-      element: <Navigate to="/learning/courses" replace />,
+      element: <RoleGuard allowedRoles={[ROLES.TRAINEE]} />,
+      children: [
+        {
+          element: <AppLayout />,
+          children: [{ index: true, element: <TraineeDashboardPage /> }],
+        },
+      ],
     },
   ];
 }

@@ -127,8 +127,8 @@ const refreshClient = axios.create({
   },
 })
 
-// SỬA TẠI ĐÂY: Nới lỏng Regex, bỏ dấu gạch chéo đầu để ăn khớp chính xác tuyệt đối
-const PUBLIC_AUTH_ENDPOINTS = /auth\/(login|register|google|refresh|forgot-password|reset-password|verify-email|resend-verification)/
+// Neo bằng "/" đứng trước "auth" để tránh khớp nhầm các path như "/oauth/google".
+const PUBLIC_AUTH_ENDPOINTS = /\/auth\/(login|register|google|refresh|forgot-password|reset-password|verify-email|resend-verification)/
 const PUBLIC_COURSE_ENDPOINTS = /courses\/[^/]+\/(preview|preview-lessons)(?:\/[^/]+)?$/
 
 function removeAuthorizationHeader(config) {
