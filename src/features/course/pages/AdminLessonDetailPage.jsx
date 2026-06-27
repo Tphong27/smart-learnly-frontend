@@ -8,6 +8,14 @@ import {
   isEmptyLessonHtml,
 } from "@/shared/utils/htmlSanitizer";
 import {
+  validateSummaryImage,
+  validateSummaryVideo,
+} from "@/shared/utils/summaryUploadValidation";
+import {
+  MATERIAL_DOC_EXTENSIONS,
+  getFileExtension,
+} from "@/features/course/utils/lesson-content";
+import {
   ArrowLeft,
   Save,
   CloudUpload,
@@ -213,6 +221,23 @@ export default function AdminLessonDetailPage() {
   };
 
   const uploadMainFile = async (file) => {
+    // Validate định dạng & kích thước cho material tài liệu (lesson type PDF).
+    if (lessonType === "PDF") {
+      const extension = getFileExtension(file.name);
+      if (!MATERIAL_DOC_EXTENSIONS.includes(extension)) {
+        showToast(
+          "Only PDF, DOC or DOCX files are supported for reading material",
+          "error",
+        );
+        return;
+      }
+    }
+    const MAX_MATERIAL_SIZE = 50 * 1024 * 1024; // 50MB, khớp giới hạn backend
+    if (file.size > MAX_MATERIAL_SIZE) {
+      showToast("File is too large. Maximum size is 50MB", "error");
+      return;
+    }
+
     setUploadingMainFile(true);
     setMainContentFile(file);
     try {
@@ -260,6 +285,68 @@ export default function AdminLessonDetailPage() {
       }
     } finally {
       setUploadingResources(false);
+    }
+  };
+
+  const uploadSummaryImage = async (file) => {
+    const validationError = validateSummaryImage(file);
+
+    if (validationError) {
+      showToast(validationError, "error");
+      return null;
+    }
+
+    try {
+      const uploadedImage = await courseService.uploadSummaryImage(file);
+      const uploadedUrl = uploadedImage?.url || uploadedImage?.data?.url;
+
+      if (!uploadedUrl) {
+        throw new Error("Invalid summary image upload response");
+      }
+
+      showToast("Summary image uploaded successfully", "success");
+
+      return {
+        ...uploadedImage,
+        url: uploadedUrl,
+      };
+    } catch (error) {
+      showToast(
+        getErrorMessage(error, "Error uploading summary image"),
+        "error",
+      );
+      throw error;
+    }
+  };
+
+  const uploadSummaryVideo = async (file) => {
+    const validationError = validateSummaryVideo(file);
+
+    if (validationError) {
+      showToast(validationError, "error");
+      return null;
+    }
+
+    try {
+      const uploadedVideo = await courseService.uploadSummaryVideo(file);
+      const uploadedUrl = uploadedVideo?.url || uploadedVideo?.data?.url;
+
+      if (!uploadedUrl) {
+        throw new Error("Invalid summary video upload response");
+      }
+
+      showToast("Summary video uploaded successfully", "success");
+
+      return {
+        ...uploadedVideo,
+        url: uploadedUrl,
+      };
+    } catch (error) {
+      showToast(
+        getErrorMessage(error, "Error uploading summary video"),
+        "error",
+      );
+      throw error;
     }
   };
 
@@ -331,7 +418,7 @@ export default function AdminLessonDetailPage() {
     const cleanSummary = sanitizeLessonHtml(summary);
 
     if (isEmptyLessonHtml(cleanSummary)) {
-      showToast("Vui lòng nhập Summary cho bài học", "error");
+      showToast("Lesson Summary Blank", "error");
       return;
     }
 
@@ -358,13 +445,13 @@ export default function AdminLessonDetailPage() {
 
       await courseService.updateLesson(lessonId, payload);
 
-      showToast("Cập nhật nội dung bài học thành công!", "success");
+      showToast("Update successfully!", "success");
       navigate(`/admin/courses/${courseId}/content`);
     } catch (error) {
-      console.error("Lỗi cập nhật bài học chi tiết:", error);
+      console.error("Error updating lesson details:", error);
 
       const responseData = error?.response?.data;
-      let errorText = "Gặp lỗi trong quá trình lưu dữ liệu bài học";
+      let errorText = "Encountered an error while saving lesson data";
 
       if (typeof responseData === "string") {
         errorText = responseData;
@@ -592,8 +679,10 @@ export default function AdminLessonDetailPage() {
                   <RichTextEditor
                     value={summary}
                     onChange={setSummary}
-                    placeholder="Nhập tóm tắt nội dung bài học..."
+                    placeholder="Content Learning..."
                     minHeight={260}
+                    imageUploader={uploadSummaryImage}
+                    videoUploader={uploadSummaryVideo}
                   />
                 </div>
               )}
@@ -1011,7 +1100,7 @@ export default function AdminLessonDetailPage() {
                       onChange={handleMainFileSelect}
                       disabled={uploadingMainFile}
                       style={{ display: "none" }}
-                      accept=".pdf,.doc,.docx,.ppt,.pptx"
+                      accept=".pdf,.doc,.docx"
                     />
                   </div>
                 )}

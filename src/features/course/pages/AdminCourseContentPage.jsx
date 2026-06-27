@@ -257,10 +257,10 @@ export default function AdminCourseContentPage() {
       const data = await courseService.getCourseContent(courseId);
       setSections(Array.isArray(data) ? data : []);
     } catch (error) {
-      showToast(
-        error.response?.data?.message || "Error loading content",
-        "error"
-      );
+      showToast({
+        type: "error",
+        message: error.response?.data?.message || "Error loading content",
+      });
     } finally {
       setLoadingSections(false);
     }
@@ -276,6 +276,11 @@ export default function AdminCourseContentPage() {
       }));
     } catch (err) {
       console.error("Error fetching lessons for section " + sectionId, err);
+      // Đánh dấu section đã được fetch (dù lỗi) để tránh effect lặp fetch vô hạn
+      setSectionLessons((prev) => ({
+        ...prev,
+        [sectionId]: prev[sectionId] || [],
+      }));
     } finally {
       setLoadingLessons((prev) => ({ ...prev, [sectionId]: false }));
     }
@@ -307,13 +312,13 @@ export default function AdminCourseContentPage() {
         title: editSectionTitle.trim(),
         isActive: true,
       });
-      showToast("Section updated successfully!", "success");
+      showToast({ type: "success", message: "Section updated successfully!" });
       setIsEditSectionModalOpen(false);
       setEditingSectionId(null);
       setEditSectionTitle("");
       fetchSections();
     } catch (error) {
-      showToast("Error updating section", "error");
+      showToast({ type: "error", message: "Error updating section" });
     }
   };
 
@@ -325,10 +330,10 @@ export default function AdminCourseContentPage() {
     ) {
       try {
         await courseService.deleteSection(sectionId);
-        showToast("Section deleted successfully!", "success");
+        showToast({ type: "success", message: "Section deleted successfully!" });
         fetchSections();
       } catch (error) {
-        showToast("Error deleting section", "error");
+        showToast({ type: "error", message: "Error deleting section" });
       }
     }
   };
@@ -341,7 +346,7 @@ export default function AdminCourseContentPage() {
     ) {
       try {
         await courseService.deleteLesson(lessonId);
-        showToast("Lesson deleted successfully!", "success");
+        showToast({ type: "success", message: "Lesson deleted successfully!" });
         setSectionLessons((prev) => {
           const updated = { ...prev };
           for (const key of Object.keys(updated)) {
@@ -497,13 +502,29 @@ export default function AdminCourseContentPage() {
                 <h2>Course Structure</h2>
                 <p>Organize and manage your course content</p>
               </div>
-              <button
-                onClick={() => setIsSectionModalOpen(true)}
-                className="btn-primary"
-              >
-                <span className="material-symbols-outlined">add</span> Add New
-                Section
-              </button>
+              <div className="header-actions">
+                <button
+                  type="button"
+                  onClick={() =>
+                    window.open(
+                      `/admin/courses/${courseId}/preview`,
+                      "_blank",
+                      "noopener,noreferrer"
+                    )
+                  }
+                  className="btn-outline"
+                >
+                  <span className="material-symbols-outlined">visibility</span>{" "}
+                  View as User
+                </button>
+                <button
+                  onClick={() => setIsSectionModalOpen(true)}
+                  className="btn-primary"
+                >
+                  <span className="material-symbols-outlined">add</span> Add New
+                  Section
+                </button>
+              </div>
             </div>
           </div>
 
@@ -757,7 +778,7 @@ export default function AdminCourseContentPage() {
                     >
                       <option value="video">Video Lecture</option>
                       <option value="document">
-                        Reading Material (Text/PDF)
+                        Reading Material (PDF / Word)
                       </option>
                       <option value="quiz">Quiz</option>
                     </select>

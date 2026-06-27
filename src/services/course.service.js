@@ -276,6 +276,40 @@ export const courseService = {
     return unwrap(response);
   },
 
+  async uploadSummaryImage(file) {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const response = await apiClient.post(
+      "/admin/uploads/lesson-resource",
+      formData,
+      {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      },
+    );
+
+    return unwrap(response);
+  },
+
+  async uploadSummaryVideo(file) {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const response = await apiClient.post(
+      "/admin/uploads/lesson-material",
+      formData,
+      {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      },
+    );
+
+    return unwrap(response);
+  },
+
   // Khớp với @GetMapping("/courses/{courseId}/sections")
   async getCourseContent(courseId) {
     const response = await apiClient.get(`/admin/courses/${courseId}/sections`);

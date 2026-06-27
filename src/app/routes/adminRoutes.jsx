@@ -1,4 +1,4 @@
-/* eslint-disable react-refresh/only-export-components */
+﻿/* eslint-disable react-refresh/only-export-components */
 import { RoleGuard } from "./RoleGuard";
 import { ROLES } from "@/shared/constants/roles";
 import { StaffFlashTestListPage } from "@/features/flashtest";
@@ -9,15 +9,16 @@ import {
   AdminCoursesPage,
   AdminCourseFormPage,
   AdminUsersPage,
+  AdminSystemSettingsPage,
+  AdminQuestionBanksPage,
+  AdminQuestionBankDetailPage,
+  AdminQuestionFormPage,
 } from "@/features/admin";
-// IMPORT TRANG KÉO THẢ NỘI DUNG CỦA DEV F VÀO ĐÂY
 import AdminOrdersPage from "@/features/checkout/pages/AdminOrdersPage";
 import AdminTransactionsPage from "@/features/checkout/pages/AdminTransactionsPage";
 
-// IMPORT TRANG KÉO THẢ NỘI DUNG CỦA DEV F VÀO ĐÂY
 import AdminCourseContentPage from "@/features/course/pages/AdminCourseContentPage";
 
-// 🛠️ THÊM MỚI: Import trang cấu hình chi tiết nội dung bài học
 import AdminLessonDetailPage from "@/features/course/pages/AdminLessonDetailPage";
 
 function PlaceholderPage({ title }) {
@@ -32,8 +33,6 @@ function PlaceholderPage({ title }) {
     </section>
   );
 }
-
-// 🟩 ĐỔI THÀNH HÀM giống y hệt getTraineeRoutes
 function getAdminRoutes() {
   return [
     {
@@ -41,7 +40,6 @@ function getAdminRoutes() {
       element: <AppLayout />,
       children: [
         {
-          // 🟩 ĐÃ SỬA: Mở khóa Frontend cho TMO và SME vào quản lý khóa học
           element: (
             <RoleGuard allowedRoles={[ROLES.ADMIN, ROLES.TMO, ROLES.SME]} />
           ),
@@ -53,19 +51,19 @@ function getAdminRoutes() {
             { path: "courses", element: <AdminCoursesPage /> },
             { path: "courses/new", element: <AdminCourseFormPage /> },
             { path: "courses/:courseId", element: <AdminCourseFormPage /> },
-
-            // 🛠️ THÊM ROUTE NÀY: Trang cấu trúc chương & bài học (Dev F - Sprint 2)
             {
               path: "courses/:courseId/content",
               element: <AdminCourseContentPage />,
             },
-
-            // 🛠️ THÊM ROUTE NÀY: Trang cấu hình chi tiết bài học (Sửa lỗi 404)
             {
               path: "courses/:courseId/lessons/:lessonId",
               element: <AdminLessonDetailPage />,
             },
             { path: "categories", element: <AdminCategoriesPage /> },
+            { path: "question-banks", element: <AdminQuestionBanksPage /> },
+            { path: "question-banks/:bankId", element: <AdminQuestionBankDetailPage /> },
+            { path: "question-banks/:bankId/questions/new", element: <AdminQuestionFormPage /> },
+            { path: "questions/:questionId/edit", element: <AdminQuestionFormPage /> },
           ],
         },
         {
@@ -77,6 +75,7 @@ function getAdminRoutes() {
               path: "flashtests",
               element: <PlaceholderPage title="Flash Tests Management" />,
             },
+            { path: "settings", element: <AdminSystemSettingsPage /> },
           ],
         },
         {
@@ -90,6 +89,6 @@ function getAdminRoutes() {
     },
   ];
 }
-
-// Xuất bản mặc định hàm
 export default getAdminRoutes;
+
+

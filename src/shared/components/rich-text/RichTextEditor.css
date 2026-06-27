@@ -1,47 +1,316 @@
 .lesson-summary-editor {
   width: 100%;
-  border-radius: 8px;
+  border-radius: 12px;
   background: #ffffff;
+  border: 1px solid #dbe3ef;
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
+  overflow: visible;
+  position: relative;
+  z-index: 1;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
+.lesson-summary-editor:focus-within {
+  border-color: #60a5fa;
+  box-shadow:
+    0 0 0 3px rgba(96, 165, 250, 0.16),
+    0 8px 22px rgba(15, 23, 42, 0.08);
+}
+
+/* =========================
+   Toolbar - compact one row
+   ========================= */
+
 .lesson-summary-editor .ql-toolbar {
-  border: 1px solid #dbe3ef;
-  border-bottom: none;
-  border-radius: 8px 8px 0 0;
+  border: none;
+  border-bottom: 1px solid #e2e8f0;
+  border-radius: 12px 12px 0 0;
   background: #ffffff;
+  padding: 6px 10px;
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: 4px;
+  min-height: 42px;
+  overflow: visible;
+  white-space: nowrap;
+  position: relative;
+  z-index: 30;
+}
+
+.lesson-summary-editor .ql-toolbar::-webkit-scrollbar {
+  height: 4px;
+}
+
+.lesson-summary-editor .ql-toolbar::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 999px;
+}
+
+.lesson-summary-editor .ql-toolbar .ql-formats {
+  margin-right: 4px;
+  padding-right: 6px;
+  border-right: 1px solid #e2e8f0;
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+  flex-shrink: 0;
+}
+
+.lesson-summary-editor .ql-toolbar .ql-formats:last-child {
+  border-right: none;
+  margin-right: 0;
+  padding-right: 0;
+}
+
+.lesson-summary-editor .ql-toolbar button {
+  width: 26px;
+  height: 26px;
+  padding: 3px;
+  border-radius: 6px;
+  flex-shrink: 0;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease,
+    transform 0.15s ease;
+}
+
+.lesson-summary-editor .ql-toolbar button:hover,
+.lesson-summary-editor .ql-toolbar .ql-picker-label:hover {
+  background: #f1f5f9;
+  color: #1d4ed8;
+}
+
+.lesson-summary-editor .ql-toolbar button:active {
+  transform: translateY(1px);
+}
+
+.lesson-summary-editor .ql-toolbar button.ql-active,
+.lesson-summary-editor .ql-toolbar .ql-picker-label.ql-active,
+.lesson-summary-editor .ql-toolbar .ql-picker-item.ql-selected {
+  background: #e0f2fe;
+  color: #0369a1;
+}
+
+.lesson-summary-editor .ql-toolbar button.ql-active .ql-stroke,
+.lesson-summary-editor .ql-toolbar .ql-picker-label.ql-active .ql-stroke {
+  stroke: #0369a1;
+}
+
+.lesson-summary-editor .ql-toolbar button.ql-active .ql-fill,
+.lesson-summary-editor .ql-toolbar .ql-picker-label.ql-active .ql-fill {
+  fill: #0369a1;
+}
+
+.lesson-summary-editor .ql-toolbar .ql-stroke {
+  stroke: #475569;
+}
+
+.lesson-summary-editor .ql-toolbar .ql-fill {
+  fill: #475569;
+}
+
+.lesson-summary-editor .ql-picker {
+  color: #334155;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.lesson-summary-editor .ql-picker-label {
+  height: 26px;
+  border-radius: 6px;
+  padding: 3px 22px 3px 8px;
+  display: inline-flex;
+  align-items: center;
+}
+
+.lesson-summary-editor .ql-picker-options {
+  border: 1px solid #dbe3ef;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.16);
+  z-index: 9999;
+}
+
+.lesson-summary-editor .ql-picker.ql-expanded {
+  z-index: 9999;
+}
+
+.lesson-summary-editor .ql-picker.ql-expanded .ql-picker-options {
+  display: block;
+  z-index: 9999;
 }
 
 .lesson-summary-editor .ql-container {
-  border: 1px solid #dbe3ef;
-  border-radius: 0 0 8px 8px;
-  font-family: Inter, Arial, sans-serif;
+  position: relative;
+  z-index: 1;
+}
+
+.lesson-summary-editor .ql-picker.ql-header {
+  width: 106px;
+}
+
+.lesson-summary-editor .ql-picker.ql-font {
+  width: 116px;
+}
+
+.lesson-summary-editor .ql-snow .ql-picker.ql-expanded .ql-picker-label {
+  border-color: #bfdbfe;
+}
+
+/* =========================
+   Editor body
+   ========================= */
+
+.lesson-summary-editor .ql-container {
+  border: none;
+  font-family: Inter, Arial, Helvetica, sans-serif;
   font-size: 15px;
+  background: #ffffff;
 }
 
 .lesson-summary-editor .ql-editor {
   min-height: var(--editor-min-height, 260px);
-  line-height: 1.7;
+  line-height: 1.75;
   color: #0f172a;
+  padding: 18px 20px;
+}
+
+/* Làm Italic rõ hơn với Sans Serif */
+.lesson-summary-editor .ql-editor em,
+.lesson-summary-editor .ql-editor i {
+  font-style: oblique 14deg !important;
+  font-synthesis-style: auto;
+}
+
+/* Khi vừa Bold vừa Italic */
+.lesson-summary-editor .ql-editor strong em,
+.lesson-summary-editor .ql-editor em strong,
+.lesson-summary-editor .ql-editor b i,
+.lesson-summary-editor .ql-editor i b {
+  font-weight: 700;
+  font-style: oblique 14deg !important;
 }
 
 .lesson-summary-editor .ql-editor.ql-blank::before {
   color: #94a3b8;
   font-style: normal;
+  left: 20px;
+  right: 20px;
 }
 
 .lesson-summary-editor .ql-editor h1,
 .lesson-summary-editor .ql-editor h2,
 .lesson-summary-editor .ql-editor h3 {
   color: #0f172a;
-  font-weight: 700;
+  font-weight: 750;
+  line-height: 1.3;
+  margin: 0.75em 0 0.4em;
+}
+
+.lesson-summary-editor .ql-editor h1 {
+  font-size: 28px;
+}
+
+.lesson-summary-editor .ql-editor h2 {
+  font-size: 23px;
+}
+
+.lesson-summary-editor .ql-editor h3 {
+  font-size: 19px;
+}
+
+.lesson-summary-editor .ql-editor p {
+  margin-bottom: 0.75em;
 }
 
 .lesson-summary-editor .ql-editor ul,
 .lesson-summary-editor .ql-editor ol {
-  padding-left: 1.5em;
+  padding-left: 1.6em;
+  margin-bottom: 0.75em;
+}
+
+.lesson-summary-editor .ql-editor li {
+  padding-left: 0.2em;
+  margin-bottom: 0.25em;
+}
+
+.lesson-summary-editor .ql-editor blockquote {
+  border-left: 4px solid #3b82f6;
+  background: #eff6ff;
+  color: #1e3a8a;
+  padding: 10px 14px;
+  margin: 12px 0;
+  border-radius: 0 10px 10px 0;
+}
+
+.lesson-summary-editor .ql-editor pre.ql-syntax {
+  background: #0f172a;
+  color: #e5e7eb;
+  border-radius: 10px;
+  padding: 14px 16px;
+  overflow-x: auto;
+}
+
+.lesson-summary-editor .ql-editor a {
+  color: #2563eb;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 .lesson-summary-editor .ql-editor img {
   max-width: 100%;
-  border-radius: 8px;
+  border-radius: 10px;
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.12);
+}
+
+/* =========================
+   Responsive
+   ========================= */
+@media (max-width: 768px) {
+  .lesson-summary-editor .ql-toolbar {
+    flex-wrap: nowrap;
+    padding: 6px 8px;
+    gap: 3px;
+    overflow: visible;
+  }
+
+  .lesson-summary-editor .ql-toolbar button {
+    width: 25px;
+    height: 25px;
+  }
+
+  .lesson-summary-editor .ql-picker.ql-header {
+    width: 96px;
+  }
+
+  .lesson-summary-editor .ql-picker.ql-font {
+    width: 104px;
+  }
+
+  .lesson-summary-editor .ql-editor {
+    padding: 16px;
+  }
+}
+
+.lesson-summary-editor .ql-editor video {
+  display: block;
+  width: min(100%, 760px);
+  max-height: 430px;
+  margin: 12px 0;
+  border-radius: 12px;
+  background: #0f172a;
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.12);
+}
+
+.lesson-summary-editor .ql-editor img {
+  display: block;
+  max-width: min(100%, 760px);
+  height: auto;
+  margin: 12px 0;
+  border-radius: 10px;
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.12);
 }
