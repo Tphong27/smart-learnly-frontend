@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { CheckCircle2, Flame, GraduationCap, Layers3 } from "lucide-react";
+import { CheckCircle2, Flame, GraduationCap } from "lucide-react";
 import { traineeProgressService } from "@/services";
 import { ProgressBar } from "../components/ProgressBar";
 import { ProgressStatCard } from "../components/ProgressStatCard";
@@ -46,15 +46,6 @@ export function TraineeProgressPage() {
     return Math.round(total / progress.courses.length);
   }, [progress]);
 
-  const totalLessons = useMemo(() => {
-    if (!progress?.courses?.length) return 0;
-
-    return progress.courses.reduce(
-      (sum, course) => sum + Number(course.lesson.total || 0),
-      0,
-    );
-  }, [progress]);
-
   return (
     <main className="trainee-progress-page">
       {loading && <div className="progress-state">Loading progress...</div>}
@@ -94,13 +85,6 @@ export function TraineeProgressPage() {
               label="Completed"
               value={progress.completedCourses}
               helper="Finished courses"
-            />
-
-            <ProgressStatCard
-              icon={Layers3}
-              label="Total Lessons"
-              value={totalLessons}
-              helper="Across all courses"
             />
           </section>
 
