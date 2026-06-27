@@ -37,6 +37,13 @@ function PlaceholderPage({ title }) {
 function getTraineeRoutes() {
   return [
     {
+      // Learning workspace - fullscreen, outside AppLayout (giống admin "view as user")
+      // để màn hình học bài hiển thị y hệt chế độ admin-preview.
+      path: "/learning/courses/:courseId",
+      element: <RoleGuard allowedRoles={[ROLES.TRAINEE]} />,
+      children: [{ index: true, element: <LearningWorkspacePage /> }],
+    },
+    {
       path: "/learning",
       element: <RoleGuard allowedRoles={[ROLES.TRAINEE]} />,
       children: [
@@ -56,7 +63,6 @@ function getTraineeRoutes() {
                 />
               ),
             },
-            { path: "courses/:courseId", element: <LearningWorkspacePage /> },
             { path: "enrollments", element: <MyEnrollmentsPage /> },
             { path: "transactions", element: <MyTransactionsPage /> },
             {

@@ -6,18 +6,16 @@ import {
     ClipboardCheck,
     FileQuestion,
     Layers3,
-    Menu,
     MessageCircleMore,
     Play,
     Search,
     Target,
     TrendingUp,
-    X,
-    Zap,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useDocumentTitle } from "../../shared/hooks/useDocumentTitle";
 import { CourseListPage } from "../course/pages/CourseListPage";
+import { SiteHeader, BrandLogo } from "../../shared/components/SiteHeader";
 
 const features = [
     {
@@ -76,78 +74,7 @@ const steps = [
 ];
 
 function Logo() {
-    return (
-        <a className="brand" href="#top" aria-label="Smart Learnly home">
-            <span className="brand-mark">
-                <Zap size={18} strokeWidth={2.6} />
-            </span>
-            <span>Smart Learnly</span>
-        </a>
-    );
-}
-
-function Header() {
-    const [menuOpen, setMenuOpen] = useState(false);
-    const [scrolled, setScrolled] = useState(false);
-
-    useEffect(() => {
-        const handleScroll = () => {
-            setScrolled(window.scrollY > 50);
-        };
-        window.addEventListener("scroll", handleScroll, { passive: true });
-        handleScroll();
-        return () => window.removeEventListener("scroll", handleScroll);
-    }, []);
-
-    const closeMenu = () => setMenuOpen(false);
-
-    return (
-        <header className={`site-header${scrolled ? " scrolled" : ""}`}>
-            <div className="container header-inner">
-                <Logo />
-                <button
-                    className="menu-button"
-                    type="button"
-                    aria-label="Toggle navigation"
-                    aria-expanded={menuOpen}
-                    onClick={() => setMenuOpen((open) => !open)}
-                >
-                    {menuOpen ? <X size={22} /> : <Menu size={22} />}
-                </button>
-                <nav
-                    className={menuOpen ? "main-nav is-open" : "main-nav"}
-                    aria-label="Main navigation"
-                >
-                    <a href="#courses" onClick={closeMenu}>
-                        Courses
-                    </a>
-                    <a href="#features" onClick={closeMenu}>
-                        Features
-                    </a>
-                    <a href="#centers" onClick={closeMenu}>
-                        For Centers
-                    </a>
-                    <a href="#how-it-works" onClick={closeMenu}>
-                        How It Works
-                    </a>
-                    <a href="#about" onClick={closeMenu}>
-                        About
-                    </a>
-                    <span className="nav-actions">
-                        <a className="button button-ghost" href="/login">
-                            Log in
-                        </a>
-                        <a
-                            className="button button-primary button-small"
-                            href="/register"
-                        >
-                            Register
-                        </a>
-                    </span>
-                </nav>
-            </div>
-        </header>
-    );
+    return <BrandLogo />;
 }
 
 function SectionHeading({ eyebrow, title, text, align = "center" }) {
@@ -242,7 +169,7 @@ export function HomePage() {
 
     return (
         <div className="landing-page" id="top">
-            <Header />
+            <SiteHeader />
             <main>
                 <section className="hero">
                     <div className="hero-glow hero-glow-one" />

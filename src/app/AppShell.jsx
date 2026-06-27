@@ -74,7 +74,7 @@ const appRoutes = [
     path: "/courses/:courseId/preview",
     element: (
       <PublicLayout>
-        <CoursePreviewLessonsPage />
+        <LearningWorkspacePage mode="guest" />
       </PublicLayout>
     ),
   },
