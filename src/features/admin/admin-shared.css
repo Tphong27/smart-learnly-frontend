@@ -217,12 +217,14 @@
   color: #475569;
 }
 
-.admin-status--published {
+.admin-status--published,
+.admin-status--approved {
   background: #dcfce7;
   color: #15803d;
 }
 
-.admin-status--inactive {
+.admin-status--inactive,
+.admin-status--archived {
   background: #fee2e2;
   color: #b91c1c;
 }
