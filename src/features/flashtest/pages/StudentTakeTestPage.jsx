@@ -1,7 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Client } from "@stomp/stompjs";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, CheckCircle, Clock, Download, FileUp, Loader2 } from "lucide-react";
+import {
+  ArrowLeft,
+  CheckCircle,
+  Clock,
+  Download,
+  FileUp,
+  Loader2,
+} from "lucide-react";
 import { getCurrentUser } from "@/services/api-client";
 import {
   assignmentService,
@@ -21,7 +28,10 @@ function wsUrl() {
 
 function secondsUntil(endTime) {
   if (!endTime) return 0;
-  return Math.max(0, Math.floor((new Date(endTime).getTime() - Date.now()) / 1000));
+  return Math.max(
+    0,
+    Math.floor((new Date(endTime).getTime() - Date.now()) / 1000),
+  );
 }
 
 function formatTime(seconds) {
@@ -47,7 +57,8 @@ function isCompletedAttempt(status) {
 export function StudentTakeTestPage() {
   const { id, type } = useParams();
   const navigate = useNavigate();
-  const normalizedType = type === "assignment" || type === "essay" ? "essay" : "mcq";
+  const normalizedType =
+    type === "assignment" || type === "essay" ? "essay" : "mcq";
   const student = getStudent();
   const stompRef = useRef(null);
   const submittedRef = useRef(false);
@@ -103,7 +114,12 @@ export function StudentTakeTestPage() {
       try {
         if (normalizedType === "mcq") {
           const test = await testService.getById(id);
-          const started = await attemptService.start(id, student.id, null, student.name);
+          const started = await attemptService.start(
+            id,
+            student.id,
+            null,
+            student.name,
+          );
           if (isCompletedAttempt(started.status)) {
             setTestData(test);
             setAttempt(started);
@@ -140,30 +156,40 @@ export function StudentTakeTestPage() {
             );
           } catch (submissionError) {
             if (submissionError?.originalError?.response?.status !== 404) {
-              console.warn("Could not load current submission", submissionError);
+              console.warn(
+                "Could not load current submission",
+                submissionError,
+              );
             }
           }
           setSubmission(existingSubmission);
-          if (assignment.dueDate && new Date(assignment.dueDate).getTime() <= Date.now()) {
+          if (
+            assignment.dueDate &&
+            new Date(assignment.dueDate).getTime() <= Date.now()
+          ) {
             setError("This essay assignment has expired.");
             setTestData(assignment);
             setTimeLeft(0);
             return;
           }
-          const started = await assignmentService.start({
-            assignmentId: id,
-            studentId: student.id,
-            studentName: student.name,
-          });
           setTestData(assignment);
-          setSubmission(started);
           setTimeLeft(secondsUntil(assignment.dueDate));
-          publishMonitor({
-            submissionId: started.id,
-            status: "DOING",
-            startTime: started.startTime,
-            endTime: assignment.dueDate,
-          });
+          try {
+            const started = await assignmentService.start({
+              assignmentId: id,
+              studentId: student.id,
+              studentName: student.name,
+            });
+            setSubmission(started);
+            publishMonitor({
+              submissionId: started.id,
+              status: "DOING",
+              startTime: started.startTime,
+              endTime: assignment.dueDate,
+            });
+          } catch (startError) {
+            console.warn("Could not start essay session yet", startError);
+          }
         }
       } catch (initError) {
         setError(initError.message || "Could not load this assessment.");
@@ -187,9 +213,59 @@ export function StudentTakeTestPage() {
       link.remove();
       URL.revokeObjectURL(href);
     } catch (downloadError) {
-      setError(downloadError.message || "Could not download your submitted file.");
+      setError(
+        downloadError.message || "Could not download your submitted file.",
+      );
     }
   };
+
+  const handleDownloadInstructionFile = async () => {
+    if (!testData?.instructionFileUrl) return;
+    try {
+      const blob = await assignmentService.downloadFile(
+        testData.instructionFileUrl,
+      );
+      const href = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = href;
+      link.download = testData.instructionFileName || "essay-instructions";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(href);
+    } catch (downloadError) {
+      setError(
+        downloadError.message || "Could not download the instruction file.",
+      );
+    }
+  };
+
+  const ensureEssayStarted = useCallback(async () => {
+    if (normalizedType !== "essay" || submission?.id) {
+      return submission;
+    }
+    const started = await assignmentService.start({
+      assignmentId: id,
+      studentId: student.id,
+      studentName: student.name,
+    });
+    setSubmission(started);
+    publishMonitor({
+      submissionId: started.id,
+      status: "DOING",
+      startTime: started.startTime,
+      endTime: testData?.dueDate,
+    });
+    return started;
+  }, [
+    id,
+    normalizedType,
+    publishMonitor,
+    student.id,
+    student.name,
+    submission,
+    testData?.dueDate,
+  ]);
 
   const handleSubmit = useCallback(async () => {
     if (submittedRef.current || submitting) return;
@@ -197,7 +273,9 @@ export function StudentTakeTestPage() {
     setSubmitting(true);
     try {
       if (normalizedType === "mcq") {
-        const result = await attemptService.submit(attempt.id, { forceSubmit: true });
+        const result = await attemptService.submit(attempt.id, {
+          forceSubmit: true,
+        });
         publishMonitor({
           attemptId: attempt.id,
           status: result.status,
@@ -213,6 +291,7 @@ export function StudentTakeTestPage() {
           alert("Please choose a submission file before submitting.");
           return;
         }
+        const activeSubmission = await ensureEssayStarted();
         const uploaded = await assignmentService.uploadFile(file);
         const result = await assignmentService.submit({
           assignmentId: id,
@@ -223,7 +302,7 @@ export function StudentTakeTestPage() {
         });
         setSubmission(result);
         publishMonitor({
-          submissionId: submission?.id || result.id,
+          submissionId: activeSubmission?.id || result.id,
           status: result.status,
           fileUrl: result.fileUrl,
           fileName: result.fileName,
@@ -242,12 +321,12 @@ export function StudentTakeTestPage() {
     attempt,
     file,
     id,
+    ensureEssayStarted,
     navigate,
     normalizedType,
     publishMonitor,
     student.id,
     student.name,
-    submission,
     submitting,
     testData,
   ]);
@@ -255,7 +334,8 @@ export function StudentTakeTestPage() {
   useEffect(() => {
     if (!testData || loading || submittedRef.current) return undefined;
     const timer = window.setInterval(() => {
-      const end = normalizedType === "mcq" ? attempt?.endTime : testData?.dueDate;
+      const end =
+        normalizedType === "mcq" ? attempt?.endTime : testData?.dueDate;
       const next = secondsUntil(end);
       setTimeLeft(next);
       if (next <= 0 && normalizedType === "mcq") {
@@ -272,7 +352,10 @@ export function StudentTakeTestPage() {
     try {
       await attemptService.saveAnswer(attempt.id, questionId, answerId, "");
     } catch (saveError) {
-      setError(saveError.message || "Could not save the answer. The timer may be over.");
+      setError(
+        saveError.message ||
+          "Could not save the answer. The timer may be over.",
+      );
     }
   };
 
@@ -324,7 +407,11 @@ export function StudentTakeTestPage() {
           <button
             className="ft-button ft-button--primary"
             type="button"
-            disabled={submitting || Boolean(error)}
+            disabled={
+              submitting ||
+              Boolean(error && normalizedType === "mcq") ||
+              Boolean(error && normalizedType === "essay" && timeLeft <= 0)
+            }
             onClick={handleSubmit}
           >
             <CheckCircle size={18} /> {submitting ? "Submitting..." : "Submit"}
@@ -339,7 +426,8 @@ export function StudentTakeTestPage() {
           {questions.map((question, index) => (
             <article className="ft-question-card" key={question.id}>
               <strong>
-                Question {index + 1}: {question.questionText || question.content}
+                Question {index + 1}:{" "}
+                {question.questionText || question.content}
               </strong>
               <div className="ft-option-list">
                 {(question.options || []).map((answer) => (
@@ -348,7 +436,9 @@ export function StudentTakeTestPage() {
                       type="radio"
                       name={`q-${question.id}`}
                       checked={answers[question.id] === answer.id}
-                      onChange={() => handleSelectAnswer(question.id, answer.id)}
+                      onChange={() =>
+                        handleSelectAnswer(question.id, answer.id)
+                      }
                     />
                     <span>{answer.answerText || answer.content}</span>
                   </label>
@@ -359,10 +449,21 @@ export function StudentTakeTestPage() {
         </div>
       ) : (
         <div className="ft-upload-panel">
-          <h2 className="ft-card-title">Essay prompt</h2>
-          <p className="ft-card-text" style={{ minHeight: "auto", WebkitLineClamp: "unset" }}>
-            {testData?.description || "No prompt provided."}
-          </p>
+          <div className="ft-essay-prompt">
+            <span className="ft-page-kicker">Teacher instructions</span>
+            <h2>Description</h2>
+            <p>{testData?.description || "No description provided."}</p>
+            {testData?.instructionFileUrl && (
+              <button
+                className="ft-button ft-button--secondary"
+                type="button"
+                onClick={handleDownloadInstructionFile}
+              >
+                <Download size={16} />
+                Download instruction file
+              </button>
+            )}
+          </div>
           {submission?.fileUrl && (
             <div className="ft-submission-summary">
               <div>

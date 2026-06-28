@@ -316,6 +316,63 @@
   outline: none;
 }
 
+.ft-duration-control {
+  display: grid;
+  gap: 10px;
+}
+
+.ft-duration-input {
+  display: grid;
+  grid-template-columns: auto minmax(110px, 1fr) minmax(130px, auto);
+  align-items: center;
+  gap: 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #64748b;
+  padding: 0 12px;
+}
+
+.ft-duration-input input,
+.ft-duration-input select {
+  min-height: 42px;
+  border: 0;
+  background: transparent;
+  color: #0f172a;
+  font: inherit;
+  outline: 0;
+}
+
+.ft-duration-input input {
+  font-weight: 750;
+}
+
+.ft-duration-input select {
+  border-left: 1px solid #e2e8f0;
+  padding-left: 12px;
+}
+
+.ft-duration-presets {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.ft-chip {
+  border: 1px solid #bfdbfe;
+  border-radius: 999px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 750;
+  padding: 7px 11px;
+}
+
+.ft-chip:hover {
+  background: #dbeafe;
+}
+
 .ft-tabs {
   display: flex;
   gap: 10px;
@@ -410,7 +467,8 @@
   border-bottom: 0;
 }
 
-.ft-table-action {
+.ft-table th.ft-table-action,
+.ft-table td.ft-table-action {
   text-align: center;
 }
 
@@ -519,6 +577,55 @@
   cursor: pointer;
   text-align: center;
   padding: 24px;
+}
+
+.ft-upload-zone--compact {
+  min-height: 132px;
+  margin-top: 0;
+}
+
+.ft-file-pill {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid #bfdbfe;
+  border-radius: 8px;
+  background: #eff6ff;
+  color: #1e3a8a;
+  padding: 10px 12px;
+}
+
+.ft-file-pill span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ft-essay-prompt {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 18px;
+  border: 1px solid #bfdbfe;
+  border-radius: 8px;
+  background: #eff6ff;
+  padding: 18px;
+}
+
+.ft-essay-prompt h2 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 20px;
+  line-height: 1.25;
+}
+
+.ft-essay-prompt p {
+  margin: 0;
+  color: #1e293b;
+  font-size: 15px;
+  line-height: 1.7;
+  white-space: pre-wrap;
 }
 
 .ft-submission-summary {

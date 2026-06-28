@@ -28,9 +28,10 @@ function getDuration(item) {
     return item.durationMinutes ?? item.duration_minutes ?? item.duration;
   }
   const dueDate = item.dueDate || item.due_date;
-  const createdAt = item.createdAt || item.created_at;
-  if (!dueDate || !createdAt) return "--";
-  const diff = new Date(dueDate).getTime() - new Date(createdAt).getTime();
+  const baseTime =
+    item.updatedAt || item.updated_at || item.createdAt || item.created_at;
+  if (!dueDate || !baseTime) return "--";
+  const diff = new Date(dueDate).getTime() - new Date(baseTime).getTime();
   return Number.isFinite(diff) ? Math.max(0, Math.round(diff / 60000)) : "--";
 }
 
@@ -224,7 +225,6 @@ export function TraineeFlashTestListPage() {
                       <td>
                         <div className="ft-table-title">
                           <strong>{item.title || item.name || "Untitled flash test"}</strong>
-                          <span>{item.description || "No description provided."}</span>
                         </div>
                       </td>
                       <td>
@@ -248,7 +248,7 @@ export function TraineeFlashTestListPage() {
                           {expired ? "Expired" : "Active"}
                         </span>
                       </td>
-                      <td>
+                      <td className="ft-table-action">
                         <div className="ft-table-actions">
                           {expired ? (
                             <span className="ft-button ft-button--disabled">Expired</span>
@@ -257,7 +257,7 @@ export function TraineeFlashTestListPage() {
                           ) : (
                             <Link
                               to={`/learning/flashtests/take/${item.id}/${
-                                isEssay ? "assignment" : "test"
+                                isEssay ? "essay" : "mcq"
                               }`}
                               className="ft-button ft-button--primary"
                             >
