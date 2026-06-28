@@ -11,6 +11,7 @@ import {
 import { fileNameFromUrl, isHtmlContent } from "../utils/lesson-content";
 import { LearningQuizPlayer } from "./LearningQuizPlayer";
 import { FlashcardPractice } from "./flashcards/FlashcardPractice";
+import DOMPurify from "dompurify";
 
 const TABS = [
   { key: "overview", label: "Overview", icon: BookOpen },
@@ -62,10 +63,26 @@ function OverviewContent({
   }
 
   if (isHtmlContent(lesson.content)) {
+    const cleanContent = DOMPurify.sanitize(lesson.content, {
+      ADD_TAGS: ["iframe"],
+      ADD_ATTR: [
+        "target",
+        "rel",
+        "controls",
+        "preload",
+        "poster",
+        "width",
+        "height",
+        "type",
+        "class",
+        "data-summary-video",
+      ],
+    });
+
     return (
       <div
         className="tab-overview__content learning-lesson__rich-content"
-        dangerouslySetInnerHTML={{ __html: lesson.content }}
+        dangerouslySetInnerHTML={{ __html: cleanContent }}
       />
     );
   }

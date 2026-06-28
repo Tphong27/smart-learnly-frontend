@@ -91,7 +91,18 @@ function LessonContent({ lesson }) {
             className="preview-lesson-content__body preview-lesson-content__rich-content"
             dangerouslySetInnerHTML={{
               __html: DOMPurify.sanitize(lesson.content, {
-                ADD_ATTR: ["target", "rel"],
+                ADD_ATTR: [
+                  "target",
+                  "rel",
+                  "class",
+                  "controls",
+                  "preload",
+                  "poster",
+                  "width",
+                  "height",
+                  "type",
+                  "data-summary-video",
+                ],
               }),
             }}
           />

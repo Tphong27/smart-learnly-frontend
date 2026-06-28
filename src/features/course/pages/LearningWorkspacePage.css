@@ -2472,3 +2472,42 @@
     .learning-workspace__nav-btn span { display: none; }
     .learning-workspace__nav-btn { padding: 10px 14px; }
 }
+
+.learning-lesson__rich-content {
+  line-height: 1.75;
+  color: var(--lw-text);
+}
+
+.learning-lesson__rich-content p {
+  margin: 0 0 12px;
+}
+
+.learning-lesson__rich-content pre,
+.learning-lesson__rich-content pre.ql-syntax {
+  background: #0f172a;
+  color: #e5e7eb;
+  border-radius: 10px;
+  padding: 14px 16px;
+  overflow-x: auto;
+  font-family: "JetBrains Mono", "Fira Code", Consolas, monospace;
+  font-size: 13px;
+  line-height: 1.6;
+  white-space: pre;
+  margin: 14px 0;
+}
+
+.learning-lesson__rich-content code {
+  font-family: "JetBrains Mono", "Fira Code", Consolas, monospace;
+}
+
+.learning-lesson__rich-content img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 10px;
+}
+
+.learning-lesson__rich-content video {
+  max-width: 100%;
+  border-radius: 10px;
+  margin: 12px 0;
+}
