@@ -61,6 +61,10 @@ function getStaffRoutes() {
               element: <StaffFlashTestCreatePage />,
             },
             {
+              path: "flashtests/edit/:id/:type",
+              element: <StaffFlashTestCreatePage />,
+            },
+            {
               path: "flashtests/monitor/:id/:type",
               element: <StaffFlashTestMonitorPage />,
             },

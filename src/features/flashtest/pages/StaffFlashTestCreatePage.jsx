@@ -1,6 +1,14 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { ArrowLeft, CheckSquare, FileText, Save } from "lucide-react";
+import { useNavigate, useParams } from "react-router-dom";
+import {
+  ArrowLeft,
+  CheckSquare,
+  Clock,
+  FileText,
+  Paperclip,
+  Save,
+  X,
+} from "lucide-react";
 import { courseService } from "@/services/course.service";
 import {
   assignmentService,
@@ -14,24 +22,67 @@ function getCourseId(course) {
 }
 
 function getCourseTitle(course) {
-  return course?.title || course?.courseTitle || course?.name || "Untitled course";
+  return (
+    course?.title || course?.courseTitle || course?.name || "Untitled course"
+  );
 }
 
 function getQuestionId(question) {
   return question?.id || question?.questionId || "";
 }
 
+function splitDuration(minutes) {
+  const safeMinutes = Math.max(1, Number(minutes || 15));
+  if (safeMinutes % 60 === 0) {
+    return { value: String(safeMinutes / 60), unit: "hours" };
+  }
+  return { value: String(safeMinutes), unit: "minutes" };
+}
+
+function durationFromEssay(item) {
+  const dueDate = item?.dueDate || item?.due_date;
+  const baseTime =
+    item?.updatedAt || item?.updated_at || item?.createdAt || item?.created_at;
+  if (!dueDate || !baseTime) return 15;
+  const diff = new Date(dueDate).getTime() - new Date(baseTime).getTime();
+  return Number.isFinite(diff) ? Math.max(1, Math.round(diff / 60000)) : 15;
+}
+
+function onlyPositiveInteger(value) {
+  const digits = String(value || "").replace(/\D/g, "");
+  if (!digits) return "";
+  return String(Math.max(1, Number(digits)));
+}
+
+const DURATION_UNITS = {
+  minutes: 1,
+  hours: 60,
+};
+
+const DURATION_PRESETS = [
+  { label: "15 min", value: "15", unit: "minutes" },
+  { label: "30 min", value: "30", unit: "minutes" },
+  { label: "45 min", value: "45", unit: "minutes" },
+  { label: "1 hour", value: "1", unit: "hours" },
+];
+
 export function StaffFlashTestCreatePage() {
   const navigate = useNavigate();
+  const { id, type } = useParams();
+  const isEdit = Boolean(id);
   const [testType, setTestType] = useState("essay");
   const [formData, setFormData] = useState({
     title: "",
-    duration: "",
+    durationValue: "15",
+    durationUnit: "minutes",
     description: "",
     courseId: "",
   });
   const [courses, setCourses] = useState([]);
   const [selectedQuestions, setSelectedQuestions] = useState([]);
+  const [instructionFile, setInstructionFile] = useState(null);
+  const [existingInstructionFile, setExistingInstructionFile] = useState(null);
+  const [loadingExisting, setLoadingExisting] = useState(Boolean(id));
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
@@ -54,8 +105,77 @@ export function StaffFlashTestCreatePage() {
     };
   }, []);
 
+  useEffect(() => {
+    if (!id) return undefined;
+    let cancelled = false;
+    async function loadExistingFlashTest() {
+      setLoadingExisting(true);
+      try {
+        const normalizedType =
+          type === "mcq" || type === "test" ? "mcq" : "essay";
+        setTestType(normalizedType);
+
+        if (normalizedType === "essay") {
+          const assignment = await assignmentService.getById(id);
+          const duration = splitDuration(durationFromEssay(assignment));
+          if (cancelled) return;
+          setFormData({
+            title: assignment.title || assignment.name || "",
+            durationValue: duration.value,
+            durationUnit: duration.unit,
+            description: assignment.description || "",
+            courseId: "",
+          });
+          setExistingInstructionFile(
+            assignment.instructionFileUrl
+              ? {
+                  fileUrl: assignment.instructionFileUrl,
+                  fileName:
+                    assignment.instructionFileName || "Instruction file",
+                }
+              : null,
+          );
+        } else {
+          const [test, mappings] = await Promise.all([
+            testService.getById(id),
+            testService.getStaffQuestions(id),
+          ]);
+          const duration = splitDuration(
+            test.durationMinutes ?? test.duration_minutes ?? test.duration,
+          );
+          if (cancelled) return;
+          setFormData({
+            title: test.title || test.name || "",
+            durationValue: duration.value,
+            durationUnit: duration.unit,
+            description: test.description || "",
+            courseId: test.courseId || test.course_id || "",
+          });
+          setSelectedQuestions(
+            (mappings || []).map((mapping) => ({
+              ...mapping,
+              id: mapping.questionId || mapping.id,
+            })),
+          );
+        }
+      } catch (error) {
+        console.error("Failed to load flash test", error);
+        alert(error.message || "Could not load this flash test.");
+      } finally {
+        if (!cancelled) setLoadingExisting(false);
+      }
+    }
+    loadExistingFlashTest();
+    return () => {
+      cancelled = true;
+    };
+  }, [id, type]);
+
   const handleSave = async () => {
-    const duration = Number(formData.duration);
+    const duration = Math.round(
+      Number(formData.durationValue) *
+        (DURATION_UNITS[formData.durationUnit] || 1),
+    );
     if (!formData.title.trim() || !duration || duration <= 0) {
       alert("Please enter a title and a valid duration.");
       return;
@@ -72,15 +192,29 @@ export function StaffFlashTestCreatePage() {
     setIsSaving(true);
     try {
       if (testType === "essay") {
-        await assignmentService.create({
+        const uploadedInstruction = instructionFile
+          ? await assignmentService.uploadFile(instructionFile)
+          : null;
+        const payload = {
           title: formData.title.trim(),
           description: formData.description,
           dueDate: new Date(Date.now() + duration * 60 * 1000).toISOString(),
           allowLateSubmission: false,
+          instructionFileUrl:
+            uploadedInstruction?.fileUrl || existingInstructionFile?.fileUrl,
+          instructionFileName:
+            uploadedInstruction?.fileName ||
+            instructionFile?.name ||
+            existingInstructionFile?.fileName,
           isFlashtest: true,
-        });
+        };
+        if (isEdit) {
+          await assignmentService.update(id, payload);
+        } else {
+          await assignmentService.create(payload);
+        }
       } else {
-        const newTest = await testService.create({
+        const testPayload = {
           title: formData.title.trim(),
           durationMinutes: duration,
           description: formData.description,
@@ -89,20 +223,47 @@ export function StaffFlashTestCreatePage() {
           maxAttempts: 1,
           showAnswersAfter: true,
           isFlashtest: true,
-        });
+        };
+        const savedTest = isEdit
+          ? await testService.update(id, testPayload)
+          : await testService.create(testPayload);
+        const testId = savedTest?.id || id;
+
+        const existingMappings = isEdit
+          ? await testService.getStaffQuestions(testId)
+          : [];
+        const existingIds = new Set(
+          (existingMappings || []).map((item) => getQuestionId(item)),
+        );
+        const selectedIds = new Set(
+          selectedQuestions.map((question) => getQuestionId(question)),
+        );
+
+        for (const mapping of existingMappings) {
+          const questionId = getQuestionId(mapping);
+          if (questionId && !selectedIds.has(questionId)) {
+            await testService.removeQuestion(testId, questionId);
+          }
+        }
 
         for (let index = 0; index < selectedQuestions.length; index += 1) {
           const question = selectedQuestions[index];
-          await testService.addQuestion({
-            testId: newTest.id,
-            questionId: getQuestionId(question),
+          const questionId = getQuestionId(question);
+          const payload = {
+            testId,
+            questionId,
             marks: question.marks || 1,
             orderIndex: index + 1,
-          });
+          };
+          if (existingIds.has(questionId)) {
+            await testService.updateQuestionMarks(testId, questionId, payload);
+          } else {
+            await testService.addQuestion(payload);
+          }
         }
       }
 
-      alert("Flash test created successfully.");
+      alert(`Flash test ${isEdit ? "updated" : "created"} successfully.`);
       navigate("/staff/flashtests");
     } catch (error) {
       console.error(error);
@@ -117,7 +278,9 @@ export function StaffFlashTestCreatePage() {
       <header className="ft-page-header">
         <div>
           <span className="ft-page-kicker">Flash Tests</span>
-          <h1 className="ft-page-title">Create Flash Test</h1>
+          <h1 className="ft-page-title">
+            {isEdit ? "Edit Flash Test" : "Create Flash Test"}
+          </h1>
           <p className="ft-page-subtitle">
             Create a timed essay assignment or a practice MCQ test for trainees.
           </p>
@@ -134,11 +297,11 @@ export function StaffFlashTestCreatePage() {
           <button
             className="ft-button ft-button--primary"
             type="button"
-            disabled={isSaving}
+            disabled={isSaving || loadingExisting}
             onClick={handleSave}
           >
             <Save size={16} />
-            {isSaving ? "Saving..." : "Save Test"}
+            {isSaving ? "Saving..." : isEdit ? "Update Test" : "Save Test"}
           </button>
         </div>
       </header>
@@ -159,17 +322,55 @@ export function StaffFlashTestCreatePage() {
           </label>
 
           <label className="ft-field">
-            <span className="ft-label">Duration (minutes)</span>
-            <input
-              className="ft-input"
-              type="number"
-              min="1"
-              placeholder="15"
-              value={formData.duration}
-              onChange={(event) =>
-                setFormData({ ...formData, duration: event.target.value })
-              }
-            />
+            <span className="ft-label">Duration</span>
+            <div className="ft-duration-control">
+              <div className="ft-duration-input">
+                <Clock size={16} />
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[1-9][0-9]*"
+                  placeholder="15"
+                  value={formData.durationValue}
+                  onChange={(event) =>
+                    setFormData({
+                      ...formData,
+                      durationValue: onlyPositiveInteger(event.target.value),
+                    })
+                  }
+                />
+                <select
+                  value={formData.durationUnit}
+                  onChange={(event) =>
+                    setFormData({
+                      ...formData,
+                      durationUnit: event.target.value,
+                    })
+                  }
+                >
+                  <option value="minutes">Minutes</option>
+                  <option value="hours">Hours</option>
+                </select>
+              </div>
+              <div className="ft-duration-presets">
+                {DURATION_PRESETS.map((preset) => (
+                  <button
+                    key={`${preset.value}-${preset.unit}`}
+                    className="ft-chip"
+                    type="button"
+                    onClick={() =>
+                      setFormData({
+                        ...formData,
+                        durationValue: preset.value,
+                        durationUnit: preset.unit,
+                      })
+                    }
+                  >
+                    {preset.label}
+                  </button>
+                ))}
+              </div>
+            </div>
           </label>
 
           <div className="ft-field">
@@ -178,6 +379,7 @@ export function StaffFlashTestCreatePage() {
               <button
                 className={`ft-tab ${testType === "essay" ? "is-active" : ""}`}
                 type="button"
+                disabled={isEdit}
                 onClick={() => setTestType("essay")}
               >
                 <FileText size={16} /> Essay assignment
@@ -185,6 +387,7 @@ export function StaffFlashTestCreatePage() {
               <button
                 className={`ft-tab ${testType === "mcq" ? "is-active" : ""}`}
                 type="button"
+                disabled={isEdit}
                 onClick={() => setTestType("mcq")}
               >
                 <CheckSquare size={16} /> MCQ practice
@@ -193,17 +396,62 @@ export function StaffFlashTestCreatePage() {
           </div>
 
           {testType === "essay" ? (
-            <label className="ft-field">
-              <span className="ft-label">Prompt / instructions</span>
-              <textarea
-                className="ft-textarea"
-                placeholder="Write the essay prompt and submission instructions."
-                value={formData.description}
-                onChange={(event) =>
-                  setFormData({ ...formData, description: event.target.value })
-                }
-              />
-            </label>
+            <>
+              <label className="ft-field">
+                <span className="ft-label">Instructions</span>
+                <textarea
+                  className="ft-textarea"
+                  placeholder="Write the essay description and submission instructions."
+                  value={formData.description}
+                  onChange={(event) =>
+                    setFormData({
+                      ...formData,
+                      description: event.target.value,
+                    })
+                  }
+                />
+              </label>
+
+              <div className="ft-field">
+                <span className="ft-label">Instruction file</span>
+                {instructionFile || existingInstructionFile ? (
+                  <div className="ft-file-pill">
+                    <Paperclip size={16} />
+                    <span>
+                      {instructionFile?.name ||
+                        existingInstructionFile?.fileName}
+                    </span>
+                    <button
+                      className="ft-icon-button"
+                      type="button"
+                      title="Remove file"
+                      onClick={() => {
+                        setInstructionFile(null);
+                        setExistingInstructionFile(null);
+                      }}
+                    >
+                      <X size={16} />
+                    </button>
+                  </div>
+                ) : (
+                  <label className="ft-upload-zone ft-upload-zone--compact">
+                    <Paperclip size={24} />
+                    <strong>Attach an instruction file</strong>
+                    <span className="ft-muted">
+                      PDF, Word, PowerPoint, image, or ZIP.
+                    </span>
+                    <input
+                      type="file"
+                      accept=".pdf,.doc,.docx,.ppt,.pptx,.png,.jpg,.jpeg,.zip"
+                      hidden
+                      onChange={(event) =>
+                        setInstructionFile(event.target.files?.[0] || null)
+                      }
+                    />
+                  </label>
+                )}
+              </div>
+            </>
           ) : (
             <>
               <label className="ft-field">
@@ -218,7 +466,10 @@ export function StaffFlashTestCreatePage() {
                 >
                   <option value="">Select a course</option>
                   {courses.map((course) => (
-                    <option key={getCourseId(course)} value={getCourseId(course)}>
+                    <option
+                      key={getCourseId(course)}
+                      value={getCourseId(course)}
+                    >
                       {getCourseTitle(course)}
                     </option>
                   ))}

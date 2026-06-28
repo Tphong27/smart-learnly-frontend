@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, ClipboardList, Eye, Plus, RefreshCw, Search } from "lucide-react";
+import { ArrowLeft, ClipboardList, Edit2, Eye, Plus, RefreshCw, Search } from "lucide-react";
 import {
   assignmentService,
   testService,
@@ -18,9 +18,10 @@ function getDuration(item) {
     return item.durationMinutes ?? item.duration_minutes ?? item.duration;
   }
   const dueDate = item.dueDate || item.due_date;
-  const createdAt = item.createdAt || item.created_at;
-  if (!dueDate || !createdAt) return "--";
-  const diff = new Date(dueDate).getTime() - new Date(createdAt).getTime();
+  const baseTime =
+    item.updatedAt || item.updated_at || item.createdAt || item.created_at;
+  if (!dueDate || !baseTime) return "--";
+  const diff = new Date(dueDate).getTime() - new Date(baseTime).getTime();
   return Number.isFinite(diff) ? Math.max(0, Math.round(diff / 60000)) : "--";
 }
 
@@ -192,9 +193,6 @@ export function StaffFlashTestListPage() {
                       <td>
                         <div className="ft-table-title">
                           <strong>{item.title || item.name || "Untitled flash test"}</strong>
-                          <span>
-                            {item.description || "No description provided."}
-                          </span>
                         </div>
                       </td>
                       <td>
@@ -217,8 +215,15 @@ export function StaffFlashTestListPage() {
                           {expired ? "Expired" : "Active"}
                         </span>
                       </td>
-                      <td>
+                      <td className="ft-table-action">
                         <div className="ft-table-actions">
+                          <Link
+                            to={`/staff/flashtests/edit/${item.id}/${type}`}
+                            className="ft-icon-button"
+                            title="Edit flash test"
+                          >
+                            <Edit2 size={16} />
+                          </Link>
                           <Link
                             to={`/staff/flashtests/monitor/${item.id}/${type}`}
                             className="ft-icon-button"
