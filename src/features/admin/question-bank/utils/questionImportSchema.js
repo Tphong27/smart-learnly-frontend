@@ -27,6 +27,33 @@ export const ALLOWED_BLOOM_LEVELS = [
   'create',
 ]
 
+export const SAMPLE_QUESTION_BANK_JSON = JSON.stringify(
+  [
+    {
+      questionText: 'What is the capital of France?',
+      questionType: 'multiple_choice',
+      options: ['Paris', 'London', 'Berlin', 'Madrid'],
+      correctAnswer: 'A',
+      explanation: 'Paris has been the capital of France for centuries.',
+      difficulty: 1,
+      bloomLevel: 'remember',
+      moduleId: null,
+    },
+    {
+      question_text: 'Java is a programming language.',
+      question_type: 'true_false',
+      options: ['True', 'False'],
+      correct_answer: 'True',
+      explanation: 'Java is a general-purpose programming language.',
+      difficulty: 'easy',
+      bloom_level: 'understand',
+      module_id: null,
+    },
+  ],
+  null,
+  2,
+)
+
 const DUPLICATE_MESSAGE = 'A question with the same text already exists in this bank'
 
 const HEADER_ALIASES = {
@@ -96,6 +123,50 @@ function mapRow(rawRow, columnMap) {
     normalized[targetKey] = value == null ? '' : String(value).trim()
   }
   return normalized
+}
+
+function getAliasedValue(source, camelKey, snakeKey) {
+  if (Object.prototype.hasOwnProperty.call(source, camelKey)) return source[camelKey]
+  if (Object.prototype.hasOwnProperty.call(source, snakeKey)) return source[snakeKey]
+  return ''
+}
+
+function normalizeJsonQuestion(rawQuestion) {
+  const errors = []
+  if (!rawQuestion || typeof rawQuestion !== 'object' || Array.isArray(rawQuestion)) {
+    return {
+      mapped: {},
+      errors: ['Question must be an object'],
+    }
+  }
+
+  if (Object.prototype.hasOwnProperty.call(rawQuestion, 'title') || Object.prototype.hasOwnProperty.call(rawQuestion, 'correct_answers')) {
+    errors.push('Quiz JSON format is not supported. Use questionText, questionType, options, and correctAnswer.')
+  }
+
+  const rawOptions = rawQuestion.options
+  const options = Array.isArray(rawOptions) ? rawOptions : []
+  if (!Array.isArray(rawOptions)) {
+    errors.push('Options must be an array')
+  } else if (options.length > 6) {
+    errors.push('Multiple choice questions support 2 to 6 answers')
+  }
+
+  const mapped = {
+    question_text: String(getAliasedValue(rawQuestion, 'questionText', 'question_text') ?? '').trim(),
+    question_type: String(getAliasedValue(rawQuestion, 'questionType', 'question_type') ?? '').trim(),
+    correct_answer: String(getAliasedValue(rawQuestion, 'correctAnswer', 'correct_answer') ?? '').trim(),
+    explanation: String(rawQuestion.explanation ?? '').trim(),
+    difficulty: String(rawQuestion.difficulty ?? '').trim(),
+    bloom_level: String(getAliasedValue(rawQuestion, 'bloomLevel', 'bloom_level') ?? '').trim(),
+    module_id: String(getAliasedValue(rawQuestion, 'moduleId', 'module_id') ?? '').trim(),
+  }
+
+  options.slice(0, 6).forEach((option, index) => {
+    mapped[`option_${String.fromCharCode(97 + index)}`] = String(option ?? '').trim()
+  })
+
+  return { mapped, errors }
 }
 
 function buildColumnMap(headers) {
@@ -280,6 +351,46 @@ export async function parseImportFile(file) {
   })
 
   return { headers, rows: parsed }
+}
+
+export function parseImportJson(jsonText) {
+  const text = String(jsonText ?? '').trim()
+  if (!text) throw new Error('JSON data is required.')
+
+  let data
+  try {
+    data = JSON.parse(text)
+  } catch (err) {
+    throw new Error(`Invalid JSON: ${err.message}`, { cause: err })
+  }
+
+  if (!Array.isArray(data)) {
+    throw new Error('JSON must be an array of questions.')
+  }
+
+  const seenTexts = new Set()
+  const rows = data.map((rawQuestion, index) => {
+    const rowNumber = index + 1
+    const { mapped, errors: shapeErrors } = normalizeJsonQuestion(rawQuestion)
+    const { errors, resolvedType, questionText, options, correctRaw } = collectRowErrors(mapped, rowNumber, seenTexts)
+    return {
+      rowNumber,
+      data: {
+        questionText,
+        questionType: resolvedType || (mapped.question_type || '').trim().toLowerCase(),
+        options,
+        correctAnswer: correctRaw,
+        explanation: mapped.explanation || null,
+        difficulty: resolveDifficulty(mapped.difficulty),
+        bloomLevel: mapped.bloom_level ? mapped.bloom_level.trim().toLowerCase().replace(/-/g, '_') : null,
+        moduleId: mapped.module_id || null,
+      },
+      raw: mapped,
+      errors: [...shapeErrors, ...errors],
+    }
+  })
+
+  return { headers: [], rows }
 }
 
 export function validateAgainstExisting(parsedRows, existingQuestions = []) {

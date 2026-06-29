@@ -7,9 +7,16 @@ import {
   downloadTemplate,
   IMPORT_COLUMNS,
   parseImportFile,
+  parseImportJson,
+  SAMPLE_QUESTION_BANK_JSON,
   validateAgainstExisting,
 } from '../utils/questionImportSchema'
 import './question-import-modal.css'
+
+const IMPORT_MODES = {
+  FILE: 'file',
+  JSON: 'json',
+}
 
 function StatusBadge({ row }) {
   if (!row.errors?.length) {
@@ -36,19 +43,27 @@ export function QuestionImportModal({ open, bank, existingQuestions = [], onClos
   const toast = useToast()
   const fileInputRef = useRef(null)
   const [step, setStep] = useState('upload')
+  const [importMode, setImportMode] = useState(IMPORT_MODES.FILE)
   const [parsing, setParsing] = useState(false)
   const [parsedRows, setParsedRows] = useState([])
   const [parseError, setParseError] = useState(null)
+  const [parseSuccess, setParseSuccess] = useState(null)
   const [fileName, setFileName] = useState(null)
+  const [jsonText, setJsonText] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
   const validRows = useMemo(() => parsedRows.filter((row) => !row.errors?.length), [parsedRows])
+  const isArchived = bank?.status === 'archived'
+  const sourceLabel = importMode === IMPORT_MODES.JSON ? 'JSON data' : fileName || 'No file selected'
 
   function resetModal() {
     setStep('upload')
+    setImportMode(IMPORT_MODES.FILE)
     setParsedRows([])
     setParseError(null)
+    setParseSuccess(null)
     setFileName(null)
+    setJsonText('')
     setParsing(false)
     setSubmitting(false)
     if (fileInputRef.current) fileInputRef.current.value = ''
@@ -63,11 +78,22 @@ export function QuestionImportModal({ open, bank, existingQuestions = [], onClos
     downloadTemplate()
   }
 
+  function handleModeChange(nextMode) {
+    setImportMode(nextMode)
+    setStep('upload')
+    setParsedRows([])
+    setParseError(null)
+    setParseSuccess(null)
+    setFileName(null)
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }
+
   async function handleFileChange(event) {
     const file = event.target.files?.[0]
     if (!file) return
     setFileName(file.name)
     setParseError(null)
+    setParseSuccess(null)
     setParsing(true)
     try {
       const result = await parseImportFile(file)
@@ -82,12 +108,30 @@ export function QuestionImportModal({ open, bank, existingQuestions = [], onClos
     }
   }
 
+  function handleJsonPreview() {
+    setParseError(null)
+    setParseSuccess(null)
+    try {
+      const result = parseImportJson(jsonText)
+      const validated = validateAgainstExisting(result.rows, existingQuestions)
+      setParsedRows(validated)
+      setParseSuccess(`JSON parsed. ${validated.length} row${validated.length === 1 ? '' : 's'} ready for preview.`)
+      setStep('preview')
+    } catch (err) {
+      setParseError(err?.message || 'Could not parse the JSON data.')
+      setParsedRows([])
+    }
+  }
+
   function handleBackToUpload() {
     setStep('upload')
     setParseError(null)
+    setParseSuccess(null)
     setParsedRows([])
-    setFileName(null)
-    if (fileInputRef.current) fileInputRef.current.value = ''
+    if (importMode === IMPORT_MODES.FILE) {
+      setFileName(null)
+      if (fileInputRef.current) fileInputRef.current.value = ''
+    }
   }
 
   async function handleCommit() {
@@ -114,15 +158,13 @@ export function QuestionImportModal({ open, bank, existingQuestions = [], onClos
     }
   }
 
-  const isArchived = bank?.status === 'archived'
-
   return (
     <Modal
       open={open}
-      title="Import questions from Excel/CSV"
+      title="Import questions"
       size="xl"
       closeOnOverlayClick={!submitting && !parsing}
-      onClose={submitting || parsing ? undefined : onClose}
+      onClose={submitting || parsing ? undefined : handleClose}
     >
       {isArchived && (
         <div className="auth-card__alert" style={{ marginBottom: 14 }}>
@@ -132,41 +174,94 @@ export function QuestionImportModal({ open, bank, existingQuestions = [], onClos
 
       {step === 'upload' && (
         <div className="question-import">
-          <p className="question-import__intro">
-            Upload an Excel (.xlsx) or CSV file with the supported columns. Each row will be validated before saving.
-            Use the template to see the expected format.
-          </p>
-
-          <div className="question-import__columns">
-            <h4>Supported columns</h4>
-            <ul>
-              {IMPORT_COLUMNS.map((column) => (
-                <li key={column.key}>
-                  <strong>{column.label}</strong>
-                  {column.required ? <span className="question-import__required"> required</span> : <span className="question-import__optional"> optional</span>}
-                </li>
-              ))}
-            </ul>
+          <div className="question-import__mode-switch" role="tablist" aria-label="Choose import format">
+            <button
+              type="button"
+              className={`question-import__mode-btn ${importMode === IMPORT_MODES.FILE ? 'question-import__mode-btn--active' : ''}`}
+              onClick={() => handleModeChange(IMPORT_MODES.FILE)}
+              disabled={parsing || submitting}
+              role="tab"
+              aria-selected={importMode === IMPORT_MODES.FILE}
+            >
+              Excel/CSV
+            </button>
+            <button
+              type="button"
+              className={`question-import__mode-btn ${importMode === IMPORT_MODES.JSON ? 'question-import__mode-btn--active' : ''}`}
+              onClick={() => handleModeChange(IMPORT_MODES.JSON)}
+              disabled={parsing || submitting}
+              role="tab"
+              aria-selected={importMode === IMPORT_MODES.JSON}
+            >
+              JSON
+            </button>
           </div>
 
-          <div className="question-import__upload-row">
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".xlsx,.csv"
-              disabled={isArchived || parsing}
-              onChange={handleFileChange}
-              className="question-import__file-input"
-              aria-label="Select Excel or CSV file"
-            />
-            <Button type="button" variant="secondary" leftIcon={<Download size={16} />} onClick={handleTemplate}>
-              Download template
-            </Button>
-          </div>
+          {importMode === IMPORT_MODES.FILE ? (
+            <>
+              <p className="question-import__intro">
+                Upload an Excel (.xlsx) or CSV file with the supported columns. Each row will be validated before saving.
+                Use the template to see the expected format.
+              </p>
+
+              <div className="question-import__columns">
+                <h4>Supported columns</h4>
+                <ul>
+                  {IMPORT_COLUMNS.map((column) => (
+                    <li key={column.key}>
+                      <strong>{column.label}</strong>
+                      {column.required ? <span className="question-import__required"> required</span> : <span className="question-import__optional"> optional</span>}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              <div className="question-import__upload-row">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".xlsx,.csv"
+                  disabled={isArchived || parsing}
+                  onChange={handleFileChange}
+                  className="question-import__file-input"
+                  aria-label="Select Excel or CSV file"
+                />
+                <Button type="button" variant="secondary" leftIcon={<Download size={16} />} onClick={handleTemplate}>
+                  Download template
+                </Button>
+              </div>
+            </>
+          ) : (
+            <>
+              <p className="question-import__intro">
+                Paste a JSON array using the native question bank fields. Quiz lesson JSON fields such as title,
+                correct_answers, single_choice, and fill_in_the_blank are not supported here.
+              </p>
+
+              <div className="question-import__sample">
+                <h4>Sample JSON</h4>
+                <pre>{SAMPLE_QUESTION_BANK_JSON}</pre>
+              </div>
+
+              <label className="question-import__json-label" htmlFor="question-import-json">
+                JSON data
+              </label>
+              <textarea
+                id="question-import-json"
+                className="question-import__textarea"
+                rows={10}
+                value={jsonText}
+                onChange={(event) => setJsonText(event.target.value)}
+                disabled={isArchived || parsing}
+                placeholder="Paste question bank JSON here"
+              />
+            </>
+          )}
 
           {parsing && <div className="admin-loading">Parsing file...</div>}
           {parseError && <div className="auth-card__alert" style={{ marginTop: 12 }}>{parseError}</div>}
-          {!parsing && fileName && !parseError && (
+          {parseSuccess && <div className="question-import__valid">{parseSuccess}</div>}
+          {!parsing && fileName && !parseError && importMode === IMPORT_MODES.FILE && (
             <div className="admin-empty" style={{ padding: '14px 0' }}>
               Selected: <strong>{fileName}</strong>
             </div>
@@ -180,7 +275,7 @@ export function QuestionImportModal({ open, bank, existingQuestions = [], onClos
           {validRows.length === 0 && (
             <div className="auth-card__alert" style={{ marginBottom: 12 }}>
               <AlertTriangle size={16} style={{ verticalAlign: 'middle', marginRight: 6 }} />
-              No rows are valid. Fix the issues in your file and re-upload before importing.
+              No rows are valid. Fix the issues in your import data and try again before importing.
             </div>
           )}
           <div className="question-import__table-wrap">
@@ -230,7 +325,7 @@ export function QuestionImportModal({ open, bank, existingQuestions = [], onClos
         {step === 'preview' ? (
           <>
             <Button type="button" variant="ghost" onClick={handleBackToUpload} disabled={submitting}>
-              Choose another file
+              Back to import
             </Button>
             <Button
               type="button"
@@ -245,8 +340,13 @@ export function QuestionImportModal({ open, bank, existingQuestions = [], onClos
         ) : (
           <>
             <Button type="button" variant="ghost" onClick={handleClose} disabled={parsing}>Close</Button>
+            {importMode === IMPORT_MODES.JSON && (
+              <Button type="button" onClick={handleJsonPreview} disabled={isArchived || parsing || !jsonText.trim()}>
+                Validate and preview JSON
+              </Button>
+            )}
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: '#64748b', fontSize: 13 }}>
-              <FileSpreadsheet size={14} /> {fileName || 'No file selected'}
+              <FileSpreadsheet size={14} /> {sourceLabel}
             </span>
           </>
         )}
