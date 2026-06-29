@@ -44,6 +44,11 @@ function getTraineeRoutes() {
       children: [{ index: true, element: <LearningWorkspacePage /> }],
     },
     {
+      path: "/learning/flashtests/take/:id/:type",
+      element: <RoleGuard allowedRoles={[ROLES.TRAINEE]} />,
+      children: [{ index: true, element: <TraineeFlashTestTakePage /> }],
+    },
+    {
       path: "/learning",
       element: <RoleGuard allowedRoles={[ROLES.TRAINEE]} />,
       children: [
@@ -88,10 +93,6 @@ function getTraineeRoutes() {
             {
               path: "flashtests",
               element: <TraineeFlashTestListPage />,
-            },
-            {
-              path: "flashtests/take/:id/:type",
-              element: <TraineeFlashTestTakePage />,
             },
           ],
         },

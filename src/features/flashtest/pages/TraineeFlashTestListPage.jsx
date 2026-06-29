@@ -5,6 +5,7 @@ import {
   ArrowRight,
   BookOpen,
   CheckSquare,
+  Eye,
   FileText,
   RefreshCw,
   Search,
@@ -40,6 +41,12 @@ function formatDate(value) {
   return new Date(value).toLocaleString();
 }
 
+function isCompletedStatus(status) {
+  return ["SUBMITTED", "GRADED", "EXPIRED", "TIMEOUT"].includes(
+    String(status || "").toUpperCase(),
+  );
+}
+
 export function TraineeFlashTestListPage() {
   const navigate = useNavigate();
   const currentUser = getCurrentUser();
@@ -71,7 +78,7 @@ export function TraineeFlashTestListPage() {
       const checks = await Promise.allSettled([
         ...flashTests.map(async (test) => {
           const attempts = await attemptService.getHistory(test.id, studentId);
-          return [`mcq-${test.id}`, attempts.length > 0];
+          return [`mcq-${test.id}`, attempts.some((attempt) => isCompletedStatus(attempt.status))];
         }),
         ...flashAssignments.map(async (assignment) => {
           try {
@@ -253,7 +260,18 @@ export function TraineeFlashTestListPage() {
                           {expired ? (
                             <span className="ft-button ft-button--disabled">Expired</span>
                           ) : taken ? (
-                            <span className="ft-button ft-button--disabled">Completed</span>
+                            <>
+                              <span className="ft-button ft-button--disabled">Completed</span>
+                              {!isEssay && (
+                                <Link
+                                  to={`/learning/flashtests/take/${item.id}/mcq`}
+                                  className="ft-icon-button"
+                                  title="View score"
+                                >
+                                  <Eye size={16} />
+                                </Link>
+                              )}
+                            </>
                           ) : (
                             <Link
                               to={`/learning/flashtests/take/${item.id}/${

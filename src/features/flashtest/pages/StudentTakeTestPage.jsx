@@ -2,10 +2,10 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Client } from "@stomp/stompjs";
 import { useNavigate, useParams } from "react-router-dom";
 import {
-  ArrowLeft,
   CheckCircle,
   Clock,
   Download,
+  Eye,
   FileUp,
   Loader2,
 } from "lucide-react";
@@ -15,6 +15,7 @@ import {
   attemptService,
   testService,
 } from "@/services/flashtest.service.js";
+import { sanitizeLessonHtml } from "@/shared/utils/htmlSanitizer";
 import "../flashtest.css";
 
 const API_BASE_URL =
@@ -54,6 +55,26 @@ function isCompletedAttempt(status) {
   return ["SUBMITTED", "GRADED", "EXPIRED", "TIMEOUT"].includes(normalized);
 }
 
+function submitWarningTitle(warning) {
+  if (warning?.type === "essay-empty") {
+    return "You have not attached a submission file.";
+  }
+  if (warning?.type === "mcq-incomplete") {
+    return "You have not answered all questions.";
+  }
+  return warning?.title || "Submit warning";
+}
+
+function submitWarningMessage(warning) {
+  if (warning?.type === "essay-empty") {
+    return "Do you want to submit without uploading anything?";
+  }
+  if (warning?.type === "mcq-incomplete") {
+    return `You answered ${warning.answeredCount}/${warning.totalQuestions} questions. Do you still want to submit?`;
+  }
+  return warning?.message || "";
+}
+
 export function StudentTakeTestPage() {
   const { id, type } = useParams();
   const navigate = useNavigate();
@@ -73,6 +94,8 @@ export function StudentTakeTestPage() {
   const [timeLeft, setTimeLeft] = useState(0);
   const [file, setFile] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const [submitWarning, setSubmitWarning] = useState(null);
+  const [completedResult, setCompletedResult] = useState(null);
 
   const publishMonitor = useCallback(
     (payload) => {
@@ -123,9 +146,9 @@ export function StudentTakeTestPage() {
           if (isCompletedAttempt(started.status)) {
             setTestData(test);
             setAttempt(started);
+            setCompletedResult(started);
             setQuestions([]);
             setTimeLeft(0);
-            setError("You have already completed this flash test.");
             return;
           }
           const mappings = await testService.getLearnerQuestions(id);
@@ -267,8 +290,33 @@ export function StudentTakeTestPage() {
     testData?.dueDate,
   ]);
 
-  const handleSubmit = useCallback(async () => {
+  const handleSubmit = useCallback(async ({ skipWarning = false } = {}) => {
     if (submittedRef.current || submitting) return;
+    if (!skipWarning) {
+      if (normalizedType === "essay" && !file && !submission?.fileUrl) {
+        setSubmitWarning({
+          type: "essay-empty",
+          title: "Bạn chưa làm gì cho bài essay.",
+          message: "Bạn có muốn tiếp tục nộp bài trống hay ở lại để làm tiếp?",
+        });
+        return;
+      }
+      if (normalizedType === "mcq") {
+        const answeredCount = questions.filter(
+          (question) => answers[question.id],
+        ).length;
+        if (answeredCount < questions.length) {
+          setSubmitWarning({
+            type: "mcq-incomplete",
+            answeredCount,
+            totalQuestions: questions.length,
+            title: "Bạn chưa làm hết các câu hỏi.",
+            message: `Bạn đã trả lời ${answeredCount}/${questions.length} câu. Bạn có muốn tiếp tục nộp không?`,
+          });
+          return;
+        }
+      }
+    }
     submittedRef.current = true;
     setSubmitting(true);
     try {
@@ -276,6 +324,7 @@ export function StudentTakeTestPage() {
         const result = await attemptService.submit(attempt.id, {
           forceSubmit: true,
         });
+        setCompletedResult(result);
         publishMonitor({
           attemptId: attempt.id,
           status: result.status,
@@ -285,20 +334,14 @@ export function StudentTakeTestPage() {
           endTime: result.endTime,
         });
       } else {
-        if (!file) {
-          submittedRef.current = false;
-          setSubmitting(false);
-          alert("Please choose a submission file before submitting.");
-          return;
-        }
         const activeSubmission = await ensureEssayStarted();
-        const uploaded = await assignmentService.uploadFile(file);
+        const uploaded = file ? await assignmentService.uploadFile(file) : null;
         const result = await assignmentService.submit({
           assignmentId: id,
           studentId: student.id,
           studentName: student.name,
-          fileUrl: uploaded.fileUrl,
-          fileName: uploaded.fileName || file.name,
+          fileUrl: uploaded?.fileUrl || submission?.fileUrl || null,
+          fileName: uploaded?.fileName || file?.name || submission?.fileName || null,
         });
         setSubmission(result);
         publishMonitor({
@@ -310,7 +353,9 @@ export function StudentTakeTestPage() {
           endTime: testData?.dueDate,
         });
       }
-      navigate("/learning/flashtests");
+      if (normalizedType === "essay") {
+        navigate("/learning/flashtests");
+      }
     } catch (submitError) {
       submittedRef.current = false;
       setError(submitError.message || "Submit failed.");
@@ -319,20 +364,25 @@ export function StudentTakeTestPage() {
     }
   }, [
     attempt,
+    answers,
     file,
     id,
     ensureEssayStarted,
     navigate,
     normalizedType,
     publishMonitor,
+    questions,
     student.id,
     student.name,
+    submission,
     submitting,
     testData,
   ]);
 
   useEffect(() => {
-    if (!testData || loading || submittedRef.current) return undefined;
+    if (!testData || loading || submittedRef.current || completedResult) {
+      return undefined;
+    }
     const timer = window.setInterval(() => {
       const end =
         normalizedType === "mcq" ? attempt?.endTime : testData?.dueDate;
@@ -340,11 +390,18 @@ export function StudentTakeTestPage() {
       setTimeLeft(next);
       if (next <= 0 && normalizedType === "mcq") {
         window.clearInterval(timer);
-        handleSubmit();
+        handleSubmit({ skipWarning: true });
       }
     }, 1000);
     return () => window.clearInterval(timer);
-  }, [attempt?.endTime, handleSubmit, loading, normalizedType, testData]);
+  }, [
+    attempt?.endTime,
+    completedResult,
+    handleSubmit,
+    loading,
+    normalizedType,
+    testData,
+  ]);
 
   const handleSelectAnswer = async (questionId, answerId) => {
     setAnswers((current) => ({ ...current, [questionId]: answerId }));
@@ -361,15 +418,7 @@ export function StudentTakeTestPage() {
 
   if (loading) {
     return (
-      <section className="ft-page">
-        <button
-          className="ft-button ft-button--secondary"
-          type="button"
-          onClick={() => navigate(-1)}
-          style={{ marginBottom: 14 }}
-        >
-          <ArrowLeft size={16} /> Back
-        </button>
+      <section className="ft-page ft-take-workspace">
         <div className="ft-empty">
           <Loader2 className="ft-spin" size={24} />
           <strong>Loading assessment...</strong>
@@ -379,7 +428,7 @@ export function StudentTakeTestPage() {
   }
 
   return (
-    <section className="ft-page">
+    <section className="ft-page ft-take-workspace">
       <header className="ft-take-header">
         <div>
           <span className="ft-page-kicker">
@@ -393,35 +442,49 @@ export function StudentTakeTestPage() {
           </p>
         </div>
         <div className="ft-toolbar">
-          <button
-            className="ft-icon-button"
-            type="button"
-            title="Back"
-            onClick={() => navigate(-1)}
-          >
-            <ArrowLeft size={18} />
-          </button>
           <span className={`ft-timer ${timeLeft < 60 ? "is-danger" : ""}`}>
             <Clock size={20} /> {formatTime(timeLeft)}
           </span>
-          <button
-            className="ft-button ft-button--primary"
-            type="button"
-            disabled={
-              submitting ||
-              Boolean(error && normalizedType === "mcq") ||
-              Boolean(error && normalizedType === "essay" && timeLeft <= 0)
-            }
-            onClick={handleSubmit}
-          >
-            <CheckCircle size={18} /> {submitting ? "Submitting..." : "Submit"}
-          </button>
+          {!completedResult && (
+            <button
+              className="ft-button ft-button--primary"
+              type="button"
+              disabled={
+                submitting ||
+                Boolean(error && normalizedType === "mcq") ||
+                Boolean(error && normalizedType === "essay" && timeLeft <= 0)
+              }
+              onClick={handleSubmit}
+            >
+              <CheckCircle size={18} /> {submitting ? "Submitting..." : "Submit"}
+            </button>
+          )}
         </div>
       </header>
 
       {error && <div className="ft-alert">{error}</div>}
 
-      {normalizedType === "mcq" ? (
+      {completedResult ? (
+        <div className="ft-result-panel">
+          <div className="ft-result-panel__icon">
+            <Eye size={24} />
+          </div>
+          <div className="ft-result-panel__body">
+            <span className="ft-page-kicker">Flash test result</span>
+            <h2>{testData?.title || testData?.name || "MCQ practice"}</h2>
+            <p>
+              Status: <strong>{completedResult.status || "SUBMITTED"}</strong>
+            </p>
+          </div>
+          <div className="ft-result-panel__score">
+            <span>Score</span>
+            <strong>{completedResult.score ?? "--"}</strong>
+            {completedResult.percentage != null && (
+              <small>{completedResult.percentage}%</small>
+            )}
+          </div>
+        </div>
+      ) : normalizedType === "mcq" ? (
         <div className="ft-question-stack">
           {questions.map((question, index) => (
             <article className="ft-question-card" key={question.id}>
@@ -452,7 +515,16 @@ export function StudentTakeTestPage() {
           <div className="ft-essay-prompt">
             <span className="ft-page-kicker">Teacher instructions</span>
             <h2>Description</h2>
-            <p>{testData?.description || "No description provided."}</p>
+            {testData?.description ? (
+              <div
+                className="ft-rich-content"
+                dangerouslySetInnerHTML={{
+                  __html: sanitizeLessonHtml(testData.description),
+                }}
+              />
+            ) : (
+              <p>No description provided.</p>
+            )}
             {testData?.instructionFileUrl && (
               <button
                 className="ft-button ft-button--secondary"
@@ -503,6 +575,35 @@ export function StudentTakeTestPage() {
               onChange={(event) => setFile(event.target.files?.[0] || null)}
             />
           </label>
+        </div>
+      )}
+      {submitWarning && (
+        <div className="ft-modal-overlay" role="presentation">
+          <div className="ft-confirm-dialog" role="dialog" aria-modal="true">
+            <h2>{submitWarningTitle(submitWarning)}</h2>
+            <p>{submitWarningMessage(submitWarning)}</p>
+            <div className="ft-confirm-dialog__actions">
+              <button
+                className="ft-button ft-button--secondary"
+                type="button"
+                onClick={() => setSubmitWarning(null)}
+              >
+                <span>Continue working</span>
+                Tiếp tục làm bài
+              </button>
+              <button
+                className="ft-button ft-button--primary"
+                type="button"
+                onClick={() => {
+                  setSubmitWarning(null);
+                  handleSubmit({ skipWarning: true });
+                }}
+              >
+                <span>Continue submit</span>
+                Tiếp tục nộp
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </section>
