@@ -82,4 +82,12 @@ export const questionBankService = {
     const response = await apiClient.post(`/admin/questions/${questionId}/reject`)
     return unwrap(response)
   },
+
+  async importQuestionsBatch(bankId, rows) {
+    const response = await apiClient.post('/admin/questions/import-batch', {
+      bankId,
+      rows,
+    })
+    return unwrap(response)
+  },
 }
