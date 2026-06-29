@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Plus, Trash2 } from "lucide-react";
+import { Eye, Plus, Trash2 } from "lucide-react";
 import { questionService } from "@/services/flashtest.service.js";
 import "../flashtest.css";
 
@@ -18,6 +18,7 @@ export function QuestionSelector({
 }) {
   const [questions, setQuestions] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [expandedQuestionId, setExpandedQuestionId] = useState(null);
 
   const loadQuestions = async () => {
     if (!courseId) {
@@ -54,6 +55,9 @@ export function QuestionSelector({
     onQuestionsChange(
       selectedQuestions.filter((question) => questionId(question) !== id),
     );
+    if (expandedQuestionId === id) {
+      setExpandedQuestionId(null);
+    }
   };
 
   return (
@@ -66,19 +70,56 @@ export function QuestionSelector({
         {selectedQuestions.length === 0 ? (
           <p className="ft-muted">No question selected.</p>
         ) : (
-          selectedQuestions.map((question) => (
-            <div className="ft-question-row" key={questionId(question)}>
-              <span className="ft-question-text">{questionText(question)}</span>
-              <button
-                className="ft-icon-button"
-                type="button"
-                title="Remove"
-                onClick={() => handleRemove(questionId(question))}
-              >
-                <Trash2 size={16} />
-              </button>
-            </div>
-          ))
+          selectedQuestions.map((question) => {
+            const id = questionId(question);
+            const answers = question.answers || question.options || [];
+            return (
+              <div className="ft-question-row-wrap" key={id}>
+                <div className="ft-question-row">
+                  <span className="ft-question-text">{questionText(question)}</span>
+                  <div className="ft-question-actions">
+                    <button
+                      className="ft-icon-button"
+                      type="button"
+                      title="View answers"
+                      onClick={() =>
+                        setExpandedQuestionId(expandedQuestionId === id ? null : id)
+                      }
+                    >
+                      <Eye size={16} />
+                    </button>
+                    <button
+                      className="ft-icon-button"
+                      type="button"
+                      title="Remove"
+                      onClick={() => handleRemove(id)}
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                </div>
+                {expandedQuestionId === id && (
+                  <div className="ft-answer-preview">
+                    {answers.length === 0 ? (
+                      <p className="ft-muted">No answers available for this question.</p>
+                    ) : (
+                      answers.map((answer, index) => (
+                        <div
+                          className={`ft-answer-preview__item ${
+                            answer.correct || answer.isCorrect ? "is-correct" : ""
+                          }`}
+                          key={answer.id || answer.answerId || index}
+                        >
+                          <span>{answer.answerText || answer.content}</span>
+                          {(answer.correct || answer.isCorrect) && <strong>Correct</strong>}
+                        </div>
+                      ))
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })
         )}
       </div>
 

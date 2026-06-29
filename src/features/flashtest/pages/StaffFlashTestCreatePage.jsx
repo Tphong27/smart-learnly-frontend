@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   ArrowLeft,
+  BookOpen,
   CheckSquare,
   Clock,
   FileText,
@@ -14,6 +15,8 @@ import {
   assignmentService,
   testService,
 } from "@/services/flashtest.service.js";
+import { useToast } from "@/shared/components/ui";
+import RichTextEditor from "@/shared/components/rich-text/RichTextEditor";
 import { QuestionSelector } from "../components/QuestionSelector";
 import "../flashtest.css";
 
@@ -63,11 +66,11 @@ const DURATION_PRESETS = [
   { label: "15 min", value: "15", unit: "minutes" },
   { label: "30 min", value: "30", unit: "minutes" },
   { label: "45 min", value: "45", unit: "minutes" },
-  { label: "1 hour", value: "1", unit: "hours" },
 ];
 
 export function StaffFlashTestCreatePage() {
   const navigate = useNavigate();
+  const toast = useToast();
   const { id, type } = useParams();
   const isEdit = Boolean(id);
   const [testType, setTestType] = useState("essay");
@@ -84,6 +87,8 @@ export function StaffFlashTestCreatePage() {
   const [existingInstructionFile, setExistingInstructionFile] = useState(null);
   const [loadingExisting, setLoadingExisting] = useState(Boolean(id));
   const [isSaving, setIsSaving] = useState(false);
+  const [customDurationOpen, setCustomDurationOpen] = useState(false);
+  const [customDurationValue, setCustomDurationValue] = useState("");
 
   useEffect(() => {
     let cancelled = false;
@@ -263,11 +268,11 @@ export function StaffFlashTestCreatePage() {
         }
       }
 
-      alert(`Flash test ${isEdit ? "updated" : "created"} successfully.`);
+      toast.success(`Flash test ${isEdit ? "updated" : "created"} successfully.`);
       navigate("/staff/flashtests");
     } catch (error) {
       console.error(error);
-      alert(error.message || "Could not create flash test.");
+      toast.error(error.message || "Could not save flash test.");
     } finally {
       setIsSaving(false);
     }
@@ -307,6 +312,56 @@ export function StaffFlashTestCreatePage() {
       </header>
 
       <div className="ft-panel">
+        <div className="ft-ribbon" aria-label="Flash test setup summary">
+          <div className="ft-ribbon__item is-active">
+            <FileText size={18} />
+            <div>
+              <strong>Content</strong>
+              <span>{testType === "essay" ? "Essay assignment" : "MCQ practice"}</span>
+            </div>
+          </div>
+          <div className="ft-ribbon__item">
+            <Clock size={18} />
+            <div>
+              <strong>Duration</strong>
+              <span>
+                {formData.durationValue || "Custom"}{" "}
+                {formData.durationUnit === "hours" ? "hour(s)" : "minute(s)"}
+              </span>
+            </div>
+          </div>
+          <div className="ft-ribbon__item">
+            <BookOpen size={18} />
+            <div>
+              <strong>Course</strong>
+              <span>
+                {testType === "mcq"
+                  ? formData.courseId
+                    ? getCourseTitle(
+                        courses.find(
+                          (course) => getCourseId(course) === formData.courseId,
+                        ),
+                      )
+                    : "Select course"
+                  : "Optional for essay"}
+              </span>
+            </div>
+          </div>
+          <div className="ft-ribbon__item">
+            <CheckSquare size={18} />
+            <div>
+              <strong>{testType === "mcq" ? "Questions" : "Instructions"}</strong>
+              <span>
+                {testType === "mcq"
+                  ? `${selectedQuestions.length} selected`
+                  : instructionFile || existingInstructionFile
+                    ? "File attached"
+                    : "Text prompt"}
+              </span>
+            </div>
+          </div>
+        </div>
+
         <div className="ft-form">
           <label className="ft-field">
             <span className="ft-label">Title</span>
@@ -324,34 +379,6 @@ export function StaffFlashTestCreatePage() {
           <label className="ft-field">
             <span className="ft-label">Duration</span>
             <div className="ft-duration-control">
-              <div className="ft-duration-input">
-                <Clock size={16} />
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  pattern="[1-9][0-9]*"
-                  placeholder="15"
-                  value={formData.durationValue}
-                  onChange={(event) =>
-                    setFormData({
-                      ...formData,
-                      durationValue: onlyPositiveInteger(event.target.value),
-                    })
-                  }
-                />
-                <select
-                  value={formData.durationUnit}
-                  onChange={(event) =>
-                    setFormData({
-                      ...formData,
-                      durationUnit: event.target.value,
-                    })
-                  }
-                >
-                  <option value="minutes">Minutes</option>
-                  <option value="hours">Hours</option>
-                </select>
-              </div>
               <div className="ft-duration-presets">
                 {DURATION_PRESETS.map((preset) => (
                   <button
@@ -369,7 +396,59 @@ export function StaffFlashTestCreatePage() {
                     {preset.label}
                   </button>
                 ))}
+                <button
+                  className="ft-chip ft-chip--custom"
+                  type="button"
+                  onClick={() => {
+                    setCustomDurationValue(formData.durationValue);
+                    setCustomDurationOpen((open) => !open);
+                  }}
+                >
+                  Custom
+                </button>
               </div>
+              {customDurationOpen && (
+                <div className="ft-duration-popover">
+                  <label>
+                    <span>Custom minutes</span>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      placeholder="Enter minutes"
+                      value={customDurationValue}
+                      onChange={(event) =>
+                        setCustomDurationValue(
+                          onlyPositiveInteger(event.target.value),
+                        )
+                      }
+                    />
+                  </label>
+                  <div className="ft-duration-popover__actions">
+                    <button
+                      className="ft-button ft-button--secondary"
+                      type="button"
+                      onClick={() => setCustomDurationOpen(false)}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      className="ft-button ft-button--primary"
+                      type="button"
+                      onClick={() => {
+                        if (!customDurationValue) return;
+                        setFormData({
+                          ...formData,
+                          durationValue: customDurationValue,
+                          durationUnit: "minutes",
+                        });
+                        setCustomDurationOpen(false);
+                      }}
+                    >
+                      Apply
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </label>
 
@@ -399,14 +478,14 @@ export function StaffFlashTestCreatePage() {
             <>
               <label className="ft-field">
                 <span className="ft-label">Instructions</span>
-                <textarea
-                  className="ft-textarea"
-                  placeholder="Write the essay description and submission instructions."
+                <RichTextEditor
                   value={formData.description}
-                  onChange={(event) =>
+                  minHeight={180}
+                  placeholder="Write the essay description and submission instructions."
+                  onChange={(value) =>
                     setFormData({
                       ...formData,
-                      description: event.target.value,
+                      description: value,
                     })
                   }
                 />
