@@ -22,6 +22,7 @@ import {
 import { LearningLessonMedia } from "@/features/course/components/LearningLessonMedia";
 import { LearningLessonTabs } from "@/features/course/components/LearningLessonTabs";
 import { learningService } from "@/services";
+import { filterPublishedSections } from "@/features/course/utils/lesson-status";
 import "./LearningWorkspacePage.css";
 
 function formatDuration(seconds) {
@@ -46,7 +47,7 @@ function LessonIcon({ type, size = 16 }) {
 }
 
 function groupLessonsBySection(data) {
-  return data?.sections || [];
+  return filterPublishedSections(data?.sections || []);
 }
 
 export function LearningWorkspacePage({
@@ -85,9 +86,9 @@ export function LearningWorkspacePage({
         if (!cancelled) {
           setData(result);
 
-          const loadedLessons = (result?.sections || []).flatMap(
-            (section) => section.lessons || [],
-          );
+          const loadedLessons = filterPublishedSections(
+            result?.sections || [],
+          ).flatMap((section) => section.lessons || []);
 
           const completedIds = new Set(
             loadedLessons
