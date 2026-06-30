@@ -5,7 +5,7 @@ import { ProtectedRoute } from "./routes/ProtectedRoute";
 import { RoleGuard } from "./routes/RoleGuard";
 import { ROLES } from "@/shared/constants/roles";
 import { HomePage } from "../features/home/HomePage";
-import { CourseDetailPage, CoursePreviewLessonsPage, LearningWorkspacePage, TrainerProfilePage } from "../features/course";
+import { CourseDetailPage, LearningWorkspacePage, TrainerProfilePage } from "../features/course";
 import {
   LoginPage,
   RegisterPage,
