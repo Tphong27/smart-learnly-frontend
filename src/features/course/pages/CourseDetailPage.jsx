@@ -20,6 +20,7 @@ import {
   getOriginalPrice,
   hasValidDiscount,
 } from "../utils/course-price";
+import { isLessonPublished } from "../utils/lesson-status";
 import { courseService, orderService, enrollmentService } from "@/services";
 import { ClassSelectionPopup } from "../components/ClassSelectionPopup";
 import "../../admin/admin-shared.css";
@@ -136,14 +137,21 @@ export function CourseDetailPage() {
   }
 
   const objectives = course.learningObjectives || [];
-  const modules = course.modules || [];
+  const modules = (course.modules || [])
+    .map((module) => ({
+      ...module,
+      lessons: (module.lessons || []).filter((lesson) =>
+        isLessonPublished(lesson),
+      ),
+    }))
+    .filter((module) => (module.lessons || []).length > 0);
   const classes = course.classes || [];
   const totalLessons = modules.reduce(
     (sum, m) => sum + (m.lessons?.length || 0),
     0,
   );
   const previewLessons = modules.flatMap((m) =>
-    (m.lessons || []).filter((l) => l.preview),
+    (m.lessons || []).filter((l) => l.preview || l.isPreview),
   );
   const originalPrice = getOriginalPrice(course);
   const displayPrice = getDisplayPrice(course);
