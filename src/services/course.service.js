@@ -420,4 +420,69 @@ export const courseService = {
     // Nếu API trả thẳng mảng hoặc dạng khác, bạn có thể sửa thành return unwrap(response)
     return normalizePage(response);
   },
+
+  // =====================================================================
+  // HLS Video Upload APIs
+  // =====================================================================
+
+  /**
+   * Upload video để xử lý HLS
+   * Backend sẽ tự động encode và upload lên R2
+   */
+  async uploadHlsVideo(
+    lessonId,
+    videoFile,
+    replaceExisting = false,
+    onUploadProgress,
+  ) {
+    const formData = new FormData();
+    formData.append("lessonId", lessonId);
+    formData.append("video", videoFile);
+    formData.append("replaceExisting", replaceExisting);
+
+    const response = await apiClient.post(
+      "/hls/upload",
+      formData,
+      {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+        timeout: 600000,
+        onUploadProgress:
+          typeof onUploadProgress === "function"
+            ? (event) => {
+                if (!event.total) return;
+                onUploadProgress(
+                  Math.min(100, Math.round((event.loaded * 100) / event.total)),
+                );
+              }
+            : undefined,
+      },
+    );
+    return unwrap(response);
+  },
+
+  /**
+   * Kiểm tra trạng thái xử lý HLS video
+   */
+  async getHlsProcessingStatus(lessonId) {
+    const response = await apiClient.get(`/hls/upload/${lessonId}/status`);
+    return unwrap(response);
+  },
+
+  /**
+   * Kiểm tra FFmpeg và HLS service có sẵn sàng không
+   */
+  async checkHlsHealth() {
+    const response = await apiClient.get("/hls/upload/health");
+    return unwrap(response);
+  },
+
+  /**
+   * Xóa HLS video của một lesson
+   */
+  async deleteHlsVideo(lessonId) {
+    const response = await apiClient.delete(`/hls/upload/${lessonId}`);
+    return unwrap(response);
+  },
 };

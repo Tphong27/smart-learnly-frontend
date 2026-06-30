@@ -117,30 +117,12 @@ export function LearningWorkspacePage({
     return sections.flatMap((s) => s.lessons || []);
   }, [sections]);
 
-  const [activeLessonId, setActiveLessonId] = useState(null);
+  const [activeLessonId, setActiveLessonId] = useState(requestedLessonId);
 
   const handleSelectLesson = useCallback((lesson) => {
     setActiveLessonId(getLessonId(lesson));
     setActiveLessonTab("overview");
   }, []);
-
-  useEffect(() => {
-    if (!requestedLessonId || allLessons.length === 0) return;
-    if (String(activeLessonId) === requestedLessonId) return;
-
-    const requestedLesson = allLessons.find(
-      (lesson) => String(getLessonId(lesson)) === requestedLessonId,
-    );
-
-    if (requestedLesson) {
-      const nextLessonId = getLessonId(requestedLesson);
-
-      if (nextLessonId) {
-        setActiveLessonId(nextLessonId);
-        setActiveLessonTab("overview");
-      }
-    }
-  }, [activeLessonId, allLessons, requestedLessonId]);
 
   const activeLesson = useMemo(() => {
     if (allLessons.length === 0) return null;
