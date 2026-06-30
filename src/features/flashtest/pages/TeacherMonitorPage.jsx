@@ -1,10 +1,11 @@
-import React, { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Client } from "@stomp/stompjs";
 import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, CheckCircle, Clock, Download, RefreshCw, RotateCcw, XCircle } from "lucide-react";
 import {
   assignmentService,
   attemptService,
+  testService,
 } from "@/services/flashtest.service.js";
 import "../flashtest.css";
 
@@ -36,6 +37,53 @@ function remainingText(seconds) {
   return `${minutes}:${String(rest).padStart(2, "0")}`;
 }
 
+function numberOrNull(value) {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
+}
+
+function getQuestionTotal(...sources) {
+  for (const source of sources) {
+    const total =
+      numberOrNull(source?.totalQuestions) ??
+      numberOrNull(source?.total_questions) ??
+      numberOrNull(source?.questionCount) ??
+      numberOrNull(source?.question_count) ??
+      numberOrNull(source?.numberOfQuestions) ??
+      numberOrNull(source?.questions?.length);
+    if (total && total > 0) return total;
+  }
+  return null;
+}
+
+function formatScoreValue(value) {
+  if (!Number.isFinite(value)) return "--";
+  const score = Math.max(0, Math.min(10, value));
+  return Number.isInteger(score) ? String(score) : score.toFixed(1);
+}
+
+function formatMcqScore(row, questionTotal) {
+  const percentage = numberOrNull(row?.percentage);
+  const rawScore = numberOrNull(row?.score);
+  if (percentage && percentage > 0) {
+    return {
+      score: formatScoreValue(percentage / 10),
+      percentage: Math.round(percentage),
+    };
+  }
+  if (rawScore != null && questionTotal) {
+    const computedPercentage = (rawScore / questionTotal) * 100;
+    return {
+      score: formatScoreValue(computedPercentage / 10),
+      percentage: Math.round(computedPercentage),
+    };
+  }
+  if (percentage === 0) {
+    return { score: "0", percentage: 0 };
+  }
+  return { score: "--", percentage: null };
+}
+
 export function TeacherMonitorPage() {
   const { id, type } = useParams();
   const navigate = useNavigate();
@@ -45,7 +93,8 @@ export function TeacherMonitorPage() {
   const [downloadingId, setDownloadingId] = useState(null);
   const [reopeningId, setReopeningId] = useState(null);
   const [connected, setConnected] = useState(false);
-  const [clockTick, setClockTick] = useState(Date.now());
+  const [clockTick, setClockTick] = useState(0);
+  const [questionTotal, setQuestionTotal] = useState(null);
 
   const rowList = useMemo(
     () =>
@@ -57,7 +106,7 @@ export function TeacherMonitorPage() {
     [rows],
   );
 
-  const mergeEvent = (event) => {
+  const mergeEvent = useCallback((event) => {
     if (!event?.studentId) return;
     if (String(event.status || "").toUpperCase() === "REOPENED") {
       setRows((current) => {
@@ -78,9 +127,9 @@ export function TeacherMonitorPage() {
           `Student ${String(event.studentId).slice(0, 8)}`,
       },
     }));
-  };
+  }, []);
 
-  const loadInitial = async () => {
+  const loadInitial = useCallback(async () => {
     setLoading(true);
     try {
       if (normalizedType === "essay") {
@@ -103,7 +152,14 @@ export function TeacherMonitorPage() {
           }),
         );
       } else {
-        const attempts = await attemptService.getByTest(id);
+        const [attempts, questionMappings] = await Promise.all([
+          attemptService.getByTest(id),
+          testService.getStaffQuestions(id).catch((questionError) => {
+            console.warn("Could not load MCQ question total", questionError);
+            return [];
+          }),
+        ]);
+        setQuestionTotal(getQuestionTotal({ questions: questionMappings }));
         attempts.forEach((item) =>
           mergeEvent({
             targetId: item.testId,
@@ -115,13 +171,14 @@ export function TeacherMonitorPage() {
             endTime: item.endTime,
             score: item.score,
             percentage: item.percentage,
+            totalQuestions: getQuestionTotal(item),
           }),
         );
       }
     } finally {
       setLoading(false);
     }
-  };
+  }, [id, mergeEvent, normalizedType]);
 
   const handleDownload = async (row) => {
     if (!row.fileUrl) return;
@@ -168,12 +225,18 @@ export function TeacherMonitorPage() {
   };
 
   useEffect(() => {
-    loadInitial();
-  }, [id, normalizedType]);
+    const timer = window.setTimeout(loadInitial, 0);
+    return () => window.clearTimeout(timer);
+  }, [loadInitial]);
 
   useEffect(() => {
-    const timer = window.setInterval(() => setClockTick(Date.now()), 1000);
-    return () => window.clearInterval(timer);
+    const updateClock = () => setClockTick(Date.now());
+    const initialTimer = window.setTimeout(updateClock, 0);
+    const interval = window.setInterval(updateClock, 1000);
+    return () => {
+      window.clearTimeout(initialTimer);
+      window.clearInterval(interval);
+    };
   }, []);
 
   useEffect(() => {
@@ -193,7 +256,7 @@ export function TeacherMonitorPage() {
     });
     client.activate();
     return () => client.deactivate();
-  }, [id, normalizedType]);
+  }, [id, mergeEvent, normalizedType]);
 
   return (
     <section className="ft-page">
@@ -242,6 +305,10 @@ export function TeacherMonitorPage() {
           <tbody>
             {rowList.map((row) => {
               const info = statusInfo(row.status);
+              const mcqScore = formatMcqScore(
+                row,
+                getQuestionTotal(row) || questionTotal,
+              );
               const remaining =
                 row.endTime
                   ? Math.max(
@@ -283,10 +350,12 @@ export function TeacherMonitorPage() {
                       ) : (
                         <span className="ft-muted">Waiting for submission</span>
                       )
-                    ) : row.score != null ? (
+                    ) : row.score != null || row.percentage != null ? (
                       <strong>
-                        {row.score}
-                        {row.percentage != null ? ` (${row.percentage}%)` : ""}
+                        {mcqScore.score}/10
+                        {mcqScore.percentage != null
+                          ? ` (${mcqScore.percentage}%)`
+                          : ""}
                       </strong>
                     ) : (
                       <span className="ft-muted">Waiting for auto grade</span>
