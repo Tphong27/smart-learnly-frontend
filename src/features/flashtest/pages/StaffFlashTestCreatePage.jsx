@@ -89,6 +89,27 @@ export function StaffFlashTestCreatePage() {
   const [isSaving, setIsSaving] = useState(false);
   const [customDurationOpen, setCustomDurationOpen] = useState(false);
   const [customDurationValue, setCustomDurationValue] = useState("");
+  const [validationErrors, setValidationErrors] = useState({});
+
+  const selectedDurationMinutes = Math.round(
+    Number(formData.durationValue) *
+      (DURATION_UNITS[formData.durationUnit] || 1),
+  );
+  const selectedPreset = DURATION_PRESETS.find(
+    (preset) =>
+      Number(preset.value) * (DURATION_UNITS[preset.unit] || 1) ===
+      selectedDurationMinutes,
+  );
+
+  const updateFormData = (patch) => {
+    setFormData((current) => ({ ...current, ...patch }));
+    setValidationErrors((current) => {
+      const next = { ...current };
+      Object.keys(patch).forEach((key) => delete next[key]);
+      if (patch.durationValue || patch.durationUnit) delete next.duration;
+      return next;
+    });
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -181,16 +202,21 @@ export function StaffFlashTestCreatePage() {
       Number(formData.durationValue) *
         (DURATION_UNITS[formData.durationUnit] || 1),
     );
-    if (!formData.title.trim() || !duration || duration <= 0) {
-      alert("Please enter a title and a valid duration.");
-      return;
+    const nextErrors = {};
+    if (!formData.title.trim()) {
+      nextErrors.title = "Please enter the flash test title.";
+    }
+    if (!duration || duration <= 0) {
+      nextErrors.duration = "Please enter a valid duration.";
     }
     if (testType === "mcq" && !formData.courseId) {
-      alert("Please choose a course before selecting MCQ questions.");
-      return;
+      nextErrors.courseId = "Please choose a course.";
     }
     if (testType === "mcq" && selectedQuestions.length === 0) {
-      alert("Please select at least one question for the MCQ test.");
+      nextErrors.questions = "Please select at least one MCQ question.";
+    }
+    setValidationErrors(nextErrors);
+    if (Object.keys(nextErrors).length > 0) {
       return;
     }
 
@@ -371,9 +397,12 @@ export function StaffFlashTestCreatePage() {
               placeholder="Midterm quick practice"
               value={formData.title}
               onChange={(event) =>
-                setFormData({ ...formData, title: event.target.value })
+                updateFormData({ title: event.target.value })
               }
             />
+            {validationErrors.title && (
+              <span className="ft-field-error">{validationErrors.title}</span>
+            )}
           </label>
 
           <label className="ft-field">
@@ -383,21 +412,28 @@ export function StaffFlashTestCreatePage() {
                 {DURATION_PRESETS.map((preset) => (
                   <button
                     key={`${preset.value}-${preset.unit}`}
-                    className="ft-chip"
+                    className={`ft-chip ${
+                      selectedPreset?.value === preset.value &&
+                      selectedPreset?.unit === preset.unit
+                        ? "is-active"
+                        : ""
+                    }`}
                     type="button"
-                    onClick={() =>
-                      setFormData({
-                        ...formData,
+                    onClick={() => {
+                      updateFormData({
                         durationValue: preset.value,
                         durationUnit: preset.unit,
-                      })
-                    }
+                      });
+                      setCustomDurationOpen(false);
+                    }}
                   >
                     {preset.label}
                   </button>
                 ))}
                 <button
-                  className="ft-chip ft-chip--custom"
+                  className={`ft-chip ft-chip--custom ${
+                    selectedPreset ? "" : "is-active"
+                  }`}
                   type="button"
                   onClick={() => {
                     setCustomDurationValue(formData.durationValue);
@@ -406,6 +442,9 @@ export function StaffFlashTestCreatePage() {
                 >
                   Custom
                 </button>
+                <span className="ft-duration-selected">
+                  ({selectedDurationMinutes || "--"}) minutes
+                </span>
               </div>
               {customDurationOpen && (
                 <div className="ft-duration-popover">
@@ -436,8 +475,7 @@ export function StaffFlashTestCreatePage() {
                       type="button"
                       onClick={() => {
                         if (!customDurationValue) return;
-                        setFormData({
-                          ...formData,
+                        updateFormData({
                           durationValue: customDurationValue,
                           durationUnit: "minutes",
                         });
@@ -448,6 +486,9 @@ export function StaffFlashTestCreatePage() {
                     </button>
                   </div>
                 </div>
+              )}
+              {validationErrors.duration && (
+                <span className="ft-field-error">{validationErrors.duration}</span>
               )}
             </div>
           </label>
@@ -539,8 +580,13 @@ export function StaffFlashTestCreatePage() {
                   className="ft-input"
                   value={formData.courseId}
                   onChange={(event) => {
-                    setFormData({ ...formData, courseId: event.target.value });
+                    updateFormData({ courseId: event.target.value });
                     setSelectedQuestions([]);
+                    setValidationErrors((current) => {
+                      const next = { ...current };
+                      delete next.questions;
+                      return next;
+                    });
                   }}
                 >
                   <option value="">Select a course</option>
@@ -553,6 +599,9 @@ export function StaffFlashTestCreatePage() {
                     </option>
                   ))}
                 </select>
+                {validationErrors.courseId && (
+                  <span className="ft-field-error">{validationErrors.courseId}</span>
+                )}
               </label>
 
               <div className="ft-field">
@@ -560,8 +609,18 @@ export function StaffFlashTestCreatePage() {
                 <QuestionSelector
                   courseId={formData.courseId}
                   selectedQuestions={selectedQuestions}
-                  onQuestionsChange={setSelectedQuestions}
+                  onQuestionsChange={(nextQuestions) => {
+                    setSelectedQuestions(nextQuestions);
+                    setValidationErrors((current) => {
+                      const next = { ...current };
+                      delete next.questions;
+                      return next;
+                    });
+                  }}
                 />
+                {validationErrors.questions && (
+                  <span className="ft-field-error">{validationErrors.questions}</span>
+                )}
               </div>
             </>
           )}

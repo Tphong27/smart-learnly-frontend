@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Client } from "@stomp/stompjs";
 import { useNavigate, useParams } from "react-router-dom";
 import {
+  ArrowLeft,
   CheckCircle,
   Clock,
   Download,
@@ -96,6 +97,7 @@ export function StudentTakeTestPage() {
   const [submitting, setSubmitting] = useState(false);
   const [submitWarning, setSubmitWarning] = useState(null);
   const [completedResult, setCompletedResult] = useState(null);
+  const [activeQuestionIndex, setActiveQuestionIndex] = useState(0);
 
   const publishMonitor = useCallback(
     (payload) => {
@@ -162,6 +164,7 @@ export function StudentTakeTestPage() {
           setTestData(test);
           setAttempt(started);
           setQuestions(hydrated);
+          setActiveQuestionIndex(0);
           setTimeLeft(secondsUntil(started.endTime));
           publishMonitor({
             attemptId: started.id,
@@ -483,24 +486,75 @@ export function StudentTakeTestPage() {
               <small>{completedResult.percentage}%</small>
             )}
           </div>
+          <div className="ft-result-panel__actions">
+            <button
+              className="ft-button ft-button--primary"
+              type="button"
+              onClick={() => navigate("/learning/flashtests")}
+            >
+              <ArrowLeft size={16} /> Back to list
+            </button>
+          </div>
         </div>
       ) : normalizedType === "mcq" ? (
-        <div className="ft-question-stack">
-          {questions.map((question, index) => (
-            <article className="ft-question-card" key={question.id}>
+        <div className="ft-question-layout">
+          <aside className="ft-question-sidebar" aria-label="Question navigation">
+            <div className="ft-question-sidebar__header">
+              <strong>Questions</strong>
+              <span>
+                {
+                  questions.filter((question) => Boolean(answers[question.id]))
+                    .length
+                }
+                /{questions.length}
+              </span>
+            </div>
+            <div className="ft-question-nav">
+              {questions.map((question, index) => (
+                <button
+                  key={question.id}
+                  className={`ft-question-nav__item ${
+                    index === activeQuestionIndex ? "is-active" : ""
+                  } ${answers[question.id] ? "is-answered" : ""}`}
+                  type="button"
+                  aria-current={index === activeQuestionIndex ? "true" : undefined}
+                  title={`Question ${index + 1}`}
+                  onClick={() => setActiveQuestionIndex(index)}
+                >
+                  {index + 1}
+                </button>
+              ))}
+            </div>
+          </aside>
+
+          {questions[activeQuestionIndex] ? (
+            <article className="ft-question-card">
+              <div className="ft-question-card__header">
+                <span className="ft-page-kicker">
+                  Question {activeQuestionIndex + 1} of {questions.length}
+                </span>
+                {answers[questions[activeQuestionIndex].id] && (
+                  <span className="ft-badge ft-badge--mcq">Answered</span>
+                )}
+              </div>
               <strong>
-                Question {index + 1}:{" "}
-                {question.questionText || question.content}
+                {questions[activeQuestionIndex].questionText ||
+                  questions[activeQuestionIndex].content}
               </strong>
               <div className="ft-option-list">
-                {(question.options || []).map((answer) => (
+                {(questions[activeQuestionIndex].options || []).map((answer) => (
                   <label className="ft-option" key={answer.id}>
                     <input
                       type="radio"
-                      name={`q-${question.id}`}
-                      checked={answers[question.id] === answer.id}
+                      name={`q-${questions[activeQuestionIndex].id}`}
+                      checked={
+                        answers[questions[activeQuestionIndex].id] === answer.id
+                      }
                       onChange={() =>
-                        handleSelectAnswer(question.id, answer.id)
+                        handleSelectAnswer(
+                          questions[activeQuestionIndex].id,
+                          answer.id,
+                        )
                       }
                     />
                     <span>{answer.answerText || answer.content}</span>
@@ -508,7 +562,11 @@ export function StudentTakeTestPage() {
                 ))}
               </div>
             </article>
-          ))}
+          ) : (
+            <div className="ft-empty">
+              <strong>No questions available.</strong>
+            </div>
+          )}
         </div>
       ) : (
         <div className="ft-upload-panel">
