@@ -8,7 +8,7 @@ import {
 import { normalizeCards } from "./flashcard-utils";
 import "./Flashcards.css";
 
-function shuffleCards(cards) {
+export function shuffleCards(cards) {
   const shuffled = [...cards];
   for (let index = shuffled.length - 1; index > 0; index -= 1) {
     const swapIndex = Math.floor(Math.random() * (index + 1));
@@ -18,6 +18,10 @@ function shuffleCards(cards) {
     ];
   }
   return shuffled;
+}
+
+function cardKey(id) {
+  return id == null ? "" : String(id);
 }
 
 function CardFace({ label, text, imageUrl, hint, explanation }) {
@@ -43,37 +47,106 @@ function CardFace({ label, text, imageUrl, hint, explanation }) {
 
 export function FlashcardPreview({
   cards,
+  activeCardId,
+  orderedCardIds,
+  onActiveCardChange,
+  onAdvancePastEnd,
+  onShuffle,
   emptyMessage = "No cards available.",
   renderActions,
 }) {
   const normalizedCards = useMemo(() => normalizeCards(cards), [cards]);
-  const [orderedCards, setOrderedCards] = useState(normalizedCards);
-  const [currentIndex, setCurrentIndex] = useState(0);
+  const [internalActiveCardId, setInternalActiveCardId] = useState(null);
+  const [internalOrderIds, setInternalOrderIds] = useState([]);
   const [flipped, setFlipped] = useState(false);
 
-  useEffect(() => {
-    setOrderedCards(normalizedCards);
-    setCurrentIndex(0);
-    setFlipped(false);
-  }, [normalizedCards]);
+  const orderedCards = useMemo(() => {
+    if (!normalizedCards.length) return [];
+    const cardById = new Map(
+      normalizedCards.map((card) => [cardKey(card.id), card]),
+    );
+    const ids = orderedCardIds?.length ? orderedCardIds : internalOrderIds;
+    const ordered = ids
+      .map((id) => cardById.get(cardKey(id)))
+      .filter(Boolean);
+    const orderedIds = new Set(ordered.map((card) => cardKey(card.id)));
+    return [
+      ...ordered,
+      ...normalizedCards.filter((card) => !orderedIds.has(cardKey(card.id))),
+    ];
+  }, [internalOrderIds, normalizedCards, orderedCardIds]);
 
-  const currentCard = orderedCards[currentIndex];
+  const resolvedActiveCardId = activeCardId ?? internalActiveCardId;
+  const resolvedActiveCardKey = cardKey(resolvedActiveCardId);
+
+  const currentIndex = useMemo(() => {
+    if (!orderedCards.length) return -1;
+    const index = orderedCards.findIndex(
+      (card) => cardKey(card.id) === resolvedActiveCardKey,
+    );
+    return index >= 0 ? index : 0;
+  }, [orderedCards, resolvedActiveCardKey]);
+
+  const currentCard = orderedCards[currentIndex] || null;
+
   const cardCount = orderedCards.length;
 
-  const goPrevious = () => {
-    setCurrentIndex((index) => Math.max(0, index - 1));
+  const setActiveCard = (card) => {
+    if (card?.id == null) return;
+    if (activeCardId === undefined) {
+      setInternalActiveCardId(card.id);
+    }
+    onActiveCardChange?.(card.id, card);
     setFlipped(false);
+  };
+
+  useEffect(() => {
+    if (!normalizedCards.length) {
+      setInternalActiveCardId(null);
+      setInternalOrderIds([]);
+      return;
+    }
+
+    setInternalOrderIds((currentIds) =>
+      currentIds.filter((id) =>
+        normalizedCards.some((card) => cardKey(card.id) === cardKey(id)),
+      ),
+    );
+
+    const hasActiveCard = normalizedCards.some(
+      (card) => cardKey(card.id) === resolvedActiveCardKey,
+    );
+
+    if (!hasActiveCard && activeCardId === undefined) {
+      setActiveCard(normalizedCards[0]);
+    }
+  }, [activeCardId, normalizedCards, resolvedActiveCardKey]);
+
+  const goPrevious = () => {
+    const previousCard = orderedCards[Math.max(0, currentIndex - 1)];
+    setActiveCard(previousCard);
   };
 
   const goNext = () => {
-    setCurrentIndex((index) => Math.min(cardCount - 1, index + 1));
-    setFlipped(false);
+    if (currentIndex >= cardCount - 1) {
+      onAdvancePastEnd?.(currentCard, orderedCards);
+      setFlipped(false);
+      return;
+    }
+
+    const nextCard = orderedCards[Math.min(cardCount - 1, currentIndex + 1)];
+    setActiveCard(nextCard);
   };
 
   const shuffle = () => {
-    setOrderedCards((items) => shuffleCards(items));
-    setCurrentIndex(0);
-    setFlipped(false);
+    const shuffledCards = shuffleCards(orderedCards);
+    const shuffledIds = shuffledCards.map((card) => card.id);
+    if (onShuffle) {
+      onShuffle(shuffledIds, shuffledCards);
+    } else {
+      setInternalOrderIds(shuffledIds);
+    }
+    setActiveCard(shuffledCards[0]);
   };
 
   if (!cardCount) {
@@ -126,7 +199,7 @@ export function FlashcardPreview({
           type="button"
           className="flashcard-btn"
           onClick={goNext}
-          disabled={currentIndex >= cardCount - 1}
+          disabled={currentIndex >= cardCount - 1 && !onAdvancePastEnd}
         >
           Next
           <ChevronRight size={16} />
@@ -143,6 +216,7 @@ export function FlashcardPreview({
         isBackVisible: flipped,
         setFlipped,
         goNext,
+        orderedCards,
       })}
     </div>
   );

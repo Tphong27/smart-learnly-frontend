@@ -251,7 +251,8 @@ export function LearningFlashcardsPage() {
                         learning
                       </span>
                       <span>
-                        <BookOpen size={14} /> {item.notStartedCount || 0} new
+                        <BookOpen size={14} /> {item.notStartedCount || 0}{" "}
+                        not studied
                       </span>
                     </div>
 
