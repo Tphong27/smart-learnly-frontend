@@ -13,6 +13,7 @@ import {
 import { Button, useToast } from "@/shared/components/ui";
 import { learningService } from "@/services";
 import { LearningLessonMedia } from "../components/LearningLessonMedia";
+import { isLessonPublished } from "../utils/lesson-status";
 import "../../admin/admin-shared.css";
 import "./CoursePreviewLessonsPage.css";
 
@@ -164,7 +165,13 @@ export function CoursePreviewLessonsPage() {
                 );
                 const allLessons =
                     data?.sections?.flatMap((section) =>
-                        (section.lessons || []).map((lesson) => ({
+                        (section.lessons || [])
+                            .filter((lesson) =>
+                                isLessonPublished(lesson, {
+                                    allowMissingStatus: false,
+                                }),
+                            )
+                            .map((lesson) => ({
                             ...lesson,
                             sectionId: lesson.sectionId ?? section.sectionId,
                             sectionTitle: lesson.sectionTitle ?? section.title,
