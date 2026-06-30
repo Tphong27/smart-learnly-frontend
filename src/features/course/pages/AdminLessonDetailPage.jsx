@@ -21,6 +21,11 @@ import {
     getFileExtension,
 } from "@/features/course/utils/lesson-content";
 import {
+    LESSON_STATUS_OPTIONS,
+    getLessonStatusMeta,
+    normalizeLessonStatus,
+} from "@/features/course/utils/lesson-status";
+import {
     ArrowLeft,
     Save,
     CloudUpload,
@@ -78,7 +83,7 @@ export default function AdminLessonDetailPage() {
 
     const [summary, setSummary] = useState("");
     const [isPreview, setIsPreview] = useState(false);
-    const [status, setStatus] = useState("DRAFT");
+    const [status, setStatus] = useState("draft");
     const [durationSeconds, setDurationSeconds] = useState(0);
 
     const mainFileInputRef = useRef(null);
@@ -137,9 +142,7 @@ export default function AdminLessonDetailPage() {
                             lessonData.isPreview ?? lessonData.isPreviewable,
                         ),
                     );
-                    setStatus(
-                        String(lessonData.status || "DRAFT").toUpperCase(),
-                    );
+                    setStatus(normalizeLessonStatus(lessonData.status));
                     setDurationSeconds(Number(lessonData.durationSeconds || 0));
 
                     const typeFromServer = String(
@@ -650,7 +653,7 @@ export default function AdminLessonDetailPage() {
                 attachmentUrl: lessonType === "PDF" ? uploadedFileUrl : null,
                 durationSeconds: Number(durationSeconds || 0),
                 isPreview,
-                status,
+                status: normalizeLessonStatus(status),
                 resources: normalizedResources,
                 sortOrder: existingLessonData?.sortOrder ?? 0,
             };
@@ -821,8 +824,16 @@ export default function AdminLessonDetailPage() {
                                     boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
                                 }}
                             >
-                                <div style={{ display: "flex", gap: "20px" }}>
-                                    <div style={{ flex: "2" }}>
+                                <div
+                                    style={{
+                                        display: "grid",
+                                        gridTemplateColumns:
+                                            "minmax(0, 2fr) minmax(180px, 1fr) minmax(170px, 0.8fr)",
+                                        gap: "20px",
+                                        alignItems: "start",
+                                    }}
+                                >
+                                    <div>
                                         <label
                                             style={{
                                                 display: "block",
@@ -854,7 +865,7 @@ export default function AdminLessonDetailPage() {
                                             required
                                         />
                                     </div>
-                                    <div style={{ flex: "1" }}>
+                                    <div>
                                         <label
                                             style={{
                                                 display: "block",
@@ -900,6 +911,60 @@ export default function AdminLessonDetailPage() {
                                                 </option>
                                             )}
                                         </select>
+                                    </div>
+                                    <div>
+                                        <label
+                                            style={{
+                                                display: "block",
+                                                marginBottom: "8px",
+                                                fontWeight: "600",
+                                                color: "#1e293b",
+                                                fontSize: "14px",
+                                            }}
+                                        >
+                                            Status{" "}
+                                            <span style={{ color: "#ef4444" }}>
+                                                *
+                                            </span>
+                                        </label>
+                                        <select
+                                            value={status}
+                                            onChange={(e) =>
+                                                setStatus(e.target.value)
+                                            }
+                                            style={{
+                                                width: "100%",
+                                                padding: "11px 16px",
+                                                borderRadius: "8px",
+                                                border: "1px solid #cbd5e1",
+                                                fontSize: "15px",
+                                                boxSizing: "border-box",
+                                                backgroundColor: "#fff",
+                                            }}
+                                            required
+                                        >
+                                            {LESSON_STATUS_OPTIONS.map(
+                                                (option) => (
+                                                    <option
+                                                        key={option.value}
+                                                        value={option.value}
+                                                    >
+                                                        {option.label}
+                                                    </option>
+                                                ),
+                                            )}
+                                        </select>
+                                        <p
+                                            style={{
+                                                margin: "6px 0 0",
+                                                color: "#64748b",
+                                                fontSize: "12px",
+                                                lineHeight: 1.4,
+                                            }}
+                                        >
+                                            {getLessonStatusMeta(status)
+                                                ?.description || ""}
+                                        </p>
                                     </div>
                                 </div>
 
