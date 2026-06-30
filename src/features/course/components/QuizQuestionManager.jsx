@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Pencil, Trash2, Plus, Upload } from "lucide-react";
 import { Modal, Button, useToast } from "@/shared/components/ui";
 import { courseService } from "@/services/course.service";
+import { normalizeLessonStatus } from "@/features/course/utils/lesson-status";
 import {
   QUESTION_TYPES,
   QUESTION_TYPE_LABELS,
@@ -122,7 +123,7 @@ export function QuizQuestionManager({ open, lesson, onClose, onSaved }) {
         attachmentUrl: lessonData.attachmentUrl ?? null,
         durationSeconds: Number(lessonData.durationSeconds || 0),
         isPreview: Boolean(lessonData.isPreview ?? lessonData.isPreviewable),
-        status: String(lessonData.status || "DRAFT").toUpperCase(),
+        status: normalizeLessonStatus(lessonData.status),
         resources: Array.isArray(lessonData.resources)
           ? lessonData.resources
           : [],
