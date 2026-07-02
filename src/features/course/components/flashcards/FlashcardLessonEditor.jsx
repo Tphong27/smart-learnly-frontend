@@ -1,10 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { RefreshCw, Save } from "lucide-react";
+import { getCurrentUser } from "@/services";
 import { courseService } from "@/services/course.service";
 import { flashcardService } from "@/services/flashcard.service";
+import { isRoleAllowed, ROLES } from "@/shared/constants/roles";
 import { FlashcardCardEditor } from "./FlashcardCardEditor";
 import { FlashcardCardList } from "./FlashcardCardList";
 import { FlashcardPreview } from "./FlashcardPreview";
+import { FlashcardStagingWorkspace } from "./FlashcardStagingWorkspace";
 import {
   getErrorMessage,
   normalizeSet,
@@ -16,6 +19,8 @@ import "./Flashcards.css";
 function flashcardCacheKey(lessonId) {
   return `flashcard-set:${lessonId}`;
 }
+
+const STAGING_ROLES = [ROLES.ADMIN, ROLES.SME, ROLES.TRAINER];
 
 export function FlashcardLessonEditor({
   lessonId,
@@ -36,9 +41,11 @@ export function FlashcardLessonEditor({
   const [reordering, setReordering] = useState(false);
   const [cardPendingDelete, setCardPendingDelete] = useState(null);
   const [deletingCardId, setDeletingCardId] = useState(null);
+  const [activeEditorTab, setActiveEditorTab] = useState("current");
   const [error, setError] = useState(null);
 
   const activeCardId = editingCard?.id || null;
+  const canUseStaging = isRoleAllowed(getCurrentUser()?.role, STAGING_ROLES);
 
   const notify = useCallback(
     (message, type = "info") => {
@@ -95,7 +102,10 @@ export function FlashcardLessonEditor({
   }, [hydrateSet, initialSetId, lessonId]);
 
   useEffect(() => {
-    loadSet();
+    const timer = window.setTimeout(() => {
+      loadSet();
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, [loadSet]);
 
   const orderedCards = useMemo(
@@ -318,69 +328,113 @@ export function FlashcardLessonEditor({
         </div>
       </form>
 
-      <div className="flashcard-panel flashcard-ai-staging">
-        <div className="flashcard-panel__header">
-          <h3 className="flashcard-panel__title">AI Flashcard Staging</h3>
-          <button type="button" className="flashcard-btn" disabled>
-            Coming soon
+      {canUseStaging && (
+        <div
+          className="flashcard-tabs"
+          role="tablist"
+          aria-label="Flashcard editor sections"
+        >
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeEditorTab === "current"}
+            className={
+              activeEditorTab === "current"
+                ? "flashcard-tabs__tab is-active"
+                : "flashcard-tabs__tab"
+            }
+            onClick={() => setActiveEditorTab("current")}
+          >
+            Current Flashcards
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeEditorTab === "import"}
+            className={
+              activeEditorTab === "import"
+                ? "flashcard-tabs__tab is-active"
+                : "flashcard-tabs__tab"
+            }
+            onClick={() => setActiveEditorTab("import")}
+          >
+            Import / Generate
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeEditorTab === "review"}
+            className={
+              activeEditorTab === "review"
+                ? "flashcard-tabs__tab is-active"
+                : "flashcard-tabs__tab"
+            }
+            onClick={() => setActiveEditorTab("review")}
+          >
+            Staging Review
           </button>
         </div>
-        <div className="flashcard-panel__body">
-          <p className="flashcard-ai-staging__text">
-            AI flashcard generation will be available in a later sprint.
-          </p>
-        </div>
-      </div>
+      )}
 
-      <div className="flashcard-editor-layout">
-        <div className="flashcard-shell">
-          <FlashcardCardEditor
-            key={`${editingCard?.id || "new"}-${editorVersion}`}
-            value={editingCard}
-            mode={editingCard ? "edit" : "create"}
-            saving={savingCard}
-            onSave={handleSaveCard}
-            onCancel={
-              editingCard
-                ? () => {
-                    setEditingCard(null);
-                    setEditorVersion((version) => version + 1);
-                  }
-                : null
-            }
-            onUploadImage={handleUploadImage}
-            onError={(message) => notify(message, "error")}
-          />
+      {!canUseStaging || activeEditorTab === "current" ? (
+        <div className="flashcard-editor-layout">
+          <div className="flashcard-shell">
+            <FlashcardCardEditor
+              key={`${editingCard?.id || "new"}-${editorVersion}`}
+              value={editingCard}
+              mode={editingCard ? "edit" : "create"}
+              saving={savingCard}
+              onSave={handleSaveCard}
+              onCancel={
+                editingCard
+                  ? () => {
+                      setEditingCard(null);
+                      setEditorVersion((version) => version + 1);
+                    }
+                  : null
+              }
+              onUploadImage={handleUploadImage}
+              onError={(message) => notify(message, "error")}
+            />
+
+            <div className="flashcard-panel">
+              <div className="flashcard-panel__header">
+                <h3 className="flashcard-panel__title">Cards</h3>
+              </div>
+              <div className="flashcard-panel__body">
+                <FlashcardCardList
+                  cards={orderedCards}
+                  activeCardId={activeCardId}
+                  disabled={savingCard || reordering || Boolean(deletingCardId)}
+                  onEdit={setEditingCard}
+                  onDelete={handleDeleteCard}
+                  onMove={handleMoveCard}
+                />
+              </div>
+            </div>
+          </div>
 
           <div className="flashcard-panel">
             <div className="flashcard-panel__header">
-              <h3 className="flashcard-panel__title">Cards</h3>
+              <h3 className="flashcard-panel__title">Preview</h3>
             </div>
             <div className="flashcard-panel__body">
-              <FlashcardCardList
+              <FlashcardPreview
                 cards={orderedCards}
-                activeCardId={activeCardId}
-                disabled={savingCard || reordering || Boolean(deletingCardId)}
-                onEdit={setEditingCard}
-                onDelete={handleDeleteCard}
-                onMove={handleMoveCard}
+                emptyMessage="Add a card to preview this flashcard set."
               />
             </div>
           </div>
         </div>
-
-        <div className="flashcard-panel">
-          <div className="flashcard-panel__header">
-            <h3 className="flashcard-panel__title">Preview</h3>
-          </div>
-          <div className="flashcard-panel__body">
-            <FlashcardPreview
-              cards={orderedCards}
-              emptyMessage="Add a card to preview this flashcard set."
-            />
-          </div>
-        </div>
-      </div>
+      ) : (
+        <FlashcardStagingWorkspace
+          setId={flashcardSet?.id}
+          activeTab={activeEditorTab}
+          notify={notify}
+          onStagingChanged={() => setActiveEditorTab("review")}
+          onApproved={loadSet}
+        />
+      )}
       {cardPendingDelete && (
         <div className="flashcard-modal" role="presentation">
           <div
