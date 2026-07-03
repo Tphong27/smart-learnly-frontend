@@ -4,17 +4,13 @@ import { AlertCircle, Loader, Trash2 } from "lucide-react";
 import { Button } from "@/shared/components/ui";
 import { classService } from "@/services";
 import { ClassStatusBadge } from "../components/ClassStatusBadge";
-import { ClassWorkspaceTabs } from "../components/ClassWorkspaceTabs";
 import { ClassOverviewTab } from "../components/ClassOverviewTab";
-import { ClassWorkspacePlaceholder } from "../components/ClassWorkspacePlaceholder";
 
 export function TrainerClassWorkspacePage() {
   const { classId } = useParams();
   const navigate = useNavigate();
 
   const [classData, setClassData] = useState(null);
-  const [activeTab, setActiveTab] = useState("overview");
-
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [refreshKey, setRefreshKey] = useState(0);
@@ -74,47 +70,6 @@ export function TrainerClassWorkspacePage() {
 
   function handleClassUpdated(updatedClass) {
     setClassData(updatedClass);
-  }
-
-  function renderTabContent() {
-    if (activeTab === "overview") {
-      return (
-        <ClassOverviewTab
-          classData={classData}
-          classId={classId}
-          onClassUpdated={handleClassUpdated}
-        />
-      );
-    }
-
-    if (activeTab === "assignments") {
-      return (
-        <ClassWorkspacePlaceholder
-          title="Assignments"
-          description="Assignment management for this class will be connected when the backend classroom assignment API is available."
-        />
-      );
-    }
-
-    if (activeTab === "tests") {
-      return (
-        <ClassWorkspacePlaceholder
-          title="Tests"
-          description="Test management for this class will be connected when the backend classroom test API is available."
-        />
-      );
-    }
-
-    if (activeTab === "flashcards") {
-      return (
-        <ClassWorkspacePlaceholder
-          title="Flashcards"
-          description="Flashcard management for this class will be connected when the backend classroom flashcard API is available."
-        />
-      );
-    }
-
-    return null;
   }
 
   if (loading) {
@@ -181,9 +136,13 @@ export function TrainerClassWorkspacePage() {
         </div>
       )}
 
-      <ClassWorkspaceTabs activeTab={activeTab} onChange={setActiveTab} />
-
-      <div className="workspace-content">{renderTabContent()}</div>
+      <div className="workspace-content">
+        <ClassOverviewTab
+          classData={classData}
+          classId={classId}
+          onClassUpdated={handleClassUpdated}
+        />
+      </div>
     </section>
   );
 }

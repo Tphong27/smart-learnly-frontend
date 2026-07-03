@@ -3,7 +3,7 @@ import { Edit3, Save, X } from "lucide-react";
 import { Button } from "@/shared/components/ui";
 import { classService } from "@/services";
 import { useActiveTrainers } from "../hooks/useActiveTrainers";
-import { formatCapacity, formatDate, formatVnd } from "../utils/classFormatter";
+import { formatCapacity, formatDate } from "../utils/classFormatter";
 import { ClassStatusBadge } from "./ClassStatusBadge";
 import { ScheduleCalendar } from "./ScheduleCalendar";
 import { WeeklyScheduleEditor } from "./WeeklySchedulePicker";
@@ -21,7 +21,6 @@ function toEditForm(classData) {
     startDate: toInputDate(classData.startDate),
     endDate: toInputDate(classData.endDate),
     maxStudents: Number(classData.maxStudents || 30),
-    price: Number(classData.price || 100000),
   };
 }
 
@@ -90,11 +89,6 @@ function toUpdatePayload(form, originalClassData) {
     maxStudents !== Number(originalClassData.maxStudents)
   ) {
     payload.maxStudents = maxStudents;
-  }
-
-  const price = numberOrUndefined(form.price);
-  if (price !== undefined && price !== Number(originalClassData.price)) {
-    payload.price = price;
   }
 
   return payload;
@@ -256,10 +250,6 @@ export function ClassOverviewTab({ classData, classId, onClassUpdated }) {
             </p>
 
             <p>
-              <strong>Price:</strong> {formatVnd(classData.price)}
-            </p>
-
-            <p>
               <strong>Status:</strong>{" "}
               <ClassStatusBadge status={classData.status} />
             </p>
@@ -332,31 +322,17 @@ export function ClassOverviewTab({ classData, classId, onClassUpdated }) {
               </div>
             </div>
 
-            <div className="form-row">
-              <div className="form-group">
-                <label htmlFor="overviewMaxStudents">Capacity</label>
-                <input
-                  id="overviewMaxStudents"
-                  type="number"
-                  min="1"
-                  value={editForm.maxStudents}
-                  onChange={(event) =>
-                    updateField("maxStudents", event.target.value)
-                  }
-                />
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="overviewPrice">Price</label>
-                <input
-                  id="overviewPrice"
-                  type="number"
-                  min="1000"
-                  step="1000"
-                  value={editForm.price}
-                  onChange={(event) => updateField("price", event.target.value)}
-                />
-              </div>
+            <div className="form-group">
+              <label htmlFor="overviewMaxStudents">Capacity</label>
+              <input
+                id="overviewMaxStudents"
+                type="number"
+                min="1"
+                value={editForm.maxStudents}
+                onChange={(event) =>
+                  updateField("maxStudents", event.target.value)
+                }
+              />
             </div>
 
             <div className="form-group">

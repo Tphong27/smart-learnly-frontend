@@ -19,7 +19,6 @@ function toFormValues(initialData) {
       startDate: "",
       endDate: "",
       maxStudents: 30,
-      price: 100000,
     };
   }
 
@@ -31,7 +30,6 @@ function toFormValues(initialData) {
     startDate: toInputDate(initialData.startDate),
     endDate: toInputDate(initialData.endDate),
     maxStudents: Number(initialData.maxStudents ?? 30),
-    price: Number(initialData.price ?? 100000),
   };
 }
 
@@ -68,7 +66,6 @@ export function useClassForm(initialData = null, onSuccess = null) {
           startDate: formData.startDate || null,
           endDate: formData.endDate || null,
           maxStudents: Number(formData.maxStudents),
-          price: Number(formData.price),
         };
 
         if (initialData?.id) {
