@@ -222,38 +222,47 @@ export function ClassOverviewTab({ classData, classId, onClassUpdated }) {
         {error && <p className="form-error-text">{error}</p>}
 
         {!isEditing ? (
-          <div className="class-detail-list class-overview-info">
-            <p>
-              <strong>Course:</strong> {classData.courseTitle}
-            </p>
+          <>
+            <div className="class-detail-list class-overview-info">
+              <p>
+                <strong>Course:</strong> {classData.courseTitle}
+              </p>
 
-            <p>
-              <strong>Trainer:</strong>{" "}
-              {classData.trainerName || "Trainer not assigned"}
-            </p>
+              <p>
+                <strong>Trainer:</strong>{" "}
+                {classData.trainerName || "Trainer not assigned"}
+              </p>
 
-            <p>
-              <strong>Time:</strong> {formatDate(classData.startDate)} -{" "}
-              {formatDate(classData.endDate)}
-            </p>
+              <p>
+                <strong>Time:</strong> {formatDate(classData.startDate)} -{" "}
+                {formatDate(classData.endDate)}
+              </p>
 
-            <p>
-              <strong>Capacity:</strong>{" "}
-              {formatCapacity(
-                classData.activeEnrollmentCount,
-                classData.maxStudents,
-              )}
-            </p>
+              <p>
+                <strong>Capacity:</strong>{" "}
+                {formatCapacity(
+                  classData.activeEnrollmentCount,
+                  classData.maxStudents,
+                )}
+              </p>
 
-            <p>
-              <strong>Available Seats:</strong> {classData.availableSeats}
-            </p>
+              <p>
+                <strong>Available Seats:</strong> {classData.availableSeats}
+              </p>
 
-            <p>
-              <strong>Status:</strong>{" "}
-              <ClassStatusBadge status={classData.status} />
-            </p>
-          </div>
+              <p>
+                <strong>Status:</strong>{" "}
+                <ClassStatusBadge status={classData.status} />
+              </p>
+            </div>
+
+            <div className="class-overview-schedule">
+              <h3>Schedule</h3>
+              <ScheduleCalendar
+                scheduleDescription={classData.scheduleDescription}
+              />
+            </div>
+          </>
         ) : (
           <div className="class-form class-form--compact class-overview-edit-form">
             <div className="form-group">
@@ -345,11 +354,6 @@ export function ClassOverviewTab({ classData, classId, onClassUpdated }) {
             </div>
           </div>
         )}
-      </section>
-
-      <section className="class-detail-card class-overview-tab__section">
-        <h3>Schedule</h3>
-        <ScheduleCalendar scheduleDescription={classData.scheduleDescription} />
       </section>
     </div>
   );
