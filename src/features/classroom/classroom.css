@@ -459,6 +459,7 @@
   padding: 0 !important;
   border-radius: 3px;
   box-shadow: none;
+  flex-shrink: 0;
 }
 
 .weekly-schedule-picker__day input {

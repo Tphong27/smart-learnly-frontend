@@ -13,7 +13,7 @@ import { AdminCoursesPage } from "@/features/admin";
 import {
   StaffClassListPage,
   TmoCreateClassPage,
-  TrainerClassWorkspacePage,
+  ClassDetailPage,
 } from "@/features/classroom";
 
 function PlaceholderPage({ title }) {
@@ -85,7 +85,7 @@ function getStaffRoutes() {
             },
             {
               path: "classrooms/:classId/workspace",
-              element: <TrainerClassWorkspacePage />,
+              element: <ClassDetailPage />,
             },
           ],
         },

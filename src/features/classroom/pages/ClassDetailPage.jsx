@@ -6,7 +6,7 @@ import { classService } from "@/services";
 import { ClassStatusBadge } from "../components/ClassStatusBadge";
 import { ClassOverviewTab } from "../components/ClassOverviewTab";
 
-export function TrainerClassWorkspacePage() {
+export function ClassDetailPage() {
   const { classId } = useParams();
   const navigate = useNavigate();
 
