@@ -116,7 +116,7 @@ export default function RichTextEditor({
         container: [
           [{ header: [1, 2, 3, false] }, { font: [] }],
           ["bold", "italic", "underline", "strike"],
-          [{ color: [] }, { background: [] }],
+          [{ color: [] }],
           [{ list: "ordered" }, { list: "bullet" }, { align: [] }],
           ["blockquote", "code-block"],
           ["link", "image", "video"],
@@ -126,6 +126,9 @@ export default function RichTextEditor({
           ...(imageUploader ? { image: handleImageUpload } : {}),
           ...(videoUploader ? { video: handleVideoUpload } : {}),
         },
+      },
+      clipboard: {
+        matchVisual: false,
       },
     }),
     [handleImageUpload, handleVideoUpload, imageUploader, videoUploader],
@@ -139,7 +142,6 @@ export default function RichTextEditor({
     "underline",
     "strike",
     "color",
-    "background",
     "list",
     "bullet",
     "align",
