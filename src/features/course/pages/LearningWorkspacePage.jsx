@@ -22,6 +22,7 @@ import {
 import { LearningLessonMedia } from "@/features/course/components/LearningLessonMedia";
 import { LearningLessonTabs } from "@/features/course/components/LearningLessonTabs";
 import { learningService } from "@/services";
+import { filterPublishedSections } from "@/features/course/utils/lesson-status";
 import "./LearningWorkspacePage.css";
 
 function formatDuration(seconds) {
@@ -46,7 +47,7 @@ function LessonIcon({ type, size = 16 }) {
 }
 
 function groupLessonsBySection(data) {
-  return data?.sections || [];
+  return filterPublishedSections(data?.sections || []);
 }
 
 export function LearningWorkspacePage({
@@ -85,9 +86,9 @@ export function LearningWorkspacePage({
         if (!cancelled) {
           setData(result);
 
-          const loadedLessons = (result?.sections || []).flatMap(
-            (section) => section.lessons || [],
-          );
+          const loadedLessons = filterPublishedSections(
+            result?.sections || [],
+          ).flatMap((section) => section.lessons || []);
 
           const completedIds = new Set(
             loadedLessons
@@ -117,30 +118,12 @@ export function LearningWorkspacePage({
     return sections.flatMap((s) => s.lessons || []);
   }, [sections]);
 
-  const [activeLessonId, setActiveLessonId] = useState(null);
+  const [activeLessonId, setActiveLessonId] = useState(requestedLessonId);
 
   const handleSelectLesson = useCallback((lesson) => {
     setActiveLessonId(getLessonId(lesson));
     setActiveLessonTab("overview");
   }, []);
-
-  useEffect(() => {
-    if (!requestedLessonId || allLessons.length === 0) return;
-    if (String(activeLessonId) === requestedLessonId) return;
-
-    const requestedLesson = allLessons.find(
-      (lesson) => String(getLessonId(lesson)) === requestedLessonId,
-    );
-
-    if (requestedLesson) {
-      const nextLessonId = getLessonId(requestedLesson);
-
-      if (nextLessonId) {
-        setActiveLessonId(nextLessonId);
-        setActiveLessonTab("overview");
-      }
-    }
-  }, [activeLessonId, allLessons, requestedLessonId]);
 
   const activeLesson = useMemo(() => {
     if (allLessons.length === 0) return null;

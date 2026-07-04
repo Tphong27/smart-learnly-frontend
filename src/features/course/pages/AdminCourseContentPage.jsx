@@ -5,6 +5,7 @@ import { courseService } from "../../../services/course.service";
 import { flashcardService } from "../../../services/flashcard.service";
 import { useToast } from "../../../shared/components/ui/Toast/useToast";
 import { QuizQuestionManager } from "../components/QuizQuestionManager";
+import { getLessonStatusMeta } from "../utils/lesson-status";
 import "./AdminCourseContent.css";
 
 const reorder = (list, startIndex, endIndex) => {
@@ -59,6 +60,14 @@ function SectionItem({
       <div className="lesson-icon quiz">
         <span className="material-symbols-outlined">quiz</span>
       </div>
+    );
+  };
+
+  const renderLessonStatus = (lesson) => {
+    const meta = getLessonStatusMeta(lesson?.status);
+
+    return (
+      <span className={`badge status status-${meta.value}`}>{meta.label}</span>
     );
   };
 
@@ -178,6 +187,7 @@ function SectionItem({
                           <span className="badge type">
                             {lesson?.lessonType || "VIDEO"}
                           </span>
+                          {renderLessonStatus(lesson)}
                           {lesson?.isPreview && (
                             <span className="badge preview">Preview</span>
                           )}

@@ -248,6 +248,24 @@
   color: #065f46;
   border: 1px solid #a7f3d0;
 }
+.badge.status {
+  border: 1px solid transparent;
+}
+.badge.status-published {
+  background: #e7f8ee;
+  color: #137333;
+  border-color: #b7ebc8;
+}
+.badge.status-draft {
+  background: #fff7d6;
+  color: #8a5b00;
+  border-color: #f4d675;
+}
+.badge.status-inactive {
+  background: #f1f5f9;
+  color: #64748b;
+  border-color: #cbd5e1;
+}
 
 .lesson-actions {
   display: flex;

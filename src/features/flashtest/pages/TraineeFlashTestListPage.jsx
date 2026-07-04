@@ -1,11 +1,10 @@
-import React, { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   ArrowLeft,
   ArrowRight,
   BookOpen,
   CheckSquare,
-  Eye,
   FileText,
   RefreshCw,
   Search,
@@ -47,6 +46,58 @@ function isCompletedStatus(status) {
   );
 }
 
+function getAttemptTime(attempt) {
+  return new Date(
+    attempt?.submittedAt ||
+      attempt?.submitted_at ||
+      attempt?.endTime ||
+      attempt?.end_time ||
+      attempt?.updatedAt ||
+      attempt?.updated_at ||
+      attempt?.createdAt ||
+      attempt?.created_at ||
+      0,
+  ).getTime();
+}
+
+function numberOrNull(value) {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
+}
+
+function getQuestionTotal(...sources) {
+  for (const source of sources) {
+    const total =
+      numberOrNull(source?.totalQuestions) ??
+      numberOrNull(source?.total_questions) ??
+      numberOrNull(source?.questionCount) ??
+      numberOrNull(source?.question_count) ??
+      numberOrNull(source?.numberOfQuestions) ??
+      numberOrNull(source?.questions?.length);
+    if (total && total > 0) return total;
+  }
+  return null;
+}
+
+function formatScoreValue(value) {
+  if (!Number.isFinite(value)) return "--";
+  const score = Math.max(0, Math.min(10, value));
+  return Number.isInteger(score) ? String(score) : score.toFixed(1);
+}
+
+function formatMcqScore(attempt, questionTotal) {
+  const percentage = numberOrNull(attempt?.percentage);
+  const rawScore = numberOrNull(attempt?.score);
+  if (percentage && percentage > 0) {
+    return formatScoreValue(percentage / 10);
+  }
+  if (rawScore != null && questionTotal) {
+    return formatScoreValue((rawScore / questionTotal) * 10);
+  }
+  if (percentage === 0) return "0";
+  return "--";
+}
+
 export function TraineeFlashTestListPage() {
   const navigate = useNavigate();
   const currentUser = getCurrentUser();
@@ -54,11 +105,12 @@ export function TraineeFlashTestListPage() {
     currentUser?.id || currentUser?.userId || currentUser?.accountId || "";
   const [tests, setTests] = useState([]);
   const [assignments, setAssignments] = useState([]);
-  const [takenMap, setTakenMap] = useState({});
+  const [resultMap, setResultMap] = useState({});
   const [loading, setLoading] = useState(false);
   const [keyword, setKeyword] = useState("");
+  const [nowMs, setNowMs] = useState(0);
 
-  const loadAvailableTests = async () => {
+  const loadAvailableTests = useCallback(async () => {
     setLoading(true);
     try {
       const [testData, assignmentData] = await Promise.all([
@@ -69,16 +121,37 @@ export function TraineeFlashTestListPage() {
       const flashAssignments = (assignmentData || []).filter(isFlashTest);
       setTests(flashTests);
       setAssignments(flashAssignments);
+      setNowMs(Date.now());
 
       if (!studentId) {
-        setTakenMap({});
+        setResultMap({});
         return;
       }
 
       const checks = await Promise.allSettled([
         ...flashTests.map(async (test) => {
-          const attempts = await attemptService.getHistory(test.id, studentId);
-          return [`mcq-${test.id}`, attempts.some((attempt) => isCompletedStatus(attempt.status))];
+          const [attempts, questionMappings] = await Promise.all([
+            attemptService.getHistory(test.id, studentId),
+            testService.getLearnerQuestions(test.id).catch((questionError) => {
+              console.warn("Could not load MCQ question total", questionError);
+              return [];
+            }),
+          ]);
+          const questionTotal = getQuestionTotal(test, {
+            questions: questionMappings,
+          });
+          const completedAttempts = attempts
+            .filter((attempt) => isCompletedStatus(attempt.status))
+            .sort((a, b) => getAttemptTime(b) - getAttemptTime(a));
+          return [
+            `mcq-${test.id}`,
+            {
+              taken: completedAttempts.length > 0,
+              score: completedAttempts[0]
+                ? formatMcqScore(completedAttempts[0], questionTotal)
+                : "--",
+            },
+          ];
         }),
         ...flashAssignments.map(async (assignment) => {
           try {
@@ -86,17 +159,20 @@ export function TraineeFlashTestListPage() {
               assignment.id,
               studentId,
             );
-            return [`essay-${assignment.id}`, Boolean(submission?.id)];
+            return [
+              `essay-${assignment.id}`,
+              { taken: Boolean(submission?.id), score: "--" },
+            ];
           } catch (submissionError) {
             if (submissionError?.originalError?.response?.status !== 404) {
               console.warn("Could not load flash assignment status", submissionError);
             }
-            return [`essay-${assignment.id}`, false];
+            return [`essay-${assignment.id}`, { taken: false, score: "--" }];
           }
         }),
       ]);
 
-      setTakenMap(
+      setResultMap(
         Object.fromEntries(
           checks
             .filter((result) => result.status === "fulfilled")
@@ -108,11 +184,12 @@ export function TraineeFlashTestListPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [studentId]);
 
   useEffect(() => {
-    loadAvailableTests();
-  }, [studentId]);
+    const timer = window.setTimeout(loadAvailableTests, 0);
+    return () => window.clearTimeout(timer);
+  }, [loadAvailableTests]);
 
   const rows = useMemo(() => {
     const merged = [
@@ -215,6 +292,7 @@ export function TraineeFlashTestListPage() {
                   <th>Title</th>
                   <th>Type</th>
                   <th>Duration</th>
+                  <th>Score</th>
                   <th>Due / Created</th>
                   <th>Status</th>
                   <th className="ft-table-action">Action</th>
@@ -223,10 +301,11 @@ export function TraineeFlashTestListPage() {
               <tbody>
                 {rows.map((item) => {
                   const isEssay = item.flashType === "essay";
-                  const taken = Boolean(takenMap[`${item.flashType}-${item.id}`]);
+                  const result = resultMap[`${item.flashType}-${item.id}`];
+                  const taken = Boolean(result?.taken);
                   const dueDate = item.dueDate || item.due_date;
                   const expired =
-                    isEssay && dueDate && new Date(dueDate).getTime() <= Date.now();
+                    isEssay && dueDate && new Date(dueDate).getTime() <= nowMs;
                   return (
                     <tr key={`${item.flashType}-${item.id}`}>
                       <td>
@@ -245,6 +324,11 @@ export function TraineeFlashTestListPage() {
                         </span>
                       </td>
                       <td>{getDuration(item)} mins</td>
+                      <td>
+                        <strong className="ft-score-cell">
+                          {isEssay ? "--" : result?.score || "--"}
+                        </strong>
+                      </td>
                       <td>{formatDate(dueDate || item.createdAt || item.created_at)}</td>
                       <td>
                         <span
@@ -260,18 +344,7 @@ export function TraineeFlashTestListPage() {
                           {expired ? (
                             <span className="ft-button ft-button--disabled">Expired</span>
                           ) : taken ? (
-                            <>
-                              <span className="ft-button ft-button--disabled">Completed</span>
-                              {!isEssay && (
-                                <Link
-                                  to={`/learning/flashtests/take/${item.id}/mcq`}
-                                  className="ft-icon-button"
-                                  title="View score"
-                                >
-                                  <Eye size={16} />
-                                </Link>
-                              )}
-                            </>
+                            <span className="ft-button ft-button--disabled">Completed</span>
                           ) : (
                             <Link
                               to={`/learning/flashtests/take/${item.id}/${

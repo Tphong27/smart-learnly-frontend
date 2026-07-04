@@ -15,6 +15,7 @@ import {
     isOfficeDocUrl,
     officeViewerUrl,
 } from "../utils/lesson-content";
+import { HlsVideoPlayer } from "./HlsVideoPlayer";
 
 pdfjs.GlobalWorkerOptions.workerSrc = new URL(
     "pdfjs-dist/build/pdf.worker.min.mjs",
@@ -279,12 +280,27 @@ export function LearningLessonMedia({ lesson }) {
 
     const type = (lesson.lessonType || "").toUpperCase();
 
-    if (type === "VIDEO" && lesson.videoUrl) {
-        return (
-            <div className="learning-lesson-media learning-lesson-media--video">
-                <video controls src={lesson.videoUrl} />
-            </div>
-        );
+    if (type === "VIDEO") {
+        if (lesson.hlsReady || lesson.hlsPlaylistUrl) {
+            return (
+                <div className="learning-lesson-media learning-lesson-media--video">
+                    <HlsVideoPlayer
+                        lessonId={lesson.lessonId ?? lesson.id}
+                        className="learning-lesson-media__hls-player"
+                    />
+                </div>
+            );
+        }
+
+        if (lesson.videoUrl) {
+            return (
+                <div className="learning-lesson-media learning-lesson-media--video">
+                    <video controls playsInline preload="metadata" src={lesson.videoUrl} />
+                </div>
+            );
+        }
+
+        return null;
     }
 
     if (type === "PDF") {
