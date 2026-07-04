@@ -15,13 +15,18 @@ function getCourseDetailPath(course) {
 
 function getLearningWorkspacePath(course) {
   const enrolledClass = getEnrolledClass(course);
-  const basePath = `/learning/courses/${course.id}`;
+  const courseId = course.id || course.courseId;
+  const params = new URLSearchParams();
 
-  if (!enrolledClass?.id) {
-    return basePath;
+  if (enrolledClass?.id) {
+    params.set("classId", enrolledClass.id);
   }
 
-  return `${basePath}?classId=${encodeURIComponent(enrolledClass.id)}`;
+  const query = params.toString();
+
+  return query
+    ? `/learning/courses/${courseId}?${query}`
+    : `/learning/courses/${courseId}`;
 }
 
 function getCategoryName(course) {
@@ -33,7 +38,7 @@ function getCourseImage(course) {
 }
 
 function getEnrolledClass(course) {
-  return course.enrolledClass || null;
+  return course.enrolledClass || course.myCourseClass || null;
 }
 
 function formatDateRange(startDate, endDate) {
