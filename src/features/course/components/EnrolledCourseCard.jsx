@@ -1,12 +1,27 @@
 import { Link } from "react-router-dom";
-import { BookOpen, GraduationCap, Lock, ArrowRight } from "lucide-react";
+import {
+  ArrowRight,
+  BookOpen,
+  CalendarDays,
+  GraduationCap,
+  Lock,
+  UserRound,
+  Users,
+} from "lucide-react";
 
 function getCourseDetailPath(course) {
   return `/courses/${course.slug || course.id}`;
 }
 
 function getLearningWorkspacePath(course) {
-  return `/learning/courses/${course.id}`;
+  const enrolledClass = getEnrolledClass(course);
+  const basePath = `/learning/courses/${course.id}`;
+
+  if (!enrolledClass?.id) {
+    return basePath;
+  }
+
+  return `${basePath}?classId=${encodeURIComponent(enrolledClass.id)}`;
 }
 
 function getCategoryName(course) {
@@ -17,11 +32,62 @@ function getCourseImage(course) {
   return course.avatarUrl || "";
 }
 
+function getEnrolledClass(course) {
+  return course.enrolledClass || null;
+}
+
+function formatDateRange(startDate, endDate) {
+  if (!startDate && !endDate) {
+    return "";
+  }
+
+  if (startDate && endDate) {
+    return `${startDate} → ${endDate}`;
+  }
+
+  return startDate || endDate;
+}
+
+function formatSchedule(scheduleDescription) {
+  if (!scheduleDescription) return "";
+
+  try {
+    const schedules = JSON.parse(scheduleDescription);
+
+    if (!Array.isArray(schedules)) {
+      return scheduleDescription;
+    }
+
+    return schedules
+      .map((item) => {
+        const day = item.dayOfWeek || "";
+        const slots = Array.isArray(item.slots) ? item.slots : [];
+
+        const slotText = slots
+          .map((slot) => `${slot.startTime} - ${slot.endTime}`)
+          .join(", ");
+
+        return [day, slotText].filter(Boolean).join(" • ");
+      })
+      .join("; ");
+  } catch {
+    return scheduleDescription;
+  }
+}
+
 export function EnrolledCourseCard({ course, viewMode = "grid" }) {
   const title = course.title || "Untitled course";
   const description = course.description || "No description available.";
   const categoryName = getCategoryName(course);
   const imageUrl = getCourseImage(course);
+
+  const enrolledClass = getEnrolledClass(course);
+  const classDateRange = enrolledClass
+    ? formatDateRange(enrolledClass.startDate, enrolledClass.endDate)
+    : "";
+  const classSchedule = enrolledClass
+    ? formatSchedule(enrolledClass.scheduleDescription)
+    : "";
 
   const accessAllowed = course.accessAllowed !== false;
 
@@ -38,6 +104,7 @@ export function EnrolledCourseCard({ course, viewMode = "grid" }) {
           </div>
         )}
       </div>
+
       <div className="enrolled-course-card__body">
         <div className="enrolled-course-card__top">
           <span className="enrolled-course-card__label">
@@ -55,6 +122,57 @@ export function EnrolledCourseCard({ course, viewMode = "grid" }) {
         <h3 className="enrolled-course-card__title">{title}</h3>
 
         <p className="enrolled-course-card__description">{description}</p>
+
+        {enrolledClass && (
+          <div className="enrolled-course-card__class-compact">
+            <div className="enrolled-course-card__class-main">
+              <span className="enrolled-course-card__class-kicker">
+                Your class
+              </span>
+
+              <div className="enrolled-course-card__class-title-row">
+                <h4>{enrolledClass.className || "Unnamed class"}</h4>
+
+                {enrolledClass.status && (
+                  <span className="enrolled-course-card__class-status">
+                    {enrolledClass.status}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            <div className="enrolled-course-card__class-details">
+              {enrolledClass.trainerName && (
+                <span>
+                  <UserRound size={14} />
+                  {enrolledClass.trainerName}
+                </span>
+              )}
+
+              {classDateRange && (
+                <span>
+                  <CalendarDays size={14} />
+                  {classDateRange}
+                </span>
+              )}
+
+              {classSchedule && (
+                <span>
+                  <CalendarDays size={14} />
+                  {classSchedule}
+                </span>
+              )}
+
+              {Number.isFinite(Number(enrolledClass.maxStudents)) && (
+                <span>
+                  <Users size={14} />
+                  {Number(enrolledClass.activeEnrollmentCount || 0)}/
+                  {enrolledClass.maxStudents}
+                </span>
+              )}
+            </div>
+          </div>
+        )}
 
         {!accessAllowed && (
           <div className="enrolled-course-card__blocked">
@@ -83,8 +201,8 @@ export function EnrolledCourseCard({ course, viewMode = "grid" }) {
           <Link
             to={getCourseDetailPath(course)}
             state={{
-              from: "/learning/courses",
-              backLabel: "Back to My Courses",
+              from: "/dashboard",
+              backLabel: "Back to Dashboard",
             }}
             className="course-card__link"
           >
