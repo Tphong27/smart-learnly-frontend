@@ -89,9 +89,9 @@ export function QuizQuestionManager({ open, lesson, onClose, onSaved }) {
   }, [open, lesson?.id, toast]);
 
   const handleImported = (importedQuestions) => {
-    setQuestions(importedQuestions);
+    setQuestions((prev) => [...prev, ...importedQuestions]);
     setImportOpen(false);
-    toast.success(`Imported ${importedQuestions.length} question(s).`);
+    toast.success(`Added ${importedQuestions.length} question(s) to current list.`);
   };
 
   const handleDelete = (idx) => {
