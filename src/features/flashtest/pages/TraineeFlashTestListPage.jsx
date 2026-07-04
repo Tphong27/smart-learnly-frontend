@@ -1,13 +1,15 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import {
   ArrowLeft,
   ArrowRight,
   BookOpen,
   CheckSquare,
   FileText,
+  KeyRound,
   RefreshCw,
   Search,
+  X,
 } from "lucide-react";
 import {
   assignmentService,
@@ -109,6 +111,14 @@ export function TraineeFlashTestListPage() {
   const [loading, setLoading] = useState(false);
   const [keyword, setKeyword] = useState("");
   const [nowMs, setNowMs] = useState(0);
+  const [accessModal, setAccessModal] = useState({
+    open: false,
+    item: null,
+    isEssay: false,
+  });
+  const [accessCode, setAccessCode] = useState("");
+  const [accessError, setAccessError] = useState("");
+  const [verifyingAccess, setVerifyingAccess] = useState(false);
 
   const loadAvailableTests = useCallback(async () => {
     setLoading(true);
@@ -217,6 +227,50 @@ export function TraineeFlashTestListPage() {
   }, [assignments, keyword, tests]);
 
   const total = tests.length + assignments.length;
+
+  const openAccessModal = (item, isEssay) => {
+    setAccessModal({ open: true, item, isEssay });
+    setAccessCode("");
+    setAccessError("");
+  };
+
+  const closeAccessModal = () => {
+    setAccessModal({ open: false, item: null, isEssay: false });
+    setAccessCode("");
+    setAccessError("");
+  };
+
+  const handleVerifyAccessCode = async () => {
+    const code = accessCode.trim();
+    if (!code) {
+      setAccessError("Please enter the flash test code.");
+      return;
+    }
+
+    const item = accessModal.item;
+    if (!item?.id) return;
+
+    setVerifyingAccess(true);
+    setAccessError("");
+    try {
+      const result = accessModal.isEssay
+        ? await assignmentService.verifyAccessCode(item.id, code)
+        : await testService.verifyAccessCode(item.id, code);
+      if (!result?.valid) {
+        setAccessError("The code is incorrect or has expired.");
+        return;
+      }
+      const type = accessModal.isEssay ? "essay" : "mcq";
+      window.sessionStorage.setItem(`flashAccess:${type}:${item.id}`, code);
+      navigate(`/learning/flashtests/take/${item.id}/${type}`, {
+        state: { accessCode: code },
+      });
+    } catch (verifyError) {
+      setAccessError(verifyError.message || "Could not verify this code.");
+    } finally {
+      setVerifyingAccess(false);
+    }
+  };
 
   return (
     <section className="ft-page">
@@ -346,14 +400,13 @@ export function TraineeFlashTestListPage() {
                           ) : taken ? (
                             <span className="ft-button ft-button--disabled">Completed</span>
                           ) : (
-                            <Link
-                              to={`/learning/flashtests/take/${item.id}/${
-                                isEssay ? "essay" : "mcq"
-                              }`}
+                            <button
+                              type="button"
                               className="ft-button ft-button--primary"
+                              onClick={() => openAccessModal(item, isEssay)}
                             >
                               Start <ArrowRight size={16} />
-                            </Link>
+                            </button>
                           )}
                         </div>
                       </td>
@@ -365,6 +418,71 @@ export function TraineeFlashTestListPage() {
           </div>
         )}
       </div>
+
+      {accessModal.open && (
+        <div className="ft-modal-overlay" role="dialog" aria-modal="true">
+          <div className="ft-random-dialog">
+            <div className="ft-random-dialog__header">
+              <div>
+                <span className="ft-page-kicker">Flash test code</span>
+                <h2>{accessModal.item?.title || accessModal.item?.name}</h2>
+              </div>
+              <button
+                className="ft-icon-button"
+                type="button"
+                title="Close"
+                onClick={closeAccessModal}
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <label className="ft-field">
+              <span className="ft-label">Enter the code from your trainer</span>
+              <div className="ft-code-input-wrap">
+                <KeyRound size={18} />
+                <input
+                  autoFocus
+                  className="ft-input"
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={12}
+                  value={accessCode}
+                  placeholder="6-digit code"
+                  onChange={(event) => {
+                    setAccessCode(event.target.value.replace(/\D/g, ""));
+                    setAccessError("");
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      handleVerifyAccessCode();
+                    }
+                  }}
+                />
+              </div>
+              {accessError && <span className="ft-field-error">{accessError}</span>}
+            </label>
+            <div className="ft-confirm-dialog__actions">
+              <button
+                className="ft-button ft-button--secondary"
+                type="button"
+                onClick={closeAccessModal}
+              >
+                <X size={16} />
+                <span>Cancel</span>
+              </button>
+              <button
+                className="ft-button ft-button--primary"
+                type="button"
+                disabled={verifyingAccess}
+                onClick={handleVerifyAccessCode}
+              >
+                <KeyRound size={16} />
+                <span>{verifyingAccess ? "Checking..." : "Start"}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   );
 }

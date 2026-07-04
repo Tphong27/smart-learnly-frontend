@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Client } from "@stomp/stompjs";
-import { useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import {
   ArrowLeft,
   CheckCircle,
@@ -79,6 +79,7 @@ function submitWarningMessage(warning) {
 export function StudentTakeTestPage() {
   const { id, type } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const normalizedType =
     type === "assignment" || type === "essay" ? "essay" : "mcq";
   const student = getStudent();
@@ -98,6 +99,11 @@ export function StudentTakeTestPage() {
   const [submitWarning, setSubmitWarning] = useState(null);
   const [completedResult, setCompletedResult] = useState(null);
   const [activeQuestionIndex, setActiveQuestionIndex] = useState(0);
+
+  const accessCode =
+    location.state?.accessCode ||
+    window.sessionStorage.getItem(`flashAccess:${normalizedType}:${id}`) ||
+    "";
 
   const publishMonitor = useCallback(
     (payload) => {
@@ -144,6 +150,7 @@ export function StudentTakeTestPage() {
             student.id,
             null,
             student.name,
+            accessCode,
           );
           if (isCompletedAttempt(started.status)) {
             setTestData(test);
@@ -205,6 +212,7 @@ export function StudentTakeTestPage() {
               assignmentId: id,
               studentId: student.id,
               studentName: student.name,
+              accessCode,
             });
             setSubmission(started);
             publishMonitor({
@@ -224,7 +232,7 @@ export function StudentTakeTestPage() {
       }
     }
     init();
-  }, [id, normalizedType, publishMonitor, student.id, student.name]);
+  }, [accessCode, id, normalizedType, publishMonitor, student.id, student.name]);
 
   const handleDownloadCurrentSubmission = async () => {
     if (!submission?.fileUrl) return;
@@ -274,6 +282,7 @@ export function StudentTakeTestPage() {
       assignmentId: id,
       studentId: student.id,
       studentName: student.name,
+      accessCode,
     });
     setSubmission(started);
     publishMonitor({
@@ -285,6 +294,7 @@ export function StudentTakeTestPage() {
     return started;
   }, [
     id,
+    accessCode,
     normalizedType,
     publishMonitor,
     student.id,
