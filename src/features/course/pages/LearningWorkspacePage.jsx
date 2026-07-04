@@ -335,15 +335,21 @@ export function LearningWorkspacePage({
       <header className="learning-workspace__topbar">
         <button
           className="learning-workspace__topbar-back"
-          onClick={() =>
-            navigate(
-              isAdminPreview
-                ? `/admin/courses/${courseId}/content`
-                : isGuestPreview || previewMode
-                  ? `/courses/${courseId}`
-                  : "/learning/courses",
-            )
-          }
+          onClick={() => {
+            if (isAdminPreview) {
+              navigate(`/admin/courses/${courseId}/content`);
+            } else if (isGuestPreview || previewMode) {
+              // Quay về đúng trang xuất phát (course detail có thể mở bằng slug),
+              // tránh điều hướng cứng tới /courses/<uuid> gây 404.
+              if (window.history.length > 1) {
+                navigate(-1);
+              } else {
+                navigate(`/courses/${courseId}`);
+              }
+            } else {
+              navigate("/learning/courses");
+            }
+          }}
           title="Back"
         >
           <ArrowLeft size={18} />

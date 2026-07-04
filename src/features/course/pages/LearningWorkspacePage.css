@@ -2109,6 +2109,37 @@
     line-height: 1.5;
 }
 
+.quiz-question__prompt {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.quiz-question__prompt-text {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 6px;
+}
+
+.quiz-media {
+    display: block;
+    max-width: 100%;
+    margin-top: 8px;
+    border: 1px solid var(--lw-border);
+    border-radius: 10px;
+    background: var(--lw-surface-alt);
+}
+
+.quiz-media--image {
+    max-height: 360px;
+    object-fit: contain;
+}
+
+.quiz-media--video {
+    width: 100%;
+    max-height: 420px;
+}
+
 .quiz-taking__warning {
     display: flex;
     align-items: center;
