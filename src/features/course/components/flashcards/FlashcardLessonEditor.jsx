@@ -431,6 +431,7 @@ export function FlashcardLessonEditor({
           setId={flashcardSet?.id}
           activeTab={activeEditorTab}
           notify={notify}
+          onUploadImage={handleUploadImage}
           onStagingChanged={() => setActiveEditorTab("review")}
           onApproved={loadSet}
         />

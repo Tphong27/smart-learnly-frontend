@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Check,
   Edit3,
   FileText,
+  ImagePlus,
   RefreshCw,
   Search,
   Trash2,
@@ -26,6 +27,12 @@ const DEFAULT_GENERATION = {
   generationMode: "RULE_BASED",
 };
 
+const STATUS_PRIORITY = {
+  draft: 0,
+  approved: 1,
+  rejected: 2,
+};
+
 function normalizeResponse(payload) {
   return payload?.data ?? payload;
 }
@@ -35,6 +42,10 @@ function formatLabel(value, fallback = "Unknown") {
   return String(value)
     .replace(/[_-]+/g, " ")
     .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function normalizeStatus(status) {
+  return String(status || "draft").toLowerCase();
 }
 
 function getQuestionId(question) {
@@ -54,6 +65,8 @@ function getBatchCards(batch) {
   return Array.isArray(batch?.cards)
     ? [...batch.cards].sort(
         (left, right) =>
+          (STATUS_PRIORITY[normalizeStatus(left?.status)] ?? 99) -
+            (STATUS_PRIORITY[normalizeStatus(right?.status)] ?? 99) ||
           Number(left?.sortOrder ?? 0) - Number(right?.sortOrder ?? 0),
       )
     : [];
@@ -63,8 +76,16 @@ function draftCardCount(batches) {
   return batches.reduce(
     (count, batch) =>
       count +
-      getBatchCards(batch).filter((card) => card.status === "draft").length,
+      getBatchCards(batch).filter((card) => normalizeStatus(card.status) === "draft").length,
     0,
+  );
+}
+
+function shouldIgnoreSelectionClick(event) {
+  return Boolean(
+    event.target.closest(
+      "button,a,input,textarea,select,label,[role='button']",
+    ),
   );
 }
 
@@ -517,6 +538,7 @@ function TextGenerationPanel({ setId, notify, onStagingChanged }) {
 
 function DocumentGenerationPanel({ setId, notify, onStagingChanged }) {
   const [file, setFile] = useState(null);
+  const [fileInputRevision, setFileInputRevision] = useState(0);
   const [settings, setSettings] = useState(DEFAULT_GENERATION);
   const [submitting, setSubmitting] = useState(false);
 
@@ -546,7 +568,7 @@ function DocumentGenerationPanel({ setId, notify, onStagingChanged }) {
         "success",
       );
       setFile(null);
-      event.currentTarget.reset();
+      setFileInputRevision((revision) => revision + 1);
       onStagingChanged?.();
     } catch (error) {
       notify(
@@ -568,6 +590,7 @@ function DocumentGenerationPanel({ setId, notify, onStagingChanged }) {
           <FileText size={22} />
           <span>{file ? file.name : "Upload DOCX or PDF"}</span>
           <input
+            key={fileInputRevision}
             id="staging-document-file"
             type="file"
             accept=".docx,.pdf"
@@ -604,6 +627,7 @@ function TranscriptGenerationPanel({ setId, notify, onStagingChanged }) {
   const [transcriptText, setTranscriptText] = useState("");
   const [sourceName, setSourceName] = useState("Lesson transcript");
   const [file, setFile] = useState(null);
+  const [fileInputRevision, setFileInputRevision] = useState(0);
   const [settings, setSettings] = useState(DEFAULT_GENERATION);
   const [submitting, setSubmitting] = useState(false);
 
@@ -641,7 +665,7 @@ function TranscriptGenerationPanel({ setId, notify, onStagingChanged }) {
       );
       setTranscriptText("");
       setFile(null);
-      event.currentTarget.reset();
+      setFileInputRevision((revision) => revision + 1);
       onStagingChanged?.();
     } catch (error) {
       notify(
@@ -684,6 +708,7 @@ function TranscriptGenerationPanel({ setId, notify, onStagingChanged }) {
               <FileText size={22} />
               <span>{file ? file.name : "Upload SRT or VTT instead"}</span>
               <input
+                key={fileInputRevision}
                 id="staging-transcript-file"
                 type="file"
                 accept=".srt,.vtt"
@@ -718,18 +743,58 @@ function TranscriptGenerationPanel({ setId, notify, onStagingChanged }) {
   );
 }
 
-function EditStagingCardModal({ card, saving, onClose, onSave }) {
-  const [draft, setDraft] = useState(() => ({
+function toStagingDraft(card) {
+  return {
     frontText: card?.frontText || "",
     backText: card?.backText || "",
     frontImageUrl: card?.frontImageUrl || "",
     backImageUrl: card?.backImageUrl || "",
     hint: card?.hint || "",
     explanation: card?.explanation || "",
-  }));
+  };
+}
+
+function EditStagingCardModal({
+  card,
+  saving,
+  onClose,
+  onSave,
+  onUploadImage,
+  notify,
+}) {
+  const [draft, setDraft] = useState(() => toStagingDraft(card));
+  const [uploadingField, setUploadingField] = useState(null);
+  const frontInputRef = useRef(null);
+  const backInputRef = useRef(null);
 
   function updateDraft(field, value) {
     setDraft((current) => ({ ...current, [field]: value }));
+  }
+
+  async function handleUpload(field, file) {
+    if (!file) return;
+    if (!onUploadImage) {
+      notify?.("Image upload is not available.", "error");
+      return;
+    }
+    if (file.type && !file.type.startsWith("image/")) {
+      notify?.("Please upload an image file.", "error");
+      return;
+    }
+
+    setUploadingField(field);
+    try {
+      const uploaded = await onUploadImage(file);
+      const uploadedUrl = uploaded?.url || uploaded?.data?.url || uploaded;
+      if (!uploadedUrl) {
+        throw new Error("Upload response did not include a URL.");
+      }
+      updateDraft(field, uploadedUrl);
+    } catch (error) {
+      notify?.(error?.message || "Image upload failed.", "error");
+    } finally {
+      setUploadingField(null);
+    }
   }
 
   function handleSubmit(event) {
@@ -770,25 +835,87 @@ function EditStagingCardModal({ card, saving, onClose, onSave }) {
           <div className="flashcard-form__row">
             <div className="flashcard-field">
               <label htmlFor="staging-edit-front-image">Front image URL</label>
-              <input
-                id="staging-edit-front-image"
-                type="url"
-                value={draft.frontImageUrl}
-                onChange={(event) =>
-                  updateDraft("frontImageUrl", event.target.value)
-                }
-              />
+              <div className="flashcard-image-input">
+                <input
+                  id="staging-edit-front-image"
+                  type="url"
+                  value={draft.frontImageUrl}
+                  onChange={(event) =>
+                    updateDraft("frontImageUrl", event.target.value)
+                  }
+                  placeholder="https://..."
+                />
+                <button
+                  type="button"
+                  className="flashcard-btn"
+                  onClick={() => frontInputRef.current?.click()}
+                  disabled={!onUploadImage || Boolean(uploadingField)}
+                >
+                  <ImagePlus size={16} />
+                  {uploadingField === "frontImageUrl" ? "Uploading" : "Upload"}
+                </button>
+                <input
+                  ref={frontInputRef}
+                  type="file"
+                  accept="image/*"
+                  hidden
+                  onChange={(event) => {
+                    const selectedFile = event.target.files?.[0];
+                    event.target.value = "";
+                    handleUpload("frontImageUrl", selectedFile);
+                  }}
+                />
+              </div>
+              {draft.frontImageUrl && (
+                <img
+                  src={draft.frontImageUrl}
+                  alt=""
+                  className="flashcard-image-preview"
+                  loading="lazy"
+                />
+              )}
             </div>
             <div className="flashcard-field">
               <label htmlFor="staging-edit-back-image">Back image URL</label>
-              <input
-                id="staging-edit-back-image"
-                type="url"
-                value={draft.backImageUrl}
-                onChange={(event) =>
-                  updateDraft("backImageUrl", event.target.value)
-                }
-              />
+              <div className="flashcard-image-input">
+                <input
+                  id="staging-edit-back-image"
+                  type="url"
+                  value={draft.backImageUrl}
+                  onChange={(event) =>
+                    updateDraft("backImageUrl", event.target.value)
+                  }
+                  placeholder="https://..."
+                />
+                <button
+                  type="button"
+                  className="flashcard-btn"
+                  onClick={() => backInputRef.current?.click()}
+                  disabled={!onUploadImage || Boolean(uploadingField)}
+                >
+                  <ImagePlus size={16} />
+                  {uploadingField === "backImageUrl" ? "Uploading" : "Upload"}
+                </button>
+                <input
+                  ref={backInputRef}
+                  type="file"
+                  accept="image/*"
+                  hidden
+                  onChange={(event) => {
+                    const selectedFile = event.target.files?.[0];
+                    event.target.value = "";
+                    handleUpload("backImageUrl", selectedFile);
+                  }}
+                />
+              </div>
+              {draft.backImageUrl && (
+                <img
+                  src={draft.backImageUrl}
+                  alt=""
+                  className="flashcard-image-preview"
+                  loading="lazy"
+                />
+              )}
             </div>
           </div>
           <div className="flashcard-form__row">
@@ -816,14 +943,14 @@ function EditStagingCardModal({ card, saving, onClose, onSave }) {
               type="button"
               className="flashcard-btn"
               onClick={onClose}
-              disabled={saving}
+              disabled={saving || Boolean(uploadingField)}
             >
               Cancel
             </button>
             <button
               type="submit"
               className="flashcard-btn flashcard-btn--primary"
-              disabled={saving}
+              disabled={saving || Boolean(uploadingField)}
             >
               <Check size={16} />
               {saving ? "Saving" : "Save staging card"}
@@ -835,12 +962,19 @@ function EditStagingCardModal({ card, saving, onClose, onSave }) {
   );
 }
 
-function StagingReviewPanel({ setId, notify, refreshKey, onApproved }) {
+function StagingReviewPanel({
+  setId,
+  notify,
+  refreshKey,
+  onApproved,
+  onUploadImage,
+}) {
   const [batches, setBatches] = useState([]);
   const [selectedIds, setSelectedIds] = useState([]);
   const [loading, setLoading] = useState(false);
   const [approving, setApproving] = useState(false);
   const [rejectingId, setRejectingId] = useState(null);
+  const [rejectingSelected, setRejectingSelected] = useState(false);
   const [editingCard, setEditingCard] = useState(null);
   const [savingEdit, setSavingEdit] = useState(false);
   const [error, setError] = useState(null);
@@ -855,7 +989,7 @@ function StagingReviewPanel({ setId, notify, refreshKey, onApproved }) {
       const draftIds = new Set(
         items.flatMap((batch) =>
           getBatchCards(batch)
-            .filter((card) => card.status === "draft")
+            .filter((card) => normalizeStatus(card.status) === "draft")
             .map((card) => card.id),
         ),
       );
@@ -877,8 +1011,24 @@ function StagingReviewPanel({ setId, notify, refreshKey, onApproved }) {
   }, [loadStaging, refreshKey]);
 
   const draftCount = useMemo(() => draftCardCount(batches), [batches]);
+  const draftIds = useMemo(
+    () =>
+      new Set(
+        batches.flatMap((batch) =>
+          getBatchCards(batch)
+            .filter((card) => normalizeStatus(card.status) === "draft")
+            .map((card) => card.id),
+        ),
+      ),
+    [batches],
+  );
+  const selectedDraftIds = useMemo(
+    () => selectedIds.filter((id) => draftIds.has(id)),
+    [draftIds, selectedIds],
+  );
 
   function toggleCard(cardId) {
+    if (!draftIds.has(cardId)) return;
     setSelectedIds((current) =>
       current.includes(cardId)
         ? current.filter((id) => id !== cardId)
@@ -886,9 +1036,16 @@ function StagingReviewPanel({ setId, notify, refreshKey, onApproved }) {
     );
   }
 
+  function handleCardClick(event, card) {
+    if (normalizeStatus(card?.status) !== "draft" || shouldIgnoreSelectionClick(event)) {
+      return;
+    }
+    toggleCard(card.id);
+  }
+
   function toggleBatch(batch) {
     const draftIds = getBatchCards(batch)
-      .filter((card) => card.status === "draft")
+      .filter((card) => normalizeStatus(card.status) === "draft")
       .map((card) => card.id);
     const allSelected = draftIds.every((id) => selectedIds.includes(id));
     setSelectedIds((current) =>
@@ -899,18 +1056,18 @@ function StagingReviewPanel({ setId, notify, refreshKey, onApproved }) {
   }
 
   async function handleApprove() {
-    if (!selectedIds.length) {
+    if (!selectedDraftIds.length) {
       notify("Select at least one staging card before approve.", "error");
       return;
     }
     setApproving(true);
     try {
       const response = normalizeResponse(
-        await flashcardService.approveStagingCards(setId, selectedIds),
+        await flashcardService.approveStagingCards(setId, selectedDraftIds),
       );
       notify(
-        `Approved ${response?.approvedCount || selectedIds.length} staging card${
-          selectedIds.length === 1 ? "" : "s"
+        `Approved ${response?.approvedCount || selectedDraftIds.length} staging card${
+          selectedDraftIds.length === 1 ? "" : "s"
         }.`,
         "success",
       );
@@ -944,6 +1101,40 @@ function StagingReviewPanel({ setId, notify, refreshKey, onApproved }) {
       );
     } finally {
       setRejectingId(null);
+    }
+  }
+
+  async function handleRejectSelected() {
+    if (!selectedDraftIds.length) return;
+    const confirmed = window.confirm(
+      `Reject ${selectedDraftIds.length} selected staging card${
+        selectedDraftIds.length === 1 ? "" : "s"
+      }?`,
+    );
+    if (!confirmed) return;
+
+    setRejectingSelected(true);
+    try {
+      await Promise.all(
+        selectedDraftIds.map((cardId) =>
+          flashcardService.rejectStagingCard(cardId),
+        ),
+      );
+      notify(
+        `Rejected ${selectedDraftIds.length} staging card${
+          selectedDraftIds.length === 1 ? "" : "s"
+        }.`,
+        "success",
+      );
+      setSelectedIds([]);
+      await loadStaging();
+    } catch (rejectError) {
+      notify(
+        getErrorMessage(rejectError, "Failed to reject selected staging cards."),
+        "error",
+      );
+    } finally {
+      setRejectingSelected(false);
     }
   }
 
@@ -994,12 +1185,25 @@ function StagingReviewPanel({ setId, notify, refreshKey, onApproved }) {
             </button>
             <button
               type="button"
+              className="flashcard-btn flashcard-btn--danger"
+              onClick={handleRejectSelected}
+              disabled={loading || rejectingSelected || selectedDraftIds.length === 0}
+            >
+              <Trash2 size={16} />
+              {rejectingSelected
+                ? "Rejecting"
+                : `Reject selected (${selectedDraftIds.length})`}
+            </button>
+            <button
+              type="button"
               className="flashcard-btn flashcard-btn--success"
               onClick={handleApprove}
-              disabled={approving || loading}
+              disabled={approving || loading || selectedDraftIds.length === 0}
             >
               <Check size={16} />
-              {approving ? "Approving" : `Approve selected (${selectedIds.length})`}
+              {approving
+                ? "Approving"
+                : `Approve selected (${selectedDraftIds.length})`}
             </button>
           </div>
         </div>
@@ -1019,7 +1223,9 @@ function StagingReviewPanel({ setId, notify, refreshKey, onApproved }) {
             <div className="flashcard-staging__batches">
               {batches.map((batch) => {
                 const cards = getBatchCards(batch);
-                const draftCards = cards.filter((card) => card.status === "draft");
+                const draftCards = cards.filter(
+                  (card) => normalizeStatus(card.status) === "draft",
+                );
                 const allBatchSelected =
                   draftCards.length > 0 &&
                   draftCards.every((card) => selectedIds.includes(card.id));
@@ -1049,13 +1255,27 @@ function StagingReviewPanel({ setId, notify, refreshKey, onApproved }) {
                     </div>
                     <div className="flashcard-staging-card-list">
                       {cards.map((card) => {
-                        const isDraft = card.status === "draft";
+                        const status = normalizeStatus(card.status);
+                        const isDraft = status === "draft";
+                        const isSelected = selectedIds.includes(card.id);
                         return (
-                          <article className="flashcard-staging-card" key={card.id}>
+                          <article
+                            className={[
+                              "flashcard-staging-card",
+                              `flashcard-staging-card--${status}`,
+                              isDraft ? "flashcard-staging-card--selectable" : "",
+                              isSelected ? "is-selected" : "",
+                            ]
+                              .filter(Boolean)
+                              .join(" ")}
+                            key={card.id}
+                            onClick={(event) => handleCardClick(event, card)}
+                            aria-selected={isSelected}
+                          >
                             <div className="flashcard-staging-card__select">
                               <input
                                 type="checkbox"
-                                checked={selectedIds.includes(card.id)}
+                                checked={isSelected}
                                 onChange={() => toggleCard(card.id)}
                                 disabled={!isDraft}
                                 aria-label="Select staging card"
@@ -1085,7 +1305,9 @@ function StagingReviewPanel({ setId, notify, refreshKey, onApproved }) {
                               )}
                             </div>
                             <div className="flashcard-staging-card__actions">
-                              <span className="flashcard-staging__badge">
+                              <span
+                                className={`flashcard-staging__badge flashcard-staging__badge--${status}`}
+                              >
                                 {formatLabel(card.status)}
                               </span>
                               <button
@@ -1119,12 +1341,17 @@ function StagingReviewPanel({ setId, notify, refreshKey, onApproved }) {
         </div>
       </section>
 
-      <EditStagingCardModal
-        card={editingCard}
-        saving={savingEdit}
-        onClose={() => setEditingCard(null)}
-        onSave={handleSaveEdit}
-      />
+      {editingCard && (
+        <EditStagingCardModal
+          key={editingCard.id}
+          card={editingCard}
+          saving={savingEdit}
+          notify={notify}
+          onClose={() => setEditingCard(null)}
+          onSave={handleSaveEdit}
+          onUploadImage={onUploadImage}
+        />
+      )}
     </div>
   );
 }
@@ -1133,6 +1360,7 @@ export function FlashcardStagingWorkspace({
   setId,
   activeTab,
   notify,
+  onUploadImage,
   onStagingChanged,
   onApproved,
 }) {
@@ -1185,6 +1413,7 @@ export function FlashcardStagingWorkspace({
       notify={notify}
       refreshKey={refreshKey}
       onApproved={onApproved}
+      onUploadImage={onUploadImage}
     />
   );
 }
