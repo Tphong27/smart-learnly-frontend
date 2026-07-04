@@ -12,6 +12,8 @@ import {
   QUESTION_TYPES,
   sanitizeQuizHtml,
   parseQuizContent,
+  getOptionText,
+  getOptionMedia,
 } from "../utils/quiz-question-schema";
 
 function formatDuration(seconds) {
@@ -25,6 +27,45 @@ function formatDuration(seconds) {
 
 function Html({ html }) {
   return <span dangerouslySetInnerHTML={{ __html: sanitizeQuizHtml(html) }} />;
+}
+
+function QuizMedia({ media, alt }) {
+  if (!media || (!media.url && !media.objectPath)) return null;
+  const src = media.url || media.objectPath;
+  if (media.type === "video") {
+    return (
+      <video
+        className="quiz-media quiz-media--video"
+        controls
+        preload="metadata"
+        src={src}
+      >
+        Your browser does not support the video tag.
+      </video>
+    );
+  }
+  if (media.type === "image") {
+    return (
+      <img
+        className="quiz-media quiz-media--image"
+        src={src}
+        alt={alt || media.fileName || "Quiz media"}
+      />
+    );
+  }
+  return null;
+}
+
+function QuestionPrompt({ question, number }) {
+  return (
+    <div className="quiz-question__prompt">
+      <div className="quiz-question__prompt-text">
+        {number != null && <span className="quiz-question__number">{number}.</span>}
+        {question.title ? <Html html={question.title} /> : <span>Media question</span>}
+      </div>
+      <QuizMedia media={question.media} alt={question.title} />
+    </div>
+  );
 }
 
 // ─── Scoring helpers ────────────────────────────────────────────────────────
@@ -113,6 +154,8 @@ function ChoiceOptions({ question, qIdx, answer, onSelect }) {
         const isSelected = multiple
           ? Array.isArray(answer) && answer.includes(oIdx)
           : answer === oIdx;
+        const optionText = getOptionText(option);
+        const optionMedia = getOptionMedia(option);
         return (
           <div
             key={oIdx}
@@ -128,11 +171,10 @@ function ChoiceOptions({ question, qIdx, answer, onSelect }) {
               className="quiz-option__radio"
             />
             <label htmlFor={optId} className="quiz-option__label">
-              <span className="quiz-option__letter">
-                {String.fromCharCode(65 + oIdx)}
-              </span>
+              <span className="quiz-option__letter">{String.fromCharCode(65 + oIdx)}</span>
               <span className="quiz-option__text">
-                <Html html={option} />
+                {optionText ? <Html html={optionText} /> : <span>Media option</span>}
+                <QuizMedia media={optionMedia} alt={optionText || `Option ${oIdx + 1}`} />
               </span>
             </label>
           </div>
@@ -160,9 +202,7 @@ function FillInput({ qIdx, answer, onSelect }) {
 
 function QuizTakingScreen({ quizData, answers, onSelectAnswer, onSubmit }) {
   const total = quizData.questions.length;
-  const answered = quizData.questions.filter((q, i) =>
-    isAnswered(q, answers[i]),
-  ).length;
+  const answered = quizData.questions.filter((q, i) => isAnswered(q, answers[i])).length;
   const allAnswered = answered === total;
 
   const handleSubmit = () => {
@@ -179,18 +219,11 @@ function QuizTakingScreen({ quizData, answers, onSelectAnswer, onSubmit }) {
     <div className="quiz-taking">
       <div className="quiz-taking__header">
         <div className="quiz-progress">
-          <span className="quiz-progress__count">
-            {answered} / {total} answered
-          </span>
-          <span className="quiz-progress__fraction">
-            {Math.round((answered / total) * 100)}%
-          </span>
+          <span className="quiz-progress__count">{answered} / {total} answered</span>
+          <span className="quiz-progress__fraction">{Math.round((answered / total) * 100)}%</span>
         </div>
         <div className="quiz-progress__bar-track">
-          <div
-            className="quiz-progress__bar-fill"
-            style={{ width: `${(answered / total) * 100}%` }}
-          />
+          <div className="quiz-progress__bar-fill" style={{ width: `${(answered / total) * 100}%` }} />
         </div>
       </div>
 
@@ -198,23 +231,13 @@ function QuizTakingScreen({ quizData, answers, onSelectAnswer, onSubmit }) {
         {quizData.questions.map((question, qIdx) => (
           <fieldset key={qIdx} className="quiz-question">
             <legend className="quiz-question__legend">
-              <span className="quiz-question__number">{qIdx + 1}.</span>
-              <Html html={question.title} />
+              <QuestionPrompt question={question} number={qIdx + 1} />
             </legend>
 
             {question.type === QUESTION_TYPES.FILL ? (
-              <FillInput
-                qIdx={qIdx}
-                answer={answers[qIdx]}
-                onSelect={onSelectAnswer}
-              />
+              <FillInput qIdx={qIdx} answer={answers[qIdx]} onSelect={onSelectAnswer} />
             ) : (
-              <ChoiceOptions
-                question={question}
-                qIdx={qIdx}
-                answer={answers[qIdx]}
-                onSelect={onSelectAnswer}
-              />
+              <ChoiceOptions question={question} qIdx={qIdx} answer={answers[qIdx]} onSelect={onSelectAnswer} />
             )}
           </fieldset>
         ))}
@@ -226,19 +249,13 @@ function QuizTakingScreen({ quizData, answers, onSelectAnswer, onSubmit }) {
           <span>
             {answered === 0
               ? "Please answer at least one question before submitting."
-              : `${total - answered} question${
-                  total - answered > 1 ? "s" : ""
-                } unanswered. Submit anyway?`}
+              : `${total - answered} question${total - answered > 1 ? "s" : ""} unanswered. Submit anyway?`}
           </span>
         </div>
       )}
 
       <div className="quiz-taking__actions">
-        <button
-          type="button"
-          className="quiz-taking__submit"
-          onClick={handleSubmit}
-        >
+        <button type="button" className="quiz-taking__submit" onClick={handleSubmit}>
           Submit quiz
         </button>
       </div>
@@ -246,7 +263,12 @@ function QuizTakingScreen({ quizData, answers, onSelectAnswer, onSubmit }) {
   );
 }
 
-// ─── Results helpers ──────────────────────────────────────────────────────────
+// ─── Results helpers ───────────────────────────────────────────────────────────
+
+function optionDisplayText(option, fallback) {
+  const text = getOptionText(option);
+  return text || fallback;
+}
 
 function formatUserAnswer(question, answer) {
   if (question.type === QUESTION_TYPES.FILL) {
@@ -254,9 +276,14 @@ function formatUserAnswer(question, answer) {
   }
   if (question.type === QUESTION_TYPES.MULTIPLE) {
     if (!Array.isArray(answer) || answer.length === 0) return null;
-    return answer.map((i) => question.options?.[i]).filter(Boolean).join(", ");
+    return answer
+      .map((i) => optionDisplayText(question.options?.[i], `Option ${i + 1}`))
+      .filter(Boolean)
+      .join(", ");
   }
-  return answer != null ? question.options?.[answer] : null;
+  return answer != null
+    ? optionDisplayText(question.options?.[answer], `Option ${answer + 1}`)
+    : null;
 }
 
 function formatCorrectAnswer(question) {
@@ -264,7 +291,7 @@ function formatCorrectAnswer(question) {
     return (question.correct_answers || []).join(" / ");
   }
   return (question.correct_answers || [])
-    .map((n) => question.options?.[n - 1])
+    .map((n) => optionDisplayText(question.options?.[n - 1], `Option ${n}`))
     .filter(Boolean)
     .join(", ");
 }
@@ -286,22 +313,12 @@ function QuizResultsScreen({ quizData, answers, onTryAgain }) {
   return (
     <div className="quiz-results">
       <div className="quiz-results__score-card">
-        <div
-          className={`quiz-results__status-badge ${
-            passed
-              ? "quiz-results__status-badge--pass"
-              : "quiz-results__status-badge--fail"
-          }`}
-        >
+        <div className={`quiz-results__status-badge ${passed ? "quiz-results__status-badge--pass" : "quiz-results__status-badge--fail"}`}>
           {passed ? "Passed" : "Not Passed"}
         </div>
         <div className="quiz-results__percentage">{percentage}%</div>
-        <div className="quiz-results__fraction">
-          {correctCount} out of {total} correct
-        </div>
-        <div className="quiz-results__pass-threshold">
-          Passing threshold: 80%
-        </div>
+        <div className="quiz-results__fraction">{correctCount} out of {total} correct</div>
+        <div className="quiz-results__pass-threshold">Passing threshold: 80%</div>
       </div>
 
       <h3 className="quiz-results__review-title">Review your answers</h3>
@@ -315,13 +332,9 @@ function QuizResultsScreen({ quizData, answers, onTryAgain }) {
             <div key={qIdx} className="quiz-review-item">
               <div className="quiz-review-item__header">
                 <span className="quiz-review-item__question-text">
-                  {qIdx + 1}. <Html html={question.title} />
+                  <QuestionPrompt question={question} number={qIdx + 1} />
                 </span>
-                <span
-                  className={`quiz-review-item__badge quiz-review-item__badge--${
-                    isCorrect ? "correct" : "incorrect"
-                  }`}
-                >
+                <span className={`quiz-review-item__badge quiz-review-item__badge--${isCorrect ? "correct" : "incorrect"}`}>
                   {isCorrect ? (
                     <>
                       <CheckCircle2 size={13} />
@@ -337,23 +350,15 @@ function QuizResultsScreen({ quizData, answers, onTryAgain }) {
               </div>
 
               {userText != null ? (
-                <div
-                  className={`quiz-review-item__answer quiz-review-item__answer--${
-                    isCorrect ? "correct" : "incorrect"
-                  }`}
-                >
-                  <span className="quiz-review-item__answer-label">
-                    Your answer:
-                  </span>
+                <div className={`quiz-review-item__answer quiz-review-item__answer--${isCorrect ? "correct" : "incorrect"}`}>
+                  <span className="quiz-review-item__answer-label">Your answer:</span>
                   <span className="quiz-review-item__answer-text">
                     <Html html={userText} />
                   </span>
                 </div>
               ) : (
                 <div className="quiz-review-item__answer quiz-review-item__answer--skipped">
-                  <span className="quiz-review-item__answer-label">
-                    Your answer:
-                  </span>
+                  <span className="quiz-review-item__answer-label">Your answer:</span>
                   <span className="quiz-review-item__answer-text quiz-review-item__answer-text--skipped">
                     Not answered
                   </span>
@@ -362,9 +367,7 @@ function QuizResultsScreen({ quizData, answers, onTryAgain }) {
 
               {!isCorrect && (
                 <div className="quiz-review-item__answer quiz-review-item__answer--correct-answer">
-                  <span className="quiz-review-item__answer-label">
-                    Correct answer:
-                  </span>
+                  <span className="quiz-review-item__answer-label">Correct answer:</span>
                   <span className="quiz-review-item__answer-text">
                     <Html html={correctText} />
                   </span>
@@ -373,8 +376,7 @@ function QuizResultsScreen({ quizData, answers, onTryAgain }) {
 
               {question.explain_question && (
                 <div className="quiz-review-item__explanation">
-                  <strong>Explanation:</strong>{" "}
-                  <Html html={question.explain_question} />
+                  <strong>Explanation:</strong> <Html html={question.explain_question} />
                 </div>
               )}
             </div>
@@ -383,11 +385,7 @@ function QuizResultsScreen({ quizData, answers, onTryAgain }) {
       </div>
 
       <div className="quiz-results__actions">
-        <button
-          type="button"
-          className="quiz-results__try-again"
-          onClick={onTryAgain}
-        >
+        <button type="button" className="quiz-results__try-again" onClick={onTryAgain}>
           <RotateCcw size={15} />
           Try again
         </button>
@@ -399,7 +397,7 @@ function QuizResultsScreen({ quizData, answers, onTryAgain }) {
 // ─── Main QuizPlayer Component ────────────────────────────────────────────────
 
 export function LearningQuizPlayer({ content, durationSeconds, onCompleted }) {
-    const quizData = parseQuizContent(content);
+  const quizData = parseQuizContent(content);
 
   const [phase, setPhase] = useState("start");
   const [answers, setAnswers] = useState({});
@@ -414,9 +412,7 @@ export function LearningQuizPlayer({ content, durationSeconds, onCompleted }) {
       const question = quizData.questions[questionIndex];
       setAnswers((prev) => {
         if (question?.type === QUESTION_TYPES.MULTIPLE) {
-          const current = Array.isArray(prev[questionIndex])
-            ? prev[questionIndex]
-            : [];
+          const current = Array.isArray(prev[questionIndex]) ? prev[questionIndex] : [];
           const next = current.includes(value)
             ? current.filter((v) => v !== value)
             : [...current, value].sort((a, b) => a - b);
@@ -429,20 +425,16 @@ export function LearningQuizPlayer({ content, durationSeconds, onCompleted }) {
   );
 
   const handleSubmit = useCallback(() => {
-  setPhase("results");
-  onCompleted?.();
-}, [onCompleted]);
+    setPhase("results");
+    onCompleted?.();
+  }, [onCompleted]);
 
   const handleTryAgain = useCallback(() => {
     setAnswers({});
     setPhase("start");
   }, []);
 
-  if (
-    !quizData ||
-    !Array.isArray(quizData.questions) ||
-    quizData.questions.length === 0
-  ) {
+  if (!quizData || !Array.isArray(quizData.questions) || quizData.questions.length === 0) {
     return (
       <div className="quiz-player quiz-player--error">
         <div className="quiz-player__error">
@@ -459,27 +451,13 @@ export function LearningQuizPlayer({ content, durationSeconds, onCompleted }) {
   return (
     <div className="quiz-player" data-phase={phase}>
       {phase === "start" && (
-        <QuizStartScreen
-          title={quizData.title}
-          questionCount={totalQuestions}
-          duration={duration}
-          onStart={handleStart}
-        />
+        <QuizStartScreen title={quizData.title} questionCount={totalQuestions} duration={duration} onStart={handleStart} />
       )}
       {phase === "taking" && (
-        <QuizTakingScreen
-          quizData={quizData}
-          answers={answers}
-          onSelectAnswer={handleSelectAnswer}
-          onSubmit={handleSubmit}
-        />
+        <QuizTakingScreen quizData={quizData} answers={answers} onSelectAnswer={handleSelectAnswer} onSubmit={handleSubmit} />
       )}
       {phase === "results" && (
-        <QuizResultsScreen
-          quizData={quizData}
-          answers={answers}
-          onTryAgain={handleTryAgain}
-        />
+        <QuizResultsScreen quizData={quizData} answers={answers} onTryAgain={handleTryAgain} />
       )}
     </div>
   );
