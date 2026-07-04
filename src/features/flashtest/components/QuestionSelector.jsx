@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { Eye, Plus, Trash2 } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Eye, Plus, Shuffle, Trash2, X } from "lucide-react";
 import { questionService } from "@/services/flashtest.service.js";
 import "../flashtest.css";
 
@@ -19,8 +19,20 @@ export function QuestionSelector({
   const [questions, setQuestions] = useState([]);
   const [loading, setLoading] = useState(false);
   const [expandedQuestionId, setExpandedQuestionId] = useState(null);
+  const [randomCount, setRandomCount] = useState("");
+  const [randomModalOpen, setRandomModalOpen] = useState(false);
 
-  const loadQuestions = async () => {
+  const selectedIds = useMemo(
+    () => new Set(selectedQuestions.map((question) => questionId(question))),
+    [selectedQuestions],
+  );
+
+  const availableQuestions = useMemo(
+    () => questions.filter((question) => !selectedIds.has(questionId(question))),
+    [questions, selectedIds],
+  );
+
+  const loadQuestions = useCallback(async () => {
     if (!courseId) {
       setQuestions([]);
       return;
@@ -38,11 +50,12 @@ export function QuestionSelector({
     } finally {
       setLoading(false);
     }
-  };
+  }, [courseId]);
 
   useEffect(() => {
-    loadQuestions();
-  }, [courseId]);
+    const timer = window.setTimeout(loadQuestions, 0);
+    return () => window.clearTimeout(timer);
+  }, [loadQuestions]);
 
   const handleSelect = (question) => {
     const id = questionId(question);
@@ -58,6 +71,18 @@ export function QuestionSelector({
     if (expandedQuestionId === id) {
       setExpandedQuestionId(null);
     }
+  };
+
+  const handleRandomSelect = () => {
+    const count = Math.max(1, Number(randomCount || 0));
+    if (!Number.isFinite(count)) return;
+
+    const shuffled = [...availableQuestions].sort(() => Math.random() - 0.5);
+    const pickedQuestions = shuffled.slice(0, count);
+    if (pickedQuestions.length === 0) return;
+    onQuestionsChange([...selectedQuestions, ...pickedQuestions]);
+    setRandomModalOpen(false);
+    setRandomCount("");
   };
 
   return (
@@ -123,7 +148,20 @@ export function QuestionSelector({
         )}
       </div>
 
-      <strong>Question Bank</strong>
+      <div className="ft-question-bank-header">
+        <strong>Question Bank</strong>
+        <button
+          className="ft-button ft-button--secondary"
+          type="button"
+          disabled={loading || !courseId || availableQuestions.length === 0}
+          onClick={() => {
+            setRandomCount("");
+            setRandomModalOpen(true);
+          }}
+        >
+          <Shuffle size={14} /> Random
+        </button>
+      </div>
       <div className="ft-question-list" style={{ marginTop: 10 }}>
         {!courseId ? (
           <p className="ft-muted">Choose a course to load questions.</p>
@@ -131,26 +169,81 @@ export function QuestionSelector({
           <p className="ft-muted">Loading questions...</p>
         ) : questions.length === 0 ? (
           <p className="ft-muted">No questions found for this course.</p>
+        ) : availableQuestions.length === 0 ? (
+          <p className="ft-muted">All questions in this course are selected.</p>
         ) : (
-          questions.map((question) => {
+          availableQuestions.map((question) => {
             const id = questionId(question);
-            const selected = selectedQuestions.some((item) => questionId(item) === id);
             return (
               <div className="ft-question-row" key={id}>
                 <span className="ft-question-text">{questionText(question)}</span>
                 <button
                   className="ft-button ft-button--secondary"
                   type="button"
-                  disabled={selected}
                   onClick={() => handleSelect(question)}
                 >
-                  <Plus size={14} /> {selected ? "Added" : "Add"}
+                  <Plus size={14} /> Add
                 </button>
               </div>
             );
           })
         )}
       </div>
+
+      {randomModalOpen && (
+        <div className="ft-modal-overlay" role="dialog" aria-modal="true">
+          <div className="ft-random-dialog">
+            <div className="ft-random-dialog__header">
+              <div>
+                <span className="ft-page-kicker">Random questions</span>
+                <h2>Choose quantity</h2>
+              </div>
+              <button
+                className="ft-icon-button"
+                type="button"
+                title="Close"
+                onClick={() => setRandomModalOpen(false)}
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <label className="ft-field">
+              <span className="ft-label">
+                Available questions: {availableQuestions.length}
+              </span>
+              <input
+                className="ft-input"
+                autoFocus
+                min="1"
+                max={availableQuestions.length}
+                type="number"
+                value={randomCount}
+                placeholder="Enter number of questions"
+                onChange={(event) => setRandomCount(event.target.value)}
+              />
+            </label>
+            <div className="ft-confirm-dialog__actions">
+              <button
+                className="ft-button ft-button--secondary"
+                type="button"
+                onClick={() => setRandomModalOpen(false)}
+              >
+                <X size={16} />
+                <span>Cancel</span>
+              </button>
+              <button
+                className="ft-button ft-button--primary"
+                type="button"
+                disabled={!Number(randomCount || 0)}
+                onClick={handleRandomSelect}
+              >
+                <Shuffle size={16} />
+                <span>Random</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

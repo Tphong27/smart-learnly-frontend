@@ -1,10 +1,11 @@
-import React, { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ArrowLeft, ClipboardList, Edit2, Eye, Plus, RefreshCw, Search } from "lucide-react";
 import {
   assignmentService,
   testService,
 } from "@/services/flashtest.service.js";
+import { getCurrentUser } from "@/services/api-client";
 import "../flashtest.css";
 
 function isFlashTest(item) {
@@ -32,27 +33,38 @@ function formatDate(value) {
 
 export function StaffFlashTestListPage() {
   const navigate = useNavigate();
+  const currentUser = getCurrentUser();
+  const currentUserId =
+    currentUser?.id || currentUser?.userId || currentUser?.accountId || "";
   const [tests, setTests] = useState([]);
   const [assignments, setAssignments] = useState([]);
   const [loading, setLoading] = useState(false);
   const [keyword, setKeyword] = useState("");
+  const [nowMs, setNowMs] = useState(0);
 
-  const loadAllFlashTests = async () => {
+  const loadAllFlashTests = useCallback(async () => {
     setLoading(true);
     try {
       const [testResult, assignmentResult] = await Promise.allSettled([
-        testService.getAll(),
-        assignmentService.getAll(),
+        testService.getMine(),
+        assignmentService.getMine(),
       ]);
+
+      const belongsToCurrentTrainer = (item) => {
+        const createdBy = item?.createdBy || item?.created_by;
+        return !createdBy || !currentUserId || String(createdBy) === String(currentUserId);
+      };
 
       setTests(
         testResult.status === "fulfilled"
-          ? (testResult.value || []).filter(isFlashTest)
+          ? (testResult.value || []).filter(isFlashTest).filter(belongsToCurrentTrainer)
           : [],
       );
       setAssignments(
         assignmentResult.status === "fulfilled"
-          ? (assignmentResult.value || []).filter(isFlashTest)
+          ? (assignmentResult.value || [])
+              .filter(isFlashTest)
+              .filter(belongsToCurrentTrainer)
           : [],
       );
     } catch (error) {
@@ -60,10 +72,20 @@ export function StaffFlashTestListPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentUserId]);
 
   useEffect(() => {
-    loadAllFlashTests();
+    const timer = window.setTimeout(loadAllFlashTests, 0);
+    return () => window.clearTimeout(timer);
+  }, [loadAllFlashTests]);
+
+  useEffect(() => {
+    const initialTimer = window.setTimeout(() => setNowMs(Date.now()), 0);
+    const interval = window.setInterval(() => setNowMs(Date.now()), 30000);
+    return () => {
+      window.clearTimeout(initialTimer);
+      window.clearInterval(interval);
+    };
   }, []);
 
   const rows = useMemo(() => {
@@ -187,7 +209,7 @@ export function StaffFlashTestListPage() {
                   const isEssay = type === "essay";
                   const dueDate = item.dueDate || item.due_date;
                   const expired =
-                    isEssay && dueDate && new Date(dueDate).getTime() <= Date.now();
+                    isEssay && dueDate && new Date(dueDate).getTime() <= nowMs;
                   return (
                     <tr key={`${type}-${item.id}`}>
                       <td>

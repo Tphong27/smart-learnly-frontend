@@ -46,6 +46,10 @@ export const assignmentService = {
     const response = await apiClient.get("/assignments", { params });
     return normalizeList(response);
   },
+  async getMine(params = {}) {
+    const response = await apiClient.get("/assignments/mine", { params });
+    return normalizeList(response);
+  },
   async getById(id) {
     const response = await apiClient.get(`/assignments/${id}`);
     return unwrap(response);
@@ -56,6 +60,12 @@ export const assignmentService = {
   },
   async update(id, data) {
     const response = await apiClient.put(`/assignments/${id}`, data);
+    return unwrap(response);
+  },
+  async verifyAccessCode(id, accessCode) {
+    const response = await apiClient.post(`/assignments/${id}/access-code/verify`, {
+      accessCode,
+    });
     return unwrap(response);
   },
   async remove(id) {
@@ -113,6 +123,10 @@ export const testService = {
     const response = await apiClient.get("/tests", { params });
     return normalizeList(response);
   },
+  async getMine(params = {}) {
+    const response = await apiClient.get("/tests/mine", { params });
+    return normalizeList(response);
+  },
   async getById(id) {
     const response = await apiClient.get(`/tests/${id}`);
     return unwrap(response);
@@ -123,6 +137,12 @@ export const testService = {
   },
   async update(id, data) {
     const response = await apiClient.put(`/tests/${id}`, data);
+    return unwrap(response);
+  },
+  async verifyAccessCode(id, accessCode) {
+    const response = await apiClient.post(`/tests/${id}/access-code/verify`, {
+      accessCode,
+    });
     return unwrap(response);
   },
   async remove(id) {
@@ -213,12 +233,19 @@ export const questionService = {
 };
 
 export const attemptService = {
-  async start(testId, studentId, assignmentId = null, studentName = "") {
+  async start(
+    testId,
+    studentId,
+    assignmentId = null,
+    studentName = "",
+    accessCode = "",
+  ) {
     const response = await apiClient.post("/test-attempts/start", {
       testId,
       studentId,
       assignmentId,
       studentName,
+      accessCode,
     });
     return unwrap(response);
   },
