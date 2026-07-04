@@ -299,7 +299,20 @@ export default function AdminCourseContentPage() {
     setLoadingSections(true);
     try {
       const data = await courseService.getCourseContent(courseId);
-      setSections(Array.isArray(data) ? data : []);
+      const nextSections = Array.isArray(data) ? data : [];
+
+      setSections(nextSections);
+      setSectionLessons(() => {
+        const lessonsBySection = {};
+
+        for (const section of nextSections) {
+          if (Array.isArray(section?.lessons)) {
+            lessonsBySection[section.id] = section.lessons;
+          }
+        }
+
+        return lessonsBySection;
+      });
     } catch (error) {
       showToast({
         type: "error",
@@ -336,7 +349,12 @@ export default function AdminCourseContentPage() {
 
   useEffect(() => {
     sections.forEach((section) => {
-      if (!sectionLessons[section.id]) {
+      const hasLessonsData = Object.prototype.hasOwnProperty.call(
+        sectionLessons,
+        section.id,
+      );
+
+      if (!hasLessonsData) {
         fetchLessonsForSection(section.id);
       }
     });

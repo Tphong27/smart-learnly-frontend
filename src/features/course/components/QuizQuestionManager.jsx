@@ -136,8 +136,10 @@ export function QuizQuestionManager({ open, lesson, onClose, onSaved }) {
         attachmentUrl: lessonData.attachmentUrl ?? null,
         durationSeconds: Number(lessonData.durationSeconds || 0),
         isPreview: Boolean(lessonData.isPreview ?? lessonData.isPreviewable),
-        status: String(lessonData.status || "DRAFT").toUpperCase(),
-        resources: Array.isArray(lessonData.resources) ? lessonData.resources : [],
+        status: normalizeLessonStatus(lessonData.status),
+        resources: Array.isArray(lessonData.resources)
+          ? lessonData.resources
+          : [],
         sortOrder: lessonData.sortOrder ?? 0,
       };
       await courseService.updateLesson(lesson.id, payload);
