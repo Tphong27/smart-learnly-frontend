@@ -40,6 +40,7 @@ const STATUS_PRIORITY = {
   approved: 1,
   rejected: 2,
 };
+const SOURCE_QUESTION_PAGE_SIZE = 10;
 
 function normalizeResponse(payload) {
   return payload?.data ?? payload;
@@ -218,10 +219,13 @@ function QuestionBankImportPanel({ setId, notify, onStagingChanged }) {
     questionBankId: "",
     difficulty: "",
     status: "",
+    importStatus: "not_imported",
   });
   const [appliedFilters, setAppliedFilters] = useState(filters);
   const [questions, setQuestions] = useState([]);
   const [selectedIds, setSelectedIds] = useState([]);
+  const [page, setPage] = useState(0);
+  const [advancedOpen, setAdvancedOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
@@ -239,9 +243,10 @@ function QuestionBankImportPanel({ setId, notify, onStagingChanged }) {
       };
       const items = await flashcardService.listSourceQuestions(setId, params);
       setQuestions(items);
+      setPage(0);
       setSelectedIds((current) =>
         current.filter((id) =>
-          items.some((question) => getQuestionId(question) === id),
+          items.some((question) => getQuestionId(question) === id && !question.imported),
         ),
       );
     } catch (loadError) {
@@ -263,11 +268,43 @@ function QuestionBankImportPanel({ setId, notify, onStagingChanged }) {
     return () => window.clearTimeout(timer);
   }, [loadQuestions]);
 
-  const allVisibleSelected =
-    questions.length > 0 &&
-    questions.every((question) => selectedIds.includes(getQuestionId(question)));
+  const filteredQuestions = useMemo(() => {
+    if (appliedFilters.importStatus === "imported") {
+      return questions.filter((question) => question.imported);
+    }
+    if (appliedFilters.importStatus === "all") {
+      return questions;
+    }
+    return questions.filter((question) => !question.imported);
+  }, [appliedFilters.importStatus, questions]);
 
-  function toggleQuestion(questionId) {
+  const totalPages = Math.max(
+    1,
+    Math.ceil(filteredQuestions.length / SOURCE_QUESTION_PAGE_SIZE),
+  );
+  const safePage = Math.min(page, totalPages - 1);
+  const pageQuestions = filteredQuestions.slice(
+    safePage * SOURCE_QUESTION_PAGE_SIZE,
+    safePage * SOURCE_QUESTION_PAGE_SIZE + SOURCE_QUESTION_PAGE_SIZE,
+  );
+  const selectablePageQuestions = pageQuestions.filter((question) => !question.imported);
+  const selectedImportableIds = selectedIds.filter((id) =>
+    questions.some((question) => getQuestionId(question) === id && !question.imported),
+  );
+  const allVisibleSelected =
+    selectablePageQuestions.length > 0 &&
+    selectablePageQuestions.every((question) => selectedIds.includes(getQuestionId(question)));
+
+  function applyFilters() {
+    setPage(0);
+    setSelectedIds([]);
+    setAppliedFilters(filters);
+  }
+
+  function toggleQuestion(question) {
+    if (!question || question.imported) return;
+    const questionId = getQuestionId(question);
+    if (!questionId) return;
     setSelectedIds((current) =>
       current.includes(questionId)
         ? current.filter((id) => id !== questionId)
@@ -276,33 +313,43 @@ function QuestionBankImportPanel({ setId, notify, onStagingChanged }) {
   }
 
   function toggleAllVisible() {
+    const visibleIds = selectablePageQuestions
+      .map(getQuestionId)
+      .filter(Boolean);
     if (allVisibleSelected) {
-      const visibleIds = new Set(questions.map(getQuestionId));
-      setSelectedIds((current) => current.filter((id) => !visibleIds.has(id)));
+      const visibleIdSet = new Set(visibleIds);
+      setSelectedIds((current) => current.filter((id) => !visibleIdSet.has(id)));
       return;
     }
     setSelectedIds((current) => [
-      ...new Set([...current, ...questions.map(getQuestionId).filter(Boolean)]),
+      ...new Set([...current, ...visibleIds]),
     ]);
   }
 
+  function handleQuestionRowClick(event, question) {
+    if (shouldIgnoreSelectionClick(event)) return;
+    toggleQuestion(question);
+  }
+
   async function handleImport() {
-    if (!selectedIds.length) {
+    const idsToImport = selectedImportableIds;
+    if (!idsToImport.length) {
       notify("Select at least one question.", "error");
       return;
     }
     setSubmitting(true);
     try {
       const response = normalizeResponse(
-        await flashcardService.importQuestionBankToStaging(setId, selectedIds),
+        await flashcardService.importQuestionBankToStaging(setId, idsToImport),
       );
       setSelectedIds([]);
       notify(
-        `Imported ${response?.cards?.length || selectedIds.length} question${
-          selectedIds.length === 1 ? "" : "s"
+        `Imported ${response?.cards?.length || idsToImport.length} question${
+          idsToImport.length === 1 ? "" : "s"
         } to staging.`,
         "success",
       );
+      await loadQuestions();
       onStagingChanged?.();
     } catch (importError) {
       notify(
@@ -346,21 +393,6 @@ function QuestionBankImportPanel({ setId, notify, onStagingChanged }) {
             />
           </div>
           <div className="flashcard-field">
-            <label htmlFor="staging-question-bank">Question bank ID</label>
-            <input
-              id="staging-question-bank"
-              type="text"
-              value={filters.questionBankId}
-              onChange={(event) =>
-                setFilters((current) => ({
-                  ...current,
-                  questionBankId: event.target.value,
-                }))
-              }
-              placeholder="Optional UUID"
-            />
-          </div>
-          <div className="flashcard-field">
             <label htmlFor="staging-question-difficulty">Difficulty</label>
             <select
               id="staging-question-difficulty"
@@ -373,11 +405,11 @@ function QuestionBankImportPanel({ setId, notify, onStagingChanged }) {
               }
             >
               <option value="">All</option>
-              <option value="1">1 - Easy</option>
+              <option value="1">1</option>
               <option value="2">2</option>
-              <option value="3">3 - Medium</option>
+              <option value="3">3</option>
               <option value="4">4</option>
-              <option value="5">5 - Hard</option>
+              <option value="5">5</option>
             </select>
           </div>
           <div className="flashcard-field">
@@ -398,15 +430,60 @@ function QuestionBankImportPanel({ setId, notify, onStagingChanged }) {
               <option value="archived">Archived</option>
             </select>
           </div>
+          <div className="flashcard-field">
+            <label htmlFor="staging-question-import-status">Import status</label>
+            <select
+              id="staging-question-import-status"
+              value={filters.importStatus}
+              onChange={(event) =>
+                setFilters((current) => ({
+                  ...current,
+                  importStatus: event.target.value,
+                }))
+              }
+            >
+              <option value="not_imported">Not imported</option>
+              <option value="imported">Imported</option>
+              <option value="all">All</option>
+            </select>
+          </div>
           <button
             type="button"
             className="flashcard-btn flashcard-btn--primary"
-            onClick={() => setAppliedFilters(filters)}
+            onClick={applyFilters}
             disabled={loading}
           >
             <Search size={16} />
             Search
           </button>
+        </div>
+        <div className="flashcard-staging__advanced">
+          <button
+            type="button"
+            className="flashcard-btn"
+            onClick={() => setAdvancedOpen((current) => !current)}
+          >
+            {advancedOpen ? "Hide advanced filters" : "Show advanced filters"}
+          </button>
+          {advancedOpen && (
+            <div className="flashcard-staging__advanced-fields">
+              <div className="flashcard-field">
+                <label htmlFor="staging-question-bank">Question bank UUID</label>
+                <input
+                  id="staging-question-bank"
+                  type="text"
+                  value={filters.questionBankId}
+                  onChange={(event) =>
+                    setFilters((current) => ({
+                      ...current,
+                      questionBankId: event.target.value,
+                    }))
+                  }
+                  placeholder="Optional"
+                />
+              </div>
+            </div>
+          )}
         </div>
 
         <InlineAlert>{error}</InlineAlert>
@@ -420,6 +497,7 @@ function QuestionBankImportPanel({ setId, notify, onStagingChanged }) {
                     type="checkbox"
                     checked={allVisibleSelected}
                     onChange={toggleAllVisible}
+                    disabled={selectablePageQuestions.length === 0}
                     aria-label="Select all visible source questions"
                   />
                 </th>
@@ -427,28 +505,43 @@ function QuestionBankImportPanel({ setId, notify, onStagingChanged }) {
                 <th>Correct answers</th>
                 <th>Difficulty</th>
                 <th>Status</th>
+                <th>Import</th>
                 <th>Question bank</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan="6">Loading source questions...</td>
+                  <td colSpan="7">Loading source questions...</td>
                 </tr>
-              ) : questions.length === 0 ? (
+              ) : filteredQuestions.length === 0 ? (
                 <tr>
-                  <td colSpan="6">No source questions match these filters.</td>
+                  <td colSpan="7">No source questions match these filters.</td>
                 </tr>
               ) : (
-                questions.map((question) => {
+                pageQuestions.map((question) => {
                   const questionId = getQuestionId(question);
+                  const isImported = Boolean(question.imported);
+                  const isSelected = selectedIds.includes(questionId);
                   return (
-                    <tr key={questionId}>
+                    <tr
+                      key={questionId}
+                      className={[
+                        !isImported ? "flashcard-staging__selectable-row" : "",
+                        isSelected ? "is-selected" : "",
+                        isImported ? "is-imported" : "",
+                      ]
+                        .filter(Boolean)
+                        .join(" ")}
+                      onClick={(event) => handleQuestionRowClick(event, question)}
+                      aria-selected={isSelected}
+                    >
                       <td>
                         <input
                           type="checkbox"
-                          checked={selectedIds.includes(questionId)}
-                          onChange={() => toggleQuestion(questionId)}
+                          checked={isSelected}
+                          onChange={() => toggleQuestion(question)}
+                          disabled={isImported}
                           aria-label="Select source question"
                         />
                       </td>
@@ -464,6 +557,15 @@ function QuestionBankImportPanel({ setId, notify, onStagingChanged }) {
                           {formatLabel(question.status)}
                         </span>
                       </td>
+                      <td>
+                        {isImported ? (
+                          <span className="flashcard-staging__badge flashcard-staging__badge--imported">
+                            Imported
+                          </span>
+                        ) : (
+                          <span className="flashcard-staging__muted">Not imported</span>
+                        )}
+                      </td>
                       <td>{question.questionBankName || "--"}</td>
                     </tr>
                   );
@@ -473,13 +575,44 @@ function QuestionBankImportPanel({ setId, notify, onStagingChanged }) {
           </table>
         </div>
 
+        {filteredQuestions.length > 0 && (
+          <div className="flashcard-staging__pagination">
+            <span>
+              Showing {safePage * SOURCE_QUESTION_PAGE_SIZE + 1}-
+              {Math.min((safePage + 1) * SOURCE_QUESTION_PAGE_SIZE, filteredQuestions.length)} of{" "}
+              {filteredQuestions.length}
+            </span>
+            <div className="flashcard-staging__pagination-controls">
+              <button
+                type="button"
+                className="flashcard-btn"
+                onClick={() => setPage((current) => Math.max(0, current - 1))}
+                disabled={safePage === 0}
+              >
+                Previous
+              </button>
+              <span className="flashcard-staging__page-indicator">
+                Page {safePage + 1} / {totalPages}
+              </span>
+              <button
+                type="button"
+                className="flashcard-btn"
+                onClick={() => setPage((current) => Math.min(totalPages - 1, current + 1))}
+                disabled={safePage + 1 >= totalPages}
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        )}
+
         <div className="flashcard-staging__actions">
-          <span>{selectedIds.length} selected</span>
+          <span>{selectedImportableIds.length} selected</span>
           <button
             type="button"
             className="flashcard-btn flashcard-btn--primary"
             onClick={handleImport}
-            disabled={submitting || loading}
+            disabled={submitting || loading || selectedImportableIds.length === 0}
           >
             <Upload size={16} />
             {submitting ? "Importing" : "Import selected to staging"}
