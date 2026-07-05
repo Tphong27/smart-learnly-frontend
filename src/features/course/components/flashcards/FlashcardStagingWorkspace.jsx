@@ -200,8 +200,8 @@ function GenerationSettings({ values, onChange, prefix }) {
         </div>
       </div>
       <p className="flashcard-staging__settings-note">
-        Rule-based generation may create fewer cards if the source content has
-        limited ideas.
+        Front/Back formatted cards are imported as-is. Language and difficulty
+        only guide rule-based generation from normal notes.
       </p>
     </>
   );

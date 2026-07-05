@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Brain, CheckCircle2, Clock3, RefreshCw } from "lucide-react";
 import { flashcardService } from "@/services/flashcard.service";
+import { useToast } from "@/shared/components/ui";
 import { FlashcardPreview, shuffleCards } from "./FlashcardPreview";
 import { getErrorMessage, normalizeSet } from "./flashcard-utils";
 import "./Flashcards.css";
@@ -17,6 +18,13 @@ const STATUS_META = {
   still_learning: { label: "Learning" },
   known: { label: "Known" },
 };
+
+const AUTO_LEARNING_PROGRESS = {
+  learningStatus: "still_learning",
+  lastReviewResult: "still_learning",
+};
+
+const BACKGROUND_SAVE_CONCURRENCY = 5;
 
 function cardKey(id) {
   return id == null ? "" : String(id);
@@ -167,6 +175,62 @@ function applyProgressToCards(cards, cardId, savedProgress) {
         }
       : card,
   );
+}
+
+function applyProgressToMultipleCards(cards, progressByCardKey) {
+  return cards.map((card) => {
+    const savedProgress = progressByCardKey.get(cardKey(card.id));
+    if (!savedProgress) return card;
+
+    return {
+      ...card,
+      progress: {
+        ...(card.progress || {}),
+        ...omitUndefinedValues(savedProgress),
+      },
+    };
+  });
+}
+
+function applyAutoSavedProgressToCards(cards, progressByCardKey) {
+  return cards.map((card) => {
+    const savedProgress = progressByCardKey.get(cardKey(card.id));
+    if (!savedProgress || progressStatus(card) === "known") return card;
+
+    return {
+      ...card,
+      progress: {
+        ...(card.progress || {}),
+        ...omitUndefinedValues(savedProgress),
+      },
+    };
+  });
+}
+
+async function settleWithConcurrency(items, limit, task) {
+  if (!items.length) return [];
+
+  const results = new Array(items.length);
+  let nextIndex = 0;
+  const workerCount = Math.min(limit, items.length);
+  const workers = Array.from({ length: workerCount }, async () => {
+    while (nextIndex < items.length) {
+      const index = nextIndex;
+      nextIndex += 1;
+
+      try {
+        results[index] = {
+          status: "fulfilled",
+          value: await task(items[index], index),
+        };
+      } catch (reason) {
+        results[index] = { status: "rejected", reason };
+      }
+    }
+  });
+
+  await Promise.all(workers);
+  return results;
 }
 
 function findNextCardAfterAction(cardId, previousQueue, nextQueue) {
@@ -321,6 +385,7 @@ export function FlashcardPractice({
   readOnly = false,
   onCompleted,
 }) {
+  const toast = useToast();
   const [flashcardSet, setFlashcardSet] = useState(null);
   const [selectedFilter, setSelectedFilter] = useState("all");
   const [activeCardId, setActiveCardId] = useState(null);
@@ -328,6 +393,7 @@ export function FlashcardPractice({
   const [orderedIdsByFilter, setOrderedIdsByFilter] = useState({});
   const [loading, setLoading] = useState(true);
   const [submittingCardId, setSubmittingCardId] = useState(null);
+  const [backgroundSavingCount, setBackgroundSavingCount] = useState(0);
   const [error, setError] = useState(null);
   const [completionNotified, setCompletionNotified] = useState(false);
 
@@ -335,6 +401,8 @@ export function FlashcardPractice({
   const initializedSetKeyRef = useRef(null);
   const restoredSetKeyRef = useRef(null);
   const autoSubmittedCardIdsRef = useRef(new Set());
+  const failedAutoSaveCardIdsRef = useRef(new Set());
+  const seenCardIdsInAllPassRef = useRef(new Set());
   const passCompletionRunningRef = useRef(false);
 
   const loadPractice = useCallback(async () => {
@@ -415,16 +483,26 @@ export function FlashcardPractice({
     }
   }, [activeCardId, cards, practiceSetKey, resumeWriteStorageKeys]);
 
+  const resetSeenCardsInAllPass = useCallback(() => {
+    seenCardIdsInAllPassRef.current = new Set();
+  }, []);
+
+  const markCardSeenInAllPass = useCallback((cardId, filterKey) => {
+    if (filterKey !== "all" || cardId == null) return;
+    seenCardIdsInAllPassRef.current.add(cardKey(cardId));
+  }, []);
+
   const setActiveCardForFilter = useCallback(
     (cardId, filterKey = selectedFilter) => {
       if (cardId == null) return;
+      markCardSeenInAllPass(cardId, filterKey);
       setActiveCardId(cardId);
       setLastActiveCardByFilter((currentActiveCards) => ({
         ...currentActiveCards,
         [filterKey]: cardId,
       }));
     },
-    [selectedFilter],
+    [markCardSeenInAllPass, selectedFilter],
   );
 
   const submitProgressForCard = useCallback(async (card, result) => {
@@ -453,6 +531,89 @@ export function FlashcardPractice({
     return nextCards;
   }, []);
 
+  const persistAutoLearningProgress = useCallback(
+    (cardsToSave) => {
+      if (!cardsToSave.length) return;
+
+      setBackgroundSavingCount(
+        (currentCount) => currentCount + cardsToSave.length,
+      );
+
+      void settleWithConcurrency(
+        cardsToSave,
+        BACKGROUND_SAVE_CONCURRENCY,
+        async (card) => {
+          const response = await flashcardService.submitProgress(
+            card.id,
+            "still_learning",
+          );
+
+          return {
+            cardId: card.id,
+            savedProgress: normalizeProgressPayload(
+              response,
+              "still_learning",
+            ),
+          };
+        },
+      ).then((results) => {
+        const successfulProgressByCardKey = new Map();
+        let failedCount = 0;
+
+        results.forEach((result, index) => {
+          const card = cardsToSave[index];
+          const key = cardKey(card?.id);
+
+          if (result.status === "fulfilled") {
+            successfulProgressByCardKey.set(
+              cardKey(result.value.cardId),
+              result.value.savedProgress,
+            );
+            failedAutoSaveCardIdsRef.current.delete(
+              cardKey(result.value.cardId),
+            );
+            return;
+          }
+
+          failedCount += 1;
+          autoSubmittedCardIdsRef.current.delete(key);
+          failedAutoSaveCardIdsRef.current.add(key);
+        });
+
+        if (successfulProgressByCardKey.size > 0) {
+          const nextCards = applyAutoSavedProgressToCards(
+            cardsRef.current,
+            successfulProgressByCardKey,
+          );
+          cardsRef.current = nextCards;
+          setFlashcardSet((currentSet) =>
+            currentSet
+              ? {
+                  ...currentSet,
+                  cards: applyAutoSavedProgressToCards(
+                    currentSet.cards || [],
+                    successfulProgressByCardKey,
+                  ),
+                }
+              : currentSet,
+          );
+        }
+
+        if (failedCount > 0) {
+          toast.warning(
+            "Some flashcard progress could not be saved. Refresh after reconnecting to verify progress.",
+            { duration: 5000 },
+          );
+        }
+      }).finally(() => {
+        setBackgroundSavingCount((currentCount) =>
+          Math.max(0, currentCount - cardsToSave.length),
+        );
+      });
+    },
+    [toast],
+  );
+
   const completeAllPass = useCallback(
     async (triggerCardId, sourceCards, allQueueAtTrigger) => {
       const passCards = sourceCards?.length ? sourceCards : cardsRef.current;
@@ -472,23 +633,57 @@ export function FlashcardPractice({
       passCompletionRunningRef.current = true;
 
       try {
-        let workingCards = passCards;
-        const cardsWithoutProgress = workingCards.filter((card) => {
+        seenCardIdsInAllPassRef.current.add(cardKey(triggerCardId));
+        const cardsWithoutProgress = passCards.filter((card) => {
           const key = cardKey(card.id);
+          const status = progressStatus(card);
           return (
-            progressStatus(card) === "new" &&
+            seenCardIdsInAllPassRef.current.has(key) &&
+            (status === "new" ||
+              (status === "still_learning" &&
+                failedAutoSaveCardIdsRef.current.has(key))) &&
             !autoSubmittedCardIdsRef.current.has(key)
           );
         });
 
+        const optimisticProgressByCardKey = new Map();
         for (const card of cardsWithoutProgress) {
-          autoSubmittedCardIdsRef.current.add(cardKey(card.id));
-          workingCards = await submitProgressForCard(card, "still_learning");
+          const key = cardKey(card.id);
+          autoSubmittedCardIdsRef.current.add(key);
+          optimisticProgressByCardKey.set(key, AUTO_LEARNING_PROGRESS);
         }
 
-        const learningCards = workingCards.filter(
-          (card) => progressStatus(card) === "still_learning",
+        const workingCards =
+          optimisticProgressByCardKey.size > 0
+            ? applyProgressToMultipleCards(
+                passCards,
+                optimisticProgressByCardKey,
+              )
+            : passCards;
+
+        if (optimisticProgressByCardKey.size > 0) {
+          cardsRef.current = workingCards;
+          setFlashcardSet((currentSet) =>
+            currentSet
+              ? {
+                  ...currentSet,
+                  cards: applyProgressToMultipleCards(
+                    currentSet.cards || [],
+                    optimisticProgressByCardKey,
+                  ),
+                }
+              : currentSet,
+          );
+          persistAutoLearningProgress(cardsWithoutProgress);
+        }
+
+        const nextQueues = buildQueues(workingCards);
+        const learningCards = getQueueForFilter(
+          nextQueues,
+          "still_learning",
+          orderedIdsByFilter,
         );
+        let shouldResetSeenCards = true;
 
         if (learningCards.length > 0) {
           const shuffledLearningCards = shuffleCards(learningCards);
@@ -506,10 +701,37 @@ export function FlashcardPractice({
             "still_learning",
           );
         } else {
+          const knownCards = getQueueForFilter(
+            nextQueues,
+            "known",
+            orderedIdsByFilter,
+          );
+          const remainingAllCards = getQueueForFilter(
+            nextQueues,
+            "all",
+            orderedIdsByFilter,
+          );
+
           setOrderedIdsByFilter((currentOrders) => ({
             ...currentOrders,
             still_learning: [],
           }));
+
+          if (knownCards.length > 0) {
+            setSelectedFilter("known");
+            setActiveCardForFilter(knownCards[0].id, "known");
+          } else if (remainingAllCards.length > 0) {
+            resetSeenCardsInAllPass();
+            setSelectedFilter("all");
+            setActiveCardForFilter(remainingAllCards[0].id, "all");
+            shouldResetSeenCards = false;
+          } else {
+            setActiveCardId(null);
+          }
+        }
+
+        if (shouldResetSeenCards) {
+          resetSeenCardsInAllPass();
         }
 
         return true;
@@ -528,8 +750,9 @@ export function FlashcardPractice({
     [
       orderedIdsByFilter,
       readOnly,
+      persistAutoLearningProgress,
+      resetSeenCardsInAllPass,
       setActiveCardForFilter,
-      submitProgressForCard,
     ],
   );
 
@@ -547,6 +770,8 @@ export function FlashcardPractice({
     initializedSetKeyRef.current = setKey;
     restoredSetKeyRef.current = null;
     autoSubmittedCardIdsRef.current = new Set();
+    failedAutoSaveCardIdsRef.current = new Set();
+    resetSeenCardsInAllPass();
     passCompletionRunningRef.current = false;
     setSelectedFilter("all");
     setLastActiveCardByFilter({});
@@ -560,7 +785,13 @@ export function FlashcardPractice({
       setActiveCardForFilter(initialCardId, "all");
     }
     restoredSetKeyRef.current = setKey;
-  }, [cards, practiceSetKey, resumeReadStorageKeys, setActiveCardForFilter]);
+  }, [
+    cards,
+    practiceSetKey,
+    resetSeenCardsInAllPass,
+    resumeReadStorageKeys,
+    setActiveCardForFilter,
+  ]);
 
   useEffect(() => {
     if (!cards.length) return;
@@ -572,7 +803,10 @@ export function FlashcardPractice({
       return;
     }
 
-    if (activeCardId == null) return;
+    if (activeCardId == null) {
+      setActiveCardForFilter(currentQueue[0].id, selectedFilter);
+      return;
+    }
 
     if (!findCardById(currentQueue, activeCardId)) {
       const rememberedCard = findCardById(
@@ -637,6 +871,13 @@ export function FlashcardPractice({
     [queues],
   );
 
+  const activeCardForCurrentFilter = useMemo(() => {
+    if (!currentQueue.length) return null;
+    return findCardById(currentQueue, activeCardId) || currentQueue[0];
+  }, [activeCardId, currentQueue]);
+
+  const activeCardIdForCurrentFilter = activeCardForCurrentFilter?.id ?? null;
+
   const handleFilterChange = useCallback((filterKey) => {
     const targetQueue = getQueueForFilter(
       queues,
@@ -650,6 +891,10 @@ export function FlashcardPractice({
     const currentCard = findCardById(targetQueue, activeCardId);
     const nextCard = rememberedCard || currentCard || targetQueue[0] || null;
 
+    if (filterKey === "all" && selectedFilter !== "all") {
+      resetSeenCardsInAllPass();
+    }
+
     setSelectedFilter(filterKey);
     if (nextCard) {
       setActiveCardForFilter(nextCard.id, filterKey);
@@ -661,6 +906,8 @@ export function FlashcardPractice({
     lastActiveCardByFilter,
     orderedIdsByFilter,
     queues,
+    resetSeenCardsInAllPass,
+    selectedFilter,
     setActiveCardForFilter,
   ]);
 
@@ -693,6 +940,7 @@ export function FlashcardPractice({
     async (card, result) => {
       if (card?.id == null || readOnly) return;
 
+      markCardSeenInAllPass(card.id, selectedFilter);
       const previousQueue = currentQueue;
       const wasFinalAllCard =
         selectedFilter === "all" && isFinalCardInQueue(card.id, previousQueue);
@@ -744,6 +992,7 @@ export function FlashcardPractice({
     [
       completeAllPass,
       currentQueue,
+      markCardSeenInAllPass,
       orderedIdsByFilter,
       readOnly,
       selectedFilter,
@@ -790,6 +1039,12 @@ export function FlashcardPractice({
           <span className="flashcard-practice__status">
             <Brain size={14} />
             {progressLabel(cards)}
+            {backgroundSavingCount > 0 && (
+              <>
+                <RefreshCw size={13} className="flashcard-spin-icon" />
+                Saving progress...
+              </>
+            )}
           </span>
         )}
       </div>
@@ -817,7 +1072,7 @@ export function FlashcardPractice({
 
       <FlashcardPreview
         cards={currentQueue}
-        activeCardId={activeCardId}
+        activeCardId={activeCardIdForCurrentFilter}
         orderedCardIds={currentQueueIds}
         onActiveCardChange={handleActiveCardChange}
         onAdvancePastEnd={
@@ -867,7 +1122,7 @@ export function FlashcardPractice({
 
       <FlashcardCompactList
         cards={currentQueue}
-        activeCardId={activeCardId}
+        activeCardId={activeCardIdForCurrentFilter}
         onSelect={handleActiveCardChange}
       />
     </div>
