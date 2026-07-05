@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { RefreshCw, Save } from "lucide-react";
+import { CheckSquare, RefreshCw, Save, Trash2, X } from "lucide-react";
 import { getCurrentUser } from "@/services";
 import { courseService } from "@/services/course.service";
 import { flashcardService } from "@/services/flashcard.service";
@@ -34,6 +34,7 @@ export function FlashcardLessonEditor({
   const [title, setTitle] = useState(defaultTitle);
   const [description, setDescription] = useState("");
   const [editingCard, setEditingCard] = useState(null);
+  const [activePreviewCardId, setActivePreviewCardId] = useState(null);
   const [editorVersion, setEditorVersion] = useState(0);
   const [loading, setLoading] = useState(true);
   const [savingSet, setSavingSet] = useState(false);
@@ -41,10 +42,13 @@ export function FlashcardLessonEditor({
   const [reordering, setReordering] = useState(false);
   const [cardPendingDelete, setCardPendingDelete] = useState(null);
   const [deletingCardId, setDeletingCardId] = useState(null);
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedCardIds, setSelectedCardIds] = useState([]);
+  const [bulkDeletePending, setBulkDeletePending] = useState(false);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
   const [activeEditorTab, setActiveEditorTab] = useState("current");
   const [error, setError] = useState(null);
 
-  const activeCardId = editingCard?.id || null;
   const canUseStaging = isRoleAllowed(getCurrentUser()?.role, STAGING_ROLES);
 
   const notify = useCallback(
@@ -116,6 +120,19 @@ export function FlashcardLessonEditor({
     [cards],
   );
 
+  const activeCardId = useMemo(() => {
+    if (!orderedCards.length) return null;
+    if (orderedCards.some((card) => card.id === activePreviewCardId)) {
+      return activePreviewCardId;
+    }
+    return orderedCards[0].id;
+  }, [activePreviewCardId, orderedCards]);
+
+  const selectedVisibleCardIds = useMemo(() => {
+    const visibleIds = new Set(orderedCards.map((card) => card.id));
+    return selectedCardIds.filter((cardId) => visibleIds.has(cardId));
+  }, [orderedCards, selectedCardIds]);
+
   const handleSaveSet = async (event) => {
     event.preventDefault();
     if (!flashcardSet?.id) return;
@@ -168,6 +185,7 @@ export function FlashcardLessonEditor({
             card.id === savedCard.id ? savedCard : card,
           ),
         );
+        setActivePreviewCardId(savedCard.id);
         notify("Card updated.", "success");
       } else {
         const savedCard = await flashcardService.addCard(
@@ -175,6 +193,7 @@ export function FlashcardLessonEditor({
           payload,
         );
         setCards((currentCards) => [...currentCards, savedCard]);
+        setActivePreviewCardId(savedCard.id);
         notify("Card added.", "success");
       }
 
@@ -198,15 +217,22 @@ export function FlashcardLessonEditor({
     setDeletingCardId(cardPendingDelete.id);
     try {
       await flashcardService.deleteCard(cardPendingDelete.id);
-      setCards((currentCards) =>
-        currentCards.filter(
+      setCards((currentCards) => {
+        const nextCards = currentCards.filter(
           (currentCard) => currentCard.id !== cardPendingDelete.id,
-        ),
-      );
+        );
+        if (activePreviewCardId === cardPendingDelete.id) {
+          setActivePreviewCardId(nextCards[0]?.id || null);
+        }
+        return nextCards;
+      });
       if (editingCard?.id === cardPendingDelete.id) {
         setEditingCard(null);
         setEditorVersion((version) => version + 1);
       }
+      setSelectedCardIds((current) =>
+        current.filter((cardId) => cardId !== cardPendingDelete.id),
+      );
       setCardPendingDelete(null);
       notify("Card deleted.", "success");
     } catch (deleteError) {
@@ -256,6 +282,69 @@ export function FlashcardLessonEditor({
   const handleUploadImage = async (file) => {
     const uploaded = await courseService.uploadLessonResource(file);
     return uploaded?.url || uploaded?.data?.url || uploaded;
+  };
+
+  const handleEditCard = (card) => {
+    setActivePreviewCardId(card?.id || null);
+    setEditingCard(card);
+  };
+
+  const toggleSelectionMode = () => {
+    if (selectionMode) {
+      setSelectedCardIds([]);
+    }
+    setSelectionMode((current) => !current);
+  };
+
+  const toggleSelectedCard = (card) => {
+    if (!card?.id) return;
+    setSelectedCardIds((current) =>
+      current.includes(card.id)
+        ? current.filter((cardId) => cardId !== card.id)
+        : [...current, card.id],
+    );
+  };
+
+  const confirmBulkDeleteCards = async () => {
+    if (!selectedVisibleCardIds.length) return;
+
+    const idsToDelete = selectedVisibleCardIds;
+    const deletedIdSet = new Set(idsToDelete);
+    setBulkDeleting(true);
+    try {
+      for (const cardId of idsToDelete) {
+        await flashcardService.deleteCard(cardId);
+      }
+
+      const remainingCards = orderedCards.filter((card) => !deletedIdSet.has(card.id));
+      setCards((currentCards) =>
+        currentCards.filter((card) => !deletedIdSet.has(card.id)),
+      );
+      if (deletedIdSet.has(activePreviewCardId)) {
+        setActivePreviewCardId(remainingCards[0]?.id || null);
+      }
+      if (editingCard?.id && deletedIdSet.has(editingCard.id)) {
+        setEditingCard(null);
+        setEditorVersion((version) => version + 1);
+      }
+      setSelectedCardIds([]);
+      setSelectionMode(remainingCards.length > 0);
+      setBulkDeletePending(false);
+      notify(
+        `Deleted ${idsToDelete.length} flashcard${
+          idsToDelete.length === 1 ? "" : "s"
+        }.`,
+        "success",
+      );
+      await loadSet();
+    } catch (deleteError) {
+      notify(
+        getErrorMessage(deleteError, "Failed to delete selected flashcards."),
+        "error",
+      );
+    } finally {
+      setBulkDeleting(false);
+    }
   };
 
   if (loading) {
@@ -400,13 +489,44 @@ export function FlashcardLessonEditor({
             <div className="flashcard-panel">
               <div className="flashcard-panel__header">
                 <h3 className="flashcard-panel__title">Cards</h3>
+                <div className="flashcard-actions">
+                  {selectionMode && selectedVisibleCardIds.length > 0 && (
+                    <button
+                      type="button"
+                      className="flashcard-btn flashcard-btn--danger"
+                      onClick={() => setBulkDeletePending(true)}
+                      disabled={savingCard || reordering || bulkDeleting}
+                    >
+                      <Trash2 size={16} />
+                      Delete selected ({selectedVisibleCardIds.length})
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    className="flashcard-btn"
+                    onClick={toggleSelectionMode}
+                    disabled={savingCard || reordering || bulkDeleting}
+                  >
+                    {selectionMode ? <X size={16} /> : <CheckSquare size={16} />}
+                    {selectionMode ? "Exit selection" : "Select cards"}
+                  </button>
+                </div>
               </div>
               <div className="flashcard-panel__body">
                 <FlashcardCardList
                   cards={orderedCards}
                   activeCardId={activeCardId}
-                  disabled={savingCard || reordering || Boolean(deletingCardId)}
-                  onEdit={setEditingCard}
+                  disabled={
+                    savingCard ||
+                    reordering ||
+                    bulkDeleting ||
+                    Boolean(deletingCardId)
+                  }
+                  selectionMode={selectionMode}
+                  selectedCardIds={selectedVisibleCardIds}
+                  onToggleSelect={toggleSelectedCard}
+                  onSelect={(card) => setActivePreviewCardId(card?.id || null)}
+                  onEdit={handleEditCard}
                   onDelete={handleDeleteCard}
                   onMove={handleMoveCard}
                 />
@@ -421,6 +541,8 @@ export function FlashcardLessonEditor({
             <div className="flashcard-panel__body">
               <FlashcardPreview
                 cards={orderedCards}
+                activeCardId={activeCardId}
+                onActiveCardChange={(cardId) => setActivePreviewCardId(cardId)}
                 emptyMessage="Add a card to preview this flashcard set."
               />
             </div>
@@ -464,6 +586,43 @@ export function FlashcardLessonEditor({
                 disabled={Boolean(deletingCardId)}
               >
                 {deletingCardId ? "Deleting" : "Delete"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {bulkDeletePending && (
+        <div className="flashcard-modal" role="presentation">
+          <div
+            className="flashcard-modal__dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="flashcard-bulk-delete-title"
+          >
+            <h3 id="flashcard-bulk-delete-title">
+              Delete {selectedVisibleCardIds.length} flashcards?
+            </h3>
+            <p>
+              Selected flashcards will be removed from this set. You can cancel
+              to keep them.
+            </p>
+            <div className="flashcard-modal__actions">
+              <button
+                type="button"
+                className="flashcard-btn"
+                onClick={() => setBulkDeletePending(false)}
+                disabled={bulkDeleting}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="flashcard-btn flashcard-btn--danger"
+                onClick={confirmBulkDeleteCards}
+                disabled={bulkDeleting || selectedVisibleCardIds.length === 0}
+              >
+                <Trash2 size={16} />
+                {bulkDeleting ? "Deleting" : "Delete selected"}
               </button>
             </div>
           </div>

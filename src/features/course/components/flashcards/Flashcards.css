@@ -173,6 +173,13 @@
   font-weight: 700;
 }
 
+.flashcard-field__hint {
+  margin: 0;
+  color: #64748b;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
 .flashcard-field input,
 .flashcard-field select,
 .flashcard-field textarea {
@@ -362,6 +369,13 @@
   line-height: 1.5;
 }
 
+.flashcard-staging__settings-note {
+  margin: -4px 0 0;
+  color: #64748b;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
 .flashcard-staging__file-drop {
   display: flex;
   align-items: center;
@@ -541,8 +555,62 @@
   justify-content: flex-end;
 }
 
+.flashcard-staging-card__image-badges {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.flashcard-staging__image-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 24px;
+  border: 1px solid #cbd5e1;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #475569;
+  font-size: 11px;
+  font-weight: 800;
+  padding: 4px 8px;
+  white-space: nowrap;
+}
+
 .flashcard-modal__dialog--wide {
-  width: min(100%, 820px);
+  width: min(960px, calc(100vw - 48px));
+}
+
+.flashcard-modal__dialog--staging-edit {
+  display: flex;
+  flex-direction: column;
+  width: min(1080px, calc(100vw - 64px));
+  max-height: calc(100vh - 48px);
+  overflow: hidden;
+}
+
+.flashcard-modal__dialog--wide .flashcard-form {
+  max-height: calc(100vh - 160px);
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.flashcard-modal__dialog--staging-edit .flashcard-staging-edit-form {
+  flex: 1 1 auto;
+  max-height: none;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 6px;
+}
+
+.flashcard-modal__dialog--wide textarea {
+  min-height: 132px;
+  resize: vertical;
+}
+
+.flashcard-modal__dialog--staging-edit textarea {
+  min-height: 160px;
 }
 
 .flashcard-image-input {
@@ -586,18 +654,81 @@
 
 .flashcard-list-item {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: auto 24px auto minmax(0, 1fr) auto;
   gap: 12px;
   align-items: center;
   border: 1px solid #e2e8f0;
   border-radius: 8px;
   padding: 12px;
   background: #ffffff;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.flashcard-list-item:hover {
+  border-color: #93c5fd;
+  background: #f8fbff;
 }
 
 .flashcard-list-item--active {
   border-color: #2563eb;
   background: #eff6ff;
+}
+
+.flashcard-list-item.is-dragging {
+  border-color: #2563eb;
+  box-shadow: 0 16px 32px rgba(15, 23, 42, 0.18);
+}
+
+.flashcard-list-item.is-selected {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.08);
+}
+
+.flashcard-list-item__drag-handle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 34px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #64748b;
+  cursor: grab;
+  padding: 0;
+  user-select: none;
+}
+
+.flashcard-list-item__drag-handle:hover:not(:disabled) {
+  border-color: #94a3b8;
+  background: #f8fafc;
+  color: #334155;
+}
+
+.flashcard-list-item__drag-handle:active:not(:disabled) {
+  cursor: grabbing;
+}
+
+.flashcard-list-item__drag-handle:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
+
+.flashcard-list-item__selection-slot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+}
+
+.flashcard-list-item__checkbox {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
 }
 
 .flashcard-list-item__number {
@@ -676,9 +807,10 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 18px;
-  overflow: hidden;
-  padding: 28px;
+  gap: 14px;
+  overflow-x: hidden;
+  overflow-y: hidden;
+  padding: 52px 28px 28px;
   border-radius: 8px;
   background: #ffffff;
   backface-visibility: hidden;
@@ -703,18 +835,60 @@
 .flashcard-preview__text {
   max-width: 100%;
   color: #0f172a;
-  font-size: 30px;
+  font-size: clamp(18px, 1.875rem, 30px);
   font-weight: 800;
   line-height: 1.22;
   overflow-wrap: anywhere;
   text-align: center;
+  white-space: pre-wrap;
+}
+
+.flashcard-preview__face--scrollable {
+  justify-content: flex-start;
+  overflow-y: auto;
+}
+
+.flashcard-preview__face--centered {
+  justify-content: center;
+  overflow-y: hidden;
+}
+
+.flashcard-preview__face--long-text .flashcard-preview__text {
+  font-size: clamp(16px, 1.375rem, 22px);
+  line-height: 1.32;
+}
+
+.flashcard-preview__face--very-long-text .flashcard-preview__text {
+  font-size: clamp(15px, 1.125rem, 18px);
+  font-weight: 700;
+  line-height: 1.4;
+  text-align: left;
+}
+
+.flashcard-preview__face--with-image .flashcard-preview__text {
+  font-size: clamp(16px, 1.5rem, 24px);
+}
+
+.flashcard-preview__face--image-long-text .flashcard-preview__text {
+  font-size: clamp(15px, 1.125rem, 18px);
+  font-weight: 700;
+  line-height: 1.38;
 }
 
 .flashcard-preview__image {
   max-width: min(100%, 520px);
-  max-height: 190px;
+  max-height: min(180px, 38%);
+  flex: 0 1 auto;
   object-fit: contain;
   border-radius: 8px;
+}
+
+.flashcard-preview__face--with-image .flashcard-preview__image {
+  max-height: min(170px, 36%);
+}
+
+.flashcard-preview__face--image-long-text .flashcard-preview__image {
+  max-height: min(130px, 30%);
 }
 
 .flashcard-preview__hint,
@@ -1054,6 +1228,10 @@
   animation: flashcard-spin 0.75s linear infinite;
 }
 
+.flashcard-spin-icon {
+  animation: flashcard-spin 0.75s linear infinite;
+}
+
 @keyframes flashcard-spin {
   to {
     transform: rotate(360deg);
@@ -1088,15 +1266,15 @@
   }
 
   .flashcard-preview__face {
-    padding: 24px 18px;
+    padding: 48px 18px 24px;
   }
 
   .flashcard-preview__text {
-    font-size: 24px;
+    font-size: clamp(17px, 1.5rem, 24px);
   }
 
   .flashcard-list-item {
-    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-columns: auto 24px auto minmax(0, 1fr);
   }
 
   .flashcard-list-item__actions {
@@ -1158,7 +1336,7 @@
 .flashcard-modal {
   position: fixed;
   inset: 0;
-  z-index: 60;
+  z-index: 1200;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1168,6 +1346,8 @@
 
 .flashcard-modal__dialog {
   width: min(100%, 420px);
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
   border-radius: 8px;
   background: #ffffff;
   box-shadow: 0 24px 70px rgba(15, 23, 42, 0.28);
@@ -1193,4 +1373,25 @@
   justify-content: flex-end;
   gap: 10px;
   margin-top: 20px;
+}
+
+.flashcard-modal__dialog.flashcard-modal__dialog--staging-edit {
+  display: flex;
+  flex-direction: column;
+  width: min(1080px, calc(100vw - 64px));
+  max-height: calc(100vh - 48px);
+  overflow: hidden;
+}
+
+.flashcard-modal__dialog--staging-edit .flashcard-staging-edit-form {
+  flex: 1 1 auto;
+  max-height: none;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 6px;
+}
+
+.flashcard-modal__dialog--staging-edit textarea {
+  min-height: 160px;
+  resize: vertical;
 }

@@ -3,6 +3,7 @@ import {
   Check,
   Edit3,
   FileText,
+  Image as ImageIcon,
   ImagePlus,
   RefreshCw,
   Search,
@@ -19,7 +20,14 @@ import {
 import "./Flashcards.css";
 
 const DIFFICULTIES = ["easy", "medium", "hard"];
-const GENERATION_MODES = ["RULE_BASED", "AI"];
+const LANGUAGES = [
+  { value: "en", label: "English" },
+  { value: "vi", label: "Vietnamese" },
+];
+const GENERATION_MODES = [
+  { value: "RULE_BASED", label: "Rule-based" },
+  { value: "AI", label: "AI-assisted (not configured)", disabled: true },
+];
 const DEFAULT_GENERATION = {
   desiredCount: 10,
   language: "en",
@@ -92,80 +100,110 @@ function shouldIgnoreSelectionClick(event) {
 function getGenerationPayload(values) {
   return {
     desiredCount: Number(values.desiredCount || DEFAULT_GENERATION.desiredCount),
-    language: values.language.trim() || DEFAULT_GENERATION.language,
+    language: values.language || DEFAULT_GENERATION.language,
     difficulty: values.difficulty || DEFAULT_GENERATION.difficulty,
-    generationMode: values.generationMode || DEFAULT_GENERATION.generationMode,
+    generationMode: DEFAULT_GENERATION.generationMode,
   };
 }
 
 function validateGenerationSettings(values) {
   const desiredCount = Number(values.desiredCount);
   if (!Number.isInteger(desiredCount) || desiredCount < 1 || desiredCount > 30) {
-    return "Desired count must be between 1 and 30.";
+    return "Desired number of cards must be between 1 and 30.";
   }
   return null;
 }
 
+function getGeneratedCount(response) {
+  if (Array.isArray(response?.cards)) return response.cards.length;
+  if (Number.isFinite(Number(response?.generatedCount))) {
+    return Number(response.generatedCount);
+  }
+  if (Number.isFinite(Number(response?.count))) return Number(response.count);
+  return 0;
+}
+
+function formatGeneratedMessage(response, requestedCount, sourceLabel = "") {
+  const generatedCount = getGeneratedCount(response);
+  const suffix = sourceLabel ? ` ${sourceLabel}` : "";
+  const cardLabel = generatedCount === 1 ? "card" : "cards";
+  const baseMessage = `Generated ${generatedCount} staging ${cardLabel}${suffix}.`;
+  if (generatedCount < requestedCount) {
+    return `${baseMessage} Requested ${requestedCount}; fewer cards were generated because the source content had limited extractable ideas.`;
+  }
+  return baseMessage;
+}
+
 function GenerationSettings({ values, onChange, prefix }) {
   return (
-    <div className="flashcard-staging__settings">
-      <div className="flashcard-field">
-        <label htmlFor={`${prefix}-count`}>Desired count</label>
-        <input
-          id={`${prefix}-count`}
-          type="number"
-          min="1"
-          max="30"
-          value={values.desiredCount}
-          onChange={(event) =>
-            onChange({ ...values, desiredCount: event.target.value })
-          }
-        />
+    <>
+      <div className="flashcard-staging__settings">
+        <div className="flashcard-field">
+          <label htmlFor={`${prefix}-count`}>Card count</label>
+          <input
+            id={`${prefix}-count`}
+            type="number"
+            inputMode="numeric"
+            value={values.desiredCount}
+            onChange={(event) =>
+              onChange({ ...values, desiredCount: event.target.value })
+            }
+          />
+        </div>
+        <div className="flashcard-field">
+          <label htmlFor={`${prefix}-language`}>Language</label>
+          <select
+            id={`${prefix}-language`}
+            value={values.language}
+            onChange={(event) =>
+              onChange({ ...values, language: event.target.value })
+            }
+          >
+            {LANGUAGES.map((language) => (
+              <option key={language.value} value={language.value}>
+                {language.label}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="flashcard-field">
+          <label htmlFor={`${prefix}-difficulty`}>Difficulty</label>
+          <select
+            id={`${prefix}-difficulty`}
+            value={values.difficulty}
+            onChange={(event) =>
+              onChange({ ...values, difficulty: event.target.value })
+            }
+          >
+            {DIFFICULTIES.map((difficulty) => (
+              <option key={difficulty} value={difficulty}>
+                {formatLabel(difficulty)}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="flashcard-field">
+          <label htmlFor={`${prefix}-mode`}>Generation mode</label>
+          <select
+            id={`${prefix}-mode`}
+            value={values.generationMode}
+            onChange={(event) =>
+              onChange({ ...values, generationMode: event.target.value })
+            }
+          >
+            {GENERATION_MODES.map((mode) => (
+              <option key={mode.value} value={mode.value} disabled={mode.disabled}>
+                {mode.label}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
-      <div className="flashcard-field">
-        <label htmlFor={`${prefix}-language`}>Language</label>
-        <input
-          id={`${prefix}-language`}
-          type="text"
-          value={values.language}
-          onChange={(event) =>
-            onChange({ ...values, language: event.target.value })
-          }
-        />
-      </div>
-      <div className="flashcard-field">
-        <label htmlFor={`${prefix}-difficulty`}>Difficulty</label>
-        <select
-          id={`${prefix}-difficulty`}
-          value={values.difficulty}
-          onChange={(event) =>
-            onChange({ ...values, difficulty: event.target.value })
-          }
-        >
-          {DIFFICULTIES.map((difficulty) => (
-            <option key={difficulty} value={difficulty}>
-              {formatLabel(difficulty)}
-            </option>
-          ))}
-        </select>
-      </div>
-      <div className="flashcard-field">
-        <label htmlFor={`${prefix}-mode`}>Generation mode</label>
-        <select
-          id={`${prefix}-mode`}
-          value={values.generationMode}
-          onChange={(event) =>
-            onChange({ ...values, generationMode: event.target.value })
-          }
-        >
-          {GENERATION_MODES.map((mode) => (
-            <option key={mode} value={mode}>
-              {formatLabel(mode)}
-            </option>
-          ))}
-        </select>
-      </div>
-    </div>
+      <p className="flashcard-staging__settings-note">
+        Rule-based generation may create fewer cards if the source content has
+        limited ideas.
+      </p>
+    </>
   );
 }
 
@@ -468,18 +506,17 @@ function TextGenerationPanel({ setId, notify, onStagingChanged }) {
       notify(settingsError, "error");
       return;
     }
+    const generationPayload = getGenerationPayload(settings);
     setSubmitting(true);
     try {
       const response = normalizeResponse(
         await flashcardService.generateStagingFromText(setId, {
           sourceText: sourceText.trim(),
-          ...getGenerationPayload(settings),
+          ...generationPayload,
         }),
       );
       notify(
-        `Generated ${response?.cards?.length || 0} staging card${
-          response?.cards?.length === 1 ? "" : "s"
-        }.`,
+        formatGeneratedMessage(response, generationPayload.desiredCount),
         "success",
       );
       setSourceText("");
@@ -499,7 +536,11 @@ function TextGenerationPanel({ setId, notify, onStagingChanged }) {
       <div className="flashcard-panel__header">
         <h3 className="flashcard-panel__title">Pasted Text</h3>
       </div>
-      <form className="flashcard-panel__body flashcard-staging__section" onSubmit={handleSubmit}>
+      <form
+        className="flashcard-panel__body flashcard-staging__section"
+        onSubmit={handleSubmit}
+        noValidate
+      >
         <div className="flashcard-field">
           <label htmlFor="staging-source-text">Source text</label>
           <textarea
@@ -515,11 +556,6 @@ function TextGenerationPanel({ setId, notify, onStagingChanged }) {
           onChange={setSettings}
           prefix="staging-text"
         />
-        {settings.generationMode === "AI" && (
-          <p className="flashcard-staging__hint-text">
-            AI provider not configured; rule-based fallback is used.
-          </p>
-        )}
         <div className="flashcard-staging__actions">
           <span>{sourceText.trim().length} characters</span>
           <button
@@ -553,18 +589,21 @@ function DocumentGenerationPanel({ setId, notify, onStagingChanged }) {
       notify(settingsError, "error");
       return;
     }
+    const generationPayload = getGenerationPayload(settings);
     setSubmitting(true);
     try {
       const response = normalizeResponse(
         await flashcardService.generateStagingFromFile(setId, {
           file,
-          ...getGenerationPayload(settings),
+          ...generationPayload,
         }),
       );
       notify(
-        `Generated ${response?.cards?.length || 0} staging card${
-          response?.cards?.length === 1 ? "" : "s"
-        } from document.`,
+        formatGeneratedMessage(
+          response,
+          generationPayload.desiredCount,
+          "from document",
+        ),
         "success",
       );
       setFile(null);
@@ -585,7 +624,11 @@ function DocumentGenerationPanel({ setId, notify, onStagingChanged }) {
       <div className="flashcard-panel__header">
         <h3 className="flashcard-panel__title">Document</h3>
       </div>
-      <form className="flashcard-panel__body flashcard-staging__section" onSubmit={handleSubmit}>
+      <form
+        className="flashcard-panel__body flashcard-staging__section"
+        onSubmit={handleSubmit}
+        noValidate
+      >
         <label className="flashcard-staging__file-drop" htmlFor="staging-document-file">
           <FileText size={22} />
           <span>{file ? file.name : "Upload DOCX or PDF"}</span>
@@ -602,11 +645,6 @@ function DocumentGenerationPanel({ setId, notify, onStagingChanged }) {
           onChange={setSettings}
           prefix="staging-document"
         />
-        {settings.generationMode === "AI" && (
-          <p className="flashcard-staging__hint-text">
-            AI provider not configured; rule-based fallback is used.
-          </p>
-        )}
         <div className="flashcard-staging__actions">
           <span>{file ? "Ready to generate" : "No file selected"}</span>
           <button
@@ -642,25 +680,27 @@ function TranscriptGenerationPanel({ setId, notify, onStagingChanged }) {
       notify(settingsError, "error");
       return;
     }
+    const generationPayload = getGenerationPayload(settings);
     setSubmitting(true);
     try {
-      const basePayload = getGenerationPayload(settings);
       const response = normalizeResponse(
         file
           ? await flashcardService.generateStagingFromTranscriptFile(setId, {
               file,
-              ...basePayload,
+              ...generationPayload,
             })
           : await flashcardService.generateStagingFromTranscript(setId, {
               transcriptText: transcriptText.trim(),
               sourceName: sourceName.trim() || "Lesson transcript",
-              ...basePayload,
+              ...generationPayload,
             }),
       );
       notify(
-        `Generated ${response?.cards?.length || 0} staging card${
-          response?.cards?.length === 1 ? "" : "s"
-        } from transcript.`,
+        formatGeneratedMessage(
+          response,
+          generationPayload.desiredCount,
+          "from transcript",
+        ),
         "success",
       );
       setTranscriptText("");
@@ -682,7 +722,11 @@ function TranscriptGenerationPanel({ setId, notify, onStagingChanged }) {
       <div className="flashcard-panel__header">
         <h3 className="flashcard-panel__title">Transcript</h3>
       </div>
-      <form className="flashcard-panel__body flashcard-staging__section" onSubmit={handleSubmit}>
+      <form
+        className="flashcard-panel__body flashcard-staging__section"
+        onSubmit={handleSubmit}
+        noValidate
+      >
         <div className="flashcard-form__row">
           <div className="flashcard-field">
             <label htmlFor="staging-transcript-text">Transcript text</label>
@@ -722,11 +766,6 @@ function TranscriptGenerationPanel({ setId, notify, onStagingChanged }) {
           onChange={setSettings}
           prefix="staging-transcript"
         />
-        {settings.generationMode === "AI" && (
-          <p className="flashcard-staging__hint-text">
-            AI provider not configured; rule-based fallback is used.
-          </p>
-        )}
         <div className="flashcard-staging__actions">
           <span>{file ? "Using uploaded transcript" : "Using pasted text"}</span>
           <button
@@ -807,13 +846,13 @@ function EditStagingCardModal({
   return (
     <div className="flashcard-modal" role="presentation">
       <div
-        className="flashcard-modal__dialog flashcard-modal__dialog--wide"
+        className="flashcard-modal__dialog flashcard-modal__dialog--wide flashcard-modal__dialog--staging-edit"
         role="dialog"
         aria-modal="true"
         aria-labelledby="flashcard-staging-edit-title"
       >
         <h3 id="flashcard-staging-edit-title">Edit staging card</h3>
-        <form className="flashcard-form" onSubmit={handleSubmit}>
+        <form className="flashcard-form flashcard-staging-edit-form" onSubmit={handleSubmit}>
           <div className="flashcard-form__row">
             <div className="flashcard-field">
               <label htmlFor="staging-edit-front">Front text</label>
@@ -975,11 +1014,12 @@ function StagingReviewPanel({
   const [approving, setApproving] = useState(false);
   const [rejectingId, setRejectingId] = useState(null);
   const [rejectingSelected, setRejectingSelected] = useState(false);
+  const [rejectConfirm, setRejectConfirm] = useState(null);
   const [editingCard, setEditingCard] = useState(null);
   const [savingEdit, setSavingEdit] = useState(false);
   const [error, setError] = useState(null);
 
-  const loadStaging = useCallback(async () => {
+  const loadStaging = useCallback(async ({ showRefreshedToast = false } = {}) => {
     if (!setId) return;
     setLoading(true);
     setError(null);
@@ -994,6 +1034,9 @@ function StagingReviewPanel({
         ),
       );
       setSelectedIds((current) => current.filter((id) => draftIds.has(id)));
+      if (showRefreshedToast) {
+        notify("Staging review refreshed.", "success");
+      }
     } catch (loadError) {
       const message = getErrorMessage(loadError, "Failed to load staging cards.");
       setError(message);
@@ -1043,6 +1086,10 @@ function StagingReviewPanel({
     toggleCard(card.id);
   }
 
+  function handleRefresh() {
+    loadStaging({ showRefreshedToast: true });
+  }
+
   function toggleBatch(batch) {
     const draftIds = getBatchCards(batch)
       .filter((card) => normalizeStatus(card.status) === "draft")
@@ -1084,57 +1131,59 @@ function StagingReviewPanel({
     }
   }
 
-  async function handleReject(card) {
+  function handleReject(card) {
     if (!card?.id) return;
-    const confirmed = window.confirm("Reject this staging card?");
-    if (!confirmed) return;
-    setRejectingId(card.id);
-    try {
-      await flashcardService.rejectStagingCard(card.id);
-      notify("Staging card rejected.", "success");
-      setSelectedIds((current) => current.filter((id) => id !== card.id));
-      await loadStaging();
-    } catch (rejectError) {
-      notify(
-        getErrorMessage(rejectError, "Failed to reject staging card."),
-        "error",
-      );
-    } finally {
-      setRejectingId(null);
-    }
+    setRejectConfirm({
+      mode: "single",
+      ids: [card.id],
+      message: "Reject this staging card?",
+    });
   }
 
-  async function handleRejectSelected() {
+  function handleRejectSelected() {
     if (!selectedDraftIds.length) return;
-    const confirmed = window.confirm(
-      `Reject ${selectedDraftIds.length} selected staging card${
-        selectedDraftIds.length === 1 ? "" : "s"
-      }?`,
-    );
-    if (!confirmed) return;
+    const count = selectedDraftIds.length;
+    setRejectConfirm({
+      mode: "selected",
+      ids: selectedDraftIds,
+      message: `Reject ${count} selected staging card${count === 1 ? "" : "s"}?`,
+    });
+  }
 
-    setRejectingSelected(true);
+  async function confirmReject() {
+    if (!rejectConfirm?.ids?.length) return;
+
+    const ids = rejectConfirm.ids;
+    const isSelectedReject = rejectConfirm.mode === "selected";
+    if (isSelectedReject) {
+      setRejectingSelected(true);
+    } else {
+      setRejectingId(ids[0]);
+    }
+
     try {
-      await Promise.all(
-        selectedDraftIds.map((cardId) =>
-          flashcardService.rejectStagingCard(cardId),
-        ),
-      );
-      notify(
-        `Rejected ${selectedDraftIds.length} staging card${
-          selectedDraftIds.length === 1 ? "" : "s"
-        }.`,
-        "success",
-      );
-      setSelectedIds([]);
+      await Promise.all(ids.map((cardId) => flashcardService.rejectStagingCard(cardId)));
+      const count = ids.length;
+      notify(`Rejected ${count} staging card${count === 1 ? "" : "s"}.`, "success");
+      setSelectedIds((current) => current.filter((id) => !ids.includes(id)));
+      setRejectConfirm(null);
       await loadStaging();
     } catch (rejectError) {
       notify(
-        getErrorMessage(rejectError, "Failed to reject selected staging cards."),
+        getErrorMessage(
+          rejectError,
+          isSelectedReject
+            ? "Failed to reject selected staging cards."
+            : "Failed to reject staging card.",
+        ),
         "error",
       );
     } finally {
-      setRejectingSelected(false);
+      if (isSelectedReject) {
+        setRejectingSelected(false);
+      } else {
+        setRejectingId(null);
+      }
     }
   }
 
@@ -1177,11 +1226,11 @@ function StagingReviewPanel({
             <button
               type="button"
               className="flashcard-btn"
-              onClick={loadStaging}
+              onClick={handleRefresh}
               disabled={loading}
             >
-              <RefreshCw size={16} />
-              Refresh
+              <RefreshCw size={16} className={loading ? "flashcard-spin-icon" : ""} />
+              {loading ? "Refreshing" : "Refresh"}
             </button>
             <button
               type="button"
@@ -1305,6 +1354,25 @@ function StagingReviewPanel({
                               )}
                             </div>
                             <div className="flashcard-staging-card__actions">
+                              {(card.frontImageUrl || card.backImageUrl) && (
+                                <div
+                                  className="flashcard-staging-card__image-badges"
+                                  aria-label="Image attachments"
+                                >
+                                  {card.frontImageUrl && (
+                                    <span className="flashcard-staging__image-badge">
+                                      <ImageIcon size={12} />
+                                      Front image
+                                    </span>
+                                  )}
+                                  {card.backImageUrl && (
+                                    <span className="flashcard-staging__image-badge">
+                                      <ImageIcon size={12} />
+                                      Back image
+                                    </span>
+                                  )}
+                                </div>
+                              )}
                               <span
                                 className={`flashcard-staging__badge flashcard-staging__badge--${status}`}
                               >
@@ -1351,6 +1419,41 @@ function StagingReviewPanel({
           onSave={handleSaveEdit}
           onUploadImage={onUploadImage}
         />
+      )}
+      {rejectConfirm && (
+        <div className="flashcard-modal" role="presentation">
+          <div
+            className="flashcard-modal__dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="flashcard-reject-confirm-title"
+          >
+            <h3 id="flashcard-reject-confirm-title">{rejectConfirm.message}</h3>
+            <p>Rejected staging cards will be removed from the draft selection.</p>
+            <div className="flashcard-modal__actions">
+              <button
+                type="button"
+                className="flashcard-btn"
+                onClick={() => setRejectConfirm(null)}
+                disabled={rejectingSelected || Boolean(rejectingId)}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="flashcard-btn flashcard-btn--danger"
+                onClick={confirmReject}
+                disabled={rejectingSelected || Boolean(rejectingId)}
+              >
+                {rejectingSelected || rejectingId
+                  ? "Rejecting"
+                  : rejectConfirm.mode === "selected"
+                    ? "Reject selected"
+                    : "Reject"}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
