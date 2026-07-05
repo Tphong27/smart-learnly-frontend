@@ -1,13 +1,14 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   ChevronsUpDown,
   ChevronLeft,
   ChevronRight,
   Shuffle,
 } from "lucide-react";
-import { normalizeCards } from "./flashcard-utils";
+import { isGenericGeneratedExplanation, normalizeCards } from "./flashcard-utils";
 import "./Flashcards.css";
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function shuffleCards(cards) {
   const shuffled = [...cards];
   for (let index = shuffled.length - 1; index > 0; index -= 1) {
@@ -25,8 +26,34 @@ function cardKey(id) {
 }
 
 function CardFace({ label, text, imageUrl, hint, explanation }) {
+  const visibleExplanation = isGenericGeneratedExplanation(explanation)
+    ? ""
+    : explanation;
+  const hasText = Boolean(text);
+  const hasImage = Boolean(imageUrl);
+  const textLength = String(text || "").trim().length;
+  const hasSupportingContent = Boolean(hint || visibleExplanation);
+  const isShortTextOnly =
+    hasText && !hasImage && !hasSupportingContent && textLength <= 180;
+  const isLongText = textLength > 280;
+  const isVeryLongText = textLength > 700;
+  const isImageLongText = hasImage && textLength > 180;
+
   return (
-    <div className={`flashcard-preview__face flashcard-preview__face--${label.toLowerCase()}`}>
+    <div
+      className={[
+        "flashcard-preview__face",
+        `flashcard-preview__face--${label.toLowerCase()}`,
+        isShortTextOnly ? "flashcard-preview__face--centered" : "",
+        hasImage || !isShortTextOnly ? "flashcard-preview__face--scrollable" : "",
+        hasImage ? "flashcard-preview__face--with-image" : "",
+        isLongText ? "flashcard-preview__face--long-text" : "",
+        isVeryLongText ? "flashcard-preview__face--very-long-text" : "",
+        isImageLongText ? "flashcard-preview__face--image-long-text" : "",
+      ]
+        .filter(Boolean)
+        .join(" ")}
+    >
       <span className="flashcard-preview__label">{label}</span>
       {imageUrl && (
         <img
@@ -38,8 +65,8 @@ function CardFace({ label, text, imageUrl, hint, explanation }) {
       )}
       {text && <div className="flashcard-preview__text">{text}</div>}
       {hint && <div className="flashcard-preview__hint">{hint}</div>}
-      {explanation && (
-        <div className="flashcard-preview__explanation">{explanation}</div>
+      {visibleExplanation && (
+        <div className="flashcard-preview__explanation">{visibleExplanation}</div>
       )}
     </div>
   );
@@ -99,28 +126,6 @@ export function FlashcardPreview({
     onActiveCardChange?.(card.id, card);
     setFlipped(false);
   };
-
-  useEffect(() => {
-    if (!normalizedCards.length) {
-      setInternalActiveCardId(null);
-      setInternalOrderIds([]);
-      return;
-    }
-
-    setInternalOrderIds((currentIds) =>
-      currentIds.filter((id) =>
-        normalizedCards.some((card) => cardKey(card.id) === cardKey(id)),
-      ),
-    );
-
-    const hasActiveCard = normalizedCards.some(
-      (card) => cardKey(card.id) === resolvedActiveCardKey,
-    );
-
-    if (!hasActiveCard && activeCardId === undefined) {
-      setActiveCard(normalizedCards[0]);
-    }
-  }, [activeCardId, normalizedCards, resolvedActiveCardKey]);
 
   const goPrevious = () => {
     const previousCard = orderedCards[Math.max(0, currentIndex - 1)];
