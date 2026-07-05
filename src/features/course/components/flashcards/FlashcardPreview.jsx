@@ -80,6 +80,8 @@ export function FlashcardPreview({
   onAdvancePastEnd,
   onShuffle,
   emptyMessage = "No cards available.",
+  className = "",
+  renderControls,
   renderActions,
 }) {
   const normalizedCards = useMemo(() => normalizeCards(cards), [cards]);
@@ -154,6 +156,25 @@ export function FlashcardPreview({
     setActiveCard(shuffledCards[0]);
   };
 
+  const flipCard = () => {
+    setFlipped((value) => !value);
+  };
+
+  const controlState = {
+    card: currentCard,
+    index: currentIndex,
+    cardCount,
+    isBackVisible: flipped,
+    setFlipped,
+    flipCard,
+    goPrevious,
+    goNext,
+    shuffle,
+    orderedCards,
+    canGoPrevious: currentIndex > 0,
+    canGoNext: currentIndex < cardCount - 1 || Boolean(onAdvancePastEnd),
+  };
+
   if (!cardCount) {
     return (
       <div className="flashcard-empty">
@@ -164,12 +185,12 @@ export function FlashcardPreview({
   }
 
   return (
-    <div className="flashcard-preview">
+    <div className={["flashcard-preview", className].filter(Boolean).join(" ")}>
       <div className="flashcard-preview__stage">
         <button
           type="button"
           className={`flashcard-preview__card ${flipped ? "is-flipped" : ""}`}
-          onClick={() => setFlipped((value) => !value)}
+          onClick={flipCard}
           aria-label={flipped ? "Show front side" : "Show back side"}
         >
           <CardFace
@@ -187,42 +208,39 @@ export function FlashcardPreview({
         </button>
       </div>
 
-      <div className="flashcard-preview__controls">
-        <button
-          type="button"
-          className="flashcard-btn"
-          onClick={goPrevious}
-          disabled={currentIndex === 0}
-        >
-          <ChevronLeft size={16} />
-          Previous
-        </button>
-        <span className="flashcard-preview__counter">
-          {currentIndex + 1} / {cardCount}
-        </span>
-        <button
-          type="button"
-          className="flashcard-btn"
-          onClick={goNext}
-          disabled={currentIndex >= cardCount - 1 && !onAdvancePastEnd}
-        >
-          Next
-          <ChevronRight size={16} />
-        </button>
-        <button type="button" className="flashcard-btn" onClick={shuffle}>
-          <Shuffle size={16} />
-          Shuffle
-        </button>
-      </div>
+      {renderControls ? (
+        renderControls(controlState)
+      ) : (
+        <div className="flashcard-preview__controls">
+          <button
+            type="button"
+            className="flashcard-btn"
+            onClick={goPrevious}
+            disabled={!controlState.canGoPrevious}
+          >
+            <ChevronLeft size={16} />
+            Previous
+          </button>
+          <span className="flashcard-preview__counter">
+            {currentIndex + 1} / {cardCount}
+          </span>
+          <button
+            type="button"
+            className="flashcard-btn"
+            onClick={goNext}
+            disabled={!controlState.canGoNext}
+          >
+            Next
+            <ChevronRight size={16} />
+          </button>
+          <button type="button" className="flashcard-btn" onClick={shuffle}>
+            <Shuffle size={16} />
+            Shuffle
+          </button>
+        </div>
+      )}
 
-      {renderActions?.({
-        card: currentCard,
-        index: currentIndex,
-        isBackVisible: flipped,
-        setFlipped,
-        goNext,
-        orderedCards,
-      })}
+      {renderActions?.(controlState)}
     </div>
   );
 }
