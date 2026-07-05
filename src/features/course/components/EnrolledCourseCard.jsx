@@ -1,12 +1,15 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import {
   ArrowRight,
   BookOpen,
   CalendarDays,
+  Clock3,
   GraduationCap,
   Lock,
   UserRound,
   Users,
+  X,
 } from "lucide-react";
 
 function getCourseDetailPath(course) {
@@ -80,7 +83,112 @@ function formatSchedule(scheduleDescription) {
   }
 }
 
+function formatClassStatus(status) {
+  if (!status) return "Unknown";
+
+  return String(status)
+    .replace(/_/g, " ")
+    .toLowerCase()
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function EnrolledClassDetailPopup({
+  enrolledClass,
+  classDateRange,
+  classSchedule,
+  onClose,
+}) {
+  if (!enrolledClass) return null;
+
+  const activeEnrollmentCount = Number(
+    enrolledClass.activeEnrollmentCount || 0,
+  );
+  const maxStudents = Number(enrolledClass.maxStudents || 0);
+
+  return (
+    <div
+      className="enrolled-class-popup-backdrop"
+      role="presentation"
+      onClick={onClose}
+    >
+      <div
+        className="enrolled-class-popup"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="enrolledClassPopupTitle"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="enrolled-class-popup__header">
+          <div>
+            <span className="enrolled-class-popup__eyebrow">Class detail</span>
+            <h3 id="enrolledClassPopupTitle">
+              {enrolledClass.className || "Unnamed class"}
+            </h3>
+          </div>
+
+          <button
+            type="button"
+            className="enrolled-class-popup__close"
+            onClick={onClose}
+            aria-label="Close class detail"
+          >
+            <X size={18} />
+          </button>
+        </div>
+
+        <div className="enrolled-class-popup__content">
+          <div className="enrolled-class-popup__item">
+            <UserRound size={16} />
+            <div>
+              <span>Trainer</span>
+              <strong>
+                {enrolledClass.trainerName || "Trainer not assigned"}
+              </strong>
+            </div>
+          </div>
+
+          <div className="enrolled-class-popup__item">
+            <CalendarDays size={16} />
+            <div>
+              <span>Date</span>
+              <strong>{classDateRange || "Not set"}</strong>
+            </div>
+          </div>
+
+          <div className="enrolled-class-popup__item">
+            <Clock3 size={16} />
+            <div>
+              <span>Schedule</span>
+              <strong>{classSchedule || "Not set"}</strong>
+            </div>
+          </div>
+
+          <div className="enrolled-class-popup__item">
+            <Users size={16} />
+            <div>
+              <span>Capacity</span>
+              <strong>
+                {activeEnrollmentCount}/{maxStudents}
+              </strong>
+            </div>
+          </div>
+
+          <div className="enrolled-class-popup__item">
+            <BookOpen size={16} />
+            <div>
+              <span>Status</span>
+              <strong>{formatClassStatus(enrolledClass.status)}</strong>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function EnrolledCourseCard({ course, viewMode = "grid" }) {
+  const [classPopupOpen, setClassPopupOpen] = useState(false);
+
   const title = course.title || "Untitled course";
   const description = course.description || "No description available.";
   const categoryName = getCategoryName(course);
@@ -97,124 +205,114 @@ export function EnrolledCourseCard({ course, viewMode = "grid" }) {
   const accessAllowed = course.accessAllowed !== false;
 
   return (
-    <article
-      className={`enrolled-course-card enrolled-course-card--${viewMode}`}
-    >
-      <div className="course-card__media">
-        {imageUrl ? (
-          <img src={imageUrl} alt={title} loading="lazy" />
-        ) : (
-          <div className="course-card__placeholder">
-            <BookOpen size={34} />
-          </div>
-        )}
-      </div>
-
-      <div className="enrolled-course-card__body">
-        <div className="enrolled-course-card__top">
-          <span className="enrolled-course-card__label">
-            <GraduationCap size={15} />
-            {categoryName}
-          </span>
-
-          {course.enrollmentStatus && (
-            <span className="enrolled-course-card__status">
-              {course.enrollmentStatus}
-            </span>
+    <>
+      <article
+        className={`enrolled-course-card enrolled-course-card--${viewMode}`}
+      >
+        <div className="course-card__media">
+          {imageUrl ? (
+            <img src={imageUrl} alt={title} loading="lazy" />
+          ) : (
+            <div className="course-card__placeholder">
+              <BookOpen size={34} />
+            </div>
           )}
         </div>
 
-        <h3 className="enrolled-course-card__title">{title}</h3>
+        <div className="enrolled-course-card__body">
+          <div className="enrolled-course-card__top">
+            <span className="enrolled-course-card__label">
+              <GraduationCap size={15} />
+              {categoryName}
+            </span>
 
-        <p className="enrolled-course-card__description">{description}</p>
-
-        {enrolledClass && (
-          <div className="enrolled-course-card__class-compact">
-            <div className="enrolled-course-card__class-main">
-              <span className="enrolled-course-card__class-kicker">
-                Your class
+            {course.enrollmentStatus && (
+              <span className="enrolled-course-card__status">
+                {course.enrollmentStatus}
               </span>
+            )}
+          </div>
 
-              <div className="enrolled-course-card__class-title-row">
-                <h4>{enrolledClass.className || "Unnamed class"}</h4>
+          <h3 className="enrolled-course-card__title">{title}</h3>
 
-                {enrolledClass.status && (
-                  <span className="enrolled-course-card__class-status">
-                    {enrolledClass.status}
+          <p className="enrolled-course-card__description">{description}</p>
+
+          {enrolledClass && (
+            <div className="enrolled-course-card__class-compact">
+              <div className="enrolled-course-card__class-main">
+                <span className="enrolled-course-card__class-kicker">
+                  Your class
+                </span>
+
+                <div className="enrolled-course-card__class-title-row">
+                  <h4>{enrolledClass.className || "Unnamed class"}</h4>
+                </div>
+              </div>
+
+              <div className="enrolled-course-card__class-details">
+                {enrolledClass.trainerName && (
+                  <span>
+                    <UserRound size={14} />
+                    {enrolledClass.trainerName}
                   </span>
                 )}
+
+                <button
+                  type="button"
+                  className="enrolled-course-card__class-detail-button"
+                  onClick={() => setClassPopupOpen(true)}
+                >
+                  View class detail
+                </button>
               </div>
             </div>
+          )}
 
-            <div className="enrolled-course-card__class-details">
-              {enrolledClass.trainerName && (
-                <span>
-                  <UserRound size={14} />
-                  {enrolledClass.trainerName}
-                </span>
-              )}
-
-              {classDateRange && (
-                <span>
-                  <CalendarDays size={14} />
-                  {classDateRange}
-                </span>
-              )}
-
-              {classSchedule && (
-                <span>
-                  <CalendarDays size={14} />
-                  {classSchedule}
-                </span>
-              )}
-
-              {Number.isFinite(Number(enrolledClass.maxStudents)) && (
-                <span>
-                  <Users size={14} />
-                  {Number(enrolledClass.activeEnrollmentCount || 0)}/
-                  {enrolledClass.maxStudents}
-                </span>
-              )}
+          {!accessAllowed && (
+            <div className="enrolled-course-card__blocked">
+              <Lock size={15} />
+              {course.accessBlockedReason ||
+                "Course access is currently blocked."}
             </div>
+          )}
+
+          <div className="enrolled-course-card__actions">
+            <Link
+              to={getLearningWorkspacePath(course)}
+              className={`enrolled-course-card__button enrolled-course-card__button--primary ${
+                !accessAllowed ? "is-disabled" : ""
+              }`}
+              aria-disabled={!accessAllowed}
+              onClick={(event) => {
+                if (!accessAllowed) {
+                  event.preventDefault();
+                }
+              }}
+            >
+              Learning
+            </Link>
+
+            <Link
+              to={getCourseDetailPath(course)}
+              state={{
+                from: "/dashboard",
+                backLabel: "Back to Dashboard",
+              }}
+              className="course-card__link"
+            >
+              View course <ArrowRight size={15} />
+            </Link>
           </div>
-        )}
-
-        {!accessAllowed && (
-          <div className="enrolled-course-card__blocked">
-            <Lock size={15} />
-            {course.accessBlockedReason ||
-              "Course access is currently blocked."}
-          </div>
-        )}
-
-        <div className="enrolled-course-card__actions">
-          <Link
-            to={getLearningWorkspacePath(course)}
-            className={`enrolled-course-card__button enrolled-course-card__button--primary ${
-              !accessAllowed ? "is-disabled" : ""
-            }`}
-            aria-disabled={!accessAllowed}
-            onClick={(event) => {
-              if (!accessAllowed) {
-                event.preventDefault();
-              }
-            }}
-          >
-            Learning
-          </Link>
-
-          <Link
-            to={getCourseDetailPath(course)}
-            state={{
-              from: "/dashboard",
-              backLabel: "Back to Dashboard",
-            }}
-            className="course-card__link"
-          >
-            View course <ArrowRight size={15} />
-          </Link>
         </div>
-      </div>
-    </article>
+      </article>
+      {classPopupOpen && enrolledClass && (
+        <EnrolledClassDetailPopup
+          enrolledClass={enrolledClass}
+          classDateRange={classDateRange}
+          classSchedule={classSchedule}
+          onClose={() => setClassPopupOpen(false)}
+        />
+      )}
+    </>
   );
 }
