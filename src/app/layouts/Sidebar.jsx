@@ -77,7 +77,7 @@ const navItems = [
     roles: [ROLES.TRAINER, ROLES.TMO, ROLES.SME],
   },
   {
-    label: "Tests & Questions",
+    label: "Tests Management",
     path: "/staff/tests",
     icon: FileQuestion,
     roles: [ROLES.TRAINER, ROLES.TMO, ROLES.SME],

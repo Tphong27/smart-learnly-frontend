@@ -12,6 +12,8 @@ import { MyTransactionsPage, PaymentResultPage } from "@/features/payment";
 import {
   TraineeFlashTestListPage,
   TraineeFlashTestTakePage,
+  TraineeTestListPage,
+  TraineeTestTakePage,
 } from "@/features/flashtest";
 import {
   CourseListPage,
@@ -49,6 +51,11 @@ function getTraineeRoutes() {
       children: [{ index: true, element: <TraineeFlashTestTakePage /> }],
     },
     {
+      path: "/learning/tests/take/:id/:type",
+      element: <RoleGuard allowedRoles={[ROLES.TRAINEE]} />,
+      children: [{ index: true, element: <TraineeTestTakePage /> }],
+    },
+    {
       path: "/learning",
       element: <RoleGuard allowedRoles={[ROLES.TRAINEE]} />,
       children: [
@@ -80,7 +87,7 @@ function getTraineeRoutes() {
             },
             {
               path: "tests",
-              element: <PlaceholderPage title="Tests" />,
+              element: <TraineeTestListPage />,
             },
             {
               path: "flashcards",

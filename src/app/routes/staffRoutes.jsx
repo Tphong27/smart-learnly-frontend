@@ -7,6 +7,9 @@ import {
   StaffFlashTestListPage,
   StaffFlashTestCreatePage,
   StaffFlashTestMonitorPage,
+  StaffTestListPage,
+  StaffTestCreatePage,
+  StaffTestMonitorPage,
 } from "@/features/flashtest";
 // import { StaffLayout } from "@/app/layouts/StaffLayout";
 import { AdminCoursesPage } from "@/features/admin";
@@ -45,7 +48,19 @@ function getStaffRoutes() {
             { path: "courses", element: <AdminCoursesPage /> },
             {
               path: "tests",
-              element: <PlaceholderPage title="Tests & Questions" />,
+              element: <StaffTestListPage />,
+            },
+            {
+              path: "tests/create",
+              element: <StaffTestCreatePage />,
+            },
+            {
+              path: "tests/edit/:id/:type",
+              element: <StaffTestCreatePage />,
+            },
+            {
+              path: "tests/monitor/:id/:type",
+              element: <StaffTestMonitorPage />,
             },
             {
               path: "flashcards",

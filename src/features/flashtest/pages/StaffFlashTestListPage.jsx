@@ -14,6 +14,10 @@ function isFlashTest(item) {
     item?.is_flashtest === true;
 }
 
+function isRegularTest(item) {
+  return !isFlashTest(item);
+}
+
 function getDuration(item) {
   if (item.durationMinutes ?? item.duration_minutes ?? item.duration) {
     return item.durationMinutes ?? item.duration_minutes ?? item.duration;
@@ -31,8 +35,17 @@ function formatDate(value) {
   return new Date(value).toLocaleString();
 }
 
-export function StaffFlashTestListPage() {
+export function StaffFlashTestListPage({ variant = "flash" }) {
   const navigate = useNavigate();
+  const isFlashMode = variant === "flash";
+  const basePath = isFlashMode ? "/staff/flashtests" : "/staff/tests";
+  const pageTitle = isFlashMode ? "Flash Tests Management" : "Tests Management";
+  const createLabel = isFlashMode ? "Create Flash Test" : "Create Test";
+  const emptyTitle = isFlashMode ? "No flash tests yet" : "No tests yet";
+  const emptyDescription = isFlashMode
+    ? "Create your first practice quiz or essay assignment to begin tracking student progress."
+    : "Create your first MCQ test to begin tracking trainee progress.";
+  const itemFilter = isFlashMode ? isFlashTest : isRegularTest;
   const currentUser = getCurrentUser();
   const currentUserId =
     currentUser?.id || currentUser?.userId || currentUser?.accountId || "";
@@ -45,10 +58,11 @@ export function StaffFlashTestListPage() {
   const loadAllFlashTests = useCallback(async () => {
     setLoading(true);
     try {
-      const [testResult, assignmentResult] = await Promise.allSettled([
-        testService.getMine(),
-        assignmentService.getMine(),
-      ]);
+      const requests = [testService.getMine()];
+      if (isFlashMode) {
+        requests.push(assignmentService.getMine());
+      }
+      const [testResult, assignmentResult] = await Promise.allSettled(requests);
 
       const belongsToCurrentTrainer = (item) => {
         const createdBy = item?.createdBy || item?.created_by;
@@ -57,13 +71,13 @@ export function StaffFlashTestListPage() {
 
       setTests(
         testResult.status === "fulfilled"
-          ? (testResult.value || []).filter(isFlashTest).filter(belongsToCurrentTrainer)
+          ? (testResult.value || []).filter(itemFilter).filter(belongsToCurrentTrainer)
           : [],
       );
       setAssignments(
-        assignmentResult.status === "fulfilled"
+        isFlashMode && assignmentResult?.status === "fulfilled"
           ? (assignmentResult.value || [])
-              .filter(isFlashTest)
+              .filter(itemFilter)
               .filter(belongsToCurrentTrainer)
           : [],
       );
@@ -72,7 +86,7 @@ export function StaffFlashTestListPage() {
     } finally {
       setLoading(false);
     }
-  }, [currentUserId]);
+  }, [currentUserId, isFlashMode, itemFilter]);
 
   useEffect(() => {
     const timer = window.setTimeout(loadAllFlashTests, 0);
@@ -120,9 +134,11 @@ export function StaffFlashTestListPage() {
       <header className="ft-page-header">
         <div>
           <span className="ft-page-kicker">Staff workspace</span>
-          <h1 className="ft-page-title">Flash Tests Management</h1>
+          <h1 className="ft-page-title">{pageTitle}</h1>
           <p className="ft-page-subtitle">
-            Manage MCQ practice tests, essay assignments, and realtime progress.
+            {isFlashMode
+              ? "Manage MCQ practice tests, essay assignments, and realtime progress."
+              : "Manage MCQ tests and realtime trainee progress."}
           </p>
         </div>
         <div className="ft-toolbar">
@@ -143,8 +159,8 @@ export function StaffFlashTestListPage() {
           >
             <RefreshCw size={18} className={loading ? "ft-spin" : ""} />
           </button>
-          <Link to="/staff/flashtests/create" className="ft-button ft-button--primary">
-            <Plus size={16} /> Create Flash Test
+          <Link to={`${basePath}/create`} className="ft-button ft-button--primary">
+            <Plus size={16} /> {createLabel}
           </Link>
         </div>
       </header>
@@ -160,7 +176,9 @@ export function StaffFlashTestListPage() {
               onChange={(event) => setKeyword(event.target.value)}
             />
           </label>
-          <span className="ft-list-count">{total} flash tests</span>
+          <span className="ft-list-count">
+            {total} {isFlashMode ? "flash tests" : "tests"}
+          </span>
         </div>
 
         {loading ? (
@@ -173,13 +191,12 @@ export function StaffFlashTestListPage() {
             <span className="ft-empty-icon">
               <ClipboardList size={26} />
             </span>
-            <strong>No flash tests yet</strong>
+            <strong>{emptyTitle}</strong>
             <p className="ft-muted">
-              Create your first practice quiz or essay assignment to begin tracking
-              student progress.
+              {emptyDescription}
             </p>
-            <Link to="/staff/flashtests/create" className="ft-button ft-button--primary">
-              <Plus size={16} /> Create Flash Test
+            <Link to={`${basePath}/create`} className="ft-button ft-button--primary">
+              <Plus size={16} /> {createLabel}
             </Link>
           </div>
         ) : rows.length === 0 ? (
@@ -240,14 +257,14 @@ export function StaffFlashTestListPage() {
                       <td className="ft-table-action">
                         <div className="ft-table-actions">
                           <Link
-                            to={`/staff/flashtests/edit/${item.id}/${type}`}
+                            to={`${basePath}/edit/${item.id}/${type}`}
                             className="ft-icon-button"
-                            title="Edit flash test"
+                            title={isFlashMode ? "Edit flash test" : "Edit test"}
                           >
                             <Edit2 size={16} />
                           </Link>
                           <Link
-                            to={`/staff/flashtests/monitor/${item.id}/${type}`}
+                            to={`${basePath}/monitor/${item.id}/${type}`}
                             className="ft-icon-button"
                             title="Monitor progress"
                           >

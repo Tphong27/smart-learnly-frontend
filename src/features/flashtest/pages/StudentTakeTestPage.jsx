@@ -76,7 +76,11 @@ function submitWarningMessage(warning) {
   return warning?.message || "";
 }
 
-export function StudentTakeTestPage() {
+export function StudentTakeTestPage({
+  listPath = "/learning/flashtests",
+  accessStoragePrefix = "flashAccess",
+  resultKicker = "Flash test result",
+} = {}) {
   const { id, type } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
@@ -102,7 +106,7 @@ export function StudentTakeTestPage() {
 
   const accessCode =
     location.state?.accessCode ||
-    window.sessionStorage.getItem(`flashAccess:${normalizedType}:${id}`) ||
+    window.sessionStorage.getItem(`${accessStoragePrefix}:${normalizedType}:${id}`) ||
     "";
 
   const publishMonitor = useCallback(
@@ -367,7 +371,7 @@ export function StudentTakeTestPage() {
         });
       }
       if (normalizedType === "essay") {
-        navigate("/learning/flashtests");
+        navigate(listPath);
       }
     } catch (submitError) {
       submittedRef.current = false;
@@ -382,6 +386,7 @@ export function StudentTakeTestPage() {
     id,
     ensureEssayStarted,
     navigate,
+    listPath,
     normalizedType,
     publishMonitor,
     questions,
@@ -483,7 +488,7 @@ export function StudentTakeTestPage() {
             <Eye size={24} />
           </div>
           <div className="ft-result-panel__body">
-            <span className="ft-page-kicker">Flash test result</span>
+            <span className="ft-page-kicker">{resultKicker}</span>
             <h2>{testData?.title || testData?.name || "MCQ practice"}</h2>
             <p>
               Status: <strong>{completedResult.status || "SUBMITTED"}</strong>
@@ -500,7 +505,7 @@ export function StudentTakeTestPage() {
             <button
               className="ft-button ft-button--primary"
               type="button"
-              onClick={() => navigate("/learning/flashtests")}
+              onClick={() => navigate(listPath)}
             >
               <ArrowLeft size={16} /> Back to list
             </button>

@@ -68,12 +68,15 @@ const DURATION_PRESETS = [
   { label: "45 min", value: "45", unit: "minutes" },
 ];
 
-export function StaffFlashTestCreatePage() {
+export function StaffFlashTestCreatePage({ variant = "flash" }) {
   const navigate = useNavigate();
   const toast = useToast();
   const { id, type } = useParams();
   const isEdit = Boolean(id);
-  const [testType, setTestType] = useState("essay");
+  const isFlashMode = variant === "flash";
+  const basePath = isFlashMode ? "/staff/flashtests" : "/staff/tests";
+  const pageName = isFlashMode ? "Flash Test" : "Test";
+  const [testType, setTestType] = useState(isFlashMode ? "essay" : "mcq");
   const [formData, setFormData] = useState({
     title: "",
     durationValue: "15",
@@ -137,8 +140,9 @@ export function StaffFlashTestCreatePage() {
     async function loadExistingFlashTest() {
       setLoadingExisting(true);
       try {
-        const normalizedType =
-          type === "mcq" || type === "test" ? "mcq" : "essay";
+        const normalizedType = !isFlashMode
+          ? "mcq"
+          : type === "mcq" || type === "test" ? "mcq" : "essay";
         setTestType(normalizedType);
 
         if (normalizedType === "essay") {
@@ -195,7 +199,7 @@ export function StaffFlashTestCreatePage() {
     return () => {
       cancelled = true;
     };
-  }, [id, type]);
+  }, [id, isFlashMode, type]);
 
   const handleSave = async () => {
     const duration = Math.round(
@@ -204,7 +208,7 @@ export function StaffFlashTestCreatePage() {
     );
     const nextErrors = {};
     if (!formData.title.trim()) {
-      nextErrors.title = "Please enter the flash test title.";
+      nextErrors.title = `Please enter the ${isFlashMode ? "flash test" : "test"} title.`;
     }
     if (!duration || duration <= 0) {
       nextErrors.duration = "Please enter a valid duration.";
@@ -253,8 +257,10 @@ export function StaffFlashTestCreatePage() {
           testType: "practice",
           maxAttempts: 1,
           showAnswersAfter: true,
-          isFlashtest: true,
         };
+        if (isFlashMode) {
+          testPayload.isFlashtest = true;
+        }
         const savedTest = isEdit
           ? await testService.update(id, testPayload)
           : await testService.create(testPayload);
@@ -294,8 +300,8 @@ export function StaffFlashTestCreatePage() {
         }
       }
 
-      toast.success(`Flash test ${isEdit ? "updated" : "created"} successfully.`);
-      navigate("/staff/flashtests");
+      toast.success(`${pageName} ${isEdit ? "updated" : "created"} successfully.`);
+      navigate(basePath);
     } catch (error) {
       console.error(error);
       toast.error(error.message || "Could not save flash test.");
@@ -308,12 +314,16 @@ export function StaffFlashTestCreatePage() {
     <section className="ft-page">
       <header className="ft-page-header">
         <div>
-          <span className="ft-page-kicker">Flash Tests</span>
+          <span className="ft-page-kicker">
+            {isFlashMode ? "Flash Tests" : "Tests"}
+          </span>
           <h1 className="ft-page-title">
-            {isEdit ? "Edit Flash Test" : "Create Flash Test"}
+            {isEdit ? `Edit ${pageName}` : `Create ${pageName}`}
           </h1>
           <p className="ft-page-subtitle">
-            Create a timed essay assignment or a practice MCQ test for trainees.
+            {isFlashMode
+              ? "Create a timed essay assignment or a practice MCQ test for trainees."
+              : "Create a timed MCQ test for trainees."}
           </p>
         </div>
         <div className="ft-toolbar">
@@ -338,7 +348,7 @@ export function StaffFlashTestCreatePage() {
       </header>
 
       <div className="ft-panel">
-        <div className="ft-ribbon" aria-label="Flash test setup summary">
+        <div className="ft-ribbon" aria-label={`${pageName} setup summary`}>
           <div className="ft-ribbon__item is-active">
             <FileText size={18} />
             <div>
@@ -493,27 +503,29 @@ export function StaffFlashTestCreatePage() {
             </div>
           </label>
 
-          <div className="ft-field">
-            <span className="ft-label">Assessment type</span>
-            <div className="ft-tabs">
-              <button
-                className={`ft-tab ${testType === "essay" ? "is-active" : ""}`}
-                type="button"
-                disabled={isEdit}
-                onClick={() => setTestType("essay")}
-              >
-                <FileText size={16} /> Essay assignment
-              </button>
-              <button
-                className={`ft-tab ${testType === "mcq" ? "is-active" : ""}`}
-                type="button"
-                disabled={isEdit}
-                onClick={() => setTestType("mcq")}
-              >
-                <CheckSquare size={16} /> MCQ practice
-              </button>
+          {isFlashMode && (
+            <div className="ft-field">
+              <span className="ft-label">Assessment type</span>
+              <div className="ft-tabs">
+                <button
+                  className={`ft-tab ${testType === "essay" ? "is-active" : ""}`}
+                  type="button"
+                  disabled={isEdit}
+                  onClick={() => setTestType("essay")}
+                >
+                  <FileText size={16} /> Essay assignment
+                </button>
+                <button
+                  className={`ft-tab ${testType === "mcq" ? "is-active" : ""}`}
+                  type="button"
+                  disabled={isEdit}
+                  onClick={() => setTestType("mcq")}
+                >
+                  <CheckSquare size={16} /> MCQ practice
+                </button>
+              </div>
             </div>
-          </div>
+          )}
 
           {testType === "essay" ? (
             <>
