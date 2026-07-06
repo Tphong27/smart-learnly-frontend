@@ -23,6 +23,17 @@ const IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/webp']
 const MAX_IMAGE_SIZE = 10 * 1024 * 1024
 const MAX_IMAGE_FILES = 5
 
+function getImageImportErrorMessage(err) {
+  const genericMessage = 'Image import is unavailable. Gemini may be misconfigured, rate-limited, or temporarily failing. Check backend logs for the provider status and response body.'
+  if (err?.code !== 'IMAGE_IMPORT_UNAVAILABLE') {
+    return err?.message || 'Could not preview image import.'
+  }
+  const message = typeof err?.message === 'string' ? err.message.trim() : ''
+  if (!message || message === 'IMAGE_IMPORT_UNAVAILABLE') {
+    return genericMessage
+  }
+  return `Image import is unavailable. ${message}`
+}
 function StatusBadge({ row }) {
   if (!row.errors?.length) {
     return <span className="admin-status admin-status--approved">Valid</span>
@@ -252,9 +263,7 @@ export function QuestionImportModal({ open, bank, existingQuestions = [], onClos
       setImageQuestions((result?.questions || []).map(normalizeImageQuestion))
       setStep('preview')
     } catch (err) {
-      setParseError(err?.code === 'IMAGE_IMPORT_UNAVAILABLE'
-        ? 'Image import is unavailable. Gemini Vision provider is not configured.'
-        : err?.message || 'Could not preview image import.')
+      setParseError(getImageImportErrorMessage(err))
       setImageQuestions([])
       setImageOcrText('')
       setImageWarnings([])
