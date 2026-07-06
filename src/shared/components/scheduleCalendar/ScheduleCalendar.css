@@ -1,0 +1,80 @@
+.shared-schedule-calendar {
+  width: 100%;
+}
+
+.shared-schedule-calendar__scroll {
+  width: 100%;
+  overflow-x: auto;
+  border: 1px solid #dbe6f7;
+  border-radius: 14px;
+  background: #ffffff;
+}
+
+.shared-schedule-calendar__table {
+  width: 100%;
+  min-width: 680px;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.shared-schedule-calendar__table th {
+  padding: 12px 10px;
+  border-right: 1px solid #dbe6f7;
+  background: #dbeafe;
+  color: #0f172a;
+  text-align: left;
+  font-weight: 800;
+}
+
+.shared-schedule-calendar__table th:last-child {
+  border-right: none;
+}
+
+.shared-schedule-calendar__table td {
+  min-height: 58px;
+  padding: 12px 10px;
+  border-top: 1px solid #e5edf8;
+  border-right: 1px solid #e5edf8;
+  color: #0f172a;
+  vertical-align: top;
+}
+
+.shared-schedule-calendar__table td:last-child {
+  border-right: none;
+}
+
+.shared-schedule-calendar__day-short {
+  display: block;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.shared-schedule-calendar__day-name {
+  display: block;
+  margin-top: 2px;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.shared-schedule-calendar__slot-list {
+  display: grid;
+  gap: 8px;
+}
+
+.shared-schedule-calendar__class-cell {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  padding: 7px 10px;
+  border-radius: 999px;
+  background: #dcfce7;
+  color: #047857;
+  font-size: 13px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.shared-schedule-calendar__empty {
+  color: #94a3b8;
+}

@@ -3,14 +3,10 @@ import { Link } from "react-router-dom";
 import {
   ArrowRight,
   BookOpen,
-  CalendarDays,
-  Clock3,
   GraduationCap,
   Lock,
-  UserRound,
-  Users,
-  X,
 } from "lucide-react";
+import { EnrolledClassDetailPopup } from "./EnrolledClassDetailPopup";
 
 function getCourseDetailPath(course) {
   return `/courses/${course.slug || course.id}`;
@@ -83,107 +79,15 @@ function formatSchedule(scheduleDescription) {
   }
 }
 
-function formatClassStatus(status) {
-  if (!status) return "Unknown";
+function buildClassSummary(enrolledClass) {
+  if (!enrolledClass) {
+    return "";
+  }
 
-  return String(status)
-    .replace(/_/g, " ")
-    .toLowerCase()
-    .replace(/\b\w/g, (char) => char.toUpperCase());
-}
+  const className = enrolledClass.className || "Unnamed class";
+  const trainerName = enrolledClass.trainerName || "Trainer not assigned";
 
-function EnrolledClassDetailPopup({
-  enrolledClass,
-  classDateRange,
-  classSchedule,
-  onClose,
-}) {
-  if (!enrolledClass) return null;
-
-  const activeEnrollmentCount = Number(
-    enrolledClass.activeEnrollmentCount || 0,
-  );
-  const maxStudents = Number(enrolledClass.maxStudents || 0);
-
-  return (
-    <div
-      className="enrolled-class-popup-backdrop"
-      role="presentation"
-      onClick={onClose}
-    >
-      <div
-        className="enrolled-class-popup"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="enrolledClassPopupTitle"
-        onClick={(event) => event.stopPropagation()}
-      >
-        <div className="enrolled-class-popup__header">
-          <div>
-            <span className="enrolled-class-popup__eyebrow">Class detail</span>
-            <h3 id="enrolledClassPopupTitle">
-              {enrolledClass.className || "Unnamed class"}
-            </h3>
-          </div>
-
-          <button
-            type="button"
-            className="enrolled-class-popup__close"
-            onClick={onClose}
-            aria-label="Close class detail"
-          >
-            <X size={18} />
-          </button>
-        </div>
-
-        <div className="enrolled-class-popup__content">
-          <div className="enrolled-class-popup__item">
-            <UserRound size={16} />
-            <div>
-              <span>Trainer</span>
-              <strong>
-                {enrolledClass.trainerName || "Trainer not assigned"}
-              </strong>
-            </div>
-          </div>
-
-          <div className="enrolled-class-popup__item">
-            <CalendarDays size={16} />
-            <div>
-              <span>Date</span>
-              <strong>{classDateRange || "Not set"}</strong>
-            </div>
-          </div>
-
-          <div className="enrolled-class-popup__item">
-            <Clock3 size={16} />
-            <div>
-              <span>Schedule</span>
-              <strong>{classSchedule || "Not set"}</strong>
-            </div>
-          </div>
-
-          <div className="enrolled-class-popup__item">
-            <Users size={16} />
-            <div>
-              <span>Capacity</span>
-              <strong>
-                {activeEnrollmentCount}/{maxStudents}
-              </strong>
-            </div>
-          </div>
-
-          <div className="enrolled-class-popup__item">
-            <BookOpen size={16} />
-            <div>
-              <span>Status</span>
-              <strong>{formatClassStatus(enrolledClass.status)}</strong>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+  return `${className} • ${trainerName}`;
 }
 
 export function EnrolledCourseCard({ course, viewMode = "grid" }) {
@@ -201,6 +105,7 @@ export function EnrolledCourseCard({ course, viewMode = "grid" }) {
   const classSchedule = enrolledClass
     ? formatSchedule(enrolledClass.scheduleDescription)
     : "";
+  const classSummary = buildClassSummary(enrolledClass);
 
   const accessAllowed = course.accessAllowed !== false;
 
@@ -238,33 +143,24 @@ export function EnrolledCourseCard({ course, viewMode = "grid" }) {
           <p className="enrolled-course-card__description">{description}</p>
 
           {enrolledClass && (
-            <div className="enrolled-course-card__class-compact">
-              <div className="enrolled-course-card__class-main">
+            <div className="enrolled-course-card__class-compact enrolled-course-card__class-compact--inline">
+              <div className="enrolled-course-card__class-inline-info">
                 <span className="enrolled-course-card__class-kicker">
                   Your class
                 </span>
 
-                <div className="enrolled-course-card__class-title-row">
-                  <h4>{enrolledClass.className || "Unnamed class"}</h4>
-                </div>
+                <span className="enrolled-course-card__class-inline-text">
+                  {classSummary}
+                </span>
               </div>
 
-              <div className="enrolled-course-card__class-details">
-                {enrolledClass.trainerName && (
-                  <span>
-                    <UserRound size={14} />
-                    {enrolledClass.trainerName}
-                  </span>
-                )}
-
-                <button
-                  type="button"
-                  className="enrolled-course-card__class-detail-button"
-                  onClick={() => setClassPopupOpen(true)}
-                >
-                  View class detail
-                </button>
-              </div>
+              <button
+                type="button"
+                className="enrolled-course-card__class-detail-button"
+                onClick={() => setClassPopupOpen(true)}
+              >
+                View detail
+              </button>
             </div>
           )}
 

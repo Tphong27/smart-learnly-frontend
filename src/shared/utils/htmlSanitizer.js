@@ -1,7 +1,6 @@
 import DOMPurify from "dompurify";
 
-const SAFE_URI_REGEXP =
-  /^(?:(?:https?|mailto|tel):|data:image\/(?:png|jpeg|jpg|gif|webp);base64,|[^a-z]|[a-z+.-]+(?:[^a-z+.\-:]|$))/i;
+const SAFE_URI_REGEXP = /^(?:(?:https?|mailto|tel):|[^a-z]|[a-z+.-]+(?:[^a-z+.\-:]|$))/i;
 
 function removeDarkPasteBackground(html) {
   if (!html || typeof html !== "string") {

@@ -70,7 +70,7 @@ export function isPathAllowedForRole(pathname, role) {
       allow: [ROLES.TRAINEE],
     },
     {
-      prefix: "/cart",
+      prefix: "/dashboard",
       allow: [ROLES.TRAINEE],
     },
   ];

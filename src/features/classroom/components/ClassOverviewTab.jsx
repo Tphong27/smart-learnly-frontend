@@ -4,7 +4,7 @@ import { Button } from "@/shared/components/ui";
 import { classService } from "@/services";
 import { useActiveTrainers } from "../hooks/useActiveTrainers";
 import { formatCapacity, formatDate } from "../utils/classFormatter";
-import { ScheduleCalendar } from "./ScheduleCalendar";
+import { ScheduleCalendar } from "@/shared/components/scheduleCalendar";
 import { WeeklyScheduleEditor } from "./WeeklySchedulePicker";
 
 function toInputDate(value) {

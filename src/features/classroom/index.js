@@ -7,7 +7,7 @@ export { ClassCard } from "./components/ClassCard";
 export { ClassStatusBadge } from "./components/ClassStatusBadge";
 export { ClassListFilters } from "./components/ClassListFilters";
 export { ClassOverviewTab } from "./components/ClassOverviewTab";
-export { ScheduleCalendar } from "./components/ScheduleCalendar";
+export { ScheduleCalendar } from "@/shared/components/scheduleCalendar";
 
 export const classroomFeature = {
   name: "Class Operations",

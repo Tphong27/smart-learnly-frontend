@@ -830,6 +830,41 @@
     background: #f8fafc;
 }
 
+.enrolled-course-card__class-compact--inline {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    padding: 10px 14px;
+}
+
+.enrolled-course-card__class-inline-info {
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.enrolled-course-card__class-inline-text {
+    min-width: 0;
+    color: #0f172a;
+    font-size: 0.94rem;
+    font-weight: 700;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.enrolled-course-card__class-compact--inline .enrolled-course-card__class-kicker {
+    flex: 0 0 auto;
+}
+
+.enrolled-course-card__class-compact--inline .enrolled-course-card__class-detail-button {
+    flex: 0 0 auto;
+    margin-top: 0;
+    white-space: nowrap;
+}
+
 .enrolled-course-card__class-main {
     display: grid;
     gap: 4px;
@@ -923,7 +958,8 @@
 }
 
 .enrolled-class-popup {
-  width: min(560px, 100%);
+  width: min(880px, calc(100vw - 48px));
+  max-height: calc(100vh - 48px);
   border-radius: 22px;
   background: #ffffff;
   box-shadow: 0 24px 70px rgba(15, 23, 42, 0.24);
@@ -970,8 +1006,11 @@
 
 .enrolled-class-popup__content {
   display: grid;
-  gap: 14px;
-  padding: 22px 24px 24px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px 18px;
+  padding: 22px 30px 30px;
+  overflow-y: auto;
+  max-height: calc(100vh - 210px);
 }
 
 .enrolled-class-popup__item {
@@ -999,4 +1038,59 @@
   color: #07183d;
   font-size: 15px;
   font-weight: 700;
+}
+
+.enrolled-class-popup__subtitle {
+    margin: 8px 0 0;
+    color: #64748b;
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+.enrolled-class-popup__status-row {
+    display: flex;
+    justify-content: flex-start;
+    padding: 16px 24px 0;
+}
+
+.enrolled-class-popup__status-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 6px 12px;
+    border-radius: 999px;
+    color: #047857;
+    background: #d1fae5;
+    font-size: 13px;
+    font-weight: 800;
+}
+
+.enrolled-class-popup__content {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.enrolled-class-popup__item--wide {
+    grid-column: 1 / -1;
+}
+
+.enrolled-class-popup__item strong {
+    word-break: break-word;
+}
+
+@media (max-width: 640px) {
+    .enrolled-course-card__class-compact--inline {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .enrolled-course-card__class-inline-info {
+        width: 100%;
+    }
+
+    .enrolled-course-card__class-inline-text {
+        max-width: 100%;
+    }
+
+    .enrolled-class-popup__content {
+        grid-template-columns: 1fr;
+    }
 }
