@@ -242,3 +242,72 @@
   color: #64748b;
   font-size: 12px;
 }
+.question-card__audio-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  width: fit-content;
+  margin-top: 12px;
+  padding: 8px 12px;
+  border: 1px solid #bfdbfe;
+  border-radius: 999px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.question-card__audio-badge:hover {
+  background: #dbeafe;
+}
+
+.question-modal__audio-section {
+  margin-top: 4px;
+}
+
+.question-audio-uploader {
+  display: grid;
+  gap: 10px;
+}
+
+.question-audio-uploader__preview {
+  display: grid;
+  place-items: center;
+  min-height: 86px;
+  padding: 14px;
+  border: 1px dashed #cbd5e1;
+  border-radius: 10px;
+  background: #f8fafc;
+}
+
+.question-audio-uploader__preview.has-audio {
+  border-style: solid;
+  background: #ffffff;
+}
+
+.question-audio-uploader__preview audio,
+.question-audio-preview {
+  width: 100%;
+}
+
+.question-audio-uploader__empty {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #64748b;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.question-audio-uploader__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.question-audio-uploader__hint {
+  margin: 0;
+  color: #64748b;
+  font-size: 12px;
+}

@@ -8,12 +8,14 @@ import {
   Search,
   Trash2,
   Upload,
+  Volume2,
 } from "lucide-react";
 import { Button, FormField, Modal, useToast } from "@/shared/components/ui";
 import { courseService, getCurrentUser, questionBankService } from "@/services";
 import "../../admin-shared.css";
 import "./question-bank.css";
 import { QuestionImportModal } from "../components/QuestionImportModal";
+import { QuestionAudioUploader } from "../components/QuestionAudioUploader";
 import { QuestionImageUploader } from "../components/QuestionImageUploader";
 
 const PAGE_SIZE = 20;
@@ -117,6 +119,8 @@ function QuestionModal({ open, bankId, modules, question, onClose, onSaved }) {
   const [error, setError] = useState(null);
   const [imageFile, setImageFile] = useState(null);
   const [imageRemoved, setImageRemoved] = useState(false);
+  const [audioFile, setAudioFile] = useState(null);
+  const [audioRemoved, setAudioRemoved] = useState(false);
 
   function setType(nextType) {
     setValues((current) => ({
@@ -183,6 +187,16 @@ function QuestionModal({ open, bankId, modules, question, onClose, onSaved }) {
     setImageRemoved(Boolean(question?.imageUrl));
   }
 
+  function handleAudioSelected(file) {
+    setAudioFile(file);
+    setAudioRemoved(false);
+  }
+
+  function handleAudioRemove() {
+    setAudioFile(null);
+    setAudioRemoved(Boolean(question?.audioUrl));
+  }
+
   async function syncQuestionImage(questionId) {
     if (!questionId) return;
     if (imageRemoved && question?.imageUrl) {
@@ -190,6 +204,16 @@ function QuestionModal({ open, bankId, modules, question, onClose, onSaved }) {
     }
     if (imageFile) {
       await questionBankService.uploadQuestionImage(questionId, imageFile);
+    }
+  }
+
+  async function syncQuestionAudio(questionId) {
+    if (!questionId) return;
+    if (audioRemoved && question?.audioUrl) {
+      await questionBankService.removeQuestionAudio(questionId);
+    }
+    if (audioFile) {
+      await questionBankService.uploadQuestionAudio(questionId, audioFile);
     }
   }
 
@@ -234,6 +258,15 @@ function QuestionModal({ open, bankId, modules, question, onClose, onSaved }) {
       } catch {
         toast.error(
           `${editing ? "Question updated" : "Question created"}, but image update failed. Open the question and retry.`,
+        );
+        onSaved();
+        return;
+      }
+      try {
+        await syncQuestionAudio(savedQuestionId);
+      } catch {
+        toast.error(
+          `${editing ? "Question updated" : "Question created"}, but audio update failed. Open the question and retry.`,
         );
         onSaved();
         return;
@@ -390,6 +423,16 @@ function QuestionModal({ open, bankId, modules, question, onClose, onSaved }) {
           />
         </div>
 
+        <div className="input-field admin-form-grid__full question-modal__audio-section">
+          <label className="input-field__label">Question audio</label>
+          <QuestionAudioUploader
+            value={audioRemoved ? null : question?.audioUrl}
+            disabled={submitting || question?.status === "archived"}
+            onFileSelected={handleAudioSelected}
+            onRemove={handleAudioRemove}
+          />
+        </div>
+
         <div className="question-modal__answers">
           <div className="question-modal__answers-header">
             <h3>Answers</h3>
@@ -483,6 +526,7 @@ export function AdminQuestionBankDetailPage() {
   const [editingQuestion, setEditingQuestion] = useState(null);
   const [modalRevision, setModalRevision] = useState(0);
   const [importOpen, setImportOpen] = useState(false);
+  const [audioPreview, setAudioPreview] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -787,6 +831,15 @@ export function AdminQuestionBankDetailPage() {
                       <img src={question.imageUrl} alt="Question attachment" className="question-card__image" />
                     </div>
                   )}
+                  {question.audioUrl && (
+                    <button
+                      type="button"
+                      className="question-card__audio-badge"
+                      onClick={() => setAudioPreview({ url: question.audioUrl, title: `Question ${questionNumber} audio` })}
+                    >
+                      <Volume2 size={15} /> Audio attached
+                    </button>
+                  )}
                   <div className="question-card__answers">
                     {answers.map((answer, answerIndex) => {
                       const correct = Boolean(
@@ -866,6 +919,19 @@ export function AdminQuestionBankDetailPage() {
         onClose={() => setImportOpen(false)}
         onImported={() => setRefreshKey((key) => key + 1)}
       />
+
+      <Modal
+        open={Boolean(audioPreview)}
+        title={audioPreview?.title || "Question audio"}
+        size="sm"
+        onClose={() => setAudioPreview(null)}
+      >
+        {audioPreview?.url && (
+          <audio className="question-audio-preview" controls preload="metadata" src={audioPreview.url}>
+            <track kind="captions" />
+          </audio>
+        )}
+      </Modal>
     </div>
   );
 }
