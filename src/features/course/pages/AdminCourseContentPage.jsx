@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { courseService } from "../../../services/course.service";
 import { flashcardService } from "../../../services/flashcard.service";
+import { getCurrentUser } from "../../../services/api-client";
 import { useToast } from "../../../shared/components/ui/Toast/useToast";
 import { QuizQuestionManager } from "../components/QuizQuestionManager";
 import { getLessonStatusMeta } from "../utils/lesson-status";
@@ -30,6 +31,7 @@ function SectionItem({
   onDeleteLesson,
   onManageQuestions,
   dragHandleProps,
+  readOnly = false,
 }) {
   const [isExpanded, setIsExpanded] = useState(true);
 
@@ -79,9 +81,9 @@ function SectionItem({
           style={{ display: "flex", alignItems: "center", gap: "8px" }}
         >
           <span
-            {...dragHandleProps}
+            {...(readOnly ? {} : dragHandleProps)}
             className="material-symbols-outlined drag-handle"
-            style={{ cursor: "grab" }}
+            style={{ cursor: readOnly ? "default" : "grab" }}
           >
             drag_indicator
           </span>
@@ -107,34 +109,36 @@ function SectionItem({
           </h3>
         </div>
 
-        <div className="section-actions">
-          <button
-            className="icon-btn"
-            title="Edit section"
-            onClick={() => onEditSection(section)}
-          >
-            <span className="material-symbols-outlined">edit</span>
-          </button>
+        {!readOnly && (
+          <div className="section-actions">
+            <button
+              className="icon-btn"
+              title="Edit section"
+              onClick={() => onEditSection(section)}
+            >
+              <span className="material-symbols-outlined">edit</span>
+            </button>
 
-          <button
-            className="icon-btn delete"
-            title="Delete section"
-            onClick={() => onDeleteSection(section.id, section.title)}
-          >
-            <span className="material-symbols-outlined">delete</span>
-          </button>
+            <button
+              className="icon-btn delete"
+              title="Delete section"
+              onClick={() => onDeleteSection(section.id, section.title)}
+            >
+              <span className="material-symbols-outlined">delete</span>
+            </button>
 
-          <button
-            onClick={() => {
-              setIsExpanded(true);
-              setTargetSectionId(section.id);
-              setIsLessonModalOpen(true);
-            }}
-            className="btn-outline"
-          >
-            + Add Lesson
-          </button>
-        </div>
+            <button
+              onClick={() => {
+                setIsExpanded(true);
+                setTargetSectionId(section.id);
+                setIsLessonModalOpen(true);
+              }}
+              className="btn-outline"
+            >
+              + Add Lesson
+            </button>
+          </div>
+        )}
       </div>
 
       {isExpanded && (
@@ -162,12 +166,13 @@ function SectionItem({
                     key={lesson?.id || lIndex}
                     draggableId={`lesson-${lesson.id}`}
                     index={lIndex}
+                    isDragDisabled={readOnly}
                   >
                     {(provided, snapshot) => (
                       <div
                         ref={provided.innerRef}
-                        {...provided.draggableProps}
-                        {...provided.dragHandleProps}
+                        {...(readOnly ? {} : provided.draggableProps)}
+                        {...(readOnly ? {} : provided.dragHandleProps)}
                         className="lesson-item"
                         style={{
                           ...provided.draggableProps.style,
@@ -193,6 +198,7 @@ function SectionItem({
                           )}
                         </div>
 
+                        {!readOnly && (
                         <div className="lesson-actions">
                           <span className="lesson-duration">
                             {lesson?.durationSeconds
@@ -232,6 +238,7 @@ function SectionItem({
                             <span className="material-symbols-outlined">delete</span>
                           </button>
                         </div>
+                        )}
                       </div>
                     )}
                   </Draggable>
@@ -261,7 +268,12 @@ export default function AdminCourseContentPage() {
   const params = useParams();
   const courseId = params.courseId || params.id;
   const navigate = useNavigate();
+  const location = useLocation();
   const { showToast: emitToast } = useToast();
+  const currentUser = getCurrentUser();
+  const isTrainer = String(currentUser?.role || "").toLowerCase() === "trainer";
+  const isStaffCourseContent = location.pathname.startsWith("/staff/");
+  const readOnly = isTrainer || isStaffCourseContent;
   const showToast = useCallback(
     (messageOrOptions, type) => {
       if (messageOrOptions && typeof messageOrOptions === "object") {
@@ -510,6 +522,7 @@ export default function AdminCourseContentPage() {
   };
 
   const onDragEnd = async (result) => {
+    if (readOnly) return;
     const { destination, source, draggableId, type } = result;
     if (!destination) return;
     if (destination.droppableId === source.droppableId && destination.index === source.index) return;
@@ -595,7 +608,7 @@ export default function AdminCourseContentPage() {
         <div className="page-container">
           <div className="page-header">
             <button
-              onClick={() => navigate("/admin/courses")}
+              onClick={() => navigate(readOnly ? "/staff/courses" : "/admin/courses")}
               className="back-btn"
             >
               <span
@@ -626,13 +639,27 @@ export default function AdminCourseContentPage() {
                   <span className="material-symbols-outlined">visibility</span>{" "}
                   View as User
                 </button>
-                <button
-                  onClick={() => setIsSectionModalOpen(true)}
-                  className="btn-primary"
-                >
-                  <span className="material-symbols-outlined">add</span> Add New
-                  Section
-                </button>
+                {readOnly && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      navigate(`/staff/assignments?courseId=${courseId}`)
+                    }
+                    className="btn-outline"
+                  >
+                    <span className="material-symbols-outlined">assignment</span>{" "}
+                    Assignment
+                  </button>
+                )}
+                {!readOnly && (
+                  <button
+                    onClick={() => setIsSectionModalOpen(true)}
+                    className="btn-primary"
+                  >
+                    <span className="material-symbols-outlined">add</span> Add New
+                    Section
+                  </button>
+                )}
               </div>
             </div>
           </div>
@@ -678,11 +705,12 @@ export default function AdminCourseContentPage() {
                         key={section.id}
                         draggableId={`section-${section.id}`}
                         index={index}
+                        isDragDisabled={readOnly}
                       >
                         {(provided, snapshot) => (
                           <div
                             ref={provided.innerRef}
-                            {...provided.draggableProps}
+                            {...(readOnly ? {} : provided.draggableProps)}
                             style={{
                               ...provided.draggableProps.style,
                               marginBottom: 16,
@@ -707,6 +735,7 @@ export default function AdminCourseContentPage() {
                                 )
                               }
                               dragHandleProps={provided.dragHandleProps}
+                              readOnly={readOnly}
                             />
                           </div>
                         )}
@@ -727,20 +756,22 @@ export default function AdminCourseContentPage() {
                   {provided.placeholder}
                 </div>
 
-                <div
-                  onClick={() => setIsSectionModalOpen(true)}
-                  className="empty-add-area"
-                >
-                  <div className="icon-circle">
-                    <span className="material-symbols-outlined">add</span>
+                {!readOnly && (
+                  <div
+                    onClick={() => setIsSectionModalOpen(true)}
+                    className="empty-add-area"
+                  >
+                    <div className="icon-circle">
+                      <span className="material-symbols-outlined">add</span>
+                    </div>
+                    <h4 style={{ margin: "0 0 8px 0", fontSize: "16px" }}>
+                      Add a new section
+                    </h4>
+                    <p style={{ margin: 0, color: "#434655", fontSize: "14px" }}>
+                      Build a logical structure to help students follow along easily.
+                    </p>
                   </div>
-                  <h4 style={{ margin: "0 0 8px 0", fontSize: "16px" }}>
-                    Add a new section
-                  </h4>
-                  <p style={{ margin: 0, color: "#434655", fontSize: "14px" }}>
-                    Build a logical structure to help students follow along easily.
-                  </p>
-                </div>
+                )}
               </div>
             )}
           </Droppable>

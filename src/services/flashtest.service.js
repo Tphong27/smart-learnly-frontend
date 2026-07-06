@@ -50,6 +50,14 @@ export const assignmentService = {
     const response = await apiClient.get("/assignments/mine", { params });
     return normalizeList(response);
   },
+  async getAvailable(params = {}) {
+    const response = await apiClient.get("/assignments/available", { params });
+    return normalizeList(response);
+  },
+  async getClasses(params = {}) {
+    const response = await apiClient.get("/assignments/classes", { params });
+    return normalizeList(response);
+  },
   async getById(id) {
     const response = await apiClient.get(`/assignments/${id}`);
     return unwrap(response);

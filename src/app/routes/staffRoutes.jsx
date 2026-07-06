@@ -13,6 +13,7 @@ import {
 } from "@/features/flashtest";
 // import { StaffLayout } from "@/app/layouts/StaffLayout";
 import { AdminCoursesPage } from "@/features/admin";
+import AdminCourseContentPage from "@/features/course/pages/AdminCourseContentPage";
 import {
   StaffClassListPage,
   TmoCreateClassPage,
@@ -46,6 +47,10 @@ function getStaffRoutes() {
           ),
           children: [
             { path: "courses", element: <AdminCoursesPage /> },
+            {
+              path: "courses/:courseId/content",
+              element: <AdminCourseContentPage />,
+            },
             {
               path: "tests",
               element: <StaffTestListPage />,
@@ -81,6 +86,22 @@ function getStaffRoutes() {
             },
             {
               path: "flashtests/monitor/:id/:type",
+              element: <StaffFlashTestMonitorPage />,
+            },
+            {
+              path: "assignments",
+              element: <StaffFlashTestListPage variant="assignment" />,
+            },
+            {
+              path: "assignments/create",
+              element: <StaffFlashTestCreatePage variant="assignment" />,
+            },
+            {
+              path: "assignments/edit/:id/:type",
+              element: <StaffFlashTestCreatePage variant="assignment" />,
+            },
+            {
+              path: "assignments/monitor/:id/:type",
               element: <StaffFlashTestMonitorPage />,
             },
           ],
