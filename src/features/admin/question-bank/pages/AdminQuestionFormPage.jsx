@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Plus, Trash2 } from 'lucide-react'
 import { Button, FormField, useToast } from '@/shared/components/ui'
 import { getCurrentUser, questionBankService } from '@/services'
+import { QuestionAudioUploader } from '../components/QuestionAudioUploader'
 import { QuestionImageUploader } from '../components/QuestionImageUploader'
 import '../../admin-shared.css'
 import './question-bank.css'
@@ -60,6 +61,9 @@ export function AdminQuestionFormPage() {
   const [imageUrl, setImageUrl] = useState(null)
   const [imageFile, setImageFile] = useState(null)
   const [imageRemoved, setImageRemoved] = useState(false)
+  const [audioUrl, setAudioUrl] = useState(null)
+  const [audioFile, setAudioFile] = useState(null)
+  const [audioRemoved, setAudioRemoved] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -73,6 +77,9 @@ export function AdminQuestionFormPage() {
           setImageUrl(question.imageUrl || null)
           setImageFile(null)
           setImageRemoved(false)
+          setAudioUrl(question.audioUrl || null)
+          setAudioFile(null)
+          setAudioRemoved(false)
           setValues({
             questionText: question.questionText || '',
             questionType: question.questionType || 'multiple_choice',
@@ -154,6 +161,17 @@ export function AdminQuestionFormPage() {
     setImageUrl(null)
   }
 
+  function handleAudioSelected(file) {
+    setAudioFile(file)
+    setAudioRemoved(false)
+  }
+
+  function handleAudioRemove() {
+    setAudioFile(null)
+    setAudioRemoved(Boolean(audioUrl))
+    setAudioUrl(null)
+  }
+
   async function syncQuestionImage(savedQuestionId) {
     if (!savedQuestionId) return
     if (imageRemoved && editing) {
@@ -161,6 +179,16 @@ export function AdminQuestionFormPage() {
     }
     if (imageFile) {
       await questionBankService.uploadQuestionImage(savedQuestionId, imageFile)
+    }
+  }
+
+  async function syncQuestionAudio(savedQuestionId) {
+    if (!savedQuestionId) return
+    if (audioRemoved && editing) {
+      await questionBankService.removeQuestionAudio(savedQuestionId)
+    }
+    if (audioFile) {
+      await questionBankService.uploadQuestionAudio(savedQuestionId, audioFile)
     }
   }
 
@@ -198,6 +226,13 @@ export function AdminQuestionFormPage() {
         await syncQuestionImage(savedQuestionId)
       } catch {
         toast.error(`${editing ? 'Question updated' : 'Question created'}, but image update failed. Open the question and retry.`)
+        navigate(`/admin/question-banks/${returnBankId}`)
+        return
+      }
+      try {
+        await syncQuestionAudio(savedQuestionId)
+      } catch {
+        toast.error(`${editing ? 'Question updated' : 'Question created'}, but audio update failed. Open the question and retry.`)
         navigate(`/admin/question-banks/${returnBankId}`)
         return
       }
@@ -280,6 +315,16 @@ export function AdminQuestionFormPage() {
               disabled={submitting || values.status === 'archived'}
               onFileSelected={handleImageSelected}
               onRemove={handleImageRemove}
+            />
+          </div>
+
+          <div className="input-field admin-form-grid__full question-modal__audio-section">
+            <label className="input-field__label">Question audio</label>
+            <QuestionAudioUploader
+              value={audioRemoved ? null : audioUrl}
+              disabled={submitting || values.status === 'archived'}
+              onFileSelected={handleAudioSelected}
+              onRemove={handleAudioRemove}
             />
           </div>
 
