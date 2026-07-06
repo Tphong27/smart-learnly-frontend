@@ -1,9 +1,11 @@
-﻿import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Plus, Trash2 } from 'lucide-react'
 import { Button, FormField, useToast } from '@/shared/components/ui'
 import { getCurrentUser, questionBankService } from '@/services'
+import { QuestionImageUploader } from '../components/QuestionImageUploader'
 import '../../admin-shared.css'
+import './question-bank.css'
 
 function canWriteQuestionBank() {
   const role = getCurrentUser()?.role
@@ -55,6 +57,9 @@ export function AdminQuestionFormPage() {
     explanation: '',
     answers: normalizeAnswers('multiple_choice'),
   })
+  const [imageUrl, setImageUrl] = useState(null)
+  const [imageFile, setImageFile] = useState(null)
+  const [imageRemoved, setImageRemoved] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -65,6 +70,9 @@ export function AdminQuestionFormPage() {
         if (editing) {
           const question = await questionBankService.getQuestion(questionId)
           if (cancelled) return
+          setImageUrl(question.imageUrl || null)
+          setImageFile(null)
+          setImageRemoved(false)
           setValues({
             questionText: question.questionText || '',
             questionType: question.questionType || 'multiple_choice',
@@ -135,6 +143,27 @@ export function AdminQuestionFormPage() {
     })
   }
 
+  function handleImageSelected(file) {
+    setImageFile(file)
+    setImageRemoved(false)
+  }
+
+  function handleImageRemove() {
+    setImageFile(null)
+    setImageRemoved(Boolean(imageUrl))
+    setImageUrl(null)
+  }
+
+  async function syncQuestionImage(savedQuestionId) {
+    if (!savedQuestionId) return
+    if (imageRemoved && editing) {
+      await questionBankService.removeQuestionImage(savedQuestionId)
+    }
+    if (imageFile) {
+      await questionBankService.uploadQuestionImage(savedQuestionId, imageFile)
+    }
+  }
+
   async function handleSubmit(event) {
     event.preventDefault()
     const validationError = validate(values)
@@ -158,13 +187,21 @@ export function AdminQuestionFormPage() {
       })),
     }
     try {
+      let savedQuestion
       if (editing) {
-        await questionBankService.updateQuestion(questionId, payload)
-        toast.success('Question updated')
+        savedQuestion = await questionBankService.updateQuestion(questionId, payload)
       } else {
-        await questionBankService.createQuestion(payload)
-        toast.success('Question created')
+        savedQuestion = await questionBankService.createQuestion(payload)
       }
+      const savedQuestionId = savedQuestion?.questionId || savedQuestion?.id || questionId
+      try {
+        await syncQuestionImage(savedQuestionId)
+      } catch {
+        toast.error(`${editing ? 'Question updated' : 'Question created'}, but image update failed. Open the question and retry.`)
+        navigate(`/admin/question-banks/${returnBankId}`)
+        return
+      }
+      toast.success(editing ? 'Question updated' : 'Question created')
       navigate(`/admin/question-banks/${returnBankId}`)
     } catch (err) {
       setError(err?.message || 'Could not save question.')
@@ -234,6 +271,16 @@ export function AdminQuestionFormPage() {
               <label className="input-field__label" htmlFor="question-explanation">Explanation</label>
               <textarea id="question-explanation" className="admin-textarea" rows={3} value={values.explanation} onChange={(event) => setValues((current) => ({ ...current, explanation: event.target.value }))} />
             </div>
+          </div>
+
+          <div className="input-field admin-form-grid__full question-modal__image-section">
+            <label className="input-field__label">Question image</label>
+            <QuestionImageUploader
+              value={imageRemoved ? null : imageUrl}
+              disabled={submitting || values.status === 'archived'}
+              onFileSelected={handleImageSelected}
+              onRemove={handleImageRemove}
+            />
           </div>
 
           <div style={{ marginTop: 22 }}>

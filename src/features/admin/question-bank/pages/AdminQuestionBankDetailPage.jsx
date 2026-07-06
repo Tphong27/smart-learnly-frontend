@@ -14,6 +14,7 @@ import { courseService, getCurrentUser, questionBankService } from "@/services";
 import "../../admin-shared.css";
 import "./question-bank.css";
 import { QuestionImportModal } from "../components/QuestionImportModal";
+import { QuestionImageUploader } from "../components/QuestionImageUploader";
 
 const PAGE_SIZE = 20;
 
@@ -114,6 +115,8 @@ function QuestionModal({ open, bankId, modules, question, onClose, onSaved }) {
   const [values, setValues] = useState(questionToForm(question));
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
+  const [imageFile, setImageFile] = useState(null);
+  const [imageRemoved, setImageRemoved] = useState(false);
 
   function setType(nextType) {
     setValues((current) => ({
@@ -170,6 +173,26 @@ function QuestionModal({ open, bankId, modules, question, onClose, onSaved }) {
     });
   }
 
+  function handleImageSelected(file) {
+    setImageFile(file);
+    setImageRemoved(false);
+  }
+
+  function handleImageRemove() {
+    setImageFile(null);
+    setImageRemoved(Boolean(question?.imageUrl));
+  }
+
+  async function syncQuestionImage(questionId) {
+    if (!questionId) return;
+    if (imageRemoved && question?.imageUrl) {
+      await questionBankService.removeQuestionImage(questionId);
+    }
+    if (imageFile) {
+      await questionBankService.uploadQuestionImage(questionId, imageFile);
+    }
+  }
+
   async function handleSubmit(event) {
     event.preventDefault();
     const validationError = validateQuestion(values);
@@ -196,16 +219,26 @@ function QuestionModal({ open, bankId, modules, question, onClose, onSaved }) {
       ),
     };
     try {
+      let savedQuestion;
       if (editing) {
-        await questionBankService.updateQuestion(
+        savedQuestion = await questionBankService.updateQuestion(
           question.questionId || question.id,
           payload,
         );
-        toast.success("Question updated");
       } else {
-        await questionBankService.createQuestion(payload);
-        toast.success("Question created");
+        savedQuestion = await questionBankService.createQuestion(payload);
       }
+      const savedQuestionId = savedQuestion?.questionId || savedQuestion?.id || question?.questionId || question?.id;
+      try {
+        await syncQuestionImage(savedQuestionId);
+      } catch {
+        toast.error(
+          `${editing ? "Question updated" : "Question created"}, but image update failed. Open the question and retry.`,
+        );
+        onSaved();
+        return;
+      }
+      toast.success(editing ? "Question updated" : "Question created");
       onSaved();
     } catch (err) {
       setError(err?.message || "Could not save question.");
@@ -345,6 +378,16 @@ function QuestionModal({ open, bankId, modules, question, onClose, onSaved }) {
               }
             />
           </div>
+        </div>
+
+        <div className="input-field admin-form-grid__full question-modal__image-section">
+          <label className="input-field__label">Question image</label>
+          <QuestionImageUploader
+            value={imageRemoved ? null : question?.imageUrl}
+            disabled={submitting || question?.status === "archived"}
+            onFileSelected={handleImageSelected}
+            onRemove={handleImageRemove}
+          />
         </div>
 
         <div className="question-modal__answers">
@@ -561,7 +604,7 @@ export function AdminQuestionBankDetailPage() {
               leftIcon={<Upload size={16} />}
               onClick={() => setImportOpen(true)}
             >
-              Bulk import
+              Import
             </Button>
             <Button leftIcon={<Plus size={16} />} onClick={openCreateModal}>
               Create question
@@ -739,6 +782,11 @@ export function AdminQuestionBankDetailPage() {
                       {formatDate(question.updatedAt || question.createdAt)}
                     </span>
                   </div>
+                  {question.imageUrl && (
+                    <div className="question-card__image-wrap">
+                      <img src={question.imageUrl} alt="Question attachment" className="question-card__image" />
+                    </div>
+                  )}
                   <div className="question-card__answers">
                     {answers.map((answer, answerIndex) => {
                       const correct = Boolean(
