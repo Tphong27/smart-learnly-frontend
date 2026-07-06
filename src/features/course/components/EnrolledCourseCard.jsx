@@ -52,33 +52,6 @@ function formatDateRange(startDate, endDate) {
   return startDate || endDate;
 }
 
-function formatSchedule(scheduleDescription) {
-  if (!scheduleDescription) return "";
-
-  try {
-    const schedules = JSON.parse(scheduleDescription);
-
-    if (!Array.isArray(schedules)) {
-      return scheduleDescription;
-    }
-
-    return schedules
-      .map((item) => {
-        const day = item.dayOfWeek || "";
-        const slots = Array.isArray(item.slots) ? item.slots : [];
-
-        const slotText = slots
-          .map((slot) => `${slot.startTime} - ${slot.endTime}`)
-          .join(", ");
-
-        return [day, slotText].filter(Boolean).join(" • ");
-      })
-      .join("; ");
-  } catch {
-    return scheduleDescription;
-  }
-}
-
 function buildClassSummary(enrolledClass) {
   if (!enrolledClass) {
     return "";
@@ -101,9 +74,6 @@ export function EnrolledCourseCard({ course, viewMode = "grid" }) {
   const enrolledClass = getEnrolledClass(course);
   const classDateRange = enrolledClass
     ? formatDateRange(enrolledClass.startDate, enrolledClass.endDate)
-    : "";
-  const classSchedule = enrolledClass
-    ? formatSchedule(enrolledClass.scheduleDescription)
     : "";
   const classSummary = buildClassSummary(enrolledClass);
 
@@ -205,7 +175,6 @@ export function EnrolledCourseCard({ course, viewMode = "grid" }) {
         <EnrolledClassDetailPopup
           enrolledClass={enrolledClass}
           classDateRange={classDateRange}
-          classSchedule={classSchedule}
           onClose={() => setClassPopupOpen(false)}
         />
       )}

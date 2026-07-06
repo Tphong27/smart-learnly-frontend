@@ -21,7 +21,6 @@ function formatClassStatus(status) {
 export function EnrolledClassDetailPopup({
   enrolledClass,
   classDateRange,
-  classSchedule,
   onClose,
 }) {
   if (!enrolledClass) return null;
@@ -92,25 +91,16 @@ export function EnrolledClassDetailPopup({
             </div>
           </div>
 
-          <div className="enrolled-class-popup__item enrolled-class-popup__item--wide">
+          <div className="enrolled-class-popup__item enrolled-class-popup__item--wide enrolled-class-popup__item--schedule">
             <Clock3 size={16} />
-            <div>
-              <span>Schedule summary</span>
-              <strong>{classSchedule || "Not set"}</strong>
-            </div>
-          </div>
-
-          <div className="enrolled-class-popup__schedule enrolled-class-popup__item--wide">
-            <div className="enrolled-class-popup__schedule-header">
-              <Clock3 size={16} />
-              <div>
-                <span>Class timetable</span>
+            <div className="enrolled-class-popup__schedule-body">
+              <span>Schedule</span>
+              <div className="enrolled-class-popup__schedule-table">
+                <ScheduleCalendar
+                  scheduleDescription={enrolledClass.scheduleDescription}
+                />
               </div>
             </div>
-
-            <ScheduleCalendar
-              scheduleDescription={enrolledClass.scheduleDescription}
-            />
           </div>
 
           <div className="enrolled-class-popup__item">

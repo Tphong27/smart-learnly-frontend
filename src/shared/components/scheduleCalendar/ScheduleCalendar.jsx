@@ -1,47 +1,17 @@
 import "./ScheduleCalendar.css";
 
 const WEEK_DAYS = [
-  {
-    key: "MONDAY",
-    shortLabel: "MON",
-    label: "Monday",
-  },
-  {
-    key: "TUESDAY",
-    shortLabel: "TUE",
-    label: "Tuesday",
-  },
-  {
-    key: "WEDNESDAY",
-    shortLabel: "WED",
-    label: "Wednesday",
-  },
-  {
-    key: "THURSDAY",
-    shortLabel: "THU",
-    label: "Thursday",
-  },
-  {
-    key: "FRIDAY",
-    shortLabel: "FRI",
-    label: "Friday",
-  },
-  {
-    key: "SATURDAY",
-    shortLabel: "SAT",
-    label: "Saturday",
-  },
-  {
-    key: "SUNDAY",
-    shortLabel: "SUN",
-    label: "Sunday",
-  },
+  { key: "MONDAY", shortLabel: "MON" },
+  { key: "TUESDAY", shortLabel: "TUE"},
+  { key: "WEDNESDAY", shortLabel: "WED"},
+  { key: "THURSDAY", shortLabel: "THU"},
+  { key: "FRIDAY", shortLabel: "FRI"},
+  { key: "SATURDAY", shortLabel: "SAT"},
+  { key: "SUNDAY", shortLabel: "SUN"},
 ];
 
 function parseSchedule(scheduleDescription) {
-  if (!scheduleDescription) {
-    return [];
-  }
+  if (!scheduleDescription) return [];
 
   if (Array.isArray(scheduleDescription)) {
     return scheduleDescription;
@@ -89,7 +59,7 @@ export function ScheduleCalendar({ scheduleDescription }) {
                     {day.shortLabel}
                   </span>
                   <span className="shared-schedule-calendar__day-name">
-                    {day.label}
+                    {day.shortLabel}
                   </span>
                 </th>
               ))}
@@ -117,9 +87,7 @@ export function ScheduleCalendar({ scheduleDescription }) {
                         ))}
                       </div>
                     ) : (
-                      <span className="shared-schedule-calendar__empty">
-                        -
-                      </span>
+                      <span className="shared-schedule-calendar__empty">-</span>
                     )}
                   </td>
                 );

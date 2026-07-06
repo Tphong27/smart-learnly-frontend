@@ -1,5 +1,6 @@
 .shared-schedule-calendar {
   width: 100%;
+  min-width: 0;
 }
 
 .shared-schedule-calendar__scroll {
