@@ -21,9 +21,14 @@
   transition: all 0.15s ease;
 }
 
-.dashboard-range-controls__btn:hover {
+.dashboard-range-controls__btn:hover:not(:disabled) {
   background: #f8fafc;
   color: var(--ink, #14213d);
+}
+
+.dashboard-range-controls__btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
 }
 
 .dashboard-range-controls__btn--active {
@@ -38,6 +43,28 @@
   gap: 10px 18px;
   color: var(--muted, #64708a);
   font-size: 13px;
+}
+
+.dashboard-meta-row__updating {
+  color: var(--blue, #2768ee);
+  font-weight: 800;
+}
+
+.dashboard-inline-error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  border-color: #fecaca;
+  background: #fef2f2;
+}
+
+.dashboard-inline-error p {
+  margin: 0;
+  color: #991b1b;
+  font-size: 13px;
+  font-weight: 700;
 }
 
 .dashboard-metric-grid {

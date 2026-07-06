@@ -57,6 +57,8 @@ function normalizeOverview(data = {}) {
       publishedLessons: normalizeNumber(content.publishedLessons),
       draftLessons: normalizeNumber(content.draftLessons),
       inactiveLessons: normalizeNumber(content.inactiveLessons),
+      newSectionsInRange: normalizeNumber(content.newSectionsInRange),
+      newLessonsInRange: normalizeNumber(content.newLessonsInRange),
     },
     questionBanks: {
       total: normalizeNumber(questionBanks.total),
@@ -69,6 +71,11 @@ function normalizeOverview(data = {}) {
       draftQuestions: normalizeNumber(questionBanks.draftQuestions),
       rejectedQuestions: normalizeNumber(questionBanks.rejectedQuestions),
       archivedQuestions: normalizeNumber(questionBanks.archivedQuestions),
+      newBanksInRange: normalizeNumber(questionBanks.newBanksInRange),
+      newQuestionsInRange: normalizeNumber(questionBanks.newQuestionsInRange),
+      reviewedQuestionsInRange: normalizeNumber(questionBanks.reviewedQuestionsInRange),
+      aiGeneratedQuestions: normalizeNumber(questionBanks.aiGeneratedQuestions),
+      manualQuestions: normalizeNumber(questionBanks.manualQuestions),
     },
     recentActivities: normalizeRecentActivities(data.recentActivities),
   }
