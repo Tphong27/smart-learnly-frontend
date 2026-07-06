@@ -3,12 +3,27 @@ import { useNavigate, useParams } from "react-router-dom";
 import { AlertCircle, Loader, Trash2 } from "lucide-react";
 import { Button } from "@/shared/components/ui";
 import { classService } from "@/services";
+import { normalizeRole, ROLES } from "@/shared/constants/roles";
 import { ClassStatusBadge } from "../components/ClassStatusBadge";
 import { ClassOverviewTab } from "../components/ClassOverviewTab";
+
+function getCurrentRole() {
+  try {
+    const raw = localStorage.getItem("user");
+    const user = raw ? JSON.parse(raw) : null;
+    return normalizeRole(user?.role) || "";
+  } catch {
+    return "";
+  }
+}
 
 export function ClassDetailPage() {
   const { classId } = useParams();
   const navigate = useNavigate();
+
+  const userRole = getCurrentRole();
+  const isTrainer = userRole === ROLES.TRAINER;
+  const isTmo = userRole === ROLES.TMO;
 
   const [classData, setClassData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -28,8 +43,11 @@ export function ClassDetailPage() {
 
     let mounted = true;
 
-    classService
-      .getAdmin(classId)
+    const request = isTrainer
+      ? classService.getTrainer(classId)
+      : classService.getAdmin(classId);
+
+    request
       .then((data) => {
         if (!mounted) return;
 
@@ -51,7 +69,7 @@ export function ClassDetailPage() {
     return () => {
       mounted = false;
     };
-  }, [classId, refreshKey]);
+  }, [classId, refreshKey, isTrainer]);
 
   async function deleteClass() {
     const confirmed = window.confirm(
@@ -115,18 +133,20 @@ export function ClassDetailPage() {
           </div>
         </div>
 
-        <div className="workspace-header__actions">
-          <Button
-            type="button"
-            variant="delete"
-            size="icon"
-            title="Soft Delete"
-            aria-label="Soft Delete class"
-            onClick={deleteClass}
-          >
-            <Trash2 size={16} strokeWidth={2.2} />
-          </Button>
-        </div>
+        {isTmo && (
+          <div className="workspace-header__actions">
+            <Button
+              type="button"
+              variant="delete"
+              size="icon"
+              title="Soft Delete"
+              aria-label="Soft Delete class"
+              onClick={deleteClass}
+            >
+              <Trash2 size={16} strokeWidth={2.2} />
+            </Button>
+          </div>
+        )}
       </div>
 
       {error && (
@@ -141,6 +161,7 @@ export function ClassDetailPage() {
           classData={classData}
           classId={classId}
           onClassUpdated={handleClassUpdated}
+          readOnly={isTrainer}
         />
       </div>
     </section>

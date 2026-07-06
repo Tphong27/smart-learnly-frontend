@@ -149,6 +149,17 @@ apiClient.interceptors.request.use(
     const isPublicAuth = PUBLIC_AUTH_ENDPOINTS.test(url)
     const isPublicCourseEndpoint = PUBLIC_COURSE_ENDPOINTS.test(url)
     const shouldSkipAuthorization = config?.skipAuthorization === true
+    const isFormData =
+      typeof FormData !== 'undefined' && config?.data instanceof FormData
+
+    if (isFormData && config.headers) {
+      if (typeof config.headers?.delete === 'function') {
+        config.headers.delete('Content-Type')
+        config.headers.delete('content-type')
+      }
+      delete config.headers['Content-Type']
+      delete config.headers['content-type']
+    }
 
     // Public requests must never carry a stale or invalid bearer token.
     if (isPublicAuth || isPublicCourseEndpoint || shouldSkipAuthorization) {

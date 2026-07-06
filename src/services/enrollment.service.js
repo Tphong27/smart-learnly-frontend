@@ -5,9 +5,12 @@ function unwrap(response) {
 }
 
 export const enrollmentService = {
-  async enrollFree(courseId) {
-    const response = await apiClient.post('/enrollments/free', { courseId })
-    return unwrap(response)
+  async enrollFree({ courseId, classId }) {
+    const response = await apiClient.post("/enrollments/free", {
+      courseId,
+      classId,
+    });
+    return unwrap(response);
   },
 
   async getMyCourses() {

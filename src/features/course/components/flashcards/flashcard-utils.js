@@ -24,6 +24,21 @@ export function normalizeSet(payload) {
   };
 }
 
+export function isGenericGeneratedExplanation(text) {
+  const normalized = trimField(text)
+    .toLowerCase()
+    .replace(/\s+/g, " ");
+  if (!normalized) return false;
+
+  return [
+    /^generated from (pasted )?text\.?$/,
+    /^generated from (uploaded )?(document|pdf|file)\.?$/,
+    /^generated from (lesson )?transcript( file)?\.?$/,
+    /^generated from (srt|vtt)( transcript)?\.?$/,
+    /^generated from source( content| material)?\.?$/,
+  ].some((pattern) => pattern.test(normalized));
+}
+
 export function toCardPayload(card) {
   return {
     frontText: trimField(card.frontText),

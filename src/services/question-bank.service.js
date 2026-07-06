@@ -1,4 +1,4 @@
-﻿import apiClient from './api-client'
+import apiClient from './api-client'
 
 function unwrap(response) {
   return response?.data ?? response
@@ -67,6 +67,19 @@ export const questionBankService = {
     const response = await apiClient.put(`/admin/questions/${questionId}`, payload)
     return unwrap(response)
   },
+  async uploadQuestionImage(questionId, file) {
+    const formData = new FormData()
+    formData.append('file', file)
+    const response = await apiClient.post(`/admin/questions/${questionId}/image`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+    return unwrap(response)
+  },
+
+  async removeQuestionImage(questionId) {
+    const response = await apiClient.delete(`/admin/questions/${questionId}/image`)
+    return unwrap(response)
+  },
 
   async archiveQuestion(questionId) {
     const response = await apiClient.delete(`/admin/questions/${questionId}`)
@@ -87,6 +100,25 @@ export const questionBankService = {
     const response = await apiClient.post('/admin/questions/import-batch', {
       bankId,
       rows,
+    })
+    return unwrap(response)
+  },
+  async previewImageImport(bankId, files, language = 'vi') {
+    const formData = new FormData()
+    formData.append('bankId', bankId)
+    formData.append('language', language)
+    files.forEach((file) => formData.append('files', file))
+    const response = await apiClient.post('/admin/question-imports/image/preview', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: 90000,
+    })
+    return unwrap(response)
+  },
+
+  async confirmImageImport(bankId, questions) {
+    const response = await apiClient.post('/admin/question-imports/image/confirm', {
+      bankId,
+      questions,
     })
     return unwrap(response)
   },

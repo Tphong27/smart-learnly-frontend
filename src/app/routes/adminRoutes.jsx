@@ -9,6 +9,7 @@ import {
   AdminCourseFormPage,
   AdminUsersPage,
   AdminSystemSettingsPage,
+  AdminDashboardPage,
   AdminQuestionBanksPage,
   AdminQuestionBankDetailPage,
   AdminQuestionFormPage,
@@ -43,13 +44,19 @@ function getAdminRoutes() {
             <RoleGuard allowedRoles={[ROLES.ADMIN, ROLES.TMO, ROLES.SME]} />
           ),
           children: [
-            {
-              path: "dashboard",
-              element: <PlaceholderPage title="Admin Dashboard" />,
-            },
             { path: "courses", element: <AdminCoursesPage /> },
             { path: "courses/new", element: <AdminCourseFormPage /> },
             { path: "courses/:courseId", element: <AdminCourseFormPage /> },
+            { path: "categories", element: <AdminCategoriesPage /> },
+          ],
+        },
+        {
+          element: (
+            <RoleGuard
+              allowedRoles={[ROLES.ADMIN, ROLES.TMO, ROLES.SME, ROLES.TRAINER]}
+            />
+          ),
+          children: [
             {
               path: "courses/:courseId/content",
               element: <AdminCourseContentPage />,
@@ -58,7 +65,6 @@ function getAdminRoutes() {
               path: "courses/:courseId/lessons/:lessonId",
               element: <AdminLessonDetailPage />,
             },
-            { path: "categories", element: <AdminCategoriesPage /> },
           ],
         },
         {
@@ -83,6 +89,7 @@ function getAdminRoutes() {
         {
           element: <RoleGuard allowedRoles={[ROLES.ADMIN]} />,
           children: [
+            { path: "dashboard", element: <AdminDashboardPage /> },
             { path: "users-management", element: <AdminUsersPage /> },
             { path: "audit-log", element: <AdminAuditLogPage /> },
             {

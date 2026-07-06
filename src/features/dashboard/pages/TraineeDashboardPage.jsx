@@ -13,6 +13,7 @@ function normalizeEnrolledCourse(course) {
     ...course,
     avatarUrl: course.avatarUrl,
     categoryName: course.category?.name,
+    enrolledClass: course.enrolledClass || null,
   };
 }
 
@@ -85,13 +86,17 @@ export function TraineeDashboardPage() {
       const title = course.title?.toLowerCase() || "";
       const description = course.description?.toLowerCase() || "";
       const categoryName = course.category?.name?.toLowerCase() || "";
+      const className = course.enrolledClass?.className?.toLowerCase() || "";
+      const trainerName = course.enrolledClass?.trainerName?.toLowerCase() || "";
       const currentCategorySlug = course.category?.slug || "";
 
       const matchesKeyword =
         !normalizedKeyword ||
         title.includes(normalizedKeyword) ||
         description.includes(normalizedKeyword) ||
-        categoryName.includes(normalizedKeyword);
+        categoryName.includes(normalizedKeyword) ||
+        className.includes(normalizedKeyword) ||
+        trainerName.includes(normalizedKeyword);
 
       const matchesCategory =
         !categorySlug || currentCategorySlug === categorySlug;
@@ -190,7 +195,9 @@ export function TraineeDashboardPage() {
           >
             {filteredCourses.map((course) => (
               <EnrolledCourseCard
-                key={course.enrollmentId || course.id || course.slug}
+                key={`${course.enrollmentId || course.id || course.slug}-${
+                  course.enrolledClass?.id || "no-class"
+                }`}
                 course={course}
                 viewMode={viewMode}
               />

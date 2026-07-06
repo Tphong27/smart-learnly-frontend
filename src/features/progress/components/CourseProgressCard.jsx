@@ -59,11 +59,27 @@ function AssignmentMetric({ courseId }) {
       to={`/learning/assignments?courseId=${courseId}`}
     />
   );
+function getLearningPath(course) {
+  const courseId = course.courseId || course.id;
+
+  if (!courseId) {
+    return "/learning/progress";
+  }
+
+  if (!course.classId) {
+    return `/learning/courses/${courseId}`;
+  }
+
+  const params = new URLSearchParams();
+  params.set("classId", course.classId);
+
+  return `/learning/courses/${courseId}?${params.toString()}`;
 }
 
 export function CourseProgressCard({ course }) {
   const [expanded, setExpanded] = useState(true);
   const isCompleted = course.courseStatus === "COMPLETED";
+  const learningPath = getLearningPath(course);
 
   return (
     <article className="course-progress-card">
@@ -84,10 +100,17 @@ export function CourseProgressCard({ course }) {
 
             <h3>{course.title}</h3>
 
-            <Link
-              to={`/learning/courses/${course.courseId}`}
-              className="course-progress-card__overall"
-            >
+            {course.className ? (
+              <span className="course-progress-card__class">
+                Class: {course.className}
+              </span>
+            ) : (
+              <span className="course-progress-card__class course-progress-card__class--missing">
+                No class selected
+              </span>
+            )}
+
+            <Link to={learningPath} className="course-progress-card__overall">
               <ProgressBar value={course.overallPercent} />
               <strong>{course.overallPercent}%</strong>
             </Link>
@@ -125,7 +148,7 @@ export function CourseProgressCard({ course }) {
             completed={course.lesson.completed}
             total={course.lesson.total}
             percent={course.lesson.percent}
-            to={`/learning/courses/${course.courseId}`}
+            to={learningPath}
           />
 
           <ProgressMetric

@@ -72,6 +72,9 @@ export default function AdminLessonDetailPage() {
     const [hlsUploading, setHlsUploading] = useState(false);
     const [hlsProcessingStatus, setHlsProcessingStatus] = useState(null);
     const [hlsStatusPolling, setHlsStatusPolling] = useState(false);
+    const [hlsStatusLoading, setHlsStatusLoading] = useState(true);
+    const [hlsStatusError, setHlsStatusError] = useState("");
+    const [hlsHealth, setHlsHealth] = useState(null);
     const hlsCompletionNotifiedRef = useRef(false);
 
     const [editHistory, setEditHistory] = useState([]);
@@ -117,6 +120,43 @@ export default function AdminLessonDetailPage() {
             return isoString;
         }
     };
+
+    const refreshHlsStatus = useCallback(async () => {
+        if (!lessonId) return null;
+
+        try {
+            const nextStatus =
+                await courseService.getHlsProcessingStatus(lessonId);
+            setHlsStatusError("");
+            setHlsProcessingStatus(nextStatus);
+            setHlsStatusPolling(
+                String(nextStatus?.hlsStatus || "").toLowerCase() ===
+                    "processing",
+            );
+            return nextStatus;
+        } catch (error) {
+            setHlsStatusError(
+                error?.message || "Unable to check HLS processing status.",
+            );
+            return null;
+        } finally {
+            setHlsStatusLoading(false);
+        }
+    }, [lessonId]);
+
+    const syncLatestLessonVideoUrl = useCallback(async () => {
+        const response = await courseService.getLessonDetail(lessonId);
+        const latestLesson = response?.data || response;
+        const latestVideoUrl = latestLesson?.videoUrl || "";
+
+        setVideoUrl(latestVideoUrl);
+        setExistingLessonData((current) => ({
+            ...current,
+            ...latestLesson,
+        }));
+
+        return latestVideoUrl;
+    }, [lessonId]);
 
     useEffect(() => {
         const fetchLessonDetail = async () => {
@@ -181,28 +221,55 @@ export default function AdminLessonDetailPage() {
         }
     }, [lessonId, showToast]);
 
-    // Fetch HLS processing status when page loads
     useEffect(() => {
-        const fetchHlsStatus = async () => {
-            if (!lessonId || lessonType !== "VIDEO") return;
-            try {
-                const status =
-                    await courseService.getHlsProcessingStatus(lessonId);
-                if (status && status.hlsStatus) {
-                    setHlsProcessingStatus(status);
-                    if (status.hlsStatus === "processing") {
-                        setHlsUploading(true);
-                        setHlsStatusPolling(true);
-                    }
-                }
-            } catch (error) {
-                // Ignore errors, HLS might not exist yet
-                console.debug("No HLS status found:", error);
-            }
-        };
+        if (pageLoading || !lessonId || lessonType !== "VIDEO")
+            return undefined;
 
-        fetchHlsStatus();
-    }, [lessonId, lessonType]);
+        let cancelled = false;
+
+        async function fetchInitialHlsStatus() {
+            try {
+                const nextStatus =
+                    await courseService.getHlsProcessingStatus(lessonId);
+                if (cancelled) return;
+
+                setHlsStatusError("");
+                setHlsProcessingStatus(nextStatus);
+                setHlsStatusPolling(
+                    String(nextStatus?.hlsStatus || "").toLowerCase() ===
+                        "processing",
+                );
+            } catch (error) {
+                if (!cancelled) {
+                    setHlsStatusError(
+                        error?.message ||
+                            "Unable to check HLS processing status.",
+                    );
+                }
+            } finally {
+                if (!cancelled) setHlsStatusLoading(false);
+            }
+        }
+
+        async function fetchHlsHealth() {
+            try {
+                const health = await courseService.checkHlsHealth();
+                if (!cancelled) setHlsHealth(health);
+            } catch (error) {
+                if (!cancelled) {
+                    setHlsHealth(null);
+                    console.error("Error loading HLS health:", error);
+                }
+            }
+        }
+
+        fetchInitialHlsStatus();
+        fetchHlsHealth();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [lessonId, lessonType, pageLoading]);
 
     useEffect(() => {
         if (!hlsStatusPolling || !lessonId) return undefined;
@@ -210,7 +277,7 @@ export default function AdminLessonDetailPage() {
         let cancelled = false;
         let timerId;
         let attempts = 0;
-        const maxAttempts = 400;
+        const maxAttempts = 240;
 
         async function poll() {
             try {
@@ -225,7 +292,14 @@ export default function AdminLessonDetailPage() {
 
                 if (normalizedStatus === "ready") {
                     setHlsStatusPolling(false);
-                    setHlsUploading(false);
+                    try {
+                        await syncLatestLessonVideoUrl();
+                    } catch (syncError) {
+                        console.error(
+                            "Error syncing the completed HLS video URL:",
+                            syncError,
+                        );
+                    }
                     if (!hlsCompletionNotifiedRef.current) {
                         hlsCompletionNotifiedRef.current = true;
                         showToast(
@@ -238,7 +312,6 @@ export default function AdminLessonDetailPage() {
 
                 if (normalizedStatus === "failed") {
                     setHlsStatusPolling(false);
-                    setHlsUploading(false);
                     showToast(
                         nextStatus?.message ||
                             "Video processing failed. Please try again.",
@@ -250,19 +323,27 @@ export default function AdminLessonDetailPage() {
                 attempts += 1;
                 if (attempts >= maxAttempts) {
                     setHlsStatusPolling(false);
-                    setHlsUploading(false);
                     showToast(
-                        "Video processing is taking longer than expected. Reload the page to check its status.",
+                        "Video processing is taking longer than expected. It will continue on the backend; refresh the status later.",
                         "error",
                     );
                     return;
                 }
 
-                timerId = window.setTimeout(poll, 3000);
+                timerId = window.setTimeout(poll, 5000);
             } catch (pollError) {
                 if (cancelled) return;
                 attempts += 1;
                 console.error("Error polling HLS status:", pollError);
+
+                if (attempts >= maxAttempts) {
+                    setHlsStatusPolling(false);
+                    setHlsStatusError(
+                        "Unable to refresh HLS status. Processing may still be running on the backend.",
+                    );
+                    return;
+                }
+
                 timerId = window.setTimeout(poll, 5000);
             }
         }
@@ -273,7 +354,7 @@ export default function AdminLessonDetailPage() {
             cancelled = true;
             window.clearTimeout(timerId);
         };
-    }, [hlsStatusPolling, lessonId, showToast]);
+    }, [hlsStatusPolling, lessonId, showToast, syncLatestLessonVideoUrl]);
 
     useEffect(() => {
         const fetchAuditLogs = async () => {
@@ -491,7 +572,9 @@ export default function AdminLessonDetailPage() {
             return;
         }
 
+        const previousStatus = hlsProcessingStatus;
         setHlsUploading(true);
+        setHlsStatusError("");
         setHlsProcessingStatus({
             hlsStatus: "uploading",
             progressPercent: 0,
@@ -499,13 +582,16 @@ export default function AdminLessonDetailPage() {
         });
         try {
             const health = await courseService.checkHlsHealth();
-            if (!health?.hlsEnabled || !health?.ffmpegAvailable) {
+            setHlsHealth(health);
+            if (
+                !health?.hlsEnabled ||
+                String(health?.status || "").toLowerCase() !== "healthy"
+            ) {
                 showToast(
-                    "HLS processing is not available on the server",
+                    "The backend HLS processing provider is not available",
                     "error",
                 );
-                setHlsUploading(false);
-                setHlsProcessingStatus(null);
+                setHlsProcessingStatus(previousStatus);
                 return;
             }
 
@@ -530,7 +616,11 @@ export default function AdminLessonDetailPage() {
                     });
                 },
             );
-            showToast("Video uploaded! Processing started...", "success");
+            showToast(
+                uploadResult?.message ||
+                    "Video uploaded. HLS processing started.",
+                "success",
+            );
             hlsCompletionNotifiedRef.current = false;
             setHlsProcessingStatus({
                 ...uploadResult,
@@ -539,7 +629,11 @@ export default function AdminLessonDetailPage() {
                 currentStep:
                     uploadResult?.message || "Starting HLS processing...",
             });
-            setHlsStatusPolling(true);
+            setHlsStatusPolling(
+                String(uploadResult?.status || "processing").toLowerCase() ===
+                    "processing",
+            );
+            await refreshHlsStatus();
         } catch (error) {
             console.error("HLS upload error:", error);
             showToast(
@@ -549,8 +643,9 @@ export default function AdminLessonDetailPage() {
                 ),
                 "error",
             );
+            setHlsProcessingStatus(previousStatus);
+        } finally {
             setHlsUploading(false);
-            setHlsProcessingStatus(null);
         }
     };
 
@@ -630,6 +725,20 @@ export default function AdminLessonDetailPage() {
         setLoading(true);
 
         try {
+            let resolvedVideoUrl = videoUrl.trim();
+            const normalizedHlsStatus = String(
+                hlsProcessingStatus?.hlsStatus || "",
+            ).toLowerCase();
+
+            if (lessonType === "VIDEO" && normalizedHlsStatus === "ready") {
+                resolvedVideoUrl = await syncLatestLessonVideoUrl();
+                if (!resolvedVideoUrl) {
+                    throw new Error(
+                        "The HLS video is ready, but its playlist URL could not be synchronized. Refresh the page before saving.",
+                    );
+                }
+            }
+
             const normalizedResources = isQuiz
                 ? []
                 : resources
@@ -649,7 +758,7 @@ export default function AdminLessonDetailPage() {
                 title: title.trim(),
                 lessonType,
                 content,
-                videoUrl: lessonType === "VIDEO" ? videoUrl.trim() : null,
+                videoUrl: lessonType === "VIDEO" ? resolvedVideoUrl : null,
                 attachmentUrl: lessonType === "PDF" ? uploadedFileUrl : null,
                 durationSeconds: Number(durationSeconds || 0),
                 isPreview,
@@ -685,6 +794,21 @@ export default function AdminLessonDetailPage() {
             setLoading(false);
         }
     };
+
+    const isHlsProviderUnavailable = Boolean(
+        hlsHealth &&
+        (!hlsHealth.hlsEnabled ||
+            String(hlsHealth.status || "").toLowerCase() !== "healthy"),
+    );
+    const isHlsOperationBusy =
+        hlsStatusLoading || hlsUploading || hlsStatusPolling;
+    const hlsProviderLabel =
+        hlsProcessingStatus?.processingProvider === "github-actions" ||
+        hlsHealth?.processingProvider === "github-actions"
+            ? "GitHub Actions"
+            : hlsProcessingStatus?.processingProvider ||
+              hlsHealth?.processingProvider ||
+              "";
 
     if (pageLoading)
         return (
@@ -1230,20 +1354,65 @@ export default function AdminLessonDetailPage() {
                                                 style={{
                                                     display: "flex",
                                                     alignItems: "center",
-                                                    gap: "8px",
+                                                    justifyContent:
+                                                        "space-between",
+                                                    gap: "16px",
                                                     marginBottom: "16px",
-                                                    color: "#2563eb",
                                                 }}
                                             >
-                                                <Video size={24} />
-                                                <span
+                                                <div>
+                                                    <div
+                                                        style={{
+                                                            display: "flex",
+                                                            alignItems:
+                                                                "center",
+                                                            gap: "8px",
+                                                            color: "#2563eb",
+                                                            fontWeight: "600",
+                                                        }}
+                                                    >
+                                                        <Video size={24} />
+                                                        Upload Video
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {isHlsProviderUnavailable && (
+                                                <div
+                                                    role="alert"
                                                     style={{
-                                                        fontWeight: "600",
+                                                        padding: "12px 14px",
+                                                        borderRadius: "10px",
+                                                        marginBottom: "16px",
+                                                        color: "#991b1b",
+                                                        background: "#fff1f2",
+                                                        border: "1px solid #fecaca",
+                                                        fontSize: "13px",
                                                     }}
                                                 >
-                                                    Upload Video (HLS)
-                                                </span>
-                                            </div>
+                                                    The backend HLS processing
+                                                    provider is currently
+                                                    unavailable.
+                                                </div>
+                                            )}
+
+                                            {hlsStatusError && (
+                                                <div
+                                                    role="alert"
+                                                    style={{
+                                                        padding: "12px 14px",
+                                                        borderRadius: "10px",
+                                                        marginBottom: "16px",
+                                                        color: "#991b1b",
+                                                        background: "#fff1f2",
+                                                        border: "1px solid #fecaca",
+                                                        fontSize: "13px",
+                                                    }}
+                                                >
+                                                    Could not load HLS status:{" "}
+                                                    {hlsStatusError}
+                                                </div>
+                                            )}
 
                                             {/* Error Banner */}
                                             {hlsProcessingStatus &&
@@ -1301,9 +1470,9 @@ export default function AdminLessonDetailPage() {
                                                                         color: "#991b1b",
                                                                     }}
                                                                 >
-                                                                    Please try
-                                                                    uploading
-                                                                    again
+                                                                    {hlsProcessingStatus.currentStep ||
+                                                                        hlsProcessingStatus.message ||
+                                                                        "Please try uploading again"}
                                                                 </p>
                                                             </div>
                                                         </div>
@@ -1316,7 +1485,8 @@ export default function AdminLessonDetailPage() {
                                                 onDrop={(e) => {
                                                     e.preventDefault();
                                                     if (
-                                                        !hlsUploading &&
+                                                        !isHlsOperationBusy &&
+                                                        !isHlsProviderUnavailable &&
                                                         e.dataTransfer.files &&
                                                         e.dataTransfer.files
                                                             .length > 0
@@ -1328,7 +1498,8 @@ export default function AdminLessonDetailPage() {
                                                     }
                                                 }}
                                                 onClick={() =>
-                                                    !hlsUploading &&
+                                                    !isHlsOperationBusy &&
+                                                    !isHlsProviderUnavailable &&
                                                     mainFileInputRef.current?.click()
                                                 }
                                                 style={{
@@ -1344,7 +1515,7 @@ export default function AdminLessonDetailPage() {
                                                         hlsProcessingStatus?.hlsStatus ===
                                                             "ready"
                                                             ? "2px solid #10b981"
-                                                            : hlsUploading
+                                                            : isHlsOperationBusy
                                                               ? "2px solid #2563eb"
                                                               : "2px dashed #cbd5e1",
                                                     backgroundColor:
@@ -1352,17 +1523,19 @@ export default function AdminLessonDetailPage() {
                                                         hlsProcessingStatus?.hlsStatus ===
                                                             "ready"
                                                             ? "#f0fdf4"
-                                                            : hlsUploading
+                                                            : isHlsOperationBusy
                                                               ? "#eff6ff"
                                                               : "#fff",
-                                                    cursor: hlsUploading
-                                                        ? "default"
-                                                        : "pointer",
+                                                    cursor:
+                                                        isHlsOperationBusy ||
+                                                        isHlsProviderUnavailable
+                                                            ? "default"
+                                                            : "pointer",
                                                     textAlign: "center",
                                                     padding: "24px",
                                                 }}
                                             >
-                                                {hlsUploading ? (
+                                                {isHlsOperationBusy ? (
                                                     <>
                                                         <Loader2
                                                             className="animate-spin"
@@ -1415,7 +1588,9 @@ export default function AdminLessonDetailPage() {
                                                                     }}
                                                                 >
                                                                     {hlsProcessingStatus?.currentStep ||
-                                                                        "Processing..."}
+                                                                        (hlsStatusLoading
+                                                                            ? "Loading the latest processing state..."
+                                                                            : "Processing...")}
                                                                 </span>
                                                                 <span
                                                                     style={{
@@ -1464,9 +1639,9 @@ export default function AdminLessonDetailPage() {
                                                                     "12px",
                                                             }}
                                                         >
-                                                            Please wait, this
-                                                            may take a few
-                                                            minutes
+                                                            {hlsStatusLoading
+                                                                ? "Please wait while the latest status is loaded."
+                                                                : "You may leave this page. Video is processing"}
                                                         </p>
                                                     </>
                                                 ) : videoUrl ||
@@ -1489,7 +1664,7 @@ export default function AdminLessonDetailPage() {
                                                         >
                                                             {hlsProcessingStatus?.hlsStatus ===
                                                             "ready"
-                                                                ? "HLS Video Ready"
+                                                                ? "Video Ready"
                                                                 : "Video Uploaded"}
                                                         </p>
                                                         {hlsProcessingStatus?.qualities && (
@@ -1572,19 +1747,6 @@ export default function AdminLessonDetailPage() {
                                                             Supports MP4, MOV,
                                                             AVI, MKV (max 500MB)
                                                         </p>
-                                                        <p
-                                                            style={{
-                                                                margin: "8px 0 0 0",
-                                                                fontSize:
-                                                                    "11px",
-                                                                color: "#94a3b8",
-                                                            }}
-                                                        >
-                                                            Video will be
-                                                            automatically
-                                                            converted to HLS
-                                                            format
-                                                        </p>
                                                     </>
                                                 )}
                                                 <input
@@ -1603,7 +1765,10 @@ export default function AdminLessonDetailPage() {
                                                             e.target.value = "";
                                                         }
                                                     }}
-                                                    disabled={hlsUploading}
+                                                    disabled={
+                                                        isHlsOperationBusy ||
+                                                        isHlsProviderUnavailable
+                                                    }
                                                     style={{ display: "none" }}
                                                     accept=".mp4,.webm,.mov,.avi,.mkv,.m4v,.mpg,.mpeg"
                                                 />

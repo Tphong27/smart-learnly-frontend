@@ -23,6 +23,14 @@ function normalizeCourse(course) {
     id: course.id ?? course.courseId,
     courseId: course.courseId ?? course.id,
     enrollmentId: course.enrollmentId,
+
+    classId: course.classId || course.enrolledClass?.id || null,
+    classEnrollmentId:
+      course.classEnrollmentId ||
+      course.enrolledClass?.classEnrollmentId ||
+      null,
+    className: course.className || course.enrolledClass?.className || "",
+
     title: course.title || "Untitled course",
     categoryName: course.categoryName || "Course",
     enrollmentStatus: course.enrollmentStatus || "ACTIVE",

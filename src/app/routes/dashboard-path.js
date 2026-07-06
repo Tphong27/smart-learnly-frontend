@@ -1,21 +1,19 @@
-import { ROLES } from "@/shared/constants/roles";
+import { isRoleAllowed, normalizeRole, ROLES } from "@/shared/constants/roles";
 
 export function getDashboardPathByRole(role) {
-  const normalizedRole =
-    typeof role === "string" ? role.toUpperCase() : role;
+  const normalizedRole = normalizeRole(role);
 
   switch (normalizedRole) {
     case ROLES.ADMIN:
-    case ROLES.TMO:
-    case ROLES.SME:
       return "/admin/dashboard";
-
+    case ROLES.TMO:
+      return "/admin/courses";
+    case ROLES.SME:
+      return "/admin/question-banks";
     case ROLES.TRAINER:
       return "/staff/courses";
-
     case ROLES.TRAINEE:
       return "/dashboard";
-
     default:
       return "/";
   }
@@ -24,10 +22,41 @@ export function getDashboardPathByRole(role) {
 export function isPathAllowedForRole(pathname, role) {
   if (!pathname) return false;
 
-  const normalizedRole =
-    typeof role === "string" ? role.toUpperCase() : role;
+  const normalizedRole = normalizeRole(role);
 
   const restrictedPrefixes = [
+    {
+      prefix: "/admin/dashboard",
+      allow: [ROLES.ADMIN],
+    },
+    {
+      prefix: "/admin/users-management",
+      allow: [ROLES.ADMIN],
+    },
+    {
+      prefix: "/admin/audit-log",
+      allow: [ROLES.ADMIN],
+    },
+    {
+      prefix: "/admin/settings",
+      allow: [ROLES.ADMIN],
+    },
+    {
+      prefix: "/admin/orders",
+      allow: [ROLES.ADMIN, ROLES.TMO],
+    },
+    {
+      prefix: "/admin/transactions",
+      allow: [ROLES.ADMIN, ROLES.TMO],
+    },
+    {
+      prefix: "/admin/question-banks",
+      allow: [ROLES.ADMIN, ROLES.TMO, ROLES.SME, ROLES.TRAINER],
+    },
+    {
+      prefix: "/admin/questions",
+      allow: [ROLES.ADMIN, ROLES.TMO, ROLES.SME, ROLES.TRAINER],
+    },
     {
       prefix: "/admin",
       allow: [ROLES.ADMIN, ROLES.TMO, ROLES.SME],
@@ -48,7 +77,7 @@ export function isPathAllowedForRole(pathname, role) {
 
   for (const { prefix, allow } of restrictedPrefixes) {
     if (pathname === prefix || pathname.startsWith(`${prefix}/`)) {
-      return allow.includes(normalizedRole);
+      return isRoleAllowed(normalizedRole, allow);
     }
   }
 

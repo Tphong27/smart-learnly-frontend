@@ -24,7 +24,7 @@ const navItems = [
     label: "Admin Dashboard",
     path: "/admin/dashboard",
     icon: Home,
-    roles: [ROLES.ADMIN, ROLES.TMO, ROLES.SME],
+    roles: [ROLES.ADMIN],
   },
   {
     label: "Users & Roles",
@@ -114,6 +114,12 @@ const navItems = [
   },
 
   // TRAINEE ROUTES
+  {
+    label: "Trainee Dashboard",
+    path: "/dashboard",
+    icon: Home,
+    roles: [ROLES.TRAINEE],
+  },
   {
     label: "Trainee Progress",
     path: "/learning/progress",

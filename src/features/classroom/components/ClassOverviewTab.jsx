@@ -1,10 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Edit3, Save, X } from "lucide-react";
 import { Button } from "@/shared/components/ui";
 import { classService } from "@/services";
 import { useActiveTrainers } from "../hooks/useActiveTrainers";
 import { formatCapacity, formatDate } from "../utils/classFormatter";
-import { ClassStatusBadge } from "./ClassStatusBadge";
 import { ScheduleCalendar } from "./ScheduleCalendar";
 import { WeeklyScheduleEditor } from "./WeeklySchedulePicker";
 
@@ -15,12 +14,13 @@ function toInputDate(value) {
 
 function toEditForm(classData) {
   return {
-    className: classData.className || "",
-    trainerId: classData.trainerId || "",
-    scheduleDescription: classData.scheduleDescription || "",
-    startDate: toInputDate(classData.startDate),
-    endDate: toInputDate(classData.endDate),
-    maxStudents: Number(classData.maxStudents || 30),
+    className: classData?.className || "",
+    trainerId: classData?.trainerId || "",
+    scheduleDescription: classData?.scheduleDescription || "",
+    startDate: toInputDate(classData?.startDate),
+    endDate: toInputDate(classData?.endDate),
+    maxStudents: Number(classData?.maxStudents || 30),
+    status: String(classData?.status || "upcoming").toLowerCase(),
   };
 }
 
@@ -91,6 +91,15 @@ function toUpdatePayload(form, originalClassData) {
     payload.maxStudents = maxStudents;
   }
 
+  const status = emptyToUndefined(form.status);
+  const originalStatus = emptyToUndefined(
+    String(originalClassData.status || "").toLowerCase(),
+  );
+
+  if (status && status !== originalStatus) {
+    payload.status = status;
+  }
+
   return payload;
 }
 
@@ -120,15 +129,64 @@ function buildTrainerOptions(trainers, classData) {
   ];
 }
 
-export function ClassOverviewTab({ classData, classId, onClassUpdated }) {
+export function ClassOverviewTab({
+  classData,
+  classId,
+  onClassUpdated,
+  readOnly = false,
+}) {
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState(() => toEditForm(classData));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [statusOptions, setStatusOptions] = useState([]);
+  const [loadingStatusOptions, setLoadingStatusOptions] = useState(false);
+  const [statusOptionsError, setStatusOptionsError] = useState("");
+
   const { trainers, loadingTrainers, reloadTrainers } = useActiveTrainers({
     autoLoad: false,
   });
+
   const trainerOptions = buildTrainerOptions(trainers, classData);
+
+  useEffect(() => {
+    if (!isEditing || readOnly) {
+      return undefined;
+    }
+
+    let mounted = true;
+
+    async function fetchStatusOptions() {
+      try {
+        setLoadingStatusOptions(true);
+        setStatusOptionsError("");
+
+        const data = await classService.listStatusOptions();
+
+        if (!mounted) return;
+
+        setStatusOptions(Array.isArray(data) ? data : []);
+      } catch (err) {
+        if (!mounted) return;
+
+        console.error("Load class status options failed:", err);
+        setStatusOptions([]);
+        setStatusOptionsError(
+          err?.message || "Can not load class status options",
+        );
+      } finally {
+        if (mounted) {
+          setLoadingStatusOptions(false);
+        }
+      }
+    }
+
+    fetchStatusOptions();
+
+    return () => {
+      mounted = false;
+    };
+  }, [isEditing, readOnly]);
 
   function updateField(key, value) {
     setEditForm((current) => ({
@@ -138,6 +196,10 @@ export function ClassOverviewTab({ classData, classId, onClassUpdated }) {
   }
 
   function startEdit() {
+    if (readOnly) {
+      return;
+    }
+
     setEditForm(toEditForm(classData));
     setError("");
     setIsEditing(true);
@@ -151,6 +213,11 @@ export function ClassOverviewTab({ classData, classId, onClassUpdated }) {
   }
 
   async function saveChanges() {
+    if (readOnly) {
+      setIsEditing(false);
+      return;
+    }
+
     try {
       setSaving(true);
       setError("");
@@ -169,7 +236,6 @@ export function ClassOverviewTab({ classData, classId, onClassUpdated }) {
       setIsEditing(false);
     } catch (err) {
       console.error("Update class failed:", err);
-
       setError(err?.message || err?.error || "Can not save class changes");
     } finally {
       setSaving(false);
@@ -182,46 +248,47 @@ export function ClassOverviewTab({ classData, classId, onClassUpdated }) {
         <div className="class-overview-card-header">
           <h3>Class Information</h3>
 
-          {!isEditing ? (
-            <Button
-              type="button"
-              variant="edit"
-              size="sm"
-              leftIcon={<Edit3 size={16} strokeWidth={2.2} />}
-              onClick={startEdit}
-            >
-              Edit
-            </Button>
-          ) : (
-            <div className="class-overview-card-header__actions">
+          {!readOnly &&
+            (!isEditing ? (
               <Button
                 type="button"
-                variant="save"
+                variant="edit"
                 size="sm"
-                loading={saving}
-                loadingText="Saving..."
-                leftIcon={<Save size={16} strokeWidth={2.2} />}
-                onClick={saveChanges}
+                leftIcon={<Edit3 size={16} strokeWidth={2.2} />}
+                onClick={startEdit}
               >
-                Save
+                Edit
               </Button>
+            ) : (
+              <div className="class-overview-card-header__actions">
+                <Button
+                  type="button"
+                  variant="save"
+                  size="sm"
+                  loading={saving}
+                  loadingText="Saving..."
+                  leftIcon={<Save size={16} strokeWidth={2.2} />}
+                  onClick={saveChanges}
+                >
+                  Save
+                </Button>
 
-              <Button
-                type="button"
-                variant="cancel"
-                size="sm"
-                leftIcon={<X size={16} strokeWidth={2.2} />}
-                onClick={cancelEdit}
-              >
-                Cancel
-              </Button>
-            </div>
-          )}
+                <Button
+                  type="button"
+                  variant="cancel"
+                  size="sm"
+                  leftIcon={<X size={16} strokeWidth={2.2} />}
+                  onClick={cancelEdit}
+                >
+                  Cancel
+                </Button>
+              </div>
+            ))}
         </div>
 
         {error && <p className="form-error-text">{error}</p>}
 
-        {!isEditing ? (
+        {!isEditing || readOnly ? (
           <>
             <div className="class-detail-list class-overview-info">
               <p>
@@ -248,11 +315,6 @@ export function ClassOverviewTab({ classData, classId, onClassUpdated }) {
 
               <p>
                 <strong>Available Seats:</strong> {classData.availableSeats}
-              </p>
-
-              <p>
-                <strong>Status:</strong>{" "}
-                <ClassStatusBadge status={classData.status} />
               </p>
             </div>
 
@@ -345,8 +407,39 @@ export function ClassOverviewTab({ classData, classId, onClassUpdated }) {
             </div>
 
             <div className="form-group">
-              <label>Schedule</label>
+              <label htmlFor="overviewStatus">Status</label>
 
+              <select
+                id="overviewStatus"
+                value={editForm.status}
+                disabled={loadingStatusOptions}
+                onChange={(event) => updateField("status", event.target.value)}
+              >
+                {loadingStatusOptions && (
+                  <option value={editForm.status}>Loading statuses...</option>
+                )}
+
+                {!loadingStatusOptions && statusOptions.length === 0 && (
+                  <option value={editForm.status}>
+                    {editForm.status || "No status available"}
+                  </option>
+                )}
+
+                {!loadingStatusOptions &&
+                  statusOptions.map((status) => (
+                    <option key={status.value} value={status.value}>
+                      {status.label}
+                    </option>
+                  ))}
+              </select>
+
+              {statusOptionsError && (
+                <span className="form-error-text">{statusOptionsError}</span>
+              )}
+            </div>
+
+            <div className="form-group">
+              <label>Schedule</label>
               <WeeklyScheduleEditor
                 value={editForm.scheduleDescription}
                 onChange={(value) => updateField("scheduleDescription", value)}
