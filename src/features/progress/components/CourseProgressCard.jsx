@@ -39,7 +39,7 @@ function AssignmentMetric({ courseId }) {
         if (!cancelled) {
           setCounts({ completed, total: assignments.length });
         }
-      } catch (error) {
+      } catch {
         if (!cancelled) setCounts({ completed: 0, total: 0 });
       }
     }
@@ -59,6 +59,8 @@ function AssignmentMetric({ courseId }) {
       to={`/learning/assignments?courseId=${courseId}`}
     />
   );
+}
+
 function getLearningPath(course) {
   const courseId = course.courseId || course.id;
 
