@@ -427,7 +427,7 @@ export const courseService = {
 
   /**
    * Upload video để xử lý HLS
-   * Backend sẽ tự động encode và upload lên R2
+   * Backend nhận file, upload source vào private R2 và gọi processing provider
    */
   async uploadHlsVideo(
     lessonId,
@@ -471,7 +471,7 @@ export const courseService = {
   },
 
   /**
-   * Kiểm tra FFmpeg và HLS service có sẵn sàng không
+   * Kiểm tra HLS và processing provider có sẵn sàng không
    */
   async checkHlsHealth() {
     const response = await apiClient.get("/hls/upload/health");
