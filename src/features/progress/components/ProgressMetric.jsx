@@ -1,7 +1,14 @@
 import { Link } from "react-router-dom";
 import { ProgressBar } from "./ProgressBar";
 
-export function ProgressMetric({ label, completed, total, percent, to }) {
+export function ProgressMetric({
+  label,
+  completed,
+  total,
+  percent,
+  to,
+  hideProgress = false,
+}) {
   const content = (
     <>
       <span className="course-metric__label">{label}</span>
@@ -10,9 +17,11 @@ export function ProgressMetric({ label, completed, total, percent, to }) {
         {total > 0 ? `${completed}/${total}` : "0/0"}
       </span>
 
-      <ProgressBar value={percent} />
+      {!hideProgress && <ProgressBar value={percent} />}
 
-      <strong className="course-metric__percent">{percent}%</strong>
+      {!hideProgress && (
+        <strong className="course-metric__percent">{percent}%</strong>
+      )}
     </>
   );
 

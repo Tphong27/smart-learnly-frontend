@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { Edit2, Eye, Plus, Search, Trash2 } from "lucide-react";
 import { Button, FormField, Modal, useToast } from "@/shared/components/ui";
 import { categoryService, courseService } from "@/services";
+import { getCurrentUser } from "@/services/api-client";
 import "../../admin-shared.css";
 
 const PAGE_SIZE = 10;
@@ -113,6 +114,8 @@ function DeleteCourseModal({ open, target, onClose, onConfirmed }) {
 export function AdminCoursesPage() {
   const toast = useToast();
   const navigate = useNavigate();
+  const currentUser = getCurrentUser();
+  const isTrainer = String(currentUser?.role || "").toLowerCase() === "trainer";
 
   const [page, setPage] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
@@ -242,12 +245,14 @@ export function AdminCoursesPage() {
             platform.
           </p>
         </div>
-        <Button
-          leftIcon={<Plus size={16} />}
-          onClick={() => navigate("/admin/courses/new")}
-        >
-          Add course
-        </Button>
+        {!isTrainer && (
+          <Button
+            leftIcon={<Plus size={16} />}
+            onClick={() => navigate("/admin/courses/new")}
+          >
+            Add course
+          </Button>
+        )}
       </div>
 
       {/* Khối Content Box độc lập */}
@@ -502,38 +507,44 @@ export function AdminCoursesPage() {
                         }}
                       >
                         <Link
-                          to={`/admin/courses/${course.id}/preview`}
+                          to={isTrainer
+                            ? `/staff/courses/${course.id}/content`
+                            : `/admin/courses/${course.id}/preview`}
                           className="admin-table__icon-btn"
-                          title="Preview sample content"
+                          title={isTrainer ? "View course structure" : "Preview sample content"}
                           style={{ color: "#64748b" }}
                         >
                           <Eye size={16} />
                         </Link>
-                        <Link
-                          to={`/admin/courses/${course.id}`}
-                          className="admin-table__icon-btn"
-                          title="Edit"
-                          style={{ color: "#3b82f6" }}
-                        >
-                          <Edit2 size={16} />
-                        </Link>
-                        <button
-                          type="button"
-                          className="admin-table__icon-btn admin-table__icon-btn--danger"
-                          title="Delete"
-                          onClick={() =>
-                            setDeleteState({ open: true, target: course })
-                          }
-                          style={{
-                            color: "#ef4444",
-                            background: "none",
-                            border: "none",
-                            cursor: "pointer",
-                            padding: 0,
-                          }}
-                        >
-                          <Trash2 size={16} />
-                        </button>
+                        {!isTrainer && (
+                          <>
+                            <Link
+                              to={`/admin/courses/${course.id}`}
+                              className="admin-table__icon-btn"
+                              title="Edit"
+                              style={{ color: "#3b82f6" }}
+                            >
+                              <Edit2 size={16} />
+                            </Link>
+                            <button
+                              type="button"
+                              className="admin-table__icon-btn admin-table__icon-btn--danger"
+                              title="Delete"
+                              onClick={() =>
+                                setDeleteState({ open: true, target: course })
+                              }
+                              style={{
+                                color: "#ef4444",
+                                background: "none",
+                                border: "none",
+                                cursor: "pointer",
+                                padding: 0,
+                              }}
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </>
+                        )}
                       </div>
                     </td>
                   </tr>

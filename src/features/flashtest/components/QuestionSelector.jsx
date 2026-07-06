@@ -31,6 +31,13 @@ export function QuestionSelector({
     () => questions.filter((question) => !selectedIds.has(questionId(question))),
     [questions, selectedIds],
   );
+  const randomCountNumber = Number(randomCount || 0);
+  const randomCountError =
+    randomCount && (!Number.isInteger(randomCountNumber) || randomCountNumber < 1)
+      ? "Enter a whole number greater than 0."
+      : randomCountNumber > availableQuestions.length
+      ? `Only ${availableQuestions.length} questions are available.`
+      : "";
 
   const loadQuestions = useCallback(async () => {
     if (!courseId) {
@@ -74,8 +81,10 @@ export function QuestionSelector({
   };
 
   const handleRandomSelect = () => {
-    const count = Math.max(1, Number(randomCount || 0));
-    if (!Number.isFinite(count)) return;
+    const count = Number(randomCount || 0);
+    if (!Number.isInteger(count) || count < 1 || count > availableQuestions.length) {
+      return;
+    }
 
     const shuffled = [...availableQuestions].sort(() => Math.random() - 0.5);
     const pickedQuestions = shuffled.slice(0, count);
@@ -221,6 +230,9 @@ export function QuestionSelector({
                 placeholder="Enter number of questions"
                 onChange={(event) => setRandomCount(event.target.value)}
               />
+              {randomCountError && (
+                <span className="ft-field-error">{randomCountError}</span>
+              )}
             </label>
             <div className="ft-confirm-dialog__actions">
               <button
@@ -234,7 +246,7 @@ export function QuestionSelector({
               <button
                 className="ft-button ft-button--primary"
                 type="button"
-                disabled={!Number(randomCount || 0)}
+                disabled={!randomCountNumber || Boolean(randomCountError)}
                 onClick={handleRandomSelect}
               >
                 <Shuffle size={16} />

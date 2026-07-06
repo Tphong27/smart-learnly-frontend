@@ -92,6 +92,10 @@
   background-color: #2563eb;
 }
 .btn-outline {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
   padding: 8px 16px;
   border: 1px solid #c3c6d7;
   background: white;
@@ -100,6 +104,11 @@
   font-size: 13px;
   font-weight: 500;
   transition: 0.2s;
+}
+
+.btn-outline .material-symbols-outlined {
+  font-size: 20px;
+  line-height: 1;
 }
 .btn-outline:hover {
   background: #f3f3fe;

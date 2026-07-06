@@ -12,6 +12,7 @@ import { MyTransactionsPage, PaymentResultPage } from "@/features/payment";
 import {
   TraineeFlashTestListPage,
   TraineeFlashTestTakePage,
+  TraineeAssignmentTakePage,
   TraineeTestListPage,
   TraineeTestTakePage,
 } from "@/features/flashtest";
@@ -49,6 +50,11 @@ function getTraineeRoutes() {
       path: "/learning/flashtests/take/:id/:type",
       element: <RoleGuard allowedRoles={[ROLES.TRAINEE]} />,
       children: [{ index: true, element: <TraineeFlashTestTakePage /> }],
+    },
+    {
+      path: "/learning/assignments/take/:id/:type",
+      element: <RoleGuard allowedRoles={[ROLES.TRAINEE]} />,
+      children: [{ index: true, element: <TraineeAssignmentTakePage /> }],
     },
     {
       path: "/learning/tests/take/:id/:type",
@@ -100,6 +106,10 @@ function getTraineeRoutes() {
             {
               path: "flashtests",
               element: <TraineeFlashTestListPage />,
+            },
+            {
+              path: "assignments",
+              element: <TraineeFlashTestListPage variant="assignment" />,
             },
           ],
         },

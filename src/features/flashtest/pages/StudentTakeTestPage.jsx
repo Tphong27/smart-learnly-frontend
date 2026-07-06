@@ -36,6 +36,22 @@ function secondsUntil(endTime) {
   );
 }
 
+function isAssignmentFinal(status) {
+  return ["SUBMITTED", "GRADED", "EXPIRED", "LATE"].includes(
+    String(status || "").toUpperCase(),
+  );
+}
+
+function isExpiredAssignment(status) {
+  return String(status || "").toUpperCase() === "EXPIRED";
+}
+
+function isSubmittedAssignment(status) {
+  return ["SUBMITTED", "GRADED", "LATE"].includes(
+    String(status || "").toUpperCase(),
+  );
+}
+
 function formatTime(seconds) {
   const safe = Math.max(0, Number(seconds || 0));
   const minutes = Math.floor(safe / 60);
@@ -200,17 +216,25 @@ export function StudentTakeTestPage({
             }
           }
           setSubmission(existingSubmission);
-          if (
-            assignment.dueDate &&
-            new Date(assignment.dueDate).getTime() <= Date.now()
-          ) {
-            setError("This essay assignment has expired.");
-            setTestData(assignment);
-            setTimeLeft(0);
-            return;
+          if (existingSubmission && isAssignmentFinal(existingSubmission.status)) {
+            const assignmentOpen =
+              !assignment.dueDate || secondsUntil(assignment.dueDate) > 0;
+            if (isExpiredAssignment(existingSubmission.status) && !assignmentOpen) {
+              setError("This essay assignment has expired.");
+              setTestData(assignment);
+              setSubmission(existingSubmission);
+              setTimeLeft(0);
+              return;
+            }
+            if (isSubmittedAssignment(existingSubmission.status)) {
+              setTestData(assignment);
+              setSubmission(existingSubmission);
+              setError("");
+              setTimeLeft(secondsUntil(assignment.dueDate));
+              return;
+            }
           }
           setTestData(assignment);
-          setTimeLeft(secondsUntil(assignment.dueDate));
           try {
             const started = await assignmentService.start({
               assignmentId: id,
@@ -219,6 +243,8 @@ export function StudentTakeTestPage({
               accessCode,
             });
             setSubmission(started);
+            setError("");
+            setTimeLeft(secondsUntil(assignment.dueDate));
             publishMonitor({
               submissionId: started.id,
               status: "DOING",
@@ -227,6 +253,7 @@ export function StudentTakeTestPage({
             });
           } catch (startError) {
             console.warn("Could not start essay session yet", startError);
+            setTimeLeft(secondsUntil(assignment.dueDate));
           }
         }
       } catch (initError) {
@@ -309,6 +336,14 @@ export function StudentTakeTestPage({
 
   const handleSubmit = useCallback(async ({ skipWarning = false } = {}) => {
     if (submittedRef.current || submitting) return;
+    if (
+      normalizedType === "essay" &&
+      testData?.dueDate &&
+      secondsUntil(testData.dueDate) <= 0
+    ) {
+      setError("This essay assignment has expired.");
+      return;
+    }
     if (!skipWarning) {
       if (normalizedType === "essay" && !file && !submission?.fileUrl) {
         setSubmitWarning({
@@ -418,6 +453,7 @@ export function StudentTakeTestPage({
     handleSubmit,
     loading,
     normalizedType,
+    testData?.dueDate,
     testData,
   ]);
 
@@ -470,7 +506,7 @@ export function StudentTakeTestPage({
               disabled={
                 submitting ||
                 Boolean(error && normalizedType === "mcq") ||
-                Boolean(error && normalizedType === "essay" && timeLeft <= 0)
+                Boolean(normalizedType === "essay" && testData?.dueDate && timeLeft <= 0)
               }
               onClick={handleSubmit}
             >
