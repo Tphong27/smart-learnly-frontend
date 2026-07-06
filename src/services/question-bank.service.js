@@ -81,6 +81,20 @@ export const questionBankService = {
     return unwrap(response)
   },
 
+  async uploadQuestionAudio(questionId, file) {
+    const formData = new FormData()
+    formData.append('file', file)
+    const response = await apiClient.post(`/admin/questions/${questionId}/audio`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+    return unwrap(response)
+  },
+
+  async removeQuestionAudio(questionId) {
+    const response = await apiClient.delete(`/admin/questions/${questionId}/audio`)
+    return unwrap(response)
+  },
+
   async archiveQuestion(questionId) {
     const response = await apiClient.delete(`/admin/questions/${questionId}`)
     return unwrap(response)
