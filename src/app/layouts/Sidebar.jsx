@@ -115,6 +115,12 @@ const navItems = [
 
   // TRAINEE ROUTES
   {
+    label: "Trainee Dashboard",
+    path: "/dashboard",
+    icon: Home,
+    roles: [ROLES.TRAINEE],
+  },
+  {
     label: "Trainee Progress",
     path: "/learning/progress",
     icon: BarChart3,
