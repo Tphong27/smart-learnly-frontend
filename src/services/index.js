@@ -16,6 +16,7 @@ export { flashcardService } from './flashcard.service'
 export { cartPriceCacheService } from './cart-price-cache.service'
 export { classService } from './class.service'
 export { userService } from './user.service'
+export { adminDashboardService } from './admin-dashboard.service'
 export * from './flashtest.service'
 export { questionBankService } from './question-bank.service'
 export { traineeProgressService } from "./trainee-progress.service";

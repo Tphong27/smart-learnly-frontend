@@ -24,7 +24,7 @@ const navItems = [
     label: "Admin Dashboard",
     path: "/admin/dashboard",
     icon: Home,
-    roles: [ROLES.ADMIN, ROLES.TMO, ROLES.SME],
+    roles: [ROLES.ADMIN],
   },
   {
     label: "Users & Roles",
