@@ -280,7 +280,7 @@ export function CourseDetailPage() {
     setBuyNowLoading(true);
 
     try {
-      const checkout = await orderService.buyNowCheckout({
+      const checkout = await orderService.checkout({
         courseId,
         classId: classItem.id,
       });
