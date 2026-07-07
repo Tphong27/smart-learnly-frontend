@@ -817,6 +817,8 @@
     font-size: 15px;
     line-height: 1.8;
     color: var(--lw-text);
+    min-width: 0;
+    overflow-wrap: anywhere;
 }
 
 .tab-overview__content p { margin: 0 0 14px; }
@@ -1149,6 +1151,153 @@
 
 .learning-lesson__rich-content .ql-indent-8 {
     padding-left: 24em;
+}
+
+.learning-lesson__rich-content * {
+    box-sizing: border-box;
+    max-width: 100%;
+    overflow-wrap: anywhere;
+}
+
+.essay-lesson {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(320px, 380px);
+    align-items: start;
+    gap: 24px;
+}
+
+.essay-lesson__main {
+    min-width: 0;
+}
+
+.essay-lesson__instruction {
+    width: 100%;
+    margin-top: 20px;
+}
+
+.essay-submit {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    max-width: none;
+    margin-top: 0;
+    padding: 16px;
+    border: 1px solid var(--lw-border);
+    border-radius: 12px;
+    background: #f8fafc;
+}
+
+.essay-submit__current {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
+    border: 1px solid #dbeafe;
+    border-radius: 10px;
+    background: #ffffff;
+    color: var(--lw-text);
+}
+
+.essay-submit__current > svg {
+    flex: 0 0 auto;
+    color: var(--lw-accent);
+}
+
+.essay-submit__current div {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.essay-submit__current span,
+.essay-submit__current small {
+    color: var(--lw-text-muted);
+    font-size: 12px;
+    line-height: 1.4;
+}
+
+.essay-submit__current strong {
+    color: var(--lw-text);
+    font-size: 14px;
+    line-height: 1.4;
+    overflow-wrap: anywhere;
+}
+
+.essay-submit__controls {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+}
+
+.essay-submit__picker {
+    display: flex;
+    flex: 1 1 360px;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+    padding: 14px 16px;
+    border: 1px dashed #94a3b8;
+    border-radius: 10px;
+    background: #ffffff;
+    color: var(--lw-text);
+    cursor: pointer;
+    transition:
+        border-color 0.15s,
+        box-shadow 0.15s,
+        background 0.15s;
+}
+
+.essay-submit__picker:hover {
+    border-color: var(--lw-accent);
+    background: #f8fbff;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.08);
+}
+
+.essay-submit__picker > svg {
+    flex: 0 0 auto;
+    color: var(--lw-accent);
+}
+
+.essay-submit__picker span {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.essay-submit__picker strong {
+    color: var(--lw-text);
+    font-size: 14px;
+    line-height: 1.35;
+    overflow-wrap: anywhere;
+}
+
+.essay-submit__picker small {
+    color: var(--lw-text-muted);
+    font-size: 12px;
+    line-height: 1.4;
+}
+
+.essay-submit__picker input {
+    display: none;
+}
+
+.essay-submit__button {
+    flex: 0 0 auto;
+    justify-content: center;
+    min-height: 54px;
+    max-width: none;
+    width: 100%;
+    white-space: nowrap;
+}
+
+.essay-submit__message {
+    max-width: none;
+    margin: 0;
+    color: var(--lw-text);
+    overflow-wrap: anywhere;
 }
 
 .tab-overview__empty {
@@ -2414,6 +2563,12 @@
 }
 
 /* ─── Responsive ─────────────────────────────────────────────────────────── */
+@media (max-width: 1100px) {
+    .essay-lesson {
+        grid-template-columns: 1fr;
+    }
+}
+
 @media (max-width: 900px) {
     .quiz-player {
         max-width: 100%;
@@ -2490,6 +2645,23 @@
     .lesson-tabs__next-btn {
         width: 100%;
         justify-content: space-between;
+    }
+
+    .essay-submit {
+        max-width: none;
+        padding: 14px;
+    }
+
+    .essay-submit__controls {
+        flex-direction: column;
+    }
+
+    .essay-submit__picker {
+        flex-basis: auto;
+    }
+
+    .essay-submit__button {
+        width: 100%;
     }
 
     .learning-workspace__nav { padding: 12px 16px; }

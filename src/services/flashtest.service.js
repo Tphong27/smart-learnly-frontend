@@ -62,6 +62,10 @@ export const assignmentService = {
     const response = await apiClient.get(`/assignments/${id}`);
     return unwrap(response);
   },
+  async getByLesson(lessonId) {
+    const response = await apiClient.get(`/assignments/lesson/${lessonId}`);
+    return unwrap(response);
+  },
   async create(data) {
     const response = await apiClient.post("/assignments", data);
     return unwrap(response);

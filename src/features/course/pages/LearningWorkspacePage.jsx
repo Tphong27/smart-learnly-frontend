@@ -321,7 +321,9 @@ export function LearningWorkspacePage({
       activeLesson?.lessonType || "",
     ).toUpperCase();
 
-    const isActivityLesson = ["QUIZ", "FLASHCARD"].includes(currentLessonType);
+    const isActivityLesson = ["QUIZ", "FLASHCARD", "ESSAY"].includes(
+      currentLessonType,
+    );
     const isCompleted = currentLessonId
       ? completedLessonIds.has(currentLessonId)
       : false;
@@ -330,7 +332,9 @@ export function LearningWorkspacePage({
       setError(
         currentLessonType === "QUIZ"
           ? "Please submit the quiz before moving to the next lesson."
-          : "Please complete all flashcards before moving to the next lesson.",
+          : currentLessonType === "FLASHCARD"
+            ? "Please complete all flashcards before moving to the next lesson."
+            : "Please submit the essay before moving to the next lesson.",
       );
       return;
     }
@@ -386,7 +390,7 @@ export function LearningWorkspacePage({
 
   const currentLessonId = getLessonId(activeLesson);
 
-  const isActivityLesson = ["QUIZ", "FLASHCARD"].includes(
+  const isActivityLesson = ["QUIZ", "FLASHCARD", "ESSAY"].includes(
     String(activeLesson?.lessonType || "").toUpperCase(),
   );
 
@@ -556,6 +560,7 @@ export function LearningWorkspacePage({
                   workspaceMode={mode}
                   onQuizCompleted={markLessonCompleted}
                   onFlashcardCompleted={markLessonCompleted}
+                  onEssayCompleted={markLessonCompleted}
                 />
               </div>
             ) : (
