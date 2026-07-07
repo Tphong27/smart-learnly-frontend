@@ -24,16 +24,13 @@ const LANGUAGES = [
   { value: "en", label: "English" },
   { value: "vi", label: "Vietnamese" },
 ];
-const GENERATION_MODES = [
-  { value: "RULE_BASED", label: "Rule-based" },
-  { value: "AI", label: "AI-assisted (not configured)", disabled: true },
-];
 const DEFAULT_GENERATION = {
   desiredCount: 10,
   language: "en",
   difficulty: "medium",
   generationMode: "RULE_BASED",
 };
+const SHOW_TRANSCRIPT_GENERATION = false;
 
 const STATUS_PRIORITY = {
   draft: 0,
@@ -128,7 +125,7 @@ function formatGeneratedMessage(response, requestedCount, sourceLabel = "") {
   const generatedCount = getGeneratedCount(response);
   const suffix = sourceLabel ? ` ${sourceLabel}` : "";
   const cardLabel = generatedCount === 1 ? "card" : "cards";
-  const baseMessage = `Generated ${generatedCount} staging ${cardLabel}${suffix}.`;
+  const baseMessage = `Created ${generatedCount} staging ${cardLabel}${suffix}.`;
   if (generatedCount < requestedCount) {
     return `${baseMessage} Requested ${requestedCount}; fewer cards were generated because the source content had limited extractable ideas.`;
   }
@@ -183,26 +180,10 @@ function GenerationSettings({ values, onChange, prefix }) {
             ))}
           </select>
         </div>
-        <div className="flashcard-field">
-          <label htmlFor={`${prefix}-mode`}>Generation mode</label>
-          <select
-            id={`${prefix}-mode`}
-            value={values.generationMode}
-            onChange={(event) =>
-              onChange({ ...values, generationMode: event.target.value })
-            }
-          >
-            {GENERATION_MODES.map((mode) => (
-              <option key={mode.value} value={mode.value} disabled={mode.disabled}>
-                {mode.label}
-              </option>
-            ))}
-          </select>
-        </div>
       </div>
       <p className="flashcard-staging__settings-note">
         Front/Back formatted cards are imported as-is. Language and difficulty
-        only guide rule-based generation from normal notes.
+        guide card parsing from normal notes.
       </p>
     </>
   );
@@ -216,7 +197,6 @@ function InlineAlert({ children }) {
 function QuestionBankImportPanel({ setId, notify, onStagingChanged }) {
   const [filters, setFilters] = useState({
     keyword: "",
-    questionBankId: "",
     difficulty: "",
     status: "",
     importStatus: "not_imported",
@@ -225,7 +205,6 @@ function QuestionBankImportPanel({ setId, notify, onStagingChanged }) {
   const [questions, setQuestions] = useState([]);
   const [selectedIds, setSelectedIds] = useState([]);
   const [page, setPage] = useState(0);
-  const [advancedOpen, setAdvancedOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
@@ -236,7 +215,6 @@ function QuestionBankImportPanel({ setId, notify, onStagingChanged }) {
     setError(null);
     try {
       const params = {
-        questionBankId: appliedFilters.questionBankId.trim() || undefined,
         keyword: appliedFilters.keyword.trim() || undefined,
         difficulty: appliedFilters.difficulty || undefined,
         status: appliedFilters.status || undefined,
@@ -457,35 +435,6 @@ function QuestionBankImportPanel({ setId, notify, onStagingChanged }) {
             Search
           </button>
         </div>
-        <div className="flashcard-staging__advanced">
-          <button
-            type="button"
-            className="flashcard-btn"
-            onClick={() => setAdvancedOpen((current) => !current)}
-          >
-            {advancedOpen ? "Hide advanced filters" : "Show advanced filters"}
-          </button>
-          {advancedOpen && (
-            <div className="flashcard-staging__advanced-fields">
-              <div className="flashcard-field">
-                <label htmlFor="staging-question-bank">Question bank UUID</label>
-                <input
-                  id="staging-question-bank"
-                  type="text"
-                  value={filters.questionBankId}
-                  onChange={(event) =>
-                    setFilters((current) => ({
-                      ...current,
-                      questionBankId: event.target.value,
-                    }))
-                  }
-                  placeholder="Optional"
-                />
-              </div>
-            </div>
-          )}
-        </div>
-
         <InlineAlert>{error}</InlineAlert>
 
         <div className="flashcard-staging__table-wrap">
@@ -680,7 +629,7 @@ function TextGenerationPanel({ setId, notify, onStagingChanged }) {
             id="staging-source-text"
             value={sourceText}
             onChange={(event) => setSourceText(event.target.value)}
-            placeholder="Paste lesson notes or reading material"
+            placeholder="Paste Front/Back formatted cards or lesson notes"
             rows={7}
           />
         </div>
@@ -697,7 +646,7 @@ function TextGenerationPanel({ setId, notify, onStagingChanged }) {
             disabled={submitting}
           >
             <WandSparkles size={16} />
-            {submitting ? "Generating" : "Generate staging cards"}
+            {submitting ? "Parsing" : "Parse to staging"}
           </button>
         </div>
       </form>
@@ -779,14 +728,14 @@ function DocumentGenerationPanel({ setId, notify, onStagingChanged }) {
           prefix="staging-document"
         />
         <div className="flashcard-staging__actions">
-          <span>{file ? "Ready to generate" : "No file selected"}</span>
+          <span>{file ? "Ready to create cards" : "No file selected"}</span>
           <button
             type="submit"
             className="flashcard-btn flashcard-btn--primary"
             disabled={submitting}
           >
             <Upload size={16} />
-            {submitting ? "Generating" : "Generate from document"}
+            {submitting ? "Creating" : "Create from document"}
           </button>
         </div>
       </form>
@@ -1634,11 +1583,13 @@ export function FlashcardStagingWorkspace({
           notify={notify}
           onStagingChanged={handleStagingChanged}
         />
-        <TranscriptGenerationPanel
-          setId={setId}
-          notify={notify}
-          onStagingChanged={handleStagingChanged}
-        />
+        {SHOW_TRANSCRIPT_GENERATION && (
+          <TranscriptGenerationPanel
+            setId={setId}
+            notify={notify}
+            onStagingChanged={handleStagingChanged}
+          />
+        )}
       </div>
     );
   }
