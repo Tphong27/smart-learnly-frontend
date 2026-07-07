@@ -1,10 +1,9 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Plus, Trash2 } from 'lucide-react'
 import { Button, FormField, useToast } from '@/shared/components/ui'
 import { getCurrentUser, questionBankService } from '@/services'
-import { QuestionAudioUploader } from '../components/QuestionAudioUploader'
-import { QuestionImageUploader } from '../components/QuestionImageUploader'
+import { QuestionMediaManager } from '../components/QuestionMediaManager'
 import '../../admin-shared.css'
 import './question-bank.css'
 
@@ -25,6 +24,40 @@ function normalizeAnswers(type, answers) {
   return answers?.length ? answers : [blankAnswer(0), blankAnswer(1), blankAnswer(2), blankAnswer(3)]
 }
 
+function mediaId(item) {
+  return item?.attachmentId || item?.id || null
+}
+
+function normalizeQuestionMedia(question) {
+  const attachments = Array.isArray(question?.mediaAttachments) ? question.mediaAttachments : []
+  const images = attachments
+    .filter((item) => item.mediaType === 'image')
+    .sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0))
+    .map((item) => ({ ...item, localId: item.attachmentId || item.id, source: 'remote' }))
+  const audios = attachments
+    .filter((item) => item.mediaType === 'audio')
+    .sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0))
+    .map((item) => ({ ...item, localId: item.attachmentId || item.id, source: 'remote' }))
+
+  if (!images.length && question?.imageUrl) {
+    images.push({ localId: 'legacy-image', mediaType: 'image', mediaUrl: question.imageUrl, fileName: 'Primary image', source: 'legacy' })
+  }
+  if (!audios.length && question?.audioUrl) {
+    audios.push({ localId: 'legacy-audio', mediaType: 'audio', mediaUrl: question.audioUrl, fileName: 'Primary audio', source: 'legacy' })
+  }
+  return { images, audios }
+}
+
+function pendingMediaItem(file, mediaType, previewUrl) {
+  return {
+    localId: `${mediaType}-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    mediaType,
+    file,
+    fileName: file.name,
+    previewUrl,
+    source: 'pending',
+  }
+}
 function validate(values) {
   if (!values.questionText.trim()) return 'Question text is required.'
   if (!values.questionType) return 'Question type is required.'
@@ -58,12 +91,11 @@ export function AdminQuestionFormPage() {
     explanation: '',
     answers: normalizeAnswers('multiple_choice'),
   })
-  const [imageUrl, setImageUrl] = useState(null)
-  const [imageFile, setImageFile] = useState(null)
-  const [imageRemoved, setImageRemoved] = useState(false)
-  const [audioUrl, setAudioUrl] = useState(null)
-  const [audioFile, setAudioFile] = useState(null)
-  const [audioRemoved, setAudioRemoved] = useState(false)
+  const pendingPreviewUrls = useRef(new Set())
+  const [imageMedia, setImageMedia] = useState([])
+  const [audioMedia, setAudioMedia] = useState([])
+  const [removedAttachmentIds, setRemovedAttachmentIds] = useState([])
+  const [removedLegacyTypes, setRemovedLegacyTypes] = useState([])
 
   useEffect(() => {
     let cancelled = false
@@ -74,12 +106,11 @@ export function AdminQuestionFormPage() {
         if (editing) {
           const question = await questionBankService.getQuestion(questionId)
           if (cancelled) return
-          setImageUrl(question.imageUrl || null)
-          setImageFile(null)
-          setImageRemoved(false)
-          setAudioUrl(question.audioUrl || null)
-          setAudioFile(null)
-          setAudioRemoved(false)
+          const normalizedMedia = normalizeQuestionMedia(question)
+          setImageMedia(normalizedMedia.images)
+          setAudioMedia(normalizedMedia.audios)
+          setRemovedAttachmentIds([])
+          setRemovedLegacyTypes([])
           setValues({
             questionText: question.questionText || '',
             questionType: question.questionType || 'multiple_choice',
@@ -150,46 +181,86 @@ export function AdminQuestionFormPage() {
     })
   }
 
-  function handleImageSelected(file) {
-    setImageFile(file)
-    setImageRemoved(false)
+  useEffect(() => () => {
+    pendingPreviewUrls.current.forEach((url) => URL.revokeObjectURL(url))
+    pendingPreviewUrls.current.clear()
+  }, [])
+
+  function addMediaFiles(mediaType, files) {
+    const nextItems = files.map((file) => {
+      const previewUrl = URL.createObjectURL(file)
+      pendingPreviewUrls.current.add(previewUrl)
+      return pendingMediaItem(file, mediaType, previewUrl)
+    })
+    const setter = mediaType === 'image' ? setImageMedia : setAudioMedia
+    setter((current) => [...current, ...nextItems])
   }
 
-  function handleImageRemove() {
-    setImageFile(null)
-    setImageRemoved(Boolean(imageUrl))
-    setImageUrl(null)
+  function removeMedia(mediaType, item) {
+    const attachmentId = mediaId(item)
+    if (attachmentId) {
+      setRemovedAttachmentIds((current) => current.includes(attachmentId) ? current : [...current, attachmentId])
+    } else if (item.source === 'legacy') {
+      setRemovedLegacyTypes((current) => current.includes(mediaType) ? current : [...current, mediaType])
+    }
+    if (item.previewUrl) {
+      URL.revokeObjectURL(item.previewUrl)
+      pendingPreviewUrls.current.delete(item.previewUrl)
+    }
+    const setter = mediaType === 'image' ? setImageMedia : setAudioMedia
+    setter((current) => current.filter((candidate) => candidate.localId !== item.localId))
   }
 
-  function handleAudioSelected(file) {
-    setAudioFile(file)
-    setAudioRemoved(false)
+  function moveMedia(mediaType, index, direction) {
+    const setter = mediaType === 'image' ? setImageMedia : setAudioMedia
+    setter((current) => {
+      const next = [...current]
+      const targetIndex = index + direction
+      if (targetIndex < 0 || targetIndex >= next.length) return current
+      const [item] = next.splice(index, 1)
+      next.splice(targetIndex, 0, item)
+      return next
+    })
   }
 
-  function handleAudioRemove() {
-    setAudioFile(null)
-    setAudioRemoved(Boolean(audioUrl))
-    setAudioUrl(null)
+  async function syncMediaType(savedQuestionId, mediaType, items) {
+    const pendingItems = items.filter((item) => item.source === 'pending')
+    let uploadedIds = []
+    if (pendingItems.length) {
+      const uploadResponse = await questionBankService.uploadQuestionMedia(savedQuestionId, mediaType, pendingItems.map((item) => item.file))
+      uploadedIds = (uploadResponse?.mediaAttachments || [])
+        .map((item) => item.attachmentId || item.id)
+        .filter(Boolean)
+    }
+
+    const orderedIds = []
+    for (const item of items) {
+      if (item.source === 'pending') {
+        const nextUploadedId = uploadedIds.shift()
+        if (nextUploadedId) orderedIds.push(nextUploadedId)
+      } else {
+        const attachmentId = mediaId(item)
+        if (attachmentId) orderedIds.push(attachmentId)
+      }
+    }
+    if (editing && orderedIds.length > 1) {
+      await questionBankService.reorderQuestionMedia(savedQuestionId, mediaType, orderedIds)
+    }
   }
 
-  async function syncQuestionImage(savedQuestionId) {
+  async function syncQuestionMedia(savedQuestionId) {
     if (!savedQuestionId) return
-    if (imageRemoved && editing) {
+    for (const attachmentId of removedAttachmentIds) {
+      await questionBankService.removeQuestionMedia(savedQuestionId, attachmentId)
+    }
+    if (editing && removedLegacyTypes.includes('image')) {
       await questionBankService.removeQuestionImage(savedQuestionId)
     }
-    if (imageFile) {
-      await questionBankService.uploadQuestionImage(savedQuestionId, imageFile)
-    }
-  }
-
-  async function syncQuestionAudio(savedQuestionId) {
-    if (!savedQuestionId) return
-    if (audioRemoved && editing) {
+    if (editing && removedLegacyTypes.includes('audio')) {
       await questionBankService.removeQuestionAudio(savedQuestionId)
     }
-    if (audioFile) {
-      await questionBankService.uploadQuestionAudio(savedQuestionId, audioFile)
-    }
+    await syncMediaType(savedQuestionId, 'image', imageMedia)
+    await syncMediaType(savedQuestionId, 'audio', audioMedia)
   }
 
   async function handleSubmit(event) {
@@ -223,16 +294,9 @@ export function AdminQuestionFormPage() {
       }
       const savedQuestionId = savedQuestion?.questionId || savedQuestion?.id || questionId
       try {
-        await syncQuestionImage(savedQuestionId)
+        await syncQuestionMedia(savedQuestionId)
       } catch {
-        toast.error(`${editing ? 'Question updated' : 'Question created'}, but image update failed. Open the question and retry.`)
-        navigate(`/admin/question-banks/${returnBankId}`)
-        return
-      }
-      try {
-        await syncQuestionAudio(savedQuestionId)
-      } catch {
-        toast.error(`${editing ? 'Question updated' : 'Question created'}, but audio update failed. Open the question and retry.`)
+        toast.error(`${editing ? 'Question updated' : 'Question created'}, but media update failed. Open the question and retry.`)
         navigate(`/admin/question-banks/${returnBankId}`)
         return
       }
@@ -309,22 +373,24 @@ export function AdminQuestionFormPage() {
           </div>
 
           <div className="input-field admin-form-grid__full question-modal__image-section">
-            <label className="input-field__label">Question image</label>
-            <QuestionImageUploader
-              value={imageRemoved ? null : imageUrl}
+            <QuestionMediaManager
+              mediaType="image"
+              items={imageMedia}
               disabled={submitting || values.status === 'archived'}
-              onFileSelected={handleImageSelected}
-              onRemove={handleImageRemove}
+              onAddFiles={(files) => addMediaFiles('image', files)}
+              onRemove={(item) => removeMedia('image', item)}
+              onMove={(index, direction) => moveMedia('image', index, direction)}
             />
           </div>
 
           <div className="input-field admin-form-grid__full question-modal__audio-section">
-            <label className="input-field__label">Question audio</label>
-            <QuestionAudioUploader
-              value={audioRemoved ? null : audioUrl}
+            <QuestionMediaManager
+              mediaType="audio"
+              items={audioMedia}
               disabled={submitting || values.status === 'archived'}
-              onFileSelected={handleAudioSelected}
-              onRemove={handleAudioRemove}
+              onAddFiles={(files) => addMediaFiles('audio', files)}
+              onRemove={(item) => removeMedia('audio', item)}
+              onMove={(index, direction) => moveMedia('audio', index, direction)}
             />
           </div>
 
