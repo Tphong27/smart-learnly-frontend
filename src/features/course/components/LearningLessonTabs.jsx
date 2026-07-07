@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import {
   ArrowRight,
   BookOpen,
@@ -7,10 +8,13 @@ import {
   FolderOpen,
   MessageSquare,
   StickyNote,
+  UploadCloud,
 } from "lucide-react";
 import { fileNameFromUrl, isHtmlContent } from "../utils/lesson-content";
 import { LearningQuizPlayer } from "./LearningQuizPlayer";
 import { FlashcardPractice } from "./flashcards/FlashcardPractice";
+import { assignmentService } from "@/services/flashtest.service";
+import { getCurrentUser } from "@/services/api-client";
 import DOMPurify from "dompurify";
 
 const TABS = [
@@ -29,6 +33,7 @@ function OverviewContent({
   workspaceMode,
   onQuizCompleted,
   onFlashcardCompleted,
+  onEssayCompleted,
 }) {
   const type = (lesson?.lessonType || "").toUpperCase();
 
@@ -49,6 +54,16 @@ function OverviewContent({
         content={lesson.content}
         durationSeconds={lesson.durationSeconds}
         onCompleted={() => onQuizCompleted?.(getLessonId(lesson))}
+      />
+    );
+  }
+
+  if (type === "ESSAY") {
+    return (
+      <EssayLessonContent
+        lesson={lesson}
+        readOnly={workspaceMode !== "student"}
+        onCompleted={() => onEssayCompleted?.(getLessonId(lesson))}
       />
     );
   }
@@ -94,6 +109,228 @@ function OverviewContent({
         .map((line, index) =>
           line.trim() ? <p key={index}>{line}</p> : <br key={index} />,
         )}
+    </div>
+  );
+}
+
+function EssayLessonContent({ lesson, readOnly = false, onCompleted }) {
+  const [assignment, setAssignment] = useState(null);
+  const [submission, setSubmission] = useState(null);
+  const [file, setFile] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [message, setMessage] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadEssay() {
+      setLoading(true);
+      setMessage("");
+      try {
+        const nextAssignment = await assignmentService.getByLesson(
+          getLessonId(lesson),
+        );
+        if (cancelled) return;
+        setAssignment(nextAssignment);
+
+        const currentUser = getCurrentUser();
+        const studentId =
+          currentUser?.id || currentUser?.userId || currentUser?.accountId;
+        if (!readOnly && studentId && nextAssignment?.id) {
+          try {
+            const currentSubmission =
+              await assignmentService.getSubmissionByStudent(
+                nextAssignment.id,
+                studentId,
+              );
+            if (!cancelled) {
+              setSubmission(currentSubmission);
+              if (
+                ["SUBMITTED", "GRADED", "LATE", "EXPIRED"].includes(
+                  String(currentSubmission?.status || "").toUpperCase(),
+                )
+              ) {
+                onCompleted?.();
+              }
+            }
+          } catch (submissionError) {
+            if (submissionError?.originalError?.response?.status !== 404) {
+              throw submissionError;
+            }
+          }
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setMessage(error?.message || "Could not load essay assignment.");
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    if (getLessonId(lesson)) loadEssay();
+    return () => {
+      cancelled = true;
+    };
+  }, [lesson, readOnly]);
+
+  const downloadInstruction = async () => {
+    const fileUrl = assignment?.instructionFileUrl || lesson?.attachmentUrl;
+    if (!fileUrl) return;
+    const blob = await assignmentService.downloadFile(fileUrl);
+    const href = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = href;
+    link.download =
+      assignment?.instructionFileName || fileNameFromUrl(fileUrl) || "essay";
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(href);
+  };
+
+  const submitEssay = async () => {
+    if (!assignment?.id || !file) return;
+    const currentUser = getCurrentUser();
+    const studentId =
+      currentUser?.id || currentUser?.userId || currentUser?.accountId;
+    if (!studentId) {
+      setMessage("Please sign in again before submitting.");
+      return;
+    }
+
+    setSubmitting(true);
+    setMessage("");
+    try {
+      const uploaded = await assignmentService.uploadFile(file);
+      await assignmentService.start({
+        assignmentId: assignment.id,
+        studentId,
+        studentName: currentUser?.fullName || currentUser?.email || "Student",
+      });
+      const result = await assignmentService.submit({
+        assignmentId: assignment.id,
+        studentId,
+        studentName: currentUser?.fullName || currentUser?.email || "Student",
+        submissionText: "",
+        fileUrl: uploaded?.fileUrl,
+        fileName: uploaded?.fileName || file.name,
+      });
+      setSubmission(result);
+      setFile(null);
+      setMessage("Submission uploaded successfully.");
+      onCompleted?.();
+    } catch (error) {
+      setMessage(error?.message || "Submit failed.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const instructionUrl = assignment?.instructionFileUrl || lesson?.attachmentUrl;
+
+  if (loading) {
+    return <div className="tab-overview__empty">Loading essay...</div>;
+  }
+
+  return (
+    <div className="tab-overview__content learning-lesson__rich-content essay-lesson">
+      <div className="essay-lesson__main">
+        {lesson?.content && isHtmlContent(lesson.content) ? (
+          <div
+            dangerouslySetInnerHTML={{
+              __html: DOMPurify.sanitize(lesson.content, {
+                ADD_ATTR: [
+                  "target",
+                  "rel",
+                  "controls",
+                  "preload",
+                  "poster",
+                  "width",
+                  "height",
+                  "type",
+                  "class",
+                  "data-summary-video",
+                ],
+              }),
+            }}
+          />
+        ) : lesson?.content ? (
+          lesson.content
+            .split("\n")
+            .map((line, index) =>
+              line.trim() ? <p key={index}>{line}</p> : <br key={index} />,
+            )
+        ) : null}
+
+        {instructionUrl && (
+          <button
+            type="button"
+            className="tab-resources__item essay-lesson__instruction"
+            onClick={downloadInstruction}
+          >
+            <div className="tab-resources__item-icon">
+              <FileText size={20} />
+            </div>
+            <div className="tab-resources__item-info">
+              <div className="tab-resources__item-name">
+                {assignment?.instructionFileName ||
+                  fileNameFromUrl(instructionUrl) ||
+                  "Essay document"}
+              </div>
+              <div className="tab-resources__item-meta">
+                Download instructions
+              </div>
+            </div>
+            <div className="tab-resources__item-actions">
+              <Download size={16} />
+            </div>
+          </button>
+        )}
+      </div>
+
+      {!readOnly && (
+        <div className="essay-submit">
+          {submission?.fileUrl && (
+            <div className="essay-submit__current">
+              <FileText size={18} />
+              <div>
+                <span>Current submission</span>
+                <strong>{submission.fileName || "Submitted file"}</strong>
+                {submission.score != null && (
+                  <small>Score: {submission.score}/10</small>
+                )}
+              </div>
+            </div>
+          )}
+          <div className="essay-submit__controls">
+            <label className="essay-submit__picker">
+              <UploadCloud size={20} />
+              <span>
+                <strong>{file ? file.name : "Choose submission file"}</strong>
+                <small>PDF, Word, PowerPoint, image, or ZIP</small>
+              </span>
+              <input
+                type="file"
+                accept=".pdf,.doc,.docx,.ppt,.pptx,.png,.jpg,.jpeg,.zip"
+                onChange={(event) => setFile(event.target.files?.[0] || null)}
+              />
+            </label>
+            <button
+              type="button"
+              className="lesson-tabs__next-btn essay-submit__button"
+              onClick={submitEssay}
+              disabled={submitting || !file || !assignment?.id}
+            >
+              <span>{submitting ? "Submitting..." : "Submit assignment"}</span>
+              <ArrowRight size={18} />
+            </button>
+          </div>
+          {message && <p className="essay-submit__message">{message}</p>}
+        </div>
+      )}
+
+      {readOnly && message && <p className="essay-submit__message">{message}</p>}
     </div>
   );
 }
@@ -181,6 +418,7 @@ export function LearningLessonTabs({
   workspaceMode = "student",
   onQuizCompleted,
   onFlashcardCompleted,
+  onEssayCompleted,
 }) {
   const resources = Array.isArray(lesson?.resources) ? lesson.resources : [];
   const totalResources = resources.length + (lesson?.attachmentUrl ? 1 : 0);
@@ -213,6 +451,7 @@ export function LearningLessonTabs({
               workspaceMode={workspaceMode}
               onQuizCompleted={onQuizCompleted}
               onFlashcardCompleted={onFlashcardCompleted}
+              onEssayCompleted={onEssayCompleted}
             />
           </div>
         )}

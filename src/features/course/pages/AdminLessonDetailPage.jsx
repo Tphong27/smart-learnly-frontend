@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { courseService } from "@/services/course.service";
+import { assignmentService } from "@/services/flashtest.service";
 import { useToast } from "@/shared/components/ui/Toast/useToast";
 import RichTextEditor from "@/shared/components/rich-text/RichTextEditor";
 import { FlashcardLessonEditor } from "@/features/course/components/flashcards/FlashcardLessonEditor";
@@ -36,9 +37,22 @@ import {
     History,
     Edit3,
     Loader2,
+    Download,
     ChevronLeft,
     ChevronRight,
 } from "lucide-react";
+
+const ESSAY_INSTRUCTION_EXTENSIONS = [
+    "pdf",
+    "doc",
+    "docx",
+    "ppt",
+    "pptx",
+    "png",
+    "jpg",
+    "jpeg",
+    "zip",
+];
 
 export default function AdminLessonDetailPage() {
     const { courseId, lessonId } = useParams();
@@ -65,6 +79,12 @@ export default function AdminLessonDetailPage() {
     const [mainContentFile, setMainContentFile] = useState(null);
     const [uploadedFileUrl, setUploadedFileUrl] = useState("");
     const [resources, setResources] = useState([]);
+    const [essayAssignment, setEssayAssignment] = useState(null);
+    const [essaySubmissions, setEssaySubmissions] = useState([]);
+    const [submissionsLoading, setSubmissionsLoading] = useState(false);
+    const [gradeForms, setGradeForms] = useState({});
+    const [gradingId, setGradingId] = useState(null);
+    const [downloadingId, setDownloadingId] = useState(null);
     const [uploadingMainFile, setUploadingMainFile] = useState(false);
     const [uploadingResources, setUploadingResources] = useState(false);
 
@@ -198,6 +218,8 @@ export default function AdminLessonDetailPage() {
                         setLessonType("QUIZ");
                     } else if (typeFromServer === "FLASHCARD") {
                         setLessonType("FLASHCARD");
+                    } else if (typeFromServer === "ESSAY") {
+                        setLessonType("ESSAY");
                     } else {
                         setLessonType("VIDEO");
                     }
@@ -220,6 +242,33 @@ export default function AdminLessonDetailPage() {
             fetchLessonDetail();
         }
     }, [lessonId, showToast]);
+
+    useEffect(() => {
+        if (lessonType !== "ESSAY" || !lessonId) return undefined;
+
+        let cancelled = false;
+        async function loadEssayAssignment() {
+            try {
+                const assignment = await assignmentService.getByLesson(lessonId);
+                if (cancelled) return;
+                setEssayAssignment(assignment);
+                if (assignment?.instructionFileUrl) {
+                    setUploadedFileUrl(assignment.instructionFileUrl);
+                }
+            } catch (error) {
+                if (cancelled) return;
+                if (error?.originalError?.response?.status !== 404) {
+                    console.warn("Could not load essay assignment", error);
+                }
+                setEssayAssignment(null);
+            }
+        }
+
+        loadEssayAssignment();
+        return () => {
+            cancelled = true;
+        };
+    }, [lessonId, lessonType]);
 
     useEffect(() => {
         if (pageLoading || !lessonId || lessonType !== "VIDEO")
@@ -427,7 +476,17 @@ export default function AdminLessonDetailPage() {
             const extension = getFileExtension(file.name);
             if (!MATERIAL_DOC_EXTENSIONS.includes(extension)) {
                 showToast(
-                    "Only PDF, DOC or DOCX files are supported for reading material",
+                    "Only PDF, DOC or DOCX files are supported for this document",
+                    "error",
+                );
+                return;
+            }
+        }
+        if (lessonType === "ESSAY") {
+            const extension = getFileExtension(file.name);
+            if (!ESSAY_INSTRUCTION_EXTENSIONS.includes(extension)) {
+                showToast(
+                    "Only PDF, Word, PowerPoint, image, or ZIP files are supported for essay instructions",
                     "error",
                 );
                 return;
@@ -442,10 +501,22 @@ export default function AdminLessonDetailPage() {
         setUploadingMainFile(true);
         setMainContentFile(file);
         try {
-            const uploadedFile = await courseService.uploadLessonMaterial(file);
-            setUploadedFileUrl(uploadedFile.url);
+            const uploadedFile =
+                lessonType === "ESSAY"
+                    ? await assignmentService.uploadFile(file)
+                    : await courseService.uploadLessonMaterial(file);
+            const uploadedUrl =
+                uploadedFile?.url ||
+                uploadedFile?.fileUrl ||
+                uploadedFile?.data?.url ||
+                uploadedFile?.data?.fileUrl ||
+                "";
+            if (!uploadedUrl) {
+                throw new Error("Upload completed but no file URL was returned");
+            }
+            setUploadedFileUrl(uploadedUrl);
             if (lessonType === "VIDEO") {
-                setVideoUrl(uploadedFile.url);
+                setVideoUrl(uploadedUrl);
             }
             showToast(`Successfully uploaded ${file.name}!`, "success");
         } catch (error) {
@@ -673,6 +744,86 @@ export default function AdminLessonDetailPage() {
         );
     };
 
+    const loadEssaySubmissions = useCallback(async () => {
+        if (!essayAssignment?.id) return;
+        setSubmissionsLoading(true);
+        try {
+            const submissions = await assignmentService.getSubmissionsByAssignment(
+                essayAssignment.id,
+            );
+            setEssaySubmissions(Array.isArray(submissions) ? submissions : []);
+        } catch (error) {
+            console.error("Error loading essay submissions:", error);
+            showToast("Failed to load essay submissions", "error");
+        } finally {
+            setSubmissionsLoading(false);
+        }
+    }, [essayAssignment?.id, showToast]);
+
+    useEffect(() => {
+        if (activeTab === "submissions") {
+            loadEssaySubmissions();
+        }
+    }, [activeTab, loadEssaySubmissions]);
+
+    const downloadEssayFile = async (submission) => {
+        if (!submission?.fileUrl) return;
+        setDownloadingId(submission.id);
+        try {
+            const blob = await assignmentService.downloadFile(submission.fileUrl);
+            const href = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.href = href;
+            link.download = submission.fileName || "submission";
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            URL.revokeObjectURL(href);
+        } catch (error) {
+            showToast(error?.message || "Could not download submission", "error");
+        } finally {
+            setDownloadingId(null);
+        }
+    };
+
+    const updateGradeForm = (submissionId, patch) => {
+        setGradeForms((current) => ({
+            ...current,
+            [submissionId]: {
+                score: "",
+                ...(current[submissionId] || {}),
+                ...patch,
+            },
+        }));
+    };
+
+    const gradeEssaySubmission = async (submission) => {
+        const score = Number(gradeForms[submission.id]?.score);
+        if (!Number.isFinite(score) || score < 0 || score > 10) {
+            showToast("Please enter a score from 0 to 10", "error");
+            return;
+        }
+
+        setGradingId(submission.id);
+        try {
+            await assignmentService.gradeSubmission(submission.id, {
+                score,
+                status: "GRADED",
+            });
+            setGradeForms((current) => {
+                const next = { ...current };
+                delete next[submission.id];
+                return next;
+            });
+            await loadEssaySubmissions();
+            showToast("Submission graded", "success");
+        } catch (error) {
+            showToast(error?.message || "Could not grade submission", "error");
+        } finally {
+            setGradingId(null);
+        }
+    };
+
     const normalizeResourceForPayload = (resource, index) => {
         if (!resource) {
             return null;
@@ -715,6 +866,7 @@ export default function AdminLessonDetailPage() {
         }
 
         const isQuiz = lessonType === "QUIZ";
+        const isEssay = lessonType === "ESSAY";
         const cleanSummary = sanitizeLessonHtml(summary);
 
         if (!isQuiz && isEmptyLessonHtml(cleanSummary)) {
@@ -740,6 +892,7 @@ export default function AdminLessonDetailPage() {
             }
 
             const normalizedResources = isQuiz
+                || isEssay
                 ? []
                 : resources
                       .map((resource, index) =>
@@ -759,7 +912,10 @@ export default function AdminLessonDetailPage() {
                 lessonType,
                 content,
                 videoUrl: lessonType === "VIDEO" ? resolvedVideoUrl : null,
-                attachmentUrl: lessonType === "PDF" ? uploadedFileUrl : null,
+                attachmentUrl:
+                    lessonType === "PDF" || lessonType === "ESSAY"
+                        ? uploadedFileUrl
+                        : null,
                 durationSeconds: Number(durationSeconds || 0),
                 isPreview,
                 status: normalizeLessonStatus(status),
@@ -768,6 +924,31 @@ export default function AdminLessonDetailPage() {
             };
 
             await courseService.updateLesson(lessonId, payload);
+
+            if (isEssay) {
+                const assignmentPayload = {
+                    lessonId,
+                    title: title.trim(),
+                    description: cleanSummary,
+                    instructionFileUrl: uploadedFileUrl || null,
+                    instructionFileName:
+                        mainContentFile?.name ||
+                        getFileNameFromUrl(uploadedFileUrl) ||
+                        null,
+                    dueDate: null,
+                    allowLateSubmission: true,
+                    maxScore: 10,
+                    isFlashtest: false,
+                };
+
+                const savedAssignment = essayAssignment?.id
+                    ? await assignmentService.update(
+                          essayAssignment.id,
+                          assignmentPayload,
+                      )
+                    : await assignmentService.create(assignmentPayload);
+                setEssayAssignment(savedAssignment);
+            }
 
             showToast("Update successfully!", "success");
             navigate(`/admin/courses/${courseId}/content`);
@@ -901,7 +1082,11 @@ export default function AdminLessonDetailPage() {
                 </button>
                 <button
                     type="button"
-                    onClick={() => setActiveTab("history")}
+                    onClick={() =>
+                        setActiveTab(
+                            lessonType === "ESSAY" ? "submissions" : "history",
+                        )
+                    }
                     style={{
                         display: "flex",
                         alignItems: "center",
@@ -912,15 +1097,21 @@ export default function AdminLessonDetailPage() {
                         border: "none",
                         background: "none",
                         cursor: "pointer",
-                        color: activeTab === "history" ? "#2563eb" : "#64748b",
+                        color:
+                            activeTab ===
+                            (lessonType === "ESSAY" ? "submissions" : "history")
+                                ? "#2563eb"
+                                : "#64748b",
                         borderBottom:
-                            activeTab === "history"
+                            activeTab ===
+                            (lessonType === "ESSAY" ? "submissions" : "history")
                                 ? "2px solid #2563eb"
                                 : "2px solid transparent",
                         transition: "all 0.2s",
                     }}
                 >
-                    <History size={18} /> Audit History
+                    <History size={18} />{" "}
+                    {lessonType === "ESSAY" ? "Student Submissions" : "Audit History"}
                 </button>
             </div>
 
@@ -1029,6 +1220,7 @@ export default function AdminLessonDetailPage() {
                                                 Document / Reading
                                             </option>
                                             <option value="QUIZ">Quiz</option>
+                                            <option value="ESSAY">Essay</option>
                                             {lessonType === "FLASHCARD" && (
                                                 <option value="FLASHCARD">
                                                     Flashcard
@@ -1173,7 +1365,8 @@ export default function AdminLessonDetailPage() {
                                     </div>
                                 )}
 
-                                {lessonType !== "QUIZ" && (
+                                {lessonType !== "QUIZ" &&
+                                    lessonType !== "ESSAY" && (
                                     <div>
                                         <label
                                             style={{
@@ -1824,7 +2017,8 @@ export default function AdminLessonDetailPage() {
                                                 )}
                                         </div>
                                     )}
-                                    {lessonType === "PDF" && (
+                                    {(lessonType === "PDF" ||
+                                        lessonType === "ESSAY") && (
                                         <div
                                             onDragOver={handleDragOver}
                                             onDrop={handleDropMainFile}
@@ -1839,6 +2033,9 @@ export default function AdminLessonDetailPage() {
                                                 alignItems: "center",
                                                 gap: "16px",
                                                 height: "300px",
+                                                minWidth: 0,
+                                                maxWidth: "100%",
+                                                overflow: "hidden",
                                                 borderRadius: "16px",
                                                 border:
                                                     mainContentFile ||
@@ -1885,6 +2082,14 @@ export default function AdminLessonDetailPage() {
                                                             fontSize: "16px",
                                                             fontWeight: "600",
                                                             color: "#065f46",
+                                                            maxWidth: "100%",
+                                                            lineHeight: 1.35,
+                                                            overflowWrap:
+                                                                "anywhere",
+                                                            wordBreak:
+                                                                "break-word",
+                                                            whiteSpace:
+                                                                "normal",
                                                         }}
                                                     >
                                                         {mainContentFile
@@ -1898,6 +2103,9 @@ export default function AdminLessonDetailPage() {
                                                             margin: 0,
                                                             fontSize: "13px",
                                                             color: "#059669",
+                                                            maxWidth: "100%",
+                                                            overflowWrap:
+                                                                "anywhere",
                                                         }}
                                                     >
                                                         Click to replace
@@ -1931,9 +2139,15 @@ export default function AdminLessonDetailPage() {
                                                             fontSize: "16px",
                                                             fontWeight: "600",
                                                             color: "#1e293b",
+                                                            maxWidth: "100%",
+                                                            lineHeight: 1.4,
+                                                            overflowWrap:
+                                                                "anywhere",
                                                         }}
                                                     >
-                                                        Drag and drop or{" "}
+                                                        {lessonType === "ESSAY"
+                                                            ? "Upload assignment document or "
+                                                            : "Drag and drop or "}
                                                         <span
                                                             style={{
                                                                 color: "#2563eb",
@@ -1951,7 +2165,11 @@ export default function AdminLessonDetailPage() {
                                                 onChange={handleMainFileSelect}
                                                 disabled={uploadingMainFile}
                                                 style={{ display: "none" }}
-                                                accept=".pdf,.doc,.docx"
+                                                accept={
+                                                    lessonType === "ESSAY"
+                                                        ? ".pdf,.doc,.docx,.ppt,.pptx,.png,.jpg,.jpeg,.zip"
+                                                        : ".pdf,.doc,.docx"
+                                                }
                                             />
                                         </div>
                                     )}
@@ -2044,6 +2262,253 @@ export default function AdminLessonDetailPage() {
                         </div>
                     </form>
                 )
+            ) : lessonType === "ESSAY" ? (
+                <div
+                    style={{
+                        backgroundColor: "#fff",
+                        padding: "28px",
+                        borderRadius: "16px",
+                        boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
+                    }}
+                >
+                    <div
+                        style={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "center",
+                            gap: "16px",
+                            marginBottom: "20px",
+                        }}
+                    >
+                        <div>
+                            <h3
+                                style={{
+                                    margin: 0,
+                                    fontSize: "18px",
+                                    color: "#1e293b",
+                                }}
+                            >
+                                Student Submissions
+                            </h3>
+                            <p
+                                style={{
+                                    margin: "6px 0 0",
+                                    color: "#64748b",
+                                    fontSize: "14px",
+                                }}
+                            >
+                                Download submitted files and grade this essay lesson.
+                            </p>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={loadEssaySubmissions}
+                            disabled={submissionsLoading || !essayAssignment?.id}
+                            style={{
+                                border: "1px solid #cbd5e1",
+                                background: "#fff",
+                                borderRadius: "8px",
+                                padding: "10px 14px",
+                                color: "#334155",
+                                cursor:
+                                    submissionsLoading || !essayAssignment?.id
+                                        ? "not-allowed"
+                                        : "pointer",
+                                fontWeight: 600,
+                            }}
+                        >
+                            {submissionsLoading ? "Loading..." : "Refresh"}
+                        </button>
+                    </div>
+
+                    {!essayAssignment?.id ? (
+                        <div
+                            style={{
+                                padding: "40px",
+                                textAlign: "center",
+                                color: "#94a3b8",
+                                border: "1px dashed #cbd5e1",
+                                borderRadius: "12px",
+                            }}
+                        >
+                            Save this essay lesson first to create its submission workspace.
+                        </div>
+                    ) : submissionsLoading ? (
+                        <div
+                            style={{
+                                display: "flex",
+                                justifyContent: "center",
+                                alignItems: "center",
+                                padding: "40px",
+                                gap: "10px",
+                                color: "#64748b",
+                            }}
+                        >
+                            <Loader2 className="animate-spin" size={20} />
+                            <span>Loading submissions...</span>
+                        </div>
+                    ) : essaySubmissions.length === 0 ? (
+                        <div
+                            style={{
+                                padding: "40px",
+                                textAlign: "center",
+                                color: "#94a3b8",
+                                border: "1px dashed #cbd5e1",
+                                borderRadius: "12px",
+                            }}
+                        >
+                            No student submissions yet.
+                        </div>
+                    ) : (
+                        <div style={{ overflowX: "auto" }}>
+                            <table
+                                style={{
+                                    width: "100%",
+                                    borderCollapse: "collapse",
+                                    textAlign: "left",
+                                    fontSize: "14px",
+                                }}
+                            >
+                                <thead>
+                                    <tr
+                                        style={{
+                                            borderBottom: "2px solid #edf2f7",
+                                            color: "#64748b",
+                                        }}
+                                    >
+                                        <th style={{ padding: "12px 16px" }}>Student</th>
+                                        <th style={{ padding: "12px 16px" }}>Status</th>
+                                        <th style={{ padding: "12px 16px" }}>Submitted</th>
+                                        <th style={{ padding: "12px 16px" }}>File</th>
+                                        <th style={{ padding: "12px 16px" }}>Grade</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {essaySubmissions.map((submission) => (
+                                        <tr
+                                            key={submission.id}
+                                            style={{
+                                                borderBottom: "1px solid #edf2f7",
+                                                color: "#334155",
+                                            }}
+                                        >
+                                            <td style={{ padding: "16px" }}>
+                                                {submission.studentName ||
+                                                    submission.studentId ||
+                                                    "Student"}
+                                            </td>
+                                            <td style={{ padding: "16px" }}>
+                                                {submission.status || "--"}
+                                            </td>
+                                            <td style={{ padding: "16px" }}>
+                                                {formatDateTime(submission.submittedAt)}
+                                            </td>
+                                            <td style={{ padding: "16px" }}>
+                                                {submission.fileUrl ? (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() =>
+                                                            downloadEssayFile(submission)
+                                                        }
+                                                        disabled={
+                                                            downloadingId ===
+                                                            submission.id
+                                                        }
+                                                        style={{
+                                                            display: "inline-flex",
+                                                            alignItems: "center",
+                                                            gap: "8px",
+                                                            border: "1px solid #cbd5e1",
+                                                            background: "#fff",
+                                                            borderRadius: "8px",
+                                                            padding: "8px 12px",
+                                                            cursor: "pointer",
+                                                        }}
+                                                    >
+                                                        <Download size={16} />
+                                                        {downloadingId === submission.id
+                                                            ? "Downloading..."
+                                                            : submission.fileName ||
+                                                              "Download"}
+                                                    </button>
+                                                ) : (
+                                                    "No file"
+                                                )}
+                                            </td>
+                                            <td style={{ padding: "16px" }}>
+                                                {submission.score != null ? (
+                                                    <strong>{submission.score}/10</strong>
+                                                ) : (
+                                                    <div
+                                                        style={{
+                                                            display: "flex",
+                                                            gap: "8px",
+                                                            alignItems: "center",
+                                                        }}
+                                                    >
+                                                        <input
+                                                            type="number"
+                                                            min="0"
+                                                            max="10"
+                                                            step="0.1"
+                                                            value={
+                                                                gradeForms[
+                                                                    submission.id
+                                                                ]?.score || ""
+                                                            }
+                                                            onChange={(event) =>
+                                                                updateGradeForm(
+                                                                    submission.id,
+                                                                    {
+                                                                        score: event
+                                                                            .target
+                                                                            .value,
+                                                                    },
+                                                                )
+                                                            }
+                                                            placeholder="0-10"
+                                                            style={{
+                                                                width: "90px",
+                                                                padding: "8px 10px",
+                                                                borderRadius: "8px",
+                                                                border: "1px solid #cbd5e1",
+                                                            }}
+                                                        />
+                                                        <button
+                                                            type="button"
+                                                            onClick={() =>
+                                                                gradeEssaySubmission(
+                                                                    submission,
+                                                                )
+                                                            }
+                                                            disabled={
+                                                                gradingId ===
+                                                                submission.id
+                                                            }
+                                                            style={{
+                                                                border: "none",
+                                                                background: "#2563eb",
+                                                                color: "#fff",
+                                                                borderRadius: "8px",
+                                                                padding: "8px 12px",
+                                                                cursor: "pointer",
+                                                                fontWeight: 600,
+                                                            }}
+                                                        >
+                                                            {gradingId === submission.id
+                                                                ? "Saving..."
+                                                                : "Grade"}
+                                                        </button>
+                                                    </div>
+                                                )}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
+                </div>
             ) : (
                 <div
                     style={{

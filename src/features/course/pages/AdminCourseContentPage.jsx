@@ -58,6 +58,13 @@ function SectionItem({
         </div>
       );
     }
+    if (t === "essay") {
+      return (
+        <div className="lesson-icon doc">
+          <span className="material-symbols-outlined">assignment</span>
+        </div>
+      );
+    }
     return (
       <div className="lesson-icon quiz">
         <span className="material-symbols-outlined">quiz</span>
@@ -927,6 +934,7 @@ export default function AdminCourseContentPage() {
                       </option>
                       <option value="quiz">Quiz</option>
                       <option value="flashcard">Flashcard</option>
+                      <option value="essay">Essay</option>
                     </select>
                   </div>
                   <div
