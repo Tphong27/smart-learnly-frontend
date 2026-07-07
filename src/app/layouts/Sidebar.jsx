@@ -24,7 +24,7 @@ const navItems = [
     label: "Admin Dashboard",
     path: "/admin/dashboard",
     icon: Home,
-    roles: [ROLES.ADMIN, ROLES.TMO, ROLES.SME],
+    roles: [ROLES.ADMIN],
   },
   {
     label: "Users & Roles",
@@ -77,7 +77,7 @@ const navItems = [
     roles: [ROLES.TRAINER, ROLES.TMO, ROLES.SME],
   },
   {
-    label: "Tests & Questions",
+    label: "Tests Management",
     path: "/staff/tests",
     icon: FileQuestion,
     roles: [ROLES.TRAINER, ROLES.TMO, ROLES.SME],
@@ -114,6 +114,12 @@ const navItems = [
   },
 
   // TRAINEE ROUTES
+  {
+    label: "Trainee Dashboard",
+    path: "/dashboard",
+    icon: Home,
+    roles: [ROLES.TRAINEE],
+  },
   {
     label: "Trainee Progress",
     path: "/learning/progress",

@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Client } from "@stomp/stompjs";
-import { useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import {
+  ArrowLeft,
   CheckCircle,
   Clock,
   Download,
@@ -32,6 +33,22 @@ function secondsUntil(endTime) {
   return Math.max(
     0,
     Math.floor((new Date(endTime).getTime() - Date.now()) / 1000),
+  );
+}
+
+function isAssignmentFinal(status) {
+  return ["SUBMITTED", "GRADED", "EXPIRED", "LATE"].includes(
+    String(status || "").toUpperCase(),
+  );
+}
+
+function isExpiredAssignment(status) {
+  return String(status || "").toUpperCase() === "EXPIRED";
+}
+
+function isSubmittedAssignment(status) {
+  return ["SUBMITTED", "GRADED", "LATE"].includes(
+    String(status || "").toUpperCase(),
   );
 }
 
@@ -75,9 +92,14 @@ function submitWarningMessage(warning) {
   return warning?.message || "";
 }
 
-export function StudentTakeTestPage() {
+export function StudentTakeTestPage({
+  listPath = "/learning/flashtests",
+  accessStoragePrefix = "flashAccess",
+  resultKicker = "Flash test result",
+} = {}) {
   const { id, type } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const normalizedType =
     type === "assignment" || type === "essay" ? "essay" : "mcq";
   const student = getStudent();
@@ -96,6 +118,12 @@ export function StudentTakeTestPage() {
   const [submitting, setSubmitting] = useState(false);
   const [submitWarning, setSubmitWarning] = useState(null);
   const [completedResult, setCompletedResult] = useState(null);
+  const [activeQuestionIndex, setActiveQuestionIndex] = useState(0);
+
+  const accessCode =
+    location.state?.accessCode ||
+    window.sessionStorage.getItem(`${accessStoragePrefix}:${normalizedType}:${id}`) ||
+    "";
 
   const publishMonitor = useCallback(
     (payload) => {
@@ -142,6 +170,7 @@ export function StudentTakeTestPage() {
             student.id,
             null,
             student.name,
+            accessCode,
           );
           if (isCompletedAttempt(started.status)) {
             setTestData(test);
@@ -162,6 +191,7 @@ export function StudentTakeTestPage() {
           setTestData(test);
           setAttempt(started);
           setQuestions(hydrated);
+          setActiveQuestionIndex(0);
           setTimeLeft(secondsUntil(started.endTime));
           publishMonitor({
             attemptId: started.id,
@@ -186,24 +216,35 @@ export function StudentTakeTestPage() {
             }
           }
           setSubmission(existingSubmission);
-          if (
-            assignment.dueDate &&
-            new Date(assignment.dueDate).getTime() <= Date.now()
-          ) {
-            setError("This essay assignment has expired.");
-            setTestData(assignment);
-            setTimeLeft(0);
-            return;
+          if (existingSubmission && isAssignmentFinal(existingSubmission.status)) {
+            const assignmentOpen =
+              !assignment.dueDate || secondsUntil(assignment.dueDate) > 0;
+            if (isExpiredAssignment(existingSubmission.status) && !assignmentOpen) {
+              setError("This essay assignment has expired.");
+              setTestData(assignment);
+              setSubmission(existingSubmission);
+              setTimeLeft(0);
+              return;
+            }
+            if (isSubmittedAssignment(existingSubmission.status)) {
+              setTestData(assignment);
+              setSubmission(existingSubmission);
+              setError("");
+              setTimeLeft(secondsUntil(assignment.dueDate));
+              return;
+            }
           }
           setTestData(assignment);
-          setTimeLeft(secondsUntil(assignment.dueDate));
           try {
             const started = await assignmentService.start({
               assignmentId: id,
               studentId: student.id,
               studentName: student.name,
+              accessCode,
             });
             setSubmission(started);
+            setError("");
+            setTimeLeft(secondsUntil(assignment.dueDate));
             publishMonitor({
               submissionId: started.id,
               status: "DOING",
@@ -212,6 +253,7 @@ export function StudentTakeTestPage() {
             });
           } catch (startError) {
             console.warn("Could not start essay session yet", startError);
+            setTimeLeft(secondsUntil(assignment.dueDate));
           }
         }
       } catch (initError) {
@@ -221,7 +263,7 @@ export function StudentTakeTestPage() {
       }
     }
     init();
-  }, [id, normalizedType, publishMonitor, student.id, student.name]);
+  }, [accessCode, id, normalizedType, publishMonitor, student.id, student.name]);
 
   const handleDownloadCurrentSubmission = async () => {
     if (!submission?.fileUrl) return;
@@ -271,6 +313,7 @@ export function StudentTakeTestPage() {
       assignmentId: id,
       studentId: student.id,
       studentName: student.name,
+      accessCode,
     });
     setSubmission(started);
     publishMonitor({
@@ -282,6 +325,7 @@ export function StudentTakeTestPage() {
     return started;
   }, [
     id,
+    accessCode,
     normalizedType,
     publishMonitor,
     student.id,
@@ -292,6 +336,14 @@ export function StudentTakeTestPage() {
 
   const handleSubmit = useCallback(async ({ skipWarning = false } = {}) => {
     if (submittedRef.current || submitting) return;
+    if (
+      normalizedType === "essay" &&
+      testData?.dueDate &&
+      secondsUntil(testData.dueDate) <= 0
+    ) {
+      setError("This essay assignment has expired.");
+      return;
+    }
     if (!skipWarning) {
       if (normalizedType === "essay" && !file && !submission?.fileUrl) {
         setSubmitWarning({
@@ -354,7 +406,7 @@ export function StudentTakeTestPage() {
         });
       }
       if (normalizedType === "essay") {
-        navigate("/learning/flashtests");
+        navigate(listPath);
       }
     } catch (submitError) {
       submittedRef.current = false;
@@ -369,6 +421,7 @@ export function StudentTakeTestPage() {
     id,
     ensureEssayStarted,
     navigate,
+    listPath,
     normalizedType,
     publishMonitor,
     questions,
@@ -400,6 +453,7 @@ export function StudentTakeTestPage() {
     handleSubmit,
     loading,
     normalizedType,
+    testData?.dueDate,
     testData,
   ]);
 
@@ -452,7 +506,7 @@ export function StudentTakeTestPage() {
               disabled={
                 submitting ||
                 Boolean(error && normalizedType === "mcq") ||
-                Boolean(error && normalizedType === "essay" && timeLeft <= 0)
+                Boolean(normalizedType === "essay" && testData?.dueDate && timeLeft <= 0)
               }
               onClick={handleSubmit}
             >
@@ -470,7 +524,7 @@ export function StudentTakeTestPage() {
             <Eye size={24} />
           </div>
           <div className="ft-result-panel__body">
-            <span className="ft-page-kicker">Flash test result</span>
+            <span className="ft-page-kicker">{resultKicker}</span>
             <h2>{testData?.title || testData?.name || "MCQ practice"}</h2>
             <p>
               Status: <strong>{completedResult.status || "SUBMITTED"}</strong>
@@ -483,24 +537,75 @@ export function StudentTakeTestPage() {
               <small>{completedResult.percentage}%</small>
             )}
           </div>
+          <div className="ft-result-panel__actions">
+            <button
+              className="ft-button ft-button--primary"
+              type="button"
+              onClick={() => navigate(listPath)}
+            >
+              <ArrowLeft size={16} /> Back to list
+            </button>
+          </div>
         </div>
       ) : normalizedType === "mcq" ? (
-        <div className="ft-question-stack">
-          {questions.map((question, index) => (
-            <article className="ft-question-card" key={question.id}>
+        <div className="ft-question-layout">
+          <aside className="ft-question-sidebar" aria-label="Question navigation">
+            <div className="ft-question-sidebar__header">
+              <strong>Questions</strong>
+              <span>
+                {
+                  questions.filter((question) => Boolean(answers[question.id]))
+                    .length
+                }
+                /{questions.length}
+              </span>
+            </div>
+            <div className="ft-question-nav">
+              {questions.map((question, index) => (
+                <button
+                  key={question.id}
+                  className={`ft-question-nav__item ${
+                    index === activeQuestionIndex ? "is-active" : ""
+                  } ${answers[question.id] ? "is-answered" : ""}`}
+                  type="button"
+                  aria-current={index === activeQuestionIndex ? "true" : undefined}
+                  title={`Question ${index + 1}`}
+                  onClick={() => setActiveQuestionIndex(index)}
+                >
+                  {index + 1}
+                </button>
+              ))}
+            </div>
+          </aside>
+
+          {questions[activeQuestionIndex] ? (
+            <article className="ft-question-card">
+              <div className="ft-question-card__header">
+                <span className="ft-page-kicker">
+                  Question {activeQuestionIndex + 1} of {questions.length}
+                </span>
+                {answers[questions[activeQuestionIndex].id] && (
+                  <span className="ft-badge ft-badge--mcq">Answered</span>
+                )}
+              </div>
               <strong>
-                Question {index + 1}:{" "}
-                {question.questionText || question.content}
+                {questions[activeQuestionIndex].questionText ||
+                  questions[activeQuestionIndex].content}
               </strong>
               <div className="ft-option-list">
-                {(question.options || []).map((answer) => (
+                {(questions[activeQuestionIndex].options || []).map((answer) => (
                   <label className="ft-option" key={answer.id}>
                     <input
                       type="radio"
-                      name={`q-${question.id}`}
-                      checked={answers[question.id] === answer.id}
+                      name={`q-${questions[activeQuestionIndex].id}`}
+                      checked={
+                        answers[questions[activeQuestionIndex].id] === answer.id
+                      }
                       onChange={() =>
-                        handleSelectAnswer(question.id, answer.id)
+                        handleSelectAnswer(
+                          questions[activeQuestionIndex].id,
+                          answer.id,
+                        )
                       }
                     />
                     <span>{answer.answerText || answer.content}</span>
@@ -508,7 +613,11 @@ export function StudentTakeTestPage() {
                 ))}
               </div>
             </article>
-          ))}
+          ) : (
+            <div className="ft-empty">
+              <strong>No questions available.</strong>
+            </div>
+          )}
         </div>
       ) : (
         <div className="ft-upload-panel">

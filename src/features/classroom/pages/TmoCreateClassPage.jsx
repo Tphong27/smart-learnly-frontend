@@ -203,7 +203,6 @@ export function TmoCreateClassPage() {
               />
             </div>
 
-            <div className="form-row">
               <div className="form-group">
                 <label htmlFor="maxStudents">Capacity *</label>
                 <input
@@ -220,24 +219,6 @@ export function TmoCreateClassPage() {
                   </span>
                 )}
               </div>
-
-              <div className="form-group">
-                <label htmlFor="price">Price *</label>
-                <input
-                  id="price"
-                  type="number"
-                  min="1000"
-                  step="1000"
-                  {...form.register("price", { valueAsNumber: true })}
-                  className={form.errors.price ? "input-error" : ""}
-                />
-                {form.errors.price && (
-                  <span className="form-error-text">
-                    {form.errors.price.message}
-                  </span>
-                )}
-              </div>
-            </div>
           </div>
 
           <div className="form-actions">

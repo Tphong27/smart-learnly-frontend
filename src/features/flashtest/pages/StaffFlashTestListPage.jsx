@@ -1,16 +1,21 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft, ClipboardList, Edit2, Eye, Plus, RefreshCw, Search } from "lucide-react";
 import {
   assignmentService,
   testService,
 } from "@/services/flashtest.service.js";
+import { getCurrentUser } from "@/services/api-client";
 import "../flashtest.css";
 
 function isFlashTest(item) {
   return item?.isFlashtest === true ||
     item?.isFlashTest === true ||
     item?.is_flashtest === true;
+}
+
+function isRegularTest(item) {
+  return !isFlashTest(item);
 }
 
 function getDuration(item) {
@@ -30,29 +35,75 @@ function formatDate(value) {
   return new Date(value).toLocaleString();
 }
 
-export function StaffFlashTestListPage() {
+export function StaffFlashTestListPage({ variant = "flash" }) {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const isFlashMode = variant === "flash";
+  const isAssignmentMode = variant === "assignment";
+  const courseId = searchParams.get("courseId") || "";
+  const basePath = isAssignmentMode
+    ? "/staff/assignments"
+    : isFlashMode ? "/staff/flashtests" : "/staff/tests";
+  const backPath = isAssignmentMode
+    ? courseId
+      ? `/staff/courses/${courseId}/content`
+      : "/staff/courses"
+    : "/staff/courses";
+  const pathQuery = courseId ? `?courseId=${encodeURIComponent(courseId)}` : "";
+  const pageTitle = isAssignmentMode
+    ? "Assignment Management"
+    : isFlashMode ? "Flash Tests Management" : "Tests Management";
+  const createLabel = isAssignmentMode
+    ? "Create Assignment"
+    : isFlashMode ? "Create Flash Test" : "Create Test";
+  const emptyTitle = isAssignmentMode
+    ? "No assignments yet"
+    : isFlashMode ? "No flash tests yet" : "No tests yet";
+  const emptyDescription = isAssignmentMode
+    ? "Create the first essay assignment for this course."
+    : isFlashMode
+    ? "Create your first practice quiz or essay assignment to begin tracking student progress."
+    : "Create your first MCQ test to begin tracking trainee progress.";
+  const itemFilter = isAssignmentMode
+    ? isRegularTest
+    : isFlashMode ? isFlashTest : isRegularTest;
+  const currentUser = getCurrentUser();
+  const currentUserId =
+    currentUser?.id || currentUser?.userId || currentUser?.accountId || "";
   const [tests, setTests] = useState([]);
   const [assignments, setAssignments] = useState([]);
   const [loading, setLoading] = useState(false);
   const [keyword, setKeyword] = useState("");
+  const [nowMs, setNowMs] = useState(0);
 
-  const loadAllFlashTests = async () => {
+  const loadAllFlashTests = useCallback(async () => {
     setLoading(true);
     try {
       const [testResult, assignmentResult] = await Promise.allSettled([
-        testService.getAll(),
-        assignmentService.getAll(),
+        isAssignmentMode ? Promise.resolve([]) : testService.getMine(),
+        isFlashMode || isAssignmentMode
+          ? assignmentService.getMine({
+              ...(courseId && { courseId }),
+              isFlashtest: isFlashMode,
+            })
+          : Promise.resolve([]),
       ]);
+
+      const belongsToCurrentTrainer = (item) => {
+        const createdBy = item?.createdBy || item?.created_by;
+        return !createdBy || !currentUserId || String(createdBy) === String(currentUserId);
+      };
 
       setTests(
         testResult.status === "fulfilled"
-          ? (testResult.value || []).filter(isFlashTest)
+          ? (testResult.value || []).filter(itemFilter).filter(belongsToCurrentTrainer)
           : [],
       );
       setAssignments(
-        assignmentResult.status === "fulfilled"
-          ? (assignmentResult.value || []).filter(isFlashTest)
+        (isFlashMode || isAssignmentMode) && assignmentResult?.status === "fulfilled"
+          ? (assignmentResult.value || [])
+              .filter(itemFilter)
+              .filter(belongsToCurrentTrainer)
           : [],
       );
     } catch (error) {
@@ -60,10 +111,20 @@ export function StaffFlashTestListPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [courseId, currentUserId, isAssignmentMode, isFlashMode, itemFilter]);
 
   useEffect(() => {
-    loadAllFlashTests();
+    const timer = window.setTimeout(loadAllFlashTests, 0);
+    return () => window.clearTimeout(timer);
+  }, [loadAllFlashTests]);
+
+  useEffect(() => {
+    const initialTimer = window.setTimeout(() => setNowMs(Date.now()), 0);
+    const interval = window.setInterval(() => setNowMs(Date.now()), 30000);
+    return () => {
+      window.clearTimeout(initialTimer);
+      window.clearInterval(interval);
+    };
   }, []);
 
   const rows = useMemo(() => {
@@ -98,9 +159,13 @@ export function StaffFlashTestListPage() {
       <header className="ft-page-header">
         <div>
           <span className="ft-page-kicker">Staff workspace</span>
-          <h1 className="ft-page-title">Flash Tests Management</h1>
+          <h1 className="ft-page-title">{pageTitle}</h1>
           <p className="ft-page-subtitle">
-            Manage MCQ practice tests, essay assignments, and realtime progress.
+            {isAssignmentMode
+              ? "Manage essay assignments for enrolled classes without flash-test access codes."
+              : isFlashMode
+              ? "Manage MCQ practice tests, essay assignments, and realtime progress."
+              : "Manage MCQ tests and realtime trainee progress."}
           </p>
         </div>
         <div className="ft-toolbar">
@@ -108,7 +173,7 @@ export function StaffFlashTestListPage() {
             className="ft-icon-button"
             type="button"
             title="Back"
-            onClick={() => navigate(-1)}
+            onClick={() => navigate(backPath)}
           >
             <ArrowLeft size={18} />
           </button>
@@ -121,8 +186,8 @@ export function StaffFlashTestListPage() {
           >
             <RefreshCw size={18} className={loading ? "ft-spin" : ""} />
           </button>
-          <Link to="/staff/flashtests/create" className="ft-button ft-button--primary">
-            <Plus size={16} /> Create Flash Test
+          <Link to={`${basePath}/create${pathQuery}`} className="ft-button ft-button--primary">
+            <Plus size={16} /> {createLabel}
           </Link>
         </div>
       </header>
@@ -138,26 +203,27 @@ export function StaffFlashTestListPage() {
               onChange={(event) => setKeyword(event.target.value)}
             />
           </label>
-          <span className="ft-list-count">{total} flash tests</span>
+          <span className="ft-list-count">
+            {total} {isAssignmentMode ? "assignments" : isFlashMode ? "flash tests" : "tests"}
+          </span>
         </div>
 
         {loading ? (
           <div className="ft-empty">
             <RefreshCw size={28} className="ft-spin" />
-            <strong>Loading flash tests...</strong>
+            <strong>{isAssignmentMode ? "Loading assignments..." : "Loading flash tests..."}</strong>
           </div>
         ) : total === 0 ? (
           <div className="ft-empty">
             <span className="ft-empty-icon">
               <ClipboardList size={26} />
             </span>
-            <strong>No flash tests yet</strong>
+            <strong>{emptyTitle}</strong>
             <p className="ft-muted">
-              Create your first practice quiz or essay assignment to begin tracking
-              student progress.
+              {emptyDescription}
             </p>
-            <Link to="/staff/flashtests/create" className="ft-button ft-button--primary">
-              <Plus size={16} /> Create Flash Test
+            <Link to={`${basePath}/create${pathQuery}`} className="ft-button ft-button--primary">
+              <Plus size={16} /> {createLabel}
             </Link>
           </div>
         ) : rows.length === 0 ? (
@@ -165,7 +231,7 @@ export function StaffFlashTestListPage() {
             <span className="ft-empty-icon">
               <Search size={26} />
             </span>
-            <strong>No matching flash tests</strong>
+            <strong>{isAssignmentMode ? "No matching assignments" : "No matching flash tests"}</strong>
             <p className="ft-muted">Try another keyword or clear the search box.</p>
           </div>
         ) : (
@@ -187,7 +253,9 @@ export function StaffFlashTestListPage() {
                   const isEssay = type === "essay";
                   const dueDate = item.dueDate || item.due_date;
                   const expired =
-                    isEssay && dueDate && new Date(dueDate).getTime() <= Date.now();
+                    isEssay &&
+                    dueDate &&
+                    new Date(dueDate).getTime() <= nowMs;
                   return (
                     <tr key={`${type}-${item.id}`}>
                       <td>
@@ -218,14 +286,14 @@ export function StaffFlashTestListPage() {
                       <td className="ft-table-action">
                         <div className="ft-table-actions">
                           <Link
-                            to={`/staff/flashtests/edit/${item.id}/${type}`}
+                            to={`${basePath}/edit/${item.id}/${type}`}
                             className="ft-icon-button"
-                            title="Edit flash test"
+                            title={isAssignmentMode ? "Edit assignment" : isFlashMode ? "Edit flash test" : "Edit test"}
                           >
                             <Edit2 size={16} />
                           </Link>
                           <Link
-                            to={`/staff/flashtests/monitor/${item.id}/${type}`}
+                            to={`${basePath}/monitor/${item.id}/${type}`}
                             className="ft-icon-button"
                             title="Monitor progress"
                           >

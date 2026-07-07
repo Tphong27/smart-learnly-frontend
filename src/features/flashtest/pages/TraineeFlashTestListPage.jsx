@@ -1,14 +1,15 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   ArrowLeft,
   ArrowRight,
   BookOpen,
   CheckSquare,
-  Eye,
   FileText,
+  KeyRound,
   RefreshCw,
   Search,
+  X,
 } from "lucide-react";
 import {
   assignmentService,
@@ -22,6 +23,10 @@ function isFlashTest(item) {
   return item?.isFlashtest === true ||
     item?.isFlashTest === true ||
     item?.is_flashtest === true;
+}
+
+function isRegularTest(item) {
+  return !isFlashTest(item);
 }
 
 function getDuration(item) {
@@ -47,38 +52,160 @@ function isCompletedStatus(status) {
   );
 }
 
-export function TraineeFlashTestListPage() {
+function isCompletedAssignmentStatus(status) {
+  return ["SUBMITTED", "GRADED", "LATE"].includes(
+    String(status || "").toUpperCase(),
+  );
+}
+
+function getAttemptTime(attempt) {
+  return new Date(
+    attempt?.submittedAt ||
+      attempt?.submitted_at ||
+      attempt?.endTime ||
+      attempt?.end_time ||
+      attempt?.updatedAt ||
+      attempt?.updated_at ||
+      attempt?.createdAt ||
+      attempt?.created_at ||
+      0,
+  ).getTime();
+}
+
+function numberOrNull(value) {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
+}
+
+function getQuestionTotal(...sources) {
+  for (const source of sources) {
+    const total =
+      numberOrNull(source?.totalQuestions) ??
+      numberOrNull(source?.total_questions) ??
+      numberOrNull(source?.questionCount) ??
+      numberOrNull(source?.question_count) ??
+      numberOrNull(source?.numberOfQuestions) ??
+      numberOrNull(source?.questions?.length);
+    if (total && total > 0) return total;
+  }
+  return null;
+}
+
+function formatScoreValue(value) {
+  if (!Number.isFinite(value)) return "--";
+  const score = Math.max(0, Math.min(10, value));
+  return Number.isInteger(score) ? String(score) : score.toFixed(1);
+}
+
+function formatMcqScore(attempt, questionTotal) {
+  const percentage = numberOrNull(attempt?.percentage);
+  const rawScore = numberOrNull(attempt?.score);
+  if (percentage && percentage > 0) {
+    return formatScoreValue(percentage / 10);
+  }
+  if (rawScore != null && questionTotal) {
+    return formatScoreValue((rawScore / questionTotal) * 10);
+  }
+  if (percentage === 0) return "0";
+  return "--";
+}
+
+export function TraineeFlashTestListPage({ variant = "flash" }) {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const isFlashMode = variant === "flash";
+  const isAssignmentMode = variant === "assignment";
+  const courseId = searchParams.get("courseId") || "";
+  const takePath = isAssignmentMode
+    ? "/learning/assignments/take"
+    : isFlashMode
+    ? "/learning/flashtests/take"
+    : "/learning/tests/take";
+  const accessStoragePrefix = isFlashMode ? "flashAccess" : "testAccess";
+  const itemFilter = isAssignmentMode
+    ? isRegularTest
+    : isFlashMode ? isFlashTest : isRegularTest;
   const currentUser = getCurrentUser();
   const studentId =
     currentUser?.id || currentUser?.userId || currentUser?.accountId || "";
   const [tests, setTests] = useState([]);
   const [assignments, setAssignments] = useState([]);
-  const [takenMap, setTakenMap] = useState({});
+  const [resultMap, setResultMap] = useState({});
   const [loading, setLoading] = useState(false);
   const [keyword, setKeyword] = useState("");
+  const [nowMs, setNowMs] = useState(0);
+  const [accessModal, setAccessModal] = useState({
+    open: false,
+    item: null,
+    isEssay: false,
+  });
+  const [accessCode, setAccessCode] = useState("");
+  const [accessError, setAccessError] = useState("");
+  const [verifyingAccess, setVerifyingAccess] = useState(false);
 
-  const loadAvailableTests = async () => {
+  const loadAvailableTests = useCallback(async () => {
     setLoading(true);
     try {
-      const [testData, assignmentData] = await Promise.all([
-        testService.getAll(),
-        assignmentService.getAll(),
-      ]);
-      const flashTests = (testData || []).filter(isFlashTest);
-      const flashAssignments = (assignmentData || []).filter(isFlashTest);
+      const requests = [
+        isAssignmentMode ? Promise.resolve([]) : testService.getAll(),
+      ];
+      if (isFlashMode) {
+        requests.push(assignmentService.getAll());
+      } else if (isAssignmentMode) {
+        requests.push(
+          assignmentService.getAvailable({
+            ...(courseId && { courseId }),
+            isFlashtest: false,
+          }),
+        );
+      }
+      const [testData, assignmentData] = await Promise.all(requests);
+      const flashTests = (testData || []).filter(itemFilter);
+      const flashAssignments = isFlashMode || isAssignmentMode
+        ? (assignmentData || []).filter(itemFilter)
+        : [];
       setTests(flashTests);
       setAssignments(flashAssignments);
+      setNowMs(Date.now());
 
       if (!studentId) {
-        setTakenMap({});
+        setResultMap({});
         return;
       }
 
       const checks = await Promise.allSettled([
         ...flashTests.map(async (test) => {
-          const attempts = await attemptService.getHistory(test.id, studentId);
-          return [`mcq-${test.id}`, attempts.some((attempt) => isCompletedStatus(attempt.status))];
+          const [attempts, questionMappings] = await Promise.all([
+            attemptService.getHistory(test.id, studentId),
+            testService.getLearnerQuestions(test.id).catch((questionError) => {
+              console.warn("Could not load MCQ question total", questionError);
+              return [];
+            }),
+          ]);
+          const questionTotal = getQuestionTotal(test, {
+            questions: questionMappings,
+          });
+          const sortedAttempts = attempts.sort(
+            (a, b) => getAttemptTime(b) - getAttemptTime(a),
+          );
+          const latestAttempt = sortedAttempts[0] || null;
+          const completedAttempts = attempts
+            .filter((attempt) => isCompletedStatus(attempt.status))
+            .sort((a, b) => getAttemptTime(b) - getAttemptTime(a));
+          return [
+            `mcq-${test.id}`,
+            {
+              taken:
+                Boolean(latestAttempt) &&
+                isCompletedStatus(latestAttempt.status) &&
+                !latestAttempt.retakeAllowed,
+              score: completedAttempts[0]
+                ? formatMcqScore(completedAttempts[0], questionTotal)
+                : "--",
+              status: latestAttempt?.status,
+              retakeAllowed: Boolean(latestAttempt?.retakeAllowed),
+            },
+          ];
         }),
         ...flashAssignments.map(async (assignment) => {
           try {
@@ -86,17 +213,24 @@ export function TraineeFlashTestListPage() {
               assignment.id,
               studentId,
             );
-            return [`essay-${assignment.id}`, Boolean(submission?.id)];
+            return [
+              `essay-${assignment.id}`,
+              {
+                taken: isCompletedAssignmentStatus(submission?.status),
+                score: submission?.score ?? "--",
+                status: submission?.status,
+              },
+            ];
           } catch (submissionError) {
             if (submissionError?.originalError?.response?.status !== 404) {
               console.warn("Could not load flash assignment status", submissionError);
             }
-            return [`essay-${assignment.id}`, false];
+            return [`essay-${assignment.id}`, { taken: false, score: "--" }];
           }
         }),
       ]);
 
-      setTakenMap(
+      setResultMap(
         Object.fromEntries(
           checks
             .filter((result) => result.status === "fulfilled")
@@ -108,11 +242,12 @@ export function TraineeFlashTestListPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [courseId, isAssignmentMode, isFlashMode, itemFilter, studentId]);
 
   useEffect(() => {
-    loadAvailableTests();
-  }, [studentId]);
+    const timer = window.setTimeout(loadAvailableTests, 0);
+    return () => window.clearTimeout(timer);
+  }, [loadAvailableTests]);
 
   const rows = useMemo(() => {
     const merged = [
@@ -141,14 +276,74 @@ export function TraineeFlashTestListPage() {
 
   const total = tests.length + assignments.length;
 
+  const openAccessModal = (item, isEssay) => {
+    const dueDate = item?.dueDate || item?.due_date;
+    if (isEssay && dueDate && new Date(dueDate).getTime() <= Date.now()) {
+      return;
+    }
+    if (isAssignmentMode) {
+      navigate(`${takePath}/${item.id}/essay`);
+      return;
+    }
+    setAccessModal({ open: true, item, isEssay });
+    setAccessCode("");
+    setAccessError("");
+  };
+
+  const closeAccessModal = () => {
+    setAccessModal({ open: false, item: null, isEssay: false });
+    setAccessCode("");
+    setAccessError("");
+  };
+
+  const handleVerifyAccessCode = async () => {
+    const code = accessCode.trim();
+    if (!code) {
+      setAccessError(`Please enter the ${isFlashMode ? "flash test" : "test"} code.`);
+      return;
+    }
+
+    const item = accessModal.item;
+    if (!item?.id) return;
+
+    setVerifyingAccess(true);
+    setAccessError("");
+    try {
+      const result = accessModal.isEssay
+        ? await assignmentService.verifyAccessCode(item.id, code)
+        : await testService.verifyAccessCode(item.id, code);
+      if (!result?.valid) {
+        setAccessError("The code is incorrect or has expired.");
+        return;
+      }
+      const type = accessModal.isEssay ? "essay" : "mcq";
+      window.sessionStorage.setItem(`${accessStoragePrefix}:${type}:${item.id}`, code);
+      navigate(`${takePath}/${item.id}/${type}`, {
+        state: { accessCode: code },
+      });
+    } catch (verifyError) {
+      setAccessError(verifyError.message || "Could not verify this code.");
+    } finally {
+      setVerifyingAccess(false);
+    }
+  };
+
   return (
     <section className="ft-page">
       <header className="ft-page-header">
         <div>
           <span className="ft-page-kicker">Learning workspace</span>
-          <h1 className="ft-page-title">My Flash Tests</h1>
+          <h1 className="ft-page-title">
+            {isAssignmentMode
+              ? "My Assignments"
+              : isFlashMode ? "My Flash Tests" : "My Tests"}
+          </h1>
           <p className="ft-page-subtitle">
-            Start available MCQ practice tests and essay assignments.
+            {isAssignmentMode
+              ? "Start essay assignments from your enrolled class."
+              : isFlashMode
+              ? "Start available MCQ practice tests and essay assignments."
+              : "Start available MCQ tests from your trainers."}
           </p>
         </div>
         <div className="ft-toolbar">
@@ -156,7 +351,7 @@ export function TraineeFlashTestListPage() {
             className="ft-icon-button"
             type="button"
             title="Back"
-            onClick={() => navigate(-1)}
+            onClick={() => navigate("/learning/progress")}
           >
             <ArrowLeft size={18} />
           </button>
@@ -183,7 +378,9 @@ export function TraineeFlashTestListPage() {
               onChange={(event) => setKeyword(event.target.value)}
             />
           </label>
-          <span className="ft-list-count">{total} flash tests</span>
+          <span className="ft-list-count">
+            {total} {isAssignmentMode ? "assignments" : isFlashMode ? "flash tests" : "tests"}
+          </span>
         </div>
 
         {loading ? (
@@ -196,15 +393,23 @@ export function TraineeFlashTestListPage() {
             <span className="ft-empty-icon">
               <BookOpen size={28} />
             </span>
-            <strong>No flash tests available</strong>
-            <p className="ft-muted">Your instructors have not published any tests yet.</p>
+            <strong>
+              {isAssignmentMode
+                ? "No assignments available"
+                : isFlashMode ? "No flash tests available" : "No tests available"}
+            </strong>
+            <p className="ft-muted">
+              {isAssignmentMode
+                ? "Your trainer has not assigned extra essay work for this course yet."
+                : "Your instructors have not published any tests yet."}
+            </p>
           </div>
         ) : rows.length === 0 ? (
           <div className="ft-empty">
             <span className="ft-empty-icon">
               <Search size={26} />
             </span>
-            <strong>No matching flash tests</strong>
+            <strong>{isAssignmentMode ? "No matching assignments" : "No matching flash tests"}</strong>
             <p className="ft-muted">Try another keyword or clear the search box.</p>
           </div>
         ) : (
@@ -215,6 +420,7 @@ export function TraineeFlashTestListPage() {
                   <th>Title</th>
                   <th>Type</th>
                   <th>Duration</th>
+                  <th>Score</th>
                   <th>Due / Created</th>
                   <th>Status</th>
                   <th className="ft-table-action">Action</th>
@@ -223,10 +429,13 @@ export function TraineeFlashTestListPage() {
               <tbody>
                 {rows.map((item) => {
                   const isEssay = item.flashType === "essay";
-                  const taken = Boolean(takenMap[`${item.flashType}-${item.id}`]);
+                  const result = resultMap[`${item.flashType}-${item.id}`];
+                  const taken = Boolean(result?.taken);
                   const dueDate = item.dueDate || item.due_date;
                   const expired =
-                    isEssay && dueDate && new Date(dueDate).getTime() <= Date.now();
+                    isEssay &&
+                    dueDate &&
+                    new Date(dueDate).getTime() <= nowMs;
                   return (
                     <tr key={`${item.flashType}-${item.id}`}>
                       <td>
@@ -245,6 +454,11 @@ export function TraineeFlashTestListPage() {
                         </span>
                       </td>
                       <td>{getDuration(item)} mins</td>
+                      <td>
+                        <strong className="ft-score-cell">
+                          {isEssay ? result?.score || "--" : result?.score || "--"}
+                        </strong>
+                      </td>
                       <td>{formatDate(dueDate || item.createdAt || item.created_at)}</td>
                       <td>
                         <span
@@ -257,30 +471,18 @@ export function TraineeFlashTestListPage() {
                       </td>
                       <td className="ft-table-action">
                         <div className="ft-table-actions">
-                          {expired ? (
+                          {taken ? (
+                            <span className="ft-button ft-button--disabled">Completed</span>
+                          ) : expired ? (
                             <span className="ft-button ft-button--disabled">Expired</span>
-                          ) : taken ? (
-                            <>
-                              <span className="ft-button ft-button--disabled">Completed</span>
-                              {!isEssay && (
-                                <Link
-                                  to={`/learning/flashtests/take/${item.id}/mcq`}
-                                  className="ft-icon-button"
-                                  title="View score"
-                                >
-                                  <Eye size={16} />
-                                </Link>
-                              )}
-                            </>
                           ) : (
-                            <Link
-                              to={`/learning/flashtests/take/${item.id}/${
-                                isEssay ? "essay" : "mcq"
-                              }`}
+                            <button
+                              type="button"
                               className="ft-button ft-button--primary"
+                              onClick={() => openAccessModal(item, isEssay)}
                             >
                               Start <ArrowRight size={16} />
-                            </Link>
+                            </button>
                           )}
                         </div>
                       </td>
@@ -292,6 +494,73 @@ export function TraineeFlashTestListPage() {
           </div>
         )}
       </div>
+
+      {accessModal.open && (
+        <div className="ft-modal-overlay" role="dialog" aria-modal="true">
+          <div className="ft-random-dialog">
+            <div className="ft-random-dialog__header">
+              <div>
+                <span className="ft-page-kicker">
+                  {isFlashMode ? "Flash test code" : "Test code"}
+                </span>
+                <h2>{accessModal.item?.title || accessModal.item?.name}</h2>
+              </div>
+              <button
+                className="ft-icon-button"
+                type="button"
+                title="Close"
+                onClick={closeAccessModal}
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <label className="ft-field">
+              <span className="ft-label">Enter the code from your trainer</span>
+              <div className="ft-code-input-wrap">
+                <KeyRound size={18} />
+                <input
+                  autoFocus
+                  className="ft-input"
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={12}
+                  value={accessCode}
+                  placeholder="6-digit code"
+                  onChange={(event) => {
+                    setAccessCode(event.target.value.replace(/\D/g, ""));
+                    setAccessError("");
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      handleVerifyAccessCode();
+                    }
+                  }}
+                />
+              </div>
+              {accessError && <span className="ft-field-error">{accessError}</span>}
+            </label>
+            <div className="ft-confirm-dialog__actions">
+              <button
+                className="ft-button ft-button--secondary"
+                type="button"
+                onClick={closeAccessModal}
+              >
+                <X size={16} />
+                <span>Cancel</span>
+              </button>
+              <button
+                className="ft-button ft-button--primary"
+                type="button"
+                disabled={verifyingAccess}
+                onClick={handleVerifyAccessCode}
+              >
+                <KeyRound size={16} />
+                <span>{verifyingAccess ? "Checking..." : "Start"}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   );
 }

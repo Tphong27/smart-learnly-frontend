@@ -21,7 +21,8 @@ import {
 } from "lucide-react";
 import { LearningLessonMedia } from "@/features/course/components/LearningLessonMedia";
 import { LearningLessonTabs } from "@/features/course/components/LearningLessonTabs";
-import { learningService } from "@/services";
+import { learningService, enrollmentService } from "@/services";
+import { filterPublishedSections } from "@/features/course/utils/lesson-status";
 import "./LearningWorkspacePage.css";
 
 function formatDuration(seconds) {
@@ -46,7 +47,7 @@ function LessonIcon({ type, size = 16 }) {
 }
 
 function groupLessonsBySection(data) {
-  return data?.sections || [];
+  return filterPublishedSections(data?.sections || []);
 }
 
 export function LearningWorkspacePage({
@@ -57,6 +58,7 @@ export function LearningWorkspacePage({
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const requestedLessonId = searchParams.get("lessonId");
+  const requestedClassId = searchParams.get("classId");
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -65,29 +67,82 @@ export function LearningWorkspacePage({
   const [completedLessonIds, setCompletedLessonIds] = useState(() => new Set());
   const [updatingLessonIds, setUpdatingLessonIds] = useState(() => new Set());
   const [lessonNotesById, setLessonNotesById] = useState({});
+  const [resolvedClassId, setResolvedClassId] = useState(requestedClassId);
 
   useEffect(() => {
     let cancelled = false;
+
+    async function resolveClassIdIfMissing() {
+      if (mode !== "student") {
+        return requestedClassId;
+      }
+
+      if (requestedClassId) {
+        return requestedClassId;
+      }
+
+      const myCourses = await enrollmentService.getMyCourses();
+
+      const matchedCourse = (myCourses || []).find((course) => {
+        const currentCourseId = course.id || course.courseId;
+        return String(currentCourseId) === String(courseId);
+      });
+
+      const enrolledClass =
+        matchedCourse?.enrolledClass || matchedCourse?.myCourseClass || null;
+
+      if (!enrolledClass?.id) {
+        throw new Error("You are not enrolled in any class for this course.");
+      }
+
+      const params = new URLSearchParams();
+      params.set("classId", enrolledClass.id);
+
+      if (requestedLessonId) {
+        params.set("lessonId", requestedLessonId);
+      }
+
+      navigate(`/learning/courses/${courseId}?${params.toString()}`, {
+        replace: true,
+      });
+
+      return enrolledClass.id;
+    }
+
     async function load() {
       setLoading(true);
       setError(null);
+
       try {
+        const resolvedClassId = await resolveClassIdIfMissing();
+        setResolvedClassId(resolvedClassId);
+
+        if (cancelled) return;
+
         let result;
+
         if (mode === "student") {
-          result = await learningService.getLearningContent(courseId);
+          result = await learningService.getLearningContent(
+            courseId,
+            resolvedClassId,
+          );
         } else if (mode === "guest") {
           result = await learningService.getPreviewContent(courseId);
         } else if (mode === "admin-preview") {
           result = await learningService.getAdminPreviewContent(courseId);
         } else {
-          result = await learningService.getLearningContent(courseId);
+          result = await learningService.getLearningContent(
+            courseId,
+            resolvedClassId,
+          );
         }
+
         if (!cancelled) {
           setData(result);
 
-          const loadedLessons = (result?.sections || []).flatMap(
-            (section) => section.lessons || [],
-          );
+          const loadedLessons = filterPublishedSections(
+            result?.sections || [],
+          ).flatMap((section) => section.lessons || []);
 
           const completedIds = new Set(
             loadedLessons
@@ -99,17 +154,24 @@ export function LearningWorkspacePage({
           setCompletedLessonIds(completedIds);
         }
       } catch (err) {
-        if (!cancelled)
+        if (!cancelled) {
           setError(err?.message || "Failed to load course content");
+        }
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
     }
-    if (courseId) load();
+
+    if (courseId) {
+      load();
+    }
+
     return () => {
       cancelled = true;
     };
-  }, [courseId, mode]);
+  }, [courseId, mode, requestedClassId, requestedLessonId, navigate]);
 
   const sections = useMemo(() => groupLessonsBySection(data), [data]);
 
@@ -117,30 +179,12 @@ export function LearningWorkspacePage({
     return sections.flatMap((s) => s.lessons || []);
   }, [sections]);
 
-  const [activeLessonId, setActiveLessonId] = useState(null);
+  const [activeLessonId, setActiveLessonId] = useState(requestedLessonId);
 
   const handleSelectLesson = useCallback((lesson) => {
     setActiveLessonId(getLessonId(lesson));
     setActiveLessonTab("overview");
   }, []);
-
-  useEffect(() => {
-    if (!requestedLessonId || allLessons.length === 0) return;
-    if (String(activeLessonId) === requestedLessonId) return;
-
-    const requestedLesson = allLessons.find(
-      (lesson) => String(getLessonId(lesson)) === requestedLessonId,
-    );
-
-    if (requestedLesson) {
-      const nextLessonId = getLessonId(requestedLesson);
-
-      if (nextLessonId) {
-        setActiveLessonId(nextLessonId);
-        setActiveLessonTab("overview");
-      }
-    }
-  }, [activeLessonId, allLessons, requestedLessonId]);
 
   const activeLesson = useMemo(() => {
     if (allLessons.length === 0) return null;
@@ -193,7 +237,11 @@ export function LearningWorkspacePage({
       });
 
       try {
-        await learningService.updateLessonProgress(lessonId, nextCompleted);
+        await learningService.updateLessonProgress(
+          lessonId,
+          nextCompleted,
+          resolvedClassId,
+        );
       } catch (err) {
         setCompletedLessonIds((currentIds) => {
           const rollbackIds = new Set(currentIds);
@@ -216,7 +264,7 @@ export function LearningWorkspacePage({
         });
       }
     },
-    [completedLessonIds, mode, updatingLessonIds],
+    [completedLessonIds, mode, resolvedClassId, updatingLessonIds],
   );
 
   const activeLessonIdForNote = getLessonId(activeLesson);
@@ -247,7 +295,11 @@ export function LearningWorkspacePage({
       });
 
       try {
-        await learningService.updateLessonProgress(lessonId, true);
+        await learningService.updateLessonProgress(
+          lessonId,
+          true,
+          resolvedClassId,
+        );
       } catch (err) {
         setCompletedLessonIds((currentIds) => {
           const rollbackIds = new Set(currentIds);
@@ -258,7 +310,7 @@ export function LearningWorkspacePage({
         setError(err?.message || "Failed to update quiz progress");
       }
     },
-    [completedLessonIds, mode],
+    [completedLessonIds, mode, resolvedClassId],
   );
 
   const handleGoToNextLesson = useCallback(async () => {
@@ -269,7 +321,9 @@ export function LearningWorkspacePage({
       activeLesson?.lessonType || "",
     ).toUpperCase();
 
-    const isActivityLesson = ["QUIZ", "FLASHCARD"].includes(currentLessonType);
+    const isActivityLesson = ["QUIZ", "FLASHCARD", "ESSAY"].includes(
+      currentLessonType,
+    );
     const isCompleted = currentLessonId
       ? completedLessonIds.has(currentLessonId)
       : false;
@@ -278,7 +332,9 @@ export function LearningWorkspacePage({
       setError(
         currentLessonType === "QUIZ"
           ? "Please submit the quiz before moving to the next lesson."
-          : "Please complete all flashcards before moving to the next lesson.",
+          : currentLessonType === "FLASHCARD"
+            ? "Please complete all flashcards before moving to the next lesson."
+            : "Please submit the essay before moving to the next lesson.",
       );
       return;
     }
@@ -334,7 +390,7 @@ export function LearningWorkspacePage({
 
   const currentLessonId = getLessonId(activeLesson);
 
-  const isActivityLesson = ["QUIZ", "FLASHCARD"].includes(
+  const isActivityLesson = ["QUIZ", "FLASHCARD", "ESSAY"].includes(
     String(activeLesson?.lessonType || "").toUpperCase(),
   );
 
@@ -352,15 +408,21 @@ export function LearningWorkspacePage({
       <header className="learning-workspace__topbar">
         <button
           className="learning-workspace__topbar-back"
-          onClick={() =>
-            navigate(
-              isAdminPreview
-                ? `/admin/courses/${courseId}/content`
-                : isGuestPreview || previewMode
-                  ? `/courses/${courseId}`
-                  : "/learning/courses",
-            )
-          }
+          onClick={() => {
+            if (isAdminPreview) {
+              navigate(`/admin/courses/${courseId}/content`);
+            } else if (isGuestPreview || previewMode) {
+              // Quay về đúng trang xuất phát (course detail có thể mở bằng slug),
+              // tránh điều hướng cứng tới /courses/<uuid> gây 404.
+              if (window.history.length > 1) {
+                navigate(-1);
+              } else {
+                navigate(`/courses/${courseId}`);
+              }
+            } else {
+              navigate("/learning/courses");
+            }
+          }}
           title="Back"
         >
           <ArrowLeft size={18} />
@@ -498,6 +560,7 @@ export function LearningWorkspacePage({
                   workspaceMode={mode}
                   onQuizCompleted={markLessonCompleted}
                   onFlashcardCompleted={markLessonCompleted}
+                  onEssayCompleted={markLessonCompleted}
                 />
               </div>
             ) : (

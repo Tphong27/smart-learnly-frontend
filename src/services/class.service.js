@@ -53,6 +53,11 @@ export const classService = {
     return unwrapData(response);
   },
 
+  async listStatusOptions() {
+    const response = await apiClient.get("/admin/classes/statuses");
+    return unwrapData(response);
+  },
+
   async create(payload) {
     const response = await apiClient.post("/admin/classes", payload);
     return unwrapData(response);
@@ -89,12 +94,26 @@ export const classService = {
     return true;
   },
 
-  // Placeholder methods for trainee-specific APIs (to be implemented in the future)
-  async getMyClasses() {
-    throw new Error("Trainee class API is not available yet.");
+  // Placeholder methods for trainee-specific APIs
+  async listTrainer({ page = 0, size = 20, keyword = "", status = "" } = {}) {
+    const response = await apiClient.get("/trainer/classes", {
+      params: {
+        page,
+        size,
+        ...(keyword && { keyword }),
+        ...(status && { status }),
+      },
+    });
+
+    return normalizePage(response);
   },
 
-  async getTraineeClassWorkspace() {
-    throw new Error("Trainee class workspace API is not available yet.");
+  async getTrainer(classId) {
+    if (!classId) {
+      throw new Error("Class ID is required");
+    }
+
+    const response = await apiClient.get(`/trainer/classes/${classId}`);
+    return unwrapData(response);
   },
 };

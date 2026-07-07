@@ -26,7 +26,7 @@ export function ClassSelectionPopup({
         <div className="course-detail__modal-header">
           <div>
             <h2 id="class-checkout-title">Choose a class</h2>
-            <p>Select one available class before checkout.</p>
+            <p>Select one available class.</p>
           </div>
 
           <button

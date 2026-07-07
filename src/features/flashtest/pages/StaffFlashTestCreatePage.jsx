@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import {
   ArrowLeft,
   BookOpen,
@@ -68,20 +68,31 @@ const DURATION_PRESETS = [
   { label: "45 min", value: "45", unit: "minutes" },
 ];
 
-export function StaffFlashTestCreatePage() {
+export function StaffFlashTestCreatePage({ variant = "flash" }) {
   const navigate = useNavigate();
   const toast = useToast();
   const { id, type } = useParams();
+  const [searchParams] = useSearchParams();
   const isEdit = Boolean(id);
-  const [testType, setTestType] = useState("essay");
+  const isFlashMode = variant === "flash";
+  const isAssignmentMode = variant === "assignment";
+  const routeCourseId = searchParams.get("courseId") || "";
+  const basePath = isAssignmentMode
+    ? "/staff/assignments"
+    : isFlashMode ? "/staff/flashtests" : "/staff/tests";
+  const returnPath = `${basePath}${routeCourseId ? `?courseId=${encodeURIComponent(routeCourseId)}` : ""}`;
+  const pageName = isAssignmentMode ? "Assignment" : isFlashMode ? "Flash Test" : "Test";
+  const [testType, setTestType] = useState(isFlashMode || isAssignmentMode ? "essay" : "mcq");
   const [formData, setFormData] = useState({
     title: "",
     durationValue: "15",
     durationUnit: "minutes",
     description: "",
-    courseId: "",
+    courseId: routeCourseId,
+    classId: "",
   });
   const [courses, setCourses] = useState([]);
+  const [classes, setClasses] = useState([]);
   const [selectedQuestions, setSelectedQuestions] = useState([]);
   const [instructionFile, setInstructionFile] = useState(null);
   const [existingInstructionFile, setExistingInstructionFile] = useState(null);
@@ -89,6 +100,27 @@ export function StaffFlashTestCreatePage() {
   const [isSaving, setIsSaving] = useState(false);
   const [customDurationOpen, setCustomDurationOpen] = useState(false);
   const [customDurationValue, setCustomDurationValue] = useState("");
+  const [validationErrors, setValidationErrors] = useState({});
+
+  const selectedDurationMinutes = Math.round(
+    Number(formData.durationValue) *
+      (DURATION_UNITS[formData.durationUnit] || 1),
+  );
+  const selectedPreset = DURATION_PRESETS.find(
+    (preset) =>
+      Number(preset.value) * (DURATION_UNITS[preset.unit] || 1) ===
+      selectedDurationMinutes,
+  );
+
+  const updateFormData = (patch) => {
+    setFormData((current) => ({ ...current, ...patch }));
+    setValidationErrors((current) => {
+      const next = { ...current };
+      Object.keys(patch).forEach((key) => delete next[key]);
+      if (patch.durationValue || patch.durationUnit) delete next.duration;
+      return next;
+    });
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -111,13 +143,45 @@ export function StaffFlashTestCreatePage() {
   }, []);
 
   useEffect(() => {
+    if (!isAssignmentMode) {
+      setClasses([]);
+      return undefined;
+    }
+    let cancelled = false;
+    async function loadClasses() {
+      try {
+        const data = await assignmentService.getClasses({
+          ...(formData.courseId && { courseId: formData.courseId }),
+        });
+        if (!cancelled) {
+          setClasses(data || []);
+          setFormData((current) => ({
+            ...current,
+            classId: current.classId || data?.[0]?.id || "",
+          }));
+        }
+      } catch (error) {
+        console.error("Failed to load assignment classes", error);
+        if (!cancelled) setClasses([]);
+      }
+    }
+    loadClasses();
+    return () => {
+      cancelled = true;
+    };
+  }, [formData.courseId, isAssignmentMode]);
+
+  useEffect(() => {
     if (!id) return undefined;
     let cancelled = false;
     async function loadExistingFlashTest() {
       setLoadingExisting(true);
       try {
-        const normalizedType =
-          type === "mcq" || type === "test" ? "mcq" : "essay";
+        const normalizedType = isAssignmentMode
+          ? "essay"
+          : !isFlashMode
+          ? "mcq"
+          : type === "mcq" || type === "test" ? "mcq" : "essay";
         setTestType(normalizedType);
 
         if (normalizedType === "essay") {
@@ -129,7 +193,8 @@ export function StaffFlashTestCreatePage() {
             durationValue: duration.value,
             durationUnit: duration.unit,
             description: assignment.description || "",
-            courseId: "",
+            courseId: assignment.courseId || routeCourseId || "",
+            classId: assignment.classId || "",
           });
           setExistingInstructionFile(
             assignment.instructionFileUrl
@@ -155,6 +220,7 @@ export function StaffFlashTestCreatePage() {
             durationUnit: duration.unit,
             description: test.description || "",
             courseId: test.courseId || test.course_id || "",
+            classId: "",
           });
           setSelectedQuestions(
             (mappings || []).map((mapping) => ({
@@ -174,23 +240,31 @@ export function StaffFlashTestCreatePage() {
     return () => {
       cancelled = true;
     };
-  }, [id, type]);
+  }, [id, isAssignmentMode, isFlashMode, routeCourseId, type]);
 
   const handleSave = async () => {
     const duration = Math.round(
       Number(formData.durationValue) *
         (DURATION_UNITS[formData.durationUnit] || 1),
     );
-    if (!formData.title.trim() || !duration || duration <= 0) {
-      alert("Please enter a title and a valid duration.");
-      return;
+    const nextErrors = {};
+    if (!formData.title.trim()) {
+      nextErrors.title = `Please enter the ${pageName.toLowerCase()} title.`;
+    }
+    if (!duration || duration <= 0) {
+      nextErrors.duration = "Please enter a valid duration.";
     }
     if (testType === "mcq" && !formData.courseId) {
-      alert("Please choose a course before selecting MCQ questions.");
-      return;
+      nextErrors.courseId = "Please choose a course.";
+    }
+    if (isAssignmentMode && !formData.classId) {
+      nextErrors.classId = "Please choose a class.";
     }
     if (testType === "mcq" && selectedQuestions.length === 0) {
-      alert("Please select at least one question for the MCQ test.");
+      nextErrors.questions = "Please select at least one MCQ question.";
+    }
+    setValidationErrors(nextErrors);
+    if (Object.keys(nextErrors).length > 0) {
       return;
     }
 
@@ -211,7 +285,9 @@ export function StaffFlashTestCreatePage() {
             uploadedInstruction?.fileName ||
             instructionFile?.name ||
             existingInstructionFile?.fileName,
-          isFlashtest: true,
+          isFlashtest: isFlashMode,
+          courseId: formData.courseId || routeCourseId || undefined,
+          classId: formData.classId || undefined,
         };
         if (isEdit) {
           await assignmentService.update(id, payload);
@@ -227,8 +303,10 @@ export function StaffFlashTestCreatePage() {
           testType: "practice",
           maxAttempts: 1,
           showAnswersAfter: true,
-          isFlashtest: true,
         };
+        if (isFlashMode) {
+          testPayload.isFlashtest = true;
+        }
         const savedTest = isEdit
           ? await testService.update(id, testPayload)
           : await testService.create(testPayload);
@@ -268,11 +346,11 @@ export function StaffFlashTestCreatePage() {
         }
       }
 
-      toast.success(`Flash test ${isEdit ? "updated" : "created"} successfully.`);
-      navigate("/staff/flashtests");
+      toast.success(`${pageName} ${isEdit ? "updated" : "created"} successfully.`);
+      navigate(returnPath);
     } catch (error) {
       console.error(error);
-      toast.error(error.message || "Could not save flash test.");
+      toast.error(error.message || `Could not save ${pageName.toLowerCase()}.`);
     } finally {
       setIsSaving(false);
     }
@@ -282,12 +360,18 @@ export function StaffFlashTestCreatePage() {
     <section className="ft-page">
       <header className="ft-page-header">
         <div>
-          <span className="ft-page-kicker">Flash Tests</span>
+          <span className="ft-page-kicker">
+            {isAssignmentMode ? "Assignments" : isFlashMode ? "Flash Tests" : "Tests"}
+          </span>
           <h1 className="ft-page-title">
-            {isEdit ? "Edit Flash Test" : "Create Flash Test"}
+            {isEdit ? `Edit ${pageName}` : `Create ${pageName}`}
           </h1>
           <p className="ft-page-subtitle">
-            Create a timed essay assignment or a practice MCQ test for trainees.
+            {isAssignmentMode
+              ? "Create an essay assignment for a class in this course."
+              : isFlashMode
+              ? "Create a timed essay assignment or a practice MCQ test for trainees."
+              : "Create a timed MCQ test for trainees."}
           </p>
         </div>
         <div className="ft-toolbar">
@@ -306,13 +390,13 @@ export function StaffFlashTestCreatePage() {
             onClick={handleSave}
           >
             <Save size={16} />
-            {isSaving ? "Saving..." : isEdit ? "Update Test" : "Save Test"}
+            {isSaving ? "Saving..." : isEdit ? `Update ${pageName}` : `Save ${pageName}`}
           </button>
         </div>
       </header>
 
       <div className="ft-panel">
-        <div className="ft-ribbon" aria-label="Flash test setup summary">
+        <div className="ft-ribbon" aria-label={`${pageName} setup summary`}>
           <div className="ft-ribbon__item is-active">
             <FileText size={18} />
             <div>
@@ -335,7 +419,9 @@ export function StaffFlashTestCreatePage() {
             <div>
               <strong>Course</strong>
               <span>
-                {testType === "mcq"
+                {isAssignmentMode
+                  ? classes.find((item) => item.id === formData.classId)?.className || "Select class"
+                  : testType === "mcq"
                   ? formData.courseId
                     ? getCourseTitle(
                         courses.find(
@@ -371,9 +457,12 @@ export function StaffFlashTestCreatePage() {
               placeholder="Midterm quick practice"
               value={formData.title}
               onChange={(event) =>
-                setFormData({ ...formData, title: event.target.value })
+                updateFormData({ title: event.target.value })
               }
             />
+            {validationErrors.title && (
+              <span className="ft-field-error">{validationErrors.title}</span>
+            )}
           </label>
 
           <label className="ft-field">
@@ -383,21 +472,28 @@ export function StaffFlashTestCreatePage() {
                 {DURATION_PRESETS.map((preset) => (
                   <button
                     key={`${preset.value}-${preset.unit}`}
-                    className="ft-chip"
+                    className={`ft-chip ${
+                      selectedPreset?.value === preset.value &&
+                      selectedPreset?.unit === preset.unit
+                        ? "is-active"
+                        : ""
+                    }`}
                     type="button"
-                    onClick={() =>
-                      setFormData({
-                        ...formData,
+                    onClick={() => {
+                      updateFormData({
                         durationValue: preset.value,
                         durationUnit: preset.unit,
-                      })
-                    }
+                      });
+                      setCustomDurationOpen(false);
+                    }}
                   >
                     {preset.label}
                   </button>
                 ))}
                 <button
-                  className="ft-chip ft-chip--custom"
+                  className={`ft-chip ft-chip--custom ${
+                    selectedPreset ? "" : "is-active"
+                  }`}
                   type="button"
                   onClick={() => {
                     setCustomDurationValue(formData.durationValue);
@@ -406,6 +502,9 @@ export function StaffFlashTestCreatePage() {
                 >
                   Custom
                 </button>
+                <span className="ft-duration-selected">
+                  ({selectedDurationMinutes || "--"}) minutes
+                </span>
               </div>
               {customDurationOpen && (
                 <div className="ft-duration-popover">
@@ -436,8 +535,7 @@ export function StaffFlashTestCreatePage() {
                       type="button"
                       onClick={() => {
                         if (!customDurationValue) return;
-                        setFormData({
-                          ...formData,
+                        updateFormData({
                           durationValue: customDurationValue,
                           durationUnit: "minutes",
                         });
@@ -449,33 +547,61 @@ export function StaffFlashTestCreatePage() {
                   </div>
                 </div>
               )}
+              {validationErrors.duration && (
+                <span className="ft-field-error">{validationErrors.duration}</span>
+              )}
             </div>
           </label>
 
-          <div className="ft-field">
-            <span className="ft-label">Assessment type</span>
-            <div className="ft-tabs">
-              <button
-                className={`ft-tab ${testType === "essay" ? "is-active" : ""}`}
-                type="button"
-                disabled={isEdit}
-                onClick={() => setTestType("essay")}
-              >
-                <FileText size={16} /> Essay assignment
-              </button>
-              <button
-                className={`ft-tab ${testType === "mcq" ? "is-active" : ""}`}
-                type="button"
-                disabled={isEdit}
-                onClick={() => setTestType("mcq")}
-              >
-                <CheckSquare size={16} /> MCQ practice
-              </button>
+          {isFlashMode && !isAssignmentMode && (
+            <div className="ft-field">
+              <span className="ft-label">Assessment type</span>
+              <div className="ft-tabs">
+                <button
+                  className={`ft-tab ${testType === "essay" ? "is-active" : ""}`}
+                  type="button"
+                  disabled={isEdit}
+                  onClick={() => setTestType("essay")}
+                >
+                  <FileText size={16} /> Essay assignment
+                </button>
+                <button
+                  className={`ft-tab ${testType === "mcq" ? "is-active" : ""}`}
+                  type="button"
+                  disabled={isEdit}
+                  onClick={() => setTestType("mcq")}
+                >
+                  <CheckSquare size={16} /> MCQ practice
+                </button>
+              </div>
             </div>
-          </div>
+          )}
 
           {testType === "essay" ? (
             <>
+              {isAssignmentMode && (
+                <label className="ft-field">
+                  <span className="ft-label">Class</span>
+                  <select
+                    className="ft-input"
+                    value={formData.classId}
+                    onChange={(event) =>
+                      updateFormData({ classId: event.target.value })
+                    }
+                  >
+                    <option value="">Select a class</option>
+                    {classes.map((item) => (
+                      <option key={item.id} value={item.id}>
+                        {item.className}
+                      </option>
+                    ))}
+                  </select>
+                  {validationErrors.classId && (
+                    <span className="ft-field-error">{validationErrors.classId}</span>
+                  )}
+                </label>
+              )}
+
               <label className="ft-field">
                 <span className="ft-label">Instructions</span>
                 <RichTextEditor
@@ -539,8 +665,13 @@ export function StaffFlashTestCreatePage() {
                   className="ft-input"
                   value={formData.courseId}
                   onChange={(event) => {
-                    setFormData({ ...formData, courseId: event.target.value });
+                    updateFormData({ courseId: event.target.value });
                     setSelectedQuestions([]);
+                    setValidationErrors((current) => {
+                      const next = { ...current };
+                      delete next.questions;
+                      return next;
+                    });
                   }}
                 >
                   <option value="">Select a course</option>
@@ -553,6 +684,9 @@ export function StaffFlashTestCreatePage() {
                     </option>
                   ))}
                 </select>
+                {validationErrors.courseId && (
+                  <span className="ft-field-error">{validationErrors.courseId}</span>
+                )}
               </label>
 
               <div className="ft-field">
@@ -560,8 +694,18 @@ export function StaffFlashTestCreatePage() {
                 <QuestionSelector
                   courseId={formData.courseId}
                   selectedQuestions={selectedQuestions}
-                  onQuestionsChange={setSelectedQuestions}
+                  onQuestionsChange={(nextQuestions) => {
+                    setSelectedQuestions(nextQuestions);
+                    setValidationErrors((current) => {
+                      const next = { ...current };
+                      delete next.questions;
+                      return next;
+                    });
+                  }}
                 />
+                {validationErrors.questions && (
+                  <span className="ft-field-error">{validationErrors.questions}</span>
+                )}
               </div>
             </>
           )}

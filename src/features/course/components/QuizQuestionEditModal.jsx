@@ -1,10 +1,12 @@
 import { useMemo, useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
 import { Modal, Button } from "@/shared/components/ui";
+import { courseService } from "@/services/course.service";
 import {
   QUESTION_TYPES,
   QUESTION_TYPE_LABELS,
   validateQuizQuestions,
+  normalizeMedia,
 } from "../utils/quiz-question-schema";
 
 const TYPE_OPTIONS = [
@@ -13,13 +15,25 @@ const TYPE_OPTIONS = [
   QUESTION_TYPES.FILL,
 ];
 
+function toOptionState(option) {
+  if (typeof option === "string") return { text: option, media: null };
+  if (option && typeof option === "object") {
+    return {
+      text: typeof option.text === "string" ? option.text : "",
+      media: normalizeMedia(option.media),
+    };
+  }
+  return { text: "", media: null };
+}
+
 function buildInitialState(question) {
   if (!question) {
     return {
       title: "",
+      media: null,
       explain_question: "",
       type: QUESTION_TYPES.SINGLE,
-      options: ["", ""],
+      options: [toOptionState(""), toOptionState("")],
       correct_answers: [1],
     };
   }
@@ -28,17 +42,97 @@ function buildInitialState(question) {
     question.type === QUESTION_TYPES.MULTIPLE;
   return {
     title: question.title || "",
+    media: normalizeMedia(question.media),
     explain_question: question.explain_question || "",
     type: question.type || QUESTION_TYPES.SINGLE,
     options: isChoice
-      ? [...(question.options || ["", ""])]
-      : ["", ""],
+      ? [...(question.options || ["", ""])].map(toOptionState)
+      : [toOptionState(""), toOptionState("")],
     correct_answers: Array.isArray(question.correct_answers)
       ? [...question.correct_answers]
       : isChoice
         ? [1]
         : [""],
   };
+}
+
+function buildMediaFromUpload(uploaded, type) {
+  return normalizeMedia({
+    type,
+    url: uploaded?.url,
+    objectPath: uploaded?.objectPath,
+    fileName: uploaded?.fileName,
+    contentType: uploaded?.contentType,
+    size: uploaded?.fileSize ?? uploaded?.size,
+  });
+}
+
+function MediaUploader({ label, media, onChange, onError }) {
+  const [uploading, setUploading] = useState(false);
+
+  const handleFileChange = async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+
+    const isImage = file.type.startsWith("image/");
+    const isVideo = file.type.startsWith("video/");
+    if (!isImage && !isVideo) {
+      onError("Only image or video files are supported.");
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const uploaded = isVideo
+        ? await courseService.uploadLessonMaterial(file)
+        : await courseService.uploadLessonResource(file);
+      onChange(buildMediaFromUpload(uploaded, isVideo ? "video" : "image"));
+    } catch (error) {
+      const message =
+        error?.response?.data?.message || "Failed to upload media file.";
+      onError(message);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  return (
+    <div className="quiz-edit-form__media">
+      <label className="quiz-edit-form__label">{label}</label>
+      {media ? (
+        <div className="quiz-edit-form__media-preview">
+          <span>
+            {media.type === "video" ? "Video" : "Image"}: {media.fileName || media.url || media.objectPath}
+          </span>
+          <button
+            type="button"
+            className="quiz-edit-form__icon-btn quiz-edit-form__icon-btn--danger"
+            onClick={() => onChange(null)}
+            title="Remove media"
+          >
+            <Trash2 size={16} />
+          </button>
+        </div>
+      ) : (
+        <p className="quiz-edit-form__hint">Optional. Leave empty for text-only content.</p>
+      )}
+      <input
+        type="file"
+        accept="image/*,video/mp4,video/webm,video/quicktime"
+        onChange={handleFileChange}
+        disabled={uploading}
+      />
+      {uploading && <p className="quiz-edit-form__hint">Uploading media...</p>}
+    </div>
+  );
+}
+
+function serializeOption(option) {
+  const text = option.text.trim();
+  const media = normalizeMedia(option.media);
+  if (!media) return text;
+  return { text, media };
 }
 
 /**
@@ -65,7 +159,7 @@ export function QuizQuestionEditModal({ open, question, onClose, onSubmit }) {
       let options = prev.options;
       let correct = prev.correct_answers;
       if (nowChoice && !wasChoice) {
-        options = ["", ""];
+        options = [toOptionState(""), toOptionState("")];
         correct = [1];
       } else if (!nowChoice && wasChoice) {
         correct = [""];
@@ -77,21 +171,32 @@ export function QuizQuestionEditModal({ open, question, onClose, onSubmit }) {
   };
 
   // ── Choice option helpers ────────────────────────────────────────────────
-  const updateOption = (idx, value) => {
+  const updateOptionText = (idx, value) => {
     setForm((prev) => {
-      const options = prev.options.map((o, i) => (i === idx ? value : o));
+      const options = prev.options.map((option, i) =>
+        i === idx ? { ...option, text: value } : option,
+      );
       return { ...prev, options };
     });
   };
+
+  const updateOptionMedia = (idx, media) => {
+    setForm((prev) => {
+      const options = prev.options.map((option, i) =>
+        i === idx ? { ...option, media } : option,
+      );
+      return { ...prev, options };
+    });
+  };
+
   const addOption = () => {
-    setForm((prev) => ({ ...prev, options: [...prev.options, ""] }));
+    setForm((prev) => ({ ...prev, options: [...prev.options, toOptionState("")] }));
   };
   const removeOption = (idx) => {
     setForm((prev) => {
       if (prev.options.length <= 2) return prev;
       const optionNumber = idx + 1;
       const options = prev.options.filter((_, i) => i !== idx);
-      // Bỏ đáp án đúng trỏ tới option bị xoá, reindex các đáp án sau nó.
       const correct_answers = prev.correct_answers
         .filter((n) => n !== optionNumber)
         .map((n) => (n > optionNumber ? n - 1 : n));
@@ -138,21 +243,24 @@ export function QuizQuestionEditModal({ open, question, onClose, onSubmit }) {
   };
 
   const buildQuestion = () => {
+    const base = {
+      title: form.title.trim(),
+      media: normalizeMedia(form.media),
+      explain_question: form.explain_question.trim(),
+      type: form.type,
+    };
+
     if (isChoice) {
-      const options = form.options.map((o) => o.trim());
+      const options = form.options.map(serializeOption);
       return {
-        title: form.title.trim(),
-        explain_question: form.explain_question.trim(),
-        type: form.type,
+        ...base,
         number_of_options: options.length,
         options,
         correct_answers: [...form.correct_answers],
       };
     }
     return {
-      title: form.title.trim(),
-      explain_question: form.explain_question.trim(),
-      type: form.type,
+      ...base,
       correct_answers: form.correct_answers
         .map((a) => (typeof a === "string" ? a.trim() : a))
         .filter((a) => a !== ""),
@@ -194,7 +302,7 @@ export function QuizQuestionEditModal({ open, question, onClose, onSubmit }) {
     >
       <div className="quiz-edit-form">
         <label className="quiz-edit-form__label">
-          Question title <span className="quiz-edit-form__req">*</span>
+          Question title <span className="quiz-edit-form__hint">(optional if media exists)</span>
         </label>
         <textarea
           className="quiz-edit-form__textarea"
@@ -204,6 +312,13 @@ export function QuizQuestionEditModal({ open, question, onClose, onSubmit }) {
             setForm((prev) => ({ ...prev, title: e.target.value }))
           }
           placeholder="Supports <b>, <i>, <u> tags"
+        />
+
+        <MediaUploader
+          label="Question media"
+          media={form.media}
+          onChange={(media) => setForm((prev) => ({ ...prev, media }))}
+          onError={setError}
         />
 
         <label className="quiz-edit-form__label">Explanation</label>
@@ -254,13 +369,21 @@ export function QuizQuestionEditModal({ open, question, onClose, onSubmit }) {
                     onChange={() => toggleCorrect(optionNumber)}
                     name="quiz-edit-correct"
                   />
-                  <input
-                    type="text"
-                    className="quiz-edit-form__option-input"
-                    value={opt}
-                    onChange={(e) => updateOption(idx, e.target.value)}
-                    placeholder={`Option ${optionNumber}`}
-                  />
+                  <div style={{ flex: 1 }}>
+                    <input
+                      type="text"
+                      className="quiz-edit-form__option-input"
+                      value={opt.text}
+                      onChange={(e) => updateOptionText(idx, e.target.value)}
+                      placeholder={`Option ${optionNumber} text (optional if media exists)`}
+                    />
+                    <MediaUploader
+                      label={`Option ${optionNumber} media`}
+                      media={opt.media}
+                      onChange={(media) => updateOptionMedia(idx, media)}
+                      onError={setError}
+                    />
+                  </div>
                   {form.options.length > 2 && (
                     <button
                       type="button"

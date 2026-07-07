@@ -3,18 +3,29 @@ import { useNavigate, useParams } from "react-router-dom";
 import { AlertCircle, Loader, Trash2 } from "lucide-react";
 import { Button } from "@/shared/components/ui";
 import { classService } from "@/services";
+import { normalizeRole, ROLES } from "@/shared/constants/roles";
 import { ClassStatusBadge } from "../components/ClassStatusBadge";
-import { ClassWorkspaceTabs } from "../components/ClassWorkspaceTabs";
 import { ClassOverviewTab } from "../components/ClassOverviewTab";
-import { ClassWorkspacePlaceholder } from "../components/ClassWorkspacePlaceholder";
 
-export function TrainerClassWorkspacePage() {
+function getCurrentRole() {
+  try {
+    const raw = localStorage.getItem("user");
+    const user = raw ? JSON.parse(raw) : null;
+    return normalizeRole(user?.role) || "";
+  } catch {
+    return "";
+  }
+}
+
+export function ClassDetailPage() {
   const { classId } = useParams();
   const navigate = useNavigate();
 
-  const [classData, setClassData] = useState(null);
-  const [activeTab, setActiveTab] = useState("overview");
+  const userRole = getCurrentRole();
+  const isTrainer = userRole === ROLES.TRAINER;
+  const isTmo = userRole === ROLES.TMO;
 
+  const [classData, setClassData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [refreshKey, setRefreshKey] = useState(0);
@@ -32,8 +43,11 @@ export function TrainerClassWorkspacePage() {
 
     let mounted = true;
 
-    classService
-      .getAdmin(classId)
+    const request = isTrainer
+      ? classService.getTrainer(classId)
+      : classService.getAdmin(classId);
+
+    request
       .then((data) => {
         if (!mounted) return;
 
@@ -55,7 +69,7 @@ export function TrainerClassWorkspacePage() {
     return () => {
       mounted = false;
     };
-  }, [classId, refreshKey]);
+  }, [classId, refreshKey, isTrainer]);
 
   async function deleteClass() {
     const confirmed = window.confirm(
@@ -74,47 +88,6 @@ export function TrainerClassWorkspacePage() {
 
   function handleClassUpdated(updatedClass) {
     setClassData(updatedClass);
-  }
-
-  function renderTabContent() {
-    if (activeTab === "overview") {
-      return (
-        <ClassOverviewTab
-          classData={classData}
-          classId={classId}
-          onClassUpdated={handleClassUpdated}
-        />
-      );
-    }
-
-    if (activeTab === "assignments") {
-      return (
-        <ClassWorkspacePlaceholder
-          title="Assignments"
-          description="Assignment management for this class will be connected when the backend classroom assignment API is available."
-        />
-      );
-    }
-
-    if (activeTab === "tests") {
-      return (
-        <ClassWorkspacePlaceholder
-          title="Tests"
-          description="Test management for this class will be connected when the backend classroom test API is available."
-        />
-      );
-    }
-
-    if (activeTab === "flashcards") {
-      return (
-        <ClassWorkspacePlaceholder
-          title="Flashcards"
-          description="Flashcard management for this class will be connected when the backend classroom flashcard API is available."
-        />
-      );
-    }
-
-    return null;
   }
 
   if (loading) {
@@ -160,18 +133,20 @@ export function TrainerClassWorkspacePage() {
           </div>
         </div>
 
-        <div className="workspace-header__actions">
-          <Button
-            type="button"
-            variant="delete"
-            size="icon"
-            title="Soft Delete"
-            aria-label="Soft Delete class"
-            onClick={deleteClass}
-          >
-            <Trash2 size={16} strokeWidth={2.2} />
-          </Button>
-        </div>
+        {isTmo && (
+          <div className="workspace-header__actions">
+            <Button
+              type="button"
+              variant="delete"
+              size="icon"
+              title="Soft Delete"
+              aria-label="Soft Delete class"
+              onClick={deleteClass}
+            >
+              <Trash2 size={16} strokeWidth={2.2} />
+            </Button>
+          </div>
+        )}
       </div>
 
       {error && (
@@ -181,9 +156,14 @@ export function TrainerClassWorkspacePage() {
         </div>
       )}
 
-      <ClassWorkspaceTabs activeTab={activeTab} onChange={setActiveTab} />
-
-      <div className="workspace-content">{renderTabContent()}</div>
+      <div className="workspace-content">
+        <ClassOverviewTab
+          classData={classData}
+          classId={classId}
+          onClassUpdated={handleClassUpdated}
+          readOnly={isTrainer}
+        />
+      </div>
     </section>
   );
 }

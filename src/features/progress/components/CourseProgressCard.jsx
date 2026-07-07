@@ -1,12 +1,87 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { BookOpen, ChevronDown, ChevronRight } from "lucide-react";
 import { Link } from "react-router-dom";
+import { getCurrentUser } from "@/services/api-client";
+import { assignmentService } from "@/services/flashtest.service";
 import { ProgressBar } from "./ProgressBar";
 import { ProgressMetric } from "./ProgressMetric";
+
+function AssignmentMetric({ courseId }) {
+  const [counts, setCounts] = useState({ completed: 0, total: 0 });
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadAssignments() {
+      const currentUser = getCurrentUser();
+      const studentId =
+        currentUser?.id || currentUser?.userId || currentUser?.accountId || "";
+      if (!studentId || !courseId) {
+        setCounts({ completed: 0, total: 0 });
+        return;
+      }
+      try {
+        const assignments = await assignmentService.getAvailable({
+          courseId,
+          isFlashtest: false,
+        });
+        const checks = await Promise.allSettled(
+          assignments.map((assignment) =>
+            assignmentService.getSubmissionByStudent(assignment.id, studentId),
+          ),
+        );
+        const completed = checks.filter(
+          (result) =>
+            result.status === "fulfilled" &&
+            ["SUBMITTED", "GRADED", "EXPIRED", "LATE"].includes(
+              String(result.value?.status || "").toUpperCase(),
+            ),
+        ).length;
+        if (!cancelled) {
+          setCounts({ completed, total: assignments.length });
+        }
+      } catch {
+        if (!cancelled) setCounts({ completed: 0, total: 0 });
+      }
+    }
+    loadAssignments();
+    return () => {
+      cancelled = true;
+    };
+  }, [courseId]);
+
+  return (
+    <ProgressMetric
+      label="Assignment"
+      completed={counts.completed}
+      total={counts.total}
+      percent={0}
+      hideProgress
+      to={`/learning/assignments?courseId=${courseId}`}
+    />
+  );
+}
+
+function getLearningPath(course) {
+  const courseId = course.courseId || course.id;
+
+  if (!courseId) {
+    return "/learning/progress";
+  }
+
+  if (!course.classId) {
+    return `/learning/courses/${courseId}`;
+  }
+
+  const params = new URLSearchParams();
+  params.set("classId", course.classId);
+
+  return `/learning/courses/${courseId}?${params.toString()}`;
+}
 
 export function CourseProgressCard({ course }) {
   const [expanded, setExpanded] = useState(true);
   const isCompleted = course.courseStatus === "COMPLETED";
+  const learningPath = getLearningPath(course);
 
   return (
     <article className="course-progress-card">
@@ -27,10 +102,17 @@ export function CourseProgressCard({ course }) {
 
             <h3>{course.title}</h3>
 
-            <Link
-              to={`/learning/courses/${course.courseId}`}
-              className="course-progress-card__overall"
-            >
+            {course.className ? (
+              <span className="course-progress-card__class">
+                Class: {course.className}
+              </span>
+            ) : (
+              <span className="course-progress-card__class course-progress-card__class--missing">
+                No class selected
+              </span>
+            )}
+
+            <Link to={learningPath} className="course-progress-card__overall">
               <ProgressBar value={course.overallPercent} />
               <strong>{course.overallPercent}%</strong>
             </Link>
@@ -68,7 +150,7 @@ export function CourseProgressCard({ course }) {
             completed={course.lesson.completed}
             total={course.lesson.total}
             percent={course.lesson.percent}
-            to={`/learning/courses/${course.courseId}`}
+            to={learningPath}
           />
 
           <ProgressMetric
@@ -86,6 +168,8 @@ export function CourseProgressCard({ course }) {
             percent={course.flashcard.percent}
             to={`/learning/flashcards?courseId=${course.courseId}`}
           />
+
+          <AssignmentMetric courseId={course.courseId} />
         </div>
       )}
     </article>

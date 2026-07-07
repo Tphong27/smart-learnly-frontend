@@ -22,9 +22,10 @@ export function StaffClassListPage() {
 
   const userRole = getCurrentRole();
   const isTmo = userRole === ROLES.TMO;
+  const isTrainer = userRole === ROLES.TRAINER;
 
   const [classes, setClasses] = useState([]);
-  const [loading, setLoading] = useState(isTmo);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   const [filters, setFilters] = useState({
@@ -46,16 +47,13 @@ export function StaffClassListPage() {
     let mounted = true;
 
     async function fetchClasses() {
-      if (!isTmo) {
-        setLoading(false);
-        return;
-      }
-
       try {
         setLoading(true);
         setError("");
 
-        const data = await classService.listAdmin(filters);
+        const data = isTrainer
+          ? await classService.listTrainer(filters)
+          : await classService.listAdmin(filters);
 
         if (!mounted) return;
 
@@ -82,7 +80,7 @@ export function StaffClassListPage() {
     return () => {
       mounted = false;
     };
-  }, [filters, refreshKey, isTmo]);
+  }, [filters, refreshKey, isTrainer]);
 
   function reloadClasses() {
     setRefreshKey((current) => current + 1);
@@ -131,45 +129,35 @@ export function StaffClassListPage() {
     }));
   }
 
-  if (!isTmo) {
-    return (
-      <section className="staff-class-router">
-        <div className="section-header">
-          <div>
-            <h1>My Classes</h1>
-            <p className="section-header__subtitle">
-              The backend does not yet have an API for listing classes assigned
-              to Trainers.
-            </p>
-          </div>
-        </div>
-
-        <div className="page-empty">
-          <p>
-            Trainer classroom functionality will be connected once the API is
-            available.
-          </p>
-        </div>
-      </section>
-    );
-  }
+  const pageTitle = isTrainer ? "My Assigned Classes" : "Class Management";
+  const emptyTitle = isTrainer ? "No assigned classes" : "No classes available";
+  const emptyDescription = isTrainer
+    ? "You do not have any assigned classes yet."
+    : "Create a new class or adjust the filters.";
 
   return (
     <section className="staff-class-router">
       <div className="section-header">
         <div>
-          <h1>Class Management</h1>
+          <h1>{pageTitle}</h1>
+          {isTrainer && (
+            <p className="section-header__subtitle">
+              View the classes assigned to your trainer account.
+            </p>
+          )}
         </div>
 
-        <Button
-          type="button"
-          variant="create"
-          size="sm"
-          leftIcon={<Plus size={16} strokeWidth={2.4} />}
-          onClick={() => navigate("/staff/classrooms/create")}
-        >
-          New Class
-        </Button>
+        {isTmo && (
+          <Button
+            type="button"
+            variant="create"
+            size="sm"
+            leftIcon={<Plus size={16} strokeWidth={2.4} />}
+            onClick={() => navigate("/staff/classrooms/create")}
+          >
+            New Class
+          </Button>
+        )}
       </div>
 
       <ClassListFilters onFilterChange={handleFilterChange} />
@@ -193,8 +181,8 @@ export function StaffClassListPage() {
 
       {!loading && !error && classes.length === 0 && (
         <div className="page-empty">
-          <h2>No classes available</h2>
-          <p>Create a new class or adjust the filters.</p>
+          <h2>{emptyTitle}</h2>
+          <p>{emptyDescription}</p>
         </div>
       )}
 
@@ -213,7 +201,7 @@ export function StaffClassListPage() {
                   navigate(`/staff/classrooms/${classItem.id}/workspace`)
                 }
                 actionButtons={
-                  <>
+                  isTmo ? (
                     <Button
                       type="button"
                       variant="delete"
@@ -227,7 +215,7 @@ export function StaffClassListPage() {
                     >
                       <Trash2 size={16} strokeWidth={2.2} />
                     </Button>
-                  </>
+                  ) : null
                 }
               />
             ))}

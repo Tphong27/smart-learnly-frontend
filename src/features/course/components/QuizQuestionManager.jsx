@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Pencil, Trash2, Plus, Upload } from "lucide-react";
 import { Modal, Button, useToast } from "@/shared/components/ui";
 import { courseService } from "@/services/course.service";
+import { normalizeLessonStatus } from "@/features/course/utils/lesson-status";
 import {
   QUESTION_TYPES,
   QUESTION_TYPE_LABELS,
@@ -9,6 +10,7 @@ import {
   sanitizeQuizHtml,
   parseQuizContent,
   serializeQuizContent,
+  getOptionMedia,
 } from "../utils/quiz-question-schema";
 import { QuizQuestionEditModal } from "./QuizQuestionEditModal";
 import { QuizImportModal } from "./QuizImportModal";
@@ -23,13 +25,26 @@ function correctAnswerLabel(question) {
 }
 
 function HtmlCell({ html }) {
-  return (
-    <span dangerouslySetInnerHTML={{ __html: sanitizeQuizHtml(html) }} />
-  );
+  return <span dangerouslySetInnerHTML={{ __html: sanitizeQuizHtml(html) }} />;
+}
+
+function mediaLabel(media) {
+  if (!media) return "";
+  return media.type === "video" ? "Video" : "Image";
+}
+
+function questionMediaSummary(question) {
+  const optionMediaCount = Array.isArray(question.options)
+    ? question.options.filter((option) => getOptionMedia(option)).length
+    : 0;
+  const parts = [];
+  if (question.media) parts.push(`Question ${mediaLabel(question.media)}`);
+  if (optionMediaCount > 0) parts.push(`${optionMediaCount} option media`);
+  return parts.join(" • ");
 }
 
 /**
- * Modal quản lý câu hỏi quiz: import JSON, validate, bảng câu hỏi, edit/delete, save.
+ * Modal quản lý câu hỏi quiz: import JSON/Excel, validate, bảng câu hỏi, edit/delete, save.
  * Props: { open, lesson, onClose, onSaved }
  */
 export function QuizQuestionManager({ open, lesson, onClose, onSaved }) {
@@ -75,9 +90,9 @@ export function QuizQuestionManager({ open, lesson, onClose, onSaved }) {
   }, [open, lesson?.id, toast]);
 
   const handleImported = (importedQuestions) => {
-    setQuestions(importedQuestions);
+    setQuestions((prev) => [...prev, ...importedQuestions]);
     setImportOpen(false);
-    toast.success(`Imported ${importedQuestions.length} question(s).`);
+    toast.success(`Added ${importedQuestions.length} question(s) to current list.`);
   };
 
   const handleDelete = (idx) => {
@@ -102,7 +117,6 @@ export function QuizQuestionManager({ open, lesson, onClose, onSaved }) {
 
   const handleSave = async () => {
     if (!lesson?.id) return;
-    // Validate toàn bộ trước khi lưu để backend không phải reject.
     const { valid, errors: validationErrors } = validateQuizQuestions(questions);
     if (!valid) {
       setErrors(validationErrors);
@@ -122,7 +136,7 @@ export function QuizQuestionManager({ open, lesson, onClose, onSaved }) {
         attachmentUrl: lessonData.attachmentUrl ?? null,
         durationSeconds: Number(lessonData.durationSeconds || 0),
         isPreview: Boolean(lessonData.isPreview ?? lessonData.isPreviewable),
-        status: String(lessonData.status || "DRAFT").toUpperCase(),
+        status: normalizeLessonStatus(lessonData.status),
         resources: Array.isArray(lessonData.resources)
           ? lessonData.resources
           : [],
@@ -186,22 +200,12 @@ export function QuizQuestionManager({ open, lesson, onClose, onSaved }) {
             />
 
             <div className="quiz-mgr__table-header">
-              <span className="quiz-mgr__label">
-                Questions ({questions.length})
-              </span>
+              <span className="quiz-mgr__label">Questions ({questions.length})</span>
               <div className="quiz-mgr__header-actions">
-                <button
-                  type="button"
-                  className="quiz-mgr__add-btn"
-                  onClick={() => setImportOpen(true)}
-                >
+                <button type="button" className="quiz-mgr__add-btn" onClick={() => setImportOpen(true)}>
                   <Upload size={15} /> Import questions
                 </button>
-                <button
-                  type="button"
-                  className="quiz-mgr__add-btn"
-                  onClick={() => openEdit(-1)}
-                >
+                <button type="button" className="quiz-mgr__add-btn" onClick={() => openEdit(-1)}>
                   <Plus size={15} /> Add question
                 </button>
               </div>
@@ -217,7 +221,7 @@ export function QuizQuestionManager({ open, lesson, onClose, onSaved }) {
 
             {questions.length === 0 ? (
               <div className="quiz-mgr__empty">
-                No questions imported yet. Paste JSON and click Import Questions.
+                No questions imported yet. Paste JSON or import an Excel/CSV file.
               </div>
             ) : (
               <table className="quiz-mgr__table">
@@ -225,6 +229,7 @@ export function QuizQuestionManager({ open, lesson, onClose, onSaved }) {
                   <tr>
                     <th>#</th>
                     <th>Question</th>
+                    <th>Media</th>
                     <th>Type</th>
                     <th>Options</th>
                     <th>Correct answer</th>
@@ -236,21 +241,18 @@ export function QuizQuestionManager({ open, lesson, onClose, onSaved }) {
                     <tr key={idx}>
                       <td>{idx + 1}</td>
                       <td>
-                        <HtmlCell html={question.title} />
+                        {question.title ? <HtmlCell html={question.title} /> : <em>Media-only question</em>}
                       </td>
+                      <td>{questionMediaSummary(question) || "-"}</td>
                       <td>
-                        <span
-                          className={`quiz-mgr__badge quiz-mgr__badge--${question.type}`}
-                        >
+                        <span className={`quiz-mgr__badge quiz-mgr__badge--${question.type}`}>
                           {QUESTION_TYPE_LABELS[question.type] || question.type}
                         </span>
                       </td>
                       <td>
                         {question.type === QUESTION_TYPES.FILL
                           ? "-"
-                          : question.number_of_options ??
-                            question.options?.length ??
-                            0}
+                          : question.number_of_options ?? question.options?.length ?? 0}
                       </td>
                       <td>{correctAnswerLabel(question)}</td>
                       <td>
