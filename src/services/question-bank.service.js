@@ -94,6 +94,33 @@ export const questionBankService = {
     const response = await apiClient.delete(`/admin/questions/${questionId}/audio`)
     return unwrap(response)
   },
+  async listQuestionMedia(questionId) {
+    const response = await apiClient.get(`/admin/questions/${questionId}/media`)
+    return normalizeList(response)
+  },
+
+  async uploadQuestionMedia(questionId, mediaType, files) {
+    const formData = new FormData()
+    files.forEach((file) => formData.append('files', file))
+    const response = await apiClient.post(`/admin/questions/${questionId}/media`, formData, {
+      params: { mediaType },
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+    return unwrap(response)
+  },
+
+  async removeQuestionMedia(questionId, attachmentId) {
+    const response = await apiClient.delete(`/admin/questions/${questionId}/media/${attachmentId}`)
+    return unwrap(response)
+  },
+
+  async reorderQuestionMedia(questionId, mediaType, attachmentIds) {
+    const response = await apiClient.put(`/admin/questions/${questionId}/media/reorder`, {
+      mediaType,
+      attachmentIds,
+    })
+    return unwrap(response)
+  },
 
   async archiveQuestion(questionId) {
     const response = await apiClient.delete(`/admin/questions/${questionId}`)

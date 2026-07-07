@@ -311,3 +311,118 @@
   color: #64748b;
   font-size: 12px;
 }
+
+.question-media-manager {
+  display: grid;
+  gap: 12px;
+}
+
+.question-media-manager__toolbar {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+}
+
+.question-media-manager__title {
+  color: var(--text-primary, #111827);
+  font-weight: 700;
+}
+
+.question-media-manager__hint {
+  color: var(--text-muted, #6b7280);
+  font-size: 13px;
+  margin-top: 2px;
+}
+
+.question-media-manager__list {
+  display: grid;
+  gap: 10px;
+}
+
+.question-media-manager__item {
+  align-items: center;
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: 8px;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: 104px minmax(0, 1fr) auto;
+  padding: 10px;
+}
+
+.question-media-manager__preview {
+  align-items: center;
+  background: #f8fafc;
+  border: 1px dashed #cbd5e1;
+  border-radius: 8px;
+  color: #64748b;
+  display: flex;
+  height: 72px;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.question-media-manager__preview img {
+  height: 100%;
+  object-fit: cover;
+  width: 100%;
+}
+
+.question-media-manager__preview audio {
+  width: 100%;
+}
+
+.question-media-manager__meta {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.question-media-manager__meta strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.question-media-manager__meta span {
+  color: var(--text-muted, #6b7280);
+  font-size: 13px;
+}
+
+.question-media-manager__actions {
+  display: flex;
+  gap: 6px;
+}
+
+.question-media-manager__empty {
+  align-items: center;
+  border: 1px dashed #cbd5e1;
+  border-radius: 8px;
+  color: #64748b;
+  display: flex;
+  gap: 8px;
+  min-height: 74px;
+  padding: 16px;
+}
+
+.button.is-disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+@media (max-width: 720px) {
+  .question-media-manager__toolbar,
+  .question-media-manager__item {
+    align-items: stretch;
+    grid-template-columns: 1fr;
+  }
+
+  .question-media-manager__toolbar {
+    display: grid;
+  }
+
+  .question-media-manager__actions {
+    justify-content: flex-start;
+  }
+}
