@@ -1,11 +1,16 @@
 import { BrowserRouter, Navigate, useRoutes } from "react-router-dom";
 import { PublicLayout } from "./layouts/PublicLayout";
+import { AuthAwareLayout } from "./layouts/AuthAwareLayout";
 import { AppLayout } from "./layouts/AppLayout";
 import { ProtectedRoute } from "./routes/ProtectedRoute";
 import { RoleGuard } from "./routes/RoleGuard";
 import { ROLES } from "@/shared/constants/roles";
 import { HomePage } from "../features/home/HomePage";
-import { CourseDetailPage, LearningWorkspacePage, TrainerProfilePage } from "../features/course";
+import {
+  CourseDetailPage,
+  LearningWorkspacePage,
+  TrainerProfilePage,
+} from "../features/course";
 import {
   LoginPage,
   RegisterPage,
@@ -25,9 +30,9 @@ const appRoutes = [
   {
     path: "/",
     element: (
-      <PublicLayout>
+      <AuthAwareLayout>
         <HomePage />
-      </PublicLayout>
+      </AuthAwareLayout>
     ),
   },
   {
@@ -89,20 +94,20 @@ const appRoutes = [
   {
     path: "/courses/:slug",
     element: (
-      <PublicLayout>
+      <AuthAwareLayout>
         <CourseDetailPage />
-      </PublicLayout>
+      </AuthAwareLayout>
     ),
   },
 
   {
-  path: "/trainers/:trainerId",
-  element: (
-    <PublicLayout>
-      <TrainerProfilePage />
-    </PublicLayout>
-  ),
-},
+    path: "/trainers/:trainerId",
+    element: (
+      <PublicLayout>
+        <TrainerProfilePage />
+      </PublicLayout>
+    ),
+  },
 
   // =========================================================
   // BẢO VỆ CHẶT CHẼ: Cô lập không gian chạy của từng nhóm quyền
@@ -116,8 +121,10 @@ const appRoutes = [
           <RoleGuard allowedRoles={[ROLES.ADMIN, ROLES.TMO, ROLES.SME]} />
         ),
         children: [
-          { path: "/admin/courses/:courseId/preview",
-            element: <LearningWorkspacePage mode="admin-preview" /> },
+          {
+            path: "/admin/courses/:courseId/preview",
+            element: <LearningWorkspacePage mode="admin-preview" />,
+          },
         ],
       },
 

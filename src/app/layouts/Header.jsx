@@ -48,14 +48,16 @@ export function Header({ user, onLogout, onToggleSidebar }) {
         {/* Left: Logo + Search */}
         <div className="app-header__left">
           {/* Mobile menu button */}
-          <button
-            type="button"
-            className="app-header__menu-button"
-            onClick={onToggleSidebar}
-            aria-label="Open sidebar"
-          >
-            <Menu size={18} />
-          </button>
+          {onToggleSidebar && (
+            <button
+              type="button"
+              className="app-header__menu-button"
+              onClick={onToggleSidebar}
+              aria-label="Open sidebar"
+            >
+              <Menu size={18} />
+            </button>
+          )}
 
           {/* Logo */}
           <Link to={dashboardPath} className="app-header__logo">

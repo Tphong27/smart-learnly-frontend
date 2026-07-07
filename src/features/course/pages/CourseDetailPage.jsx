@@ -12,7 +12,7 @@ import {
   Star,
 } from "lucide-react";
 import { useToast } from "@/shared/components/ui";
-import { SiteHeader } from "@/shared/components/SiteHeader";
+// import { SiteHeader } from "@/shared/components/SiteHeader";
 import {
   formatVnd,
   getDiscountPercent,
@@ -113,26 +113,20 @@ export function CourseDetailPage() {
 
   if (loading) {
     return (
-      <>
-        <SiteHeader />
-        <div className="course-detail">
-          <div className="admin-loading">Loading course...</div>
-        </div>
-      </>
+      <div className="course-detail">
+        <div className="admin-loading">Loading course...</div>
+      </div>
     );
   }
 
   if (error || !course) {
     return (
-      <>
-        <SiteHeader />
-        <div className="course-detail">
-          <div className="admin-error">{error || "Course not found."}</div>
-          <Link to={backTo} className="course-detail__back-link">
-            <ArrowLeft size={14} /> {backLabel}
-          </Link>
-        </div>
-      </>
+      <div className="course-detail">
+        <div className="admin-error">{error || "Course not found."}</div>
+        <Link to={backTo} className="course-detail__back-link">
+          <ArrowLeft size={14} /> {backLabel}
+        </Link>
+      </div>
     );
   }
 
@@ -316,248 +310,238 @@ export function CourseDetailPage() {
   }
 
   return (
-    <>
-      <SiteHeader />
-      <div className="course-detail">
-        <div className="course-detail__hero">
-          <div className="course-detail__hero-main">
-            <Link to={backTo} className="course-detail__back-link">
-              <ArrowLeft size={14} /> {backLabel}
+    <div className="course-detail">
+      <div className="course-detail__hero">
+        <div className="course-detail__hero-main">
+          <Link to={backTo} className="course-detail__back-link">
+            <ArrowLeft size={14} /> {backLabel}
+          </Link>
+
+          {course.category && (
+            <Link
+              to={`/?category=${course.category.slug}`}
+              className="course-detail__chip"
+            >
+              {course.category.name}
             </Link>
+          )}
 
-            {course.category && (
-              <Link
-                to={`/?category=${course.category.slug}`}
-                className="course-detail__chip"
-              >
-                {course.category.name}
-              </Link>
-            )}
+          <h1 className="course-detail__title">{course.title}</h1>
 
-            <h1 className="course-detail__title">{course.title}</h1>
+          {course.description && (
+            <p className="course-detail__lede">{course.description}</p>
+          )}
 
-            {course.description && (
-              <p className="course-detail__lede">{course.description}</p>
-            )}
-
-            <div className="course-detail__meta">
-              {course.featured && (
-                <span className="course-detail__badge course-detail__badge--featured">
-                  <Star size={14} /> Featured
-                </span>
-              )}
-              <span className="course-detail__meta-item">
-                <BookOpen size={14} /> {modules.length}{" "}
-                {modules.length === 1 ? "module" : "modules"}
+          <div className="course-detail__meta">
+            {course.featured && (
+              <span className="course-detail__badge course-detail__badge--featured">
+                <Star size={14} /> Featured
               </span>
+            )}
+            <span className="course-detail__meta-item">
+              <BookOpen size={14} /> {modules.length}{" "}
+              {modules.length === 1 ? "module" : "modules"}
+            </span>
+            <span className="course-detail__meta-item">
+              <Clock3 size={14} /> {totalLessons}{" "}
+              {totalLessons === 1 ? "lesson" : "lessons"}
+            </span>
+            {previewLessons.length > 0 && (
               <span className="course-detail__meta-item">
-                <Clock3 size={14} /> {totalLessons}{" "}
-                {totalLessons === 1 ? "lesson" : "lessons"}
+                <Sparkles size={14} /> {previewLessons.length} Preview available
               </span>
-              {previewLessons.length > 0 && (
-                <span className="course-detail__meta-item">
-                  <Sparkles size={14} /> {previewLessons.length} Preview
-                  available
-                </span>
-              )}
-            </div>
+            )}
           </div>
-
-          <aside className="course-detail__sidecard">
-            <div className="course-detail__sidecard-thumb">
-              {course.avatarUrl ? (
-                <img src={course.avatarUrl} alt={course.title} />
-              ) : (
-                <div className="course-detail__sidecard-thumb-fallback">
-                  <BookOpen size={32} />
-                </div>
-              )}
-            </div>
-            <div className="course-detail__sidecard-body">
-              <div className="course-detail__price-block">
-                {hasDiscount ? (
-                  <>
-                    <div className="course-detail__price-row">
-                      <span className="course-detail__price-current">
-                        <span>Discount price</span>
-                        {formatVnd(displayPrice)}
-                      </span>
-
-                      <span className="course-detail__discount-badge">
-                        -{discountPercent}%
-                      </span>
-                    </div>
-
-                    <div className="course-detail__price-original">
-                      <span>Original price</span>
-                      <s>{formatVnd(originalPrice)}</s>
-                    </div>
-                  </>
-                ) : (
-                  <div className="course-detail__price-current">
-                    <span>Course price</span>
-                    {formatVnd(displayPrice)}
-                  </div>
-                )}
-              </div>
-              {!isEnrolled && (
-                <div className="course-detail__action-grid">
-                  <button
-                    type="button"
-                    onClick={handleBuyNowClick}
-                    disabled={buyNowLoading || freeEnrollLoading}
-                    className="button button--primary course-detail__cta"
-                  >
-                    {freeEnrollLoading || buyNowLoading
-                      ? "Processing..."
-                      : isFreeCourse(course)
-                        ? "Enroll Now"
-                        : "Buy Now"}
-                  </button>
-
-                  <Link
-                    to={`/courses/${course.id || course.slug}/preview`}
-                    className="button button--primary course-detail__cta"
-                  >
-                    Preview Lesson
-                  </Link>
-                </div>
-              )}
-              {isEnrolled && (
-                <div className="course-detail__enrolled-box">
-                  <CheckCircle2 size={18} />
-                  <div>
-                    <strong>You are already enrolled in this course.</strong>
-                    <span>You can continue learning from My Courses.</span>
-                  </div>
-                </div>
-              )}
-
-              <ul className="course-detail__sidecard-list">
-                <li>
-                  <CheckCircle2 size={14} /> Lifetime access to course materials
-                </li>
-                <li>
-                  <CheckCircle2 size={14} /> Sample lessons available before
-                  enrollment
-                </li>
-                <li>
-                  <CheckCircle2 size={14} /> Updated curriculum aligned with
-                  industry needs
-                </li>
-              </ul>
-            </div>
-          </aside>
         </div>
 
-        {objectives.length > 0 && (
-          <section className="course-detail__section">
-            <h2 className="course-detail__section-title">
-              What you will learn
-            </h2>
-            <ul className="course-detail__objectives">
-              {objectives.map((obj) => (
-                <li key={obj.id}>
-                  <CheckCircle2 size={16} />
-                  <div>
-                    {obj.code && <strong>{obj.code}</strong>}
-                    <span>{obj.description}</span>
+        <aside className="course-detail__sidecard">
+          <div className="course-detail__sidecard-thumb">
+            {course.avatarUrl ? (
+              <img src={course.avatarUrl} alt={course.title} />
+            ) : (
+              <div className="course-detail__sidecard-thumb-fallback">
+                <BookOpen size={32} />
+              </div>
+            )}
+          </div>
+          <div className="course-detail__sidecard-body">
+            <div className="course-detail__price-block">
+              {hasDiscount ? (
+                <>
+                  <div className="course-detail__price-row">
+                    <span className="course-detail__price-current">
+                      <span>Discount price</span>
+                      {formatVnd(displayPrice)}
+                    </span>
+
+                    <span className="course-detail__discount-badge">
+                      -{discountPercent}%
+                    </span>
                   </div>
+
+                  <div className="course-detail__price-original">
+                    <span>Original price</span>
+                    <s>{formatVnd(originalPrice)}</s>
+                  </div>
+                </>
+              ) : (
+                <div className="course-detail__price-current">
+                  <span>Course price</span>
+                  {formatVnd(displayPrice)}
+                </div>
+              )}
+            </div>
+            {!isEnrolled && (
+              <div className="course-detail__action-grid">
+                <button
+                  type="button"
+                  onClick={handleBuyNowClick}
+                  disabled={buyNowLoading || freeEnrollLoading}
+                  className="button button--primary course-detail__cta"
+                >
+                  {freeEnrollLoading || buyNowLoading
+                    ? "Processing..."
+                    : isFreeCourse(course)
+                      ? "Enroll Now"
+                      : "Buy Now"}
+                </button>
+
+                <Link
+                  to={`/courses/${course.id || course.slug}/preview`}
+                  className="button button--primary course-detail__cta"
+                >
+                  Preview Lesson
+                </Link>
+              </div>
+            )}
+            {isEnrolled && (
+              <div className="course-detail__enrolled-box">
+                <CheckCircle2 size={18} />
+                <div>
+                  <strong>You are already enrolled in this course.</strong>
+                  <span>You can continue learning from My Courses.</span>
+                </div>
+              </div>
+            )}
+
+            <ul className="course-detail__sidecard-list">
+              <li>
+                <CheckCircle2 size={14} /> Lifetime access to course materials
+              </li>
+              <li>
+                <CheckCircle2 size={14} /> Sample lessons available before
+                enrollment
+              </li>
+              <li>
+                <CheckCircle2 size={14} /> Updated curriculum aligned with
+                industry needs
+              </li>
+            </ul>
+          </div>
+        </aside>
+      </div>
+
+      {objectives.length > 0 && (
+        <section className="course-detail__section">
+          <h2 className="course-detail__section-title">What you will learn</h2>
+          <ul className="course-detail__objectives">
+            {objectives.map((obj) => (
+              <li key={obj.id}>
+                <CheckCircle2 size={16} />
+                <div>
+                  {obj.code && <strong>{obj.code}</strong>}
+                  <span>{obj.description}</span>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      <section className="course-detail__section">
+        <h2 className="course-detail__section-title">Course content</h2>
+        <p className="course-detail__section-sub">
+          {modules.length} {modules.length === 1 ? "module" : "modules"} ·{" "}
+          {totalLessons} {totalLessons === 1 ? "lesson" : "lessons"}
+        </p>
+
+        {modules.length === 0 ? (
+          <div className="admin-empty">No modules have been published yet.</div>
+        ) : (
+          <ol className="course-detail__modules">
+            {modules
+              .slice()
+              .sort((a, b) => (a.orderIndex ?? 0) - (b.orderIndex ?? 0))
+              .map((mod, idx) => (
+                <li key={mod.id} className="course-detail__module">
+                  <div className="course-detail__module-head">
+                    <span className="course-detail__module-index">
+                      {String(idx + 1).padStart(2, "0")}
+                    </span>
+                    <div>
+                      <h3 className="course-detail__module-title">
+                        {mod.title}
+                      </h3>
+                      <small>
+                        {mod.lessons?.length || 0}{" "}
+                        {(mod.lessons?.length || 0) === 1
+                          ? "lesson"
+                          : "lessons"}
+                      </small>
+                    </div>
+                  </div>
+
+                  <ul className="course-detail__lessons">
+                    {(mod.lessons || [])
+                      .slice()
+                      .sort((a, b) => (a.orderIndex ?? 0) - (b.orderIndex ?? 0))
+                      .map((lesson) => (
+                        <li key={lesson.id} className="course-detail__lesson">
+                          <span className="course-detail__lesson-icon">
+                            <LessonIcon type={lesson.lessonType} />
+                          </span>
+                          <span className="course-detail__lesson-title">
+                            {lesson.title}
+                          </span>
+                          {lesson.preview && (
+                            <span className="course-detail__lesson-tag">
+                              Preview
+                            </span>
+                          )}
+                        </li>
+                      ))}
+                  </ul>
                 </li>
               ))}
-            </ul>
-          </section>
+          </ol>
         )}
+      </section>
 
-        <section className="course-detail__section">
-          <h2 className="course-detail__section-title">Course content</h2>
-          <p className="course-detail__section-sub">
-            {modules.length} {modules.length === 1 ? "module" : "modules"} ·{" "}
-            {totalLessons} {totalLessons === 1 ? "lesson" : "lessons"}
+      <section className="course-detail__cta-row">
+        <div>
+          <h3>Ready to dive in?</h3>
+          <p>
+            Try the free preview lessons before committing to the full course.
           </p>
+        </div>
+        <Link
+          to={`/courses/${course.id || course.slug}/preview`}
+          className="button button--primary button--md"
+        >
+          Start preview
+        </Link>
+      </section>
 
-          {modules.length === 0 ? (
-            <div className="admin-empty">
-              No modules have been published yet.
-            </div>
-          ) : (
-            <ol className="course-detail__modules">
-              {modules
-                .slice()
-                .sort((a, b) => (a.orderIndex ?? 0) - (b.orderIndex ?? 0))
-                .map((mod, idx) => (
-                  <li key={mod.id} className="course-detail__module">
-                    <div className="course-detail__module-head">
-                      <span className="course-detail__module-index">
-                        {String(idx + 1).padStart(2, "0")}
-                      </span>
-                      <div>
-                        <h3 className="course-detail__module-title">
-                          {mod.title}
-                        </h3>
-                        <small>
-                          {mod.lessons?.length || 0}{" "}
-                          {(mod.lessons?.length || 0) === 1
-                            ? "lesson"
-                            : "lessons"}
-                        </small>
-                      </div>
-                    </div>
-
-                    <ul className="course-detail__lessons">
-                      {(mod.lessons || [])
-                        .slice()
-                        .sort(
-                          (a, b) => (a.orderIndex ?? 0) - (b.orderIndex ?? 0),
-                        )
-                        .map((lesson) => (
-                          <li key={lesson.id} className="course-detail__lesson">
-                            <span className="course-detail__lesson-icon">
-                              <LessonIcon type={lesson.lessonType} />
-                            </span>
-                            <span className="course-detail__lesson-title">
-                              {lesson.title}
-                            </span>
-                            {lesson.preview && (
-                              <span className="course-detail__lesson-tag">
-                                Preview
-                              </span>
-                            )}
-                          </li>
-                        ))}
-                    </ul>
-                  </li>
-                ))}
-            </ol>
-          )}
-        </section>
-
-        <section className="course-detail__cta-row">
-          <div>
-            <h3>Ready to dive in?</h3>
-            <p>
-              Try the free preview lessons before committing to the full course.
-            </p>
-          </div>
-          <Link
-            to={`/courses/${course.id || course.slug}/preview`}
-            className="button button--primary button--md"
-          >
-            Start preview
-          </Link>
-        </section>
-
-        {classPopupOpen && (
-          <ClassSelectionPopup
-            classes={classes}
-            buyNowLoading={buyNowLoading || freeEnrollLoading}
-            checkoutClassId={checkoutClassId}
-            isClassSelectable={isClassSelectable}
-            onClose={() => setClassPopupOpen(false)}
-            onSelectClass={handleCheckoutSelectedClass}
-          />
-        )}
-      </div>
-    </>
+      {classPopupOpen && (
+        <ClassSelectionPopup
+          classes={classes}
+          buyNowLoading={buyNowLoading || freeEnrollLoading}
+          checkoutClassId={checkoutClassId}
+          isClassSelectable={isClassSelectable}
+          onClose={() => setClassPopupOpen(false)}
+          onSelectClass={handleCheckoutSelectedClass}
+        />
+      )}
+    </div>
   );
 }

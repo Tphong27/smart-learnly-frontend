@@ -1,3 +1,30 @@
+import { ScheduleCalendar } from "../../../shared/components/scheduleCalendar/ScheduleCalendar";
+
+function formatStatus(status) {
+  if (!status) return "Unknown";
+
+  return String(status)
+    .replace(/_/g, " ")
+    .toLowerCase()
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function formatDate(value) {
+  if (!value) return "Not specified";
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return date.toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+}
+
 export function ClassSelectionPopup({
   classes,
   buyNowLoading,
@@ -26,7 +53,7 @@ export function ClassSelectionPopup({
         <div className="course-detail__modal-header">
           <div>
             <h2 id="class-checkout-title">Choose a class</h2>
-            <p>Select one available class.</p>
+            <p>Select one available class to start learning.</p>
           </div>
 
           <button
@@ -56,65 +83,75 @@ export function ClassSelectionPopup({
                   key={classItem.id}
                   className="course-detail__modal-class-card"
                 >
-                  <div className="course-detail__class-main">
-                    <div>
+                  <div className="course-detail__class-card-top">
+                    <div className="course-detail__class-title-block">
                       <h3>{classItem.className}</h3>
-                      <p>
-                        Trainer:
-                        {classItem.trainerId ? (
-                          <a
-                            className="course-detail__trainer-link"
-                            href={`/trainers/${classItem.trainerId}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            onClick={(event) => {
-                              event.stopPropagation();
 
-                              if (buyNowLoading) {
-                                event.preventDefault();
-                              }
-                            }}
-                            aria-disabled={buyNowLoading}
-                          >
-                            {classItem.trainerName || "View trainer profile"}
-                          </a>
-                        ) : (
-                          <strong>To be assigned</strong>
-                        )}
-                      </p>
+                      <div className="course-detail__trainer-status-row">
+                        <div className="course-detail__trainer-row">
+                          <span>Trainer </span>
+
+                          {classItem.trainerId ? (
+                            <a
+                              className="course-detail__trainer-link"
+                              href={`/trainers/${classItem.trainerId}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={(event) => {
+                                event.stopPropagation();
+
+                                if (buyNowLoading) {
+                                  event.preventDefault();
+                                }
+                              }}
+                              aria-disabled={buyNowLoading}
+                            >
+                              {classItem.trainerName || "View trainer profile"}
+                            </a>
+                          ) : (
+                            <strong>To be assigned</strong>
+                          )}
+                        </div>
+
+                        <span
+                          className={`course-detail__class-status course-detail__class-status--${String(
+                            classItem.status || "unknown",
+                          ).toLowerCase()}`}
+                        >
+                          {formatStatus(classItem.status)}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="course-detail__class-info-grid">
+                    <div className="course-detail__class-info-item">
+                      <span>Start date </span>
+                      <strong>{formatDate(classItem.startDate)}</strong>
                     </div>
 
-                    <span className="course-detail__class-status">
-                      {classItem.status}
-                    </span>
+                    <div className="course-detail__class-info-item">
+                      <span>End date </span>
+                      <strong>{formatDate(classItem.endDate)}</strong>
+                    </div>
+
+                    <div className="course-detail__class-info-item">
+                      <span>Enrollment </span>
+                      <strong>
+                        {classItem.activeEnrollmentCount ?? 0}/
+                        {classItem.maxStudents ?? 0}
+                      </strong>
+                    </div>
                   </div>
 
-                  <dl className="course-detail__class-meta">
-                    <div>
-                      <dt>Schedule</dt>
-                      <dd>
-                        {classItem.scheduleDescription || "Not specified"}
-                      </dd>
+                  <div className="course-detail__class-schedule-block">
+                    <div className="course-detail__class-schedule-title">
+                      Schedule
                     </div>
 
-                    <div>
-                      <dt>Start date</dt>
-                      <dd>{classItem.startDate || "Not specified"}</dd>
-                    </div>
-
-                    <div>
-                      <dt>End date</dt>
-                      <dd>{classItem.endDate || "Not specified"}</dd>
-                    </div>
-
-                    <div>
-                      <dt>Available slots</dt>
-                      <dd>
-                        {classItem.availableSlots ?? 0}/
-                        {classItem.maxStudents ?? 0}
-                      </dd>
-                    </div>
-                  </dl>
+                    <ScheduleCalendar
+                      scheduleDescription={classItem.scheduleDescription}
+                    />
+                  </div>
 
                   <button
                     type="button"
