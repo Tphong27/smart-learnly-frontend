@@ -39,6 +39,29 @@
   gap: 10px;
 }
 
+.class-assignment-button {
+  display: inline-flex;
+  min-height: 38px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: #2563eb;
+  color: #ffffff;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.2;
+  padding: 9px 14px;
+  text-decoration: none;
+  transition: background 160ms ease, border-color 160ms ease, color 160ms ease;
+}
+
+.class-assignment-button:hover {
+  background: #1d4ed8;
+}
+
 .class-filters {
   display: flex;
   flex-wrap: wrap;

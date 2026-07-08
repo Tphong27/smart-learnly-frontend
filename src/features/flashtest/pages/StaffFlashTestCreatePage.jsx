@@ -11,6 +11,7 @@ import {
   X,
 } from "lucide-react";
 import { courseService } from "@/services/course.service";
+import { classService } from "@/services/class.service";
 import {
   assignmentService,
   testService,
@@ -28,6 +29,10 @@ function getCourseTitle(course) {
   return (
     course?.title || course?.courseTitle || course?.name || "Untitled course"
   );
+}
+
+function getClassId(classItem) {
+  return classItem?.id || classItem?.classId || "";
 }
 
 function getQuestionId(question) {
@@ -77,10 +82,14 @@ export function StaffFlashTestCreatePage({ variant = "flash" }) {
   const isFlashMode = variant === "flash";
   const isAssignmentMode = variant === "assignment";
   const routeCourseId = searchParams.get("courseId") || "";
+  const routeClassId = searchParams.get("classId") || "";
+  const returnParams = new URLSearchParams();
+  if (routeCourseId) returnParams.set("courseId", routeCourseId);
+  if (routeClassId) returnParams.set("classId", routeClassId);
   const basePath = isAssignmentMode
     ? "/staff/assignments"
     : isFlashMode ? "/staff/flashtests" : "/staff/tests";
-  const returnPath = `${basePath}${routeCourseId ? `?courseId=${encodeURIComponent(routeCourseId)}` : ""}`;
+  const returnPath = `${basePath}${returnParams.toString() ? `?${returnParams.toString()}` : ""}`;
   const pageName = isAssignmentMode ? "Assignment" : isFlashMode ? "Flash Test" : "Test";
   const [testType, setTestType] = useState(isFlashMode || isAssignmentMode ? "essay" : "mcq");
   const [formData, setFormData] = useState({
@@ -89,7 +98,7 @@ export function StaffFlashTestCreatePage({ variant = "flash" }) {
     durationUnit: "minutes",
     description: "",
     courseId: routeCourseId,
-    classId: "",
+    classId: routeClassId,
   });
   const [courses, setCourses] = useState([]);
   const [classes, setClasses] = useState([]);
@@ -144,20 +153,46 @@ export function StaffFlashTestCreatePage({ variant = "flash" }) {
 
   useEffect(() => {
     if (!isAssignmentMode) {
-      setClasses([]);
       return undefined;
     }
     let cancelled = false;
     async function loadClasses() {
       try {
-        const data = await assignmentService.getClasses({
-          ...(formData.courseId && { courseId: formData.courseId }),
+        const [trainerClassesResult, assignmentClassesResult] =
+          await Promise.allSettled([
+            classService.listTrainer({ page: 0, size: 100 }),
+            assignmentService.getClasses({
+              ...(formData.courseId && { courseId: formData.courseId }),
+            }),
+          ]);
+        const trainerClasses =
+          trainerClassesResult.status === "fulfilled"
+            ? trainerClassesResult.value?.content || []
+            : [];
+        const assignmentClasses =
+          assignmentClassesResult.status === "fulfilled"
+            ? assignmentClassesResult.value || []
+            : [];
+        const sourceClasses =
+          trainerClasses.length > 0 ? trainerClasses : assignmentClasses;
+        const data = sourceClasses.filter((classItem) => {
+          const classId = getClassId(classItem);
+          const classCourseId = classItem.courseId || classItem.course_id || "";
+          return (
+            classId &&
+            (!formData.courseId ||
+              !classCourseId ||
+              String(classCourseId) === String(formData.courseId))
+          );
         });
         if (!cancelled) {
-          setClasses(data || []);
+          setClasses(data);
           setFormData((current) => ({
             ...current,
-            classId: current.classId || data?.[0]?.id || "",
+            classId:
+              current.classId && data.some((item) => getClassId(item) === current.classId)
+                ? current.classId
+                : getClassId(data[0]) || "",
           }));
         }
       } catch (error) {
@@ -194,7 +229,7 @@ export function StaffFlashTestCreatePage({ variant = "flash" }) {
             durationUnit: duration.unit,
             description: assignment.description || "",
             courseId: assignment.courseId || routeCourseId || "",
-            classId: assignment.classId || "",
+            classId: assignment.classId || routeClassId || "",
           });
           setExistingInstructionFile(
             assignment.instructionFileUrl
@@ -220,7 +255,7 @@ export function StaffFlashTestCreatePage({ variant = "flash" }) {
             durationUnit: duration.unit,
             description: test.description || "",
             courseId: test.courseId || test.course_id || "",
-            classId: "",
+            classId: routeClassId,
           });
           setSelectedQuestions(
             (mappings || []).map((mapping) => ({
@@ -240,7 +275,7 @@ export function StaffFlashTestCreatePage({ variant = "flash" }) {
     return () => {
       cancelled = true;
     };
-  }, [id, isAssignmentMode, isFlashMode, routeCourseId, type]);
+  }, [id, isAssignmentMode, isFlashMode, routeClassId, routeCourseId, type]);
 
   const handleSave = async () => {
     const duration = Math.round(
@@ -591,8 +626,8 @@ export function StaffFlashTestCreatePage({ variant = "flash" }) {
                   >
                     <option value="">Select a class</option>
                     {classes.map((item) => (
-                      <option key={item.id} value={item.id}>
-                        {item.className}
+                      <option key={getClassId(item)} value={getClassId(item)}>
+                        {item.className || item.name || "Untitled class"}
                       </option>
                     ))}
                   </select>

@@ -1238,6 +1238,17 @@
   gap: 12px;
 }
 
+.ft-history-attempt.is-expanded .ft-history-attempt__summary {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  margin: -12px -14px 0;
+  border-bottom: 1px solid #e2e8f0;
+  border-radius: 8px 8px 0 0;
+  background: #f8fafc;
+  padding: 12px 14px;
+}
+
 .ft-history-attempt__meta {
   display: grid;
   gap: 4px;
