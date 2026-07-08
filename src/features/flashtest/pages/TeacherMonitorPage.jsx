@@ -137,6 +137,17 @@ function formatMcqScore(row, questionTotal) {
   return { score: "--", percentage: null };
 }
 
+function getMcqScorePercentage(row, questionTotal) {
+  const percentage = numberOrNull(row?.percentage);
+  const rawScore = numberOrNull(row?.score);
+  if (percentage && percentage > 0) return percentage;
+  if (rawScore != null && questionTotal) {
+    return (rawScore / questionTotal) * 100;
+  }
+  if (percentage != null) return percentage;
+  return null;
+}
+
 export function TeacherMonitorPage() {
   const { id, type } = useParams();
   const navigate = useNavigate();
@@ -631,11 +642,11 @@ export function TeacherMonitorPage() {
     <section className="ft-page">
       <header className="ft-page-header">
         <div>
-          <span className="ft-page-kicker">Realtime monitor</span>
-          <h1 className="ft-page-title">Monitor Progress</h1>
+          <span className="ft-page-kicker"></span>
+          <h1 className="ft-page-title">Test</h1>
           <p className="ft-page-subtitle">
             {normalizedType === "essay" ? "Essay assignment" : "MCQ practice"} ·{" "}
-            {connected ? "Realtime connected" : "Connecting realtime..."}
+            {connected ? "" : ""}
           </p>
           {accessInfo?.code && (
             <div className="ft-access-code-panel">
@@ -898,8 +909,16 @@ export function TeacherMonitorPage() {
             <tbody>
               {historyRows.map((row) => {
                 const bestAttempt = row.attempts.reduce((best, attempt) => {
-                  const score = numberOrNull(attempt.percentage) ?? -1;
-                  const bestScore = numberOrNull(best?.percentage) ?? -1;
+                  const score =
+                    getMcqScorePercentage(
+                      attempt,
+                      getQuestionTotal(attempt) || questionTotal,
+                    ) ?? -1;
+                  const bestScore =
+                    getMcqScorePercentage(
+                      best,
+                      getQuestionTotal(best) || questionTotal,
+                    ) ?? -1;
                   return score > bestScore ? attempt : best;
                 }, row.attempts[0]);
                 const latestAttempt = row.attempts[row.attempts.length - 1];
@@ -973,8 +992,15 @@ export function TeacherMonitorPage() {
                   attempt,
                   getQuestionTotal(attempt) || questionTotal,
                 );
+                const attemptId = attempt.id || attempt.attemptId;
+                const isExpanded = expandedHistoryAttemptId === attemptId;
                 return (
-                  <div className="ft-history-attempt" key={attempt.id || index}>
+                  <div
+                    className={`ft-history-attempt ${
+                      isExpanded ? "is-expanded" : ""
+                    }`}
+                    key={attemptId || index}
+                  >
                     <div className="ft-history-attempt__summary">
                       <div className="ft-history-attempt__meta">
                         <strong>Attempt {index + 1}</strong>
@@ -997,37 +1023,25 @@ export function TeacherMonitorPage() {
                         className="ft-button ft-button--secondary"
                         type="button"
                         disabled={!attempt.id && !attempt.attemptId}
-                        onClick={() => handleToggleHistoryAttemptDetail(attempt)}
+                        onClick={() =>
+                          handleToggleHistoryAttemptDetail(attempt)
+                        }
                       >
                         <Eye size={16} />
-                        {expandedHistoryAttemptId ===
-                        (attempt.id || attempt.attemptId)
-                          ? "Hide answers"
-                          : "Answers"}
+                        {isExpanded ? "Hide answers" : "Answers"}
                       </button>
                     </div>
-                    {expandedHistoryAttemptId ===
-                      (attempt.id || attempt.attemptId) && (
+                    {isExpanded && (
                       <div className="ft-history-answer-panel">
-                        {historyAnswerDetails[
-                          attempt.id || attempt.attemptId
-                        ]?.loading ? (
+                        {historyAnswerDetails[attemptId]?.loading ? (
                           <p className="ft-muted">Loading answers...</p>
-                        ) : historyAnswerDetails[
-                            attempt.id || attempt.attemptId
-                          ]?.error ? (
+                        ) : historyAnswerDetails[attemptId]?.error ? (
                           <div className="ft-alert">
-                            {
-                              historyAnswerDetails[
-                                attempt.id || attempt.attemptId
-                              ].error
-                            }
+                            {historyAnswerDetails[attemptId].error}
                           </div>
                         ) : (
                           renderMcqAttemptAnswers(
-                            historyAnswerDetails[
-                              attempt.id || attempt.attemptId
-                            ]?.answers || [],
+                            historyAnswerDetails[attemptId]?.answers || [],
                           )
                         )}
                       </div>
