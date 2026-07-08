@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Eye, Plus, Shuffle, Trash2, X } from "lucide-react";
 import { questionService } from "@/services/flashtest.service.js";
+import { sanitizeAnswerHtml } from "@/shared/utils/htmlSanitizer";
 import "../flashtest.css";
 
 function questionText(question) {
@@ -144,7 +145,12 @@ export function QuestionSelector({
                           }`}
                           key={answer.id || answer.answerId || index}
                         >
-                          <span>{answer.answerText || answer.content}</span>
+                          <span
+                            className="ft-answer-rich-text"
+                            dangerouslySetInnerHTML={{
+                              __html: sanitizeAnswerHtml(answer.answerText || answer.content),
+                            }}
+                          />
                           {(answer.correct || answer.isCorrect) && <strong>Correct</strong>}
                         </div>
                       ))
@@ -259,3 +265,4 @@ export function QuestionSelector({
     </div>
   );
 }
+

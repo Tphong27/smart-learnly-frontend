@@ -7,9 +7,9 @@ import {
   Plus,
   Search,
   Upload,
-  Volume2,
 } from "lucide-react";
 import { Button, FormField, Modal, useToast } from "@/shared/components/ui";
+import { sanitizeAnswerHtml, sanitizeQuestionHtml } from "@/shared/utils/htmlSanitizer";
 import { courseService, getCurrentUser, questionBankService } from "@/services";
 import "../../admin-shared.css";
 import "./question-bank.css";
@@ -100,7 +100,6 @@ export function AdminQuestionBankDetailPage() {
   const [archivingId, setArchivingId] = useState(null);
   const [importOpen, setImportOpen] = useState(false);
   const [imagePreview, setImagePreview] = useState(null);
-  const [audioPreview, setAudioPreview] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -347,9 +346,12 @@ export function AdminQuestionBankDetailPage() {
                           {question.status}
                         </span>
                       </div>
-                      <h2 className="question-card__title">
-                        {question.questionText}
-                      </h2>
+                      <div
+                        className="question-card__title question-rich-text-viewer"
+                        dangerouslySetInnerHTML={{
+                          __html: sanitizeQuestionHtml(question.questionText),
+                        }}
+                      />
                     </div>
                     {writable && question.status !== "archived" && (
                       <div className="question-card__actions">
@@ -410,16 +412,18 @@ export function AdminQuestionBankDetailPage() {
                     <div className="question-card__audio-list" aria-label={`Question ${questionNumber} audio attachments`}>
                       {audios.map((audio, audioIndex) => {
                         const url = mediaUrl(audio);
-                        const title = `Question ${questionNumber} audio ${audioIndex + 1}`;
                         return (
-                          <button
-                            type="button"
-                            className="question-card__audio-badge"
+                          <div
+                            className="question-card__audio-player"
                             key={audio.attachmentId || audio.id || url || audioIndex}
-                            onClick={() => setAudioPreview({ url, title, fileName: mediaName(audio, title) })}
                           >
-                            <Volume2 size={15} /> Audio {audioIndex + 1}
-                          </button>
+                            <div className="question-card__audio-label">
+                              <strong>Audio {audioIndex + 1}</strong>
+                            </div>
+                            <audio controls preload="metadata" src={url}>
+                              <track kind="captions" />
+                            </audio>
+                          </div>
                         );
                       })}
                     </div>
@@ -434,10 +438,12 @@ export function AdminQuestionBankDetailPage() {
                           className={`question-card__answer ${correct ? "question-card__answer--correct" : ""}`}
                           key={answer.answerId || answer.id || answerIndex}
                         >
-                          <span className="question-card__answer-index">
-                            {String.fromCharCode(65 + answerIndex)}
-                          </span>
-                          <span>{answer.answerText}</span>
+                          <span
+                            className="question-rich-text-viewer question-answer-rich-text"
+                            dangerouslySetInnerHTML={{
+                              __html: sanitizeAnswerHtml(answer.answerText),
+                            }}
+                          />
                           {correct && (
                             <span className="question-card__correct">
                               <CheckCircle2 size={15} /> Correct answer
@@ -505,24 +511,13 @@ export function AdminQuestionBankDetailPage() {
           </div>
         )}
       </Modal>
-
-      <Modal
-        open={Boolean(audioPreview)}
-        title={audioPreview?.title || "Question audio"}
-        size="sm"
-        onClose={() => setAudioPreview(null)}
-      >
-        {audioPreview?.url && (
-          <div className="question-card__audio-modal">
-            <audio className="question-audio-preview" controls preload="metadata" src={audioPreview.url}>
-              <track kind="captions" />
-            </audio>
-            {audioPreview.fileName && (
-              <p className="question-card__media-modal-name">{audioPreview.fileName}</p>
-            )}
-          </div>
-        )}
-      </Modal>
     </div>
   );
 }
+
+
+
+
+
+
+

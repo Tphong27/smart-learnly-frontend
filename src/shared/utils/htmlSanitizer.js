@@ -127,3 +127,68 @@ export function isEmptyLessonHtml(html) {
 
   return textOnly.length === 0;
 }
+export function sanitizeQuestionHtml(html) {
+  if (!html || typeof html !== "string") {
+    return "";
+  }
+
+  return DOMPurify.sanitize(html, {
+    USE_PROFILES: { html: true },
+    ALLOWED_TAGS: [
+      "p",
+      "br",
+      "strong",
+      "b",
+      "em",
+      "i",
+      "ul",
+      "ol",
+      "li",
+      "pre",
+      "code",
+      "span",
+    ],
+    ALLOWED_ATTR: ["class"],
+  });
+}
+
+export function isEmptyQuestionHtml(html) {
+  const cleanHtml = sanitizeQuestionHtml(html);
+
+  if (!cleanHtml) {
+    return true;
+  }
+
+  const textOnly = cleanHtml
+    .replace(/<[^>]*>/g, "")
+    .replace(/&nbsp;/g, " ")
+    .trim();
+
+  return textOnly.length === 0;
+}
+export function sanitizeAnswerHtml(html) {
+  if (!html || typeof html !== "string") {
+    return "";
+  }
+
+  return DOMPurify.sanitize(html, {
+    USE_PROFILES: { html: true },
+    ALLOWED_TAGS: [
+      "p",
+      "br",
+      "strong",
+      "b",
+      "em",
+      "i",
+      "ul",
+      "ol",
+      "li",
+      "code",
+      "span",
+      "img",
+    ],
+    ALLOWED_ATTR: ["class", "src", "alt", "title", "data-answer-image"],
+    ALLOWED_URI_REGEXP: SAFE_URI_REGEXP,
+  });
+}
+

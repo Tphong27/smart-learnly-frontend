@@ -123,23 +123,41 @@ export function QuestionMediaManager({ mediaType, items, disabled, onAddFiles, o
           {items.map((item, index) => {
             const url = itemUrl(item)
             return (
-              <div className="question-media-manager__item" key={item.localId || item.attachmentId || item.id || mediaType + '-' + index}>
-                <button
-                  type="button"
-                  className="question-media-manager__preview"
-                  disabled={!url}
-                  onClick={() => setPreviewItem(item)}
-                  aria-label={'Preview ' + itemName(item)}
-                >
-                  {mediaType === 'image' && url ? <img src={url} alt={itemName(item)} /> : null}
-                  {mediaType === 'audio' && url ? <FileAudio size={24} /> : null}
-                  {!url ? <Icon size={20} /> : null}
-                  {url ? <span className="question-media-manager__preview-badge"><Eye size={13} /></span> : null}
-                </button>
-                <div className="question-media-manager__meta">
-                  <strong>{index + 1}. {itemName(item)}</strong>
-                  <span>{mediaMetaLabel(item, index)}</span>
-                </div>
+              <div className={'question-media-manager__item ' + (mediaType === 'audio' ? 'question-media-manager__item--audio' : '')} key={item.localId || item.attachmentId || item.id || mediaType + '-' + index}>
+                {mediaType === 'audio' ? (
+                  <>
+                    <div className="question-media-manager__audio-label">
+                      <strong>Audio{index + 1}</strong>
+                    </div>
+                    <div className="question-media-manager__audio-player">
+                      {url ? (
+                        <audio controls preload="metadata" src={url}>
+                          <track kind="captions" />
+                        </audio>
+                      ) : (
+                        <Icon size={20} />
+                      )}
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      className="question-media-manager__preview"
+                      disabled={!url}
+                      onClick={() => setPreviewItem(item)}
+                      aria-label={'Preview ' + itemName(item)}
+                    >
+                      {url ? <img src={url} alt={itemName(item)} /> : null}
+                      {!url ? <Icon size={20} /> : null}
+                      {url ? <span className="question-media-manager__preview-badge"><Eye size={13} /></span> : null}
+                    </button>
+                    <div className="question-media-manager__meta">
+                      <strong>{index + 1}. {itemName(item)}</strong>
+                      <span>{mediaMetaLabel(item, index)}</span>
+                    </div>
+                  </>
+                )}
                 <div className="question-media-manager__actions">
                   <button type="button" className="admin-table__icon-btn" disabled={disabled || index === 0} onClick={() => moveTo(index, 0)} aria-label="Move media to primary"><ArrowUpToLine size={15} /></button>
                   <button type="button" className="admin-table__icon-btn" disabled={disabled || index === 0} onClick={() => onMove(index, -1)} aria-label="Move media up"><ArrowUp size={15} /></button>
@@ -167,7 +185,7 @@ export function QuestionMediaManager({ mediaType, items, disabled, onAddFiles, o
         {previewItem && (
           <div className="question-media-preview-modal">
             {mediaType === 'image' && previewUrl ? <img src={previewUrl} alt={itemName(previewItem)} /> : null}
-            {mediaType === 'audio' && previewUrl ? <audio controls preload="metadata" src={previewUrl}><track kind="captions" /></audio> : null}
+
             <div className="question-media-preview-modal__meta">
               <span>{mediaMetaLabel(previewItem, items.findIndex((item) => item === previewItem))}</span>
               {previewItem.contentType ? <span>{previewItem.contentType}</span> : null}
@@ -178,3 +196,6 @@ export function QuestionMediaManager({ mediaType, items, disabled, onAddFiles, o
     </div>
   )
 }
+
+
+

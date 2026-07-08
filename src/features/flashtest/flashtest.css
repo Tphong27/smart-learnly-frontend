@@ -943,6 +943,24 @@
   padding: 11px 12px;
 }
 
+
+.ft-answer-rich-text p {
+  margin: 0 0 6px;
+}
+
+.ft-answer-rich-text p:last-child {
+  margin-bottom: 0;
+}
+
+.ft-answer-rich-text img {
+  border: 1px solid #dbe3ef;
+  border-radius: 8px;
+  display: block;
+  margin-top: 8px;
+  max-height: 150px;
+  max-width: min(100%, 260px);
+  object-fit: contain;
+}
 .ft-option:hover {
   background: #f8fafc;
 }
@@ -1387,3 +1405,4 @@
     justify-content: flex-start;
   }
 }
+

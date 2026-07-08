@@ -16,7 +16,7 @@ import {
   attemptService,
   testService,
 } from "@/services/flashtest.service.js";
-import { sanitizeLessonHtml } from "@/shared/utils/htmlSanitizer";
+import { sanitizeAnswerHtml, sanitizeLessonHtml } from "@/shared/utils/htmlSanitizer";
 import "../flashtest.css";
 
 const API_BASE_URL =
@@ -608,7 +608,12 @@ export function StudentTakeTestPage({
                         )
                       }
                     />
-                    <span>{answer.answerText || answer.content}</span>
+                    <span
+                      className="ft-answer-rich-text"
+                      dangerouslySetInnerHTML={{
+                        __html: sanitizeAnswerHtml(answer.answerText || answer.content),
+                      }}
+                    />
                   </label>
                 ))}
               </div>
@@ -718,3 +723,4 @@ export function StudentTakeTestPage({
     </section>
   );
 }
+
