@@ -213,6 +213,7 @@
   justify-content: space-between;
   gap: 8px;
   border-bottom: 1px solid #e2e8f0;
+  padding: 0 18px 0 0;
 }
 
 .flashcard-tabs {
@@ -243,6 +244,14 @@
 .flashcard-tabs__tab.is-active {
   border-bottom-color: #2563eb;
   color: #1d4ed8;
+}
+
+.flashcard-tabs-row__import {
+  flex: 0 0 auto;
+  margin-left: auto;
+  align-self: center;
+  min-height: 40px;
+  padding: 9px 16px;
 }
 
 .flashcard-current-workspace {
@@ -292,6 +301,16 @@
 
 .flashcard-current-preview-panel .flashcard-preview__image {
   grid-row: 2;
+  width: min(100%, 340px);
+  max-width: 100%;
+  max-height: 250px;
+  object-fit: contain;
+}
+
+.flashcard-current-preview-panel
+  .flashcard-preview__face--image-long-text
+  .flashcard-preview__image {
+  max-height: 200px;
 }
 
 .flashcard-current-preview-panel .flashcard-preview__text {
@@ -739,6 +758,28 @@
   margin: 0;
 }
 
+.flashcard-modal__dialog--wide
+  .flashcard-import-modal__content
+  > .flashcard-card-editor {
+  max-height: none;
+  overflow: visible;
+  padding-right: 0;
+}
+
+.flashcard-modal__dialog--wide
+  .flashcard-import-modal__content
+  > .flashcard-card-editor
+  > .flashcard-actions {
+  position: sticky;
+  bottom: -2px;
+  justify-content: flex-end;
+  border-top: 1px solid #e2e8f0;
+  background: #ffffff;
+  margin: 0;
+  padding-top: 14px;
+  z-index: 1;
+}
+
 .flashcard-import-modal textarea#pasted-import-text {
   min-height: 280px;
 }
@@ -1087,6 +1128,22 @@
   white-space: pre-wrap;
 }
 
+.flashcard-staging-card__sides p.is-muted {
+  color: #64748b;
+  font-weight: 700;
+}
+
+.flashcard-staging-card__thumbnail {
+  display: block;
+  width: 100%;
+  max-height: 120px;
+  object-fit: contain;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  background: #ffffff;
+  margin-bottom: 8px;
+}
+
 .flashcard-staging-card__meta {
   display: grid;
   gap: 6px;
@@ -1150,27 +1207,106 @@
   padding-right: 4px;
 }
 
-.flashcard-modal__dialog--staging-edit .flashcard-staging-edit-form {
-  flex: 1 1 auto;
-  max-height: none;
-  min-height: 0;
-  overflow-y: auto;
-  padding-right: 6px;
-}
-
 .flashcard-modal__dialog--wide textarea {
   min-height: 132px;
   resize: vertical;
 }
 
-.flashcard-modal__dialog--staging-edit textarea {
-  min-height: 160px;
+.flashcard-image-input {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
-.flashcard-image-input {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+.flashcard-image-input__dropzone {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 146px;
+  overflow: hidden;
+  border: 1px dashed #94a3b8;
+  border-radius: 8px;
+  background: #f8fafc;
+  color: #64748b;
+  cursor: default;
+  padding: 12px;
+  text-align: center;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.flashcard-image-input__dropzone:hover,
+.flashcard-image-input__dropzone:focus-visible,
+.flashcard-image-input__dropzone.is-dragging {
+  border-color: #2563eb;
+  background: #eff6ff;
+  color: #1d4ed8;
+  outline: none;
+}
+
+.flashcard-image-input__dropzone:focus-visible {
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.14);
+}
+
+.flashcard-image-input__dropzone.has-image {
+  border-style: solid;
+  background: #ffffff;
+}
+
+.flashcard-image-input__dropzone.is-uploading {
+  cursor: wait;
+}
+
+.flashcard-image-input__preview {
+  display: block;
+  width: 100%;
+  max-height: 220px;
+  object-fit: contain;
+}
+
+.flashcard-card-editor .flashcard-image-input__preview {
+  max-height: 190px;
+}
+
+.flashcard-image-input__state {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   gap: 8px;
+  color: inherit;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.flashcard-image-input__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.flashcard-image-input__hint,
+.flashcard-image-input__message {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.flashcard-image-input__hint {
+  color: #64748b;
+}
+
+.flashcard-image-input__message--info {
+  color: #1d4ed8;
+  font-weight: 700;
+}
+
+.flashcard-image-input__message--error {
+  color: #b91c1c;
+  font-weight: 700;
 }
 
 .flashcard-image-preview {
@@ -1490,19 +1626,20 @@
 }
 
 .flashcard-preview__image {
-  max-width: min(100%, 520px);
-  max-height: min(180px, 38%);
+  width: min(100%, 560px);
+  max-width: 100%;
+  max-height: min(260px, 55%);
   flex: 0 1 auto;
   object-fit: contain;
   border-radius: 8px;
 }
 
 .flashcard-preview__face--with-image .flashcard-preview__image {
-  max-height: min(170px, 36%);
+  max-height: min(250px, 52%);
 }
 
 .flashcard-preview__face--image-long-text .flashcard-preview__image {
-  max-height: min(130px, 30%);
+  max-height: min(190px, 40%);
 }
 
 .flashcard-preview__hint,
@@ -2027,8 +2164,7 @@
     align-self: flex-start;
   }
 
-  .flashcard-form__row,
-  .flashcard-image-input {
+  .flashcard-form__row {
     grid-template-columns: 1fr;
   }
 
@@ -2110,7 +2246,7 @@
     justify-content: flex-start;
   }
 
-  .flashcard-card-editor__image-actions .flashcard-btn {
+  .flashcard-image-input__actions .flashcard-btn {
     flex: 1 1 160px;
   }
 
@@ -2221,19 +2357,6 @@
   width: min(1080px, calc(100vw - 64px));
   max-height: calc(100vh - 48px);
   overflow: hidden;
-}
-
-.flashcard-modal__dialog--staging-edit .flashcard-staging-edit-form {
-  flex: 1 1 auto;
-  max-height: none;
-  min-height: 0;
-  overflow-y: auto;
-  padding-right: 6px;
-}
-
-.flashcard-modal__dialog--staging-edit textarea {
-  min-height: 160px;
-  resize: vertical;
 }
 
 @media (max-width: 680px) {

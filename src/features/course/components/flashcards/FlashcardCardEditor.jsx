@@ -1,5 +1,6 @@
-import { useRef, useState } from "react";
-import { ChevronDown, ImagePlus, Save, Trash2, X } from "lucide-react";
+import { useState } from "react";
+import { ChevronDown, Save, X } from "lucide-react";
+import { FlashcardImageInput } from "./FlashcardImageInput";
 import { validateCardDraft } from "./flashcard-utils";
 import "./Flashcards.css";
 
@@ -66,6 +67,9 @@ function CollapsibleEditorSection({ id, title, open, onToggle, children }) {
 export function FlashcardCardEditor({
   value,
   mode = "create",
+  title: titleOverride,
+  submitLabel = "Save Card",
+  savingLabel = "Saving",
   saving = false,
   onSave,
   onCancel,
@@ -78,8 +82,6 @@ export function FlashcardCardEditor({
     getOpenSections(toDraft(value)),
   );
   const [uploadingField, setUploadingField] = useState(null);
-  const frontInputRef = useRef(null);
-  const backInputRef = useRef(null);
 
   const updateDraft = (field, nextValue) => {
     setDraft((current) => ({
@@ -98,29 +100,6 @@ export function FlashcardCardEditor({
     onSave?.(draft);
   };
 
-  const handleUpload = async (field, file) => {
-    if (!file || !onUploadImage) return;
-
-    if (file.type && !file.type.startsWith("image/")) {
-      onError?.("Please upload an image file.");
-      return;
-    }
-
-    setUploadingField(field);
-    try {
-      const uploaded = await onUploadImage(file);
-      const uploadedUrl = uploaded?.url || uploaded?.data?.url || uploaded;
-      if (!uploadedUrl) {
-        throw new Error("Upload response did not include a URL.");
-      }
-      updateDraft(field, uploadedUrl);
-    } catch (error) {
-      onError?.(error?.message || "Image upload failed.");
-    } finally {
-      setUploadingField(null);
-    }
-  };
-
   const toggleSection = (section) => {
     setOpenSections((current) => ({
       ...current,
@@ -128,65 +107,18 @@ export function FlashcardCardEditor({
     }));
   };
 
-  const handleImageFileChange = (field, event) => {
-    const file = event.target.files?.[0];
-    event.target.value = "";
-    handleUpload(field, file);
+  const handleImageUploadingChange = (field, uploading) => {
+    setUploadingField((current) => {
+      if (uploading) return field;
+      return current === field ? null : current;
+    });
   };
 
-  const renderImageSection = ({ field, inputRef, label }) => {
-    const imageUrl = draft[field];
-    const uploading = uploadingField === field;
-
-    return (
-      <div className="flashcard-card-editor__image-control">
-        {imageUrl ? (
-          <img
-            src={imageUrl}
-            alt=""
-            className="flashcard-image-preview flashcard-card-editor__image-preview"
-            loading="lazy"
-          />
-        ) : (
-          <div className="flashcard-card-editor__image-empty">
-            <ImagePlus size={20} />
-            <span>No {label.toLowerCase()} image added.</span>
-          </div>
-        )}
-        <div className="flashcard-card-editor__image-actions">
-          <button
-            type="button"
-            className="flashcard-btn"
-            onClick={() => inputRef.current?.click()}
-            disabled={!onUploadImage || uploading}
-          >
-            <ImagePlus size={16} />
-            {uploading ? "Uploading" : imageUrl ? "Replace image" : "Upload image"}
-          </button>
-          {imageUrl && (
-            <button
-              type="button"
-              className="flashcard-btn flashcard-btn--danger"
-              onClick={() => updateDraft(field, "")}
-              disabled={uploading}
-            >
-              <Trash2 size={16} />
-              Remove
-            </button>
-          )}
-          <input
-            ref={inputRef}
-            type="file"
-            accept="image/*"
-            hidden
-            onChange={(event) => handleImageFileChange(field, event)}
-          />
-        </div>
-      </div>
-    );
+  const imageInputDisabled = (field) => {
+    return !onUploadImage || Boolean(uploadingField && uploadingField !== field);
   };
 
-  const title = mode === "edit" ? "Edit Card" : "Add Card";
+  const title = titleOverride || (mode === "edit" ? "Edit Card" : "Add Card");
 
   return (
     <form className="flashcard-form flashcard-card-editor" onSubmit={handleSubmit}>
@@ -216,11 +148,18 @@ export function FlashcardCardEditor({
                 open={openSections.frontImage}
                 onToggle={() => toggleSection("frontImage")}
               >
-                {renderImageSection({
-                  field: "frontImageUrl",
-                  inputRef: frontInputRef,
-                  label: "Front",
-                })}
+                <FlashcardImageInput
+                  id="flashcard-front-image"
+                  label="Front image"
+                  value={draft.frontImageUrl}
+                  disabled={imageInputDisabled("frontImageUrl")}
+                  onChange={(nextValue) => updateDraft("frontImageUrl", nextValue)}
+                  onUploadImage={onUploadImage}
+                  onError={onError}
+                  onUploadingChange={(uploading) =>
+                    handleImageUploadingChange("frontImageUrl", uploading)
+                  }
+                />
               </CollapsibleEditorSection>
 
               <CollapsibleEditorSection
@@ -261,11 +200,18 @@ export function FlashcardCardEditor({
                 open={openSections.backImage}
                 onToggle={() => toggleSection("backImage")}
               >
-                {renderImageSection({
-                  field: "backImageUrl",
-                  inputRef: backInputRef,
-                  label: "Back",
-                })}
+                <FlashcardImageInput
+                  id="flashcard-back-image"
+                  label="Back image"
+                  value={draft.backImageUrl}
+                  disabled={imageInputDisabled("backImageUrl")}
+                  onChange={(nextValue) => updateDraft("backImageUrl", nextValue)}
+                  onUploadImage={onUploadImage}
+                  onError={onError}
+                  onUploadingChange={(uploading) =>
+                    handleImageUploadingChange("backImageUrl", uploading)
+                  }
+                />
               </CollapsibleEditorSection>
 
               <CollapsibleEditorSection
@@ -298,14 +244,14 @@ export function FlashcardCardEditor({
           disabled={saving || Boolean(uploadingField)}
         >
           <Save size={16} />
-          {saving ? "Saving" : "Save Card"}
+          {saving ? savingLabel : submitLabel}
         </button>
         {onCancel && (
           <button
             type="button"
             className="flashcard-btn"
             onClick={onCancel}
-            disabled={saving}
+            disabled={saving || Boolean(uploadingField)}
           >
             <X size={16} />
             Cancel

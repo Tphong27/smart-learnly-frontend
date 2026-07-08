@@ -1,16 +1,16 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Check,
   Edit3,
   FileText,
   Image as ImageIcon,
-  ImagePlus,
   RefreshCw,
   Search,
   Trash2,
   Upload,
 } from "lucide-react";
 import { flashcardService } from "@/services/flashcard.service";
+import { FlashcardCardEditor } from "./FlashcardCardEditor";
 import {
   getErrorMessage,
   toCardPayload,
@@ -1176,16 +1176,19 @@ export function ImportFlashcardsModal({
 }) {
   const [activeImportTab, setActiveImportTab] = useState("pasted");
   const [reviewBatch, setReviewBatch] = useState(null);
+  const [reviewEditing, setReviewEditing] = useState(false);
 
   function handleStagingImportComplete(batch) {
     if (batch?.id) {
       setReviewBatch(batch);
+      setReviewEditing(false);
     }
     onStagingChanged?.(batch);
   }
 
   function handleBackToImport() {
     setReviewBatch(null);
+    setReviewEditing(false);
   }
 
   return (
@@ -1199,16 +1202,22 @@ export function ImportFlashcardsModal({
         <div className="flashcard-import-modal__header">
           <div>
             <h3 id="flashcard-import-modal-title">
-              {reviewBatch ? "Review imported flashcards" : "Import flashcards"}
+              {reviewEditing
+                ? "Edit staging card"
+                : reviewBatch
+                  ? "Review imported flashcards"
+                  : "Import flashcards"}
             </h3>
             <p>
-              {reviewBatch
-                ? "Review the staging cards created by this import batch."
-                : "Choose a source and review the result before importing."}
+              {reviewEditing
+                ? "Update this staging card, then save or cancel to return to the imported batch."
+                : reviewBatch
+                  ? "Review the staging cards created by this import batch."
+                  : "Choose a source and review the result before importing."}
             </p>
           </div>
           <div className="flashcard-import-modal__header-actions">
-            {reviewBatch && (
+            {reviewBatch && !reviewEditing && (
               <button
                 type="button"
                 className="flashcard-btn"
@@ -1282,6 +1291,7 @@ export function ImportFlashcardsModal({
               onStagingChanged={onStagingChanged}
               onApproved={onApproved}
               onUploadImage={onUploadImage}
+              onEditStateChange={setReviewEditing}
             />
           ) : (
             <>
@@ -1321,15 +1331,34 @@ export function ImportFlashcardsModal({
   );
 }
 
-function toStagingDraft(card) {
-  return {
-    frontText: card?.frontText || "",
-    backText: card?.backText || "",
-    frontImageUrl: card?.frontImageUrl || "",
-    backImageUrl: card?.backImageUrl || "",
-    hint: card?.hint || "",
-    explanation: card?.explanation || "",
-  };
+function EditStagingCardForm({
+  card,
+  saving,
+  onCancel,
+  onSave,
+  onUploadImage,
+  notify,
+  title = "Edit staging card",
+  titleId = "flashcard-staging-edit-title",
+}) {
+  if (!card) return null;
+
+  return (
+    <FlashcardCardEditor
+      key={card.id}
+      value={card}
+      mode="edit"
+      title={title}
+      submitLabel="Save staging card"
+      savingLabel="Saving"
+      saving={saving}
+      titleId={titleId}
+      onSave={onSave}
+      onCancel={onCancel}
+      onUploadImage={onUploadImage}
+      onError={(message) => notify?.(message, "error")}
+    />
+  );
 }
 
 function EditStagingCardModal({
@@ -1340,202 +1369,47 @@ function EditStagingCardModal({
   onUploadImage,
   notify,
 }) {
-  const [draft, setDraft] = useState(() => toStagingDraft(card));
-  const [uploadingField, setUploadingField] = useState(null);
-  const frontInputRef = useRef(null);
-  const backInputRef = useRef(null);
-
-  function updateDraft(field, value) {
-    setDraft((current) => ({ ...current, [field]: value }));
-  }
-
-  async function handleUpload(field, file) {
-    if (!file) return;
-    if (!onUploadImage) {
-      notify?.("Image upload is not available.", "error");
-      return;
-    }
-    if (file.type && !file.type.startsWith("image/")) {
-      notify?.("Please upload an image file.", "error");
-      return;
-    }
-
-    setUploadingField(field);
-    try {
-      const uploaded = await onUploadImage(file);
-      const uploadedUrl = uploaded?.url || uploaded?.data?.url || uploaded;
-      if (!uploadedUrl) {
-        throw new Error("Upload response did not include a URL.");
-      }
-      updateDraft(field, uploadedUrl);
-    } catch (error) {
-      notify?.(error?.message || "Image upload failed.", "error");
-    } finally {
-      setUploadingField(null);
-    }
-  }
-
-  function handleSubmit(event) {
-    event.preventDefault();
-    onSave(draft);
-  }
-
   if (!card) return null;
 
   return (
     <div className="flashcard-modal" role="presentation">
       <div
-        className="flashcard-modal__dialog flashcard-modal__dialog--wide flashcard-modal__dialog--staging-edit"
+        className="flashcard-modal__dialog flashcard-modal__dialog--card-editor flashcard-modal__dialog--staging-edit"
         role="dialog"
         aria-modal="true"
         aria-labelledby="flashcard-staging-edit-title"
       >
-        <h3 id="flashcard-staging-edit-title">Edit staging card</h3>
-        <form className="flashcard-form flashcard-staging-edit-form" onSubmit={handleSubmit}>
-          <div className="flashcard-form__row">
-            <div className="flashcard-field">
-              <label htmlFor="staging-edit-front">Front text</label>
-              <textarea
-                id="staging-edit-front"
-                value={draft.frontText}
-                onChange={(event) => updateDraft("frontText", event.target.value)}
-              />
-            </div>
-            <div className="flashcard-field">
-              <label htmlFor="staging-edit-back">Back text</label>
-              <textarea
-                id="staging-edit-back"
-                value={draft.backText}
-                onChange={(event) => updateDraft("backText", event.target.value)}
-              />
-            </div>
-          </div>
-          <div className="flashcard-form__row">
-            <div className="flashcard-field">
-              <label htmlFor="staging-edit-front-image">Front image URL</label>
-              <div className="flashcard-image-input">
-                <input
-                  id="staging-edit-front-image"
-                  type="url"
-                  value={draft.frontImageUrl}
-                  onChange={(event) =>
-                    updateDraft("frontImageUrl", event.target.value)
-                  }
-                  placeholder="https://..."
-                />
-                <button
-                  type="button"
-                  className="flashcard-btn"
-                  onClick={() => frontInputRef.current?.click()}
-                  disabled={!onUploadImage || Boolean(uploadingField)}
-                >
-                  <ImagePlus size={16} />
-                  {uploadingField === "frontImageUrl" ? "Uploading" : "Upload"}
-                </button>
-                <input
-                  ref={frontInputRef}
-                  type="file"
-                  accept="image/*"
-                  hidden
-                  onChange={(event) => {
-                    const selectedFile = event.target.files?.[0];
-                    event.target.value = "";
-                    handleUpload("frontImageUrl", selectedFile);
-                  }}
-                />
-              </div>
-              {draft.frontImageUrl && (
-                <img
-                  src={draft.frontImageUrl}
-                  alt=""
-                  className="flashcard-image-preview"
-                  loading="lazy"
-                />
-              )}
-            </div>
-            <div className="flashcard-field">
-              <label htmlFor="staging-edit-back-image">Back image URL</label>
-              <div className="flashcard-image-input">
-                <input
-                  id="staging-edit-back-image"
-                  type="url"
-                  value={draft.backImageUrl}
-                  onChange={(event) =>
-                    updateDraft("backImageUrl", event.target.value)
-                  }
-                  placeholder="https://..."
-                />
-                <button
-                  type="button"
-                  className="flashcard-btn"
-                  onClick={() => backInputRef.current?.click()}
-                  disabled={!onUploadImage || Boolean(uploadingField)}
-                >
-                  <ImagePlus size={16} />
-                  {uploadingField === "backImageUrl" ? "Uploading" : "Upload"}
-                </button>
-                <input
-                  ref={backInputRef}
-                  type="file"
-                  accept="image/*"
-                  hidden
-                  onChange={(event) => {
-                    const selectedFile = event.target.files?.[0];
-                    event.target.value = "";
-                    handleUpload("backImageUrl", selectedFile);
-                  }}
-                />
-              </div>
-              {draft.backImageUrl && (
-                <img
-                  src={draft.backImageUrl}
-                  alt=""
-                  className="flashcard-image-preview"
-                  loading="lazy"
-                />
-              )}
-            </div>
-          </div>
-          <div className="flashcard-form__row">
-            <div className="flashcard-field">
-              <label htmlFor="staging-edit-hint">Hint</label>
-              <textarea
-                id="staging-edit-hint"
-                value={draft.hint}
-                onChange={(event) => updateDraft("hint", event.target.value)}
-              />
-            </div>
-            <div className="flashcard-field">
-              <label htmlFor="staging-edit-explanation">Explanation</label>
-              <textarea
-                id="staging-edit-explanation"
-                value={draft.explanation}
-                onChange={(event) =>
-                  updateDraft("explanation", event.target.value)
-                }
-              />
-            </div>
-          </div>
-          <div className="flashcard-modal__actions">
-            <button
-              type="button"
-              className="flashcard-btn"
-              onClick={onClose}
-              disabled={saving || Boolean(uploadingField)}
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="flashcard-btn flashcard-btn--primary"
-              disabled={saving || Boolean(uploadingField)}
-            >
-              <Check size={16} />
-              {saving ? "Saving" : "Save staging card"}
-            </button>
-          </div>
-        </form>
+        <EditStagingCardForm
+          card={card}
+          saving={saving}
+          notify={notify}
+          onCancel={onClose}
+          onSave={onSave}
+          onUploadImage={onUploadImage}
+        />
       </div>
+    </div>
+  );
+}
+
+function StagingCardSidePreview({ label, text, imageUrl }) {
+  const hasText = Boolean(text);
+  const hasImage = Boolean(imageUrl);
+
+  return (
+    <div>
+      <span>{label}</span>
+      {hasImage && (
+        <img
+          src={imageUrl}
+          alt=""
+          className="flashcard-staging-card__thumbnail"
+          loading="lazy"
+        />
+      )}
+      <p className={hasText ? "" : "is-muted"}>
+        {hasText ? text : hasImage ? "Image only" : "--"}
+      </p>
     </div>
   );
 }
@@ -1584,14 +1458,16 @@ function StagingCardArticle({
       </div>
       <div className="flashcard-staging-card__content">
         <div className="flashcard-staging-card__sides">
-          <div>
-            <span>Front</span>
-            <p>{card.frontText || card.frontImageUrl || "--"}</p>
-          </div>
-          <div>
-            <span>Back</span>
-            <p>{card.backText || card.backImageUrl || "--"}</p>
-          </div>
+          <StagingCardSidePreview
+            label="Front"
+            text={card.frontText}
+            imageUrl={card.frontImageUrl}
+          />
+          <StagingCardSidePreview
+            label="Back"
+            text={card.backText}
+            imageUrl={card.backImageUrl}
+          />
         </div>
         {(card.hint || card.explanation || card.sourceExcerpt || isDuplicate) && (
           <div className="flashcard-staging-card__meta">
@@ -1658,17 +1534,16 @@ function StagingBatchCardGroup({
   cards,
   selectedIds,
   draftIds,
-  eligibleDraftIds,
   duplicateInfoByCardId,
   savingEdit,
   onToggleCard,
   onToggleBatch,
   onEdit,
 }) {
-  const eligibleCards = cards.filter((card) => eligibleDraftIds.has(card.id));
-  const allEligibleSelected =
-    eligibleCards.length > 0 &&
-    eligibleCards.every((card) => selectedIds.includes(card.id));
+  const draftCards = cards.filter((card) => draftIds.has(card.id));
+  const allDraftSelected =
+    draftCards.length > 0 &&
+    draftCards.every((card) => selectedIds.includes(card.id));
 
   return (
     <article className="flashcard-staging-batch" key={batch.id}>
@@ -1686,11 +1561,11 @@ function StagingBatchCardGroup({
         <label className="flashcard-staging__select-all">
           <input
             type="checkbox"
-            checked={allEligibleSelected}
+            checked={allDraftSelected}
             onChange={() => onToggleBatch(batch, cards)}
-            disabled={eligibleCards.length === 0}
+            disabled={draftCards.length === 0}
           />
-          Select eligible draft cards
+          Select all cards
         </label>
       </div>
       <div className="flashcard-staging-card-list">
@@ -1848,14 +1723,14 @@ function StagingReviewPanel({
   }
 
   function toggleBatch(batch, visibleCards = getBatchCards(batch)) {
-    const eligibleIds = visibleCards
-      .filter((card) => eligibleDraftIds.has(card.id))
+    const draftCardIds = visibleCards
+      .filter((card) => draftIds.has(card.id))
       .map((card) => card.id);
-    const allSelected = eligibleIds.every((id) => selectedIds.includes(id));
+    const allSelected = draftCardIds.every((id) => selectedIds.includes(id));
     setSelectedIds((current) =>
       allSelected
-        ? current.filter((id) => !eligibleIds.includes(id))
-        : [...new Set([...current, ...eligibleIds])],
+        ? current.filter((id) => !draftCardIds.includes(id))
+        : [...new Set([...current, ...draftCardIds])],
     );
   }
 
@@ -2015,7 +1890,6 @@ function StagingReviewPanel({
                     cards={getBatchCards(batch)}
                     selectedIds={selectedIds}
                     draftIds={draftIds}
-                    eligibleDraftIds={eligibleDraftIds}
                     duplicateInfoByCardId={duplicateInfoByCardId}
                     savingEdit={savingEdit}
                     onToggleCard={toggleCard}
@@ -2117,6 +1991,7 @@ function ImportedBatchReviewPanel({
   onStagingChanged,
   onApproved,
   onUploadImage,
+  onEditStateChange,
 }) {
   const [batch, setBatch] = useState(initialBatch);
   const [selectedIds, setSelectedIds] = useState([]);
@@ -2205,15 +2080,25 @@ function ImportedBatchReviewPanel({
   }
 
   function toggleBatch(currentBatch, visibleCards = getBatchCards(currentBatch)) {
-    const eligibleIds = visibleCards
-      .filter((card) => eligibleDraftIds.has(card.id))
+    const draftCardIds = visibleCards
+      .filter((card) => draftIds.has(card.id))
       .map((card) => card.id);
-    const allSelected = eligibleIds.every((id) => selectedIds.includes(id));
+    const allSelected = draftCardIds.every((id) => selectedIds.includes(id));
     setSelectedIds((current) =>
       allSelected
-        ? current.filter((id) => !eligibleIds.includes(id))
-        : [...new Set([...current, ...eligibleIds])],
+        ? current.filter((id) => !draftCardIds.includes(id))
+        : [...new Set([...current, ...draftCardIds])],
     );
+  }
+
+  function startEdit(card) {
+    setEditingCard(card);
+    onEditStateChange?.(true);
+  }
+
+  function cancelEdit() {
+    setEditingCard(null);
+    onEditStateChange?.(false);
   }
 
   async function handleApprove() {
@@ -2296,7 +2181,7 @@ function ImportedBatchReviewPanel({
         toCardPayload(draft),
       );
       notify("Staging card updated.", "success");
-      setEditingCard(null);
+      cancelEdit();
       await loadImportedBatch();
       onStagingChanged?.();
     } catch (editError) {
@@ -2307,6 +2192,21 @@ function ImportedBatchReviewPanel({
     } finally {
       setSavingEdit(false);
     }
+  }
+
+  if (editingCard) {
+    return (
+      <EditStagingCardForm
+        card={editingCard}
+        saving={savingEdit}
+        notify={notify}
+        title="Card details"
+        titleId="flashcard-imported-staging-edit-title"
+        onCancel={cancelEdit}
+        onSave={handleSaveEdit}
+        onUploadImage={onUploadImage}
+      />
+    );
   }
 
   return (
@@ -2375,29 +2275,17 @@ function ImportedBatchReviewPanel({
                 cards={cards}
                 selectedIds={selectedIds}
                 draftIds={draftIds}
-                eligibleDraftIds={eligibleDraftIds}
                 duplicateInfoByCardId={duplicateInfoByCardId}
                 savingEdit={savingEdit}
                 onToggleCard={toggleCard}
                 onToggleBatch={toggleBatch}
-                onEdit={setEditingCard}
+                onEdit={startEdit}
               />
             </div>
           )}
         </div>
       </section>
 
-      {editingCard && (
-        <EditStagingCardModal
-          key={editingCard.id}
-          card={editingCard}
-          saving={savingEdit}
-          notify={notify}
-          onClose={() => setEditingCard(null)}
-          onSave={handleSaveEdit}
-          onUploadImage={onUploadImage}
-        />
-      )}
       {rejectConfirm && (
         <div className="flashcard-modal" role="presentation">
           <div

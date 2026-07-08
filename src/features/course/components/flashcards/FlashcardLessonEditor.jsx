@@ -536,6 +536,15 @@ export function FlashcardLessonEditor({
               Staging Review
             </button>
           </div>
+          <button
+            type="button"
+            className="flashcard-btn flashcard-btn--primary flashcard-tabs-row__import"
+            onClick={() => setImportModalOpen(true)}
+            disabled={savingCard || reordering || bulkDeleting}
+          >
+            <Upload size={16} />
+            Import
+          </button>
         </div>
       )}
 
@@ -566,17 +575,6 @@ export function FlashcardLessonEditor({
                       <Plus size={16} />
                       Add card
                     </button>
-                    {canUseStaging && (
-                      <button
-                        type="button"
-                        className="flashcard-btn"
-                        onClick={() => setImportModalOpen(true)}
-                        disabled={savingCard || reordering || bulkDeleting}
-                      >
-                        <Upload size={16} />
-                        Import
-                      </button>
-                    )}
                     {selectionMode && pageCards.length > 0 && (
                       <>
                         <button
