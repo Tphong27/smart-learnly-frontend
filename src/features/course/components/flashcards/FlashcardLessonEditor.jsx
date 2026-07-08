@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { CheckSquare, RefreshCw, Save, Trash2, X } from "lucide-react";
+import { CheckSquare, RefreshCw, Save, Trash2, Upload, X } from "lucide-react";
 import { getCurrentUser } from "@/services";
 import { courseService } from "@/services/course.service";
 import { flashcardService } from "@/services/flashcard.service";
@@ -7,7 +7,10 @@ import { isRoleAllowed, ROLES } from "@/shared/constants/roles";
 import { FlashcardCardEditor } from "./FlashcardCardEditor";
 import { FlashcardCardList } from "./FlashcardCardList";
 import { FlashcardPreview } from "./FlashcardPreview";
-import { FlashcardStagingWorkspace } from "./FlashcardStagingWorkspace";
+import {
+  FlashcardStagingWorkspace,
+  ImportFlashcardsModal,
+} from "./FlashcardStagingWorkspace";
 import {
   getErrorMessage,
   normalizeSet,
@@ -46,6 +49,7 @@ export function FlashcardLessonEditor({
   const [selectedCardIds, setSelectedCardIds] = useState([]);
   const [bulkDeletePending, setBulkDeletePending] = useState(false);
   const [bulkDeleting, setBulkDeleting] = useState(false);
+  const [importModalOpen, setImportModalOpen] = useState(false);
   const [activeEditorTab, setActiveEditorTab] = useState("current");
   const [error, setError] = useState(null);
 
@@ -284,6 +288,11 @@ export function FlashcardLessonEditor({
     return uploaded?.url || uploaded?.data?.url || uploaded;
   };
 
+  const handleCardsImported = async () => {
+    await loadSet();
+    setActiveEditorTab("current");
+  };
+
   const handleEditCard = (card) => {
     setActivePreviewCardId(card?.id || null);
     setEditingCard(card);
@@ -418,49 +427,47 @@ export function FlashcardLessonEditor({
       </form>
 
       {canUseStaging && (
-        <div
-          className="flashcard-tabs"
-          role="tablist"
-          aria-label="Flashcard editor sections"
-        >
+        <div className="flashcard-tabs-row">
+          <div
+            className="flashcard-tabs"
+            role="tablist"
+            aria-label="Flashcard editor sections"
+          >
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activeEditorTab === "current"}
+              className={
+                activeEditorTab === "current"
+                  ? "flashcard-tabs__tab is-active"
+                  : "flashcard-tabs__tab"
+              }
+              onClick={() => setActiveEditorTab("current")}
+            >
+              Current Flashcards
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activeEditorTab === "review"}
+              className={
+                activeEditorTab === "review"
+                  ? "flashcard-tabs__tab is-active"
+                  : "flashcard-tabs__tab"
+              }
+              onClick={() => setActiveEditorTab("review")}
+            >
+              Staging Review
+            </button>
+          </div>
           <button
             type="button"
-            role="tab"
-            aria-selected={activeEditorTab === "current"}
-            className={
-              activeEditorTab === "current"
-                ? "flashcard-tabs__tab is-active"
-                : "flashcard-tabs__tab"
-            }
-            onClick={() => setActiveEditorTab("current")}
+            className="flashcard-btn flashcard-btn--primary"
+            onClick={() => setImportModalOpen(true)}
+            disabled={savingCard || reordering || bulkDeleting}
           >
-            Current Flashcards
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={activeEditorTab === "import"}
-            className={
-              activeEditorTab === "import"
-                ? "flashcard-tabs__tab is-active"
-                : "flashcard-tabs__tab"
-            }
-            onClick={() => setActiveEditorTab("import")}
-          >
-            Import / Generate
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={activeEditorTab === "review"}
-            className={
-              activeEditorTab === "review"
-                ? "flashcard-tabs__tab is-active"
-                : "flashcard-tabs__tab"
-            }
-            onClick={() => setActiveEditorTab("review")}
-          >
-            Staging Review
+            <Upload size={16} />
+            Import
           </button>
         </div>
       )}
@@ -551,11 +558,19 @@ export function FlashcardLessonEditor({
       ) : (
         <FlashcardStagingWorkspace
           setId={flashcardSet?.id}
-          activeTab={activeEditorTab}
           notify={notify}
           onUploadImage={handleUploadImage}
-          onStagingChanged={() => setActiveEditorTab("review")}
           onApproved={loadSet}
+        />
+      )}
+      {importModalOpen && flashcardSet?.id && (
+        <ImportFlashcardsModal
+          setId={flashcardSet.id}
+          existingCards={orderedCards}
+          notify={notify}
+          onClose={() => setImportModalOpen(false)}
+          onStagingChanged={() => setActiveEditorTab("review")}
+          onCardsImported={handleCardsImported}
         />
       )}
       {cardPendingDelete && (

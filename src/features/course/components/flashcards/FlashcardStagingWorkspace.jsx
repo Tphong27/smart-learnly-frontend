@@ -9,7 +9,6 @@ import {
   Search,
   Trash2,
   Upload,
-  WandSparkles,
 } from "lucide-react";
 import { flashcardService } from "@/services/flashcard.service";
 import {
@@ -30,7 +29,6 @@ const DEFAULT_GENERATION = {
   difficulty: "medium",
   generationMode: "RULE_BASED",
 };
-const SHOW_TRANSCRIPT_GENERATION = false;
 
 const STATUS_PRIORITY = {
   draft: 0,
@@ -38,6 +36,29 @@ const STATUS_PRIORITY = {
   rejected: 2,
 };
 const SOURCE_QUESTION_PAGE_SIZE = 10;
+const FRONT_BACK_SEPARATOR_OPTIONS = [
+  { value: "tab", label: "Tab" },
+  { value: "comma", label: "Comma" },
+  { value: "custom", label: "Custom" },
+];
+const CARD_SEPARATOR_OPTIONS = [
+  { value: "newline", label: "New line" },
+  { value: "semicolon", label: "Semicolon" },
+  { value: "custom", label: "Custom" },
+];
+const DEFAULT_PASTED_IMPORT = {
+  text: "",
+  frontBackSeparator: "tab",
+  customFrontBackSeparator: "",
+  cardSeparator: "newline",
+  customCardSeparator: "",
+};
+const DEFAULT_SOURCE_FILTERS = {
+  keyword: "",
+  difficulty: "",
+  status: "",
+  importStatus: "all",
+};
 
 function normalizeResponse(payload) {
   return payload?.data ?? payload;
@@ -93,6 +114,102 @@ function shouldIgnoreSelectionClick(event) {
       "button,a,input,textarea,select,label,[role='button']",
     ),
   );
+}
+
+function resolveFrontBackSeparator(values) {
+  if (values.frontBackSeparator === "tab") return "\t";
+  if (values.frontBackSeparator === "comma") return ",";
+  return values.customFrontBackSeparator;
+}
+
+function resolveCardSeparator(values) {
+  if (values.cardSeparator === "newline") return "\n";
+  if (values.cardSeparator === "semicolon") return ";";
+  return values.customCardSeparator;
+}
+
+function splitPastedCards(text, separator) {
+  if (separator === "\n") {
+    return String(text || "")
+      .replace(/\r\n/g, "\n")
+      .replace(/\r/g, "\n")
+      .split("\n");
+  }
+  return String(text || "").split(separator);
+}
+
+function normalizeFlashcardSignature(frontText, backText) {
+  return `${String(frontText || "").trim().replace(/\s+/g, " ").toLowerCase()}\n${String(backText || "").trim().replace(/\s+/g, " ").toLowerCase()}`;
+}
+
+function parsePastedFlashcards(values) {
+  const sourceText = String(values.text || "");
+  const frontBackSeparator = resolveFrontBackSeparator(values);
+  const cardSeparator = resolveCardSeparator(values);
+
+  if (!sourceText.trim()) {
+    return { cards: [], invalidRows: [], configError: null };
+  }
+  if (!frontBackSeparator) {
+    return {
+      cards: [],
+      invalidRows: [],
+      configError: "Enter a custom separator between front and back.",
+    };
+  }
+  if (!cardSeparator) {
+    return {
+      cards: [],
+      invalidRows: [],
+      configError: "Enter a custom separator between cards.",
+    };
+  }
+  if (frontBackSeparator === cardSeparator) {
+    return {
+      cards: [],
+      invalidRows: [],
+      configError: "Use different separators for card sides and cards.",
+    };
+  }
+
+  const cards = [];
+  const invalidRows = [];
+  splitPastedCards(sourceText, cardSeparator).forEach((chunk, index) => {
+    const rawText = String(chunk || "").trim();
+    if (!rawText) return;
+
+    const separatorIndex = rawText.indexOf(frontBackSeparator);
+    if (separatorIndex < 0) {
+      invalidRows.push({
+        rowNumber: index + 1,
+        text: rawText,
+        reason: "Missing front/back separator.",
+      });
+      return;
+    }
+
+    const frontText = rawText.slice(0, separatorIndex).trim();
+    const backText = rawText
+      .slice(separatorIndex + frontBackSeparator.length)
+      .trim();
+    if (!frontText || !backText) {
+      invalidRows.push({
+        rowNumber: index + 1,
+        text: rawText,
+        reason: !frontText ? "Front text is blank." : "Back text is blank.",
+      });
+      return;
+    }
+
+    cards.push({
+      clientId: `${index + 1}-${frontText}-${backText}`,
+      rowNumber: index + 1,
+      frontText,
+      backText,
+    });
+  });
+
+  return { cards, invalidRows, configError: null };
 }
 
 function getGenerationPayload(values) {
@@ -195,12 +312,7 @@ function InlineAlert({ children }) {
 }
 
 function QuestionBankImportPanel({ setId, notify, onStagingChanged }) {
-  const [filters, setFilters] = useState({
-    keyword: "",
-    difficulty: "",
-    status: "",
-    importStatus: "not_imported",
-  });
+  const [filters, setFilters] = useState(DEFAULT_SOURCE_FILTERS);
   const [appliedFilters, setAppliedFilters] = useState(filters);
   const [questions, setQuestions] = useState([]);
   const [selectedIds, setSelectedIds] = useState([]);
@@ -277,6 +389,13 @@ function QuestionBankImportPanel({ setId, notify, onStagingChanged }) {
     setPage(0);
     setSelectedIds([]);
     setAppliedFilters(filters);
+  }
+
+  function resetFilters() {
+    setPage(0);
+    setSelectedIds([]);
+    setFilters(DEFAULT_SOURCE_FILTERS);
+    setAppliedFilters(DEFAULT_SOURCE_FILTERS);
   }
 
   function toggleQuestion(question) {
@@ -434,6 +553,16 @@ function QuestionBankImportPanel({ setId, notify, onStagingChanged }) {
             <Search size={16} />
             Search
           </button>
+          <button
+            type="button"
+            className="flashcard-btn flashcard-btn--icon"
+            onClick={resetFilters}
+            disabled={loading}
+            title="Reset filters"
+            aria-label="Reset filters"
+          >
+            <RefreshCw size={16} />
+          </button>
         </div>
         <InlineAlert>{error}</InlineAlert>
 
@@ -572,85 +701,297 @@ function QuestionBankImportPanel({ setId, notify, onStagingChanged }) {
   );
 }
 
-function TextGenerationPanel({ setId, notify, onStagingChanged }) {
-  const [sourceText, setSourceText] = useState("");
-  const [settings, setSettings] = useState(DEFAULT_GENERATION);
+function PastedTextImportPanel({
+  setId,
+  existingCards = [],
+  notify,
+  onClose,
+  onCardsImported,
+}) {
+  const [values, setValues] = useState(DEFAULT_PASTED_IMPORT);
   const [submitting, setSubmitting] = useState(false);
 
-  async function handleSubmit(event) {
+  const parsed = useMemo(() => parsePastedFlashcards(values), [values]);
+  const existingSignatures = useMemo(
+    () =>
+      new Set(
+        existingCards
+          .map((card) =>
+            normalizeFlashcardSignature(card?.frontText, card?.backText),
+          )
+          .filter((signature) => signature.trim()),
+      ),
+    [existingCards],
+  );
+  const previewRows = useMemo(() => {
+    const seenSignatures = new Set();
+    return parsed.cards.map((card) => {
+      const signature = normalizeFlashcardSignature(card.frontText, card.backText);
+      let duplicateReason = "";
+      if (existingSignatures.has(signature)) {
+        duplicateReason = "Already exists in Current Flashcards.";
+      } else if (seenSignatures.has(signature)) {
+        duplicateReason = "Duplicate in pasted text.";
+      } else {
+        seenSignatures.add(signature);
+      }
+      return {
+        ...card,
+        duplicateReason,
+        importable: !duplicateReason,
+      };
+    });
+  }, [existingSignatures, parsed.cards]);
+  const duplicateRows = previewRows.filter((row) => row.duplicateReason);
+  const importableCards = previewRows.filter((row) => row.importable);
+
+  function updateValue(field, value) {
+    setValues((current) => ({ ...current, [field]: value }));
+  }
+
+  function resetImport() {
+    setValues(DEFAULT_PASTED_IMPORT);
+  }
+
+  async function handleImport(event) {
     event.preventDefault();
-    if (sourceText.trim().length < 100) {
-      notify("Source text must be at least 100 characters.", "error");
+    if (parsed.configError) {
+      notify(parsed.configError, "error");
       return;
     }
-    const settingsError = validateGenerationSettings(settings);
-    if (settingsError) {
-      notify(settingsError, "error");
+    if (!importableCards.length) {
+      notify("Paste at least one non-duplicate front/back flashcard row.", "error");
       return;
     }
-    const generationPayload = getGenerationPayload(settings);
+
     setSubmitting(true);
+    let createdCount = 0;
     try {
-      const response = normalizeResponse(
-        await flashcardService.generateStagingFromText(setId, {
-          sourceText: sourceText.trim(),
-          ...generationPayload,
-        }),
-      );
-      notify(
-        formatGeneratedMessage(response, generationPayload.desiredCount),
-        "success",
-      );
-      setSourceText("");
-      onStagingChanged?.();
-    } catch (error) {
-      notify(
-        getErrorMessage(error, "Failed to generate staging cards."),
-        "error",
-      );
-    } finally {
+      for (const card of importableCards) {
+        await flashcardService.addCard(setId, {
+          frontText: card.frontText,
+          backText: card.backText,
+        });
+        createdCount += 1;
+      }
+    } catch (importError) {
       setSubmitting(false);
+      const message = getErrorMessage(importError, "Failed to import pasted flashcards.");
+      if (createdCount > 0) {
+        notify(
+          `Imported ${createdCount} of ${importableCards.length} flashcards before an error: ${message} Current Flashcards were refreshed.`,
+          "error",
+        );
+        onClose?.();
+        await onCardsImported?.();
+        return;
+      }
+      notify(message, "error");
+      return;
     }
+
+    setSubmitting(false);
+    resetImport();
+    onClose?.();
+    await onCardsImported?.();
+    notify(
+      `Imported ${createdCount} flashcard${createdCount === 1 ? "" : "s"} to Current Flashcards.`,
+      "success",
+    );
   }
 
   return (
-    <section className="flashcard-panel">
-      <div className="flashcard-panel__header">
-        <h3 className="flashcard-panel__title">Pasted Text</h3>
-      </div>
-      <form
-        className="flashcard-panel__body flashcard-staging__section"
-        onSubmit={handleSubmit}
-        noValidate
-      >
-        <div className="flashcard-field">
-          <label htmlFor="staging-source-text">Source text</label>
-          <textarea
-            id="staging-source-text"
-            value={sourceText}
-            onChange={(event) => setSourceText(event.target.value)}
-            placeholder="Paste Front/Back formatted cards or lesson notes"
-            rows={7}
-          />
-        </div>
-        <GenerationSettings
-          values={settings}
-          onChange={setSettings}
-          prefix="staging-text"
+    <form
+      className="flashcard-panel__body flashcard-staging__section"
+      onSubmit={handleImport}
+      noValidate
+    >
+      <div className="flashcard-field">
+        <label htmlFor="pasted-import-text">Pasted text</label>
+        <textarea
+          id="pasted-import-text"
+          value={values.text}
+          onChange={(event) => updateValue("text", event.target.value)}
+          placeholder={"Term\tDefinition\nAnother term\tAnother definition"}
+          rows={12}
         />
-        <div className="flashcard-staging__actions">
-          <span>{sourceText.trim().length} characters</span>
-          <button
-            type="submit"
-            className="flashcard-btn flashcard-btn--primary"
-            disabled={submitting}
+      </div>
+
+      <div className="flashcard-pasted-import__settings">
+        <div className="flashcard-field">
+          <label htmlFor="pasted-front-back-separator">
+            Between front and back
+          </label>
+          <select
+            id="pasted-front-back-separator"
+            value={values.frontBackSeparator}
+            onChange={(event) =>
+              updateValue("frontBackSeparator", event.target.value)
+            }
           >
-            <WandSparkles size={16} />
-            {submitting ? "Parsing" : "Parse to staging"}
-          </button>
+            {FRONT_BACK_SEPARATOR_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
         </div>
-      </form>
-    </section>
+        {values.frontBackSeparator === "custom" && (
+          <div className="flashcard-field">
+            <label htmlFor="pasted-custom-front-back-separator">
+              Custom side separator
+            </label>
+            <input
+              id="pasted-custom-front-back-separator"
+              type="text"
+              value={values.customFrontBackSeparator}
+              onChange={(event) =>
+                updateValue("customFrontBackSeparator", event.target.value)
+              }
+            />
+          </div>
+        )}
+        <div className="flashcard-field">
+          <label htmlFor="pasted-card-separator">Between cards</label>
+          <select
+            id="pasted-card-separator"
+            value={values.cardSeparator}
+            onChange={(event) =>
+              updateValue("cardSeparator", event.target.value)
+            }
+          >
+            {CARD_SEPARATOR_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </div>
+        {values.cardSeparator === "custom" && (
+          <div className="flashcard-field">
+            <label htmlFor="pasted-custom-card-separator">
+              Custom card separator
+            </label>
+            <input
+              id="pasted-custom-card-separator"
+              type="text"
+              value={values.customCardSeparator}
+              onChange={(event) =>
+                updateValue("customCardSeparator", event.target.value)
+              }
+            />
+          </div>
+        )}
+      </div>
+
+      <InlineAlert>{parsed.configError}</InlineAlert>
+
+      <div className="flashcard-pasted-import__summary">
+        <span>
+          {importableCards.length} ready to import
+        </span>
+        <span>
+          {duplicateRows.length} duplicate row
+          {duplicateRows.length === 1 ? "" : "s"}
+        </span>
+        <span>
+          {parsed.invalidRows.length} invalid row
+          {parsed.invalidRows.length === 1 ? "" : "s"}
+        </span>
+      </div>
+
+      {parsed.invalidRows.length > 0 && (
+        <div className="flashcard-pasted-import__invalid">
+          <strong>Rows needing attention</strong>
+          <ul>
+            {parsed.invalidRows.map((row) => (
+              <li key={`${row.rowNumber}-${row.reason}-${row.text}`}>
+                <span>Row {row.rowNumber}: {row.reason}</span>
+                <code>{row.text}</code>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {duplicateRows.length > 0 && (
+        <div className="flashcard-pasted-import__invalid flashcard-pasted-import__invalid--duplicate">
+          <strong>Duplicate rows skipped</strong>
+          <ul>
+            {duplicateRows.map((row) => (
+              <li key={`${row.rowNumber}-${row.duplicateReason}-${row.clientId}`}>
+                <span>Row {row.rowNumber}: {row.duplicateReason}</span>
+                <code>{row.frontText} / {row.backText}</code>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      <div className="flashcard-pasted-import__preview">
+        <h4>Preview</h4>
+        {previewRows.length === 0 ? (
+          <p>No valid cards to preview yet.</p>
+        ) : (
+          <div className="flashcard-pasted-import__list">
+            {previewRows.map((card) => (
+              <article
+                key={card.clientId}
+                className={[
+                  "flashcard-pasted-import__row",
+                  card.importable ? "" : "is-duplicate",
+                ]
+                  .filter(Boolean)
+                  .join(" ")}
+              >
+                <span className="flashcard-pasted-import__index">
+                  {card.rowNumber}
+                </span>
+                <div className="flashcard-pasted-import__side">
+                  <strong>Front</strong>
+                  <p>{card.frontText}</p>
+                </div>
+                <div className="flashcard-pasted-import__side">
+                  <strong>Back</strong>
+                  <p>{card.backText}</p>
+                </div>
+                <div className="flashcard-pasted-import__row-status">
+                  <span
+                    className={
+                      card.importable
+                        ? "flashcard-pasted-import__status"
+                        : "flashcard-pasted-import__status flashcard-pasted-import__status--skip"
+                    }
+                  >
+                    {card.importable ? "Ready" : "Duplicate"}
+                  </span>
+                </div>
+              </article>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="flashcard-staging__actions">
+        <span>
+          {parsed.invalidRows.length > 0
+            ? "Only valid non-duplicate cards will be imported."
+            : "Non-duplicate cards import directly to Current Flashcards."}
+        </span>
+        <button
+          type="submit"
+          className="flashcard-btn flashcard-btn--primary"
+          disabled={
+            submitting ||
+            Boolean(parsed.configError) ||
+            importableCards.length === 0
+          }
+        >
+          <Upload size={16} />
+          {submitting ? "Importing" : "Import ready cards"}
+        </button>
+      </div>
+    </form>
   );
 }
 
@@ -743,124 +1084,117 @@ function DocumentGenerationPanel({ setId, notify, onStagingChanged }) {
   );
 }
 
-function TranscriptGenerationPanel({ setId, notify, onStagingChanged }) {
-  const [transcriptText, setTranscriptText] = useState("");
-  const [sourceName, setSourceName] = useState("Lesson transcript");
-  const [file, setFile] = useState(null);
-  const [fileInputRevision, setFileInputRevision] = useState(0);
-  const [settings, setSettings] = useState(DEFAULT_GENERATION);
-  const [submitting, setSubmitting] = useState(false);
+export function ImportFlashcardsModal({
+  setId,
+  existingCards = [],
+  notify,
+  onClose,
+  onStagingChanged,
+  onCardsImported,
+}) {
+  const [activeImportTab, setActiveImportTab] = useState("pasted");
 
-  async function handleSubmit(event) {
-    event.preventDefault();
-    if (!transcriptText.trim() && !file) {
-      notify("Choose a file or paste transcript text.", "error");
-      return;
-    }
-    const settingsError = validateGenerationSettings(settings);
-    if (settingsError) {
-      notify(settingsError, "error");
-      return;
-    }
-    const generationPayload = getGenerationPayload(settings);
-    setSubmitting(true);
-    try {
-      const response = normalizeResponse(
-        file
-          ? await flashcardService.generateStagingFromTranscriptFile(setId, {
-              file,
-              ...generationPayload,
-            })
-          : await flashcardService.generateStagingFromTranscript(setId, {
-              transcriptText: transcriptText.trim(),
-              sourceName: sourceName.trim() || "Lesson transcript",
-              ...generationPayload,
-            }),
-      );
-      notify(
-        formatGeneratedMessage(
-          response,
-          generationPayload.desiredCount,
-          "from transcript",
-        ),
-        "success",
-      );
-      setTranscriptText("");
-      setFile(null);
-      setFileInputRevision((revision) => revision + 1);
-      onStagingChanged?.();
-    } catch (error) {
-      notify(
-        getErrorMessage(error, "Failed to generate from transcript."),
-        "error",
-      );
-    } finally {
-      setSubmitting(false);
-    }
+  function handleStagingImportComplete() {
+    onClose?.();
+    onStagingChanged?.();
   }
 
   return (
-    <section className="flashcard-panel">
-      <div className="flashcard-panel__header">
-        <h3 className="flashcard-panel__title">Transcript</h3>
-      </div>
-      <form
-        className="flashcard-panel__body flashcard-staging__section"
-        onSubmit={handleSubmit}
-        noValidate
+    <div className="flashcard-modal" role="presentation">
+      <div
+        className="flashcard-modal__dialog flashcard-modal__dialog--wide flashcard-import-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="flashcard-import-modal-title"
       >
-        <div className="flashcard-form__row">
-          <div className="flashcard-field">
-            <label htmlFor="staging-transcript-text">Transcript text</label>
-            <textarea
-              id="staging-transcript-text"
-              value={transcriptText}
-              onChange={(event) => setTranscriptText(event.target.value)}
-              placeholder="Paste transcript text"
-              rows={6}
-              disabled={Boolean(file)}
-            />
+        <div className="flashcard-import-modal__header">
+          <div>
+            <h3 id="flashcard-import-modal-title">Import flashcards</h3>
+            <p>Choose a source and review the result before importing.</p>
           </div>
-          <div className="flashcard-field">
-            <label htmlFor="staging-transcript-source">Source name</label>
-            <input
-              id="staging-transcript-source"
-              type="text"
-              value={sourceName}
-              onChange={(event) => setSourceName(event.target.value)}
-              disabled={Boolean(file)}
-            />
-            <label className="flashcard-staging__file-drop" htmlFor="staging-transcript-file">
-              <FileText size={22} />
-              <span>{file ? file.name : "Upload SRT or VTT instead"}</span>
-              <input
-                key={fileInputRevision}
-                id="staging-transcript-file"
-                type="file"
-                accept=".srt,.vtt"
-                onChange={(event) => setFile(event.target.files?.[0] || null)}
-              />
-            </label>
-          </div>
-        </div>
-        <GenerationSettings
-          values={settings}
-          onChange={setSettings}
-          prefix="staging-transcript"
-        />
-        <div className="flashcard-staging__actions">
-          <span>{file ? "Using uploaded transcript" : "Using pasted text"}</span>
-          <button
-            type="submit"
-            className="flashcard-btn flashcard-btn--primary"
-            disabled={submitting}
-          >
-            <WandSparkles size={16} />
-            {submitting ? "Generating" : "Generate from transcript"}
+          <button type="button" className="flashcard-btn" onClick={onClose}>
+            Close
           </button>
         </div>
-      </form>
-    </section>
+
+        <div
+          className="flashcard-tabs flashcard-import-modal__tabs"
+          role="tablist"
+          aria-label="Flashcard import sources"
+        >
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeImportTab === "pasted"}
+            className={
+              activeImportTab === "pasted"
+                ? "flashcard-tabs__tab is-active"
+                : "flashcard-tabs__tab"
+            }
+            onClick={() => setActiveImportTab("pasted")}
+          >
+            Pasted Text
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeImportTab === "document"}
+            className={
+              activeImportTab === "document"
+                ? "flashcard-tabs__tab is-active"
+                : "flashcard-tabs__tab"
+            }
+            onClick={() => setActiveImportTab("document")}
+          >
+            Document
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeImportTab === "question-bank"}
+            className={
+              activeImportTab === "question-bank"
+                ? "flashcard-tabs__tab is-active"
+                : "flashcard-tabs__tab"
+            }
+            onClick={() => setActiveImportTab("question-bank")}
+          >
+            Question Bank
+          </button>
+        </div>
+
+        <div className="flashcard-import-modal__content">
+          {activeImportTab === "pasted" && (
+            <section className="flashcard-panel">
+              <div className="flashcard-panel__header">
+                <h3 className="flashcard-panel__title">Pasted Text</h3>
+              </div>
+              <PastedTextImportPanel
+                setId={setId}
+                existingCards={existingCards}
+                notify={notify}
+                onClose={onClose}
+                onCardsImported={onCardsImported}
+              />
+            </section>
+          )}
+          {activeImportTab === "document" && (
+            <DocumentGenerationPanel
+              setId={setId}
+              notify={notify}
+              onStagingChanged={handleStagingImportComplete}
+            />
+          )}
+          {activeImportTab === "question-bank" && (
+            <QuestionBankImportPanel
+              setId={setId}
+              notify={notify}
+              onStagingChanged={handleStagingImportComplete}
+            />
+          )}
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -1543,53 +1877,17 @@ function StagingReviewPanel({
 
 export function FlashcardStagingWorkspace({
   setId,
-  activeTab,
   notify,
   onUploadImage,
-  onStagingChanged,
   onApproved,
 }) {
-  const [refreshKey, setRefreshKey] = useState(0);
-
-  const handleStagingChanged = useCallback(() => {
-    setRefreshKey((key) => key + 1);
-    onStagingChanged?.();
-  }, [onStagingChanged]);
+  const refreshKey = 0;
 
   if (!setId) {
     return (
       <div className="flashcard-empty">
         <FileText size={28} />
         <p>Save the flashcard set before using staging.</p>
-      </div>
-    );
-  }
-
-  if (activeTab === "import") {
-    return (
-      <div className="flashcard-staging__grid">
-        <QuestionBankImportPanel
-          setId={setId}
-          notify={notify}
-          onStagingChanged={handleStagingChanged}
-        />
-        <TextGenerationPanel
-          setId={setId}
-          notify={notify}
-          onStagingChanged={handleStagingChanged}
-        />
-        <DocumentGenerationPanel
-          setId={setId}
-          notify={notify}
-          onStagingChanged={handleStagingChanged}
-        />
-        {SHOW_TRANSCRIPT_GENERATION && (
-          <TranscriptGenerationPanel
-            setId={setId}
-            notify={notify}
-            onStagingChanged={handleStagingChanged}
-          />
-        )}
       </div>
     );
   }
