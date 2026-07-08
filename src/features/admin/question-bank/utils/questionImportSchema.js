@@ -529,7 +529,20 @@ export function downloadTemplate() {
   const dataMatrix = [headerRow, ...sampleRows.map((row) => IMPORT_COLUMNS.map((column) => row[column.key] ?? ''))]
   const worksheet = XLSX.utils.aoa_to_sheet(dataMatrix)
   worksheet['!cols'] = IMPORT_COLUMNS.map(() => ({ wch: 22 }))
+  const rules = [
+    ['Question Bank Import Rules'],
+    ['Required columns', 'question_text, question_type, option_a, option_b, correct_answer'],
+    ['Question types', 'multiple_choice or true_false'],
+    ['Correct answer', 'Multiple choice uses A-F; true_false uses True or False'],
+    ['Difficulty', '1-5, or easy/medium/hard aliases'],
+    ['Image media', 'Use image_files with http/https URLs only; separate multiple URLs with semicolons; max 5 per question'],
+    ['Audio media', 'Use audio_files with http/https URLs only; separate multiple URLs with semicolons; max 3 per question'],
+    ['Final storage', 'Imported media URLs are downloaded, validated, and re-uploaded by the backend before saving'],
+  ]
+  const rulesSheet = XLSX.utils.aoa_to_sheet(rules)
+  rulesSheet['!cols'] = [{ wch: 22 }, { wch: 110 }]
   const workbook = XLSX.utils.book_new()
   XLSX.utils.book_append_sheet(workbook, worksheet, 'Questions')
+  XLSX.utils.book_append_sheet(workbook, rulesSheet, 'Import rules')
   XLSX.writeFile(workbook, 'question-bank-template.xlsx')
 }
