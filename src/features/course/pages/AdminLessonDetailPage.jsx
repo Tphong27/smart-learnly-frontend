@@ -990,6 +990,41 @@ export default function AdminLessonDetailPage() {
             : hlsProcessingStatus?.processingProvider ||
               hlsHealth?.processingProvider ||
               "";
+    const isFlashcardLesson = lessonType === "FLASHCARD";
+    const activeSecondaryTab = lessonType === "ESSAY" ? "submissions" : "history";
+    const lessonTabs = isFlashcardLesson
+        ? [
+              { key: "edit", label: "Edit Content", icon: Edit3 },
+              { key: "flashcard-current", label: "Current Flashcards", icon: FileText },
+              { key: "flashcard-review", label: "Staging Review", icon: FileText },
+              { key: "history", label: "Audit History", icon: History },
+          ]
+        : [
+              { key: "edit", label: "Edit Content", icon: Edit3 },
+              {
+                  key: activeSecondaryTab,
+                  label:
+                      lessonType === "ESSAY"
+                          ? "Student Submissions"
+                          : "Audit History",
+                  icon: History,
+              },
+          ];
+    const tabButtonStyle = (tabKey) => ({
+        display: "flex",
+        alignItems: "center",
+        gap: "8px",
+        padding: "12px 20px",
+        fontSize: "15px",
+        fontWeight: "600",
+        border: "none",
+        background: "none",
+        cursor: "pointer",
+        color: activeTab === tabKey ? "#2563eb" : "#64748b",
+        borderBottom:
+            activeTab === tabKey ? "2px solid #2563eb" : "2px solid transparent",
+        transition: "all 0.2s",
+    });
 
     if (pageLoading)
         return (
@@ -1054,77 +1089,43 @@ export default function AdminLessonDetailPage() {
                     paddingBottom: "1px",
                 }}
             >
-                <button
-                    type="button"
-                    onClick={() => {
-                        setCurrentPage(0);
-                        setActiveTab("edit");
-                    }}
-                    style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "8px",
-                        padding: "12px 20px",
-                        fontSize: "15px",
-                        fontWeight: "600",
-                        border: "none",
-                        background: "none",
-                        cursor: "pointer",
-                        color: activeTab === "edit" ? "#2563eb" : "#64748b",
-                        borderBottom:
-                            activeTab === "edit"
-                                ? "2px solid #2563eb"
-                                : "2px solid transparent",
-                        transition: "all 0.2s",
-                    }}
-                >
-                    <Edit3 size={18} /> Edit Content
-                </button>
-                <button
-                    type="button"
-                    onClick={() =>
-                        setActiveTab(
-                            lessonType === "ESSAY" ? "submissions" : "history",
-                        )
-                    }
-                    style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "8px",
-                        padding: "12px 20px",
-                        fontSize: "15px",
-                        fontWeight: "600",
-                        border: "none",
-                        background: "none",
-                        cursor: "pointer",
-                        color:
-                            activeTab ===
-                            (lessonType === "ESSAY" ? "submissions" : "history")
-                                ? "#2563eb"
-                                : "#64748b",
-                        borderBottom:
-                            activeTab ===
-                            (lessonType === "ESSAY" ? "submissions" : "history")
-                                ? "2px solid #2563eb"
-                                : "2px solid transparent",
-                        transition: "all 0.2s",
-                    }}
-                >
-                    <History size={18} />{" "}
-                    {lessonType === "ESSAY" ? "Student Submissions" : "Audit History"}
-                </button>
+                {lessonTabs.map((tab) => {
+                    const TabIcon = tab.icon;
+                    return (
+                        <button
+                            key={tab.key}
+                            type="button"
+                            onClick={() => {
+                                setCurrentPage(0);
+                                setActiveTab(tab.key);
+                            }}
+                            style={tabButtonStyle(tab.key)}
+                        >
+                            <TabIcon size={18} /> {tab.label}
+                        </button>
+                    );
+                })}
             </div>
 
-            {activeTab === "edit" ? (
-                lessonType === "FLASHCARD" ? (
+            {isFlashcardLesson &&
+            ["edit", "flashcard-current", "flashcard-review"].includes(
+                activeTab,
+            ) ? (
                     <FlashcardLessonEditor
                         lessonId={lessonId}
                         initialSetId={initialFlashcardSetId}
                         defaultTitle={title}
+                        activeSection={
+                            activeTab === "flashcard-current"
+                                ? "current"
+                                : activeTab === "flashcard-review"
+                                  ? "review"
+                                  : "details"
+                        }
                         showToast={showToast}
                         onTitleSaved={setTitle}
                     />
-                ) : (
+            ) : activeTab === "edit" ? (
                     <form onSubmit={handleSave}>
                         <div style={{ display: "flex", gap: "40px" }}>
                             <div
@@ -2261,8 +2262,7 @@ export default function AdminLessonDetailPage() {
                             </div>
                         </div>
                     </form>
-                )
-            ) : lessonType === "ESSAY" ? (
+            ) : activeTab === "submissions" ? (
                 <div
                     style={{
                         backgroundColor: "#fff",
@@ -2520,13 +2520,22 @@ export default function AdminLessonDetailPage() {
                 >
                     <h3
                         style={{
-                            margin: "0 0 20px 0",
+                            margin: "0 0 6px 0",
                             fontSize: "18px",
                             color: "#1e293b",
                         }}
                     >
                         Lesson Audit Logs
                     </h3>
+                    <p
+                        style={{
+                            margin: "0 0 20px",
+                            color: "#64748b",
+                            fontSize: "14px",
+                        }}
+                    >
+                        Review saved changes and system activity for this lesson.
+                    </p>
 
                     {historyLoading ? (
                         <div
@@ -2545,12 +2554,26 @@ export default function AdminLessonDetailPage() {
                     ) : editHistory.length === 0 ? (
                         <div
                             style={{
-                                padding: "40px",
+                                display: "flex",
+                                flexDirection: "column",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                gap: "10px",
+                                padding: "44px 24px",
                                 textAlign: "center",
-                                color: "#94a3b8",
+                                color: "#64748b",
+                                border: "1px dashed #cbd5e1",
+                                borderRadius: "12px",
+                                backgroundColor: "#f8fafc",
                             }}
                         >
-                            No audit logs found for this lesson.
+                            <History size={28} color="#94a3b8" />
+                            <strong style={{ color: "#334155", fontSize: "16px" }}>
+                                No audit logs yet
+                            </strong>
+                            <span>
+                                Changes will appear here after lesson activity is recorded.
+                            </span>
                         </div>
                     ) : (
                         <>
@@ -2577,7 +2600,7 @@ export default function AdminLessonDetailPage() {
                                                     fontWeight: "600",
                                                 }}
                                             >
-                                                Timestamp
+                                                Time
                                             </th>
                                             <th
                                                 style={{
@@ -2585,7 +2608,7 @@ export default function AdminLessonDetailPage() {
                                                     fontWeight: "600",
                                                 }}
                                             >
-                                                Actor (Email)
+                                                Actor
                                             </th>
                                             <th
                                                 style={{
@@ -2601,7 +2624,7 @@ export default function AdminLessonDetailPage() {
                                                     fontWeight: "600",
                                                 }}
                                             >
-                                                Action / Summary
+                                                Details
                                             </th>
                                             <th
                                                 style={{
@@ -2639,7 +2662,10 @@ export default function AdminLessonDetailPage() {
                                                         fontWeight: "500",
                                                     }}
                                                 >
-                                                    {log.actorEmail || "N/A"}
+                                                    {log.actorEmail ||
+                                                        log.actorName ||
+                                                        log.actorUser ||
+                                                        "System"}
                                                 </td>
                                                 <td style={{ padding: "16px" }}>
                                                     <span
@@ -2652,7 +2678,7 @@ export default function AdminLessonDetailPage() {
                                                             fontWeight: "500",
                                                         }}
                                                     >
-                                                        {log.actorRole}
+                                                        {log.actorRole || "--"}
                                                     </span>
                                                 </td>
                                                 <td
@@ -2661,7 +2687,11 @@ export default function AdminLessonDetailPage() {
                                                         fontWeight: "500",
                                                     }}
                                                 >
-                                                    {log.summary}
+                                                    {log.summary ||
+                                                        log.details ||
+                                                        log.description ||
+                                                        log.action ||
+                                                        "--"}
                                                 </td>
                                                 <td style={{ padding: "16px" }}>
                                                     <span
@@ -2682,7 +2712,7 @@ export default function AdminLessonDetailPage() {
                                                                     : "#b91c1c",
                                                         }}
                                                     >
-                                                        {log.result}
+                                                        {log.result || "--"}
                                                     </span>
                                                 </td>
                                             </tr>

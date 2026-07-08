@@ -30,6 +30,7 @@ export function FlashcardLessonEditor({
   lessonId,
   initialSetId,
   defaultTitle = "",
+  activeSection = "details",
   onTitleSaved,
   showToast,
 }) {
@@ -54,7 +55,6 @@ export function FlashcardLessonEditor({
   const [bulkDeleting, setBulkDeleting] = useState(false);
   const [importModalOpen, setImportModalOpen] = useState(false);
   const [stagingRefreshKey, setStagingRefreshKey] = useState(0);
-  const [activeEditorTab, setActiveEditorTab] = useState("current");
   const [error, setError] = useState(null);
 
   const canUseStaging = isRoleAllowed(getCurrentUser()?.role, STAGING_ROLES);
@@ -328,7 +328,6 @@ export function FlashcardLessonEditor({
 
   const handleCardsImported = async () => {
     await refreshCurrentFlashcards();
-    setActiveEditorTab("current");
   };
 
   const handleStagingImportCreated = useCallback(
@@ -336,7 +335,6 @@ export function FlashcardLessonEditor({
       refreshStagingReview();
       if (!batch?.id) {
         notify("Staging batch was created, but the response did not include a batch id.", "error");
-        setActiveEditorTab("review");
       }
     },
     [notify, refreshStagingReview],
@@ -455,100 +453,58 @@ export function FlashcardLessonEditor({
 
   return (
     <div className="flashcard-shell">
-      <div className="flashcard-toolbar">
-        <div>
-          <h2 className="flashcard-toolbar__title">{title || "Flashcards"}</h2>
-          <div className="flashcard-toolbar__meta">
-            {orderedCards.length} card{orderedCards.length === 1 ? "" : "s"}
-          </div>
-        </div>
-      </div>
-
-      <form className="flashcard-panel" onSubmit={handleSaveSet}>
-        <div className="flashcard-panel__header">
-          <h3 className="flashcard-panel__title">Set Details</h3>
-          <button
-            type="submit"
-            className="flashcard-btn flashcard-btn--primary"
-            disabled={savingSet}
-          >
-            <Save size={16} />
-            {savingSet ? "Saving" : "Save Set"}
-          </button>
-        </div>
-        <div className="flashcard-panel__body">
-          <div className="flashcard-form__row">
-            <div className="flashcard-field">
-              <label htmlFor="flashcard-set-title">Title</label>
-              <input
-                id="flashcard-set-title"
-                type="text"
-                value={title}
-                onChange={(event) => setTitle(event.target.value)}
-                required
-              />
-            </div>
-            <div className="flashcard-field">
-              <label htmlFor="flashcard-set-description">Description</label>
-              <input
-                id="flashcard-set-description"
-                type="text"
-                value={description}
-                onChange={(event) => setDescription(event.target.value)}
-                placeholder="Optional"
-              />
+      {activeSection === "details" && (
+        <>
+          <div className="flashcard-toolbar">
+            <div>
+              <h2 className="flashcard-toolbar__title">{title || "Flashcards"}</h2>
+              <div className="flashcard-toolbar__meta">
+                {orderedCards.length} card{orderedCards.length === 1 ? "" : "s"}
+              </div>
             </div>
           </div>
-        </div>
-      </form>
 
-      {canUseStaging && (
-        <div className="flashcard-tabs-row">
-          <div
-            className="flashcard-tabs"
-            role="tablist"
-            aria-label="Flashcard editor sections"
-          >
-            <button
-              type="button"
-              role="tab"
-              aria-selected={activeEditorTab === "current"}
-              className={
-                activeEditorTab === "current"
-                  ? "flashcard-tabs__tab is-active"
-                  : "flashcard-tabs__tab"
-              }
-              onClick={() => setActiveEditorTab("current")}
-            >
-              Current Flashcards
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={activeEditorTab === "review"}
-              className={
-                activeEditorTab === "review"
-                  ? "flashcard-tabs__tab is-active"
-                  : "flashcard-tabs__tab"
-              }
-              onClick={() => setActiveEditorTab("review")}
-            >
-              Staging Review
-            </button>
-          </div>
-          <button
-            type="button"
-            className="flashcard-btn flashcard-btn--primary flashcard-tabs-row__import"
-            onClick={() => setImportModalOpen(true)}
-            disabled={savingCard || reordering || bulkDeleting}
-          >
-            <Upload size={16} />
-            Import
-          </button>
-        </div>
+          <form className="flashcard-panel" onSubmit={handleSaveSet}>
+            <div className="flashcard-panel__header">
+              <h3 className="flashcard-panel__title">Set Details</h3>
+              <button
+                type="submit"
+                className="flashcard-btn flashcard-btn--primary"
+                disabled={savingSet}
+              >
+                <Save size={16} />
+                {savingSet ? "Saving" : "Save Set"}
+              </button>
+            </div>
+            <div className="flashcard-panel__body">
+              <div className="flashcard-form__row">
+                <div className="flashcard-field">
+                  <label htmlFor="flashcard-set-title">Title</label>
+                  <input
+                    id="flashcard-set-title"
+                    type="text"
+                    value={title}
+                    onChange={(event) => setTitle(event.target.value)}
+                    required
+                  />
+                </div>
+                <div className="flashcard-field">
+                  <label htmlFor="flashcard-set-description">Description</label>
+                  <input
+                    id="flashcard-set-description"
+                    type="text"
+                    value={description}
+                    onChange={(event) => setDescription(event.target.value)}
+                    placeholder="Optional"
+                  />
+                </div>
+              </div>
+            </div>
+          </form>
+        </>
       )}
 
-      {!canUseStaging || activeEditorTab === "current" ? (
+      {activeSection === "current" && (
         <div className="flashcard-current-workspace">
           <div className="flashcard-current-workspace__inner">
             <div className="flashcard-current-workspace__main">
@@ -575,6 +531,17 @@ export function FlashcardLessonEditor({
                       <Plus size={16} />
                       Add card
                     </button>
+                    {canUseStaging && (
+                      <button
+                        type="button"
+                        className="flashcard-btn flashcard-btn--primary"
+                        onClick={() => setImportModalOpen(true)}
+                        disabled={savingCard || reordering || bulkDeleting}
+                      >
+                        <Upload size={16} />
+                        Import
+                      </button>
+                    )}
                     {selectionMode && pageCards.length > 0 && (
                       <>
                         <button
@@ -702,7 +669,8 @@ export function FlashcardLessonEditor({
             </aside>
           </div>
         </div>
-      ) : (
+      )}
+      {activeSection === "review" && canUseStaging && (
         <FlashcardStagingWorkspace
           setId={flashcardSet?.id}
           existingCards={orderedCards}
@@ -710,6 +678,8 @@ export function FlashcardLessonEditor({
           onUploadImage={handleUploadImage}
           onApproved={refreshCurrentFlashcards}
           refreshKey={stagingRefreshKey}
+          onImport={() => setImportModalOpen(true)}
+          importDisabled={savingCard || reordering || bulkDeleting}
         />
       )}
       {importModalOpen && flashcardSet?.id && (

@@ -811,6 +811,23 @@ function PastedTextImportPanel({
     setValues(DEFAULT_PASTED_IMPORT);
   }
 
+  function handleTextKeyDown(event) {
+    if (event.key !== "Tab" || event.shiftKey) return;
+
+    event.preventDefault();
+    const textarea = event.currentTarget;
+    const selectionStart = textarea.selectionStart;
+    const selectionEnd = textarea.selectionEnd;
+    const nextText = `${textarea.value.slice(0, selectionStart)}\t${textarea.value.slice(selectionEnd)}`;
+    const nextCursorPosition = selectionStart + 1;
+
+    updateValue("text", nextText);
+    window.requestAnimationFrame(() => {
+      textarea.selectionStart = nextCursorPosition;
+      textarea.selectionEnd = nextCursorPosition;
+    });
+  }
+
   async function handleImport(event) {
     event.preventDefault();
     if (parsed.configError) {
@@ -870,6 +887,7 @@ function PastedTextImportPanel({
           id="pasted-import-text"
           value={values.text}
           onChange={(event) => updateValue("text", event.target.value)}
+          onKeyDown={handleTextKeyDown}
           placeholder={"Term\tDefinition\nAnother term\tAnother definition"}
           rows={12}
         />
@@ -1591,6 +1609,8 @@ function StagingReviewPanel({
   refreshKey,
   onApproved,
   onUploadImage,
+  onImport,
+  importDisabled = false,
 }) {
   const [batches, setBatches] = useState([]);
   const [selectedIds, setSelectedIds] = useState([]);
@@ -1833,6 +1853,17 @@ function StagingReviewPanel({
             </div>
           </div>
           <div className="flashcard-staging__header-actions">
+            {onImport && (
+              <button
+                type="button"
+                className="flashcard-btn flashcard-btn--primary"
+                onClick={onImport}
+                disabled={importDisabled}
+              >
+                <Upload size={16} />
+                Import
+              </button>
+            )}
             <button
               type="button"
               className="flashcard-btn"
@@ -2328,6 +2359,8 @@ export function FlashcardStagingWorkspace({
   onUploadImage,
   onApproved,
   refreshKey = 0,
+  onImport,
+  importDisabled = false,
 }) {
   if (!setId) {
     return (
@@ -2346,6 +2379,8 @@ export function FlashcardStagingWorkspace({
       refreshKey={refreshKey}
       onApproved={onApproved}
       onUploadImage={onUploadImage}
+      onImport={onImport}
+      importDisabled={importDisabled}
     />
   );
 }
