@@ -1,11 +1,26 @@
-/* HLS Video Player Styles */
-
 .hls-player {
     position: relative;
     width: 100%;
-    background: #000;
+    background: #050505;
     border-radius: 12px;
     overflow: hidden;
+    color: #fff;
+    user-select: none;
+    isolation: isolate;
+}
+
+.hls-player:focus {
+    outline: none;
+}
+
+.hls-player:focus-visible {
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.55);
+}
+
+.hls-player:fullscreen {
+    width: 100vw;
+    height: 100vh;
+    border-radius: 0;
 }
 
 .hls-player__video {
@@ -15,14 +30,17 @@
     max-height: 70vh;
     object-fit: contain;
     background: #000;
+    cursor: pointer;
+}
+
+.hls-player:fullscreen .hls-player__video {
+    height: 100vh;
+    max-height: 100vh;
 }
 
 .hls-player__loading {
     position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
+    inset: 0;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -30,7 +48,7 @@
     background: rgba(0, 0, 0, 0.8);
     color: #fff;
     gap: 16px;
-    z-index: 10;
+    z-index: 20;
 }
 
 .hls-player__spinner {
@@ -48,27 +66,308 @@
     }
 }
 
-.hls-player__quality {
+.hls-player__center-play {
     position: absolute;
-    top: 12px;
-    right: 16px;
-    display: flex;
+    top: 50%;
+    left: 50%;
+    z-index: 8;
+    display: inline-flex;
+    width: 86px;
+    height: 86px;
     align-items: center;
-    gap: 8px;
-    padding: 6px 8px 6px 12px;
-    background: rgba(0, 0, 0, 0.7);
-    border-radius: 6px;
-    font-size: 12px;
+    justify-content: center;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 999px;
+    background: rgba(0, 0, 0, 0.72);
     color: #fff;
-    z-index: 5;
+    cursor: pointer;
+    transform: translate(-50%, -50%);
+    transition:
+        background 0.2s ease,
+        transform 0.2s ease;
 }
 
-.hls-player__quality select {
-    border: 1px solid rgba(255, 255, 255, 0.35);
-    border-radius: 4px;
-    background: #111827;
+.hls-player__center-play:hover {
+    background: rgba(27, 27, 27, 0.9);
+    transform: translate(-50%, -50%) scale(1.04);
+}
+
+.hls-player__center-play svg {
+    margin-left: 4px;
+}
+
+.hls-player__controls {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 58px 16px 14px;
+    background: linear-gradient(
+        180deg,
+        rgba(0, 0, 0, 0) 0%,
+        rgba(0, 0, 0, 0.64) 42%,
+        rgba(0, 0, 0, 0.9) 100%
+    );
+    opacity: 1;
+    transform: translateY(0);
+    transition:
+        opacity 0.2s ease,
+        transform 0.2s ease;
+}
+
+.hls-player--controls-hidden .hls-player__controls {
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(10px);
+}
+
+.hls-player__progress {
+    --hls-progress: 0%;
+    --hls-buffered: 0%;
+    position: relative;
+    display: flex;
+    height: 18px;
+    align-items: center;
+}
+
+.hls-player__progress::before,
+.hls-player__progress::after {
+    position: absolute;
+    left: 0;
+    height: 4px;
+    border-radius: 999px;
+    content: "";
+    pointer-events: none;
+}
+
+.hls-player__progress::before {
+    width: var(--hls-buffered);
+    background: rgba(255, 255, 255, 0.36);
+}
+
+.hls-player__progress::after {
+    width: var(--hls-progress);
+    background: #a435f0;
+}
+
+.hls-player__progress input {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    height: 18px;
+    margin: 0;
+    appearance: none;
+    background: transparent;
+    cursor: pointer;
+}
+
+.hls-player__progress input:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+}
+
+.hls-player__progress input::-webkit-slider-runnable-track {
+    height: 4px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.22);
+}
+
+.hls-player__progress input::-moz-range-track {
+    height: 4px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.22);
+}
+
+.hls-player__progress input::-webkit-slider-thumb {
+    width: 13px;
+    height: 13px;
+    margin-top: -4.5px;
+    appearance: none;
+    border: 2px solid #fff;
+    border-radius: 999px;
+    background: #a435f0;
+    box-shadow: 0 1px 6px rgba(0, 0, 0, 0.35);
+}
+
+.hls-player__progress input::-moz-range-thumb {
+    width: 13px;
+    height: 13px;
+    border: 2px solid #fff;
+    border-radius: 999px;
+    background: #a435f0;
+    box-shadow: 0 1px 6px rgba(0, 0, 0, 0.35);
+}
+
+.hls-player__controls-row,
+.hls-player__controls-left,
+.hls-player__controls-right {
+    display: flex;
+    align-items: center;
+}
+
+.hls-player__controls-row {
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.hls-player__controls-left,
+.hls-player__controls-right {
+    gap: 6px;
+}
+
+.hls-player__control-btn,
+.hls-player__pill {
+    display: inline-flex;
+    min-width: 36px;
+    height: 36px;
+    align-items: center;
+    justify-content: center;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
     color: #fff;
-    padding: 3px 5px;
+    cursor: pointer;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 700;
+    transition:
+        background 0.15s ease,
+        color 0.15s ease;
+}
+
+.hls-player__control-btn:hover,
+.hls-player__pill:hover,
+.hls-player__control-btn:focus-visible,
+.hls-player__pill:focus-visible {
+    background: rgba(255, 255, 255, 0.14);
+    outline: none;
+}
+
+.hls-player__control-btn:disabled,
+.hls-player__pill:disabled {
+    cursor: not-allowed;
+    opacity: 0.45;
+}
+
+.hls-player__control-btn--active {
+    color: #c084fc;
+}
+
+.hls-player__pill {
+    min-width: auto;
+    padding: 0 10px;
+}
+
+.hls-player__volume {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.hls-player__volume input {
+    width: 78px;
+    height: 4px;
+    margin: 0;
+    appearance: none;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.3);
+    cursor: pointer;
+}
+
+.hls-player__volume input::-webkit-slider-thumb {
+    width: 12px;
+    height: 12px;
+    appearance: none;
+    border-radius: 999px;
+    background: #fff;
+}
+
+.hls-player__volume input::-moz-range-thumb {
+    width: 12px;
+    height: 12px;
+    border: 0;
+    border-radius: 999px;
+    background: #fff;
+}
+
+.hls-player__time {
+    min-width: 96px;
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+.hls-player__settings {
+    position: relative;
+}
+
+.hls-player__settings-menu {
+    position: absolute;
+    right: 0;
+    bottom: calc(100% + 8px);
+    z-index: 15;
+    width: min(260px, calc(100vw - 32px));
+    max-height: min(340px, 60vh);
+    overflow: auto;
+    padding: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 8px;
+    background: rgba(28, 29, 31, 0.98);
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.42);
+}
+
+.hls-player__settings-item {
+    display: flex;
+    width: 100%;
+    min-height: 38px;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: #fff;
+    cursor: pointer;
+    font: inherit;
+    font-size: 13px;
+    text-align: left;
+}
+
+.hls-player__settings-item {
+    padding: 9px 10px;
+}
+
+.hls-player__settings-item strong {
+    color: rgba(255, 255, 255, 0.72);
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.hls-player__settings-item:hover,
+.hls-player__settings-item:focus-visible {
+    background: rgba(255, 255, 255, 0.12);
+    outline: none;
+}
+
+.hls-player__settings-item:disabled {
+    cursor: not-allowed;
+    opacity: 0.45;
+}
+
+.hls-player__settings-item--active {
+    background: rgba(164, 53, 240, 0.22);
+    color: #fff;
+}
+
+.hls-player__settings-item--active::after {
+    color: #c084fc;
+    content: "✓";
+    font-weight: 800;
 }
 
 .hls-player__error {
@@ -83,7 +382,7 @@
     text-align: center;
     color: #f8fafc;
     background: rgba(15, 23, 42, 0.96);
-    z-index: 10;
+    z-index: 20;
 }
 
 .hls-player__error svg {
@@ -114,11 +413,11 @@
     background: #4338ca;
 }
 
-/* Integration with LearningLessonMedia */
 .learning-lesson-media--video {
     width: 100%;
+    display: flex;
+    align-items: stretch;
     background: #000;
-    border-radius: 12px;
     overflow: hidden;
 }
 
@@ -129,6 +428,51 @@
     display: block;
 }
 
+.learning-lesson-media--video .hls-player,
 .learning-lesson-media__hls-player {
+    flex: 1 1 auto;
+    width: 100%;
+    height: 100%;
+    min-height: 100%;
     border-radius: 0;
+}
+
+.learning-lesson-media--video .hls-player__video {
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    max-height: none;
+}
+
+@media (max-width: 760px) {
+    .hls-player__video {
+        min-height: 220px;
+    }
+
+    .hls-player__controls {
+        padding: 48px 10px 10px;
+    }
+
+    .hls-player__controls-row {
+        gap: 6px;
+    }
+
+    .hls-player__control-btn--desktop,
+    .hls-player__pill {
+        display: none;
+    }
+
+    .hls-player__volume input {
+        width: 54px;
+    }
+
+    .hls-player__time {
+        min-width: 78px;
+        font-size: 12px;
+    }
+
+    .hls-player__center-play {
+        width: 68px;
+        height: 68px;
+    }
 }
