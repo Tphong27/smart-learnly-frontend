@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { AlertCircle, Loader, Trash2 } from "lucide-react";
+import { AlertCircle, ClipboardList, Loader, Trash2 } from "lucide-react";
 import { Button } from "@/shared/components/ui";
 import { classService } from "@/services";
 import { normalizeRole, ROLES } from "@/shared/constants/roles";
@@ -90,6 +90,18 @@ export function ClassDetailPage() {
     setClassData(updatedClass);
   }
 
+  function openAssignments() {
+    const params = new URLSearchParams();
+    if (classData.courseId) {
+      params.set("courseId", classData.courseId);
+    }
+    if (classId) {
+      params.set("classId", classId);
+    }
+    const query = params.toString();
+    navigate(`/staff/assignments${query ? `?${query}` : ""}`);
+  }
+
   if (loading) {
     return (
       <div className="page-loading">
@@ -133,18 +145,29 @@ export function ClassDetailPage() {
           </div>
         </div>
 
-        {isTmo && (
+        {(isTrainer || isTmo) && (
           <div className="workspace-header__actions">
-            <Button
+            <button
+              className="class-assignment-button"
               type="button"
-              variant="delete"
-              size="icon"
-              title="Soft Delete"
-              aria-label="Soft Delete class"
-              onClick={deleteClass}
+              onClick={openAssignments}
             >
-              <Trash2 size={16} strokeWidth={2.2} />
-            </Button>
+              <ClipboardList size={16} strokeWidth={2.2} />
+              Assignment
+            </button>
+
+            {isTmo && (
+              <Button
+                type="button"
+                variant="delete"
+                size="icon"
+                title="Soft Delete"
+                aria-label="Soft Delete class"
+                onClick={deleteClass}
+              >
+                <Trash2 size={16} strokeWidth={2.2} />
+              </Button>
+            )}
           </div>
         )}
       </div>

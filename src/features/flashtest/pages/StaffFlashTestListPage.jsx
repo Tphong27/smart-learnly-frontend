@@ -5,7 +5,6 @@ import {
   assignmentService,
   testService,
 } from "@/services/flashtest.service.js";
-import { getCurrentUser } from "@/services/api-client";
 import "../flashtest.css";
 
 function isFlashTest(item) {
@@ -41,15 +40,21 @@ export function StaffFlashTestListPage({ variant = "flash" }) {
   const isFlashMode = variant === "flash";
   const isAssignmentMode = variant === "assignment";
   const courseId = searchParams.get("courseId") || "";
+  const classId = searchParams.get("classId") || "";
   const basePath = isAssignmentMode
     ? "/staff/assignments"
     : isFlashMode ? "/staff/flashtests" : "/staff/tests";
   const backPath = isAssignmentMode
-    ? courseId
+    ? classId
+      ? `/staff/classrooms/${classId}/workspace`
+      : courseId
       ? `/staff/courses/${courseId}/content`
       : "/staff/courses"
     : "/staff/courses";
-  const pathQuery = courseId ? `?courseId=${encodeURIComponent(courseId)}` : "";
+  const pathParams = new URLSearchParams();
+  if (courseId) pathParams.set("courseId", courseId);
+  if (classId) pathParams.set("classId", classId);
+  const pathQuery = pathParams.toString() ? `?${pathParams.toString()}` : "";
   const pageTitle = isAssignmentMode
     ? "Assignment Management"
     : isFlashMode ? "Flash Tests Management" : "Tests Management";
@@ -67,9 +72,6 @@ export function StaffFlashTestListPage({ variant = "flash" }) {
   const itemFilter = isAssignmentMode
     ? isRegularTest
     : isFlashMode ? isFlashTest : isRegularTest;
-  const currentUser = getCurrentUser();
-  const currentUserId =
-    currentUser?.id || currentUser?.userId || currentUser?.accountId || "";
   const [tests, setTests] = useState([]);
   const [assignments, setAssignments] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -89,21 +91,14 @@ export function StaffFlashTestListPage({ variant = "flash" }) {
           : Promise.resolve([]),
       ]);
 
-      const belongsToCurrentTrainer = (item) => {
-        const createdBy = item?.createdBy || item?.created_by;
-        return !createdBy || !currentUserId || String(createdBy) === String(currentUserId);
-      };
-
       setTests(
         testResult.status === "fulfilled"
-          ? (testResult.value || []).filter(itemFilter).filter(belongsToCurrentTrainer)
+          ? (testResult.value || []).filter(itemFilter)
           : [],
       );
       setAssignments(
         (isFlashMode || isAssignmentMode) && assignmentResult?.status === "fulfilled"
-          ? (assignmentResult.value || [])
-              .filter(itemFilter)
-              .filter(belongsToCurrentTrainer)
+          ? (assignmentResult.value || []).filter(itemFilter)
           : [],
       );
     } catch (error) {
@@ -111,7 +106,7 @@ export function StaffFlashTestListPage({ variant = "flash" }) {
     } finally {
       setLoading(false);
     }
-  }, [courseId, currentUserId, isAssignmentMode, isFlashMode, itemFilter]);
+  }, [courseId, isAssignmentMode, isFlashMode, itemFilter]);
 
   useEffect(() => {
     const timer = window.setTimeout(loadAllFlashTests, 0);
@@ -135,10 +130,15 @@ export function StaffFlashTestListPage({ variant = "flash" }) {
       new Date(b.createdAt || b.created_at || 0).getTime() -
       new Date(a.createdAt || a.created_at || 0).getTime(),
     );
+    const scopedRows = classId
+      ? merged.filter(
+          (item) => String(item.classId || item.class_id || "") === String(classId),
+        )
+      : merged;
 
     const q = keyword.trim().toLowerCase();
-    if (!q) return merged;
-    return merged.filter((item) => {
+    if (!q) return scopedRows;
+    return scopedRows.filter((item) => {
       const haystack = [
         item.title,
         item.name,
@@ -150,9 +150,15 @@ export function StaffFlashTestListPage({ variant = "flash" }) {
         .toLowerCase();
       return haystack.includes(q);
     });
-  }, [assignments, keyword, tests]);
+  }, [assignments, classId, keyword, tests]);
 
-  const total = tests.length + assignments.length;
+  const total = useMemo(() => {
+    const merged = [...tests, ...assignments];
+    if (!classId) return merged.length;
+    return merged.filter(
+      (item) => String(item.classId || item.class_id || "") === String(classId),
+    ).length;
+  }, [assignments, classId, tests]);
 
   return (
     <section className="ft-page">
@@ -286,14 +292,14 @@ export function StaffFlashTestListPage({ variant = "flash" }) {
                       <td className="ft-table-action">
                         <div className="ft-table-actions">
                           <Link
-                            to={`${basePath}/edit/${item.id}/${type}`}
+                            to={`${basePath}/edit/${item.id}/${type}${pathQuery}`}
                             className="ft-icon-button"
                             title={isAssignmentMode ? "Edit assignment" : isFlashMode ? "Edit flash test" : "Edit test"}
                           >
                             <Edit2 size={16} />
                           </Link>
                           <Link
-                            to={`${basePath}/monitor/${item.id}/${type}`}
+                            to={`${basePath}/monitor/${item.id}/${type}${pathQuery}`}
                             className="ft-icon-button"
                             title="Monitor progress"
                           >

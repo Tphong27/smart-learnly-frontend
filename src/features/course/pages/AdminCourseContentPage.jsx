@@ -646,18 +646,6 @@ export default function AdminCourseContentPage() {
                   <span className="material-symbols-outlined">visibility</span>{" "}
                   View as User
                 </button>
-                {readOnly && (
-                  <button
-                    type="button"
-                    onClick={() =>
-                      navigate(`/staff/assignments?courseId=${courseId}`)
-                    }
-                    className="btn-outline"
-                  >
-                    <span className="material-symbols-outlined">assignment</span>{" "}
-                    Assignment
-                  </button>
-                )}
                 {!readOnly && (
                   <button
                     onClick={() => setIsSectionModalOpen(true)}
