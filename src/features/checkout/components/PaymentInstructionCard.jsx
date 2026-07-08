@@ -36,7 +36,7 @@ export function PaymentInstructionCard({ payment, onCopy }) {
     <section className="payment-instruction-card">
       <div className="payment-instruction-card__header">
         <div>
-          <h2>Scan VietQR to pay</h2>
+          <h2>Scan to pay</h2>
           <p>
             Transfer the exact amount and include the exact payment code.
           </p>
