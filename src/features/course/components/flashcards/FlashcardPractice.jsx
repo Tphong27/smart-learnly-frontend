@@ -1,5 +1,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Brain, CheckCircle2, Clock3, RefreshCw } from "lucide-react";
+import {
+  Brain,
+  CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
+  Clock3,
+  FlipHorizontal2,
+  Maximize2,
+  RefreshCw,
+  Shuffle,
+  X,
+} from "lucide-react";
 import { flashcardService } from "@/services/flashcard.service";
 import { useToast } from "@/shared/components/ui";
 import { FlashcardPreview, shuffleCards } from "./FlashcardPreview";
@@ -75,6 +86,10 @@ function filterEmptyMessage(selectedFilter) {
   }
   const label = STATUS_META[selectedFilter]?.label.toLowerCase() || "matching";
   return `No ${label} cards in this set.`;
+}
+
+function filterLabel(selectedFilter) {
+  return FILTERS.find((filter) => filter.key === selectedFilter)?.label || "All";
 }
 
 function buildQueues(cards) {
@@ -294,6 +309,303 @@ function getResumeCardId(cards, savedCardId) {
   );
 }
 
+function isTypingShortcutTarget(target) {
+  if (!(target instanceof Element)) return false;
+  const tagName = target.tagName.toLowerCase();
+  return (
+    target.isContentEditable ||
+    tagName === "input" ||
+    tagName === "textarea" ||
+    tagName === "select"
+  );
+}
+
+function FlashcardPracticeControls({
+  controls,
+  showFocusButton,
+  onOpenFocusMode,
+}) {
+  return (
+    <div className="flashcard-preview__controls flashcard-practice__controls">
+      <button
+        type="button"
+        className="flashcard-btn"
+        onClick={controls.goPrevious}
+        disabled={!controls.canGoPrevious}
+      >
+        <ChevronLeft size={16} />
+        Previous
+      </button>
+      <span className="flashcard-preview__counter">
+        {controls.index + 1} / {controls.cardCount}
+      </span>
+      <button
+        type="button"
+        className="flashcard-btn"
+        onClick={controls.goNext}
+        disabled={!controls.canGoNext}
+      >
+        Next
+        <ChevronRight size={16} />
+      </button>
+      <button type="button" className="flashcard-btn" onClick={controls.shuffle}>
+        <Shuffle size={16} />
+        Shuffle
+      </button>
+      {showFocusButton && (
+        <button
+          type="button"
+          className="flashcard-btn flashcard-btn--primary"
+          onClick={onOpenFocusMode}
+        >
+          <Maximize2 size={16} />
+          Focus mode
+        </button>
+      )}
+    </div>
+  );
+}
+
+function FlashcardReviewActions({
+  card,
+  readOnly,
+  submittingCardId,
+  onSubmitProgress,
+  className = "",
+}) {
+  if (!card) return null;
+
+  const status = progressStatus(card);
+  const isSubmitting = cardKey(submittingCardId) === cardKey(card.id);
+
+  return (
+    <div
+      className={["flashcard-practice__review", className]
+        .filter(Boolean)
+        .join(" ")}
+    >
+      <span
+        className={`flashcard-progress-badge flashcard-progress-badge--${status}`}
+      >
+        {STATUS_META[status].label}
+      </span>
+      {!readOnly && (
+        <div className="flashcard-practice__results">
+          <button
+            type="button"
+            className="flashcard-btn flashcard-btn--warning"
+            disabled={isSubmitting}
+            onClick={() => onSubmitProgress(card, "still_learning")}
+          >
+            <Clock3 size={16} />
+            Still learning
+          </button>
+          <button
+            type="button"
+            className="flashcard-btn flashcard-btn--success"
+            disabled={isSubmitting}
+            onClick={() => onSubmitProgress(card, "known")}
+          >
+            <CheckCircle2 size={16} />
+            Know
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function FlashcardFocusControls({
+  controls,
+  readOnly,
+  submittingCardId,
+  onClose,
+  onSubmitProgress,
+}) {
+  const isSubmitting =
+    cardKey(submittingCardId) === cardKey(controls.card?.id);
+  const canSubmitProgress = Boolean(controls.card) && !readOnly && !isSubmitting;
+
+  const submitStillLearning = useCallback(() => {
+    if (!canSubmitProgress) return;
+    void onSubmitProgress(controls.card, "still_learning");
+  }, [canSubmitProgress, controls.card, onSubmitProgress]);
+
+  const submitKnown = useCallback(() => {
+    if (!canSubmitProgress) return;
+    void onSubmitProgress(controls.card, "known");
+  }, [canSubmitProgress, controls.card, onSubmitProgress]);
+
+  useEffect(() => {
+    function handleKeyDown(event) {
+      if (isTypingShortcutTarget(event.target)) return;
+
+      if (event.key === "ArrowRight") {
+        event.preventDefault();
+        if (controls.canGoNext) controls.goNext();
+        return;
+      }
+
+      if (event.key === "ArrowLeft") {
+        event.preventDefault();
+        if (controls.canGoPrevious) controls.goPrevious();
+        return;
+      }
+
+      if (event.key === " " || event.key === "Enter" || event.key === "Spacebar") {
+        event.preventDefault();
+        controls.flipCard();
+        return;
+      }
+
+      if (event.key === "1") {
+        event.preventDefault();
+        if (!event.repeat) submitStillLearning();
+        return;
+      }
+
+      if (event.key === "2") {
+        event.preventDefault();
+        if (!event.repeat) submitKnown();
+        return;
+      }
+
+      if (event.key === "Escape" || event.key === "Esc") {
+        event.preventDefault();
+        onClose();
+      }
+    }
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [
+    controls,
+    onClose,
+    submitKnown,
+    submitStillLearning,
+  ]);
+
+  return (
+    <div className="flashcard-preview__controls flashcard-focus-mode__controls">
+      <button
+        type="button"
+        className="flashcard-btn"
+        onClick={controls.goPrevious}
+        disabled={!controls.canGoPrevious}
+      >
+        <ChevronLeft size={16} />
+        Previous
+      </button>
+      <span className="flashcard-preview__counter flashcard-focus-mode__counter">
+        {controls.index + 1} / {controls.cardCount}
+      </span>
+      <button
+        type="button"
+        className="flashcard-btn"
+        onClick={controls.goNext}
+        disabled={!controls.canGoNext}
+      >
+        Next
+        <ChevronRight size={16} />
+      </button>
+      <button type="button" className="flashcard-btn" onClick={controls.flipCard}>
+        <FlipHorizontal2 size={16} />
+        Flip card
+      </button>
+      <button type="button" className="flashcard-btn" onClick={controls.shuffle}>
+        <Shuffle size={16} />
+        Shuffle
+      </button>
+      <button type="button" className="flashcard-btn" onClick={onClose}>
+        <X size={16} />
+        Exit focus mode
+      </button>
+    </div>
+  );
+}
+
+function FlashcardFocusMode({
+  title,
+  selectedFilter,
+  cards,
+  activeCardId,
+  orderedCardIds,
+  readOnly,
+  submittingCardId,
+  onActiveCardChange,
+  onAdvancePastEnd,
+  onClose,
+  onShuffle,
+  onSubmitProgress,
+}) {
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, []);
+
+  return (
+    <div className="flashcard-focus-mode" role="presentation">
+      <section
+        className="flashcard-focus-mode__dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="flashcard-focus-mode-title"
+      >
+        <header className="flashcard-focus-mode__header">
+          <div>
+            <span className="flashcard-focus-mode__eyebrow">Focus mode</span>
+            <h2 id="flashcard-focus-mode-title">{title || "Flashcards"}</h2>
+            <p>{filterLabel(selectedFilter)}</p>
+          </div>
+          <button
+            type="button"
+            className="flashcard-btn flashcard-btn--icon flashcard-focus-mode__close"
+            onClick={onClose}
+            aria-label="Exit focus mode"
+          >
+            <X size={18} />
+          </button>
+        </header>
+
+        <div className="flashcard-focus-mode__body">
+          <FlashcardPreview
+            cards={cards}
+            activeCardId={activeCardId}
+            orderedCardIds={orderedCardIds}
+            onActiveCardChange={onActiveCardChange}
+            onAdvancePastEnd={onAdvancePastEnd}
+            onShuffle={onShuffle}
+            emptyMessage={filterEmptyMessage(selectedFilter)}
+            className="flashcard-preview--focus"
+            renderControls={(controls) => (
+              <FlashcardFocusControls
+                controls={controls}
+                readOnly={readOnly}
+                submittingCardId={submittingCardId}
+                onClose={onClose}
+                onSubmitProgress={onSubmitProgress}
+              />
+            )}
+            renderActions={({ card }) => (
+              <FlashcardReviewActions
+                card={card}
+                readOnly={readOnly}
+                submittingCardId={submittingCardId}
+                onSubmitProgress={onSubmitProgress}
+                className="flashcard-focus-mode__review"
+              />
+            )}
+          />
+        </div>
+      </section>
+    </div>
+  );
+}
+
 function CardSideSummary({ label, text, imageUrl }) {
   const hasText = Boolean(text);
   const hasImage = Boolean(imageUrl);
@@ -396,6 +708,7 @@ export function FlashcardPractice({
   const [backgroundSavingCount, setBackgroundSavingCount] = useState(0);
   const [error, setError] = useState(null);
   const [completionNotified, setCompletionNotified] = useState(false);
+  const [isFocusModeOpen, setIsFocusModeOpen] = useState(false);
 
   const cardsRef = useRef([]);
   const initializedSetKeyRef = useRef(null);
@@ -877,6 +1190,17 @@ export function FlashcardPractice({
   }, [activeCardId, currentQueue]);
 
   const activeCardIdForCurrentFilter = activeCardForCurrentFilter?.id ?? null;
+  const canOpenFocusMode = !readOnly && currentQueue.length > 0;
+
+  const openFocusMode = useCallback(() => {
+    if (canOpenFocusMode) {
+      setIsFocusModeOpen(true);
+    }
+  }, [canOpenFocusMode]);
+
+  const closeFocusMode = useCallback(() => {
+    setIsFocusModeOpen(false);
+  }, []);
 
   const handleFilterChange = useCallback((filterKey) => {
     const targetQueue = getQueueForFilter(
@@ -979,6 +1303,7 @@ export function FlashcardPractice({
             setActiveCardForFilter(stableCard.id, selectedFilter);
           } else {
             setActiveCardId(null);
+            setIsFocusModeOpen(false);
           }
         }
       } catch (submitError) {
@@ -1080,44 +1405,25 @@ export function FlashcardPractice({
         }
         onShuffle={handleShuffle}
         emptyMessage={filterEmptyMessage(selectedFilter)}
-        renderActions={({ card }) => {
-          if (!card) return null;
-          const status = progressStatus(card);
-          const isSubmitting =
-            cardKey(submittingCardId) === cardKey(card.id);
-
-          return (
-            <div className="flashcard-practice__review">
-              <span
-                className={`flashcard-progress-badge flashcard-progress-badge--${status}`}
-              >
-                {STATUS_META[status].label}
-              </span>
-              {!readOnly && (
-                <div className="flashcard-practice__results">
-                  <button
-                    type="button"
-                    className="flashcard-btn flashcard-btn--warning"
-                    disabled={isSubmitting}
-                    onClick={() => handleSubmitProgress(card, "still_learning")}
-                  >
-                    <Clock3 size={16} />
-                    Still learning
-                  </button>
-                  <button
-                    type="button"
-                    className="flashcard-btn flashcard-btn--success"
-                    disabled={isSubmitting}
-                    onClick={() => handleSubmitProgress(card, "known")}
-                  >
-                    <CheckCircle2 size={16} />
-                    Know
-                  </button>
-                </div>
-              )}
-            </div>
-          );
-        }}
+        renderControls={
+          !readOnly
+            ? (controls) => (
+                <FlashcardPracticeControls
+                  controls={controls}
+                  showFocusButton={canOpenFocusMode}
+                  onOpenFocusMode={openFocusMode}
+                />
+              )
+            : undefined
+        }
+        renderActions={({ card }) => (
+          <FlashcardReviewActions
+            card={card}
+            readOnly={readOnly}
+            submittingCardId={submittingCardId}
+            onSubmitProgress={handleSubmitProgress}
+          />
+        )}
       />
 
       <FlashcardCompactList
@@ -1125,6 +1431,25 @@ export function FlashcardPractice({
         activeCardId={activeCardIdForCurrentFilter}
         onSelect={handleActiveCardChange}
       />
+
+      {isFocusModeOpen && (
+        <FlashcardFocusMode
+          title={flashcardSet?.title || "Flashcards"}
+          selectedFilter={selectedFilter}
+          cards={currentQueue}
+          activeCardId={activeCardIdForCurrentFilter}
+          orderedCardIds={currentQueueIds}
+          readOnly={readOnly}
+          submittingCardId={submittingCardId}
+          onActiveCardChange={handleActiveCardChange}
+          onAdvancePastEnd={
+            selectedFilter === "all" ? handleAdvancePastEnd : undefined
+          }
+          onClose={closeFocusMode}
+          onShuffle={handleShuffle}
+          onSubmitProgress={handleSubmitProgress}
+        />
+      )}
     </div>
   );
 }

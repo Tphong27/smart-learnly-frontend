@@ -9,6 +9,59 @@ export function trimField(value) {
   return String(value).trim();
 }
 
+export const FLASHCARD_IMAGE_ACCEPT = "image/jpeg,image/png,image/webp,image/gif";
+export const FLASHCARD_IMAGE_MAX_SIZE_BYTES = 20 * 1024 * 1024;
+export const FLASHCARD_IMAGE_MAX_SIZE_LABEL = "20 MB";
+
+const FLASHCARD_IMAGE_TYPES = [
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/gif",
+];
+const FLASHCARD_IMAGE_EXTENSIONS = ["jpg", "jpeg", "png", "webp", "gif"];
+
+function fileExtension(fileName = "") {
+  const dotIndex = fileName.lastIndexOf(".");
+  if (dotIndex < 0 || dotIndex === fileName.length - 1) return "";
+  return fileName.slice(dotIndex + 1).toLowerCase();
+}
+
+export function isFlashcardImageFile(file) {
+  if (!file) return false;
+  const type = String(file.type || "").toLowerCase();
+  if (type) return FLASHCARD_IMAGE_TYPES.includes(type);
+  return FLASHCARD_IMAGE_EXTENSIONS.includes(fileExtension(file.name || ""));
+}
+
+export function isImageLikeFile(file) {
+  if (!file) return false;
+  const type = String(file.type || "").toLowerCase();
+  if (type.startsWith("image/")) return true;
+  return FLASHCARD_IMAGE_EXTENSIONS.includes(fileExtension(file.name || ""));
+}
+
+export function validateFlashcardImageFile(file) {
+  if (!file) {
+    return "Image file is required.";
+  }
+
+  if (!isFlashcardImageFile(file)) {
+    return "Only JPEG, PNG, WebP, or GIF images are accepted.";
+  }
+
+  if (file.size > FLASHCARD_IMAGE_MAX_SIZE_BYTES) {
+    return `Flashcard image cannot exceed ${FLASHCARD_IMAGE_MAX_SIZE_LABEL}.`;
+  }
+
+  return null;
+}
+
+export function getUploadedFileUrl(uploaded) {
+  if (typeof uploaded === "string") return uploaded;
+  return uploaded?.url || uploaded?.data?.url || "";
+}
+
 export function normalizeCards(cards) {
   if (!Array.isArray(cards)) return [];
   return [...cards].sort(

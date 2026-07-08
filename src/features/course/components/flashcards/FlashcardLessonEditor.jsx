@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { CheckSquare, RefreshCw, Save, Trash2, X } from "lucide-react";
+import { CheckSquare, Plus, RefreshCw, Save, Trash2, Upload, X } from "lucide-react";
 import { getCurrentUser } from "@/services";
 import { courseService } from "@/services/course.service";
 import { flashcardService } from "@/services/flashcard.service";
@@ -7,7 +7,10 @@ import { isRoleAllowed, ROLES } from "@/shared/constants/roles";
 import { FlashcardCardEditor } from "./FlashcardCardEditor";
 import { FlashcardCardList } from "./FlashcardCardList";
 import { FlashcardPreview } from "./FlashcardPreview";
-import { FlashcardStagingWorkspace } from "./FlashcardStagingWorkspace";
+import {
+  FlashcardStagingWorkspace,
+  ImportFlashcardsModal,
+} from "./FlashcardStagingWorkspace";
 import {
   getErrorMessage,
   normalizeSet,
@@ -21,6 +24,7 @@ function flashcardCacheKey(lessonId) {
 }
 
 const STAGING_ROLES = [ROLES.ADMIN, ROLES.SME, ROLES.TRAINER];
+const CURRENT_FLASHCARD_PAGE_SIZE = 50;
 
 export function FlashcardLessonEditor({
   lessonId,
@@ -34,6 +38,7 @@ export function FlashcardLessonEditor({
   const [title, setTitle] = useState(defaultTitle);
   const [description, setDescription] = useState("");
   const [editingCard, setEditingCard] = useState(null);
+  const [cardEditorOpen, setCardEditorOpen] = useState(false);
   const [activePreviewCardId, setActivePreviewCardId] = useState(null);
   const [editorVersion, setEditorVersion] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -44,8 +49,11 @@ export function FlashcardLessonEditor({
   const [deletingCardId, setDeletingCardId] = useState(null);
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedCardIds, setSelectedCardIds] = useState([]);
+  const [cardPage, setCardPage] = useState(0);
   const [bulkDeletePending, setBulkDeletePending] = useState(false);
   const [bulkDeleting, setBulkDeleting] = useState(false);
+  const [importModalOpen, setImportModalOpen] = useState(false);
+  const [stagingRefreshKey, setStagingRefreshKey] = useState(0);
   const [activeEditorTab, setActiveEditorTab] = useState("current");
   const [error, setError] = useState(null);
 
@@ -133,6 +141,29 @@ export function FlashcardLessonEditor({
     return selectedCardIds.filter((cardId) => visibleIds.has(cardId));
   }, [orderedCards, selectedCardIds]);
 
+  const totalCardPages = Math.max(
+    1,
+    Math.ceil(orderedCards.length / CURRENT_FLASHCARD_PAGE_SIZE),
+  );
+  const safeCardPage = Math.min(cardPage, totalCardPages - 1);
+  const cardPageStartIndex = safeCardPage * CURRENT_FLASHCARD_PAGE_SIZE;
+  const pageCards = useMemo(
+    () =>
+      orderedCards.slice(
+        cardPageStartIndex,
+        cardPageStartIndex + CURRENT_FLASHCARD_PAGE_SIZE,
+      ),
+    [cardPageStartIndex, orderedCards],
+  );
+  const pageCardIds = useMemo(
+    () => pageCards.map((card) => card.id).filter(Boolean),
+    [pageCards],
+  );
+  const selectedPageCardIds = useMemo(() => {
+    const pageIdSet = new Set(pageCardIds);
+    return selectedVisibleCardIds.filter((cardId) => pageIdSet.has(cardId));
+  }, [pageCardIds, selectedVisibleCardIds]);
+
   const handleSaveSet = async (event) => {
     event.preventDefault();
     if (!flashcardSet?.id) return;
@@ -193,10 +224,12 @@ export function FlashcardLessonEditor({
           payload,
         );
         setCards((currentCards) => [...currentCards, savedCard]);
+        setCardPage(Math.floor(orderedCards.length / CURRENT_FLASHCARD_PAGE_SIZE));
         setActivePreviewCardId(savedCard.id);
         notify("Card added.", "success");
       }
 
+      setCardEditorOpen(false);
       setEditingCard(null);
       setEditorVersion((version) => version + 1);
     } catch (saveError) {
@@ -227,6 +260,7 @@ export function FlashcardLessonEditor({
         return nextCards;
       });
       if (editingCard?.id === cardPendingDelete.id) {
+        setCardEditorOpen(false);
         setEditingCard(null);
         setEditorVersion((version) => version + 1);
       }
@@ -284,9 +318,46 @@ export function FlashcardLessonEditor({
     return uploaded?.url || uploaded?.data?.url || uploaded;
   };
 
+  const refreshCurrentFlashcards = useCallback(async () => {
+    await loadSet();
+  }, [loadSet]);
+
+  const refreshStagingReview = useCallback(() => {
+    setStagingRefreshKey((current) => current + 1);
+  }, []);
+
+  const handleCardsImported = async () => {
+    await refreshCurrentFlashcards();
+    setActiveEditorTab("current");
+  };
+
+  const handleStagingImportCreated = useCallback(
+    (batch) => {
+      refreshStagingReview();
+      if (!batch?.id) {
+        notify("Staging batch was created, but the response did not include a batch id.", "error");
+        setActiveEditorTab("review");
+      }
+    },
+    [notify, refreshStagingReview],
+  );
+
   const handleEditCard = (card) => {
     setActivePreviewCardId(card?.id || null);
     setEditingCard(card);
+    setCardEditorOpen(true);
+  };
+
+  const handleAddCard = () => {
+    setEditingCard(null);
+    setEditorVersion((version) => version + 1);
+    setCardEditorOpen(true);
+  };
+
+  const closeCardEditor = () => {
+    setCardEditorOpen(false);
+    setEditingCard(null);
+    setEditorVersion((version) => version + 1);
   };
 
   const toggleSelectionMode = () => {
@@ -302,6 +373,19 @@ export function FlashcardLessonEditor({
       current.includes(card.id)
         ? current.filter((cardId) => cardId !== card.id)
         : [...current, card.id],
+    );
+  };
+
+  const selectCurrentPage = () => {
+    if (!pageCardIds.length) return;
+    setSelectedCardIds((current) => [...new Set([...current, ...pageCardIds])]);
+  };
+
+  const clearCurrentPageSelection = () => {
+    if (!pageCardIds.length) return;
+    const pageIdSet = new Set(pageCardIds);
+    setSelectedCardIds((current) =>
+      current.filter((cardId) => !pageIdSet.has(cardId)),
     );
   };
 
@@ -324,6 +408,7 @@ export function FlashcardLessonEditor({
         setActivePreviewCardId(remainingCards[0]?.id || null);
       }
       if (editingCard?.id && deletedIdSet.has(editingCard.id)) {
+        setCardEditorOpen(false);
         setEditingCard(null);
         setEditorVersion((version) => version + 1);
       }
@@ -418,145 +503,248 @@ export function FlashcardLessonEditor({
       </form>
 
       {canUseStaging && (
-        <div
-          className="flashcard-tabs"
-          role="tablist"
-          aria-label="Flashcard editor sections"
-        >
+        <div className="flashcard-tabs-row">
+          <div
+            className="flashcard-tabs"
+            role="tablist"
+            aria-label="Flashcard editor sections"
+          >
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activeEditorTab === "current"}
+              className={
+                activeEditorTab === "current"
+                  ? "flashcard-tabs__tab is-active"
+                  : "flashcard-tabs__tab"
+              }
+              onClick={() => setActiveEditorTab("current")}
+            >
+              Current Flashcards
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activeEditorTab === "review"}
+              className={
+                activeEditorTab === "review"
+                  ? "flashcard-tabs__tab is-active"
+                  : "flashcard-tabs__tab"
+              }
+              onClick={() => setActiveEditorTab("review")}
+            >
+              Staging Review
+            </button>
+          </div>
           <button
             type="button"
-            role="tab"
-            aria-selected={activeEditorTab === "current"}
-            className={
-              activeEditorTab === "current"
-                ? "flashcard-tabs__tab is-active"
-                : "flashcard-tabs__tab"
-            }
-            onClick={() => setActiveEditorTab("current")}
+            className="flashcard-btn flashcard-btn--primary flashcard-tabs-row__import"
+            onClick={() => setImportModalOpen(true)}
+            disabled={savingCard || reordering || bulkDeleting}
           >
-            Current Flashcards
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={activeEditorTab === "import"}
-            className={
-              activeEditorTab === "import"
-                ? "flashcard-tabs__tab is-active"
-                : "flashcard-tabs__tab"
-            }
-            onClick={() => setActiveEditorTab("import")}
-          >
-            Import / Generate
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={activeEditorTab === "review"}
-            className={
-              activeEditorTab === "review"
-                ? "flashcard-tabs__tab is-active"
-                : "flashcard-tabs__tab"
-            }
-            onClick={() => setActiveEditorTab("review")}
-          >
-            Staging Review
+            <Upload size={16} />
+            Import
           </button>
         </div>
       )}
 
       {!canUseStaging || activeEditorTab === "current" ? (
-        <div className="flashcard-editor-layout">
-          <div className="flashcard-shell">
-            <FlashcardCardEditor
-              key={`${editingCard?.id || "new"}-${editorVersion}`}
-              value={editingCard}
-              mode={editingCard ? "edit" : "create"}
-              saving={savingCard}
-              onSave={handleSaveCard}
-              onCancel={
-                editingCard
-                  ? () => {
-                      setEditingCard(null);
-                      setEditorVersion((version) => version + 1);
-                    }
-                  : null
-              }
-              onUploadImage={handleUploadImage}
-              onError={(message) => notify(message, "error")}
-            />
-
-            <div className="flashcard-panel">
-              <div className="flashcard-panel__header">
-                <h3 className="flashcard-panel__title">Cards</h3>
-                <div className="flashcard-actions">
-                  {selectionMode && selectedVisibleCardIds.length > 0 && (
+        <div className="flashcard-current-workspace">
+          <div className="flashcard-current-workspace__inner">
+            <div className="flashcard-current-workspace__main">
+              <div className="flashcard-panel flashcard-current-list-panel">
+                <div className="flashcard-panel__header">
+                  <div>
+                    <h3 className="flashcard-panel__title">Current Flashcards</h3>
+                    {selectionMode && (
+                      <div className="flashcard-toolbar__meta">
+                        {selectedVisibleCardIds.length} selected
+                        {pageCards.length > 0
+                          ? ` (${selectedPageCardIds.length} on this page)`
+                          : ""}
+                      </div>
+                    )}
+                  </div>
+                  <div className="flashcard-actions">
                     <button
                       type="button"
-                      className="flashcard-btn flashcard-btn--danger"
-                      onClick={() => setBulkDeletePending(true)}
+                      className="flashcard-btn flashcard-btn--primary"
+                      onClick={handleAddCard}
                       disabled={savingCard || reordering || bulkDeleting}
                     >
-                      <Trash2 size={16} />
-                      Delete selected ({selectedVisibleCardIds.length})
+                      <Plus size={16} />
+                      Add card
                     </button>
+                    {selectionMode && pageCards.length > 0 && (
+                      <>
+                        <button
+                          type="button"
+                          className="flashcard-btn"
+                          onClick={selectCurrentPage}
+                          disabled={
+                            savingCard ||
+                            reordering ||
+                            bulkDeleting ||
+                            selectedPageCardIds.length === pageCardIds.length
+                          }
+                        >
+                          Select all
+                        </button>
+                        <button
+                          type="button"
+                          className="flashcard-btn"
+                          onClick={clearCurrentPageSelection}
+                          disabled={
+                            savingCard ||
+                            reordering ||
+                            bulkDeleting ||
+                            selectedPageCardIds.length === 0
+                          }
+                        >
+                          Clear
+                        </button>
+                      </>
+                    )}
+                    {selectionMode && selectedVisibleCardIds.length > 0 && (
+                      <button
+                        type="button"
+                        className="flashcard-btn flashcard-btn--danger"
+                        onClick={() => setBulkDeletePending(true)}
+                        disabled={savingCard || reordering || bulkDeleting}
+                      >
+                        <Trash2 size={16} />
+                        Delete ({selectedVisibleCardIds.length})
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      className="flashcard-btn"
+                      onClick={toggleSelectionMode}
+                      disabled={savingCard || reordering || bulkDeleting}
+                    >
+                      {selectionMode ? <X size={16} /> : <CheckSquare size={16} />}
+                      {selectionMode ? "Cancel" : "Select"}
+                    </button>
+                  </div>
+                </div>
+                <div className="flashcard-panel__body">
+                  <FlashcardCardList
+                    cards={pageCards}
+                    pageStartIndex={cardPageStartIndex}
+                    totalCards={orderedCards.length}
+                    activeCardId={activeCardId}
+                    disabled={
+                      savingCard ||
+                      reordering ||
+                      bulkDeleting ||
+                      Boolean(deletingCardId)
+                    }
+                    selectionMode={selectionMode}
+                    selectedCardIds={selectedCardIds}
+                    onToggleSelect={toggleSelectedCard}
+                    onSelect={(card) => setActivePreviewCardId(card?.id || null)}
+                    onEdit={handleEditCard}
+                    onDelete={handleDeleteCard}
+                    onMove={handleMoveCard}
+                  />
+                  {orderedCards.length > CURRENT_FLASHCARD_PAGE_SIZE && (
+                    <div className="flashcard-current-pagination">
+                      <span>
+                        Showing {cardPageStartIndex + 1}-
+                        {Math.min(
+                          cardPageStartIndex + CURRENT_FLASHCARD_PAGE_SIZE,
+                          orderedCards.length,
+                        )} of {orderedCards.length}
+                      </span>
+                      <div className="flashcard-current-pagination__controls">
+                        <button
+                          type="button"
+                          className="flashcard-btn"
+                          onClick={() => setCardPage((current) => Math.max(0, current - 1))}
+                          disabled={safeCardPage === 0}
+                        >
+                          Previous
+                        </button>
+                        <span className="flashcard-staging__page-indicator">
+                          Page {safeCardPage + 1} / {totalCardPages}
+                        </span>
+                        <button
+                          type="button"
+                          className="flashcard-btn"
+                          onClick={() =>
+                            setCardPage((current) =>
+                              Math.min(totalCardPages - 1, current + 1),
+                            )
+                          }
+                          disabled={safeCardPage + 1 >= totalCardPages}
+                        >
+                          Next
+                        </button>
+                      </div>
+                    </div>
                   )}
-                  <button
-                    type="button"
-                    className="flashcard-btn"
-                    onClick={toggleSelectionMode}
-                    disabled={savingCard || reordering || bulkDeleting}
-                  >
-                    {selectionMode ? <X size={16} /> : <CheckSquare size={16} />}
-                    {selectionMode ? "Exit selection" : "Select cards"}
-                  </button>
                 </div>
               </div>
+            </div>
+
+            <aside className="flashcard-panel flashcard-current-preview-panel">
+              <div className="flashcard-panel__header">
+                <h3 className="flashcard-panel__title">Preview</h3>
+              </div>
               <div className="flashcard-panel__body">
-                <FlashcardCardList
+                <FlashcardPreview
                   cards={orderedCards}
                   activeCardId={activeCardId}
-                  disabled={
-                    savingCard ||
-                    reordering ||
-                    bulkDeleting ||
-                    Boolean(deletingCardId)
-                  }
-                  selectionMode={selectionMode}
-                  selectedCardIds={selectedVisibleCardIds}
-                  onToggleSelect={toggleSelectedCard}
-                  onSelect={(card) => setActivePreviewCardId(card?.id || null)}
-                  onEdit={handleEditCard}
-                  onDelete={handleDeleteCard}
-                  onMove={handleMoveCard}
+                  onActiveCardChange={(cardId) => setActivePreviewCardId(cardId)}
+                  emptyMessage="Add a card to preview this flashcard set."
                 />
               </div>
-            </div>
-          </div>
-
-          <div className="flashcard-panel">
-            <div className="flashcard-panel__header">
-              <h3 className="flashcard-panel__title">Preview</h3>
-            </div>
-            <div className="flashcard-panel__body">
-              <FlashcardPreview
-                cards={orderedCards}
-                activeCardId={activeCardId}
-                onActiveCardChange={(cardId) => setActivePreviewCardId(cardId)}
-                emptyMessage="Add a card to preview this flashcard set."
-              />
-            </div>
+            </aside>
           </div>
         </div>
       ) : (
         <FlashcardStagingWorkspace
           setId={flashcardSet?.id}
-          activeTab={activeEditorTab}
+          existingCards={orderedCards}
           notify={notify}
           onUploadImage={handleUploadImage}
-          onStagingChanged={() => setActiveEditorTab("review")}
-          onApproved={loadSet}
+          onApproved={refreshCurrentFlashcards}
+          refreshKey={stagingRefreshKey}
         />
+      )}
+      {importModalOpen && flashcardSet?.id && (
+        <ImportFlashcardsModal
+          setId={flashcardSet.id}
+          existingCards={orderedCards}
+          notify={notify}
+          onClose={() => setImportModalOpen(false)}
+          onStagingChanged={handleStagingImportCreated}
+          onCardsImported={handleCardsImported}
+          onApproved={refreshCurrentFlashcards}
+          onUploadImage={handleUploadImage}
+        />
+      )}
+      {cardEditorOpen && (
+        <div className="flashcard-modal" role="presentation">
+          <div
+            className="flashcard-modal__dialog flashcard-modal__dialog--card-editor"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="flashcard-card-editor-title"
+          >
+            <FlashcardCardEditor
+              key={`${editingCard?.id || "new"}-${editorVersion}`}
+              value={editingCard}
+              mode={editingCard ? "edit" : "create"}
+              saving={savingCard}
+              titleId="flashcard-card-editor-title"
+              onSave={handleSaveCard}
+              onCancel={closeCardEditor}
+              onUploadImage={handleUploadImage}
+              onError={(message) => notify(message, "error")}
+            />
+          </div>
+        </div>
       )}
       {cardPendingDelete && (
         <div className="flashcard-modal" role="presentation">
@@ -622,7 +810,7 @@ export function FlashcardLessonEditor({
                 disabled={bulkDeleting || selectedVisibleCardIds.length === 0}
               >
                 <Trash2 size={16} />
-                {bulkDeleting ? "Deleting" : "Delete selected"}
+                {bulkDeleting ? "Deleting" : "Delete"}
               </button>
             </div>
           </div>

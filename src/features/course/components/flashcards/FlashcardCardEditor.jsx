@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from "react";
-import { ImagePlus, Save, X } from "lucide-react";
+import { useState } from "react";
+import { ChevronDown, Save, X } from "lucide-react";
+import { FlashcardImageInput } from "./FlashcardImageInput";
 import { validateCardDraft } from "./flashcard-utils";
 import "./Flashcards.css";
 
@@ -25,23 +26,62 @@ function toDraft(value) {
   };
 }
 
+function getOpenSections(value) {
+  return {
+    frontImage: Boolean(value?.frontImageUrl),
+    frontHint: Boolean(value?.hint),
+    backImage: Boolean(value?.backImageUrl),
+    backExplanation: Boolean(value?.explanation),
+  };
+}
+
+function CollapsibleEditorSection({ id, title, open, onToggle, children }) {
+  return (
+    <section className="flashcard-card-editor__section">
+      <button
+        type="button"
+        className="flashcard-card-editor__section-toggle"
+        onClick={onToggle}
+        aria-expanded={open}
+        aria-controls={id}
+      >
+        <span>{open ? title : `+ ${title}`}</span>
+        <ChevronDown
+          size={16}
+          className={
+            open
+              ? "flashcard-card-editor__chevron is-open"
+              : "flashcard-card-editor__chevron"
+          }
+        />
+      </button>
+      {open && (
+        <div id={id} className="flashcard-card-editor__section-body">
+          {children}
+        </div>
+      )}
+    </section>
+  );
+}
+
 export function FlashcardCardEditor({
   value,
   mode = "create",
+  title: titleOverride,
+  submitLabel = "Save Card",
+  savingLabel = "Saving",
   saving = false,
   onSave,
   onCancel,
   onUploadImage,
   onError,
+  titleId,
 }) {
   const [draft, setDraft] = useState(() => toDraft(value));
+  const [openSections, setOpenSections] = useState(() =>
+    getOpenSections(toDraft(value)),
+  );
   const [uploadingField, setUploadingField] = useState(null);
-  const frontInputRef = useRef(null);
-  const backInputRef = useRef(null);
-
-  useEffect(() => {
-    setDraft(toDraft(value));
-  }, [value]);
 
   const updateDraft = (field, nextValue) => {
     setDraft((current) => ({
@@ -60,40 +100,36 @@ export function FlashcardCardEditor({
     onSave?.(draft);
   };
 
-  const handleUpload = async (field, file) => {
-    if (!file || !onUploadImage) return;
-
-    if (file.type && !file.type.startsWith("image/")) {
-      onError?.("Please upload an image file.");
-      return;
-    }
-
-    setUploadingField(field);
-    try {
-      const uploaded = await onUploadImage(file);
-      const uploadedUrl = uploaded?.url || uploaded?.data?.url || uploaded;
-      if (!uploadedUrl) {
-        throw new Error("Upload response did not include a URL.");
-      }
-      updateDraft(field, uploadedUrl);
-    } catch (error) {
-      onError?.(error?.message || "Image upload failed.");
-    } finally {
-      setUploadingField(null);
-    }
+  const toggleSection = (section) => {
+    setOpenSections((current) => ({
+      ...current,
+      [section]: !current[section],
+    }));
   };
 
-  const title = mode === "edit" ? "Edit Card" : "Add Card";
+  const handleImageUploadingChange = (field, uploading) => {
+    setUploadingField((current) => {
+      if (uploading) return field;
+      return current === field ? null : current;
+    });
+  };
+
+  const imageInputDisabled = (field) => {
+    return !onUploadImage || Boolean(uploadingField && uploadingField !== field);
+  };
+
+  const title = titleOverride || (mode === "edit" ? "Edit Card" : "Add Card");
 
   return (
-    <form className="flashcard-form" onSubmit={handleSubmit}>
+    <form className="flashcard-form flashcard-card-editor" onSubmit={handleSubmit}>
       <div className="flashcard-panel">
         <div className="flashcard-panel__header">
-          <h3 className="flashcard-panel__title">{title}</h3>
+          <h3 id={titleId} className="flashcard-panel__title">{title}</h3>
         </div>
         <div className="flashcard-panel__body">
-          <div className="flashcard-form">
-            <div className="flashcard-form__row">
+          <div className="flashcard-card-editor__grid">
+            <section className="flashcard-card-editor__side">
+              <h4>Front side</h4>
               <div className="flashcard-field">
                 <label htmlFor="flashcard-front-text">Front text</label>
                 <textarea
@@ -106,6 +142,46 @@ export function FlashcardCardEditor({
                 />
               </div>
 
+              <CollapsibleEditorSection
+                id="flashcard-front-image-section"
+                title="Image"
+                open={openSections.frontImage}
+                onToggle={() => toggleSection("frontImage")}
+              >
+                <FlashcardImageInput
+                  id="flashcard-front-image"
+                  label="Front image"
+                  value={draft.frontImageUrl}
+                  disabled={imageInputDisabled("frontImageUrl")}
+                  onChange={(nextValue) => updateDraft("frontImageUrl", nextValue)}
+                  onUploadImage={onUploadImage}
+                  onError={onError}
+                  onUploadingChange={(uploading) =>
+                    handleImageUploadingChange("frontImageUrl", uploading)
+                  }
+                />
+              </CollapsibleEditorSection>
+
+              <CollapsibleEditorSection
+                id="flashcard-front-hint-section"
+                title="Hint"
+                open={openSections.frontHint}
+                onToggle={() => toggleSection("frontHint")}
+              >
+                <div className="flashcard-field">
+                  <label htmlFor="flashcard-hint">Hint</label>
+                  <textarea
+                    id="flashcard-hint"
+                    value={draft.hint}
+                    onChange={(event) => updateDraft("hint", event.target.value)}
+                    placeholder="Optional hint for the front side"
+                  />
+                </div>
+              </CollapsibleEditorSection>
+            </section>
+
+            <section className="flashcard-card-editor__side">
+              <h4>Back side</h4>
               <div className="flashcard-field">
                 <label htmlFor="flashcard-back-text">Back text</label>
                 <textarea
@@ -117,119 +193,46 @@ export function FlashcardCardEditor({
                   placeholder="Definition, answer, or explanation"
                 />
               </div>
-            </div>
 
-            <div className="flashcard-form__row">
-              <div className="flashcard-field">
-                <label htmlFor="flashcard-front-image">Front image URL</label>
-                <div className="flashcard-image-input">
-                  <input
-                    id="flashcard-front-image"
-                    type="url"
-                    value={draft.frontImageUrl}
-                    onChange={(event) =>
-                      updateDraft("frontImageUrl", event.target.value)
-                    }
-                    placeholder="https://..."
-                  />
-                  <button
-                    type="button"
-                    className="flashcard-btn"
-                    onClick={() => frontInputRef.current?.click()}
-                    disabled={!onUploadImage || uploadingField === "frontImageUrl"}
-                  >
-                    <ImagePlus size={16} />
-                    {uploadingField === "frontImageUrl" ? "Uploading" : "Upload"}
-                  </button>
-                  <input
-                    ref={frontInputRef}
-                    type="file"
-                    accept="image/*"
-                    hidden
-                    onChange={(event) => {
-                      const file = event.target.files?.[0];
-                      event.target.value = "";
-                      handleUpload("frontImageUrl", file);
-                    }}
-                  />
-                </div>
-                {draft.frontImageUrl && (
-                  <img
-                    src={draft.frontImageUrl}
-                    alt=""
-                    className="flashcard-image-preview"
-                    loading="lazy"
-                  />
-                )}
-              </div>
-
-              <div className="flashcard-field">
-                <label htmlFor="flashcard-back-image">Back image URL</label>
-                <div className="flashcard-image-input">
-                  <input
-                    id="flashcard-back-image"
-                    type="url"
-                    value={draft.backImageUrl}
-                    onChange={(event) =>
-                      updateDraft("backImageUrl", event.target.value)
-                    }
-                    placeholder="https://..."
-                  />
-                  <button
-                    type="button"
-                    className="flashcard-btn"
-                    onClick={() => backInputRef.current?.click()}
-                    disabled={!onUploadImage || uploadingField === "backImageUrl"}
-                  >
-                    <ImagePlus size={16} />
-                    {uploadingField === "backImageUrl" ? "Uploading" : "Upload"}
-                  </button>
-                  <input
-                    ref={backInputRef}
-                    type="file"
-                    accept="image/*"
-                    hidden
-                    onChange={(event) => {
-                      const file = event.target.files?.[0];
-                      event.target.value = "";
-                      handleUpload("backImageUrl", file);
-                    }}
-                  />
-                </div>
-                {draft.backImageUrl && (
-                  <img
-                    src={draft.backImageUrl}
-                    alt=""
-                    className="flashcard-image-preview"
-                    loading="lazy"
-                  />
-                )}
-              </div>
-            </div>
-
-            <div className="flashcard-form__row">
-              <div className="flashcard-field">
-                <label htmlFor="flashcard-hint">Hint</label>
-                <textarea
-                  id="flashcard-hint"
-                  value={draft.hint}
-                  onChange={(event) => updateDraft("hint", event.target.value)}
-                  placeholder="Optional hint for the front side"
-                />
-              </div>
-
-              <div className="flashcard-field">
-                <label htmlFor="flashcard-explanation">Explanation</label>
-                <textarea
-                  id="flashcard-explanation"
-                  value={draft.explanation}
-                  onChange={(event) =>
-                    updateDraft("explanation", event.target.value)
+              <CollapsibleEditorSection
+                id="flashcard-back-image-section"
+                title="Image"
+                open={openSections.backImage}
+                onToggle={() => toggleSection("backImage")}
+              >
+                <FlashcardImageInput
+                  id="flashcard-back-image"
+                  label="Back image"
+                  value={draft.backImageUrl}
+                  disabled={imageInputDisabled("backImageUrl")}
+                  onChange={(nextValue) => updateDraft("backImageUrl", nextValue)}
+                  onUploadImage={onUploadImage}
+                  onError={onError}
+                  onUploadingChange={(uploading) =>
+                    handleImageUploadingChange("backImageUrl", uploading)
                   }
-                  placeholder="Optional explanation after reveal"
                 />
-              </div>
-            </div>
+              </CollapsibleEditorSection>
+
+              <CollapsibleEditorSection
+                id="flashcard-back-explanation-section"
+                title="Explanation"
+                open={openSections.backExplanation}
+                onToggle={() => toggleSection("backExplanation")}
+              >
+                <div className="flashcard-field">
+                  <label htmlFor="flashcard-explanation">Explanation</label>
+                  <textarea
+                    id="flashcard-explanation"
+                    value={draft.explanation}
+                    onChange={(event) =>
+                      updateDraft("explanation", event.target.value)
+                    }
+                    placeholder="Optional explanation after reveal"
+                  />
+                </div>
+              </CollapsibleEditorSection>
+            </section>
           </div>
         </div>
       </div>
@@ -241,14 +244,14 @@ export function FlashcardCardEditor({
           disabled={saving || Boolean(uploadingField)}
         >
           <Save size={16} />
-          {saving ? "Saving" : "Save Card"}
+          {saving ? savingLabel : submitLabel}
         </button>
         {onCancel && (
           <button
             type="button"
             className="flashcard-btn"
             onClick={onCancel}
-            disabled={saving}
+            disabled={saving || Boolean(uploadingField)}
           >
             <X size={16} />
             Cancel
