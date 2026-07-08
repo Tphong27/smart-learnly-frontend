@@ -1,4 +1,4 @@
-﻿import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { AlertTriangle, CheckCircle2, Download, FileImage, FileSpreadsheet, Upload } from 'lucide-react'
 import { Button, Modal, useToast } from '@/shared/components/ui'
 import { questionBankService } from '@/services'
@@ -21,6 +21,7 @@ const IMPORT_MODES = {
 
 const IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/webp']
 const MAX_IMAGE_SIZE = 10 * 1024 * 1024
+const MAX_ATTACH_IMAGE_SIZE = 5 * 1024 * 1024
 const MAX_IMAGE_FILES = 5
 
 function getImageImportErrorMessage(err) {
@@ -71,7 +72,23 @@ function normalizeImageQuestion(question, index) {
     explanation: question?.explanation || '',
     warnings: Array.isArray(question?.warnings) ? question.warnings : [],
     providerErrors: Array.isArray(question?.errors) ? question.errors : [],
+    sourceImageIndexes: Array.isArray(question?.sourceImageIndexes) ? question.sourceImageIndexes : [],
   }
+}
+
+function validateSourceImageSelection(question, sourceImageCount, sourceFiles = []) {
+  const errors = []
+  const indexes = Array.isArray(question.sourceImageIndexes) ? question.sourceImageIndexes : []
+  if (indexes.length > MAX_IMAGE_FILES) errors.push('A question can attach at most 5 source images')
+  const uniqueIndexes = new Set(indexes)
+  if (uniqueIndexes.size !== indexes.length) errors.push('Source image selections must be unique')
+  if (indexes.some((index) => !Number.isInteger(index) || index < 0 || index >= sourceImageCount)) {
+    errors.push('Source image selection is out of range')
+  }
+  if (indexes.some((index) => sourceFiles[index]?.size > MAX_ATTACH_IMAGE_SIZE)) {
+    errors.push('Selected source images for attachment must not exceed 5MB')
+  }
+  return errors
 }
 
 function validateImageQuestion(question) {
@@ -110,6 +127,7 @@ function toImageConfirmPayload(question) {
     })),
     difficulty: question.difficulty === '' || question.difficulty == null ? null : Number(question.difficulty),
     explanation: question.explanation?.trim() || null,
+    sourceImageIndexes: Array.isArray(question.sourceImageIndexes) ? question.sourceImageIndexes : [],
   }
 }
 
@@ -131,16 +149,30 @@ export function QuestionImportModal({ open, bank, existingQuestions = [], onClos
   const [jsonText, setJsonText] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
+  const sourceImagePreviews = useMemo(() => imageFiles.map((file, index) => ({
+    file,
+    index,
+    key: `${file.name}-${file.size}-${file.lastModified}-${index}`,
+    url: URL.createObjectURL(file),
+  })), [imageFiles])
+
+  useEffect(() => () => {
+    sourceImagePreviews.forEach((preview) => URL.revokeObjectURL(preview.url))
+  }, [sourceImagePreviews])
+
   const validRows = useMemo(() => parsedRows.filter((row) => !row.errors?.length), [parsedRows])
   const imageRows = useMemo(() => imageQuestions.map((question, index) => {
-    const errors = validateImageQuestion(question)
+    const errors = [
+      ...validateImageQuestion(question),
+      ...validateSourceImageSelection(question, imageFiles.length, imageFiles),
+    ]
     return {
       ...question,
       rowNumber: index + 1,
       errors,
       status: errors.length ? 'error' : question.warnings?.length ? 'warning' : 'valid',
     }
-  }), [imageQuestions])
+  }), [imageQuestions, imageFiles])
   const validImageRows = useMemo(() => imageRows.filter((row) => !row.errors?.length), [imageRows])
   const isArchived = bank?.status === 'archived'
   const sourceLabel = importMode === IMPORT_MODES.JSON
@@ -301,6 +333,31 @@ export function QuestionImportModal({ open, bank, existingQuestions = [], onClos
     )))
   }
 
+  function toggleSourceImage(questionIndex, sourceImageIndex) {
+    const sourceFile = imageFiles[sourceImageIndex]
+    if (!sourceFile) return
+    if (sourceFile.size > MAX_ATTACH_IMAGE_SIZE) {
+      toast.error('Selected source images for attachment must not exceed 5MB.')
+      return
+    }
+    const selectedIndexes = Array.isArray(imageQuestions[questionIndex]?.sourceImageIndexes)
+      ? imageQuestions[questionIndex].sourceImageIndexes
+      : []
+    const isSelected = selectedIndexes.includes(sourceImageIndex)
+    if (!isSelected && selectedIndexes.length >= MAX_IMAGE_FILES) {
+      toast.error(`Attach up to ${MAX_IMAGE_FILES} source images per question.`)
+      return
+    }
+    const nextIndexes = isSelected
+      ? selectedIndexes.filter((index) => index !== sourceImageIndex)
+      : [...selectedIndexes, sourceImageIndex].sort((left, right) => left - right)
+    setImageQuestions((current) => current.map((question, currentQuestionIndex) => (
+      currentQuestionIndex === questionIndex
+        ? { ...question, sourceImageIndexes: nextIndexes, providerErrors: [] }
+        : question
+    )))
+  }
+
   function updateImageAnswer(questionIndex, answerIndex, patch) {
     setImageQuestions((current) => current.map((question, currentQuestionIndex) => {
       if (currentQuestionIndex !== questionIndex) return question
@@ -384,7 +441,7 @@ export function QuestionImportModal({ open, bank, existingQuestions = [], onClos
       setSubmitting(true)
       try {
         const payload = imageRows.map(toImageConfirmPayload)
-        const response = await questionBankService.confirmImageImport(bankId, payload)
+        const response = await questionBankService.confirmImageImport(bankId, payload, imageFiles)
         const created = response?.createdCount ?? payload.length
         toast.success(`Imported ${created} image question${created === 1 ? '' : 's'}.`)
         onImported?.()
@@ -403,7 +460,8 @@ export function QuestionImportModal({ open, bank, existingQuestions = [], onClos
     setSubmitting(true)
     try {
       const payload = buildImportPayload(bankId, validRows)
-      const response = await questionBankService.importQuestionsBatch(payload.bankId, payload.rows)
+      const importSource = importMode === IMPORT_MODES.JSON ? 'json_import' : 'excel_import'
+      const response = await questionBankService.importQuestionsBatch(payload.bankId, payload.rows, importSource)
       const created = response?.created ?? validRows.length
       toast.success(`Imported ${created} question${created === 1 ? '' : 's'}.`)
       onImported?.()
@@ -503,6 +561,37 @@ export function QuestionImportModal({ open, bank, existingQuestions = [], onClos
                 onChange={(event) => updateImageQuestion(questionIndex, { explanation: event.target.value })}
                 placeholder="Only keep explanation if it was present in the image"
               />
+              {sourceImagePreviews.length > 0 && (
+                <div className="question-import__source-media">
+                  <div className="question-import__source-media-head">
+                    <span>Source images</span>
+                    <span>{question.sourceImageIndexes?.length || 0}/{MAX_IMAGE_FILES}</span>
+                  </div>
+                  <div className="question-import__source-media-list">
+                    {sourceImagePreviews.map((preview) => {
+                      const selected = question.sourceImageIndexes?.includes(preview.index)
+                      const oversized = preview.file.size > MAX_ATTACH_IMAGE_SIZE
+                      return (
+                        <label
+                          className={`question-import__source-media-option ${selected ? 'question-import__source-media-option--selected' : ''}`}
+                          key={preview.key}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={Boolean(selected)}
+                            disabled={oversized && !selected}
+                            onChange={() => toggleSourceImage(questionIndex, preview.index)}
+                            aria-label={`Attach source image ${preview.index + 1} to question ${questionIndex + 1}`}
+                          />
+                          <img src={preview.url} alt={preview.file.name || `Source image ${preview.index + 1}`} />
+                          <span className="question-import__source-media-name">{preview.file.name || `Image ${preview.index + 1}`}</span>
+                          {oversized && <span className="question-import__source-media-note">over 5MB</span>}
+                        </label>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
               {question.errors?.length > 0 && (
                 <ul className="question-import__errors">
                   {question.errors.map((error, index) => <li key={index}>{error}</li>)}
@@ -684,6 +773,7 @@ export function QuestionImportModal({ open, bank, existingQuestions = [], onClos
                   <th style={{ width: 110 }}>Type</th>
                   <th style={{ width: 80 }}>Options</th>
                   <th style={{ width: 100 }}>Correct</th>
+                  <th style={{ width: 110 }}>Media</th>
                   <th style={{ width: 130 }}>Status</th>
                   <th>Errors</th>
                 </tr>
@@ -698,6 +788,7 @@ export function QuestionImportModal({ open, bank, existingQuestions = [], onClos
                     <td>{row.data.questionType || '--'}</td>
                     <td>{row.data.options?.length || 0}</td>
                     <td>{row.data.correctAnswer || '--'}</td>
+                    <td>{(row.data.imageFiles?.length || 0) + (row.data.audioFiles?.length || 0) ? String(row.data.imageFiles?.length || 0) + ' img / ' + String(row.data.audioFiles?.length || 0) + ' audio' : '--'}</td>
                     <td><StatusBadge row={row} /></td>
                     <td>
                       {row.errors?.length ? (
