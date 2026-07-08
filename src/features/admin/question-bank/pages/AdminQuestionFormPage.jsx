@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { FileAudio, Image as ImageIcon, ImagePlus, Loader2, Plus, Trash2, X } from "lucide-react";
-import { Button, FormField, useToast } from "@/shared/components/ui";
+import { Button, FormField, Modal, useToast } from "@/shared/components/ui";
 import { courseService, getCurrentUser, questionBankService } from "@/services";
 import { isEmptyQuestionHtml, sanitizeQuestionHtml } from "@/shared/utils/htmlSanitizer";
 import { QuestionMediaManager } from "../components/QuestionMediaManager";
@@ -163,8 +163,16 @@ function validate(values) {
   return null;
 }
 
-export function AdminQuestionFormPage() {
-  const { bankId, questionId } = useParams();
+export function AdminQuestionForm({
+  bankId: bankIdProp,
+  questionId: questionIdProp,
+  onCancel,
+  onSaved,
+  framed = true,
+}) {
+  const params = useParams();
+  const bankId = bankIdProp ?? params.bankId;
+  const questionId = questionIdProp ?? params.questionId;
   const navigate = useNavigate();
   const toast = useToast();
   const writable = canWriteQuestionBank();
@@ -256,6 +264,17 @@ export function AdminQuestionFormPage() {
     () => bank?.bankId || bank?.id || bankId,
     [bank, bankId],
   );
+
+  const renderFrame = (content) =>
+    framed ? <div className="admin-page">{content}</div> : content;
+
+  function handleCancel() {
+    if (onCancel) {
+      onCancel();
+      return;
+    }
+    navigate(`/admin/question-banks/${returnBankId}`);
+  }
 
   function setType(nextType) {
     setValues((current) => ({
@@ -523,11 +542,19 @@ export function AdminQuestionFormPage() {
         toast.error(
           `${editing ? "Question updated" : "Question created"}, but media update failed. Open the question and retry.`,
         );
-        navigate(`/admin/question-banks/${returnBankId}`);
+        if (onSaved) {
+          onSaved({ question: savedQuestion, bankId: returnBankId });
+        } else {
+          navigate(`/admin/question-banks/${returnBankId}`);
+        }
         return;
       }
       toast.success(editing ? "Question updated" : "Question created");
-      navigate(`/admin/question-banks/${returnBankId}`);
+      if (onSaved) {
+        onSaved({ question: savedQuestion, bankId: returnBankId });
+      } else {
+        navigate(`/admin/question-banks/${returnBankId}`);
+      }
     } catch (err) {
       setError(err?.message || "Could not save question.");
     } finally {
@@ -558,9 +585,10 @@ export function AdminQuestionFormPage() {
       </div>
     );
 
-  return (
-    <div className="admin-page">
-      <header className="admin-page__header">
+  return renderFrame(
+    <>
+      {framed && (
+        <header className="admin-page__header">
         <div>
           <Link
             to={
@@ -580,9 +608,10 @@ export function AdminQuestionFormPage() {
             true/false.
           </p>
         </div>
-      </header>
+        </header>
+      )}
 
-      <section className="admin-card">
+      <section className={framed ? "admin-card" : "question-authoring-modal-body"}>
         {error && (
           <div className="auth-card__alert" style={{ marginBottom: 16 }}>
             {error}
@@ -861,7 +890,7 @@ export function AdminQuestionFormPage() {
             <Button
               type="button"
               variant="ghost"
-              onClick={() => navigate(`/admin/question-banks/${returnBankId}`)}
+              onClick={handleCancel}
               disabled={submitting}
             >
               Cancel
@@ -872,8 +901,40 @@ export function AdminQuestionFormPage() {
           </div>
         </form>
       </section>
-    </div>
+    </>,
   );
+}
+
+export function AdminQuestionFormModal({
+  open,
+  bankId,
+  questionId,
+  onClose,
+  onSaved,
+}) {
+  const editing = Boolean(questionId);
+
+  return (
+    <Modal
+      open={open}
+      title={editing ? "Edit question" : "Create question"}
+      size="xl"
+      closeOnOverlayClick={false}
+      onClose={onClose}
+    >
+      <AdminQuestionForm
+        bankId={bankId}
+        questionId={questionId}
+        framed={false}
+        onCancel={onClose}
+        onSaved={onSaved}
+      />
+    </Modal>
+  );
+}
+
+export function AdminQuestionFormPage() {
+  return <AdminQuestionForm />;
 }
 
 

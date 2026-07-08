@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import {
   Archive,
   CheckCircle2,
@@ -14,6 +14,7 @@ import { courseService, getCurrentUser, questionBankService } from "@/services";
 import "../../admin-shared.css";
 import "./question-bank.css";
 import { QuestionImportModal } from "../components/QuestionImportModal";
+import { AdminQuestionFormModal } from "./AdminQuestionFormPage";
 
 const PAGE_SIZE = 20;
 
@@ -77,7 +78,6 @@ function normalizeQuestionMedia(question) {
 
 export function AdminQuestionBankDetailPage() {
   const { bankId } = useParams();
-  const navigate = useNavigate();
   const toast = useToast();
   const writable = canWriteQuestionBank();
   const [bank, setBank] = useState(null);
@@ -99,6 +99,7 @@ export function AdminQuestionBankDetailPage() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [archivingId, setArchivingId] = useState(null);
   const [importOpen, setImportOpen] = useState(false);
+  const [questionFormModal, setQuestionFormModal] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
 
   useEffect(() => {
@@ -164,6 +165,23 @@ export function AdminQuestionBankDetailPage() {
     [modules],
   );
 
+  function openCreateQuestionModal() {
+    setQuestionFormModal({ questionId: null });
+  }
+
+  function openEditQuestionModal(questionId) {
+    setQuestionFormModal({ questionId });
+  }
+
+  function closeQuestionFormModal() {
+    setQuestionFormModal(null);
+  }
+
+  function handleQuestionSaved() {
+    closeQuestionFormModal();
+    setRefreshKey((key) => key + 1);
+  }
+
   async function handleArchive(question) {
     if (!writable || !question?.questionId) return;
     const confirmed = window.confirm("Archive this question?");
@@ -206,7 +224,7 @@ export function AdminQuestionBankDetailPage() {
             >
               Import
             </Button>
-            <Button leftIcon={<Plus size={16} />} onClick={() => navigate(`/admin/question-banks/${bankId}/questions/new`)}>
+            <Button leftIcon={<Plus size={16} />} onClick={openCreateQuestionModal}>
               Create question
             </Button>
           </div>
@@ -359,7 +377,7 @@ export function AdminQuestionBankDetailPage() {
                           type="button"
                           className="admin-table__icon-btn"
                           title="Edit"
-                          onClick={() => navigate(`/admin/questions/${questionId}/edit`)}
+                          onClick={() => openEditQuestionModal(questionId)}
                         >
                           <Edit2 size={15} />
                         </button>
@@ -489,6 +507,13 @@ export function AdminQuestionBankDetailPage() {
         )}
       </section>
 
+      <AdminQuestionFormModal
+        open={Boolean(questionFormModal)}
+        bankId={bankId}
+        questionId={questionFormModal?.questionId}
+        onClose={closeQuestionFormModal}
+        onSaved={handleQuestionSaved}
+      />
       <QuestionImportModal
         open={importOpen}
         bank={bank}
