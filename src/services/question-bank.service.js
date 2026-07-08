@@ -137,10 +137,11 @@ export const questionBankService = {
     return unwrap(response)
   },
 
-  async importQuestionsBatch(bankId, rows) {
+  async importQuestionsBatch(bankId, rows, importSource = 'excel_import') {
     const response = await apiClient.post('/admin/questions/import-batch', {
       bankId,
       rows,
+      importSource,
     })
     return unwrap(response)
   },
@@ -156,7 +157,21 @@ export const questionBankService = {
     return unwrap(response)
   },
 
-  async confirmImageImport(bankId, questions) {
+  async confirmImageImport(bankId, questions, sourceImages = []) {
+    const hasSourceMappings = questions.some((question) => (
+      Array.isArray(question.sourceImageIndexes) && question.sourceImageIndexes.length > 0
+    ))
+    if (hasSourceMappings) {
+      const formData = new FormData()
+      formData.append('request', new Blob([JSON.stringify({ bankId, questions })], { type: 'application/json' }))
+      sourceImages.forEach((file) => formData.append('sourceImages', file))
+      const response = await apiClient.post('/admin/question-imports/image/confirm', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        timeout: 90000,
+      })
+      return unwrap(response)
+    }
+
     const response = await apiClient.post('/admin/question-imports/image/confirm', {
       bankId,
       questions,

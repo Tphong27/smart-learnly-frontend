@@ -14,6 +14,8 @@ export const IMPORT_COLUMNS = [
   { key: 'difficulty', label: 'Difficulty', required: false },
   { key: 'bloom_level', label: 'Bloom level', required: false },
   { key: 'module_id', label: 'Module ID', required: false },
+  { key: 'image_files', label: 'Image URLs', required: false },
+  { key: 'audio_files', label: 'Audio URLs', required: false },
 ]
 
 export const ALLOWED_TYPES = ['multiple_choice', 'true_false']
@@ -38,6 +40,10 @@ export const SAMPLE_QUESTION_BANK_JSON = JSON.stringify(
       difficulty: 1,
       bloomLevel: 'remember',
       moduleId: null,
+      media: {
+        images: ['https://example.com/question-diagram.png'],
+        audios: [],
+      },
     },
     {
       question_text: 'Java is a programming language.',
@@ -48,6 +54,10 @@ export const SAMPLE_QUESTION_BANK_JSON = JSON.stringify(
       difficulty: 'easy',
       bloom_level: 'understand',
       module_id: null,
+      media: {
+        images: [],
+        audios: ['https://example.com/listening.mp3'],
+      },
     },
   ],
   null,
@@ -70,6 +80,8 @@ const HEADER_ALIASES = {
   difficulty: ['difficulty', 'level'],
   bloom_level: ['bloom_level', 'bloom level', 'bloom'],
   module_id: ['module_id', 'module id', 'module'],
+  image_files: ['image_files', 'image files', 'image_urls', 'image urls', 'images'],
+  audio_files: ['audio_files', 'audio files', 'audio_urls', 'audio urls', 'audios'],
 }
 
 const DIFFICULTY_ALIASES = {
@@ -131,6 +143,43 @@ function getAliasedValue(source, camelKey, snakeKey) {
   return ''
 }
 
+function parseMediaUrls(value) {
+  if (Array.isArray(value)) {
+    return value.map((item) => String(item ?? '').trim()).filter(Boolean)
+  }
+  return String(value ?? '')
+    .split(';')
+    .map((item) => item.trim())
+    .filter(Boolean)
+}
+
+function collectMediaErrors(urls, label, maxCount) {
+  const errors = []
+  if (urls.length > maxCount) {
+    errors.push(label + ' supports up to ' + maxCount + ' URL' + (maxCount === 1 ? '' : 's'))
+  }
+  for (const url of urls) {
+    try {
+      const parsed = new URL(url)
+      if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+        errors.push(label + ' URL must use http or https')
+      }
+    } catch {
+      errors.push(label + ' URL is invalid')
+    }
+  }
+  return errors
+}
+
+function getJsonMediaArray(rawQuestion, mediaKey, aliasKey) {
+  const media = rawQuestion.media && typeof rawQuestion.media === 'object' && !Array.isArray(rawQuestion.media)
+    ? rawQuestion.media
+    : {}
+  if (Array.isArray(media[mediaKey])) return media[mediaKey]
+  if (Array.isArray(rawQuestion[aliasKey])) return rawQuestion[aliasKey]
+  return []
+}
+
 function normalizeJsonQuestion(rawQuestion) {
   const errors = []
   if (!rawQuestion || typeof rawQuestion !== 'object' || Array.isArray(rawQuestion)) {
@@ -160,6 +209,8 @@ function normalizeJsonQuestion(rawQuestion) {
     difficulty: String(rawQuestion.difficulty ?? '').trim(),
     bloom_level: String(getAliasedValue(rawQuestion, 'bloomLevel', 'bloom_level') ?? '').trim(),
     module_id: String(getAliasedValue(rawQuestion, 'moduleId', 'module_id') ?? '').trim(),
+    image_files: getJsonMediaArray(rawQuestion, 'images', 'imageFiles'),
+    audio_files: getJsonMediaArray(rawQuestion, 'audios', 'audioFiles'),
   }
 
   options.slice(0, 6).forEach((option, index) => {
@@ -303,6 +354,11 @@ function collectRowErrors(row, rowNumber, existingTexts) {
     errors.push('Explanation must not exceed 10000 characters')
   }
 
+  const imageFiles = parseMediaUrls(row.image_files)
+  const audioFiles = parseMediaUrls(row.audio_files)
+  errors.push(...collectMediaErrors(imageFiles, 'Image media', 5))
+  errors.push(...collectMediaErrors(audioFiles, 'Audio media', 3))
+
   if (questionText) {
     const lowered = questionText.toLowerCase()
     if (existingTexts.has(lowered)) {
@@ -311,7 +367,7 @@ function collectRowErrors(row, rowNumber, existingTexts) {
     existingTexts.add(lowered)
   }
 
-  return { errors, resolvedType, questionText, options, correctRaw }
+  return { errors, resolvedType, questionText, options, correctRaw, imageFiles, audioFiles }
 }
 
 export async function parseImportFile(file) {
@@ -332,7 +388,7 @@ export async function parseImportFile(file) {
     if (Array.isArray(rawRow) && rawRow.every((cell) => cell === '' || cell == null)) return
     const rowNumber = index + 2
     const mapped = mapRow(rawRow, columnMap)
-    const { errors, resolvedType, questionText, options, correctRaw } = collectRowErrors(mapped, rowNumber, seenTexts)
+    const { errors, resolvedType, questionText, options, correctRaw, imageFiles, audioFiles } = collectRowErrors(mapped, rowNumber, seenTexts)
     parsed.push({
       rowNumber,
       data: {
@@ -344,6 +400,8 @@ export async function parseImportFile(file) {
         difficulty: resolveDifficulty(mapped.difficulty),
         bloomLevel: mapped.bloom_level ? mapped.bloom_level.trim().toLowerCase().replace(/-/g, '_') : null,
         moduleId: mapped.module_id || null,
+        imageFiles,
+        audioFiles,
       },
       raw: mapped,
       errors,
@@ -372,7 +430,7 @@ export function parseImportJson(jsonText) {
   const rows = data.map((rawQuestion, index) => {
     const rowNumber = index + 1
     const { mapped, errors: shapeErrors } = normalizeJsonQuestion(rawQuestion)
-    const { errors, resolvedType, questionText, options, correctRaw } = collectRowErrors(mapped, rowNumber, seenTexts)
+    const { errors, resolvedType, questionText, options, correctRaw, imageFiles, audioFiles } = collectRowErrors(mapped, rowNumber, seenTexts)
     return {
       rowNumber,
       data: {
@@ -384,6 +442,8 @@ export function parseImportJson(jsonText) {
         difficulty: resolveDifficulty(mapped.difficulty),
         bloomLevel: mapped.bloom_level ? mapped.bloom_level.trim().toLowerCase().replace(/-/g, '_') : null,
         moduleId: mapped.module_id || null,
+        imageFiles,
+        audioFiles,
       },
       raw: mapped,
       errors: [...shapeErrors, ...errors],
@@ -421,6 +481,8 @@ export function buildImportPayload(bankId, validRows) {
       difficulty: row.data.difficulty,
       bloomLevel: row.data.bloomLevel || null,
       moduleId: row.data.moduleId || null,
+      imageFiles: row.data.imageFiles || [],
+      audioFiles: row.data.audioFiles || [],
     })),
   }
 }
@@ -441,6 +503,8 @@ export function downloadTemplate() {
       difficulty: '1',
       bloom_level: 'remember',
       module_id: '',
+      image_files: 'https://example.com/question-diagram.png',
+      audio_files: '',
     },
     {
       question_text: 'Java is a programming language.',
@@ -456,6 +520,8 @@ export function downloadTemplate() {
       difficulty: '2',
       bloom_level: 'understand',
       module_id: '',
+      image_files: '',
+      audio_files: 'https://example.com/listening.mp3',
     },
   ]
 
