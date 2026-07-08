@@ -50,6 +50,7 @@ export function FlashcardLessonEditor({
   const [bulkDeletePending, setBulkDeletePending] = useState(false);
   const [bulkDeleting, setBulkDeleting] = useState(false);
   const [importModalOpen, setImportModalOpen] = useState(false);
+  const [stagingRefreshKey, setStagingRefreshKey] = useState(0);
   const [activeEditorTab, setActiveEditorTab] = useState("current");
   const [error, setError] = useState(null);
 
@@ -288,10 +289,29 @@ export function FlashcardLessonEditor({
     return uploaded?.url || uploaded?.data?.url || uploaded;
   };
 
-  const handleCardsImported = async () => {
+  const refreshCurrentFlashcards = useCallback(async () => {
     await loadSet();
+  }, [loadSet]);
+
+  const refreshStagingReview = useCallback(() => {
+    setStagingRefreshKey((current) => current + 1);
+  }, []);
+
+  const handleCardsImported = async () => {
+    await refreshCurrentFlashcards();
     setActiveEditorTab("current");
   };
+
+  const handleStagingImportCreated = useCallback(
+    (batch) => {
+      refreshStagingReview();
+      if (!batch?.id) {
+        notify("Staging batch was created, but the response did not include a batch id.", "error");
+        setActiveEditorTab("review");
+      }
+    },
+    [notify, refreshStagingReview],
+  );
 
   const handleEditCard = (card) => {
     setActivePreviewCardId(card?.id || null);
@@ -558,9 +578,11 @@ export function FlashcardLessonEditor({
       ) : (
         <FlashcardStagingWorkspace
           setId={flashcardSet?.id}
+          existingCards={orderedCards}
           notify={notify}
           onUploadImage={handleUploadImage}
-          onApproved={loadSet}
+          onApproved={refreshCurrentFlashcards}
+          refreshKey={stagingRefreshKey}
         />
       )}
       {importModalOpen && flashcardSet?.id && (
@@ -569,8 +591,10 @@ export function FlashcardLessonEditor({
           existingCards={orderedCards}
           notify={notify}
           onClose={() => setImportModalOpen(false)}
-          onStagingChanged={() => setActiveEditorTab("review")}
+          onStagingChanged={handleStagingImportCreated}
           onCardsImported={handleCardsImported}
+          onApproved={refreshCurrentFlashcards}
+          onUploadImage={handleUploadImage}
         />
       )}
       {cardPendingDelete && (

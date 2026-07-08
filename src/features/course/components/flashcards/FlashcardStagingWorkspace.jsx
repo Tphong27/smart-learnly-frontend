@@ -36,6 +36,9 @@ const STATUS_PRIORITY = {
   rejected: 2,
 };
 const SOURCE_QUESTION_PAGE_SIZE = 10;
+const STAGING_REVIEW_PAGE_SIZE = 50;
+const DOCUMENT_MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024;
+const DOCUMENT_MAX_FILE_SIZE_MESSAGE = "Uploaded file must not exceed 10 MB";
 const FRONT_BACK_SEPARATOR_OPTIONS = [
   { value: "tab", label: "Tab" },
   { value: "comma", label: "Comma" },
@@ -140,6 +143,63 @@ function splitPastedCards(text, separator) {
 
 function normalizeFlashcardSignature(frontText, backText) {
   return `${String(frontText || "").trim().replace(/\s+/g, " ").toLowerCase()}\n${String(backText || "").trim().replace(/\s+/g, " ").toLowerCase()}`;
+}
+
+function getFlashcardSignature(card) {
+  const signature = normalizeFlashcardSignature(
+    card?.frontText,
+    card?.backText,
+  );
+  return signature.trim() ? signature : "";
+}
+
+function buildDuplicateInfoByCardId(batches, existingCards = []) {
+  const existingSignatures = new Set(
+    existingCards.map(getFlashcardSignature).filter(Boolean),
+  );
+  const duplicateInfoByCardId = {};
+
+  (Array.isArray(batches) ? batches : []).forEach((batch) => {
+    const cards = getBatchCards(batch);
+    const batchSignatureCounts = new Map();
+
+    cards
+      .filter((card) => normalizeStatus(card.status) !== "rejected")
+      .forEach((card) => {
+        const signature = getFlashcardSignature(card);
+        if (!signature) return;
+        batchSignatureCounts.set(
+          signature,
+          (batchSignatureCounts.get(signature) || 0) + 1,
+        );
+      });
+
+    cards.filter(isDraftCard).forEach((card) => {
+      const signature = getFlashcardSignature(card);
+      if (!signature) return;
+
+      const reasons = [];
+      if (existingSignatures.has(signature)) {
+        reasons.push("Matches Current Flashcards");
+      }
+      if ((batchSignatureCounts.get(signature) || 0) > 1) {
+        reasons.push("Duplicate in this batch");
+      }
+      if (reasons.length > 0) {
+        duplicateInfoByCardId[card.id] = reasons;
+      }
+    });
+  });
+
+  return duplicateInfoByCardId;
+}
+
+function getDuplicateReasons(duplicateInfoByCardId, cardId) {
+  return duplicateInfoByCardId?.[cardId] || [];
+}
+
+function isDraftCard(card) {
+  return normalizeStatus(card?.status) === "draft";
 }
 
 function parsePastedFlashcards(values) {
@@ -447,7 +507,7 @@ function QuestionBankImportPanel({ setId, notify, onStagingChanged }) {
         "success",
       );
       await loadQuestions();
-      onStagingChanged?.();
+      onStagingChanged?.(response);
     } catch (importError) {
       notify(
         getErrorMessage(importError, "Failed to import selected questions."),
@@ -997,14 +1057,31 @@ function PastedTextImportPanel({
 
 function DocumentGenerationPanel({ setId, notify, onStagingChanged }) {
   const [file, setFile] = useState(null);
+  const [fileError, setFileError] = useState(null);
+  const [uploadError, setUploadError] = useState(null);
   const [fileInputRevision, setFileInputRevision] = useState(0);
   const [settings, setSettings] = useState(DEFAULT_GENERATION);
   const [submitting, setSubmitting] = useState(false);
+
+  function handleFileChange(event) {
+    const nextFile = event.target.files?.[0] || null;
+    setFile(nextFile);
+    setFileError(null);
+    setUploadError(null);
+    if (nextFile && nextFile.size > DOCUMENT_MAX_FILE_SIZE_BYTES) {
+      setFileError(DOCUMENT_MAX_FILE_SIZE_MESSAGE);
+    }
+  }
 
   async function handleSubmit(event) {
     event.preventDefault();
     if (!file) {
       notify("Choose a file.", "error");
+      return;
+    }
+    if (file.size > DOCUMENT_MAX_FILE_SIZE_BYTES) {
+      setFileError(DOCUMENT_MAX_FILE_SIZE_MESSAGE);
+      notify(DOCUMENT_MAX_FILE_SIZE_MESSAGE, "error");
       return;
     }
     const settingsError = validateGenerationSettings(settings);
@@ -1013,6 +1090,7 @@ function DocumentGenerationPanel({ setId, notify, onStagingChanged }) {
       return;
     }
     const generationPayload = getGenerationPayload(settings);
+    setUploadError(null);
     setSubmitting(true);
     try {
       const response = normalizeResponse(
@@ -1030,13 +1108,14 @@ function DocumentGenerationPanel({ setId, notify, onStagingChanged }) {
         "success",
       );
       setFile(null);
+      setFileError(null);
+      setUploadError(null);
       setFileInputRevision((revision) => revision + 1);
-      onStagingChanged?.();
+      onStagingChanged?.(response);
     } catch (error) {
-      notify(
-        getErrorMessage(error, "Failed to generate from document."),
-        "error",
-      );
+      const message = getErrorMessage(error, "Failed to generate from document.");
+      setUploadError(message);
+      notify(message, "error");
     } finally {
       setSubmitting(false);
     }
@@ -1060,9 +1139,10 @@ function DocumentGenerationPanel({ setId, notify, onStagingChanged }) {
             id="staging-document-file"
             type="file"
             accept=".docx,.pdf"
-            onChange={(event) => setFile(event.target.files?.[0] || null)}
+            onChange={handleFileChange}
           />
         </label>
+        <InlineAlert>{fileError || uploadError}</InlineAlert>
         <GenerationSettings
           values={settings}
           onChange={setSettings}
@@ -1073,7 +1153,7 @@ function DocumentGenerationPanel({ setId, notify, onStagingChanged }) {
           <button
             type="submit"
             className="flashcard-btn flashcard-btn--primary"
-            disabled={submitting}
+            disabled={submitting || Boolean(fileError)}
           >
             <Upload size={16} />
             {submitting ? "Creating" : "Create from document"}
@@ -1091,12 +1171,21 @@ export function ImportFlashcardsModal({
   onClose,
   onStagingChanged,
   onCardsImported,
+  onApproved,
+  onUploadImage,
 }) {
   const [activeImportTab, setActiveImportTab] = useState("pasted");
+  const [reviewBatch, setReviewBatch] = useState(null);
 
-  function handleStagingImportComplete() {
-    onClose?.();
-    onStagingChanged?.();
+  function handleStagingImportComplete(batch) {
+    if (batch?.id) {
+      setReviewBatch(batch);
+    }
+    onStagingChanged?.(batch);
+  }
+
+  function handleBackToImport() {
+    setReviewBatch(null);
   }
 
   return (
@@ -1109,88 +1198,122 @@ export function ImportFlashcardsModal({
       >
         <div className="flashcard-import-modal__header">
           <div>
-            <h3 id="flashcard-import-modal-title">Import flashcards</h3>
-            <p>Choose a source and review the result before importing.</p>
+            <h3 id="flashcard-import-modal-title">
+              {reviewBatch ? "Review imported flashcards" : "Import flashcards"}
+            </h3>
+            <p>
+              {reviewBatch
+                ? "Review the staging cards created by this import batch."
+                : "Choose a source and review the result before importing."}
+            </p>
           </div>
-          <button type="button" className="flashcard-btn" onClick={onClose}>
-            Close
-          </button>
+          <div className="flashcard-import-modal__header-actions">
+            {reviewBatch && (
+              <button
+                type="button"
+                className="flashcard-btn"
+                onClick={handleBackToImport}
+              >
+                Back to import
+              </button>
+            )}
+            <button type="button" className="flashcard-btn" onClick={onClose}>
+              Close
+            </button>
+          </div>
         </div>
 
-        <div
-          className="flashcard-tabs flashcard-import-modal__tabs"
-          role="tablist"
-          aria-label="Flashcard import sources"
-        >
-          <button
-            type="button"
-            role="tab"
-            aria-selected={activeImportTab === "pasted"}
-            className={
-              activeImportTab === "pasted"
-                ? "flashcard-tabs__tab is-active"
-                : "flashcard-tabs__tab"
-            }
-            onClick={() => setActiveImportTab("pasted")}
+        {!reviewBatch && (
+          <div
+            className="flashcard-tabs flashcard-import-modal__tabs"
+            role="tablist"
+            aria-label="Flashcard import sources"
           >
-            Pasted Text
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={activeImportTab === "document"}
-            className={
-              activeImportTab === "document"
-                ? "flashcard-tabs__tab is-active"
-                : "flashcard-tabs__tab"
-            }
-            onClick={() => setActiveImportTab("document")}
-          >
-            Document
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={activeImportTab === "question-bank"}
-            className={
-              activeImportTab === "question-bank"
-                ? "flashcard-tabs__tab is-active"
-                : "flashcard-tabs__tab"
-            }
-            onClick={() => setActiveImportTab("question-bank")}
-          >
-            Question Bank
-          </button>
-        </div>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activeImportTab === "pasted"}
+              className={
+                activeImportTab === "pasted"
+                  ? "flashcard-tabs__tab is-active"
+                  : "flashcard-tabs__tab"
+              }
+              onClick={() => setActiveImportTab("pasted")}
+            >
+              Pasted Text
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activeImportTab === "document"}
+              className={
+                activeImportTab === "document"
+                  ? "flashcard-tabs__tab is-active"
+                  : "flashcard-tabs__tab"
+              }
+              onClick={() => setActiveImportTab("document")}
+            >
+              Document
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activeImportTab === "question-bank"}
+              className={
+                activeImportTab === "question-bank"
+                  ? "flashcard-tabs__tab is-active"
+                  : "flashcard-tabs__tab"
+              }
+              onClick={() => setActiveImportTab("question-bank")}
+            >
+              Question Bank
+            </button>
+          </div>
+        )}
 
         <div className="flashcard-import-modal__content">
-          {activeImportTab === "pasted" && (
-            <section className="flashcard-panel">
-              <div className="flashcard-panel__header">
-                <h3 className="flashcard-panel__title">Pasted Text</h3>
-              </div>
-              <PastedTextImportPanel
-                setId={setId}
-                existingCards={existingCards}
-                notify={notify}
-                onClose={onClose}
-                onCardsImported={onCardsImported}
-              />
-            </section>
-          )}
-          {activeImportTab === "document" && (
-            <DocumentGenerationPanel
+          {reviewBatch ? (
+            <ImportedBatchReviewPanel
+              key={reviewBatch.id}
               setId={setId}
+              initialBatch={reviewBatch}
+              existingCards={existingCards}
               notify={notify}
-              onStagingChanged={handleStagingImportComplete}
+              onStagingChanged={onStagingChanged}
+              onApproved={onApproved}
+              onUploadImage={onUploadImage}
             />
-          )}
-          {activeImportTab === "question-bank" && (
-            <QuestionBankImportPanel
-              setId={setId}
-              notify={notify}
-              onStagingChanged={handleStagingImportComplete}
-            />
+          ) : (
+            <>
+              {activeImportTab === "pasted" && (
+                <section className="flashcard-panel">
+                  <div className="flashcard-panel__header">
+                    <h3 className="flashcard-panel__title">Pasted Text</h3>
+                  </div>
+                  <PastedTextImportPanel
+                    setId={setId}
+                    existingCards={existingCards}
+                    notify={notify}
+                    onClose={onClose}
+                    onCardsImported={onCardsImported}
+                  />
+                </section>
+              )}
+              {activeImportTab === "document" && (
+                <DocumentGenerationPanel
+                  setId={setId}
+                  notify={notify}
+                  onStagingChanged={handleStagingImportComplete}
+                />
+              )}
+              {activeImportTab === "question-bank" && (
+                <QuestionBankImportPanel
+                  setId={setId}
+                  notify={notify}
+                  onStagingChanged={handleStagingImportComplete}
+                />
+              )}
+            </>
           )}
         </div>
       </div>
@@ -1417,8 +1540,180 @@ function EditStagingCardModal({
   );
 }
 
+function StagingCardArticle({
+  card,
+  selected,
+  selectable,
+  duplicateReasons = [],
+  savingEdit,
+  onToggle,
+  onEdit,
+}) {
+  const status = normalizeStatus(card?.status);
+  const isDraft = status === "draft";
+  const isDuplicate = duplicateReasons.length > 0;
+
+  function handleCardClick(event) {
+    if (!selectable || shouldIgnoreSelectionClick(event)) return;
+    onToggle?.(card.id);
+  }
+
+  return (
+    <article
+      className={[
+        "flashcard-staging-card",
+        `flashcard-staging-card--${status}`,
+        selectable ? "flashcard-staging-card--selectable" : "",
+        selected ? "is-selected" : "",
+        isDuplicate ? "flashcard-staging-card--duplicate" : "",
+      ]
+        .filter(Boolean)
+        .join(" ")}
+      key={card.id}
+      onClick={handleCardClick}
+      aria-selected={selected}
+    >
+      <div className="flashcard-staging-card__select">
+        <input
+          type="checkbox"
+          checked={selected}
+          onChange={() => onToggle?.(card.id)}
+          disabled={!selectable}
+          aria-label="Select staging card"
+        />
+      </div>
+      <div className="flashcard-staging-card__content">
+        <div className="flashcard-staging-card__sides">
+          <div>
+            <span>Front</span>
+            <p>{card.frontText || card.frontImageUrl || "--"}</p>
+          </div>
+          <div>
+            <span>Back</span>
+            <p>{card.backText || card.backImageUrl || "--"}</p>
+          </div>
+        </div>
+        {(card.hint || card.explanation || card.sourceExcerpt || isDuplicate) && (
+          <div className="flashcard-staging-card__meta">
+            {card.hint && <p><strong>Hint:</strong> {card.hint}</p>}
+            {card.explanation && (
+              <p><strong>Explanation:</strong> {card.explanation}</p>
+            )}
+            {card.sourceExcerpt && (
+              <p><strong>Source:</strong> {card.sourceExcerpt}</p>
+            )}
+            {isDuplicate && (
+              <p className="flashcard-staging-card__duplicate">
+                <strong>Duplicate:</strong> {duplicateReasons.join("; ")}
+              </p>
+            )}
+          </div>
+        )}
+      </div>
+      <div className="flashcard-staging-card__actions">
+        {(card.frontImageUrl || card.backImageUrl) && (
+          <div
+            className="flashcard-staging-card__image-badges"
+            aria-label="Image attachments"
+          >
+            {card.frontImageUrl && (
+              <span className="flashcard-staging__image-badge">
+                <ImageIcon size={12} />
+                Front image
+              </span>
+            )}
+            {card.backImageUrl && (
+              <span className="flashcard-staging__image-badge">
+                <ImageIcon size={12} />
+                Back image
+              </span>
+            )}
+          </div>
+        )}
+        {isDuplicate && (
+          <span className="flashcard-staging__badge flashcard-staging__badge--duplicate">
+            Duplicate
+          </span>
+        )}
+        <span className={`flashcard-staging__badge flashcard-staging__badge--${status}`}>
+          {formatLabel(card.status)}
+        </span>
+        <button
+          type="button"
+          className="flashcard-btn"
+          title="Edit staging card"
+          onClick={() => onEdit?.(card)}
+          disabled={!isDraft || savingEdit}
+        >
+          <Edit3 size={15} />
+          Edit
+        </button>
+      </div>
+    </article>
+  );
+}
+
+function StagingBatchCardGroup({
+  batch,
+  cards,
+  selectedIds,
+  draftIds,
+  eligibleDraftIds,
+  duplicateInfoByCardId,
+  savingEdit,
+  onToggleCard,
+  onToggleBatch,
+  onEdit,
+}) {
+  const eligibleCards = cards.filter((card) => eligibleDraftIds.has(card.id));
+  const allEligibleSelected =
+    eligibleCards.length > 0 &&
+    eligibleCards.every((card) => selectedIds.includes(card.id));
+
+  return (
+    <article className="flashcard-staging-batch" key={batch.id}>
+      <div className="flashcard-staging-batch__header">
+        <div>
+          <h4>
+            {formatLabel(batch.sourceType, "Staging Batch")}
+            {batch.sourceName ? ` - ${batch.sourceName}` : ""}
+          </h4>
+          <p>
+            {formatLabel(batch.status)} - {cards.length} card
+            {cards.length === 1 ? "" : "s"}
+          </p>
+        </div>
+        <label className="flashcard-staging__select-all">
+          <input
+            type="checkbox"
+            checked={allEligibleSelected}
+            onChange={() => onToggleBatch(batch, cards)}
+            disabled={eligibleCards.length === 0}
+          />
+          Select eligible draft cards
+        </label>
+      </div>
+      <div className="flashcard-staging-card-list">
+        {cards.map((card) => (
+          <StagingCardArticle
+            key={card.id}
+            card={card}
+            selected={selectedIds.includes(card.id)}
+            selectable={draftIds.has(card.id)}
+            duplicateReasons={getDuplicateReasons(duplicateInfoByCardId, card.id)}
+            savingEdit={savingEdit}
+            onToggle={onToggleCard}
+            onEdit={onEdit}
+          />
+        ))}
+      </div>
+    </article>
+  );
+}
+
 function StagingReviewPanel({
   setId,
+  existingCards = [],
   notify,
   refreshKey,
   onApproved,
@@ -1426,9 +1721,9 @@ function StagingReviewPanel({
 }) {
   const [batches, setBatches] = useState([]);
   const [selectedIds, setSelectedIds] = useState([]);
+  const [page, setPage] = useState(0);
   const [loading, setLoading] = useState(false);
   const [approving, setApproving] = useState(false);
-  const [rejectingId, setRejectingId] = useState(null);
   const [rejectingSelected, setRejectingSelected] = useState(false);
   const [rejectConfirm, setRejectConfirm] = useState(null);
   const [editingCard, setEditingCard] = useState(null);
@@ -1470,6 +1765,40 @@ function StagingReviewPanel({
   }, [loadStaging, refreshKey]);
 
   const draftCount = useMemo(() => draftCardCount(batches), [batches]);
+  const duplicateInfoByCardId = useMemo(
+    () => buildDuplicateInfoByCardId(batches, existingCards),
+    [batches, existingCards],
+  );
+  const flatStagingCards = useMemo(
+    () =>
+      batches.flatMap((batch) =>
+        getBatchCards(batch).map((card) => ({ batch, card })),
+      ),
+    [batches],
+  );
+  const totalPages = Math.max(
+    1,
+    Math.ceil(flatStagingCards.length / STAGING_REVIEW_PAGE_SIZE),
+  );
+  const safePage = Math.min(page, totalPages - 1);
+  const pageRows = useMemo(
+    () =>
+      flatStagingCards.slice(
+        safePage * STAGING_REVIEW_PAGE_SIZE,
+        safePage * STAGING_REVIEW_PAGE_SIZE + STAGING_REVIEW_PAGE_SIZE,
+      ),
+    [flatStagingCards, safePage],
+  );
+  const pageBatches = useMemo(() => {
+    const grouped = new Map();
+    pageRows.forEach(({ batch, card }) => {
+      if (!grouped.has(batch.id)) {
+        grouped.set(batch.id, { ...batch, cards: [] });
+      }
+      grouped.get(batch.id).cards.push(card);
+    });
+    return Array.from(grouped.values());
+  }, [pageRows]);
   const draftIds = useMemo(
     () =>
       new Set(
@@ -1481,9 +1810,28 @@ function StagingReviewPanel({
       ),
     [batches],
   );
+  const eligibleDraftIds = useMemo(
+    () =>
+      new Set(
+        batches.flatMap((batch) =>
+          getBatchCards(batch)
+            .filter(
+              (card) =>
+                isDraftCard(card) &&
+                getDuplicateReasons(duplicateInfoByCardId, card.id).length === 0,
+            )
+            .map((card) => card.id),
+        ),
+      ),
+    [batches, duplicateInfoByCardId],
+  );
   const selectedDraftIds = useMemo(
     () => selectedIds.filter((id) => draftIds.has(id)),
     [draftIds, selectedIds],
+  );
+  const selectedEligibleDraftIds = useMemo(
+    () => selectedIds.filter((id) => eligibleDraftIds.has(id)),
+    [eligibleDraftIds, selectedIds],
   );
 
   function toggleCard(cardId) {
@@ -1495,42 +1843,35 @@ function StagingReviewPanel({
     );
   }
 
-  function handleCardClick(event, card) {
-    if (normalizeStatus(card?.status) !== "draft" || shouldIgnoreSelectionClick(event)) {
-      return;
-    }
-    toggleCard(card.id);
-  }
-
   function handleRefresh() {
     loadStaging({ showRefreshedToast: true });
   }
 
-  function toggleBatch(batch) {
-    const draftIds = getBatchCards(batch)
-      .filter((card) => normalizeStatus(card.status) === "draft")
+  function toggleBatch(batch, visibleCards = getBatchCards(batch)) {
+    const eligibleIds = visibleCards
+      .filter((card) => eligibleDraftIds.has(card.id))
       .map((card) => card.id);
-    const allSelected = draftIds.every((id) => selectedIds.includes(id));
+    const allSelected = eligibleIds.every((id) => selectedIds.includes(id));
     setSelectedIds((current) =>
       allSelected
-        ? current.filter((id) => !draftIds.includes(id))
-        : [...new Set([...current, ...draftIds])],
+        ? current.filter((id) => !eligibleIds.includes(id))
+        : [...new Set([...current, ...eligibleIds])],
     );
   }
 
   async function handleApprove() {
-    if (!selectedDraftIds.length) {
-      notify("Select at least one staging card before approve.", "error");
+    if (!selectedEligibleDraftIds.length) {
+      notify("Select at least one eligible staging card before approve.", "error");
       return;
     }
     setApproving(true);
     try {
       const response = normalizeResponse(
-        await flashcardService.approveStagingCards(setId, selectedDraftIds),
+        await flashcardService.approveStagingCards(setId, selectedEligibleDraftIds),
       );
       notify(
-        `Approved ${response?.approvedCount || selectedDraftIds.length} staging card${
-          selectedDraftIds.length === 1 ? "" : "s"
+        `Approved ${response?.approvedCount || selectedEligibleDraftIds.length} staging card${
+          selectedEligibleDraftIds.length === 1 ? "" : "s"
         }.`,
         "success",
       );
@@ -1547,15 +1888,6 @@ function StagingReviewPanel({
     }
   }
 
-  function handleReject(card) {
-    if (!card?.id) return;
-    setRejectConfirm({
-      mode: "single",
-      ids: [card.id],
-      message: "Reject this staging card?",
-    });
-  }
-
   function handleRejectSelected() {
     if (!selectedDraftIds.length) return;
     const count = selectedDraftIds.length;
@@ -1570,12 +1902,7 @@ function StagingReviewPanel({
     if (!rejectConfirm?.ids?.length) return;
 
     const ids = rejectConfirm.ids;
-    const isSelectedReject = rejectConfirm.mode === "selected";
-    if (isSelectedReject) {
-      setRejectingSelected(true);
-    } else {
-      setRejectingId(ids[0]);
-    }
+    setRejectingSelected(true);
 
     try {
       await Promise.all(ids.map((cardId) => flashcardService.rejectStagingCard(cardId)));
@@ -1588,18 +1915,12 @@ function StagingReviewPanel({
       notify(
         getErrorMessage(
           rejectError,
-          isSelectedReject
-            ? "Failed to reject selected staging cards."
-            : "Failed to reject staging card.",
+          "Failed to reject selected staging cards.",
         ),
         "error",
       );
     } finally {
-      if (isSelectedReject) {
-        setRejectingSelected(false);
-      } else {
-        setRejectingId(null);
-      }
+      setRejectingSelected(false);
     }
   }
 
@@ -1663,12 +1984,12 @@ function StagingReviewPanel({
               type="button"
               className="flashcard-btn flashcard-btn--success"
               onClick={handleApprove}
-              disabled={approving || loading || selectedDraftIds.length === 0}
+              disabled={approving || loading || selectedEligibleDraftIds.length === 0}
             >
               <Check size={16} />
               {approving
                 ? "Approving"
-                : `Approve selected (${selectedDraftIds.length})`}
+                : `Approve selected eligible (${selectedEligibleDraftIds.length})`}
             </button>
           </div>
         </div>
@@ -1679,148 +2000,65 @@ function StagingReviewPanel({
               <span className="flashcard-spinner" />
               Loading staging cards...
             </div>
-          ) : batches.length === 0 ? (
+          ) : batches.length === 0 || flatStagingCards.length === 0 ? (
             <div className="flashcard-empty">
               <FileText size={28} />
               <p>No staging batches yet.</p>
             </div>
           ) : (
-            <div className="flashcard-staging__batches">
-              {batches.map((batch) => {
-                const cards = getBatchCards(batch);
-                const draftCards = cards.filter(
-                  (card) => normalizeStatus(card.status) === "draft",
-                );
-                const allBatchSelected =
-                  draftCards.length > 0 &&
-                  draftCards.every((card) => selectedIds.includes(card.id));
-
-                return (
-                  <article className="flashcard-staging-batch" key={batch.id}>
-                    <div className="flashcard-staging-batch__header">
-                      <div>
-                        <h4>
-                          {formatLabel(batch.sourceType, "Staging Batch")}
-                          {batch.sourceName ? ` - ${batch.sourceName}` : ""}
-                        </h4>
-                        <p>
-                          {formatLabel(batch.status)} - {cards.length} card
-                          {cards.length === 1 ? "" : "s"}
-                        </p>
-                      </div>
-                      <label className="flashcard-staging__select-all">
-                        <input
-                          type="checkbox"
-                          checked={allBatchSelected}
-                          onChange={() => toggleBatch(batch)}
-                          disabled={draftCards.length === 0}
-                        />
-                        Select draft cards
-                      </label>
-                    </div>
-                    <div className="flashcard-staging-card-list">
-                      {cards.map((card) => {
-                        const status = normalizeStatus(card.status);
-                        const isDraft = status === "draft";
-                        const isSelected = selectedIds.includes(card.id);
-                        return (
-                          <article
-                            className={[
-                              "flashcard-staging-card",
-                              `flashcard-staging-card--${status}`,
-                              isDraft ? "flashcard-staging-card--selectable" : "",
-                              isSelected ? "is-selected" : "",
-                            ]
-                              .filter(Boolean)
-                              .join(" ")}
-                            key={card.id}
-                            onClick={(event) => handleCardClick(event, card)}
-                            aria-selected={isSelected}
-                          >
-                            <div className="flashcard-staging-card__select">
-                              <input
-                                type="checkbox"
-                                checked={isSelected}
-                                onChange={() => toggleCard(card.id)}
-                                disabled={!isDraft}
-                                aria-label="Select staging card"
-                              />
-                            </div>
-                            <div className="flashcard-staging-card__content">
-                              <div className="flashcard-staging-card__sides">
-                                <div>
-                                  <span>Front</span>
-                                  <p>{card.frontText || card.frontImageUrl || "--"}</p>
-                                </div>
-                                <div>
-                                  <span>Back</span>
-                                  <p>{card.backText || card.backImageUrl || "--"}</p>
-                                </div>
-                              </div>
-                              {(card.hint || card.explanation || card.sourceExcerpt) && (
-                                <div className="flashcard-staging-card__meta">
-                                  {card.hint && <p><strong>Hint:</strong> {card.hint}</p>}
-                                  {card.explanation && (
-                                    <p><strong>Explanation:</strong> {card.explanation}</p>
-                                  )}
-                                  {card.sourceExcerpt && (
-                                    <p><strong>Source:</strong> {card.sourceExcerpt}</p>
-                                  )}
-                                </div>
-                              )}
-                            </div>
-                            <div className="flashcard-staging-card__actions">
-                              {(card.frontImageUrl || card.backImageUrl) && (
-                                <div
-                                  className="flashcard-staging-card__image-badges"
-                                  aria-label="Image attachments"
-                                >
-                                  {card.frontImageUrl && (
-                                    <span className="flashcard-staging__image-badge">
-                                      <ImageIcon size={12} />
-                                      Front image
-                                    </span>
-                                  )}
-                                  {card.backImageUrl && (
-                                    <span className="flashcard-staging__image-badge">
-                                      <ImageIcon size={12} />
-                                      Back image
-                                    </span>
-                                  )}
-                                </div>
-                              )}
-                              <span
-                                className={`flashcard-staging__badge flashcard-staging__badge--${status}`}
-                              >
-                                {formatLabel(card.status)}
-                              </span>
-                              <button
-                                type="button"
-                                className="flashcard-btn flashcard-btn--icon"
-                                title="Edit staging card"
-                                onClick={() => setEditingCard(card)}
-                                disabled={!isDraft || savingEdit}
-                              >
-                                <Edit3 size={15} />
-                              </button>
-                              <button
-                                type="button"
-                                className="flashcard-btn flashcard-btn--icon flashcard-btn--danger"
-                                title="Reject staging card"
-                                onClick={() => handleReject(card)}
-                                disabled={!isDraft || rejectingId === card.id}
-                              >
-                                <Trash2 size={15} />
-                              </button>
-                            </div>
-                          </article>
-                        );
-                      })}
-                    </div>
-                  </article>
-                );
-              })}
-            </div>
+            <>
+              <div className="flashcard-staging__batches">
+                {pageBatches.map((batch) => (
+                  <StagingBatchCardGroup
+                    key={batch.id}
+                    batch={batch}
+                    cards={getBatchCards(batch)}
+                    selectedIds={selectedIds}
+                    draftIds={draftIds}
+                    eligibleDraftIds={eligibleDraftIds}
+                    duplicateInfoByCardId={duplicateInfoByCardId}
+                    savingEdit={savingEdit}
+                    onToggleCard={toggleCard}
+                    onToggleBatch={toggleBatch}
+                    onEdit={setEditingCard}
+                  />
+                ))}
+              </div>
+              {flatStagingCards.length > STAGING_REVIEW_PAGE_SIZE && (
+                <div className="flashcard-staging__pagination">
+                  <span>
+                    Showing {safePage * STAGING_REVIEW_PAGE_SIZE + 1}-
+                    {Math.min(
+                      (safePage + 1) * STAGING_REVIEW_PAGE_SIZE,
+                      flatStagingCards.length,
+                    )} of {flatStagingCards.length}
+                  </span>
+                  <div className="flashcard-staging__pagination-controls">
+                    <button
+                      type="button"
+                      className="flashcard-btn"
+                      onClick={() => setPage((current) => Math.max(0, current - 1))}
+                      disabled={safePage === 0}
+                    >
+                      Previous
+                    </button>
+                    <span className="flashcard-staging__page-indicator">
+                      Page {safePage + 1} / {totalPages}
+                    </span>
+                    <button
+                      type="button"
+                      className="flashcard-btn"
+                      onClick={() =>
+                        setPage((current) => Math.min(totalPages - 1, current + 1))
+                      }
+                      disabled={safePage + 1 >= totalPages}
+                    >
+                      Next
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </div>
       </section>
@@ -1851,7 +2089,7 @@ function StagingReviewPanel({
                 type="button"
                 className="flashcard-btn"
                 onClick={() => setRejectConfirm(null)}
-                disabled={rejectingSelected || Boolean(rejectingId)}
+                disabled={rejectingSelected}
               >
                 Cancel
               </button>
@@ -1859,13 +2097,9 @@ function StagingReviewPanel({
                 type="button"
                 className="flashcard-btn flashcard-btn--danger"
                 onClick={confirmReject}
-                disabled={rejectingSelected || Boolean(rejectingId)}
+                disabled={rejectingSelected}
               >
-                {rejectingSelected || rejectingId
-                  ? "Rejecting"
-                  : rejectConfirm.mode === "selected"
-                    ? "Reject selected"
-                    : "Reject"}
+                {rejectingSelected ? "Rejecting" : "Reject selected"}
               </button>
             </div>
           </div>
@@ -1875,14 +2109,340 @@ function StagingReviewPanel({
   );
 }
 
+function ImportedBatchReviewPanel({
+  setId,
+  initialBatch,
+  existingCards = [],
+  notify,
+  onStagingChanged,
+  onApproved,
+  onUploadImage,
+}) {
+  const [batch, setBatch] = useState(initialBatch);
+  const [selectedIds, setSelectedIds] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [approving, setApproving] = useState(false);
+  const [rejectingSelected, setRejectingSelected] = useState(false);
+  const [rejectConfirm, setRejectConfirm] = useState(null);
+  const [editingCard, setEditingCard] = useState(null);
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [error, setError] = useState(null);
+
+  const batchId = initialBatch?.id;
+  const cards = useMemo(() => getBatchCards(batch), [batch]);
+  const duplicateInfoByCardId = useMemo(
+    () => buildDuplicateInfoByCardId(batch ? [batch] : [], existingCards),
+    [batch, existingCards],
+  );
+  const draftIds = useMemo(
+    () =>
+      new Set(
+        cards
+          .filter((card) => normalizeStatus(card.status) === "draft")
+          .map((card) => card.id),
+      ),
+    [cards],
+  );
+  const eligibleDraftIds = useMemo(
+    () =>
+      new Set(
+        cards
+          .filter(
+            (card) =>
+              isDraftCard(card) &&
+              getDuplicateReasons(duplicateInfoByCardId, card.id).length === 0,
+          )
+          .map((card) => card.id),
+      ),
+    [cards, duplicateInfoByCardId],
+  );
+  const selectedDraftIds = useMemo(
+    () => selectedIds.filter((id) => draftIds.has(id)),
+    [draftIds, selectedIds],
+  );
+  const selectedEligibleDraftIds = useMemo(
+    () => selectedIds.filter((id) => eligibleDraftIds.has(id)),
+    [eligibleDraftIds, selectedIds],
+  );
+
+  const loadImportedBatch = useCallback(async ({ showRefreshedToast = false } = {}) => {
+    if (!setId || !batchId) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const items = await flashcardService.listStaging(setId);
+      const freshBatch = items.find((item) => item.id === batchId);
+      if (!freshBatch) {
+        setError("Imported staging batch is no longer available.");
+        return;
+      }
+      setBatch(freshBatch);
+      const freshDraftIds = new Set(
+        getBatchCards(freshBatch)
+          .filter((card) => normalizeStatus(card.status) === "draft")
+          .map((card) => card.id),
+      );
+      setSelectedIds((current) => current.filter((id) => freshDraftIds.has(id)));
+      if (showRefreshedToast) {
+        notify("Imported batch refreshed.", "success");
+      }
+    } catch (loadError) {
+      const message = getErrorMessage(loadError, "Failed to refresh imported batch.");
+      setError(message);
+      notify(message, "error");
+    } finally {
+      setLoading(false);
+    }
+  }, [batchId, notify, setId]);
+
+  function toggleCard(cardId) {
+    if (!draftIds.has(cardId)) return;
+    setSelectedIds((current) =>
+      current.includes(cardId)
+        ? current.filter((id) => id !== cardId)
+        : [...current, cardId],
+    );
+  }
+
+  function toggleBatch(currentBatch, visibleCards = getBatchCards(currentBatch)) {
+    const eligibleIds = visibleCards
+      .filter((card) => eligibleDraftIds.has(card.id))
+      .map((card) => card.id);
+    const allSelected = eligibleIds.every((id) => selectedIds.includes(id));
+    setSelectedIds((current) =>
+      allSelected
+        ? current.filter((id) => !eligibleIds.includes(id))
+        : [...new Set([...current, ...eligibleIds])],
+    );
+  }
+
+  async function handleApprove() {
+    if (!selectedEligibleDraftIds.length) {
+      notify("Select at least one eligible staging card before approve.", "error");
+      return;
+    }
+    setApproving(true);
+    try {
+      const response = normalizeResponse(
+        await flashcardService.approveStagingCards(setId, selectedEligibleDraftIds),
+      );
+      notify(
+        `Approved ${response?.approvedCount || selectedEligibleDraftIds.length} staging card${
+          selectedEligibleDraftIds.length === 1 ? "" : "s"
+        }.`,
+        "success",
+      );
+      setSelectedIds([]);
+      await loadImportedBatch();
+      onStagingChanged?.();
+      await onApproved?.();
+    } catch (approveError) {
+      notify(
+        getErrorMessage(approveError, "Failed to approve staging cards."),
+        "error",
+      );
+    } finally {
+      setApproving(false);
+    }
+  }
+
+  function handleRejectSelected() {
+    if (!selectedDraftIds.length) return;
+    const count = selectedDraftIds.length;
+    setRejectConfirm({
+      mode: "selected",
+      ids: selectedDraftIds,
+      message: `Reject ${count} selected staging card${count === 1 ? "" : "s"}?`,
+    });
+  }
+
+  async function confirmReject() {
+    if (!rejectConfirm?.ids?.length) return;
+
+    const ids = rejectConfirm.ids;
+    setRejectingSelected(true);
+
+    try {
+      await Promise.all(ids.map((cardId) => flashcardService.rejectStagingCard(cardId)));
+      const count = ids.length;
+      notify(`Rejected ${count} staging card${count === 1 ? "" : "s"}.`, "success");
+      setSelectedIds((current) => current.filter((id) => !ids.includes(id)));
+      setRejectConfirm(null);
+      await loadImportedBatch();
+      onStagingChanged?.();
+    } catch (rejectError) {
+      notify(
+        getErrorMessage(
+          rejectError,
+          "Failed to reject selected staging cards.",
+        ),
+        "error",
+      );
+    } finally {
+      setRejectingSelected(false);
+    }
+  }
+
+  async function handleSaveEdit(draft) {
+    const validationError = validateCardDraft(draft);
+    if (validationError) {
+      notify(validationError, "error");
+      return;
+    }
+    setSavingEdit(true);
+    try {
+      await flashcardService.updateStagingCard(
+        editingCard.id,
+        toCardPayload(draft),
+      );
+      notify("Staging card updated.", "success");
+      setEditingCard(null);
+      await loadImportedBatch();
+      onStagingChanged?.();
+    } catch (editError) {
+      notify(
+        getErrorMessage(editError, "Failed to update staging card."),
+        "error",
+      );
+    } finally {
+      setSavingEdit(false);
+    }
+  }
+
+  return (
+    <>
+      <section className="flashcard-panel flashcard-imported-review">
+        <div className="flashcard-panel__header flashcard-imported-review__header">
+          <div>
+            <h3 id="flashcard-imported-review-title">Review imported flashcards</h3>
+            <p>
+              {formatLabel(batch?.sourceType, "Imported Batch")}
+              {batch?.sourceName ? ` - ${batch.sourceName}` : ""} - {cards.length} card
+              {cards.length === 1 ? "" : "s"}
+            </p>
+          </div>
+          <div className="flashcard-staging__header-actions flashcard-imported-review__actions">
+            <button
+              type="button"
+              className="flashcard-btn"
+              onClick={() => loadImportedBatch({ showRefreshedToast: true })}
+              disabled={loading}
+            >
+              <RefreshCw size={16} className={loading ? "flashcard-spin-icon" : ""} />
+              {loading ? "Refreshing" : "Refresh"}
+            </button>
+            <button
+              type="button"
+              className="flashcard-btn flashcard-btn--danger"
+              onClick={handleRejectSelected}
+              disabled={loading || rejectingSelected || selectedDraftIds.length === 0}
+            >
+              <Trash2 size={16} />
+              {rejectingSelected
+                ? "Rejecting"
+                : `Reject selected (${selectedDraftIds.length})`}
+            </button>
+            <button
+              type="button"
+              className="flashcard-btn flashcard-btn--success"
+              onClick={handleApprove}
+              disabled={approving || loading || selectedEligibleDraftIds.length === 0}
+            >
+              <Check size={16} />
+              {approving
+                ? "Approving"
+                : `Approve selected eligible (${selectedEligibleDraftIds.length})`}
+            </button>
+          </div>
+        </div>
+
+        <div className="flashcard-panel__body flashcard-staging__section">
+          <InlineAlert>{error}</InlineAlert>
+          {loading ? (
+            <div className="flashcard-practice__loading">
+              <span className="flashcard-spinner" />
+              Loading imported batch...
+            </div>
+          ) : !batch || cards.length === 0 ? (
+            <div className="flashcard-empty">
+              <FileText size={28} />
+              <p>No cards found for this imported batch.</p>
+            </div>
+          ) : (
+            <div className="flashcard-staging__batches">
+              <StagingBatchCardGroup
+                batch={batch}
+                cards={cards}
+                selectedIds={selectedIds}
+                draftIds={draftIds}
+                eligibleDraftIds={eligibleDraftIds}
+                duplicateInfoByCardId={duplicateInfoByCardId}
+                savingEdit={savingEdit}
+                onToggleCard={toggleCard}
+                onToggleBatch={toggleBatch}
+                onEdit={setEditingCard}
+              />
+            </div>
+          )}
+        </div>
+      </section>
+
+      {editingCard && (
+        <EditStagingCardModal
+          key={editingCard.id}
+          card={editingCard}
+          saving={savingEdit}
+          notify={notify}
+          onClose={() => setEditingCard(null)}
+          onSave={handleSaveEdit}
+          onUploadImage={onUploadImage}
+        />
+      )}
+      {rejectConfirm && (
+        <div className="flashcard-modal" role="presentation">
+          <div
+            className="flashcard-modal__dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="flashcard-imported-reject-confirm-title"
+          >
+            <h3 id="flashcard-imported-reject-confirm-title">
+              {rejectConfirm.message}
+            </h3>
+            <p>Rejected staging cards will be removed from the draft selection.</p>
+            <div className="flashcard-modal__actions">
+              <button
+                type="button"
+                className="flashcard-btn"
+                onClick={() => setRejectConfirm(null)}
+                disabled={rejectingSelected}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="flashcard-btn flashcard-btn--danger"
+                onClick={confirmReject}
+                disabled={rejectingSelected}
+              >
+                {rejectingSelected ? "Rejecting" : "Reject selected"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
 export function FlashcardStagingWorkspace({
   setId,
+  existingCards = [],
   notify,
   onUploadImage,
   onApproved,
+  refreshKey = 0,
 }) {
-  const refreshKey = 0;
-
   if (!setId) {
     return (
       <div className="flashcard-empty">
@@ -1895,6 +2455,7 @@ export function FlashcardStagingWorkspace({
   return (
     <StagingReviewPanel
       setId={setId}
+      existingCards={existingCards}
       notify={notify}
       refreshKey={refreshKey}
       onApproved={onApproved}

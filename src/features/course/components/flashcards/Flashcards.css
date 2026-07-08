@@ -401,6 +401,12 @@
   color: #c2410c;
 }
 
+.flashcard-staging__badge--duplicate {
+  border: 1px solid #fde68a;
+  background: #fefce8;
+  color: #a16207;
+}
+
 .flashcard-staging__pagination {
   display: flex;
   align-items: center;
@@ -479,7 +485,7 @@
   display: flex;
   flex-direction: column;
   gap: 18px;
-  width: min(1040px, calc(100vw - 48px));
+  width: min(1180px, calc(100vw - 48px));
   overflow: hidden;
 }
 
@@ -492,6 +498,14 @@
 
 .flashcard-import-modal__header p {
   margin: 6px 0 0;
+}
+
+.flashcard-import-modal__header-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .flashcard-import-modal__tabs {
@@ -512,6 +526,25 @@
 
 .flashcard-import-modal textarea#pasted-import-text {
   min-height: 280px;
+}
+
+.flashcard-imported-review {
+  margin: 0;
+}
+
+.flashcard-imported-review__header {
+  align-items: flex-start;
+}
+
+.flashcard-imported-review__header p {
+  margin: 6px 0 0;
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.flashcard-imported-review__actions {
+  justify-content: flex-end;
 }
 
 .flashcard-pasted-import__settings {
@@ -786,6 +819,17 @@
   opacity: 0.82;
 }
 
+.flashcard-staging-card--duplicate {
+  border-color: #fde68a;
+  background: #fffbeb;
+}
+
+.flashcard-staging-card--duplicate.is-selected {
+  border-color: #2563eb;
+  background: #eff6ff;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
 .flashcard-staging-card__select {
   padding-top: 4px;
 }
@@ -836,6 +880,10 @@
 
 .flashcard-staging-card__meta strong {
   color: #334155;
+}
+
+.flashcard-staging-card__duplicate {
+  color: #92400e !important;
 }
 
 .flashcard-staging-card__actions {
