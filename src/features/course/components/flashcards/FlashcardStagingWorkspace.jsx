@@ -20,14 +20,14 @@ import "./Flashcards.css";
 
 const DIFFICULTIES = ["easy", "medium", "hard"];
 const LANGUAGES = [
-  { value: "en", label: "English" },
+  { value: "auto", label: "Auto-detect" },
   { value: "vi", label: "Vietnamese" },
+  { value: "en", label: "English" },
 ];
 const DEFAULT_GENERATION = {
   desiredCount: 10,
-  language: "en",
+  language: "auto",
   difficulty: "medium",
-  generationMode: "RULE_BASED",
 };
 
 const STATUS_PRIORITY = {
@@ -277,14 +277,13 @@ function getGenerationPayload(values) {
     desiredCount: Number(values.desiredCount || DEFAULT_GENERATION.desiredCount),
     language: values.language || DEFAULT_GENERATION.language,
     difficulty: values.difficulty || DEFAULT_GENERATION.difficulty,
-    generationMode: DEFAULT_GENERATION.generationMode,
   };
 }
 
 function validateGenerationSettings(values) {
   const desiredCount = Number(values.desiredCount);
   if (!Number.isInteger(desiredCount) || desiredCount < 1 || desiredCount > 30) {
-    return "Desired number of cards must be between 1 and 30.";
+    return "Target cards must be between 1 and 30.";
   }
   return null;
 }
@@ -314,7 +313,7 @@ function GenerationSettings({ values, onChange, prefix }) {
     <>
       <div className="flashcard-staging__settings">
         <div className="flashcard-field">
-          <label htmlFor={`${prefix}-count`}>Card count</label>
+          <label htmlFor={`${prefix}-count`}>Target cards</label>
           <input
             id={`${prefix}-count`}
             type="number"
@@ -359,8 +358,7 @@ function GenerationSettings({ values, onChange, prefix }) {
         </div>
       </div>
       <p className="flashcard-staging__settings-note">
-        Front/Back formatted cards are imported as-is. Language and difficulty
-        guide card parsing from normal notes.
+        The system reads the document and creates reviewable draft flashcards.
       </p>
     </>
   );
