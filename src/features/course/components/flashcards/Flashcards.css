@@ -245,6 +245,221 @@
   color: #1d4ed8;
 }
 
+.flashcard-current-workspace {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+}
+
+.flashcard-current-workspace__inner {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(340px, 400px);
+  align-items: start;
+  gap: 18px;
+  width: min(1280px, 100%);
+}
+
+.flashcard-current-workspace__main {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.flashcard-current-list-panel .flashcard-panel__body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.flashcard-current-preview-panel .flashcard-preview__stage,
+.flashcard-current-preview-panel .flashcard-preview__card {
+  min-height: 360px;
+}
+
+.flashcard-current-preview-panel {
+  position: sticky;
+  top: 16px;
+  align-self: start;
+}
+
+.flashcard-current-preview-panel .flashcard-preview__face {
+  display: grid;
+  grid-template-rows: minmax(16px, 1fr) auto auto minmax(16px, 1fr) auto;
+  align-items: center;
+  justify-items: center;
+}
+
+.flashcard-current-preview-panel .flashcard-preview__image {
+  grid-row: 2;
+}
+
+.flashcard-current-preview-panel .flashcard-preview__text {
+  grid-row: 3;
+}
+
+.flashcard-current-preview-panel .flashcard-preview__hint,
+.flashcard-current-preview-panel .flashcard-preview__explanation {
+  grid-row: 5;
+  align-self: end;
+}
+
+.flashcard-current-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 700;
+  flex-wrap: wrap;
+}
+
+.flashcard-current-pagination__controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.flashcard-card-editor__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.flashcard-card-editor__side {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 14px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 14px;
+}
+
+.flashcard-card-editor__side h4 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.flashcard-card-editor__side > .flashcard-field textarea {
+  min-height: 150px;
+}
+
+.flashcard-card-editor__section {
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #f8fafc;
+  overflow: hidden;
+}
+
+.flashcard-card-editor__section-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  min-height: 42px;
+  border: 0;
+  background: transparent;
+  color: #334155;
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  padding: 10px 12px;
+  text-align: left;
+}
+
+.flashcard-card-editor__section-toggle:hover {
+  background: #f1f5f9;
+  color: #1d4ed8;
+}
+
+.flashcard-card-editor__chevron {
+  flex: 0 0 auto;
+  transition: transform 0.16s ease;
+}
+
+.flashcard-card-editor__chevron.is-open {
+  transform: rotate(180deg);
+}
+
+.flashcard-card-editor__section-body {
+  border-top: 1px solid #e2e8f0;
+  background: #ffffff;
+  padding: 12px;
+}
+
+.flashcard-card-editor__section-body textarea {
+  min-height: 96px;
+}
+
+.flashcard-card-editor__image-control {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.flashcard-card-editor__image-preview {
+  max-height: 190px;
+}
+
+.flashcard-card-editor__image-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 118px;
+  border: 1px dashed #cbd5e1;
+  border-radius: 8px;
+  background: #f8fafc;
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.flashcard-card-editor__image-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.flashcard-modal__dialog.flashcard-modal__dialog--card-editor {
+  display: flex;
+  flex-direction: column;
+  width: min(1080px, calc(100vw - 48px));
+  max-height: calc(100vh - 48px);
+  overflow: hidden;
+  padding: 0;
+}
+
+.flashcard-modal__dialog--card-editor .flashcard-card-editor {
+  max-height: calc(100vh - 48px);
+  overflow-y: auto;
+  padding: 18px;
+}
+
+.flashcard-modal__dialog--card-editor .flashcard-card-editor > .flashcard-panel {
+  margin: 0;
+}
+
+.flashcard-modal__dialog--card-editor .flashcard-actions {
+  position: sticky;
+  bottom: -18px;
+  justify-content: flex-end;
+  border-top: 1px solid #e2e8f0;
+  background: #ffffff;
+  margin: 0 -18px -18px;
+  padding: 14px 18px 18px;
+}
+
 .flashcard-staging__grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -988,17 +1203,17 @@
 .flashcard-list {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
 }
 
 .flashcard-list-item {
   display: grid;
   grid-template-columns: auto 24px auto minmax(0, 1fr) auto;
-  gap: 12px;
+  gap: 10px;
   align-items: center;
   border: 1px solid #e2e8f0;
   border-radius: 8px;
-  padding: 12px;
+  padding: 10px;
   background: #ffffff;
   cursor: pointer;
   transition:
@@ -1085,30 +1300,90 @@
 
 .flashcard-list-item__body {
   min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
 }
 
-.flashcard-list-item__front {
-  overflow: hidden;
-  color: #0f172a;
-  font-size: 14px;
-  font-weight: 700;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.flashcard-list-item__side {
+  min-width: 0;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #f8fafc;
+  padding: 8px;
 }
 
-.flashcard-list-item__back {
-  overflow: hidden;
-  margin-top: 3px;
+.flashcard-list-item__side-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
   color: #64748b;
-  font-size: 12px;
-  text-overflow: ellipsis;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+}
+
+.flashcard-list-item__image-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid #bfdbfe;
+  border-radius: 999px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-size: 10px;
+  font-weight: 800;
+  padding: 3px 6px;
+  text-transform: none;
   white-space: nowrap;
+}
+
+.flashcard-list-item__side-content {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  min-width: 0;
+}
+
+.flashcard-list-item__thumbnail {
+  width: 52px;
+  height: 42px;
+  flex: 0 0 auto;
+  object-fit: cover;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  background: #ffffff;
+}
+
+.flashcard-list-item__side-content p {
+  display: -webkit-box;
+  margin: 0;
+  min-width: 0;
+  color: #0f172a;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  white-space: normal;
+}
+
+.flashcard-list-item__side-content p.is-muted {
+  color: #64748b;
+  font-weight: 700;
 }
 
 .flashcard-list-item__actions {
   display: flex;
   align-items: center;
   gap: 6px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 .flashcard-preview {
@@ -1703,6 +1978,18 @@
     grid-template-columns: 1fr;
   }
 
+  .flashcard-current-workspace__inner {
+    grid-template-columns: 1fr;
+  }
+
+  .flashcard-current-preview-panel {
+    position: static;
+  }
+
+  .flashcard-card-editor__grid {
+    grid-template-columns: 1fr;
+  }
+
   .flashcard-staging__grid,
   .flashcard-staging__filters,
   .flashcard-staging__advanced-fields,
@@ -1803,9 +2090,28 @@
     grid-template-columns: auto 24px auto minmax(0, 1fr);
   }
 
+  .flashcard-list-item__body {
+    grid-column: 1 / -1;
+    grid-template-columns: 1fr;
+  }
+
   .flashcard-list-item__actions {
     grid-column: 1 / -1;
     justify-content: flex-end;
+  }
+
+  .flashcard-current-list-panel .flashcard-panel__header,
+  .flashcard-current-pagination {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .flashcard-current-pagination__controls {
+    justify-content: flex-start;
+  }
+
+  .flashcard-card-editor__image-actions .flashcard-btn {
+    flex: 1 1 160px;
   }
 
   .flashcard-compact__header {
