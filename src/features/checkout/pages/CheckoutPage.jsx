@@ -85,7 +85,7 @@ export function CheckoutPage() {
         }));
 
         if (paymentStatusService.isFinal(nextStatus)) {
-          navigate(`/checkout/${orderId}/result`, {
+          navigate(`/payment-result?orderId=${orderId}`, {
             replace: true,
             state: {
               orderId,
