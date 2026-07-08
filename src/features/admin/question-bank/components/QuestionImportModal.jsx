@@ -642,10 +642,12 @@ export function QuestionImportModal({ open, bank, existingQuestions = [], onClos
             {imageWarnings.map((warning, index) => <div key={index}>{warning}</div>)}
           </div>
         )}
-        <div className="question-import__ocr">
-          <h4>OCR text preview</h4>
-          <pre>{imageOcrText || 'No OCR text returned.'}</pre>
-        </div>
+        {imageOcrText && (
+          <div className="question-import__ocr">
+            <h4>OCR text preview</h4>
+            <pre>{imageOcrText}</pre>
+          </div>
+        )}
         {imageRows.length === 0 && (
           <div className="auth-card__alert">No questions were parsed from the uploaded images.</div>
         )}
