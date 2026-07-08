@@ -72,21 +72,6 @@ function normalizeQuestionMedia(question) {
     (item) => String(item.mediaType || '').toLowerCase() === 'audio' && mediaUrl(item),
   );
 
-  if (!images.length && question?.imageUrl) {
-    images.push({
-      mediaType: 'image',
-      mediaUrl: question.imageUrl,
-      fileName: 'Primary image',
-    });
-  }
-  if (!audios.length && question?.audioUrl) {
-    audios.push({
-      mediaType: 'audio',
-      mediaUrl: question.audioUrl,
-      fileName: 'Primary audio',
-    });
-  }
-
   return { images, audios };
 }
 

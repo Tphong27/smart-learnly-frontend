@@ -38,13 +38,6 @@ function normalizeQuestionMedia(question) {
     .filter((item) => item.mediaType === 'audio')
     .sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0))
     .map((item) => ({ ...item, localId: item.attachmentId || item.id, source: 'remote' }))
-
-  if (!images.length && question?.imageUrl) {
-    images.push({ localId: 'legacy-image', mediaType: 'image', mediaUrl: question.imageUrl, fileName: 'Primary image', source: 'legacy' })
-  }
-  if (!audios.length && question?.audioUrl) {
-    audios.push({ localId: 'legacy-audio', mediaType: 'audio', mediaUrl: question.audioUrl, fileName: 'Primary audio', source: 'legacy' })
-  }
   return { images, audios }
 }
 
@@ -95,7 +88,6 @@ export function AdminQuestionFormPage() {
   const [imageMedia, setImageMedia] = useState([])
   const [audioMedia, setAudioMedia] = useState([])
   const [removedAttachmentIds, setRemovedAttachmentIds] = useState([])
-  const [removedLegacyTypes, setRemovedLegacyTypes] = useState([])
 
   useEffect(() => {
     let cancelled = false
@@ -110,7 +102,6 @@ export function AdminQuestionFormPage() {
           setImageMedia(normalizedMedia.images)
           setAudioMedia(normalizedMedia.audios)
           setRemovedAttachmentIds([])
-          setRemovedLegacyTypes([])
           setValues({
             questionText: question.questionText || '',
             questionType: question.questionType || 'multiple_choice',
@@ -200,8 +191,6 @@ export function AdminQuestionFormPage() {
     const attachmentId = mediaId(item)
     if (attachmentId) {
       setRemovedAttachmentIds((current) => current.includes(attachmentId) ? current : [...current, attachmentId])
-    } else if (item.source === 'legacy') {
-      setRemovedLegacyTypes((current) => current.includes(mediaType) ? current : [...current, mediaType])
     }
     if (item.previewUrl) {
       URL.revokeObjectURL(item.previewUrl)
@@ -252,12 +241,6 @@ export function AdminQuestionFormPage() {
     if (!savedQuestionId) return
     for (const attachmentId of removedAttachmentIds) {
       await questionBankService.removeQuestionMedia(savedQuestionId, attachmentId)
-    }
-    if (editing && removedLegacyTypes.includes('image')) {
-      await questionBankService.removeQuestionImage(savedQuestionId)
-    }
-    if (editing && removedLegacyTypes.includes('audio')) {
-      await questionBankService.removeQuestionAudio(savedQuestionId)
     }
     await syncMediaType(savedQuestionId, 'image', imageMedia)
     await syncMediaType(savedQuestionId, 'audio', audioMedia)
