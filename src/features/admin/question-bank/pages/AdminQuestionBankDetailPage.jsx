@@ -1,12 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import {
   Archive,
   CheckCircle2,
   Edit2,
   Plus,
   Search,
-  Trash2,
   Upload,
   Volume2,
 } from "lucide-react";
@@ -15,16 +14,8 @@ import { courseService, getCurrentUser, questionBankService } from "@/services";
 import "../../admin-shared.css";
 import "./question-bank.css";
 import { QuestionImportModal } from "../components/QuestionImportModal";
-import { QuestionAudioUploader } from "../components/QuestionAudioUploader";
-import { QuestionImageUploader } from "../components/QuestionImageUploader";
 
 const PAGE_SIZE = 20;
-
-const blankAnswer = (index = 0) => ({
-  answerText: "",
-  correct: index === 0,
-  displayOrder: index + 1,
-});
 
 function canWriteQuestionBank() {
   const role = getCurrentUser()?.role;
@@ -44,26 +35,6 @@ function formatDate(value) {
   }
 }
 
-function normalizeAnswers(type, answers) {
-  if (type === "true_false") {
-    return [
-      {
-        answerText: "True",
-        correct: answers?.[0]?.correct ?? answers?.[0]?.isCorrect ?? true,
-        displayOrder: 1,
-      },
-      {
-        answerText: "False",
-        correct: answers?.[1]?.correct ?? answers?.[1]?.isCorrect ?? false,
-        displayOrder: 2,
-      },
-    ];
-  }
-  return answers?.length
-    ? answers
-    : [blankAnswer(0), blankAnswer(1), blankAnswer(2), blankAnswer(3)];
-}
-
 function normalizeModules(payload) {
   const root = payload?.data ?? payload;
   const items = Array.isArray(root)
@@ -72,436 +43,56 @@ function normalizeModules(payload) {
   return items
     .map((item, index) => ({
       id: item.sectionId || item.id,
-      title: item.title || item.name || `Module ${index + 1}`,
+      title: item.title || item.name || 'Module ' + (index + 1),
     }))
     .filter((item) => item.id);
 }
 
-function validateQuestion(values) {
-  if (!values.questionText.trim()) return "Question text is required.";
-  if (!values.questionType) return "Question type is required.";
-  const answers = normalizeAnswers(values.questionType, values.answers);
-  if (answers.length < 2) return "At least two answers are required.";
-  if (values.questionType === "multiple_choice" && answers.length > 6)
-    return "Multiple choice supports 2 to 6 answers.";
-  if (answers.some((answer) => !answer.answerText.trim()))
-    return "Answer text must not be empty.";
-  if (answers.filter((answer) => answer.correct).length !== 1)
-    return "Exactly one correct answer is required.";
-  return null;
+function mediaUrl(item) {
+  return item?.mediaUrl || item?.fileUrl || item?.url || null;
 }
 
-function questionToForm(question) {
-  const type = question?.questionType || "multiple_choice";
-  return {
-    moduleId: question?.moduleId || "",
-    questionText: question?.questionText || "",
-    questionType: type,
-    difficulty: question?.difficulty ? String(question.difficulty) : "",
-    status: question?.status === "approved" ? "approved" : "draft",
-    explanation: question?.explanation || "",
-    answers: normalizeAnswers(
-      type,
-      (question?.answers || []).map((answer, index) => ({
-        answerText: answer.answerText || "",
-        correct: Boolean(answer.correct || answer.isCorrect),
-        displayOrder: answer.displayOrder ?? answer.orderIndex ?? index + 1,
-      })),
-    ),
-  };
+function mediaName(item, fallback) {
+  return item?.fileName || item?.originalFileName || item?.name || fallback;
 }
 
-function QuestionModal({ open, bankId, modules, question, onClose, onSaved }) {
-  const toast = useToast();
-  const editing = Boolean(question);
-  const [values, setValues] = useState(questionToForm(question));
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState(null);
-  const [imageFile, setImageFile] = useState(null);
-  const [imageRemoved, setImageRemoved] = useState(false);
-  const [audioFile, setAudioFile] = useState(null);
-  const [audioRemoved, setAudioRemoved] = useState(false);
-
-  function setType(nextType) {
-    setValues((current) => ({
-      ...current,
-      questionType: nextType,
-      answers: normalizeAnswers(nextType, current.answers),
-    }));
-  }
-
-  function setCorrect(index) {
-    setValues((current) => ({
-      ...current,
-      answers: current.answers.map((answer, answerIndex) => ({
-        ...answer,
-        correct: answerIndex === index,
-      })),
-    }));
-  }
-
-  function updateAnswer(index, answerText) {
-    setValues((current) => ({
-      ...current,
-      answers: current.answers.map((answer, answerIndex) =>
-        answerIndex === index ? { ...answer, answerText } : answer,
-      ),
-    }));
-  }
-
-  function addAnswer() {
-    setValues((current) => {
-      if (current.answers.length >= 6) return current;
-      return {
-        ...current,
-        answers: [...current.answers, blankAnswer(current.answers.length)],
-      };
-    });
-  }
-
-  function removeAnswer(index) {
-    setValues((current) => {
-      const nextAnswers = current.answers.filter(
-        (_, answerIndex) => answerIndex !== index,
-      );
-      if (nextAnswers.length < 2) return current;
-      if (!nextAnswers.some((answer) => answer.correct))
-        nextAnswers[0] = { ...nextAnswers[0], correct: true };
-      return {
-        ...current,
-        answers: nextAnswers.map((answer, answerIndex) => ({
-          ...answer,
-          displayOrder: answerIndex + 1,
-        })),
-      };
-    });
-  }
-
-  function handleImageSelected(file) {
-    setImageFile(file);
-    setImageRemoved(false);
-  }
-
-  function handleImageRemove() {
-    setImageFile(null);
-    setImageRemoved(Boolean(question?.imageUrl));
-  }
-
-  function handleAudioSelected(file) {
-    setAudioFile(file);
-    setAudioRemoved(false);
-  }
-
-  function handleAudioRemove() {
-    setAudioFile(null);
-    setAudioRemoved(Boolean(question?.audioUrl));
-  }
-
-  async function syncQuestionImage(questionId) {
-    if (!questionId) return;
-    if (imageRemoved && question?.imageUrl) {
-      await questionBankService.removeQuestionImage(questionId);
-    }
-    if (imageFile) {
-      await questionBankService.uploadQuestionImage(questionId, imageFile);
-    }
-  }
-
-  async function syncQuestionAudio(questionId) {
-    if (!questionId) return;
-    if (audioRemoved && question?.audioUrl) {
-      await questionBankService.removeQuestionAudio(questionId);
-    }
-    if (audioFile) {
-      await questionBankService.uploadQuestionAudio(questionId, audioFile);
-    }
-  }
-
-  async function handleSubmit(event) {
-    event.preventDefault();
-    const validationError = validateQuestion(values);
-    if (validationError) {
-      setError(validationError);
-      return;
-    }
-    setSubmitting(true);
-    setError(null);
-    const payload = {
-      bankId,
-      moduleId: values.moduleId || null,
-      questionText: values.questionText.trim(),
-      questionType: values.questionType,
-      difficulty: values.difficulty ? Number(values.difficulty) : null,
-      status: values.status,
-      explanation: values.explanation.trim() || null,
-      answers: normalizeAnswers(values.questionType, values.answers).map(
-        (answer, index) => ({
-          answerText: answer.answerText.trim(),
-          correct: Boolean(answer.correct),
-          displayOrder: index + 1,
-        }),
-      ),
-    };
-    try {
-      let savedQuestion;
-      if (editing) {
-        savedQuestion = await questionBankService.updateQuestion(
-          question.questionId || question.id,
-          payload,
-        );
-      } else {
-        savedQuestion = await questionBankService.createQuestion(payload);
-      }
-      const savedQuestionId = savedQuestion?.questionId || savedQuestion?.id || question?.questionId || question?.id;
-      try {
-        await syncQuestionImage(savedQuestionId);
-      } catch {
-        toast.error(
-          `${editing ? "Question updated" : "Question created"}, but image update failed. Open the question and retry.`,
-        );
-        onSaved();
-        return;
-      }
-      try {
-        await syncQuestionAudio(savedQuestionId);
-      } catch {
-        toast.error(
-          `${editing ? "Question updated" : "Question created"}, but audio update failed. Open the question and retry.`,
-        );
-        onSaved();
-        return;
-      }
-      toast.success(editing ? "Question updated" : "Question created");
-      onSaved();
-    } catch (err) {
-      setError(err?.message || "Could not save question.");
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
-  return (
-    <Modal
-      open={open}
-      title={editing ? "Edit question" : "Create question"}
-      size="lg"
-      closeOnOverlayClick={!submitting}
-      onClose={submitting ? undefined : onClose}
-    >
-      {error && (
-        <div className="auth-card__alert" style={{ marginBottom: 14 }}>
-          {error}
-        </div>
-      )}
-      <form className="form" onSubmit={handleSubmit}>
-        <div className="admin-form-grid">
-          <div className="input-field">
-            <label className="input-field__label" htmlFor="question-module">
-              Module
-            </label>
-            <select
-              id="question-module"
-              className="admin-toolbar__select"
-              value={values.moduleId}
-              onChange={(event) =>
-                setValues((current) => ({
-                  ...current,
-                  moduleId: event.target.value,
-                }))
-              }
-            >
-              <option value="">No module</option>
-              {modules.map((module) => (
-                <option key={module.id} value={module.id}>
-                  {module.title}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="input-field">
-            <label className="input-field__label" htmlFor="question-type">
-              Type
-            </label>
-            <select
-              id="question-type"
-              className="admin-toolbar__select"
-              value={values.questionType}
-              onChange={(event) => setType(event.target.value)}
-            >
-              <option value="multiple_choice">Multiple choice</option>
-              <option value="true_false">True/False</option>
-            </select>
-          </div>
-          <div className="input-field">
-            <label className="input-field__label" htmlFor="question-difficulty">
-              Difficulty
-            </label>
-            <select
-              id="question-difficulty"
-              className="admin-toolbar__select"
-              value={values.difficulty}
-              onChange={(event) =>
-                setValues((current) => ({
-                  ...current,
-                  difficulty: event.target.value,
-                }))
-              }
-            >
-              <option value="">Not set</option>
-              <option value="1">1 - Easy</option>
-              <option value="2">2</option>
-              <option value="3">3 - Medium</option>
-              <option value="4">4</option>
-              <option value="5">5 - Hard</option>
-            </select>
-          </div>
-          <div className="input-field">
-            <label className="input-field__label" htmlFor="question-status">
-              Status
-            </label>
-            <select
-              id="question-status"
-              className="admin-toolbar__select"
-              value={values.status}
-              onChange={(event) =>
-                setValues((current) => ({
-                  ...current,
-                  status: event.target.value,
-                }))
-              }
-            >
-              <option value="draft">Draft</option>
-              <option value="approved">Approved</option>
-            </select>
-          </div>
-          <div className="input-field admin-form-grid__full">
-            <label className="input-field__label" htmlFor="question-text">
-              Question text
-            </label>
-            <textarea
-              id="question-text"
-              className="admin-textarea"
-              rows={4}
-              value={values.questionText}
-              onChange={(event) =>
-                setValues((current) => ({
-                  ...current,
-                  questionText: event.target.value,
-                }))
-              }
-            />
-          </div>
-          <div className="input-field admin-form-grid__full">
-            <label
-              className="input-field__label"
-              htmlFor="question-explanation"
-            >
-              Explanation
-            </label>
-            <textarea
-              id="question-explanation"
-              className="admin-textarea"
-              rows={3}
-              value={values.explanation}
-              onChange={(event) =>
-                setValues((current) => ({
-                  ...current,
-                  explanation: event.target.value,
-                }))
-              }
-            />
-          </div>
-        </div>
-
-        <div className="input-field admin-form-grid__full question-modal__image-section">
-          <label className="input-field__label">Question image</label>
-          <QuestionImageUploader
-            value={imageRemoved ? null : question?.imageUrl}
-            disabled={submitting || question?.status === "archived"}
-            onFileSelected={handleImageSelected}
-            onRemove={handleImageRemove}
-          />
-        </div>
-
-        <div className="input-field admin-form-grid__full question-modal__audio-section">
-          <label className="input-field__label">Question audio</label>
-          <QuestionAudioUploader
-            value={audioRemoved ? null : question?.audioUrl}
-            disabled={submitting || question?.status === "archived"}
-            onFileSelected={handleAudioSelected}
-            onRemove={handleAudioRemove}
-          />
-        </div>
-
-        <div className="question-modal__answers">
-          <div className="question-modal__answers-header">
-            <h3>Answers</h3>
-            {values.questionType === "multiple_choice" && (
-              <Button
-                type="button"
-                size="sm"
-                variant="secondary"
-                leftIcon={<Plus size={14} />}
-                onClick={addAnswer}
-              >
-                Add answer
-              </Button>
-            )}
-          </div>
-          {normalizeAnswers(values.questionType, values.answers).map(
-            (answer, index) => (
-              <div
-                key={`${values.questionType}-${index}`}
-                className="question-modal__answer-row"
-              >
-                <input
-                  type="radio"
-                  name="correct-answer"
-                  checked={answer.correct}
-                  onChange={() => setCorrect(index)}
-                  aria-label={`Mark answer ${index + 1} correct`}
-                />
-                <FormField
-                  value={answer.answerText}
-                  disabled={values.questionType === "true_false"}
-                  onChange={(event) => updateAnswer(index, event.target.value)}
-                  placeholder={`Answer ${index + 1}`}
-                />
-                {values.questionType === "multiple_choice" && (
-                  <button
-                    type="button"
-                    className="admin-table__icon-btn admin-table__icon-btn--danger"
-                    onClick={() => removeAnswer(index)}
-                    aria-label="Remove answer"
-                  >
-                    <Trash2 size={15} />
-                  </button>
-                )}
-              </div>
-            ),
-          )}
-        </div>
-
-        <div className="question-modal__actions">
-          <Button
-            type="button"
-            variant="ghost"
-            onClick={onClose}
-            disabled={submitting}
-          >
-            Cancel
-          </Button>
-          <Button type="submit" loading={submitting}>
-            {editing ? "Update question" : "Create question"}
-          </Button>
-        </div>
-      </form>
-    </Modal>
+function normalizeQuestionMedia(question) {
+  const attachments = Array.isArray(question?.mediaAttachments)
+    ? question.mediaAttachments
+    : [];
+  const sortedAttachments = [...attachments].sort(
+    (left, right) =>
+      (left.displayOrder ?? left.orderIndex ?? 0) -
+      (right.displayOrder ?? right.orderIndex ?? 0),
   );
+  const images = sortedAttachments.filter(
+    (item) => String(item.mediaType || '').toLowerCase() === 'image' && mediaUrl(item),
+  );
+  const audios = sortedAttachments.filter(
+    (item) => String(item.mediaType || '').toLowerCase() === 'audio' && mediaUrl(item),
+  );
+
+  if (!images.length && question?.imageUrl) {
+    images.push({
+      mediaType: 'image',
+      mediaUrl: question.imageUrl,
+      fileName: 'Primary image',
+    });
+  }
+  if (!audios.length && question?.audioUrl) {
+    audios.push({
+      mediaType: 'audio',
+      mediaUrl: question.audioUrl,
+      fileName: 'Primary audio',
+    });
+  }
+
+  return { images, audios };
 }
 
 export function AdminQuestionBankDetailPage() {
   const { bankId } = useParams();
+  const navigate = useNavigate();
   const toast = useToast();
   const writable = canWriteQuestionBank();
   const [bank, setBank] = useState(null);
@@ -522,10 +113,8 @@ export function AdminQuestionBankDetailPage() {
   const [page, setPage] = useState(0);
   const [refreshKey, setRefreshKey] = useState(0);
   const [archivingId, setArchivingId] = useState(null);
-  const [modalOpen, setModalOpen] = useState(false);
-  const [editingQuestion, setEditingQuestion] = useState(null);
-  const [modalRevision, setModalRevision] = useState(0);
   const [importOpen, setImportOpen] = useState(false);
+  const [imagePreview, setImagePreview] = useState(null);
   const [audioPreview, setAudioPreview] = useState(null);
 
   useEffect(() => {
@@ -591,23 +180,6 @@ export function AdminQuestionBankDetailPage() {
     [modules],
   );
 
-  function closeModal() {
-    setModalOpen(false);
-    setEditingQuestion(null);
-  }
-
-  function openCreateModal() {
-    setEditingQuestion(null);
-    setModalRevision((value) => value + 1);
-    setModalOpen(true);
-  }
-
-  function openEditModal(question) {
-    setEditingQuestion(question);
-    setModalRevision((value) => value + 1);
-    setModalOpen(true);
-  }
-
   async function handleArchive(question) {
     if (!writable || !question?.questionId) return;
     const confirmed = window.confirm("Archive this question?");
@@ -650,7 +222,7 @@ export function AdminQuestionBankDetailPage() {
             >
               Import
             </Button>
-            <Button leftIcon={<Plus size={16} />} onClick={openCreateModal}>
+            <Button leftIcon={<Plus size={16} />} onClick={() => navigate(`/admin/question-banks/${bankId}/questions/new`)}>
               Create question
             </Button>
           </div>
@@ -773,6 +345,8 @@ export function AdminQuestionBankDetailPage() {
               const questionId = question.questionId || question.id;
               const moduleLabel =
                 moduleNameById.get(question.moduleId) || "No module";
+              const { images, audios } = normalizeQuestionMedia(question);
+              const visibleImages = images.slice(0, 3);
               return (
                 <article className="question-card" key={questionId}>
                   <div className="question-card__header">
@@ -798,7 +372,7 @@ export function AdminQuestionBankDetailPage() {
                           type="button"
                           className="admin-table__icon-btn"
                           title="Edit"
-                          onClick={() => openEditModal(question)}
+                          onClick={() => navigate(`/admin/questions/${questionId}/edit`)}
                         >
                           <Edit2 size={15} />
                         </button>
@@ -826,19 +400,44 @@ export function AdminQuestionBankDetailPage() {
                       {formatDate(question.updatedAt || question.createdAt)}
                     </span>
                   </div>
-                  {question.imageUrl && (
-                    <div className="question-card__image-wrap">
-                      <img src={question.imageUrl} alt="Question attachment" className="question-card__image" />
+                  {images.length > 0 && (
+                    <div className={`question-card__image-gallery ${images.length === 1 ? "question-card__image-gallery--single" : ""}`}>
+                      {visibleImages.map((image, imageIndex) => {
+                        const url = mediaUrl(image);
+                        const title = `Question ${questionNumber} image ${imageIndex + 1}`;
+                        return (
+                          <button
+                            type="button"
+                            className="question-card__image-wrap question-card__image-wrap--button"
+                            key={image.attachmentId || image.id || url || imageIndex}
+                            onClick={() => setImagePreview({ url, title, fileName: mediaName(image, title) })}
+                          >
+                            <img src={url} alt={mediaName(image, title)} className="question-card__image" />
+                            {imageIndex === visibleImages.length - 1 && images.length > visibleImages.length && (
+                              <span className="question-card__image-count">+{images.length - visibleImages.length}</span>
+                            )}
+                          </button>
+                        );
+                      })}
                     </div>
                   )}
-                  {question.audioUrl && (
-                    <button
-                      type="button"
-                      className="question-card__audio-badge"
-                      onClick={() => setAudioPreview({ url: question.audioUrl, title: `Question ${questionNumber} audio` })}
-                    >
-                      <Volume2 size={15} /> Audio attached
-                    </button>
+                  {audios.length > 0 && (
+                    <div className="question-card__audio-list" aria-label={`Question ${questionNumber} audio attachments`}>
+                      {audios.map((audio, audioIndex) => {
+                        const url = mediaUrl(audio);
+                        const title = `Question ${questionNumber} audio ${audioIndex + 1}`;
+                        return (
+                          <button
+                            type="button"
+                            className="question-card__audio-badge"
+                            key={audio.attachmentId || audio.id || url || audioIndex}
+                            onClick={() => setAudioPreview({ url, title, fileName: mediaName(audio, title) })}
+                          >
+                            <Volume2 size={15} /> Audio {audioIndex + 1}
+                          </button>
+                        );
+                      })}
+                    </div>
                   )}
                   <div className="question-card__answers">
                     {answers.map((answer, answerIndex) => {
@@ -899,19 +498,6 @@ export function AdminQuestionBankDetailPage() {
         )}
       </section>
 
-      <QuestionModal
-        key={`${editingQuestion?.questionId || editingQuestion?.id || "create"}-${modalRevision}`}
-        open={modalOpen}
-        bankId={bankId}
-        modules={modules}
-        question={editingQuestion}
-        onClose={closeModal}
-        onSaved={() => {
-          closeModal();
-          setRefreshKey((key) => key + 1);
-        }}
-      />
-
       <QuestionImportModal
         open={importOpen}
         bank={bank}
@@ -919,6 +505,21 @@ export function AdminQuestionBankDetailPage() {
         onClose={() => setImportOpen(false)}
         onImported={() => setRefreshKey((key) => key + 1)}
       />
+      <Modal
+        open={Boolean(imagePreview)}
+        title={imagePreview?.title || "Question image"}
+        size="xl"
+        onClose={() => setImagePreview(null)}
+      >
+        {imagePreview?.url && (
+          <div className="question-card__image-modal">
+            <img src={imagePreview.url} alt={imagePreview.title || "Question attachment"} />
+            {imagePreview.fileName && (
+              <p className="question-card__media-modal-name">{imagePreview.fileName}</p>
+            )}
+          </div>
+        )}
+      </Modal>
 
       <Modal
         open={Boolean(audioPreview)}
@@ -927,9 +528,14 @@ export function AdminQuestionBankDetailPage() {
         onClose={() => setAudioPreview(null)}
       >
         {audioPreview?.url && (
-          <audio className="question-audio-preview" controls preload="metadata" src={audioPreview.url}>
-            <track kind="captions" />
-          </audio>
+          <div className="question-card__audio-modal">
+            <audio className="question-audio-preview" controls preload="metadata" src={audioPreview.url}>
+              <track kind="captions" />
+            </audio>
+            {audioPreview.fileName && (
+              <p className="question-card__media-modal-name">{audioPreview.fileName}</p>
+            )}
+          </div>
         )}
       </Modal>
     </div>

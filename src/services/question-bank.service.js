@@ -157,14 +157,18 @@ export const questionBankService = {
     return unwrap(response)
   },
 
-  async confirmImageImport(bankId, questions, sourceImages = []) {
-    const hasSourceMappings = questions.some((question) => (
-      Array.isArray(question.sourceImageIndexes) && question.sourceImageIndexes.length > 0
+  async confirmImageImport(bankId, questions, mediaFiles = {}) {
+    const imageFiles = Array.isArray(mediaFiles.imageFiles) ? mediaFiles.imageFiles : []
+    const audioFiles = Array.isArray(mediaFiles.audioFiles) ? mediaFiles.audioFiles : []
+    const hasMediaMappings = questions.some((question) => (
+      (Array.isArray(question.imageFileIndexes) && question.imageFileIndexes.length > 0)
+      || (Array.isArray(question.audioFileIndexes) && question.audioFileIndexes.length > 0)
     ))
-    if (hasSourceMappings) {
+    if (hasMediaMappings) {
       const formData = new FormData()
       formData.append('request', new Blob([JSON.stringify({ bankId, questions })], { type: 'application/json' }))
-      sourceImages.forEach((file) => formData.append('sourceImages', file))
+      imageFiles.forEach((file) => formData.append('imageFiles', file))
+      audioFiles.forEach((file) => formData.append('audioFiles', file))
       const response = await apiClient.post('/admin/question-imports/image/confirm', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
         timeout: 90000,

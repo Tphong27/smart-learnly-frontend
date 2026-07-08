@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { AlertTriangle, CheckCircle2, Download, FileImage, FileSpreadsheet, Upload } from 'lucide-react'
+import { AlertTriangle, ArrowDown, ArrowUp, CheckCircle2, Download, FileAudio, FileImage, FileSpreadsheet, ImagePlus, Trash2, Upload } from 'lucide-react'
 import { Button, Modal, useToast } from '@/shared/components/ui'
 import { questionBankService } from '@/services'
 import {
@@ -22,7 +22,35 @@ const IMPORT_MODES = {
 const IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/webp']
 const MAX_IMAGE_SIZE = 10 * 1024 * 1024
 const MAX_ATTACH_IMAGE_SIZE = 5 * 1024 * 1024
+const MAX_AUDIO_SIZE = 20 * 1024 * 1024
 const MAX_IMAGE_FILES = 5
+const AUDIO_TYPES = ['audio/mpeg', 'audio/mp4', 'audio/x-m4a', 'audio/wav', 'audio/x-wav']
+const MAX_AUDIO_FILES = 3
+
+const IMPORT_MEDIA_CONFIG = {
+  image: {
+    label: 'Images',
+    empty: 'No images attached',
+    accept: 'image/png,image/jpeg,image/webp',
+    allowedTypes: IMAGE_TYPES,
+    maxSize: MAX_ATTACH_IMAGE_SIZE,
+    maxCount: MAX_IMAGE_FILES,
+    maxSizeLabel: '5MB',
+    typeLabel: 'PNG, JPEG, or WebP',
+    Icon: ImagePlus,
+  },
+  audio: {
+    label: 'Audio',
+    empty: 'No audio attached',
+    accept: 'audio/mpeg,audio/mp4,audio/x-m4a,audio/wav,audio/x-wav',
+    allowedTypes: AUDIO_TYPES,
+    maxSize: MAX_AUDIO_SIZE,
+    maxCount: MAX_AUDIO_FILES,
+    maxSizeLabel: '20MB',
+    typeLabel: 'MP3, M4A, or WAV',
+    Icon: FileAudio,
+  },
+}
 
 function getImageImportErrorMessage(err) {
   const genericMessage = 'Image import is unavailable. Gemini may be misconfigured, rate-limited, or temporarily failing. Check backend logs for the provider status and response body.'
@@ -72,23 +100,30 @@ function normalizeImageQuestion(question, index) {
     explanation: question?.explanation || '',
     warnings: Array.isArray(question?.warnings) ? question.warnings : [],
     providerErrors: Array.isArray(question?.errors) ? question.errors : [],
-    sourceImageIndexes: Array.isArray(question?.sourceImageIndexes) ? question.sourceImageIndexes : [],
+    imageMedia: [],
+    audioMedia: [],
   }
 }
 
-function validateSourceImageSelection(question, sourceImageCount, sourceFiles = []) {
+function validateImageImportMedia(question) {
   const errors = []
-  const indexes = Array.isArray(question.sourceImageIndexes) ? question.sourceImageIndexes : []
-  if (indexes.length > MAX_IMAGE_FILES) errors.push('A question can attach at most 5 source images')
-  const uniqueIndexes = new Set(indexes)
-  if (uniqueIndexes.size !== indexes.length) errors.push('Source image selections must be unique')
-  if (indexes.some((index) => !Number.isInteger(index) || index < 0 || index >= sourceImageCount)) {
-    errors.push('Source image selection is out of range')
-  }
-  if (indexes.some((index) => sourceFiles[index]?.size > MAX_ATTACH_IMAGE_SIZE)) {
-    errors.push('Selected source images for attachment must not exceed 5MB')
-  }
+  const images = Array.isArray(question.imageMedia) ? question.imageMedia : []
+  const audios = Array.isArray(question.audioMedia) ? question.audioMedia : []
+  if (images.length > MAX_IMAGE_FILES) errors.push('A question can attach at most 5 images')
+  if (audios.length > MAX_AUDIO_FILES) errors.push('A question can attach at most 3 audio files')
   return errors
+}
+
+function importMediaName(item) {
+  return item?.fileName || item?.file?.name || 'Attachment'
+}
+
+function formatImportMediaSize(file) {
+  const bytes = Number(file?.size || 0)
+  if (!bytes) return ''
+  if (bytes >= 1024 * 1024) return (bytes / 1024 / 1024).toFixed(1) + ' MB'
+  if (bytes >= 1024) return Math.round(bytes / 1024) + ' KB'
+  return bytes + ' B'
 }
 
 function validateImageQuestion(question) {
@@ -116,7 +151,7 @@ function validateImageQuestion(question) {
   return errors
 }
 
-function toImageConfirmPayload(question) {
+function toImageConfirmPayload(question, imageFileIndexes = [], audioFileIndexes = []) {
   return {
     questionText: question.questionText.trim(),
     questionType: question.questionType,
@@ -127,7 +162,8 @@ function toImageConfirmPayload(question) {
     })),
     difficulty: question.difficulty === '' || question.difficulty == null ? null : Number(question.difficulty),
     explanation: question.explanation?.trim() || null,
-    sourceImageIndexes: Array.isArray(question.sourceImageIndexes) ? question.sourceImageIndexes : [],
+    imageFileIndexes,
+    audioFileIndexes,
   }
 }
 
@@ -135,6 +171,7 @@ export function QuestionImportModal({ open, bank, existingQuestions = [], onClos
   const toast = useToast()
   const fileInputRef = useRef(null)
   const imageInputRef = useRef(null)
+  const importMediaPreviewUrls = useRef(new Set())
   const [step, setStep] = useState('upload')
   const [importMode, setImportMode] = useState(IMPORT_MODES.FILE)
   const [parsing, setParsing] = useState(false)
@@ -149,22 +186,16 @@ export function QuestionImportModal({ open, bank, existingQuestions = [], onClos
   const [jsonText, setJsonText] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
-  const sourceImagePreviews = useMemo(() => imageFiles.map((file, index) => ({
-    file,
-    index,
-    key: `${file.name}-${file.size}-${file.lastModified}-${index}`,
-    url: URL.createObjectURL(file),
-  })), [imageFiles])
-
   useEffect(() => () => {
-    sourceImagePreviews.forEach((preview) => URL.revokeObjectURL(preview.url))
-  }, [sourceImagePreviews])
+    importMediaPreviewUrls.current.forEach((url) => URL.revokeObjectURL(url))
+    importMediaPreviewUrls.current.clear()
+  }, [])
 
   const validRows = useMemo(() => parsedRows.filter((row) => !row.errors?.length), [parsedRows])
   const imageRows = useMemo(() => imageQuestions.map((question, index) => {
     const errors = [
       ...validateImageQuestion(question),
-      ...validateSourceImageSelection(question, imageFiles.length, imageFiles),
+      ...validateImageImportMedia(question),
     ]
     return {
       ...question,
@@ -172,7 +203,7 @@ export function QuestionImportModal({ open, bank, existingQuestions = [], onClos
       errors,
       status: errors.length ? 'error' : question.warnings?.length ? 'warning' : 'valid',
     }
-  }), [imageQuestions, imageFiles])
+  }), [imageQuestions])
   const validImageRows = useMemo(() => imageRows.filter((row) => !row.errors?.length), [imageRows])
   const isArchived = bank?.status === 'archived'
   const sourceLabel = importMode === IMPORT_MODES.JSON
@@ -189,6 +220,8 @@ export function QuestionImportModal({ open, bank, existingQuestions = [], onClos
     setParseSuccess(null)
     setFileName(null)
     setImageFiles([])
+    revokeImageQuestionMedia(imageQuestions)
+    revokeImageQuestionMedia(imageQuestions)
     setImageQuestions([])
     setImageOcrText('')
     setImageWarnings([])
@@ -292,6 +325,7 @@ export function QuestionImportModal({ open, bank, existingQuestions = [], onClos
       const result = await questionBankService.previewImageImport(bankId, imageFiles, 'vi')
       setImageOcrText(result?.ocrText || '')
       setImageWarnings(Array.isArray(result?.warnings) ? result.warnings : [])
+      revokeImageQuestionMedia(imageQuestions)
       setImageQuestions((result?.questions || []).map(normalizeImageQuestion))
       setStep('preview')
     } catch (err) {
@@ -333,29 +367,87 @@ export function QuestionImportModal({ open, bank, existingQuestions = [], onClos
     )))
   }
 
-  function toggleSourceImage(questionIndex, sourceImageIndex) {
-    const sourceFile = imageFiles[sourceImageIndex]
-    if (!sourceFile) return
-    if (sourceFile.size > MAX_ATTACH_IMAGE_SIZE) {
-      toast.error('Selected source images for attachment must not exceed 5MB.')
-      return
+  function revokeImportMediaItem(item) {
+    if (item?.previewUrl) {
+      URL.revokeObjectURL(item.previewUrl)
+      importMediaPreviewUrls.current.delete(item.previewUrl)
     }
-    const selectedIndexes = Array.isArray(imageQuestions[questionIndex]?.sourceImageIndexes)
-      ? imageQuestions[questionIndex].sourceImageIndexes
-      : []
-    const isSelected = selectedIndexes.includes(sourceImageIndex)
-    if (!isSelected && selectedIndexes.length >= MAX_IMAGE_FILES) {
-      toast.error(`Attach up to ${MAX_IMAGE_FILES} source images per question.`)
-      return
+  }
+
+  function revokeImageQuestionMedia(questions) {
+    questions.forEach((question) => {
+      ;[...(question.imageMedia || []), ...(question.audioMedia || [])].forEach(revokeImportMediaItem)
+    })
+  }
+
+
+  function validateImportMediaFiles(mediaType, currentItems, files) {
+    const config = IMPORT_MEDIA_CONFIG[mediaType]
+    if (!files.length) return []
+    if (currentItems.length + files.length > config.maxCount) {
+      toast.error(config.label + ' cannot exceed ' + config.maxCount + ' files per question.')
+      return []
     }
-    const nextIndexes = isSelected
-      ? selectedIndexes.filter((index) => index !== sourceImageIndex)
-      : [...selectedIndexes, sourceImageIndex].sort((left, right) => left - right)
-    setImageQuestions((current) => current.map((question, currentQuestionIndex) => (
-      currentQuestionIndex === questionIndex
-        ? { ...question, sourceImageIndexes: nextIndexes, providerErrors: [] }
-        : question
-    )))
+    for (const file of files) {
+      if (!config.allowedTypes.includes(file.type)) {
+        toast.error((file.name || 'Attachment') + ' is not supported. ' + config.typeLabel + ' only.')
+        return []
+      }
+      if (file.size > config.maxSize) {
+        toast.error((file.name || 'Attachment') + ' exceeds ' + config.maxSizeLabel + '.')
+        return []
+      }
+    }
+    return files
+  }
+
+  function addImageImportMedia(questionIndex, mediaType, files) {
+    setImageQuestions((current) => current.map((question, currentQuestionIndex) => {
+      if (currentQuestionIndex !== questionIndex) return question
+      const key = mediaType === 'image' ? 'imageMedia' : 'audioMedia'
+      const currentItems = Array.isArray(question[key]) ? question[key] : []
+      const validFiles = validateImportMediaFiles(mediaType, currentItems, files)
+      if (!validFiles.length) return question
+      const nextItems = validFiles.map((file) => {
+        const previewUrl = URL.createObjectURL(file)
+        importMediaPreviewUrls.current.add(previewUrl)
+        return {
+          localId: mediaType + '-' + Date.now() + '-' + Math.random().toString(36).slice(2),
+          mediaType,
+          file,
+          fileName: file.name,
+          previewUrl,
+          source: 'pending',
+        }
+      })
+      return { ...question, [key]: [...currentItems, ...nextItems], providerErrors: [] }
+    }))
+  }
+
+  function removeImageImportMedia(questionIndex, mediaType, item) {
+    revokeImportMediaItem(item)
+    setImageQuestions((current) => current.map((question, currentQuestionIndex) => {
+      if (currentQuestionIndex !== questionIndex) return question
+      const key = mediaType === 'image' ? 'imageMedia' : 'audioMedia'
+      return {
+        ...question,
+        [key]: (question[key] || []).filter((candidate) => candidate.localId !== item.localId),
+        providerErrors: [],
+      }
+    }))
+  }
+
+  function moveImageImportMedia(questionIndex, mediaType, index, direction) {
+    setImageQuestions((current) => current.map((question, currentQuestionIndex) => {
+      if (currentQuestionIndex !== questionIndex) return question
+      const key = mediaType === 'image' ? 'imageMedia' : 'audioMedia'
+      const nextItems = [...(question[key] || [])]
+      const targetIndex = index + direction
+      if (targetIndex < 0 || targetIndex >= nextItems.length) return question
+      const [item] = nextItems.splice(index, 1)
+      nextItems.splice(targetIndex, 0, item)
+      return { ...question, [key]: nextItems, providerErrors: [] }
+    }))
   }
 
   function updateImageAnswer(questionIndex, answerIndex, patch) {
@@ -440,8 +532,23 @@ export function QuestionImportModal({ open, bank, existingQuestions = [], onClos
       }
       setSubmitting(true)
       try {
-        const payload = imageRows.map(toImageConfirmPayload)
-        const response = await questionBankService.confirmImageImport(bankId, payload, imageFiles)
+        const imageAttachmentFiles = []
+        const audioAttachmentFiles = []
+        const payload = imageRows.map((question) => {
+          const imageFileIndexes = (question.imageMedia || []).map((item) => {
+            imageAttachmentFiles.push(item.file)
+            return imageAttachmentFiles.length - 1
+          })
+          const audioFileIndexes = (question.audioMedia || []).map((item) => {
+            audioAttachmentFiles.push(item.file)
+            return audioAttachmentFiles.length - 1
+          })
+          return toImageConfirmPayload(question, imageFileIndexes, audioFileIndexes)
+        })
+        const response = await questionBankService.confirmImageImport(bankId, payload, {
+          imageFiles: imageAttachmentFiles,
+          audioFiles: audioAttachmentFiles,
+        })
         const created = response?.createdCount ?? payload.length
         toast.success(`Imported ${created} image question${created === 1 ? '' : 's'}.`)
         onImported?.()
@@ -471,6 +578,59 @@ export function QuestionImportModal({ open, bank, existingQuestions = [], onClos
     } finally {
       setSubmitting(false)
     }
+  }
+
+  function renderImageImportMedia(question, questionIndex, mediaType) {
+    const config = IMPORT_MEDIA_CONFIG[mediaType]
+    const items = mediaType === 'image' ? (question.imageMedia || []) : (question.audioMedia || [])
+    const Icon = config.Icon
+    return (
+      <div className="question-import__media-manager">
+        <div className="question-import__media-toolbar">
+          <div>
+            <div className="question-import__media-title">{config.label}</div>
+            <div className="question-import__media-hint">{config.typeLabel}. Max {config.maxSizeLabel}. {items.length}/{config.maxCount} used.</div>
+          </div>
+          <label className={'button button--secondary button--sm ' + (items.length >= config.maxCount ? 'is-disabled' : '')}>
+            <Upload size={14} />
+            Add
+            <input
+              type="file"
+              accept={config.accept}
+              multiple
+              hidden
+              disabled={items.length >= config.maxCount}
+              onChange={(event) => {
+                addImageImportMedia(questionIndex, mediaType, Array.from(event.target.files || []))
+                event.target.value = ''
+              }}
+            />
+          </label>
+        </div>
+        {items.length ? (
+          <div className="question-import__media-list">
+            {items.map((item, mediaIndex) => (
+              <div className="question-import__media-item" key={item.localId}>
+                <div className="question-import__media-preview">
+                  {mediaType === 'image' ? <img src={item.previewUrl} alt={importMediaName(item)} /> : <audio controls preload="metadata" src={item.previewUrl}><track kind="captions" /></audio>}
+                </div>
+                <div className="question-import__media-meta">
+                  <strong>{mediaIndex + 1}. {importMediaName(item)}</strong>
+                  <span>{formatImportMediaSize(item.file)}</span>
+                </div>
+                <div className="question-import__media-actions">
+                  <button type="button" className="admin-table__icon-btn" disabled={mediaIndex === 0} onClick={() => moveImageImportMedia(questionIndex, mediaType, mediaIndex, -1)} aria-label="Move media up"><ArrowUp size={15} /></button>
+                  <button type="button" className="admin-table__icon-btn" disabled={mediaIndex === items.length - 1} onClick={() => moveImageImportMedia(questionIndex, mediaType, mediaIndex, 1)} aria-label="Move media down"><ArrowDown size={15} /></button>
+                  <button type="button" className="admin-table__icon-btn admin-table__icon-btn--danger" onClick={() => removeImageImportMedia(questionIndex, mediaType, item)} aria-label="Remove media"><Trash2 size={15} /></button>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="question-import__media-empty"><Icon size={18} /> {config.empty}</div>
+        )}
+      </div>
+    )
   }
 
   function renderImagePreview() {
@@ -561,37 +721,10 @@ export function QuestionImportModal({ open, bank, existingQuestions = [], onClos
                 onChange={(event) => updateImageQuestion(questionIndex, { explanation: event.target.value })}
                 placeholder="Only keep explanation if it was present in the image"
               />
-              {sourceImagePreviews.length > 0 && (
-                <div className="question-import__source-media">
-                  <div className="question-import__source-media-head">
-                    <span>Source images</span>
-                    <span>{question.sourceImageIndexes?.length || 0}/{MAX_IMAGE_FILES}</span>
-                  </div>
-                  <div className="question-import__source-media-list">
-                    {sourceImagePreviews.map((preview) => {
-                      const selected = question.sourceImageIndexes?.includes(preview.index)
-                      const oversized = preview.file.size > MAX_ATTACH_IMAGE_SIZE
-                      return (
-                        <label
-                          className={`question-import__source-media-option ${selected ? 'question-import__source-media-option--selected' : ''}`}
-                          key={preview.key}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={Boolean(selected)}
-                            disabled={oversized && !selected}
-                            onChange={() => toggleSourceImage(questionIndex, preview.index)}
-                            aria-label={`Attach source image ${preview.index + 1} to question ${questionIndex + 1}`}
-                          />
-                          <img src={preview.url} alt={preview.file.name || `Source image ${preview.index + 1}`} />
-                          <span className="question-import__source-media-name">{preview.file.name || `Image ${preview.index + 1}`}</span>
-                          {oversized && <span className="question-import__source-media-note">over 5MB</span>}
-                        </label>
-                      )
-                    })}
-                  </div>
-                </div>
-              )}
+              <div className="question-import__media-grid">
+                {renderImageImportMedia(question, questionIndex, 'image')}
+                {renderImageImportMedia(question, questionIndex, 'audio')}
+              </div>
               {question.errors?.length > 0 && (
                 <ul className="question-import__errors">
                   {question.errors.map((error, index) => <li key={index}>{error}</li>)}
