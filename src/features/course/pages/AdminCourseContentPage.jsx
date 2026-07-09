@@ -513,66 +513,6 @@ export default function AdminCourseContentPage() {
     }
   };
 
-  const handleCreateLesson = async (e) => {
-    e.preventDefault();
-    if (!newLessonData.title.trim() || !targetSectionId) return;
-    try {
-      let mappedType = String(newLessonData.lessonType).toLowerCase();
-      if (mappedType === "document") mappedType = "pdf";
-
-      if (mappedType === "flashcard") {
-        const createdLesson = await flashcardService.createLesson(
-          courseId,
-          targetSectionId,
-          {
-            title: newLessonData.title.trim(),
-            description: "",
-            isPreview: !!newLessonData.isPreview,
-            status: "draft",
-            sortOrder: 0,
-          },
-        );
-
-        if (createdLesson?.lessonId && createdLesson?.setId) {
-          sessionStorage.setItem(
-            `flashcard-set:${createdLesson.lessonId}`,
-            createdLesson.setId,
-          );
-        }
-
-        showToast("Flashcard lesson added successfully!", "success");
-        setNewLessonData({ title: "", lessonType: "video", isPreview: false });
-        setIsLessonModalOpen(false);
-        setTargetSectionId(null);
-        fetchLessonsForSection(targetSectionId);
-
-        if (createdLesson?.lessonId) {
-          navigate(`/admin/courses/${courseId}/lessons/${createdLesson.lessonId}`, {
-            state: { flashcardSetId: createdLesson.setId },
-          });
-        }
-        return;
-      }
-
-      await courseService.createLesson(targetSectionId, {
-        title: newLessonData.title.trim(),
-        lessonType: mappedType,
-        isPreview: !!newLessonData.isPreview,
-        status: "draft",
-        durationSeconds: 0,
-        sortOrder: 0,
-      });
-
-      showToast("Lesson added successfully!", "success");
-      setNewLessonData({ title: "", lessonType: "video", isPreview: false });
-      setIsLessonModalOpen(false);
-      setTargetSectionId(null);
-      fetchLessonsForSection(targetSectionId);
-    } catch (error) {
-      showToast("Error creating lesson", "error");
-    }
-  };
-
   const onDragEnd = async (result) => {
     if (readOnly) return;
     const { destination, source, draggableId, type } = result;

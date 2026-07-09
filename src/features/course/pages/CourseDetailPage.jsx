@@ -354,92 +354,29 @@ export function CourseDetailPage() {
           </div>
         </div>
 
-        <section className="course-detail__section course-detail__classes-section">
-          <div className="course-detail__section-head">
-            <div>
-              <h2 className="course-detail__section-title">Available classes</h2>
-              <p className="course-detail__section-sub">
-                Choose a class schedule before enrollment or checkout.
-              </p>
-            </div>
-            <button
-              type="button"
-              className="button button--outline button--md"
-              disabled={classes.length === 0 || buyNowLoading || freeEnrollLoading}
-              onClick={handleBuyNowClick}
-            >
-              View classes
-            </button>
+        <aside className="course-detail__sidecard">
+          <div className="course-detail__sidecard-thumb">
+            {course.avatarUrl ? (
+              <img src={course.avatarUrl} alt={course.title} />
+            ) : (
+              <div className="course-detail__sidecard-thumb-fallback">
+                <BookOpen size={32} />
+              </div>
+            )}
           </div>
-
-          {classes.length === 0 ? (
-            <div className="admin-empty">
-              No available classes are open for this course yet.
-            </div>
-          ) : (
-            <div className="course-detail__class-list course-detail__class-list--preview">
-              {classes.slice(0, 3).map((classItem) => (
-                <article key={classItem.id} className="course-detail__class-card">
-                  <div className="course-detail__class-main">
-                    <div>
-                      <h3>{classItem.className}</h3>
-                      <p>{classItem.trainerName || "Trainer to be assigned"}</p>
-                    </div>
-                    <span className="course-detail__class-status">
-                      {classItem.status}
+          <div className="course-detail__sidecard-body">
+            <div className="course-detail__price-block">
+              {hasDiscount ? (
+                <>
+                  <div className="course-detail__price-row">
+                    <span className="course-detail__price-current">
+                      <span>Discount price</span>
+                      {formatVnd(displayPrice)}
                     </span>
-                  </div>
 
-                  <dl className="course-detail__class-meta">
-                    <div>
-                      <dt>Schedule</dt>
-                      <dd>{classItem.scheduleDescription || "Not specified"}</dd>
-                    </div>
-                    <div>
-                      <dt>Start date</dt>
-                      <dd>{classItem.startDate || "Not specified"}</dd>
-                    </div>
-                    <div>
-                      <dt>End date</dt>
-                      <dd>{classItem.endDate || "Not specified"}</dd>
-                    </div>
-                    <div>
-                      <dt>Available slots</dt>
-                      <dd>
-                        {classItem.availableSlots ?? 0}/
-                        {classItem.maxStudents ?? 0}
-                      </dd>
-                    </div>
-                  </dl>
-
-                  <button
-                    type="button"
-                    className="button button--primary button--sm course-detail__class-select"
-                    disabled={
-                      !isClassSelectable(classItem) || buyNowLoading || freeEnrollLoading
-                    }
-                    onClick={() => handleCheckoutSelectedClass(classItem)}
-                  >
-                    {isFreeCourse(course) ? "Enroll in this class" : "Buy this class"}
-                  </button>
-                </article>
-              ))}
-            </div>
-          )}
-        </section>
-
-        {objectives.length > 0 && (
-          <section className="course-detail__section">
-            <h2 className="course-detail__section-title">
-              What you will learn
-            </h2>
-            <ul className="course-detail__objectives">
-              {objectives.map((obj) => (
-                <li key={obj.id}>
-                  <CheckCircle2 size={16} />
-                  <div>
-                    {obj.code && <strong>{obj.code}</strong>}
-                    <span>{obj.description}</span>
+                    <span className="course-detail__discount-badge">
+                      -{discountPercent}%
+                    </span>
                   </div>
 
                   <div className="course-detail__price-original">
@@ -503,6 +440,80 @@ export function CourseDetailPage() {
           </div>
         </aside>
       </div>
+
+      <section className="course-detail__section course-detail__classes-section">
+        <div className="course-detail__section-head">
+          <div>
+            <h2 className="course-detail__section-title">Available classes</h2>
+            <p className="course-detail__section-sub">
+              Choose a class schedule before enrollment or checkout.
+            </p>
+          </div>
+          <button
+            type="button"
+            className="button button--outline button--md"
+            disabled={classes.length === 0 || buyNowLoading || freeEnrollLoading}
+            onClick={handleBuyNowClick}
+          >
+            View classes
+          </button>
+        </div>
+
+        {classes.length === 0 ? (
+          <div className="admin-empty">
+            No available classes are open for this course yet.
+          </div>
+        ) : (
+          <div className="course-detail__class-list course-detail__class-list--preview">
+            {classes.slice(0, 3).map((classItem) => (
+              <article key={classItem.id} className="course-detail__class-card">
+                <div className="course-detail__class-main">
+                  <div>
+                    <h3>{classItem.className}</h3>
+                    <p>{classItem.trainerName || "Trainer to be assigned"}</p>
+                  </div>
+                  <span className="course-detail__class-status">
+                    {classItem.status}
+                  </span>
+                </div>
+
+                <dl className="course-detail__class-meta">
+                  <div>
+                    <dt>Schedule</dt>
+                    <dd>{classItem.scheduleDescription || "Not specified"}</dd>
+                  </div>
+                  <div>
+                    <dt>Start date</dt>
+                    <dd>{classItem.startDate || "Not specified"}</dd>
+                  </div>
+                  <div>
+                    <dt>End date</dt>
+                    <dd>{classItem.endDate || "Not specified"}</dd>
+                  </div>
+                  <div>
+                    <dt>Available slots</dt>
+                    <dd>
+                      {classItem.availableSlots ?? 0}/
+                      {classItem.maxStudents ?? 0}
+                    </dd>
+                  </div>
+                </dl>
+
+                <button
+                  type="button"
+                  className="button button--primary button--sm course-detail__class-select"
+                  disabled={
+                    !isClassSelectable(classItem) || buyNowLoading || freeEnrollLoading
+                  }
+                  onClick={() => handleCheckoutSelectedClass(classItem)}
+                >
+                  {isFreeCourse(course) ? "Enroll in this class" : "Buy this class"}
+                </button>
+              </article>
+            ))}
+          </div>
+        )}
+      </section>
 
       {objectives.length > 0 && (
         <section className="course-detail__section">
