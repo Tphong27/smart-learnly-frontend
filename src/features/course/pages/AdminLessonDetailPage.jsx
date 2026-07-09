@@ -58,7 +58,7 @@ export default function AdminLessonDetailPage() {
     const { courseId, lessonId } = useParams();
     const navigate = useNavigate();
     const location = useLocation();
-    const { showToast: emitToast } = useToast();
+    const { showToast: emitToast, removeToast } = useToast();
     const showToast = useCallback(
         (message, type) => emitToast({ message, type }),
         [emitToast],
@@ -1123,6 +1123,7 @@ export default function AdminLessonDetailPage() {
                                   : "details"
                         }
                         showToast={showToast}
+                        dismissToast={removeToast}
                         onTitleSaved={setTitle}
                     />
             ) : activeTab === "edit" ? (

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CheckSquare, Plus, RefreshCw, Save, Trash2, Upload, X } from "lucide-react";
 import { getCurrentUser } from "@/services";
 import { courseService } from "@/services/course.service";
@@ -33,6 +33,7 @@ export function FlashcardLessonEditor({
   activeSection = "details",
   onTitleSaved,
   showToast,
+  dismissToast,
 }) {
   const [flashcardSet, setFlashcardSet] = useState(null);
   const [cards, setCards] = useState([]);
@@ -59,12 +60,30 @@ export function FlashcardLessonEditor({
 
   const canUseStaging = isRoleAllowed(getCurrentUser()?.role, STAGING_ROLES);
 
+  const toastIdsRef = useRef(new Set());
+
+  const clearFlashcardToasts = useCallback(() => {
+    if (!dismissToast) return;
+    toastIdsRef.current.forEach((toastId) => dismissToast(toastId));
+    toastIdsRef.current.clear();
+  }, [dismissToast]);
+
   const notify = useCallback(
     (message, type = "info") => {
-      showToast?.(message, type);
+      if (!message) return null;
+      const toastId = showToast?.(message, type);
+      if (toastId && dismissToast) {
+        toastIdsRef.current.add(toastId);
+        window.setTimeout(() => {
+          toastIdsRef.current.delete(toastId);
+        }, 3500);
+      }
+      return toastId;
     },
-    [showToast],
+    [dismissToast, showToast],
   );
+
+  useEffect(() => () => clearFlashcardToasts(), [clearFlashcardToasts]);
 
   const hydrateSet = useCallback(
     (payload) => {
@@ -241,7 +260,13 @@ export function FlashcardLessonEditor({
 
   const handleDeleteCard = (card) => {
     if (!card?.id) return;
+    clearFlashcardToasts();
     setCardPendingDelete(card);
+  };
+
+  const openBulkDeleteConfirm = () => {
+    clearFlashcardToasts();
+    setBulkDeletePending(true);
   };
 
   const confirmDeleteCard = async () => {
@@ -331,32 +356,42 @@ export function FlashcardLessonEditor({
   };
 
   const handleStagingImportCreated = useCallback(
-    (batch) => {
+    () => {
       refreshStagingReview();
-      if (!batch?.id) {
-        notify("Staging batch was created, but the response did not include a batch id.", "error");
-      }
     },
-    [notify, refreshStagingReview],
+    [refreshStagingReview],
   );
 
   const handleEditCard = (card) => {
+    clearFlashcardToasts();
     setActivePreviewCardId(card?.id || null);
     setEditingCard(card);
     setCardEditorOpen(true);
   };
 
   const handleAddCard = () => {
+    clearFlashcardToasts();
     setEditingCard(null);
     setEditorVersion((version) => version + 1);
     setCardEditorOpen(true);
   };
 
   const closeCardEditor = () => {
+    clearFlashcardToasts();
     setCardEditorOpen(false);
     setEditingCard(null);
     setEditorVersion((version) => version + 1);
   };
+
+  const openImportModal = useCallback(() => {
+    clearFlashcardToasts();
+    setImportModalOpen(true);
+  }, [clearFlashcardToasts]);
+
+  const closeImportModal = useCallback(() => {
+    clearFlashcardToasts();
+    setImportModalOpen(false);
+  }, [clearFlashcardToasts]);
 
   const toggleSelectionMode = () => {
     if (selectionMode) {
@@ -535,7 +570,7 @@ export function FlashcardLessonEditor({
                       <button
                         type="button"
                         className="flashcard-btn flashcard-btn--primary"
-                        onClick={() => setImportModalOpen(true)}
+                        onClick={openImportModal}
                         disabled={savingCard || reordering || bulkDeleting}
                       >
                         <Upload size={16} />
@@ -576,7 +611,7 @@ export function FlashcardLessonEditor({
                       <button
                         type="button"
                         className="flashcard-btn flashcard-btn--danger"
-                        onClick={() => setBulkDeletePending(true)}
+                        onClick={openBulkDeleteConfirm}
                         disabled={savingCard || reordering || bulkDeleting}
                       >
                         <Trash2 size={16} />
@@ -678,7 +713,8 @@ export function FlashcardLessonEditor({
           onUploadImage={handleUploadImage}
           onApproved={refreshCurrentFlashcards}
           refreshKey={stagingRefreshKey}
-          onImport={() => setImportModalOpen(true)}
+          onImport={openImportModal}
+          onModalOpen={clearFlashcardToasts}
           importDisabled={savingCard || reordering || bulkDeleting}
         />
       )}
@@ -687,7 +723,7 @@ export function FlashcardLessonEditor({
           setId={flashcardSet.id}
           existingCards={orderedCards}
           notify={notify}
-          onClose={() => setImportModalOpen(false)}
+          onClose={closeImportModal}
           onStagingChanged={handleStagingImportCreated}
           onCardsImported={handleCardsImported}
           onApproved={refreshCurrentFlashcards}
