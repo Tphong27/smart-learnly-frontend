@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { courseService } from "@/services/course.service";
+import { flashcardService } from "@/services/flashcard.service";
 import { assignmentService } from "@/services/flashtest.service";
 import { useToast } from "@/shared/components/ui/Toast/useToast";
 import RichTextEditor from "@/shared/components/rich-text/RichTextEditor";
@@ -867,9 +868,11 @@ export default function AdminLessonDetailPage() {
 
         const isQuiz = lessonType === "QUIZ";
         const isEssay = lessonType === "ESSAY";
+        const isFlashcard = lessonType === "FLASHCARD";
         const cleanSummary = sanitizeLessonHtml(summary);
+        const summaryIsEmpty = isEmptyLessonHtml(cleanSummary);
 
-        if (!isQuiz && isEmptyLessonHtml(cleanSummary)) {
+        if (!isQuiz && !isFlashcard && summaryIsEmpty) {
             showToast("Lesson Summary Blank", "error");
             return;
         }
@@ -905,25 +908,54 @@ export default function AdminLessonDetailPage() {
             const parsedQuiz = isQuiz ? parseQuizContent(textContent) : null;
             const content = isQuiz
                 ? serializeQuizContent(parsedQuiz.title, parsedQuiz.questions)
-                : cleanSummary;
+                : isFlashcard && summaryIsEmpty
+                  ? null
+                  : cleanSummary;
 
-            const payload = {
-                title: title.trim(),
-                lessonType,
-                content,
-                videoUrl: lessonType === "VIDEO" ? resolvedVideoUrl : null,
-                attachmentUrl:
-                    lessonType === "PDF" || lessonType === "ESSAY"
-                        ? uploadedFileUrl
-                        : null,
-                durationSeconds: Number(durationSeconds || 0),
-                isPreview,
-                status: normalizeLessonStatus(status),
-                resources: normalizedResources,
-                sortOrder: existingLessonData?.sortOrder ?? 0,
-            };
+            const payload = isFlashcard
+                ? {
+                      title: title.trim(),
+                      lessonType: "FLASHCARD",
+                      content,
+                      durationSeconds: Number(durationSeconds || 0),
+                      isPreview,
+                      status: normalizeLessonStatus(status),
+                      sortOrder: existingLessonData?.sortOrder ?? 0,
+                  }
+                : {
+                      title: title.trim(),
+                      lessonType,
+                      content,
+                      videoUrl: lessonType === "VIDEO" ? resolvedVideoUrl : null,
+                      attachmentUrl:
+                          lessonType === "PDF" || lessonType === "ESSAY"
+                              ? uploadedFileUrl
+                              : null,
+                      durationSeconds: Number(durationSeconds || 0),
+                      isPreview,
+                      status: normalizeLessonStatus(status),
+                      resources: normalizedResources,
+                      sortOrder: existingLessonData?.sortOrder ?? 0,
+                  };
 
             await courseService.updateLesson(lessonId, payload);
+
+            if (isFlashcard) {
+                try {
+                    const flashcardSet =
+                        await flashcardService.getAdminSetByLesson(lessonId);
+                    if (flashcardSet?.id) {
+                        await flashcardService.updateSet(flashcardSet.id, {
+                            title: title.trim(),
+                        });
+                    }
+                } catch (syncError) {
+                    console.warn(
+                        "Flashcard set title sync failed after lesson update:",
+                        syncError,
+                    );
+                }
+            }
 
             if (isEssay) {
                 const assignmentPayload = {
@@ -1108,9 +1140,7 @@ export default function AdminLessonDetailPage() {
             </div>
 
             {isFlashcardLesson &&
-            ["edit", "flashcard-current", "flashcard-review"].includes(
-                activeTab,
-            ) ? (
+            ["flashcard-current", "flashcard-review"].includes(activeTab) ? (
                     <FlashcardLessonEditor
                         lessonId={lessonId}
                         initialSetId={initialFlashcardSetId}
@@ -1118,15 +1148,14 @@ export default function AdminLessonDetailPage() {
                         activeSection={
                             activeTab === "flashcard-current"
                                 ? "current"
-                                : activeTab === "flashcard-review"
-                                  ? "review"
-                                  : "details"
+                                : "review"
                         }
                         showToast={showToast}
                         dismissToast={removeToast}
                         onTitleSaved={setTitle}
                     />
             ) : activeTab === "edit" ? (
+                <>
                     <form onSubmit={handleSave}>
                         <div style={{ display: "flex", gap: "40px" }}>
                             <div
@@ -1199,12 +1228,16 @@ export default function AdminLessonDetailPage() {
                                         </label>
                                         <select
                                             value={lessonType}
-                                            onChange={(e) =>
-                                                setLessonType(e.target.value)
-                                            }
-                                            disabled={
-                                                lessonType === "FLASHCARD"
-                                            }
+                                            onChange={(e) => {
+                                                if (
+                                                    isFlashcardLesson &&
+                                                    e.target.value !==
+                                                        "FLASHCARD"
+                                                ) {
+                                                    return;
+                                                }
+                                                setLessonType(e.target.value);
+                                            }}
                                             style={{
                                                 width: "100%",
                                                 padding: "11px 16px",
@@ -1215,14 +1248,30 @@ export default function AdminLessonDetailPage() {
                                                 backgroundColor: "#fff",
                                             }}
                                         >
-                                            <option value="VIDEO">
+                                            <option
+                                                value="VIDEO"
+                                                disabled={isFlashcardLesson}
+                                            >
                                                 Video Lecture
                                             </option>
-                                            <option value="PDF">
+                                            <option
+                                                value="PDF"
+                                                disabled={isFlashcardLesson}
+                                            >
                                                 Document / Reading
                                             </option>
-                                            <option value="QUIZ">Quiz</option>
-                                            <option value="ESSAY">Essay</option>
+                                            <option
+                                                value="QUIZ"
+                                                disabled={isFlashcardLesson}
+                                            >
+                                                Quiz
+                                            </option>
+                                            <option
+                                                value="ESSAY"
+                                                disabled={isFlashcardLesson}
+                                            >
+                                                Essay
+                                            </option>
                                             {lessonType === "FLASHCARD" && (
                                                 <option value="FLASHCARD">
                                                     Flashcard
@@ -1351,15 +1400,21 @@ export default function AdminLessonDetailPage() {
                                             }}
                                         >
                                             Summary{" "}
-                                            <span style={{ color: "#ef4444" }}>
-                                                *
-                                            </span>
+                                            {!isFlashcardLesson && (
+                                                <span style={{ color: "#ef4444" }}>
+                                                    *
+                                                </span>
+                                            )}
                                         </label>
 
                                         <RichTextEditor
                                             value={summary}
                                             onChange={setSummary}
-                                            placeholder="Content Learning..."
+                                            placeholder={
+                                                isFlashcardLesson
+                                                    ? "Optional lesson summary..."
+                                                    : "Content Learning..."
+                                            }
                                             minHeight={260}
                                             imageUploader={uploadSummaryImage}
                                             videoUploader={uploadSummaryVideo}
@@ -1368,7 +1423,8 @@ export default function AdminLessonDetailPage() {
                                 )}
 
                                 {lessonType !== "QUIZ" &&
-                                    lessonType !== "ESSAY" && (
+                                    lessonType !== "ESSAY" &&
+                                    lessonType !== "FLASHCARD" && (
                                     <div>
                                         <label
                                             style={{
@@ -1536,6 +1592,29 @@ export default function AdminLessonDetailPage() {
                                     >
                                         Lesson Content
                                     </h3>
+                                    {lessonType === "FLASHCARD" && (
+                                        <div
+                                            style={{
+                                                backgroundColor: "#fff",
+                                                padding: "20px",
+                                                borderRadius: "12px",
+                                                border: "1px solid #cbd5e1",
+                                            }}
+                                        >
+                                            <p
+                                                style={{
+                                                    margin: 0,
+                                                    color: "#64748b",
+                                                    fontSize: "14px",
+                                                    lineHeight: 1.5,
+                                                }}
+                                            >
+                                                Flashcard content is managed
+                                                through the Current Flashcards
+                                                and Staging Review tabs.
+                                            </p>
+                                        </div>
+                                    )}
                                     {lessonType === "VIDEO" && (
                                         <div
                                             style={{
@@ -2263,6 +2342,7 @@ export default function AdminLessonDetailPage() {
                             </div>
                         </div>
                     </form>
+                </>
             ) : activeTab === "submissions" ? (
                 <div
                     style={{
