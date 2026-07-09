@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { adminMonitoringService } from "../../../services/admin-monitoring.service";
 import { StatusBadge } from "@/shared/components/status";
+import { InvoiceDetailModal } from "../components/InvoiceDetailModal";
 import {
   formatAmount,
   formatDateTime,
@@ -17,6 +18,7 @@ export default function AdminTransactionsPage() {
   const [totalItems, setTotalItems] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [invoiceTarget, setInvoiceTarget] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -69,12 +71,14 @@ export default function AdminTransactionsPage() {
     <div className="history-page">
       <header className="history-page__header">
         <h1>Transaction Management</h1>
-        <p>Review all payment transactions created by trainees in the system.</p>
+        <p>
+          Review all payment transactions created by trainees in the system.
+        </p>
       </header>
 
       <section className="history-card">
         <div className="history-toolbar">
-          <strong style={{ fontSize: 14 }}>Payment records</strong>
+          <strong className="transaction-page__section-title">Payment records</strong>
           <span className="history-toolbar__count">
             {totalItems} record{totalItems === 1 ? "" : "s"}
           </span>
@@ -94,46 +98,57 @@ export default function AdminTransactionsPage() {
                 <th>Gateway</th>
                 <th>Amount</th>
                 <th>Status</th>
-                <th>Invoice</th>
                 <th>Created</th>
                 <th>Paid at</th>
+                <th></th>
               </tr>
             </thead>
 
             <tbody>
-              {items.map((tx) => (
-                <tr key={tx.id}>
-                  <td>
-                    <strong title={tx.id}>{truncateId(tx.id)}</strong>
+              {items.map((tx) => {
+                const isPaid =
+                  String(tx.status || "").toUpperCase() === "SUCCESS";
 
-                    {tx.orderId && (
-                      <div style={{ color: "#94a3b8", fontSize: 12 }}>
-                        order: {truncateId(tx.orderId)}
-                      </div>
-                    )}
-                  </td>
+                return (
+                  <tr key={tx.id}>
+                    <td>
+                      <strong title={tx.id}>{truncateId(tx.id)}</strong>
 
-                  <td>{tx.paymentGateway || "--"}</td>
+                      {tx.orderId && (
+                        <div className="transaction-page__meta">
+                          order: {truncateId(tx.orderId)}
+                        </div>
+                      )}
+                    </td>
 
-                  <td>{formatAmount(tx.amount, tx.currency)}</td>
+                    <td>{tx.paymentGateway || "--"}</td>
 
-                  <td>
-                    <StatusBadge status={tx.status} />
-                  </td>
+                    <td>{formatAmount(tx.amount, tx.currency)}</td>
 
-                  <td>
-                    {tx.invoiceNumber ? (
-                      <strong>{tx.invoiceNumber}</strong>
-                    ) : (
-                      <span style={{ color: "#94a3b8" }}>Not issued</span>
-                    )}
-                  </td>
+                    <td>
+                      <StatusBadge status={tx.status} />
+                    </td>
 
-                  <td>{formatDateTime(tx.createdAt)}</td>
+                    <td>{formatDateTime(tx.createdAt)}</td>
 
-                  <td>{tx.paidAt ? formatDateTime(tx.paidAt) : "--"}</td>
-                </tr>
-              ))}
+                    <td>{tx.paidAt ? formatDateTime(tx.paidAt) : "--"}</td>
+
+                    <td className="transaction-page__action-cell">
+                      {isPaid && tx.invoiceNumber ? (
+                        <button
+                          type="button"
+                          className="history-table__link transaction-page__action-btn"
+                          onClick={() => setInvoiceTarget(tx.id)}
+                        >
+                          View invoice
+                        </button>
+                      ) : (
+                        <span className="transaction-page__empty-value">--</span>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         )}
@@ -166,6 +181,12 @@ export default function AdminTransactionsPage() {
           </div>
         )}
       </section>
+
+      <InvoiceDetailModal
+        open={Boolean(invoiceTarget)}
+        transactionId={invoiceTarget}
+        onClose={() => setInvoiceTarget(null)}
+      />
     </div>
   );
 }

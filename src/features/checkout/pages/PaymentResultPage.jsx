@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-do
 import { CheckCircle2, Clock3, XCircle } from 'lucide-react'
 import { Button } from '@/shared/components/ui'
 import { orderService, paymentStatusService } from '@/services'
-import './payment-result.css'
+import '../payment-result.css'
 
 function getStatusCandidates(payment) {
   return [
