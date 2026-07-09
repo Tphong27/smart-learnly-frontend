@@ -675,6 +675,17 @@
   padding: 10px 12px;
 }
 
+.flashcard-staging__notice {
+  border: 1px solid #bfdbfe;
+  border-radius: 6px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.45;
+  padding: 10px 12px;
+}
+
 .flashcard-staging__hint-text {
   margin: 0;
   color: #64748b;
@@ -742,6 +753,12 @@
   flex-wrap: wrap;
 }
 
+.flashcard-import-modal__notice {
+  position: relative;
+  z-index: 1;
+  flex: 0 0 auto;
+}
+
 .flashcard-import-modal__tabs {
   flex: 0 0 auto;
   border-bottom: 1px solid #e2e8f0;
@@ -797,6 +814,13 @@
   color: #64748b;
   font-size: 13px;
   font-weight: 700;
+}
+
+.flashcard-imported-review__header p.flashcard-imported-review__summary {
+  margin: 0;
+  color: #475569;
+  font-size: 13px;
+  font-weight: 800;
 }
 
 .flashcard-imported-review__actions {

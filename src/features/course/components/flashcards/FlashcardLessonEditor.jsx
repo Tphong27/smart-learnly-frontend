@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CheckSquare, Plus, RefreshCw, Save, Trash2, Upload, X } from "lucide-react";
 import { getCurrentUser } from "@/services";
 import { courseService } from "@/services/course.service";
@@ -30,8 +30,10 @@ export function FlashcardLessonEditor({
   lessonId,
   initialSetId,
   defaultTitle = "",
+  activeSection = "details",
   onTitleSaved,
   showToast,
+  dismissToast,
 }) {
   const [flashcardSet, setFlashcardSet] = useState(null);
   const [cards, setCards] = useState([]);
@@ -54,17 +56,34 @@ export function FlashcardLessonEditor({
   const [bulkDeleting, setBulkDeleting] = useState(false);
   const [importModalOpen, setImportModalOpen] = useState(false);
   const [stagingRefreshKey, setStagingRefreshKey] = useState(0);
-  const [activeEditorTab, setActiveEditorTab] = useState("current");
   const [error, setError] = useState(null);
 
   const canUseStaging = isRoleAllowed(getCurrentUser()?.role, STAGING_ROLES);
 
+  const toastIdsRef = useRef(new Set());
+
+  const clearFlashcardToasts = useCallback(() => {
+    if (!dismissToast) return;
+    toastIdsRef.current.forEach((toastId) => dismissToast(toastId));
+    toastIdsRef.current.clear();
+  }, [dismissToast]);
+
   const notify = useCallback(
     (message, type = "info") => {
-      showToast?.(message, type);
+      if (!message) return null;
+      const toastId = showToast?.(message, type);
+      if (toastId && dismissToast) {
+        toastIdsRef.current.add(toastId);
+        window.setTimeout(() => {
+          toastIdsRef.current.delete(toastId);
+        }, 3500);
+      }
+      return toastId;
     },
-    [showToast],
+    [dismissToast, showToast],
   );
+
+  useEffect(() => () => clearFlashcardToasts(), [clearFlashcardToasts]);
 
   const hydrateSet = useCallback(
     (payload) => {
@@ -241,7 +260,13 @@ export function FlashcardLessonEditor({
 
   const handleDeleteCard = (card) => {
     if (!card?.id) return;
+    clearFlashcardToasts();
     setCardPendingDelete(card);
+  };
+
+  const openBulkDeleteConfirm = () => {
+    clearFlashcardToasts();
+    setBulkDeletePending(true);
   };
 
   const confirmDeleteCard = async () => {
@@ -328,37 +353,45 @@ export function FlashcardLessonEditor({
 
   const handleCardsImported = async () => {
     await refreshCurrentFlashcards();
-    setActiveEditorTab("current");
   };
 
   const handleStagingImportCreated = useCallback(
-    (batch) => {
+    () => {
       refreshStagingReview();
-      if (!batch?.id) {
-        notify("Staging batch was created, but the response did not include a batch id.", "error");
-        setActiveEditorTab("review");
-      }
     },
-    [notify, refreshStagingReview],
+    [refreshStagingReview],
   );
 
   const handleEditCard = (card) => {
+    clearFlashcardToasts();
     setActivePreviewCardId(card?.id || null);
     setEditingCard(card);
     setCardEditorOpen(true);
   };
 
   const handleAddCard = () => {
+    clearFlashcardToasts();
     setEditingCard(null);
     setEditorVersion((version) => version + 1);
     setCardEditorOpen(true);
   };
 
   const closeCardEditor = () => {
+    clearFlashcardToasts();
     setCardEditorOpen(false);
     setEditingCard(null);
     setEditorVersion((version) => version + 1);
   };
+
+  const openImportModal = useCallback(() => {
+    clearFlashcardToasts();
+    setImportModalOpen(true);
+  }, [clearFlashcardToasts]);
+
+  const closeImportModal = useCallback(() => {
+    clearFlashcardToasts();
+    setImportModalOpen(false);
+  }, [clearFlashcardToasts]);
 
   const toggleSelectionMode = () => {
     if (selectionMode) {
@@ -455,100 +488,58 @@ export function FlashcardLessonEditor({
 
   return (
     <div className="flashcard-shell">
-      <div className="flashcard-toolbar">
-        <div>
-          <h2 className="flashcard-toolbar__title">{title || "Flashcards"}</h2>
-          <div className="flashcard-toolbar__meta">
-            {orderedCards.length} card{orderedCards.length === 1 ? "" : "s"}
-          </div>
-        </div>
-      </div>
-
-      <form className="flashcard-panel" onSubmit={handleSaveSet}>
-        <div className="flashcard-panel__header">
-          <h3 className="flashcard-panel__title">Set Details</h3>
-          <button
-            type="submit"
-            className="flashcard-btn flashcard-btn--primary"
-            disabled={savingSet}
-          >
-            <Save size={16} />
-            {savingSet ? "Saving" : "Save Set"}
-          </button>
-        </div>
-        <div className="flashcard-panel__body">
-          <div className="flashcard-form__row">
-            <div className="flashcard-field">
-              <label htmlFor="flashcard-set-title">Title</label>
-              <input
-                id="flashcard-set-title"
-                type="text"
-                value={title}
-                onChange={(event) => setTitle(event.target.value)}
-                required
-              />
-            </div>
-            <div className="flashcard-field">
-              <label htmlFor="flashcard-set-description">Description</label>
-              <input
-                id="flashcard-set-description"
-                type="text"
-                value={description}
-                onChange={(event) => setDescription(event.target.value)}
-                placeholder="Optional"
-              />
+      {activeSection === "details" && (
+        <>
+          <div className="flashcard-toolbar">
+            <div>
+              <h2 className="flashcard-toolbar__title">{title || "Flashcards"}</h2>
+              <div className="flashcard-toolbar__meta">
+                {orderedCards.length} card{orderedCards.length === 1 ? "" : "s"}
+              </div>
             </div>
           </div>
-        </div>
-      </form>
 
-      {canUseStaging && (
-        <div className="flashcard-tabs-row">
-          <div
-            className="flashcard-tabs"
-            role="tablist"
-            aria-label="Flashcard editor sections"
-          >
-            <button
-              type="button"
-              role="tab"
-              aria-selected={activeEditorTab === "current"}
-              className={
-                activeEditorTab === "current"
-                  ? "flashcard-tabs__tab is-active"
-                  : "flashcard-tabs__tab"
-              }
-              onClick={() => setActiveEditorTab("current")}
-            >
-              Current Flashcards
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={activeEditorTab === "review"}
-              className={
-                activeEditorTab === "review"
-                  ? "flashcard-tabs__tab is-active"
-                  : "flashcard-tabs__tab"
-              }
-              onClick={() => setActiveEditorTab("review")}
-            >
-              Staging Review
-            </button>
-          </div>
-          <button
-            type="button"
-            className="flashcard-btn flashcard-btn--primary flashcard-tabs-row__import"
-            onClick={() => setImportModalOpen(true)}
-            disabled={savingCard || reordering || bulkDeleting}
-          >
-            <Upload size={16} />
-            Import
-          </button>
-        </div>
+          <form className="flashcard-panel" onSubmit={handleSaveSet}>
+            <div className="flashcard-panel__header">
+              <h3 className="flashcard-panel__title">Set Details</h3>
+              <button
+                type="submit"
+                className="flashcard-btn flashcard-btn--primary"
+                disabled={savingSet}
+              >
+                <Save size={16} />
+                {savingSet ? "Saving" : "Save Set"}
+              </button>
+            </div>
+            <div className="flashcard-panel__body">
+              <div className="flashcard-form__row">
+                <div className="flashcard-field">
+                  <label htmlFor="flashcard-set-title">Title</label>
+                  <input
+                    id="flashcard-set-title"
+                    type="text"
+                    value={title}
+                    onChange={(event) => setTitle(event.target.value)}
+                    required
+                  />
+                </div>
+                <div className="flashcard-field">
+                  <label htmlFor="flashcard-set-description">Description</label>
+                  <input
+                    id="flashcard-set-description"
+                    type="text"
+                    value={description}
+                    onChange={(event) => setDescription(event.target.value)}
+                    placeholder="Optional"
+                  />
+                </div>
+              </div>
+            </div>
+          </form>
+        </>
       )}
 
-      {!canUseStaging || activeEditorTab === "current" ? (
+      {activeSection === "current" && (
         <div className="flashcard-current-workspace">
           <div className="flashcard-current-workspace__inner">
             <div className="flashcard-current-workspace__main">
@@ -575,6 +566,17 @@ export function FlashcardLessonEditor({
                       <Plus size={16} />
                       Add card
                     </button>
+                    {canUseStaging && (
+                      <button
+                        type="button"
+                        className="flashcard-btn flashcard-btn--primary"
+                        onClick={openImportModal}
+                        disabled={savingCard || reordering || bulkDeleting}
+                      >
+                        <Upload size={16} />
+                        Import
+                      </button>
+                    )}
                     {selectionMode && pageCards.length > 0 && (
                       <>
                         <button
@@ -609,7 +611,7 @@ export function FlashcardLessonEditor({
                       <button
                         type="button"
                         className="flashcard-btn flashcard-btn--danger"
-                        onClick={() => setBulkDeletePending(true)}
+                        onClick={openBulkDeleteConfirm}
                         disabled={savingCard || reordering || bulkDeleting}
                       >
                         <Trash2 size={16} />
@@ -702,7 +704,8 @@ export function FlashcardLessonEditor({
             </aside>
           </div>
         </div>
-      ) : (
+      )}
+      {activeSection === "review" && canUseStaging && (
         <FlashcardStagingWorkspace
           setId={flashcardSet?.id}
           existingCards={orderedCards}
@@ -710,6 +713,9 @@ export function FlashcardLessonEditor({
           onUploadImage={handleUploadImage}
           onApproved={refreshCurrentFlashcards}
           refreshKey={stagingRefreshKey}
+          onImport={openImportModal}
+          onModalOpen={clearFlashcardToasts}
+          importDisabled={savingCard || reordering || bulkDeleting}
         />
       )}
       {importModalOpen && flashcardSet?.id && (
@@ -717,7 +723,7 @@ export function FlashcardLessonEditor({
           setId={flashcardSet.id}
           existingCards={orderedCards}
           notify={notify}
-          onClose={() => setImportModalOpen(false)}
+          onClose={closeImportModal}
           onStagingChanged={handleStagingImportCreated}
           onCardsImported={handleCardsImported}
           onApproved={refreshCurrentFlashcards}

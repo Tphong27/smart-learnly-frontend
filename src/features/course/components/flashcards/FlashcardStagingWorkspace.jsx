@@ -297,15 +297,19 @@ function getGeneratedCount(response) {
   return 0;
 }
 
-function formatGeneratedMessage(response, requestedCount, sourceLabel = "") {
+function getShortfallNotice(requestedCount, createdCount) {
+  const requested = Number(requestedCount);
+  const created = Number(createdCount);
+  if (!Number.isFinite(requested) || !Number.isFinite(created)) return null;
+  if (requested <= created) return null;
+  return `Created ${created} of ${requested} requested cards because the document did not contain enough supported content.`;
+}
+
+function formatGeneratedMessage(response, sourceLabel = "") {
   const generatedCount = getGeneratedCount(response);
   const suffix = sourceLabel ? ` ${sourceLabel}` : "";
   const cardLabel = generatedCount === 1 ? "card" : "cards";
-  const baseMessage = `Created ${generatedCount} staging ${cardLabel}${suffix}.`;
-  if (generatedCount < requestedCount) {
-    return `${baseMessage} Requested ${requestedCount}; fewer cards were generated because the source content had limited extractable ideas.`;
-  }
-  return baseMessage;
+  return `Created ${generatedCount} staging ${cardLabel}${suffix}.`;
 }
 
 function GenerationSettings({ values, onChange, prefix }) {
@@ -369,6 +373,29 @@ function InlineAlert({ children }) {
   return <div className="flashcard-staging__alert">{children}</div>;
 }
 
+function InlineNotice({ children }) {
+  if (!children) return null;
+  return <div className="flashcard-staging__notice">{children}</div>;
+}
+
+function ModalNotice({ notice }) {
+  if (!notice?.message) return null;
+  const isError = notice.type === "error";
+  return (
+    <div className="flashcard-import-modal__notice">
+      <div
+        className={
+          isError ? "flashcard-staging__alert" : "flashcard-staging__notice"
+        }
+        role={isError ? "alert" : "status"}
+        aria-live={isError ? "assertive" : "polite"}
+      >
+        {notice.message}
+      </div>
+    </div>
+  );
+}
+
 function QuestionBankImportPanel({ setId, notify, onStagingChanged }) {
   const [filters, setFilters] = useState(DEFAULT_SOURCE_FILTERS);
   const [appliedFilters, setAppliedFilters] = useState(filters);
@@ -403,11 +430,10 @@ function QuestionBankImportPanel({ setId, notify, onStagingChanged }) {
         "Failed to load source questions.",
       );
       setError(message);
-      notify(message, "error");
     } finally {
       setLoading(false);
     }
-  }, [appliedFilters, notify, setId]);
+  }, [appliedFilters, setId]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -492,6 +518,7 @@ function QuestionBankImportPanel({ setId, notify, onStagingChanged }) {
       notify("Select at least one question.", "error");
       return;
     }
+    notify(null);
     setSubmitting(true);
     try {
       const response = normalizeResponse(
@@ -811,6 +838,23 @@ function PastedTextImportPanel({
     setValues(DEFAULT_PASTED_IMPORT);
   }
 
+  function handleTextKeyDown(event) {
+    if (event.key !== "Tab" || event.shiftKey) return;
+
+    event.preventDefault();
+    const textarea = event.currentTarget;
+    const selectionStart = textarea.selectionStart;
+    const selectionEnd = textarea.selectionEnd;
+    const nextText = `${textarea.value.slice(0, selectionStart)}\t${textarea.value.slice(selectionEnd)}`;
+    const nextCursorPosition = selectionStart + 1;
+
+    updateValue("text", nextText);
+    window.requestAnimationFrame(() => {
+      textarea.selectionStart = nextCursorPosition;
+      textarea.selectionEnd = nextCursorPosition;
+    });
+  }
+
   async function handleImport(event) {
     event.preventDefault();
     if (parsed.configError) {
@@ -836,12 +880,12 @@ function PastedTextImportPanel({
       setSubmitting(false);
       const message = getErrorMessage(importError, "Failed to import pasted flashcards.");
       if (createdCount > 0) {
+        onClose?.();
+        await onCardsImported?.();
         notify(
           `Imported ${createdCount} of ${importableCards.length} flashcards before an error: ${message} Current Flashcards were refreshed.`,
           "error",
         );
-        onClose?.();
-        await onCardsImported?.();
         return;
       }
       notify(message, "error");
@@ -870,6 +914,7 @@ function PastedTextImportPanel({
           id="pasted-import-text"
           value={values.text}
           onChange={(event) => updateValue("text", event.target.value)}
+          onKeyDown={handleTextKeyDown}
           placeholder={"Term\tDefinition\nAnother term\tAnother definition"}
           rows={12}
         />
@@ -1066,6 +1111,7 @@ function DocumentGenerationPanel({ setId, notify, onStagingChanged }) {
     setFile(nextFile);
     setFileError(null);
     setUploadError(null);
+    notify(null);
     if (nextFile && nextFile.size > DOCUMENT_MAX_FILE_SIZE_BYTES) {
       setFileError(DOCUMENT_MAX_FILE_SIZE_MESSAGE);
     }
@@ -1079,7 +1125,7 @@ function DocumentGenerationPanel({ setId, notify, onStagingChanged }) {
     }
     if (file.size > DOCUMENT_MAX_FILE_SIZE_BYTES) {
       setFileError(DOCUMENT_MAX_FILE_SIZE_MESSAGE);
-      notify(DOCUMENT_MAX_FILE_SIZE_MESSAGE, "error");
+      notify(null);
       return;
     }
     const settingsError = validateGenerationSettings(settings);
@@ -1089,6 +1135,7 @@ function DocumentGenerationPanel({ setId, notify, onStagingChanged }) {
     }
     const generationPayload = getGenerationPayload(settings);
     setUploadError(null);
+    notify(null);
     setSubmitting(true);
     try {
       const response = normalizeResponse(
@@ -1097,10 +1144,10 @@ function DocumentGenerationPanel({ setId, notify, onStagingChanged }) {
           ...generationPayload,
         }),
       );
+      const createdCount = getGeneratedCount(response);
       notify(
         formatGeneratedMessage(
           response,
-          generationPayload.desiredCount,
           "from document",
         ),
         "success",
@@ -1109,10 +1156,13 @@ function DocumentGenerationPanel({ setId, notify, onStagingChanged }) {
       setFileError(null);
       setUploadError(null);
       setFileInputRevision((revision) => revision + 1);
-      onStagingChanged?.(response);
+      onStagingChanged?.(response, {
+        requestedCount: generationPayload.desiredCount,
+        createdCount,
+      });
     } catch (error) {
       const message = getErrorMessage(error, "Failed to generate from document.");
-      setUploadError(message);
+      setUploadError(null);
       notify(message, "error");
     } finally {
       setSubmitting(false);
@@ -1174,19 +1224,47 @@ export function ImportFlashcardsModal({
 }) {
   const [activeImportTab, setActiveImportTab] = useState("pasted");
   const [reviewBatch, setReviewBatch] = useState(null);
+  const [reviewNotice, setReviewNotice] = useState(null);
   const [reviewEditing, setReviewEditing] = useState(false);
+  const [modalNotice, setModalNotice] = useState(null);
 
-  function handleStagingImportComplete(batch) {
+  const notifyInModal = useCallback((message, type = "info") => {
+    if (!message) {
+      setModalNotice(null);
+      return;
+    }
+    setModalNotice({ message, type });
+  }, []);
+
+  function selectImportTab(tab) {
+    setActiveImportTab(tab);
+    setModalNotice(null);
+  }
+
+  function handleStagingImportComplete(batch, meta = {}) {
     if (batch?.id) {
       setReviewBatch(batch);
+      setReviewNotice(
+        getShortfallNotice(
+          meta.requestedCount,
+          meta.createdCount ?? getGeneratedCount(batch),
+        ),
+      );
       setReviewEditing(false);
+    } else {
+      notifyInModal(
+        "Staging batch was created, but the response did not include a batch id.",
+        "error",
+      );
     }
     onStagingChanged?.(batch);
   }
 
   function handleBackToImport() {
     setReviewBatch(null);
+    setReviewNotice(null);
     setReviewEditing(false);
+    setModalNotice(null);
   }
 
   return (
@@ -1230,6 +1308,8 @@ export function ImportFlashcardsModal({
           </div>
         </div>
 
+        <ModalNotice notice={modalNotice} />
+
         {!reviewBatch && (
           <div
             className="flashcard-tabs flashcard-import-modal__tabs"
@@ -1245,7 +1325,7 @@ export function ImportFlashcardsModal({
                   ? "flashcard-tabs__tab is-active"
                   : "flashcard-tabs__tab"
               }
-              onClick={() => setActiveImportTab("pasted")}
+              onClick={() => selectImportTab("pasted")}
             >
               Pasted Text
             </button>
@@ -1258,7 +1338,7 @@ export function ImportFlashcardsModal({
                   ? "flashcard-tabs__tab is-active"
                   : "flashcard-tabs__tab"
               }
-              onClick={() => setActiveImportTab("document")}
+              onClick={() => selectImportTab("document")}
             >
               Document
             </button>
@@ -1271,7 +1351,7 @@ export function ImportFlashcardsModal({
                   ? "flashcard-tabs__tab is-active"
                   : "flashcard-tabs__tab"
               }
-              onClick={() => setActiveImportTab("question-bank")}
+              onClick={() => selectImportTab("question-bank")}
             >
               Question Bank
             </button>
@@ -1285,7 +1365,8 @@ export function ImportFlashcardsModal({
               setId={setId}
               initialBatch={reviewBatch}
               existingCards={existingCards}
-              notify={notify}
+              notify={notifyInModal}
+              reviewNotice={reviewNotice}
               onStagingChanged={onStagingChanged}
               onApproved={onApproved}
               onUploadImage={onUploadImage}
@@ -1310,14 +1391,14 @@ export function ImportFlashcardsModal({
               {activeImportTab === "document" && (
                 <DocumentGenerationPanel
                   setId={setId}
-                  notify={notify}
+                  notify={notifyInModal}
                   onStagingChanged={handleStagingImportComplete}
                 />
               )}
               {activeImportTab === "question-bank" && (
                 <QuestionBankImportPanel
                   setId={setId}
-                  notify={notify}
+                  notify={notifyInModal}
                   onStagingChanged={handleStagingImportComplete}
                 />
               )}
@@ -1534,6 +1615,7 @@ function StagingBatchCardGroup({
   draftIds,
   duplicateInfoByCardId,
   savingEdit,
+  hideSourceSummary = false,
   onToggleCard,
   onToggleBatch,
   onEdit,
@@ -1548,12 +1630,18 @@ function StagingBatchCardGroup({
       <div className="flashcard-staging-batch__header">
         <div>
           <h4>
-            {formatLabel(batch.sourceType, "Staging Batch")}
-            {batch.sourceName ? ` - ${batch.sourceName}` : ""}
+            {hideSourceSummary
+              ? "Cards"
+              : `${formatLabel(batch.sourceType, "Staging Batch")}${
+                  batch.sourceName ? ` - ${batch.sourceName}` : ""
+                }`}
           </h4>
           <p>
-            {formatLabel(batch.status)} - {cards.length} card
-            {cards.length === 1 ? "" : "s"}
+            {hideSourceSummary
+              ? formatLabel(batch.status)
+              : `${formatLabel(batch.status)} - ${cards.length} card${
+                  cards.length === 1 ? "" : "s"
+                }`}
           </p>
         </div>
         <label className="flashcard-staging__select-all">
@@ -1591,6 +1679,9 @@ function StagingReviewPanel({
   refreshKey,
   onApproved,
   onUploadImage,
+  onImport,
+  onModalOpen,
+  importDisabled = false,
 }) {
   const [batches, setBatches] = useState([]);
   const [selectedIds, setSelectedIds] = useState([]);
@@ -1732,6 +1823,11 @@ function StagingReviewPanel({
     );
   }
 
+  function startStagingEdit(card) {
+    onModalOpen?.();
+    setEditingCard(card);
+  }
+
   async function handleApprove() {
     if (!selectedEligibleDraftIds.length) {
       notify("Select at least one eligible staging card before approve.", "error");
@@ -1764,6 +1860,7 @@ function StagingReviewPanel({
   function handleRejectSelected() {
     if (!selectedDraftIds.length) return;
     const count = selectedDraftIds.length;
+    onModalOpen?.();
     setRejectConfirm({
       mode: "selected",
       ids: selectedDraftIds,
@@ -1833,6 +1930,17 @@ function StagingReviewPanel({
             </div>
           </div>
           <div className="flashcard-staging__header-actions">
+            {onImport && (
+              <button
+                type="button"
+                className="flashcard-btn flashcard-btn--primary"
+                onClick={onImport}
+                disabled={importDisabled}
+              >
+                <Upload size={16} />
+                Import
+              </button>
+            )}
             <button
               type="button"
               className="flashcard-btn"
@@ -1892,7 +2000,7 @@ function StagingReviewPanel({
                     savingEdit={savingEdit}
                     onToggleCard={toggleCard}
                     onToggleBatch={toggleBatch}
-                    onEdit={setEditingCard}
+                    onEdit={startStagingEdit}
                   />
                 ))}
               </div>
@@ -1986,6 +2094,7 @@ function ImportedBatchReviewPanel({
   initialBatch,
   existingCards = [],
   notify,
+  reviewNotice,
   onStagingChanged,
   onApproved,
   onUploadImage,
@@ -1997,6 +2106,7 @@ function ImportedBatchReviewPanel({
   const [approving, setApproving] = useState(false);
   const [rejectingSelected, setRejectingSelected] = useState(false);
   const [rejectConfirm, setRejectConfirm] = useState(null);
+  const [rejectConfirmError, setRejectConfirmError] = useState(null);
   const [editingCard, setEditingCard] = useState(null);
   const [savingEdit, setSavingEdit] = useState(false);
   const [error, setError] = useState(null);
@@ -2040,13 +2150,21 @@ function ImportedBatchReviewPanel({
 
   const loadImportedBatch = useCallback(async ({ showRefreshedToast = false } = {}) => {
     if (!setId || !batchId) return;
+    if (showRefreshedToast) {
+      notify(null);
+    }
     setLoading(true);
     setError(null);
     try {
       const items = await flashcardService.listStaging(setId);
       const freshBatch = items.find((item) => item.id === batchId);
       if (!freshBatch) {
-        setError("Imported staging batch is no longer available.");
+        const message = "Imported staging batch is no longer available.";
+        if (showRefreshedToast) {
+          notify(message, "error");
+        } else {
+          setError(message);
+        }
         return;
       }
       setBatch(freshBatch);
@@ -2061,8 +2179,11 @@ function ImportedBatchReviewPanel({
       }
     } catch (loadError) {
       const message = getErrorMessage(loadError, "Failed to refresh imported batch.");
-      setError(message);
-      notify(message, "error");
+      if (showRefreshedToast) {
+        notify(message, "error");
+      } else {
+        setError(message);
+      }
     } finally {
       setLoading(false);
     }
@@ -2090,16 +2211,21 @@ function ImportedBatchReviewPanel({
   }
 
   function startEdit(card) {
+    notify(null);
     setEditingCard(card);
     onEditStateChange?.(true);
   }
 
-  function cancelEdit() {
+  function cancelEdit(options = {}) {
+    if (options?.clearNotice !== false) {
+      notify(null);
+    }
     setEditingCard(null);
     onEditStateChange?.(false);
   }
 
   async function handleApprove() {
+    notify(null);
     if (!selectedEligibleDraftIds.length) {
       notify("Select at least one eligible staging card before approve.", "error");
       return;
@@ -2132,6 +2258,8 @@ function ImportedBatchReviewPanel({
   function handleRejectSelected() {
     if (!selectedDraftIds.length) return;
     const count = selectedDraftIds.length;
+    notify(null);
+    setRejectConfirmError(null);
     setRejectConfirm({
       mode: "selected",
       ids: selectedDraftIds,
@@ -2144,22 +2272,23 @@ function ImportedBatchReviewPanel({
 
     const ids = rejectConfirm.ids;
     setRejectingSelected(true);
+    setRejectConfirmError(null);
+    notify(null);
 
     try {
       await Promise.all(ids.map((cardId) => flashcardService.rejectStagingCard(cardId)));
       const count = ids.length;
-      notify(`Rejected ${count} staging card${count === 1 ? "" : "s"}.`, "success");
       setSelectedIds((current) => current.filter((id) => !ids.includes(id)));
       setRejectConfirm(null);
+      notify(`Rejected ${count} staging card${count === 1 ? "" : "s"}.`, "success");
       await loadImportedBatch();
       onStagingChanged?.();
     } catch (rejectError) {
-      notify(
+      setRejectConfirmError(
         getErrorMessage(
           rejectError,
           "Failed to reject selected staging cards.",
         ),
-        "error",
       );
     } finally {
       setRejectingSelected(false);
@@ -2167,6 +2296,7 @@ function ImportedBatchReviewPanel({
   }
 
   async function handleSaveEdit(draft) {
+    notify(null);
     const validationError = validateCardDraft(draft);
     if (validationError) {
       notify(validationError, "error");
@@ -2179,7 +2309,7 @@ function ImportedBatchReviewPanel({
         toCardPayload(draft),
       );
       notify("Staging card updated.", "success");
-      cancelEdit();
+      cancelEdit({ clearNotice: false });
       await loadImportedBatch();
       onStagingChanged?.();
     } catch (editError) {
@@ -2209,11 +2339,13 @@ function ImportedBatchReviewPanel({
 
   return (
     <>
-      <section className="flashcard-panel flashcard-imported-review">
+      <section
+        className="flashcard-panel flashcard-imported-review"
+        aria-label="Imported flashcard review"
+      >
         <div className="flashcard-panel__header flashcard-imported-review__header">
           <div>
-            <h3 id="flashcard-imported-review-title">Review imported flashcards</h3>
-            <p>
+            <p className="flashcard-imported-review__summary">
               {formatLabel(batch?.sourceType, "Imported Batch")}
               {batch?.sourceName ? ` - ${batch.sourceName}` : ""} - {cards.length} card
               {cards.length === 1 ? "" : "s"}
@@ -2255,6 +2387,7 @@ function ImportedBatchReviewPanel({
         </div>
 
         <div className="flashcard-panel__body flashcard-staging__section">
+          <InlineNotice>{reviewNotice}</InlineNotice>
           <InlineAlert>{error}</InlineAlert>
           {loading ? (
             <div className="flashcard-practice__loading">
@@ -2275,6 +2408,7 @@ function ImportedBatchReviewPanel({
                 draftIds={draftIds}
                 duplicateInfoByCardId={duplicateInfoByCardId}
                 savingEdit={savingEdit}
+                hideSourceSummary
                 onToggleCard={toggleCard}
                 onToggleBatch={toggleBatch}
                 onEdit={startEdit}
@@ -2296,11 +2430,15 @@ function ImportedBatchReviewPanel({
               {rejectConfirm.message}
             </h3>
             <p>Rejected staging cards will be removed from the draft selection.</p>
+            <InlineAlert>{rejectConfirmError}</InlineAlert>
             <div className="flashcard-modal__actions">
               <button
                 type="button"
                 className="flashcard-btn"
-                onClick={() => setRejectConfirm(null)}
+                onClick={() => {
+                  setRejectConfirm(null);
+                  setRejectConfirmError(null);
+                }}
                 disabled={rejectingSelected}
               >
                 Cancel
@@ -2328,6 +2466,9 @@ export function FlashcardStagingWorkspace({
   onUploadImage,
   onApproved,
   refreshKey = 0,
+  onImport,
+  onModalOpen,
+  importDisabled = false,
 }) {
   if (!setId) {
     return (
@@ -2346,6 +2487,9 @@ export function FlashcardStagingWorkspace({
       refreshKey={refreshKey}
       onApproved={onApproved}
       onUploadImage={onUploadImage}
+      onImport={onImport}
+      onModalOpen={onModalOpen}
+      importDisabled={importDisabled}
     />
   );
 }
