@@ -12,7 +12,7 @@ import {
   ScrollText,
   Settings,
   ShieldCheck,
-  Timer,
+  /* Timer, */
   Users,
 } from "lucide-react";
 import { NavLink } from "react-router-dom";
@@ -106,12 +106,12 @@ const navItems = [
     icon: BarChart3,
     roles: [ROLES.TMO],
   },
-  {
-    label: "Flash Tests Management",
-    path: "/staff/flashtests",
-    icon: Timer,
-    roles: [ROLES.TRAINER, ROLES.TMO, ROLES.SME],
-  },
+  // {
+  //   label: "Flash Tests Management",
+  //   path: "/staff/flashtests",
+  //   icon: Timer,
+  //   roles: [ROLES.TRAINER, ROLES.TMO, ROLES.SME],
+  // },
 
   // TRAINEE ROUTES
   {
@@ -150,12 +150,12 @@ const navItems = [
     icon: BookOpen,
     roles: [ROLES.TRAINEE],
   },
-  {
-    label: "Flash Tests Management",
-    path: "/learning/flashtests",
-    icon: Timer,
-    roles: [ROLES.TRAINEE],
-  },
+  // {
+  //   label: "Flash Tests Management",
+  //   path: "/learning/flashtests",
+  //   icon: Timer,
+  //   roles: [ROLES.TRAINEE],
+  // },
 ];
 
 export function Sidebar({ userRole, open, onClose }) {
