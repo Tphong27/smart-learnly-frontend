@@ -2,19 +2,10 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useToast } from '@/shared/components/ui'
 import { enrollmentService } from '@/services'
-import { formatDate } from '@/shared/utils/formatDate'
+import { StatusBadge } from '@/shared/components/status'
+import { formatDate } from '@/shared/utils/formatters'
+import { DEFAULT_PAGE_SIZE } from '@/shared/constants/pagination'
 import './history-page.css'
-
-const PAGE_SIZE = 20
-
-function StatusBadge({ status }) {
-  const normalized = (status || '').toLowerCase()
-  return (
-    <span className={`history-status history-status--${normalized || 'pending'}`}>
-      {status || 'Pending'}
-    </span>
-  )
-}
 
 export function MyEnrollmentsPage() {
   const toast = useToast()
@@ -32,7 +23,7 @@ export function MyEnrollmentsPage() {
       setLoading(true)
       setError(null)
       try {
-        const data = await enrollmentService.getHistory({ page: pageRequest, size: PAGE_SIZE })
+        const data = await enrollmentService.getHistory({ page: pageRequest, size: DEFAULT_PAGE_SIZE })
         if (cancelled) return
         setItems(data.items || [])
         setTotalPages(data.totalPages || 0)

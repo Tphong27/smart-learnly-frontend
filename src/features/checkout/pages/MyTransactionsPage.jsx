@@ -1,34 +1,10 @@
 import { useEffect, useState } from 'react'
 import { Modal, Button, useToast } from '@/shared/components/ui'
 import { transactionService, orderService } from '@/services'
-import { formatDate } from '@/shared/utils/formatDate'
+import { StatusBadge } from '@/shared/components/status'
+import { formatAmount, formatDate, truncateId } from '@/shared/utils/formatters'
+import { DEFAULT_PAGE_SIZE } from '@/shared/constants/pagination'
 import '../../enrollment/pages/history-page.css'
-
-const PAGE_SIZE = 20
-
-function formatAmount(value, currency = 'VND') {
-  if (value == null) return '--'
-  const num = Number(value)
-  if (Number.isNaN(num)) return '--'
-  try {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: currency || 'VND',
-      maximumFractionDigits: 0,
-    }).format(num)
-  } catch {
-    return `${num} ${currency}`
-  }
-}
-
-function StatusBadge({ status }) {
-  const normalized = (status || '').toLowerCase()
-  return (
-    <span className={`history-status history-status--${normalized || 'pending'}`}>
-      {status || 'Pending'}
-    </span>
-  )
-}
 
 function InvoiceModal({ open, transactionId, onClose }) {
   const toast = useToast()
@@ -153,7 +129,7 @@ function CancelOrderModal({ open, target, onClose, onConfirmed }) {
     >
       <p style={{ margin: 0, color: '#475569', fontSize: 14, lineHeight: 1.6 }}>
         Are you sure you want to cancel order
-        {' '}<strong>{target?.invoiceNumber || target?.orderId?.slice(0, 8)}</strong>?
+        {' '}<strong>{target?.invoiceNumber || truncateId(target?.orderId)}</strong>?
         This will release any pending payment session and cannot be undone.
       </p>
       {error && <div className='auth-card__alert' style={{ marginTop: 14 }}>{error}</div>}
@@ -184,7 +160,7 @@ export function MyTransactionsPage() {
       setLoading(true)
       setError(null)
       try {
-        const data = await transactionService.list({ page: pageRequest, size: PAGE_SIZE })
+        const data = await transactionService.list({ page: pageRequest, size: DEFAULT_PAGE_SIZE })
         if (cancelled) return
         setItems(data.items || [])
         setTotalPages(data.totalPages || 0)
@@ -245,7 +221,7 @@ export function MyTransactionsPage() {
                     <td>
                       <strong>{tx.invoiceNumber || '--'}</strong>
                       {tx.orderId && (
-                        <div style={{ color: '#94a3b8', fontSize: 12 }}>order: {tx.orderId.slice(0, 8)}...</div>
+                        <div style={{ color: '#94a3b8', fontSize: 12 }}>order: {truncateId(tx.orderId)}</div>
                       )}
                     </td>
                     <td>{tx.paymentGateway || '--'}</td>

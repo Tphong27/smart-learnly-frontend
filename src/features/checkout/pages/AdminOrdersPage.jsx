@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { adminMonitoringService } from "../../../services/admin-monitoring.service";
 import { DataTable } from "../../../shared/components/DataTable";
-// Temporarily importing from checkout until moved to shared
 import { PaymentStatusBadge } from "../../checkout/components/PaymentStatusBadge";
+import { formatAmount, formatDate } from "@/shared/utils/formatters";
+import { DEFAULT_PAGE_SIZE } from "@/shared/constants/pagination";
 
 export default function AdminOrdersPage() {
   const [orders, setOrders] = useState([]);
@@ -32,10 +33,7 @@ export default function AdminOrdersPage() {
   }, []);
 
   const formatCurrency = (amount) => {
-    return new Intl.NumberFormat("vi-VN", {
-      style: "currency",
-      currency: "VND",
-    }).format(amount || 0);
+    return formatAmount(amount, "VND");
   };
 
   // DataTable column configuration
@@ -54,10 +52,7 @@ export default function AdminOrdersPage() {
     {
       header: "Created At",
       accessorKey: "createdAt",
-      render: (row) =>
-        row?.createdAt
-          ? new Date(row.createdAt).toLocaleDateString("en-US")
-          : "N/A", // Thêm check null
+      render: (row) => row?.createdAt ? formatDate(row.createdAt) : "N/A",
     },
   ];
 

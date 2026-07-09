@@ -4,34 +4,9 @@ import { Edit2, Eye, Plus, Search, Trash2 } from "lucide-react";
 import { Button, FormField, Modal, useToast } from "@/shared/components/ui";
 import { categoryService, courseService } from "@/services";
 import { getCurrentUser } from "@/services/api-client";
+import { formatPrice, formatDate } from "@/shared/utils/formatters";
+import { DEFAULT_PAGE_SIZE } from "@/shared/constants/pagination";
 import "../../admin-shared.css";
-
-const PAGE_SIZE = 10;
-
-function formatPrice(value, isFree) {
-  if (isFree) return "Free";
-  if (value == null) return "--";
-  const num = Number(value);
-  if (Number.isNaN(num) || num <= 0) return "Free";
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "VND",
-    maximumFractionDigits: 0,
-  }).format(num);
-}
-
-function formatDate(value) {
-  if (!value) return "--";
-  try {
-    return new Date(value).toLocaleDateString("en-GB", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-    });
-  } catch {
-    return "--";
-  }
-}
 
 function CourseStatusBadge({ status }) {
   const normalized = (status || "").toLowerCase();
@@ -155,7 +130,7 @@ export function AdminCoursesPage() {
       try {
         const data = await courseService.listAdmin({
           page: pageRequest,
-          size: PAGE_SIZE,
+          size: DEFAULT_PAGE_SIZE,
         });
         if (cancelled) return;
         setItems(data.items || []);

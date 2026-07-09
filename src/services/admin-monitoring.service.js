@@ -1,49 +1,60 @@
 import { request } from "../shared/api/httpClient";
 
+function unwrapApiResponse(response) {
+  return response?.data ?? response;
+}
+
 const httpClient = {
-  get: (path, config = {}) => {
+  get: async (path, config = {}) => {
     const { params, ...options } = config;
     const query = params ? `?${new URLSearchParams(params).toString()}` : "";
-    return request(`${path}${query}`, { method: "GET", ...options });
+    const response = await request(`${path}${query}`, { method: "GET", ...options });
+    return unwrapApiResponse(response);
   },
-  post: (path, body, config = {}) =>
-    request(path, { method: "POST", body: JSON.stringify(body), ...config }),
-  put: (path, body, config = {}) =>
-    request(path, { method: "PUT", body: JSON.stringify(body), ...config }),
-  delete: (path, config = {}) => request(path, { method: "DELETE", ...config }),
+  post: async (path, body, config = {}) => {
+    const response = await request(path, {
+      method: "POST",
+      body: JSON.stringify(body),
+      ...config,
+    });
+    return unwrapApiResponse(response);
+  },
+  put: async (path, body, config = {}) => {
+    const response = await request(path, {
+      method: "PUT",
+      body: JSON.stringify(body),
+      ...config,
+    });
+    return unwrapApiResponse(response);
+  },
+  delete: async (path, config = {}) => {
+    const response = await request(path, { method: "DELETE", ...config });
+    return unwrapApiResponse(response);
+  },
 };
 
 export const adminMonitoringService = {
   getOrders: async (params) => {
-    // 🟩 ĐÃ SỬA: Xóa "/api/v1", chỉ để lại "/orders"
-    const response = await httpClient.get("/orders", { params });
-    return response;
+    return httpClient.get("/orders", { params });
   },
+
   getOrderById: async (id) => {
-    // 🟩 ĐÃ SỬA: Xóa "/api/v1"
-    const response = await httpClient.get(`/orders/${id}`);
-    return response;
+    return httpClient.get(`/orders/${id}`);
   },
+
   getTransactions: async (params) => {
-    // 🟩 ĐÃ SỬA: Xóa "/api/v1", chỉ để lại "/transactions"
-    const response = await httpClient.get("/transactions", { params });
-    return response;
+    return httpClient.get("/transactions", { params });
   },
+
   getTransactionById: async (id) => {
-    // 🟩 ĐÃ SỬA: Xóa "/api/v1"
-    const response = await httpClient.get(`/transactions/${id}`);
-    return response;
+    return httpClient.get(`/transactions/${id}`);
   },
+
   getSepayEvents: async (params) => {
-    // 🟩 ĐÃ SỬA: Xóa "/api/v1", chỉ để lại "/sepay-events"
-    const response = await httpClient.get("/sepay-events", { params });
-    return response;
+    return httpClient.get("/sepay-events", { params });
   },
+
   getReconciliationRuns: async (params) => {
-    // 🟩 ĐÃ SỬA: Xóa "/api/v1", chỉ để lại "/reconciliation-runs"
-    const response = await httpClient.get("/reconciliation-runs", {
-      params,
-    });
-    return response;
+    return httpClient.get("/reconciliation-runs", { params });
   },
 };
