@@ -1,6 +1,13 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { AlertCircle, BookOpen, Info, Loader, Trash2 } from "lucide-react";
+import {
+  AlertCircle,
+  BookOpen,
+  ClipboardList,
+  Info,
+  Loader,
+  Trash2,
+} from "lucide-react";
 import { Button } from "@/shared/components/ui";
 import { classService } from "@/services";
 import { normalizeRole, ROLES } from "@/shared/constants/roles";
