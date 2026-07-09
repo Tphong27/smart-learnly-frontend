@@ -254,6 +254,66 @@ function parseOptions(row) {
   return options
 }
 
+function toEditableMappedRow(row) {
+  const data = row?.data || {}
+  const raw = row?.raw || {}
+  const options = Array.isArray(data.options) ? data.options : []
+  const imageFiles = Array.isArray(data.imageFiles) ? data.imageFiles : parseMediaUrls(raw.image_files)
+  const audioFiles = Array.isArray(data.audioFiles) ? data.audioFiles : parseMediaUrls(raw.audio_files)
+  return {
+    question_text: String(data.questionText ?? raw.question_text ?? '').trim(),
+    question_type: String(data.questionType ?? raw.question_type ?? '').trim(),
+    option_a: String(options[0] ?? raw.option_a ?? '').trim(),
+    option_b: String(options[1] ?? raw.option_b ?? '').trim(),
+    option_c: String(options[2] ?? raw.option_c ?? '').trim(),
+    option_d: String(options[3] ?? raw.option_d ?? '').trim(),
+    option_e: String(options[4] ?? raw.option_e ?? '').trim(),
+    option_f: String(options[5] ?? raw.option_f ?? '').trim(),
+    correct_answer: String(data.correctAnswer ?? raw.correct_answer ?? '').trim(),
+    explanation: String(data.explanation ?? raw.explanation ?? '').trim(),
+    difficulty: String(data.difficulty ?? raw.difficulty ?? '').trim(),
+    bloom_level: String(data.bloomLevel ?? raw.bloom_level ?? '').trim(),
+    module_id: String(data.moduleId ?? raw.module_id ?? '').trim(),
+    image_files: imageFiles.join('; '),
+    audio_files: audioFiles.join('; '),
+  }
+}
+
+function validateMappedRows(mappedRows, existingQuestions = []) {
+  const seenTexts = new Set()
+  const parsedRows = mappedRows.map((item, index) => {
+    const rowNumber = item.rowNumber || index + 1
+    const mapped = item.mapped
+    const {
+      errors,
+      resolvedType,
+      questionText,
+      options,
+      correctRaw,
+      imageFiles,
+      audioFiles,
+    } = collectRowErrors(mapped, rowNumber, seenTexts)
+    return {
+      rowNumber,
+      data: {
+        questionText,
+        questionType: resolvedType || (mapped.question_type || '').trim().toLowerCase(),
+        options,
+        correctAnswer: correctRaw,
+        explanation: mapped.explanation || null,
+        difficulty: resolveDifficulty(mapped.difficulty),
+        bloomLevel: mapped.bloom_level ? mapped.bloom_level.trim().toLowerCase().replace(/-/g, '_') : null,
+        moduleId: mapped.module_id || null,
+        imageFiles,
+        audioFiles,
+      },
+      raw: mapped,
+      errors,
+    }
+  })
+  return validateAgainstExisting(parsedRows, existingQuestions)
+}
+
 function resolveDifficulty(value) {
   const raw = String(value ?? '').trim().toLowerCase()
   if (!raw) return null
@@ -451,6 +511,16 @@ export function parseImportJson(jsonText) {
   })
 
   return { headers: [], rows }
+}
+
+export function revalidateImportRows(parsedRows, existingQuestions = []) {
+  return validateMappedRows(
+    (Array.isArray(parsedRows) ? parsedRows : []).map((row, index) => ({
+      rowNumber: row?.rowNumber || index + 1,
+      mapped: toEditableMappedRow(row),
+    })),
+    existingQuestions,
+  )
 }
 
 export function validateAgainstExisting(parsedRows, existingQuestions = []) {
