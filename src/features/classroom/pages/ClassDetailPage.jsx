@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { AlertCircle, BookOpen, Info, Loader, Trash2 } from "lucide-react";
 import { Button } from "@/shared/components/ui";
 import { classService } from "@/services";
@@ -27,7 +27,11 @@ export function ClassDetailPage() {
   const isTmo = userRole === ROLES.TMO;
 
   const [classData, setClassData] = useState(null);
-  const [activeTab, setActiveTab] = useState("overview");
+  // Cho phép deep-link đến 1 tab qua query string ?tab=curriculum (ví dụ khi
+  // trang trainer lesson detail navigate về đây sau khi save).
+  const [searchParams] = useSearchParams();
+  const initialTab = searchParams.get("tab") === "curriculum" ? "curriculum" : "overview";
+  const [activeTab, setActiveTab] = useState(initialTab);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [refreshKey, setRefreshKey] = useState(0);

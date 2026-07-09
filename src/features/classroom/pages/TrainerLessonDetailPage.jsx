@@ -25,7 +25,8 @@ export default function TrainerLessonDetailPage() {
     return {
       mode: "trainer",
       lessonId,
-      backPath: `/staff/classrooms/${classId}/workspace`,
+      // Về thẳng tab Curriculum của lớp sau khi save/back để tránh trainer phải bấm lại tab.
+      backPath: `/staff/classrooms/${classId}/workspace?tab=curriculum`,
       services: {
         getLessonDetail: lessonService.getLessonDetail,
         updateLesson: lessonService.updateLesson,
