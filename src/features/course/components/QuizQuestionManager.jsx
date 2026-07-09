@@ -171,11 +171,17 @@ function QuizQuestionCard({ question, index, onEdit, onDelete }) {
 }
 
 /**
- * Panel quản lý câu hỏi quiz - render inline trong tab của AdminLessonDetailPage.
- * Không còn Modal wrapper.
- * Props: { lessonId, lessonTitle, onSaved }
+ * Panel quản lý câu hỏi quiz - render inline trong tab lesson editor.
+ * Không còn Modal wrapper. Nhận `service` qua prop để dùng chung
+ * cho admin (courseService) và trainer (trainerLessonService).
+ * Props: { lessonId, lessonTitle, onSaved, service }
  */
-export function QuizQuestionsPanel({ lessonId, lessonTitle, onSaved }) {
+export function QuizQuestionsPanel({
+  lessonId,
+  lessonTitle,
+  onSaved,
+  service = courseService,
+}) {
   const toast = useToast();
 
   const [quizTitle, setQuizTitle] = useState("");
@@ -196,7 +202,7 @@ export function QuizQuestionsPanel({ lessonId, lessonTitle, onSaved }) {
       setLoading(true);
       setErrors([]);
       try {
-        const response = await courseService.getLessonDetail(lessonId);
+        const response = await service.getLessonDetail(lessonId);
         const data = response?.data || response;
         const parsed = parseQuizContent(data?.content || "");
         if (!cancelled) {
@@ -215,7 +221,7 @@ export function QuizQuestionsPanel({ lessonId, lessonTitle, onSaved }) {
     return () => {
       cancelled = true;
     };
-  }, [lessonId, toast]);
+  }, [lessonId, toast, service]);
 
   const handleImported = (importedQuestions) => {
     setQuestions((prev) => [...prev, ...importedQuestions]);
@@ -253,7 +259,7 @@ export function QuizQuestionsPanel({ lessonId, lessonTitle, onSaved }) {
     }
     setSaving(true);
     try {
-      const detail = await courseService.getLessonDetail(lessonId);
+      const detail = await service.getLessonDetail(lessonId);
       const lessonData = detail?.data || detail;
       const content = serializeQuizContent(quizTitle, questions);
       const payload = {
@@ -270,7 +276,7 @@ export function QuizQuestionsPanel({ lessonId, lessonTitle, onSaved }) {
           : [],
         sortOrder: lessonData.sortOrder ?? 0,
       };
-      await courseService.updateLesson(lessonId, payload);
+      await service.updateLesson(lessonId, payload);
       toast.success("Quiz questions saved.");
       setErrors([]);
       onSaved?.();

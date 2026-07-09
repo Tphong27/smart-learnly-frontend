@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { AlertCircle, Loader } from "lucide-react";
 import { Button } from "@/shared/components/ui";
+import { useToast } from "@/shared/components/ui/Toast/useToast";
 import { trainerCurriculumService } from "@/services";
 import { CurriculumStructureEditor } from "@/features/course/components/CurriculumStructureEditor";
-import { CurriculumLessonEditorModal } from "@/features/course/components/CurriculumLessonEditorModal";
 import "@/features/course/pages/AdminCourseContent.css";
 
 const TRAINER_LESSON_TYPES = [
@@ -51,46 +52,35 @@ function computeStats(sections) {
   };
 }
 
-function buildLessonPayload(form) {
-  const type = form.lessonType || form.type || "video";
-  return {
-    title: form.title,
-    lessonType: type,
-    type,
-    videoUrl: form.videoUrl || null,
-    content: form.content || "",
-    attachmentUrl: form.attachmentUrl || null,
-    durationSeconds: Number(form.durationSeconds || 0),
-    isPreview: Boolean(form.isPreview),
-    status: form.status || "draft",
-    sortOrder: Number(form.sortOrder || 0),
-    resources: Array.isArray(form.resources)
-      ? form.resources.map((resource, index) => ({
-          url: resource.url || "",
-          objectPath: resource.objectPath || null,
-          name: resource.name || resource.fileName || "Class resource",
-          fileName: resource.fileName || resource.name || "Class resource",
-          fileSize: Number(resource.fileSize || 0),
-          contentType: resource.contentType || null,
-          sortOrder: index,
-        }))
-      : [],
-  };
-}
-
 export function ClassCurriculumTab({ classId, readOnly = false }) {
+  const navigate = useNavigate();
+  const { showToast: emitToast } = useToast();
+  const showToast = useCallback(
+    (message, type) => emitToast({ message, type }),
+    [emitToast],
+  );
+  // showToast is intentionally exposed but currently unused after the
+  // lesson editor modal was replaced by a full-page route. Keep to
+  // preserve API for children hooks that may re-appear.
+  void showToast;
   const [curriculumData, setCurriculumData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
-  const [editingLesson, setEditingLesson] = useState(null);
-  const [savingLesson, setSavingLesson] = useState(false);
 
   const metadata = curriculumData?.metadata || null;
   const binding = curriculumData?.binding || null;
-  const customizationState =
-    binding?.customizationState || (curriculumData?.hasDraft ? "DRAFT" : null);
+  // Backend trả customizationState dạng lowercase ("inherited"/"draft"/"published") —
+  // normalize về uppercase để so sánh nhất quán trong FE.
+  const rawCustomization = binding?.customizationState;
+  const customizationState = rawCustomization
+    ? String(rawCustomization).toUpperCase()
+    : curriculumData?.hasDraft
+      ? "DRAFT"
+      : curriculumData?.hasPublished
+        ? "PUBLISHED"
+        : "INHERITED";
 
   const sections = useMemo(
     () => curriculumData?.curriculum?.sections || [],
@@ -234,31 +224,8 @@ export function ClassCurriculumTab({ classId, readOnly = false }) {
     }, "Lessons reordered");
 
   const handleEditLesson = (lesson) => {
-    setEditingLesson(lesson);
-  };
-
-  const handleSubmitLessonEdit = async (formData) => {
-    if (!editingLesson?.id) return;
-    try {
-      setSavingLesson(true);
-      const payload = buildLessonPayload({
-        ...formData,
-        sortOrder: editingLesson.sortOrder ?? 0,
-      });
-      await trainerCurriculumService.updateLesson(
-        classId,
-        editingLesson.id,
-        payload,
-      );
-      setEditingLesson(null);
-      await loadCurriculum();
-      setNotice("Lesson updated");
-      setError("");
-    } catch (err) {
-      setError(err?.message || "Failed to update lesson");
-    } finally {
-      setSavingLesson(false);
-    }
+    if (!lesson?.id || !classId) return;
+    navigate(`/trainer/classes/${classId}/curriculum/lessons/${lesson.id}`);
   };
 
   if (loading) {
@@ -277,12 +244,10 @@ export function ClassCurriculumTab({ classId, readOnly = false }) {
         ? "Published class customization"
         : "Inherited from master course";
 
+  // Trainer có thể init draft khi chưa có draft hiện hành (state INHERITED hoặc PUBLISHED).
   const canInitializeDraft =
     !readOnly &&
-    (curriculumData?.canInitializeDraft ||
-      customizationState === null ||
-      customizationState === "INHERITED" ||
-      customizationState === "PUBLISHED");
+    customizationState !== "DRAFT";
 
   const canPublishDraft = !readOnly && customizationState === "DRAFT";
 
@@ -390,15 +355,6 @@ export function ClassCurriculumTab({ classId, readOnly = false }) {
           />
         )}
       </div>
-
-      <CurriculumLessonEditorModal
-        open={Boolean(editingLesson)}
-        lesson={editingLesson}
-        title="Edit class lesson"
-        submitting={savingLesson}
-        onClose={() => (savingLesson ? null : setEditingLesson(null))}
-        onSubmit={handleSubmitLessonEdit}
-      />
     </div>
   );
 }

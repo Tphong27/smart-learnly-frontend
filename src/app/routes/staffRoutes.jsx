@@ -17,6 +17,7 @@ import {
   StaffClassListPage,
   TmoCreateClassPage,
   ClassDetailPage,
+  TrainerLessonDetailPage,
 } from "@/features/classroom";
 
 function PlaceholderPage({ title }) {
@@ -121,6 +122,27 @@ function getStaffRoutes() {
             {
               path: "reports",
               element: <PlaceholderPage title="Reports & Analytics" />,
+            },
+          ],
+        },
+      ],
+    },
+    // Trainer lesson editor mirror of AdminLessonDetailPage, scoped to a
+    // class draft curriculum. Audit history is hidden here.
+    {
+      path: "/trainer",
+      element: <AppLayout />,
+      children: [
+        {
+          element: (
+            <RoleGuard
+              allowedRoles={[ROLES.TRAINER, ROLES.TMO, ROLES.ADMIN]}
+            />
+          ),
+          children: [
+            {
+              path: "classes/:classId/curriculum/lessons/:lessonId",
+              element: <TrainerLessonDetailPage />,
             },
           ],
         },
