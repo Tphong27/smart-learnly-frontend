@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { BookOpen, ClipboardCheck, GraduationCap, Layers3, RotateCcw, Users } from "lucide-react";
 import { Button, useToast } from "@/shared/components/ui";
 import { adminDashboardService } from "@/services";
+import { formatDateTime } from "@/shared/utils/formatters";
 import { DashboardMetricCard } from "../components/DashboardMetricCard";
 import { DashboardSectionCard } from "../components/DashboardSectionCard";
 import "../../admin-shared.css";
@@ -21,18 +22,6 @@ function toIsoDateRange(days) {
 
 function formatNumber(value) {
   return Number(value || 0).toLocaleString("vi-VN");
-}
-
-function formatDateTime(value) {
-  if (!value) return "--";
-  try {
-    return new Intl.DateTimeFormat("vi-VN", {
-      dateStyle: "medium",
-      timeStyle: "short",
-    }).format(new Date(value));
-  } catch {
-    return "--";
-  }
 }
 
 export function AdminDashboardPage() {

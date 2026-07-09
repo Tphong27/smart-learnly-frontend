@@ -8,35 +8,13 @@ import {
   AUDIT_RESULTS,
   auditLogService,
 } from "@/services";
+import {
+  formatDateTime,
+  formatLabel,
+  shortId,
+} from "@/shared/utils/formatters";
+import { DEFAULT_PAGE_SIZE } from "@/shared/constants/pagination";
 import "../../admin-shared.css";
-
-const PAGE_SIZE = 20;
-
-function formatDateTime(value) {
-  if (!value) return "--";
-  try {
-    return new Intl.DateTimeFormat("vi-VN", {
-      dateStyle: "medium",
-      timeStyle: "short",
-    }).format(new Date(value));
-  } catch {
-    return "--";
-  }
-}
-
-function formatLabel(value) {
-  return String(value || "")
-    .toLowerCase()
-    .split("_")
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ");
-}
-
-function shortId(value) {
-  if (!value) return "--";
-  const text = String(value);
-  return text.length > 12 ? `${text.slice(0, 8)}...${text.slice(-4)}` : text;
-}
 
 function toDateTimeLocal(value) {
   if (!value) return "";
@@ -226,7 +204,7 @@ export function AdminAuditLogPage() {
           from: fromDateTimeLocal(filters.from),
           to: fromDateTimeLocal(filters.to),
           page: filters.page,
-          size: PAGE_SIZE,
+          size: DEFAULT_PAGE_SIZE,
         });
 
         if (cancelled) return;

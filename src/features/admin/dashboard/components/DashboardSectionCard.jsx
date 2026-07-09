@@ -1,10 +1,4 @@
-function formatLabel(value) {
-  return String(value || "")
-    .toLowerCase()
-    .split("_")
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ");
-}
+import { formatLabel } from "@/shared/utils/formatters";
 
 export function DashboardSectionCard({ title, description, items = [] }) {
   const total = items.reduce((sum, item) => sum + Number(item.value || 0), 0);

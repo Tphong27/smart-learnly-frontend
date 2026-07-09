@@ -5,32 +5,16 @@ import { z } from "zod";
 import { Edit2, Plus, Search, Trash2, UserCog } from "lucide-react";
 import { Button, Form, FormField, Modal, useToast } from "@/shared/components/ui";
 import { userService } from "@/services";
+import {
+  formatDateTime,
+  formatLabel,
+} from "@/shared/utils/formatters";
+import { DEFAULT_PAGE_SIZE } from "@/shared/constants/pagination";
 import "../../admin-shared.css";
 
-const PAGE_SIZE = 20;
 const USER_ROLES = ["GUEST", "TRAINEE", "TRAINER", "TMO", "SME", "ADMIN"];
 const USER_STATUSES = ["pending_verify", "active", "inactive", "banned"];
 const PASSWORD_RULE = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d]).{8,100}$/;
-
-function formatDateTime(value) {
-  if (!value) return "--";
-  try {
-    return new Intl.DateTimeFormat("vi-VN", {
-      dateStyle: "medium",
-      timeStyle: "short",
-    }).format(new Date(value));
-  } catch {
-    return "--";
-  }
-}
-
-function formatLabel(value) {
-  return String(value || "")
-    .toLowerCase()
-    .split("_")
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ");
-}
 
 function getUserFormSchema(mode) {
   return z
@@ -267,7 +251,7 @@ export function AdminUsersPage() {
       try {
         const data = await userService.listAdmin({
           page,
-          size: PAGE_SIZE,
+          size: DEFAULT_PAGE_SIZE,
           keyword: submittedKeyword,
           role: roleFilter,
           status: statusFilter,

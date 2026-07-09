@@ -11,29 +11,18 @@ import {
 import { Button, FormField, Modal, useToast } from "@/shared/components/ui";
 import { sanitizeAnswerHtml, sanitizeQuestionHtml } from "@/shared/utils/htmlSanitizer";
 import { courseService, getCurrentUser, questionBankService } from "@/services";
+import { formatDate } from "@/shared/utils/formatters";
+import { DEFAULT_PAGE_SIZE } from "@/shared/constants/pagination";
 import "../../admin-shared.css";
 import "./question-bank.css";
 import { QuestionImportModal } from "../components/QuestionImportModal";
 import { AdminQuestionFormModal } from "./AdminQuestionFormPage";
 
-const PAGE_SIZE = 20;
+const PAGE_SIZE = DEFAULT_PAGE_SIZE;
 
 function canWriteQuestionBank() {
   const role = getCurrentUser()?.role;
   return role === "ADMIN" || role === "SME";
-}
-
-function formatDate(value) {
-  if (!value) return "--";
-  try {
-    return new Date(value).toLocaleDateString("en-GB", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-    });
-  } catch {
-    return "--";
-  }
 }
 
 function normalizeModules(payload) {
