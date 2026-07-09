@@ -44,6 +44,18 @@ function QuizMedia({ media, alt }) {
       </video>
     );
   }
+  if (media.type === "audio") {
+    return (
+      <audio
+        className="quiz-media quiz-media--audio"
+        controls
+        preload="metadata"
+        src={src}
+      >
+        Your browser does not support the audio tag.
+      </audio>
+    );
+  }
   if (media.type === "image") {
     return (
       <img

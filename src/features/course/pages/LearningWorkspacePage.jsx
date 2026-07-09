@@ -50,6 +50,14 @@ function groupLessonsBySection(data) {
     return filterPublishedSections(data?.sections || []);
 }
 
+function formatCurriculumSource(curriculum) {
+  if (!curriculum) return null;
+  if (curriculum.customized || curriculum.curriculumScope === "class") {
+    return "Customized class curriculum";
+  }
+  return "Master curriculum";
+}
+
 export function LearningWorkspacePage({
     previewMode = false,
     mode = "student",
@@ -438,12 +446,9 @@ export function LearningWorkspacePage({
                     <ArrowLeft size={18} />
                 </button>
 
-                <h1
-                    className="learning-workspace__course-title"
-                    title={courseTitle}
-                >
-                    {courseTitle}
-                </h1>
+  const courseTitle = data?.courseTitle || "Course";
+  const stats = data?.stats;
+  const curriculumSourceLabel = formatCurriculumSource(data?.curriculum);
 
                 {isAdminPreview && (
                     <span className="learning-workspace__trainee-tag">
@@ -561,31 +566,78 @@ export function LearningWorkspacePage({
                                     lesson={activeLesson}
                                 />
 
-                                <LearningLessonTabs
-                                    key={`tabs-${getLessonId(activeLesson)}`}
-                                    lesson={activeLesson}
-                                    activeTab={activeLessonTab}
-                                    onTabChange={setActiveLessonTab}
-                                    note={activeLessonNote}
-                                    onNoteChange={handleActiveLessonNoteChange}
-                                    nextLesson={nextLesson}
-                                    onNextLesson={handleGoToNextLesson}
-                                    canGoNext={canGoNext}
-                                    isActivityLesson={isActivityLesson}
-                                    workspaceMode={mode}
-                                    onQuizCompleted={markLessonCompleted}
-                                    onFlashcardCompleted={markLessonCompleted}
-                                    onEssayCompleted={markLessonCompleted}
-                                />
-                            </div>
-                        ) : (
-                            <div className="learning-lesson__empty">
-                                <BookOpen size={48} />
-                                <p>Select a lesson from the sidebar to begin</p>
-                            </div>
-                        )}
-                    </div>
-                </main>
+        {isGuestPreview && (
+          <span className="learning-workspace__trainee-tag">
+            <Eye size={14} />
+            Preview mode
+          </span>
+        )}
+
+        {curriculumSourceLabel && mode === "student" && (
+          <span className="learning-workspace__trainee-tag" title={data?.curriculum?.source || undefined}>
+            <BookOpen size={14} />
+            {curriculumSourceLabel}
+          </span>
+        )}
+
+        {(isGuestPreview || previewMode) && (
+          <Link
+            to={`/courses/${courseId}`}
+            className="learning-workspace__topbar-cta"
+          >
+            View Course Details
+          </Link>
+        )}
+
+        <div className="learning-workspace__topbar-progress">
+          <div className="learning-workspace__progress-track">
+            <div
+              className="learning-workspace__progress-fill"
+              style={{ width: `${progressPercent}%` }}
+            />
+          </div>
+          <span className="learning-workspace__progress-label">
+            {completedCount}/{totalLessonCount} done
+          </span>
+        </div>
+      </header>
+
+      <div className="learning-workspace__body">
+        <aside
+          className={`learning-workspace__sidebar ${sidebarOpen ? "open" : ""}`}
+        >
+          <div className="learning-workspace__sidebar-header">
+            <h2 className="learning-workspace__sidebar-title">
+              Course content
+            </h2>
+            <button
+              className="learning-workspace__sidebar-back"
+              onClick={() => setSidebarOpen(false)}
+              title="Close sidebar"
+            >
+              <X size={18} />
+            </button>
+          </div>
+
+          {stats && (
+            <div className="learning-workspace__stats">
+              <span className="learning-workspace__stat">
+                <span className="learning-workspace__stat-value">
+                  {stats.totalSections}
+                </span>{" "}
+                sections
+              </span>
+              <span className="learning-workspace__stat">
+                <span className="learning-workspace__stat-value">
+                  {stats.totalLessons}
+                </span>{" "}
+                lessons
+              </span>
+              <span className="learning-workspace__stat">
+                <span className="learning-workspace__stat-value">
+                  {formatDuration(stats.totalDurationSeconds)}
+                </span>
+              </span>
             </div>
         </div>
     );

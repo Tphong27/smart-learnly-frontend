@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Edit2, Eye, Plus, Search, Trash2 } from "lucide-react";
+import { Edit2, Eye, Plus, Search, Trash2, Users } from "lucide-react";
 import { Button, FormField, Modal, useToast } from "@/shared/components/ui";
 import { categoryService, courseService } from "@/services";
 import { getCurrentUser } from "@/services/api-client";
@@ -482,9 +482,15 @@ export function AdminCoursesPage() {
                         }}
                       >
                         <Link
-                          to={isTrainer
-                            ? `/staff/courses/${course.id}/content`
-                            : `/admin/courses/${course.id}/preview`}
+                          to={`/staff/classrooms?courseId=${encodeURIComponent(course.id)}`}
+                          className="admin-table__icon-btn"
+                          title="View classes for this course"
+                          style={{ color: "#0f766e" }}
+                        >
+                          <Users size={16} />
+                        </Link>
+                        <Link
+                          to={`/admin/courses/${course.id}/preview`}
                           className="admin-table__icon-btn"
                           title={isTrainer ? "View course structure" : "Preview sample content"}
                           style={{ color: "#64748b" }}

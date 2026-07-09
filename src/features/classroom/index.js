@@ -3,11 +3,13 @@ import "./classroom.css";
 export { TmoCreateClassPage } from "./pages/TmoCreateClassPage";
 export { StaffClassListPage } from "./pages/StaffClassListPage";
 export { ClassDetailPage } from "./pages/ClassDetailPage";
+export { default as TrainerLessonDetailPage } from "./pages/TrainerLessonDetailPage";
 export { ClassCard } from "./components/ClassCard";
 export { ClassStatusBadge } from "./components/ClassStatusBadge";
 export { ClassListFilters } from "./components/ClassListFilters";
 export { ClassOverviewTab } from "./components/ClassOverviewTab";
-export { ScheduleCalendar } from "@/shared/components/scheduleCalendar";
+export { ClassCurriculumTab } from "./components/ClassCurriculumTab";
+export { ScheduleCalendar } from "./components/ScheduleCalendar";
 
 export const classroomFeature = {
   name: "Class Operations",

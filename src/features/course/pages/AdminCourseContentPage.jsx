@@ -5,8 +5,7 @@ import { courseService } from "../../../services/course.service";
 import { flashcardService } from "../../../services/flashcard.service";
 import { getCurrentUser } from "../../../services/api-client";
 import { useToast } from "../../../shared/components/ui/Toast/useToast";
-import { QuizQuestionManager } from "../components/QuizQuestionManager";
-import { getLessonStatusMeta } from "../utils/lesson-status";
+import { CurriculumStructureEditor } from "../components/CurriculumStructureEditor";
 import "./AdminCourseContent.css";
 
 const reorder = (list, startIndex, endIndex) => {
@@ -297,23 +296,6 @@ export default function AdminCourseContentPage() {
   const [loadingSections, setLoadingSections] = useState(true);
   const [loadingLessons, setLoadingLessons] = useState({});
 
-  const [isSectionModalOpen, setIsSectionModalOpen] = useState(false);
-  const [newSectionTitle, setNewSectionTitle] = useState("");
-
-  const [isEditSectionModalOpen, setIsEditSectionModalOpen] = useState(false);
-  const [editingSectionId, setEditingSectionId] = useState(null);
-  const [editSectionTitle, setEditSectionTitle] = useState("");
-
-  const [isLessonModalOpen, setIsLessonModalOpen] = useState(false);
-  const [targetSectionId, setTargetSectionId] = useState(null);
-  const [newLessonData, setNewLessonData] = useState({
-    title: "",
-    lessonType: "video",
-    isPreview: false,
-  });
-
-  const [quizManagerLesson, setQuizManagerLesson] = useState(null);
-
   const fetchSections = useCallback(async () => {
     setLoadingSections(true);
     try {
@@ -323,13 +305,11 @@ export default function AdminCourseContentPage() {
       setSections(nextSections);
       setSectionLessons(() => {
         const lessonsBySection = {};
-
         for (const section of nextSections) {
           if (Array.isArray(section?.lessons)) {
             lessonsBySection[section.id] = section.lessons;
           }
         }
-
         return lessonsBySection;
       });
     } catch (error) {
@@ -352,7 +332,6 @@ export default function AdminCourseContentPage() {
       }));
     } catch (err) {
       console.error("Error fetching lessons for section " + sectionId, err);
-      // Đánh dấu section đã được fetch (dù lỗi) để tránh effect lặp fetch vô hạn
       setSectionLessons((prev) => ({
         ...prev,
         [sectionId]: prev[sectionId] || [],
@@ -372,31 +351,29 @@ export default function AdminCourseContentPage() {
         sectionLessons,
         section.id,
       );
-
       if (!hasLessonsData) {
         fetchLessonsForSection(section.id);
       }
     });
   }, [sections, sectionLessons, fetchLessonsForSection]);
 
-  const handleOpenEditSection = (section) => {
-    setEditingSectionId(section.id);
-    setEditSectionTitle(section.title);
-    setIsEditSectionModalOpen(true);
+  const handleCreateSection = async ({ title }) => {
+    try {
+      await courseService.createSection(courseId, { title, isActive: true });
+      showToast("Section added successfully!", "success");
+      fetchSections();
+    } catch (error) {
+      showToast("Error creating section", "error");
+    }
   };
 
-  const handleUpdateSection = async (e) => {
-    e.preventDefault();
-    if (!editSectionTitle.trim() || !editingSectionId) return;
+  const handleUpdateSection = async (sectionId, { title }) => {
     try {
-      await courseService.updateSection(editingSectionId, {
-        title: editSectionTitle.trim(),
+      await courseService.updateSection(sectionId, {
+        title,
         isActive: true,
       });
       showToast({ type: "success", message: "Section updated successfully!" });
-      setIsEditSectionModalOpen(false);
-      setEditingSectionId(null);
-      setEditSectionTitle("");
       fetchSections();
     } catch (error) {
       showToast({ type: "error", message: "Error updating section" });
@@ -406,12 +383,15 @@ export default function AdminCourseContentPage() {
   const handleDeleteSection = async (sectionId, sectionTitle) => {
     if (
       window.confirm(
-        `Are you sure you want to delete "${sectionTitle}"? All lessons inside will be deleted.`
+        `Are you sure you want to delete "${sectionTitle}"? All lessons inside will be deleted.`,
       )
     ) {
       try {
         await courseService.deleteSection(sectionId);
-        showToast({ type: "success", message: "Section deleted successfully!" });
+        showToast({
+          type: "success",
+          message: "Section deleted successfully!",
+        });
         fetchSections();
       } catch (error) {
         showToast({ type: "error", message: "Error deleting section" });
@@ -419,12 +399,77 @@ export default function AdminCourseContentPage() {
     }
   };
 
+  const handleReorderSections = async (orderedIds) => {
+    const reordered = orderedIds
+      .map((id) => sections.find((s) => s.id === id))
+      .filter(Boolean)
+      .map((section, index) => ({ ...section, sortOrder: index }));
+    setSections(reordered);
+
+    try {
+      await courseService.reorderSections(courseId, orderedIds);
+      showToast("Sections reordered successfully!", "success");
+    } catch (error) {
+      showToast("Error reordering sections", "error");
+      fetchSections();
+    }
+  };
+
+  const handleCreateLesson = async (sectionId, payload) => {
+    try {
+      let mappedType = String(payload.lessonType).toLowerCase();
+      if (mappedType === "document") mappedType = "pdf";
+
+      if (mappedType === "flashcard") {
+        const createdLesson = await flashcardService.createLesson(
+          courseId,
+          sectionId,
+          {
+            title: payload.title,
+            description: "",
+            isPreview: !!payload.isPreview,
+            status: "draft",
+            sortOrder: 0,
+          },
+        );
+
+        if (createdLesson?.lessonId && createdLesson?.setId) {
+          sessionStorage.setItem(
+            `flashcard-set:${createdLesson.lessonId}`,
+            createdLesson.setId,
+          );
+        }
+
+        showToast("Flashcard lesson added successfully!", "success");
+        fetchLessonsForSection(sectionId);
+
+        if (createdLesson?.lessonId) {
+          navigate(
+            `/admin/courses/${courseId}/lessons/${createdLesson.lessonId}`,
+            { state: { flashcardSetId: createdLesson.setId } },
+          );
+        }
+        return;
+      }
+
+      await courseService.createLesson(sectionId, {
+        title: payload.title,
+        lessonType: mappedType,
+        isPreview: !!payload.isPreview,
+        status: "draft",
+        durationSeconds: 0,
+        sortOrder: 0,
+      });
+
+      showToast("Lesson added successfully!", "success");
+      fetchLessonsForSection(sectionId);
+    } catch (error) {
+      showToast("Error creating lesson", "error");
+    }
+  };
+
   const handleDeleteLesson = async (lessonId, lessonTitle, lesson = null) => {
-    if (
-      window.confirm(
-        `Are you sure you want to delete "${lessonTitle}"?`
-      )
-    ) {
+    if (window.confirm(`Are you sure you want to delete "${lessonTitle}"?`)) {
       try {
         const isFlashcard =
           String(lesson?.lessonType || "").toLowerCase() === "flashcard";
@@ -451,20 +496,20 @@ export default function AdminCourseContentPage() {
     }
   };
 
-  const handleCreateSection = async (e) => {
-    e.preventDefault();
-    if (!newSectionTitle.trim()) return;
+  const handleReorderLessons = async (sectionId, orderedIds) => {
+    const currentLessons = sectionLessons[sectionId] || [];
+    const nextLessons = orderedIds
+      .map((id) => currentLessons.find((l) => l.id === id))
+      .filter(Boolean)
+      .map((lesson, index) => ({ ...lesson, sortOrder: index }));
+    setSectionLessons((prev) => ({ ...prev, [sectionId]: nextLessons }));
+
     try {
-      await courseService.createSection(courseId, {
-        title: newSectionTitle,
-        isActive: true,
-      });
-      showToast("Section added successfully!", "success");
-      setNewSectionTitle("");
-      setIsSectionModalOpen(false);
-      fetchSections();
+      await courseService.reorderLessons(sectionId, orderedIds);
+      showToast("Lessons reordered successfully!", "success");
     } catch (error) {
-      showToast("Error creating section", "error");
+      showToast("Error reordering lessons", "error");
+      fetchLessonsForSection(sectionId);
     }
   };
 
@@ -594,7 +639,10 @@ export default function AdminCourseContentPage() {
     }
     return {
       totalSections: sections.length,
-      totalLessons: Object.values(sectionLessons).reduce((sum, l) => sum + l.length, 0),
+      totalLessons: Object.values(sectionLessons).reduce(
+        (sum, l) => sum + l.length,
+        0,
+      ),
       totalVideos,
       totalDocuments: totalDocs,
       totalQuizzes,
@@ -610,402 +658,62 @@ export default function AdminCourseContentPage() {
     );
 
   return (
-    <DragDropContext onDragEnd={onDragEnd}>
-      <div className="admin-course-page">
-        <div className="page-container">
-          <div className="page-header">
-            <button
-              onClick={() => navigate(readOnly ? "/staff/courses" : "/admin/courses")}
-              className="back-btn"
+    <div className="admin-course-page">
+      <div className="page-container">
+        <div className="page-header">
+          <button
+            onClick={() => navigate("/admin/courses")}
+            className="back-btn"
+          >
+            <span
+              className="material-symbols-outlined"
+              style={{ fontSize: "18px" }}
             >
-              <span
-                className="material-symbols-outlined"
-                style={{ fontSize: "18px" }}
+              arrow_back
+            </span>
+            Back to list
+          </button>
+          <div className="header-title-wrapper">
+            <div>
+              <h2>Course Structure</h2>
+              <p>Organize and manage your course content</p>
+            </div>
+            <div className="header-actions">
+              <button
+                type="button"
+                onClick={() =>
+                  window.open(
+                    `/admin/courses/${courseId}/preview`,
+                    "_blank",
+                    "noopener,noreferrer",
+                  )
+                }
+                className="btn-outline"
               >
-                arrow_back
-              </span>
-              Back to list
-            </button>
-            <div className="header-title-wrapper">
-              <div>
-                <h2>Course Structure</h2>
-                <p>Organize and manage your course content</p>
-              </div>
-              <div className="header-actions">
-                <button
-                  type="button"
-                  onClick={() =>
-                    window.open(
-                      `/admin/courses/${courseId}/preview`,
-                      "_blank",
-                      "noopener,noreferrer"
-                    )
-                  }
-                  className="btn-outline"
-                >
-                  <span className="material-symbols-outlined">visibility</span>{" "}
-                  View as User
-                </button>
-                {!readOnly && (
-                  <button
-                    onClick={() => setIsSectionModalOpen(true)}
-                    className="btn-primary"
-                  >
-                    <span className="material-symbols-outlined">add</span> Add New
-                    Section
-                  </button>
-                )}
-              </div>
+                <span className="material-symbols-outlined">visibility</span>{" "}
+                View as User
+              </button>
             </div>
           </div>
-
-          <div className="stats-bar">
-            <div className="stat-item">
-              <span className="stat-value">{stats.totalSections}</span>
-              <span className="stat-label">Sections</span>
-            </div>
-            <div className="stat-item">
-              <span className="stat-value">{stats.totalLessons}</span>
-              <span className="stat-label">Total Lessons</span>
-            </div>
-            <div className="stat-item">
-              <span className="stat-value">{stats.totalVideos}</span>
-              <span className="stat-label">Videos</span>
-            </div>
-            <div className="stat-item">
-              <span className="stat-value">{stats.totalDocuments}</span>
-              <span className="stat-label">Documents</span>
-            </div>
-            <div className="stat-item">
-              <span className="stat-value">{stats.totalQuizzes}</span>
-              <span className="stat-label">Quizzes</span>
-            </div>
-            <div className="stat-item">
-              <span className="stat-value">{stats.totalFlashcards}</span>
-              <span className="stat-label">Flashcards</span>
-            </div>
-          </div>
-
-          <Droppable droppableId="sections" type="SECTION">
-            {(provided) => (
-              <div
-                className="workspace-card"
-                ref={provided.innerRef}
-                {...provided.droppableProps}
-              >
-                <div className="sections-list">
-                  {sections.length > 0 ? (
-                    sections.map((section, index) => (
-                      <Draggable
-                        key={section.id}
-                        draggableId={`section-${section.id}`}
-                        index={index}
-                        isDragDisabled={readOnly}
-                      >
-                        {(provided, snapshot) => (
-                          <div
-                            ref={provided.innerRef}
-                            {...(readOnly ? {} : provided.draggableProps)}
-                            style={{
-                              ...provided.draggableProps.style,
-                              marginBottom: 16,
-                            }}
-                          >
-                            <SectionItem
-                              section={section}
-                              index={index}
-                              setTargetSectionId={setTargetSectionId}
-                              setIsLessonModalOpen={setIsLessonModalOpen}
-                              courseId={courseId}
-                              navigate={navigate}
-                              onEditSection={handleOpenEditSection}
-                              onDeleteSection={handleDeleteSection}
-                              onDeleteLesson={handleDeleteLesson}
-                              onManageQuestions={setQuizManagerLesson}
-                              lessons={sectionLessons[section.id] || []}
-                              loadingLessons={loadingLessons[section.id] || false}
-                              onLessonClick={(lesson) =>
-                                navigate(
-                                  `/admin/courses/${courseId}/lessons/${lesson.id}`
-                                )
-                              }
-                              dragHandleProps={provided.dragHandleProps}
-                              readOnly={readOnly}
-                            />
-                          </div>
-                        )}
-                      </Draggable>
-                    ))
-                  ) : (
-                    <div
-                      style={{
-                        textAlign: "center",
-                        color: "#737686",
-                        padding: "40px",
-                      }}
-                    >
-                      The course has no content structure yet. Let's create the first
-                      section!
-                    </div>
-                  )}
-                  {provided.placeholder}
-                </div>
-
-                {!readOnly && (
-                  <div
-                    onClick={() => setIsSectionModalOpen(true)}
-                    className="empty-add-area"
-                  >
-                    <div className="icon-circle">
-                      <span className="material-symbols-outlined">add</span>
-                    </div>
-                    <h4 style={{ margin: "0 0 8px 0", fontSize: "16px" }}>
-                      Add a new section
-                    </h4>
-                    <p style={{ margin: 0, color: "#434655", fontSize: "14px" }}>
-                      Build a logical structure to help students follow along easily.
-                    </p>
-                  </div>
-                )}
-              </div>
-            )}
-          </Droppable>
         </div>
 
-        {/* CREATE SECTION MODAL */}
-        {isSectionModalOpen && (
-          <div className="modal-overlay">
-            <div className="modal-content">
-              <div className="modal-header">
-                <h3>Add New Section</h3>
-                <button
-                  className="icon-btn"
-                  onClick={() => setIsSectionModalOpen(false)}
-                >
-                  <span className="material-symbols-outlined">close</span>
-                </button>
-              </div>
-              <form onSubmit={handleCreateSection}>
-                <div className="modal-body">
-                  <div className="form-group">
-                    <label>
-                      Section Name <span style={{ color: "#ba1a1a" }}>*</span>
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={newSectionTitle}
-                      onChange={(e) => setNewSectionTitle(e.target.value)}
-                      placeholder="e.g., Section 1: Environment Setup..."
-                    />
-                  </div>
-                </div>
-                <div className="modal-footer">
-                  <button
-                    type="button"
-                    onClick={() => setIsSectionModalOpen(false)}
-                    className="btn-outline"
-                  >
-                    Cancel
-                  </button>
-                  <button type="submit" className="btn-primary">
-                    Save Section
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
-
-        {/* EDIT SECTION MODAL */}
-        {isEditSectionModalOpen && (
-          <div className="modal-overlay">
-            <div className="modal-content">
-              <div className="modal-header">
-                <h3>Edit Section</h3>
-                <button
-                  className="icon-btn"
-                  onClick={() => {
-                    setIsEditSectionModalOpen(false);
-                    setEditingSectionId(null);
-                  }}
-                >
-                  <span className="material-symbols-outlined">close</span>
-                </button>
-              </div>
-              <form onSubmit={handleUpdateSection}>
-                <div className="modal-body">
-                  <div className="form-group">
-                    <label>
-                      Section Name <span style={{ color: "#ba1a1a" }}>*</span>
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={editSectionTitle}
-                      onChange={(e) => setEditSectionTitle(e.target.value)}
-                      placeholder="e.g., Section 1: Environment Setup..."
-                    />
-                  </div>
-                </div>
-                <div className="modal-footer">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsEditSectionModalOpen(false);
-                      setEditingSectionId(null);
-                    }}
-                    className="btn-outline"
-                  >
-                    Cancel
-                  </button>
-                  <button type="submit" className="btn-primary">
-                    Update Section
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
-
-        {/* LESSON MODAL */}
-        {isLessonModalOpen && (
-          <div className="modal-overlay">
-            <div className="modal-content">
-              <div className="modal-header">
-                <h3>Add New Lesson</h3>
-                <button
-                  className="icon-btn"
-                  onClick={() => {
-                    setIsLessonModalOpen(false);
-                    setTargetSectionId(null);
-                  }}
-                >
-                  <span className="material-symbols-outlined">close</span>
-                </button>
-              </div>
-              <form onSubmit={handleCreateLesson}>
-                <div className="modal-body">
-                  <div className="form-group">
-                    <label>
-                      Lesson Title <span style={{ color: "#ba1a1a" }}>*</span>
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={newLessonData.title}
-                      onChange={(e) =>
-                        setNewLessonData({
-                          ...newLessonData,
-                          title: e.target.value,
-                        })
-                      }
-                      placeholder="e.g., 1.1. ReactJS Overview"
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label>
-                      Lesson Type <span style={{ color: "#ba1a1a" }}>*</span>
-                    </label>
-                    <select
-                      value={newLessonData.lessonType}
-                      onChange={(e) =>
-                        setNewLessonData({
-                          ...newLessonData,
-                          lessonType: e.target.value,
-                        })
-                      }
-                    >
-                      <option value="video">Video Lecture</option>
-                      <option value="document">
-                        Reading Material (PDF / Word)
-                      </option>
-                      <option value="quiz">Quiz</option>
-                      <option value="flashcard">Flashcard</option>
-                      <option value="essay">Essay</option>
-                    </select>
-                  </div>
-                  <div
-                    style={{
-                      display: "flex",
-                      gap: "12px",
-                      background: "#f3f3fe",
-                      padding: "16px",
-                      borderRadius: "8px",
-                      border: "1px solid #c3c6d7",
-                    }}
-                  >
-                    <input
-                      id="previewMode"
-                      type="checkbox"
-                      checked={newLessonData.isPreview}
-                      onChange={(e) =>
-                        setNewLessonData({
-                          ...newLessonData,
-                          isPreview: e.target.checked,
-                        })
-                      }
-                      style={{ width: "16px", height: "16px", marginTop: "2px" }}
-                    />
-                    <label
-                      htmlFor="previewMode"
-                      style={{ cursor: "pointer", margin: 0 }}
-                    >
-                      <div
-                        style={{
-                          fontWeight: 600,
-                          fontSize: "14px",
-                          color: "#191b23",
-                        }}
-                      >
-                        Allow preview
-                      </div>
-                      <div
-                        style={{
-                          fontSize: "12px",
-                          color: "#434655",
-                          marginTop: "4px",
-                        }}
-                      >
-                        Students who haven't purchased the course can still view
-                        this.
-                      </div>
-                    </label>
-                  </div>
-                </div>
-                <div className="modal-footer">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsLessonModalOpen(false);
-                      setTargetSectionId(null);
-                    }}
-                    className="btn-outline"
-                  >
-                    Cancel
-                  </button>
-                  <button type="submit" className="btn-primary">
-                    Create Lesson
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
-      </div>
-
-      <QuizQuestionManager
-        open={Boolean(quizManagerLesson)}
-        lesson={quizManagerLesson}
-        onClose={() => setQuizManagerLesson(null)}
-        onSaved={() => {
-          const sectionId =
-            quizManagerLesson?.sectionId || quizManagerLesson?.section?.id;
-          if (sectionId) {
-            fetchLessonsForSection(sectionId);
+        <CurriculumStructureEditor
+          sections={sections}
+          getLessons={(section) => sectionLessons[section.id] || []}
+          isSectionLessonsLoading={(sectionId) =>
+            loadingLessons[sectionId] || false
           }
-        }}
-      />
-    </DragDropContext>
+          stats={stats}
+          onCreateSection={handleCreateSection}
+          onUpdateSection={handleUpdateSection}
+          onDeleteSection={handleDeleteSection}
+          onReorderSections={handleReorderSections}
+          onCreateLesson={handleCreateLesson}
+          onDeleteLesson={handleDeleteLesson}
+          onReorderLessons={handleReorderLessons}
+          onEditLesson={handleEditLesson}
+        />
+      </div>
+    </div>
   );
 }

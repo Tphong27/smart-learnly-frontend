@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
-import { AlertCircle, ClipboardList, Loader, Trash2 } from "lucide-react";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { AlertCircle, BookOpen, Info, Loader, Trash2 } from "lucide-react";
 import { Button } from "@/shared/components/ui";
 import { classService } from "@/services";
 import { normalizeRole, ROLES } from "@/shared/constants/roles";
 import { ClassStatusBadge } from "../components/ClassStatusBadge";
 import { ClassOverviewTab } from "../components/ClassOverviewTab";
+import { ClassCurriculumTab } from "../components/ClassCurriculumTab";
 
 function getCurrentRole() {
   try {
@@ -26,6 +27,11 @@ export function ClassDetailPage() {
   const isTmo = userRole === ROLES.TMO;
 
   const [classData, setClassData] = useState(null);
+  // Cho phép deep-link đến 1 tab qua query string ?tab=curriculum (ví dụ khi
+  // trang trainer lesson detail navigate về đây sau khi save).
+  const [searchParams] = useSearchParams();
+  const initialTab = searchParams.get("tab") === "curriculum" ? "curriculum" : "overview";
+  const [activeTab, setActiveTab] = useState(initialTab);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [refreshKey, setRefreshKey] = useState(0);
@@ -179,13 +185,50 @@ export function ClassDetailPage() {
         </div>
       )}
 
+      <div className="workspace-tabs" role="tablist" aria-label="Class workspace tabs">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={activeTab === "overview"}
+          className={
+            activeTab === "overview"
+              ? "workspace-tabs__item is-active"
+              : "workspace-tabs__item"
+          }
+          onClick={() => setActiveTab("overview")}
+        >
+          <Info size={16} />
+          Overview
+        </button>
+        {isTrainer && (
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === "curriculum"}
+            className={
+              activeTab === "curriculum"
+                ? "workspace-tabs__item is-active"
+                : "workspace-tabs__item"
+            }
+            onClick={() => setActiveTab("curriculum")}
+          >
+            <BookOpen size={16} />
+            Curriculum
+          </button>
+        )}
+      </div>
+
       <div className="workspace-content">
-        <ClassOverviewTab
-          classData={classData}
-          classId={classId}
-          onClassUpdated={handleClassUpdated}
-          readOnly={isTrainer}
-        />
+        {activeTab === "curriculum" && isTrainer ? (
+          <ClassCurriculumTab classId={classId} />
+        ) : (
+          <ClassOverviewTab
+            classData={classData}
+            classId={classId}
+            onClassUpdated={handleClassUpdated}
+            readOnly={isTrainer}
+          />
+        )}
       </div>
     </section>
   );

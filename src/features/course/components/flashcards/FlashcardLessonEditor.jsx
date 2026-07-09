@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CheckSquare, Plus, RefreshCw, Save, Trash2, Upload, X } from "lucide-react";
 import { getCurrentUser } from "@/services";
 import { courseService } from "@/services/course.service";
-import { flashcardService } from "@/services/flashcard.service";
+import { flashcardService as defaultFlashcardService } from "@/services/flashcard.service";
 import { isRoleAllowed, ROLES } from "@/shared/constants/roles";
 import { FlashcardCardEditor } from "./FlashcardCardEditor";
 import { FlashcardCardList } from "./FlashcardCardList";
@@ -33,7 +33,8 @@ export function FlashcardLessonEditor({
   activeSection = "details",
   onTitleSaved,
   showToast,
-  dismissToast,
+  flashcardService = defaultFlashcardService,
+  stagingEnabled = true,
 }) {
   const [flashcardSet, setFlashcardSet] = useState(null);
   const [cards, setCards] = useState([]);
@@ -58,7 +59,8 @@ export function FlashcardLessonEditor({
   const [stagingRefreshKey, setStagingRefreshKey] = useState(0);
   const [error, setError] = useState(null);
 
-  const canUseStaging = isRoleAllowed(getCurrentUser()?.role, STAGING_ROLES);
+  const canUseStaging =
+    stagingEnabled && isRoleAllowed(getCurrentUser()?.role, STAGING_ROLES);
 
   const toastIdsRef = useRef(new Set());
 
@@ -130,7 +132,7 @@ export function FlashcardLessonEditor({
     } finally {
       setLoading(false);
     }
-  }, [hydrateSet, initialSetId, lessonId]);
+  }, [hydrateSet, initialSetId, lessonId, flashcardService]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
