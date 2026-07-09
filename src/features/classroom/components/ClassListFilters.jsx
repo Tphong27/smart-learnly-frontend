@@ -1,11 +1,25 @@
 import { Search } from "lucide-react";
 import { useEffect, useState } from "react";
 
-export function ClassListFilters({ onFilterChange }) {
+export function ClassListFilters({ initialCourseId = "", onClearCourseFilter, onFilterChange }) {
   const [filters, setFilters] = useState({
     keyword: "",
     status: "",
+    courseId: initialCourseId,
   });
+
+  useEffect(() => {
+    setFilters((current) => {
+      if (current.courseId === initialCourseId) {
+        return current;
+      }
+
+      return {
+        ...current,
+        courseId: initialCourseId,
+      };
+    });
+  }, [initialCourseId]);
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
@@ -52,6 +66,16 @@ export function ClassListFilters({ onFilterChange }) {
         <option value="completed">Completed</option>
         <option value="cancelled">Cancelled</option>
       </select>
+
+      {filters.courseId && (
+        <div className="class-filters__course-chip">
+          <span>Filtered by course</span>
+          <code>{filters.courseId}</code>
+          <button type="button" onClick={onClearCourseFilter}>
+            Clear
+          </button>
+        </div>
+      )}
     </div>
   );
 }

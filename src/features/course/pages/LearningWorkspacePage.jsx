@@ -50,6 +50,14 @@ function groupLessonsBySection(data) {
   return filterPublishedSections(data?.sections || []);
 }
 
+function formatCurriculumSource(curriculum) {
+  if (!curriculum) return null;
+  if (curriculum.customized || curriculum.curriculumScope === "class") {
+    return "Customized class curriculum";
+  }
+  return "Master curriculum";
+}
+
 export function LearningWorkspacePage({
   previewMode = false,
   mode = "student",
@@ -377,6 +385,7 @@ export function LearningWorkspacePage({
 
   const courseTitle = data?.courseTitle || "Course";
   const stats = data?.stats;
+  const curriculumSourceLabel = formatCurriculumSource(data?.curriculum);
 
   const isAdminPreview = mode === "admin-preview";
   const isGuestPreview = mode === "guest";
@@ -439,6 +448,13 @@ export function LearningWorkspacePage({
           <span className="learning-workspace__trainee-tag">
             <Eye size={14} />
             Preview mode
+          </span>
+        )}
+
+        {curriculumSourceLabel && mode === "student" && (
+          <span className="learning-workspace__trainee-tag" title={data?.curriculum?.source || undefined}>
+            <BookOpen size={14} />
+            {curriculumSourceLabel}
           </span>
         )}
 

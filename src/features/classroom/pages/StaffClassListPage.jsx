@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { AlertCircle, Loader, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/shared/components/ui";
 import { classService } from "@/services";
@@ -19,6 +19,8 @@ function getCurrentRole() {
 
 export function StaffClassListPage() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const courseIdFilter = searchParams.get("courseId") || "";
 
   const userRole = getCurrentRole();
   const isTmo = userRole === ROLES.TMO;
@@ -33,6 +35,7 @@ export function StaffClassListPage() {
     size: 15,
     keyword: "",
     status: "",
+    courseId: courseIdFilter,
   });
 
   const [pageInfo, setPageInfo] = useState({
@@ -42,6 +45,20 @@ export function StaffClassListPage() {
   });
 
   const [refreshKey, setRefreshKey] = useState(0);
+
+  useEffect(() => {
+    setFilters((current) => {
+      if (current.courseId === courseIdFilter) {
+        return current;
+      }
+
+      return {
+        ...current,
+        page: 0,
+        courseId: courseIdFilter,
+      };
+    });
+  }, [courseIdFilter]);
 
   useEffect(() => {
     let mounted = true;
@@ -93,12 +110,14 @@ export function StaffClassListPage() {
         page: 0,
         keyword: nextFilters.keyword ?? "",
         status: nextFilters.status ?? "",
+        courseId: nextFilters.courseId ?? "",
       };
 
       const isSameFilter =
         current.page === next.page &&
         current.keyword === next.keyword &&
-        current.status === next.status;
+        current.status === next.status &&
+        current.courseId === next.courseId;
 
       if (isSameFilter) {
         return current;
@@ -107,6 +126,12 @@ export function StaffClassListPage() {
       return next;
     });
   }, []);
+
+  const handleClearCourseFilter = useCallback(() => {
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.delete("courseId");
+    setSearchParams(nextParams, { replace: true });
+  }, [searchParams, setSearchParams]);
 
   async function handleDeleteClass(classId) {
     const confirmed = window.confirm(
@@ -160,7 +185,11 @@ export function StaffClassListPage() {
         )}
       </div>
 
-      <ClassListFilters onFilterChange={handleFilterChange} />
+      <ClassListFilters
+        initialCourseId={courseIdFilter}
+        onClearCourseFilter={handleClearCourseFilter}
+        onFilterChange={handleFilterChange}
+      />
 
       {loading && (
         <div className="page-loading">

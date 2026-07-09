@@ -186,6 +186,29 @@
   font-size: 13px;
 }
 
+.course-detail__section-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.course-detail__classes-section {
+  padding: 20px;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  background: #ffffff;
+}
+
+.course-detail__class-list--preview {
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+}
+
+.course-detail__class-select {
+  width: 100%;
+  justify-content: center;
+}
+
 .course-detail__objectives {
   list-style: none;
   padding: 0;
@@ -353,7 +376,8 @@
     grid-template-columns: 1fr;
   }
 
-  .course-detail__cta-row {
+  .course-detail__cta-row,
+  .course-detail__section-head {
     flex-direction: column;
     align-items: flex-start;
   }

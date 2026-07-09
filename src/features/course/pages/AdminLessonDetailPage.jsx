@@ -35,10 +35,12 @@ import {
     FileText,
     History,
     Edit3,
+    ListChecks,
     Loader2,
     ChevronLeft,
     ChevronRight,
 } from "lucide-react";
+import { QuizQuestionsPanel } from "../components/QuizQuestionManager";
 
 export default function AdminLessonDetailPage() {
     const { courseId, lessonId } = useParams();
@@ -922,9 +924,39 @@ export default function AdminLessonDetailPage() {
                 >
                     <History size={18} /> Audit History
                 </button>
+                {lessonType === "QUIZ" && (
+                    <button
+                        type="button"
+                        onClick={() => setActiveTab("questions")}
+                        style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "8px",
+                            padding: "12px 20px",
+                            fontSize: "15px",
+                            fontWeight: "600",
+                            border: "none",
+                            background: "none",
+                            cursor: "pointer",
+                            color: activeTab === "questions" ? "#2563eb" : "#64748b",
+                            borderBottom:
+                                activeTab === "questions"
+                                    ? "2px solid #2563eb"
+                                    : "2px solid transparent",
+                            transition: "all 0.2s",
+                        }}
+                    >
+                        <ListChecks size={18} /> Manage Questions
+                    </button>
+                )}
             </div>
 
-            {activeTab === "edit" ? (
+            {activeTab === "questions" && lessonType === "QUIZ" ? (
+                <QuizQuestionsPanel
+                    lessonId={lessonId}
+                    lessonTitle={title}
+                />
+            ) : activeTab === "edit" ? (
                 lessonType === "FLASHCARD" ? (
                     <FlashcardLessonEditor
                         lessonId={lessonId}
@@ -1140,9 +1172,8 @@ export default function AdminLessonDetailPage() {
                                                 color: "#64748b",
                                             }}
                                         >
-                                            Manage quiz questions from the
-                                            course content page using the
-                                            "Manage questions" button.
+                                            Manage quiz questions in the
+                                            "Manage Questions" tab above.
                                         </p>
                                     </div>
                                 ) : (
