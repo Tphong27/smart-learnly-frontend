@@ -1,0 +1,136 @@
+.invoice-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.invoice-detail__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.invoice-detail__label {
+  margin-bottom: 4px;
+  font-size: 12px;
+  color: #64748b;
+}
+
+.invoice-detail__number {
+  display: block;
+  font-size: 18px;
+  color: #0f2a5f;
+  word-break: break-word;
+}
+
+.invoice-detail__status {
+  text-align: right;
+}
+
+.invoice-detail__section-title {
+  margin: 0 0 10px;
+  font-size: 14px;
+  color: #0f172a;
+}
+
+.invoice-detail__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.invoice-detail__card {
+  padding: 12px;
+  background: #f8fafc;
+  border-radius: 10px;
+}
+
+.invoice-detail__card--full {
+  grid-column: 1 / -1;
+}
+
+.invoice-detail__trainee-card {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  padding: 14px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+}
+
+.invoice-detail__strong {
+  font-size: 16px;
+}
+
+.invoice-detail__break {
+  word-break: break-word;
+}
+
+.invoice-detail__transaction-id {
+  display: block;
+  word-break: break-all;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.invoice-detail__purchased-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 14px;
+  background: #f8fafc;
+  border-radius: 12px;
+}
+
+.invoice-detail__purchased-info {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.invoice-detail__course-title {
+  font-size: 15px;
+}
+
+.invoice-detail__class-name {
+  color: #64748b;
+  font-size: 13px;
+}
+
+.invoice-detail__price {
+  font-size: 15px;
+  white-space: nowrap;
+  color: #0f2a5f;
+}
+
+.invoice-detail__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+@media (max-width: 640px) {
+  .invoice-detail__grid,
+  .invoice-detail__trainee-card {
+    grid-template-columns: 1fr;
+  }
+
+  .invoice-detail__header,
+  .invoice-detail__purchased-card {
+    flex-direction: column;
+  }
+
+  .invoice-detail__status {
+    text-align: left;
+  }
+
+  .invoice-detail__price {
+    white-space: normal;
+  }
+}

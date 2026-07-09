@@ -159,3 +159,49 @@
   color: #64748b;
   font-size: 13px;
 }
+
+.transaction-page__section-title {
+  font-size: 14px;
+}
+
+.transaction-page__meta {
+  color: #94a3b8;
+  font-size: 12px;
+}
+
+.transaction-page__action-cell {
+  text-align: right;
+}
+
+.transaction-page__action-btn {
+  background: none;
+  border: 0;
+  cursor: pointer;
+  padding: 0;
+}
+
+.transaction-page__action-btn--danger {
+  color: #dc2626;
+}
+
+.transaction-page__empty-value {
+  color: #94a3b8;
+}
+
+.transaction-page__confirm-content {
+  margin: 0;
+  color: #475569;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.transaction-page__confirm-error {
+  margin-top: 14px;
+}
+
+.transaction-page__confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 18px;
+}
