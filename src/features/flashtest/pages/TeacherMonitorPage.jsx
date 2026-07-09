@@ -4,6 +4,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import {
   ArrowLeft,
   CheckCircle,
+  ChevronUp,
   Clock,
   Download,
   Eye,
@@ -17,6 +18,7 @@ import {
   attemptService,
   testService,
 } from "@/services/flashtest.service.js";
+import { sanitizeQuestionHtml } from "@/shared/utils/htmlSanitizer";
 import "../flashtest.css";
 
 const API_BASE_URL =
@@ -476,9 +478,17 @@ export function TeacherMonitorPage() {
         return (
           <div className="ft-attempt-question" key={currentQuestionId || index}>
             <div className="ft-attempt-question__title">
-              <strong>
-                Question {index + 1}: {questionText(question)}
-              </strong>
+              <div className="ft-attempt-question__heading">
+                <span className="ft-attempt-question__eyebrow">
+                  Question {index + 1}
+                </span>
+                <div
+                  className="ft-attempt-question__text"
+                  dangerouslySetInnerHTML={{
+                    __html: sanitizeQuestionHtml(questionText(question)),
+                  }}
+                />
+              </div>
               <span
                 className={`ft-badge ${
                   isCorrect ? "ft-status--submitted" : "ft-status--expired"
@@ -1020,15 +1030,27 @@ export function TeacherMonitorPage() {
                           : ""}
                       </strong>
                       <button
-                        className="ft-button ft-button--secondary"
+                        className={`ft-history-attempt__toggle ${
+                          isExpanded ? "is-expanded" : ""
+                        }`}
                         type="button"
+                        title={
+                          isExpanded
+                            ? "Hide attempt answers"
+                            : "Show attempt answers"
+                        }
+                        aria-label={
+                          isExpanded
+                            ? "Hide attempt answers"
+                            : "Show attempt answers"
+                        }
+                        aria-expanded={isExpanded}
                         disabled={!attempt.id && !attempt.attemptId}
                         onClick={() =>
                           handleToggleHistoryAttemptDetail(attempt)
                         }
                       >
-                        <Eye size={16} />
-                        {isExpanded ? "Hide answers" : "Answers"}
+                        <ChevronUp size={18} />
                       </button>
                     </div>
                     {isExpanded && (
