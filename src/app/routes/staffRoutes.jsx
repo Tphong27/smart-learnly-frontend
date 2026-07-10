@@ -12,7 +12,7 @@ import {
   StaffTestMonitorPage,
 } from "@/features/flashtest";
 // import { StaffLayout } from "@/app/layouts/StaffLayout";
-import { AdminCoursesPage } from "@/features/admin";
+import { AdminCoursesPage, AdminCourseFormPage } from "@/features/admin";
 import AdminCourseContentPage from "@/features/course/pages/AdminCourseContentPage";
 import {
   StaffClassListPage,
@@ -49,6 +49,10 @@ function getStaffRoutes() {
           children: [
             { path: "courses", element: <AdminCoursesPage /> },
             {
+              path: "courses/:courseId/edit",
+              element: <AdminCourseFormPage />,
+            },
+            {
               path: "courses/:courseId/content",
               element: <AdminCourseContentPage />,
             },
@@ -72,7 +76,6 @@ function getStaffRoutes() {
               path: "flashcards",
               element: <PlaceholderPage title="Flashcards Management" />,
             },
-            // ĐÃ SỬA: Thay thế Placeholder bằng Page thật và bổ sung cụm Route con điều hướng ổn định
             {
               path: "flashtests",
               element: <StaffFlashTestListPage />,
@@ -156,9 +159,7 @@ function getStaffRoutes() {
       children: [
         {
           element: (
-            <RoleGuard
-              allowedRoles={[ROLES.TRAINER, ROLES.TMO, ROLES.ADMIN]}
-            />
+            <RoleGuard allowedRoles={[ROLES.TRAINER, ROLES.TMO, ROLES.ADMIN]} />
           ),
           children: [
             {

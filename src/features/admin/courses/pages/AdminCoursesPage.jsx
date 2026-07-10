@@ -216,8 +216,9 @@ export function AdminCoursesPage() {
             Course management
           </h1>
           <p style={{ color: "#64748b", margin: 0, fontSize: "14px" }}>
-            Create, update, and manage the lifecycle of every course on the
-            platform.
+            {isTrainer
+              ? "View and update courses assigned to your classes."
+              : "Create, update, and manage the lifecycle of every course on the platform."}
           </p>
         </div>
         {!isTrainer && (
@@ -334,7 +335,9 @@ export function AdminCoursesPage() {
               className="admin-empty"
               style={{ padding: "40px", textAlign: "center", color: "#64748b" }}
             >
-              No courses match the current filters.
+              {isTrainer
+                ? "No courses have been assigned to you."
+                : "No courses match the current filters."}
             </div>
           ) : (
             <table
@@ -492,39 +495,45 @@ export function AdminCoursesPage() {
                         <Link
                           to={`/admin/courses/${course.id}/preview`}
                           className="admin-table__icon-btn"
-                          title={isTrainer ? "View course structure" : "Preview sample content"}
+                          title={
+                            isTrainer
+                              ? "View course structure"
+                              : "Preview sample content"
+                          }
                           style={{ color: "#64748b" }}
                         >
                           <Eye size={16} />
                         </Link>
+                        <Link
+                          to={
+                            isTrainer
+                              ? `/staff/courses/${course.id}/edit`
+                              : `/admin/courses/${course.id}`
+                          }
+                          className="admin-table__icon-btn"
+                          title="Edit"
+                          style={{ color: "#3b82f6" }}
+                        >
+                          <Edit2 size={16} />
+                        </Link>
                         {!isTrainer && (
-                          <>
-                            <Link
-                              to={`/admin/courses/${course.id}`}
-                              className="admin-table__icon-btn"
-                              title="Edit"
-                              style={{ color: "#3b82f6" }}
-                            >
-                              <Edit2 size={16} />
-                            </Link>
-                            <button
-                              type="button"
-                              className="admin-table__icon-btn admin-table__icon-btn--danger"
-                              title="Delete"
-                              onClick={() =>
-                                setDeleteState({ open: true, target: course })
-                              }
-                              style={{
-                                color: "#ef4444",
-                                background: "none",
-                                border: "none",
-                                cursor: "pointer",
-                                padding: 0,
-                              }}
-                            >
-                              <Trash2 size={16} />
-                            </button>
-                          </>
+                          <button
+                            type="button"
+                            className="admin-table__icon-btn admin-table__icon-btn--danger"
+                            title="Delete"
+                            onClick={() =>
+                              setDeleteState({ open: true, target: course })
+                            }
+                            style={{
+                              color: "#ef4444",
+                              background: "none",
+                              border: "none",
+                              cursor: "pointer",
+                              padding: 0,
+                            }}
+                          >
+                            <Trash2 size={16} />
+                          </button>
                         )}
                       </div>
                     </td>
