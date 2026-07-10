@@ -17,6 +17,18 @@ function isRegularTest(item) {
   return !isFlashTest(item);
 }
 
+function isCurriculumEssay(item) {
+  return Boolean(item?.lessonId || item?.lesson_id);
+}
+
+function getLessonId(item) {
+  return item?.lessonId || item?.lesson_id || "";
+}
+
+function getClassId(item) {
+  return item?.classId || item?.class_id || "";
+}
+
 function getDuration(item) {
   if (item.durationMinutes ?? item.duration_minutes ?? item.duration) {
     return item.durationMinutes ?? item.duration_minutes ?? item.duration;
@@ -59,16 +71,8 @@ export function StaffFlashTestListPage({ variant = "flash" }) {
     ? "Assignment Management"
     : isFlashMode ? "Flash Tests Management" : "Tests Management";
   const createLabel = isAssignmentMode
-    ? "Create Assignment"
+    ? "Create Daily Assignment"
     : isFlashMode ? "Create Flash Test" : "Create Test";
-  const emptyTitle = isAssignmentMode
-    ? "No assignments yet"
-    : isFlashMode ? "No flash tests yet" : "No tests yet";
-  const emptyDescription = isAssignmentMode
-    ? "Create the first essay assignment for this course."
-    : isFlashMode
-    ? "Create your first practice quiz or essay assignment to begin tracking student progress."
-    : "Create your first MCQ test to begin tracking trainee progress.";
   const itemFilter = isAssignmentMode
     ? isRegularTest
     : isFlashMode ? isFlashTest : isRegularTest;
@@ -76,7 +80,21 @@ export function StaffFlashTestListPage({ variant = "flash" }) {
   const [assignments, setAssignments] = useState([]);
   const [loading, setLoading] = useState(false);
   const [keyword, setKeyword] = useState("");
+  const [assignmentView, setAssignmentView] = useState("daily");
   const [nowMs, setNowMs] = useState(0);
+  const showCurriculumEssays = isAssignmentMode && assignmentView === "curriculum";
+  const emptyTitle = isAssignmentMode
+    ? showCurriculumEssays
+      ? "No curriculum essays yet"
+      : "No daily assignments yet"
+    : isFlashMode ? "No flash tests yet" : "No tests yet";
+  const emptyDescription = isAssignmentMode
+    ? showCurriculumEssays
+      ? "Essay lessons configured in the class course curriculum will appear here."
+      : "Create the first daily assignment for this course."
+    : isFlashMode
+    ? "Create your first practice quiz or essay assignment to begin tracking student progress."
+    : "Create your first MCQ test to begin tracking trainee progress.";
 
   const loadAllFlashTests = useCallback(async () => {
     setLoading(true);
@@ -132,13 +150,18 @@ export function StaffFlashTestListPage({ variant = "flash" }) {
     );
     const scopedRows = classId
       ? merged.filter(
-          (item) => String(item.classId || item.class_id || "") === String(classId),
+          (item) => String(getClassId(item)) === String(classId),
         )
       : merged;
+    const viewRows = isAssignmentMode
+      ? scopedRows.filter((item) =>
+          showCurriculumEssays ? isCurriculumEssay(item) : !isCurriculumEssay(item),
+        )
+      : scopedRows;
 
     const q = keyword.trim().toLowerCase();
-    if (!q) return scopedRows;
-    return scopedRows.filter((item) => {
+    if (!q) return viewRows;
+    return viewRows.filter((item) => {
       const haystack = [
         item.title,
         item.name,
@@ -150,15 +173,22 @@ export function StaffFlashTestListPage({ variant = "flash" }) {
         .toLowerCase();
       return haystack.includes(q);
     });
-  }, [assignments, classId, keyword, tests]);
+  }, [assignments, classId, isAssignmentMode, keyword, showCurriculumEssays, tests]);
 
   const total = useMemo(() => {
     const merged = [...tests, ...assignments];
-    if (!classId) return merged.length;
-    return merged.filter(
-      (item) => String(item.classId || item.class_id || "") === String(classId),
-    ).length;
-  }, [assignments, classId, tests]);
+    const scopedRows = classId
+      ? merged.filter(
+          (item) => String(getClassId(item)) === String(classId),
+        )
+      : merged;
+    const viewRows = isAssignmentMode
+      ? scopedRows.filter((item) =>
+          showCurriculumEssays ? isCurriculumEssay(item) : !isCurriculumEssay(item),
+        )
+      : scopedRows;
+    return viewRows.length;
+  }, [assignments, classId, isAssignmentMode, showCurriculumEssays, tests]);
 
   return (
     <section className="ft-page">
@@ -209,6 +239,18 @@ export function StaffFlashTestListPage({ variant = "flash" }) {
               onChange={(event) => setKeyword(event.target.value)}
             />
           </label>
+          {isAssignmentMode && (
+            <label className="ft-filter-select">
+              <select
+                value={assignmentView}
+                onChange={(event) => setAssignmentView(event.target.value)}
+                aria-label="Assignment source"
+              >
+                <option value="daily">Daily Assignment</option>
+                <option value="curriculum">Essay in Course</option>
+              </select>
+            </label>
+          )}
           <span className="ft-list-count">
             {total} {isAssignmentMode ? "assignments" : isFlashMode ? "flash tests" : "tests"}
           </span>
@@ -247,7 +289,7 @@ export function StaffFlashTestListPage({ variant = "flash" }) {
                 <tr>
                   <th>Title</th>
                   <th>Type</th>
-                  <th>Duration</th>
+                  {!showCurriculumEssays && <th>Duration</th>}
                   <th>Due / Created</th>
                   <th>Status</th>
                   <th className="ft-table-action">Actions</th>
@@ -257,6 +299,8 @@ export function StaffFlashTestListPage({ variant = "flash" }) {
                 {rows.map((item) => {
                   const type = item.flashType;
                   const isEssay = type === "essay";
+                  const lessonId = getLessonId(item);
+                  const rowClassId = getClassId(item);
                   const dueDate = item.dueDate || item.due_date;
                   const expired =
                     isEssay &&
@@ -275,10 +319,10 @@ export function StaffFlashTestListPage({ variant = "flash" }) {
                             isEssay ? "ft-badge--essay" : "ft-badge--mcq"
                           }`}
                         >
-                          {isEssay ? "Essay" : "MCQ"}
+                          {showCurriculumEssays ? "Essay Curriculum" : isEssay ? "Essay" : "MCQ"}
                         </span>
                       </td>
-                      <td>{getDuration(item)} mins</td>
+                      {!showCurriculumEssays && <td>{getDuration(item)} mins</td>}
                       <td>{formatDate(dueDate || item.createdAt || item.created_at)}</td>
                       <td>
                         <span
@@ -292,7 +336,11 @@ export function StaffFlashTestListPage({ variant = "flash" }) {
                       <td className="ft-table-action">
                         <div className="ft-table-actions">
                           <Link
-                            to={`${basePath}/edit/${item.id}/${type}${pathQuery}`}
+                            to={
+                              showCurriculumEssays && lessonId && rowClassId
+                                ? `/trainer/classes/${rowClassId}/curriculum/lessons/${lessonId}`
+                                : `${basePath}/edit/${item.id}/${type}${pathQuery}`
+                            }
                             className="ft-icon-button"
                             title={isAssignmentMode ? "Edit assignment" : isFlashMode ? "Edit flash test" : "Edit test"}
                           >

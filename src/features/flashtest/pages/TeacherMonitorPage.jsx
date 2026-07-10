@@ -315,6 +315,7 @@ export function TeacherMonitorPage() {
             targetId: item.assignmentId,
             submissionId: item.id,
             studentId: item.studentId,
+            studentName: item.studentName,
             type: "essay",
             status: item.status,
             startTime: item.startTime,

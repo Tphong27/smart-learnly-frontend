@@ -172,6 +172,28 @@
   font: inherit;
 }
 
+.ft-filter-select {
+  display: inline-flex;
+  align-items: center;
+  min-width: min(260px, 100%);
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #0f172a;
+}
+
+.ft-filter-select select {
+  width: 100%;
+  min-height: 40px;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: 400;
+  padding: 0 12px;
+}
+
 .ft-list-count {
   color: #64748b;
   font-size: 13px;
