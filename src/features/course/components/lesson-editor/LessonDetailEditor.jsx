@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { courseService } from "@/services/course.service";
+import { assignmentService } from "@/services/flashtest.service";
 import { useToast } from "@/shared/components/ui/Toast/useToast";
 import RichTextEditor from "@/shared/components/rich-text/RichTextEditor";
 import { FlashcardLessonEditor } from "@/features/course/components/flashcards/FlashcardLessonEditor";
@@ -30,6 +31,8 @@ import {
     Loader2,
     ChevronLeft,
     ChevronRight,
+    Paperclip,
+    X,
 } from "lucide-react";
 import { QuizQuestionsPanel } from "../QuizQuestionManager";
 import { HlsVideoUploader } from "./HlsVideoUploader";
@@ -94,6 +97,11 @@ export function LessonDetailEditor({ context }) {
     const [isPreview, setIsPreview] = useState(false);
     const [status, setStatus] = useState("draft");
     const [durationSeconds, setDurationSeconds] = useState(0);
+    const [assignment, setAssignment] = useState(null);
+    const [assignmentLoading, setAssignmentLoading] = useState(false);
+    const [assignmentSaving, setAssignmentSaving] = useState(false);
+    const [assignmentFile, setAssignmentFile] = useState(null);
+    const [existingAssignmentFile, setExistingAssignmentFile] = useState(null);
 
     const getFileNameFromUrl = (url) => {
         if (!url) return "";
@@ -178,6 +186,11 @@ export function LessonDetailEditor({ context }) {
                         setLessonType("QUIZ");
                     } else if (typeFromServer === "FLASHCARD") {
                         setLessonType("FLASHCARD");
+                    } else if (
+                        typeFromServer === "ESSAY" ||
+                        typeFromServer === "ASSIGNMENT"
+                    ) {
+                        setLessonType("ESSAY");
                     } else {
                         setLessonType("VIDEO");
                     }
@@ -200,6 +213,46 @@ export function LessonDetailEditor({ context }) {
             fetchLessonDetail();
         }
     }, [lessonId, showToast, services]);
+
+    useEffect(() => {
+        if (lessonType !== "ESSAY") {
+            return;
+        }
+
+        let cancelled = false;
+        async function loadLessonAssignment() {
+            try {
+                setAssignmentLoading(true);
+                const loaded = await assignmentService.getByLesson(lessonId);
+                if (cancelled) return;
+                setAssignment(loaded);
+                setExistingAssignmentFile(
+                    loaded?.instructionFileUrl
+                        ? {
+                              fileUrl: loaded.instructionFileUrl,
+                              fileName:
+                                  loaded.instructionFileName ||
+                                  getFileNameFromUrl(
+                                      loaded.instructionFileUrl,
+                                  ) ||
+                                  "Instruction file",
+                          }
+                        : null,
+                );
+            } catch {
+                if (cancelled) return;
+                setAssignment(null);
+                setExistingAssignmentFile(null);
+            } finally {
+                if (!cancelled) setAssignmentLoading(false);
+            }
+        }
+
+        if (lessonId) loadLessonAssignment();
+        return () => {
+            cancelled = true;
+        };
+    }, [lessonId, lessonType]);
 
     useEffect(() => {
         const fetchAuditLogs = async () => {
@@ -357,6 +410,7 @@ export function LessonDetailEditor({ context }) {
         }
 
         const isQuiz = lessonType === "QUIZ";
+        const usesLessonResources = !isQuiz && lessonType !== "ESSAY";
         const cleanSummary = sanitizeLessonHtml(summary);
 
         if (!isQuiz && isEmptyLessonHtml(cleanSummary)) {
@@ -373,14 +427,14 @@ export function LessonDetailEditor({ context }) {
                 if (latest) resolvedVideoUrl = latest;
             }
 
-            const normalizedResources = isQuiz
-                ? []
-                : resources
+            const normalizedResources = usesLessonResources
+                ? resources
                       .map((resource, index) =>
                           normalizeResourceForPayload(resource, index),
                       )
                       .filter(Boolean)
-                      .slice(0, 10);
+                      .slice(0, 10)
+                : [];
 
             const parsedQuiz = isQuiz ? parseQuizContent(textContent) : null;
             const content = isQuiz
@@ -401,6 +455,14 @@ export function LessonDetailEditor({ context }) {
             };
 
             await services.updateLesson(lessonId, payload);
+
+            if (lessonType === "ESSAY") {
+                const assignmentSaved = await saveLessonAssignment({
+                    title: title.trim(),
+                    description: cleanSummary,
+                });
+                if (!assignmentSaved) return;
+            }
 
             showToast("Update successfully!", "success");
             if (backPath) navigate(backPath);
@@ -425,6 +487,53 @@ export function LessonDetailEditor({ context }) {
             showToast(errorText, "error");
         } finally {
             setLoading(false);
+        }
+    };
+
+    const saveLessonAssignment = async ({ title: nextTitle, description }) => {
+        setAssignmentSaving(true);
+        try {
+            const uploaded = assignmentFile
+                ? await assignmentService.uploadFile(assignmentFile)
+                : null;
+            const payload = {
+                title: nextTitle,
+                description,
+                instructionFileUrl:
+                    uploaded?.fileUrl || existingAssignmentFile?.fileUrl,
+                instructionFileName:
+                    uploaded?.fileName ||
+                    assignmentFile?.name ||
+                    existingAssignmentFile?.fileName,
+                isFlashtest: false,
+            };
+
+            const saved = assignment?.id
+                ? await assignmentService.update(assignment.id, payload)
+                : await assignmentService.create({ ...payload, lessonId });
+
+            setAssignment(saved);
+            setAssignmentFile(null);
+            setExistingAssignmentFile(
+                saved?.instructionFileUrl
+                    ? {
+                          fileUrl: saved.instructionFileUrl,
+                          fileName:
+                              saved.instructionFileName ||
+                              getFileNameFromUrl(saved.instructionFileUrl) ||
+                              "Instruction file",
+                      }
+                    : null,
+            );
+            return true;
+        } catch (error) {
+            showToast(
+                getErrorMessage(error, "Could not save assignment"),
+                "error",
+            );
+            return false;
+        } finally {
+            setAssignmentSaving(false);
         }
     };
 
@@ -688,6 +797,7 @@ export function LessonDetailEditor({ context }) {
                                                 Document / Reading
                                             </option>
                                             <option value="QUIZ">Quiz</option>
+                                            <option value="ESSAY">Essay</option>
                                             {lessonType === "FLASHCARD" && (
                                                 <option value="FLASHCARD">
                                                     Flashcard
@@ -831,7 +941,8 @@ export function LessonDetailEditor({ context }) {
                                     </div>
                                 )}
 
-                                {lessonType !== "QUIZ" && (
+                                {lessonType !== "QUIZ" &&
+                                    lessonType !== "ESSAY" && (
                                     <LessonResourceUploader
                                         resources={resources}
                                         onResourcesChange={setResources}
@@ -843,7 +954,8 @@ export function LessonDetailEditor({ context }) {
 
                             <div
                                 style={{
-                                    flex: "2",
+                                    flex: lessonType === "ESSAY" ? "3" : "2",
+                                    minWidth: 0,
                                     backgroundColor: "#f8fafc",
                                     padding: "30px",
                                     borderRadius: "16px",
@@ -867,7 +979,7 @@ export function LessonDetailEditor({ context }) {
                                             color: "#0f172a",
                                         }}
                                     >
-                                        Lesson Content
+                                        Content
                                     </h3>
                                     {lessonType === "VIDEO" && (
                                         <HlsVideoUploader
@@ -915,6 +1027,228 @@ export function LessonDetailEditor({ context }) {
                                             </p>
                                         </div>
                                     )}
+                                    {lessonType === "ESSAY" && (
+                                        <div
+                                            style={{
+                                                backgroundColor: "#fff",
+                                                padding: "20px",
+                                                borderRadius: "12px",
+                                                border: "1px solid #cbd5e1",
+                                                display: "flex",
+                                                flexDirection: "column",
+                                                gap: "18px",
+                                                width: "100%",
+                                                boxSizing: "border-box",
+                                                minWidth: 0,
+                                                flex: "1 1 auto",
+                                                minHeight: "320px",
+                                            }}
+                                        >
+                                            {assignmentLoading ? (
+                                                <div
+                                                    style={{
+                                                        display: "flex",
+                                                        alignItems: "center",
+                                                        gap: "10px",
+                                                        color: "#64748b",
+                                                    }}
+                                                >
+                                                    <Loader2
+                                                        className="animate-spin"
+                                                        size={18}
+                                                    />
+                                                    <span>
+                                                        Loading essay content...
+                                                    </span>
+                                                </div>
+                                            ) : (
+                                                <>
+                                                    <div
+                                                        style={{
+                                                            display: "flex",
+                                                            flexDirection:
+                                                                "column",
+                                                            flex: "1 1 auto",
+                                                            minHeight: 0,
+                                                        }}
+                                                    >
+                                                        <span
+                                                            style={{
+                                                                display:
+                                                                    "block",
+                                                                marginBottom:
+                                                                    "8px",
+                                                                fontWeight: 600,
+                                                                color:
+                                                                    "#1e293b",
+                                                                fontSize:
+                                                                    "14px",
+                                                            }}
+                                                        >
+                                                            Assignment File
+                                                        </span>
+                                                        {assignmentFile ||
+                                                        existingAssignmentFile ? (
+                                                            <div
+                                                                style={{
+                                                                    display:
+                                                                        "flex",
+                                                                    alignItems:
+                                                                        "center",
+                                                                    justifyContent:
+                                                                        "space-between",
+                                                                    gap: "12px",
+                                                                    width:
+                                                                        "100%",
+                                                                    flex:
+                                                                        "1 1 auto",
+                                                                    boxSizing:
+                                                                        "border-box",
+                                                                    minWidth: 0,
+                                                                    padding:
+                                                                        "12px 14px",
+                                                                    border:
+                                                                        "1px solid #cbd5e1",
+                                                                    borderRadius:
+                                                                        "10px",
+                                                                    background:
+                                                                        "#f8fafc",
+                                                                    minHeight:
+                                                                        "84px",
+                                                                }}
+                                                            >
+                                                                <div
+                                                                    style={{
+                                                                        display:
+                                                                            "flex",
+                                                                        alignItems:
+                                                                            "center",
+                                                                        gap:
+                                                                            "10px",
+                                                                        color:
+                                                                            "#334155",
+                                                                        flex:
+                                                                            "1 1 auto",
+                                                                        minWidth: 0,
+                                                                    }}
+                                                                >
+                                                                    <Paperclip
+                                                                        size={
+                                                                            16
+                                                                        }
+                                                                    />
+                                                                    <span
+                                                                        style={{
+                                                                            display:
+                                                                                "block",
+                                                                            flex:
+                                                                                "1 1 auto",
+                                                                            minWidth: 0,
+                                                                            maxWidth:
+                                                                                "100%",
+                                                                            overflow:
+                                                                                "hidden",
+                                                                            textOverflow:
+                                                                                "ellipsis",
+                                                                            whiteSpace:
+                                                                                "nowrap",
+                                                                        }}
+                                                                    >
+                                                                        {assignmentFile?.name ||
+                                                                            existingAssignmentFile?.fileName}
+                                                                    </span>
+                                                                </div>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => {
+                                                                        setAssignmentFile(
+                                                                            null,
+                                                                        );
+                                                                        setExistingAssignmentFile(
+                                                                            null,
+                                                                        );
+                                                                    }}
+                                                                    style={{
+                                                                        border:
+                                                                            "none",
+                                                                        background:
+                                                                            "transparent",
+                                                                        cursor:
+                                                                            "pointer",
+                                                                        color:
+                                                                            "#64748b",
+                                                                    }}
+                                                                >
+                                                                    <X
+                                                                        size={
+                                                                            16
+                                                                        }
+                                                                    />
+                                                                </button>
+                                                            </div>
+                                                        ) : (
+                                                            <label
+                                                                style={{
+                                                                    display:
+                                                                        "flex",
+                                                                    alignItems:
+                                                                        "center",
+                                                                    justifyContent:
+                                                                        "center",
+                                                                    gap: "12px",
+                                                                    width:
+                                                                        "100%",
+                                                                    minHeight:
+                                                                        "240px",
+                                                                    flex:
+                                                                        "1 1 auto",
+                                                                    boxSizing:
+                                                                        "border-box",
+                                                                    padding:
+                                                                        "18px",
+                                                                    border:
+                                                                        "1px dashed #94a3b8",
+                                                                    borderRadius:
+                                                                        "12px",
+                                                                    cursor:
+                                                                        "pointer",
+                                                                    color:
+                                                                        "#475569",
+                                                                    background:
+                                                                        "#fff",
+                                                                }}
+                                                            >
+                                                                <Paperclip
+                                                                    size={20}
+                                                                />
+                                                                <span>
+                                                                    Upload essay
+                                                                    assignment
+                                                                    file
+                                                                </span>
+                                                                <input
+                                                                    type="file"
+                                                                    hidden
+                                                                    accept=".pdf,.doc,.docx,.ppt,.pptx,.png,.jpg,.jpeg,.zip"
+                                                                    onChange={(
+                                                                        event,
+                                                                    ) =>
+                                                                        setAssignmentFile(
+                                                                            event
+                                                                                .target
+                                                                                .files?.[0] ||
+                                                                                null,
+                                                                        )
+                                                                    }
+                                                                />
+                                                            </label>
+                                                        )}
+                                                    </div>
+
+                                                </>
+                                            )}
+                                        </div>
+                                    )}
                                 </div>
 
                                 <div
@@ -932,7 +1266,8 @@ export function LessonDetailEditor({ context }) {
                                             loading ||
                                             uploadingPdf ||
                                             uploadingResources ||
-                                            videoUploaderBusy
+                                            videoUploaderBusy ||
+                                            assignmentSaving
                                         }
                                         style={{
                                             display: "flex",
@@ -951,6 +1286,8 @@ export function LessonDetailEditor({ context }) {
                                         <Save size={18} />{" "}
                                         {loading
                                             ? "Saving..."
+                                            : assignmentSaving
+                                              ? "Saving assignment..."
                                             : videoUploaderBusy
                                               ? "Processing..."
                                               : "Save Changes"}

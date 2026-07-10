@@ -12,7 +12,6 @@ const TRAINER_LESSON_TYPES = [
   { value: "pdf", label: "Reading Material (PDF)" },
   { value: "rich_text", label: "Rich Text" },
   { value: "quiz", label: "Quiz" },
-  { value: "assignment", label: "Assignment" },
   { value: "essay", label: "Essay" },
 ];
 
