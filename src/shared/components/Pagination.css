@@ -1,81 +1,81 @@
 .modern-pagination-container {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 16px 24px;
-  background-color: #ffffff;
-  border-top: 1px solid var(--line);
-  margin-top: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 24px;
+    background-color: #ffffff;
+    border-top: 1px solid var(--line);
+    margin-top: 20px;
 }
 
 .pagination-info {
-  font-size: 14px;
-  color: var(--muted);
+    font-size: 14px;
+    color: var(--muted);
 }
 
 .pagination-info .semibold {
-  font-weight: 600;
-  color: var(--ink);
+    font-weight: 600;
+    color: var(--ink);
 }
 
 .pagination-controls {
-  display: flex;
-  align-items: center;
-  gap: 12px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
 }
 
 .btn-nav {
-  padding: 8px 14px;
-  background: #ffffff;
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  color: var(--ink);
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
+    padding: 8px 14px;
+    background: #ffffff;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    color: var(--ink);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
 }
 
 .btn-nav:hover:not(:disabled) {
-  border-color: var(--blue);
-  color: var(--blue);
+    border-color: var(--blue);
+    color: var(--blue);
 }
 
 .btn-nav:disabled {
-  color: #cbd5e1;
-  cursor: not-allowed;
-  background-color: var(--surface);
+    color: #cbd5e1;
+    cursor: not-allowed;
+    background-color: var(--surface);
 }
 
 .page-numbers {
-  display: flex;
-  gap: 6px;
+    display: flex;
+    gap: 6px;
 }
 
 .page-number-btn {
-  width: 34px;
-  height: 34px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid var(--line);
-  background: #ffffff;
-  border-radius: 6px;
-  color: var(--ink);
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
+    width: 34px;
+    height: 34px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--line);
+    background: #ffffff;
+    border-radius: 6px;
+    color: var(--ink);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
 }
 
 .page-number-btn:hover {
-  border-color: var(--blue);
-  color: var(--blue);
+    border-color: var(--blue);
+    color: var(--blue);
 }
 
 .page-number-btn.active {
-  background-color: var(--blue);
-  border-color: var(--blue);
-  color: #ffffff;
-  font-weight: 600;
+    background-color: var(--blue);
+    border-color: var(--blue);
+    color: #ffffff;
+    font-weight: 600;
 }

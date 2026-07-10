@@ -16,6 +16,7 @@ export function CourseListPage({
   showFilters = true,
   detailState,
   excludeEnrolled = false,
+  cardVariant = "default",
 }) {
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -251,6 +252,9 @@ export function CourseListPage({
             totalElements={pageInfo.totalElements}
             viewMode={viewMode}
             onViewModeChange={handleViewModeChange}
+            categories={categories}
+            categorySlug={categorySlug}
+            onCategoryChange={handleCategoryChange}
           />
         )}
 
@@ -288,6 +292,7 @@ export function CourseListPage({
                   course={course}
                   viewMode={viewMode}
                   detailState={detailState}
+                  variant={cardVariant}
                 />
               ))}
             </div>
