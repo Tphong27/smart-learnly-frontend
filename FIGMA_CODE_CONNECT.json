@@ -1,0 +1,104 @@
+# Code Connect Configuration
+# Maps Figma components to actual codebase imports
+
+{
+  "version": "1.0",
+  "framework": "react",
+  "language": "typescript",
+  "basePath": "src",
+  
+  "componentMappings": {
+    "Button": {
+      "figmaComponent": "Button",
+      "importPath": "@/shared/components/ui/Button",
+      "variants": ["primary", "secondary", "outline", "ghost", "danger"],
+      "sizes": ["sm", "md", "lg"]
+    },
+    "Input": {
+      "figmaComponent": "Input",
+      "importPath": "@/shared/components/ui/Input",
+      "variants": ["default", "error"],
+      "sizes": ["sm", "md", "lg"]
+    },
+    "Modal": {
+      "figmaComponent": "Modal",
+      "importPath": "@/shared/components/ui/Modal"
+    },
+    "Card": {
+      "figmaComponent": "Card",
+      "importPath": "@/shared/components/ui/Card",
+      "variants": ["elevated", "outlined", "filled"]
+    },
+    "Badge": {
+      "figmaComponent": "Badge",
+      "importPath": "@/shared/components/ui/Badge",
+      "variants": ["default", "success", "warning", "error", "info"]
+    },
+    "Avatar": {
+      "figmaComponent": "Avatar",
+      "importPath": "@/shared/components/ui/Avatar",
+      "variants": ["sm", "md", "lg", "xl"]
+    },
+    "Dropdown": {
+      "figmaComponent": "Dropdown",
+      "importPath": "@/shared/components/ui/Dropdown"
+    },
+    "Checkbox": {
+      "figmaComponent": "Checkbox",
+      "importPath": "@/shared/components/ui/Checkbox"
+    },
+    "Radio": {
+      "figmaComponent": "Radio",
+      "importPath": "@/shared/components/ui/Radio"
+    },
+    "Switch": {
+      "figmaComponent": "Switch",
+      "importPath": "@/shared/components/ui/Switch"
+    },
+    "Tabs": {
+      "figmaComponent": "Tabs",
+      "importPath": "@/shared/components/ui/Tabs"
+    },
+    "Select": {
+      "figmaComponent": "Select",
+      "importPath": "@/shared/components/ui/Select"
+    }
+  },
+  
+  "designTokens": {
+    "colors": {
+      "primary": "blue-600",
+      "secondary": "gray-600",
+      "success": "green-600",
+      "warning": "amber-500",
+      "error": "red-600",
+      "info": "cyan-600"
+    },
+    "spacing": {
+      "unit": 4,
+      "scale": [0, 1, 2, 3, 4, 5, 6, 8, 10, 12, 16, 20, 24, 32, 40, 48]
+    },
+    "typography": {
+      "fontFamily": "Inter, system-ui, sans-serif",
+      "fontSizes": {
+        "xs": "0.75rem",
+        "sm": "0.875rem",
+        "base": "1rem",
+        "lg": "1.125rem",
+        "xl": "1.25rem",
+        "2xl": "1.5rem",
+        "3xl": "1.875rem",
+        "4xl": "2.25rem"
+      }
+    },
+    "borderRadius": {
+      "none": "0",
+      "sm": "0.125rem",
+      "default": "0.25rem",
+      "md": "0.375rem",
+      "lg": "0.5rem",
+      "xl": "0.75rem",
+      "full": "9999px"
+    }
+  }
+}
