@@ -25,6 +25,7 @@ import { courseService, orderService, enrollmentService } from "@/services";
 import { ClassSelectionPopup } from "../components/ClassSelectionPopup";
 import "../../admin/admin-shared.css";
 import "./CourseDetailPage.css";
+import "../components/ClassStatusBadge.css";
 
 function LessonIcon({ type }) {
   const t = (type || "").toLowerCase();

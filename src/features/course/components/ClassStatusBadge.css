@@ -1,0 +1,41 @@
+.course-detail__class-status {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 92px;
+    padding: 7px 13px;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 800;
+    line-height: 1;
+}
+
+/* upcoming = green */
+.course-detail__class-status--upcoming {
+    background: #ecfdf5;
+    color: #047857;
+}
+
+/* ongoing = blue */
+.course-detail__class-status--ongoing {
+    background: #eff6ff;
+    color: #1d4ed8;
+}
+
+/* completed = gray */
+.course-detail__class-status--completed {
+    background: #f1f5f9;
+    color: #475569;
+}
+
+/* cancelled = red */
+.course-detail__class-status--cancelled {
+    background: #fef2f2;
+    color: #dc2626;
+}
+
+.course-detail__class-status--unknown {
+    background: #f8fafc;
+    color: #64748b;
+}

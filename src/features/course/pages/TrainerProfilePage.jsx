@@ -4,7 +4,7 @@ import { ArrowLeft, Mail, UserRound } from "lucide-react";
 import { useToast } from "@/shared/components/ui";
 import { userService } from "@/services";
 import "../../admin/admin-shared.css";
-import "./CourseDetailPage.css";
+import "./TrainerProfilePage.css";
 
 export function TrainerProfilePage() {
   const { trainerId } = useParams();

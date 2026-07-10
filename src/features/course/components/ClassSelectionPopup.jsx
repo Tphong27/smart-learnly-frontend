@@ -1,4 +1,6 @@
 import { ScheduleCalendar } from "../../../shared/components/scheduleCalendar/ScheduleCalendar";
+import "./ClassSelectionPopup.css";
+import "./ClassStatusBadge.css";
 
 function formatStatus(status) {
   if (!status) return "Unknown";
