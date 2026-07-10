@@ -118,7 +118,7 @@ const appRoutes = [
       // Admin Course Learning Preview - fullscreen, outside AppLayout
       {
         element: (
-          <RoleGuard allowedRoles={[ROLES.ADMIN, ROLES.TMO, ROLES.SME]} />
+          <RoleGuard allowedRoles={[ROLES.ADMIN, ROLES.TMO, ROLES.SME, ROLES.TRAINER]} />
         ),
         children: [
           {

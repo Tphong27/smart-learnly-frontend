@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { useParams, useNavigate, useLocation } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { courseService } from "../../../services/course.service";
 import { flashcardService } from "../../../services/flashcard.service";
@@ -205,45 +205,47 @@ function SectionItem({
                         </div>
 
                         {!readOnly && (
-                        <div className="lesson-actions">
-                          <span className="lesson-duration">
-                            {lesson?.durationSeconds
-                              ? `${Math.floor(lesson.durationSeconds / 60)} mins`
-                              : "--"}
-                          </span>
-                          <button
-                            onClick={() =>
-                              lesson?.id &&
-                              navigate(
-                                `/admin/courses/${courseId}/lessons/${lesson.id}`
-                              )
-                            }
-                            className="btn-outline"
-                          >
-                            Edit content
-                          </button>
-                          {String(lesson?.lessonType).toUpperCase() ===
-                            "QUIZ" && (
+                          <div className="lesson-actions">
+                            <span className="lesson-duration">
+                              {lesson?.durationSeconds
+                                ? `${Math.floor(lesson.durationSeconds / 60)} mins`
+                                : "--"}
+                            </span>
                             <button
                               onClick={() =>
-                                lesson?.id && onManageQuestions(lesson)
+                                lesson?.id &&
+                                navigate(
+                                  `/admin/courses/${courseId}/lessons/${lesson.id}`,
+                                )
                               }
                               className="btn-outline"
                             >
-                              Manage questions
+                              Edit content
                             </button>
-                          )}
-                          <button
-                            className="icon-btn delete"
-                            title="Delete lesson"
-                            onClick={() =>
-                              lesson?.id &&
-                              onDeleteLesson(lesson.id, lesson.title, lesson)
-                            }
-                          >
-                            <span className="material-symbols-outlined">delete</span>
-                          </button>
-                        </div>
+                            {String(lesson?.lessonType).toUpperCase() ===
+                              "QUIZ" && (
+                              <button
+                                onClick={() =>
+                                  lesson?.id && onManageQuestions(lesson)
+                                }
+                                className="btn-outline"
+                              >
+                                Manage questions
+                              </button>
+                            )}
+                            <button
+                              className="icon-btn delete"
+                              title="Delete lesson"
+                              onClick={() =>
+                                lesson?.id &&
+                                onDeleteLesson(lesson.id, lesson.title, lesson)
+                              }
+                            >
+                              <span className="material-symbols-outlined">
+                                delete
+                              </span>
+                            </button>
+                          </div>
                         )}
                       </div>
                     )}
@@ -274,12 +276,22 @@ export default function AdminCourseContentPage() {
   const params = useParams();
   const courseId = params.courseId || params.id;
   const navigate = useNavigate();
-  const location = useLocation();
+  // const location = useLocation();
   const { showToast: emitToast } = useToast();
   const currentUser = getCurrentUser();
   const isTrainer = String(currentUser?.role || "").toLowerCase() === "trainer";
-  const isStaffCourseContent = location.pathname.startsWith("/staff/");
-  const readOnly = isTrainer || isStaffCourseContent;
+  const canUpdateContent = ["admin", "tmo", "sme", "trainer"].includes(
+    String(currentUser?.role || "").toLowerCase(),
+  );
+
+  const readOnly = !canUpdateContent;
+
+  const courseListPath = isTrainer ? "/staff/courses" : "/admin/courses";
+
+  const courseContentPath = isTrainer
+    ? `/staff/courses/${courseId}/content`
+    : `/admin/courses/${courseId}/content`;
+
   const showToast = useCallback(
     (messageOrOptions, type) => {
       if (messageOrOptions && typeof messageOrOptions === "object") {
@@ -513,11 +525,30 @@ export default function AdminCourseContentPage() {
     }
   };
 
+  const handleEditLesson = useCallback(
+    (lesson) => {
+      if (!lesson?.id) {
+        showToast({
+          type: "error",
+          message: "Lesson ID was not found.",
+        });
+        return;
+      }
+
+      navigate(`/admin/courses/${courseId}/lessons/${lesson.id}`);
+    },
+    [courseId, navigate, showToast],
+  );
+
   const onDragEnd = async (result) => {
     if (readOnly) return;
     const { destination, source, draggableId, type } = result;
     if (!destination) return;
-    if (destination.droppableId === source.droppableId && destination.index === source.index) return;
+    if (
+      destination.droppableId === source.droppableId &&
+      destination.index === source.index
+    )
+      return;
 
     if (type === "SECTION") {
       const reordered = reorder(sections, source.index, destination.index);
@@ -527,7 +558,7 @@ export default function AdminCourseContentPage() {
       try {
         await courseService.reorderSections(
           courseId,
-          newSections.map((s) => s.id)
+          newSections.map((s) => s.id),
         );
         showToast("Sections reordered successfully!", "success");
       } catch (error) {
@@ -541,7 +572,10 @@ export default function AdminCourseContentPage() {
       if (sourceSectionId === destSectionId) {
         const lessons = [...(sectionLessons[sourceSectionId] || [])];
         const reordered = reorder(lessons, source.index, destination.index);
-        const newLessons = reordered.map((l, idx) => ({ ...l, sortOrder: idx }));
+        const newLessons = reordered.map((l, idx) => ({
+          ...l,
+          sortOrder: idx,
+        }));
 
         setSectionLessons((prev) => ({
           ...prev,
@@ -551,7 +585,7 @@ export default function AdminCourseContentPage() {
         try {
           await courseService.reorderLessons(
             sourceSectionId,
-            newLessons.map((l) => l.id)
+            newLessons.map((l) => l.id),
           );
           showToast("Lessons reordered successfully!", "success");
         } catch (error) {
@@ -601,10 +635,7 @@ export default function AdminCourseContentPage() {
     <div className="admin-course-page">
       <div className="page-container">
         <div className="page-header">
-          <button
-            onClick={() => navigate("/admin/courses")}
-            className="back-btn"
-          >
+          <button onClick={() => navigate(courseListPath)} className="back-btn">
             <span
               className="material-symbols-outlined"
               style={{ fontSize: "18px" }}
@@ -623,7 +654,9 @@ export default function AdminCourseContentPage() {
                 type="button"
                 onClick={() =>
                   window.open(
-                    `/admin/courses/${courseId}/preview`,
+                    `/admin/courses/${courseId}/preview?returnTo=${encodeURIComponent(
+                      courseContentPath,
+                    )}`,
                     "_blank",
                     "noopener,noreferrer",
                   )

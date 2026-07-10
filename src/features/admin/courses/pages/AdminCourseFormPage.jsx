@@ -75,6 +75,14 @@ export function AdminCourseFormPage() {
 
   const courseListPath = isTrainer ? "/staff/courses" : "/admin/courses";
 
+  const courseContentPath = isTrainer
+    ? `/staff/courses/${courseId}/content`
+    : `/admin/courses/${courseId}/content`;
+
+  const courseFormPath = isTrainer
+    ? `/staff/courses/${courseId}/edit`
+    : `/admin/courses/${courseId}`;
+
   const defaultValues = useMemo(
     () => ({
       categoryId: "",
@@ -612,13 +620,7 @@ export function AdminCourseFormPage() {
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() =>
-                    navigate(
-                      isTrainer
-                        ? `/staff/courses/${courseId}/content`
-                        : `/admin/courses/${courseId}/content`,
-                    )
-                  }
+                  onClick={() => navigate(courseContentPath)}
                 >
                   Course Structure
                 </Button>

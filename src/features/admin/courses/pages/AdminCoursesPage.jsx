@@ -91,6 +91,7 @@ export function AdminCoursesPage() {
   const navigate = useNavigate();
   const currentUser = getCurrentUser();
   const isTrainer = String(currentUser?.role || "").toLowerCase() === "trainer";
+  const previewReturnPath = isTrainer ? "/staff/courses" : "/admin/courses";
 
   const [page, setPage] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
@@ -493,13 +494,11 @@ export function AdminCoursesPage() {
                           <Users size={16} />
                         </Link>
                         <Link
-                          to={`/admin/courses/${course.id}/preview`}
+                          to={`/admin/courses/${course.id}/preview?returnTo=${encodeURIComponent(
+                            previewReturnPath,
+                          )}`}
                           className="admin-table__icon-btn"
-                          title={
-                            isTrainer
-                              ? "View course structure"
-                              : "Preview sample content"
-                          }
+                          title="Preview course"
                           style={{ color: "#64748b" }}
                         >
                           <Eye size={16} />

@@ -65,6 +65,7 @@ export function LearningWorkspacePage({
   const { courseId } = useParams();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const requestedReturnTo = searchParams.get("returnTo");
   const requestedLessonId = searchParams.get("lessonId");
   const requestedClassId = searchParams.get("classId");
   const [data, setData] = useState(null);
@@ -390,6 +391,25 @@ export function LearningWorkspacePage({
   const isAdminPreview = mode === "admin-preview";
   const isGuestPreview = mode === "guest";
 
+  function getSafeReturnPath(returnTo) {
+    if (!returnTo) {
+      return null;
+    }
+
+    // Chỉ cho phép điều hướng nội bộ.
+    if (!returnTo.startsWith("/")) {
+      return null;
+    }
+
+    // Không cho protocol-relative URL như //evil.com.
+    if (returnTo.startsWith("//")) {
+      return null;
+    }
+
+    return returnTo;
+  }
+  const safeReturnTo = getSafeReturnPath(requestedReturnTo);
+
   const completedCount = completedLessonIds.size;
   const totalLessonCount = allLessons.length;
 
@@ -415,18 +435,22 @@ export function LearningWorkspacePage({
           className="learning-workspace__topbar-back"
           onClick={() => {
             if (isAdminPreview) {
+              if (safeReturnTo) {
+                navigate(safeReturnTo);
+                return;
+              }
               navigate(`/admin/courses/${courseId}/content`);
-            } else if (isGuestPreview || previewMode) {
-              // Quay về đúng trang xuất phát (course detail có thể mở bằng slug),
-              // tránh điều hướng cứng tới /courses/<uuid> gây 404.
+              return;
+            }
+            if (isGuestPreview || previewMode) {
               if (window.history.length > 1) {
                 navigate(-1);
               } else {
                 navigate(`/courses/${courseId}`);
               }
-            } else {
-              navigate("/learning/courses");
+              return;
             }
+            navigate("/learning/courses");
           }}
           title="Back"
         >
@@ -452,7 +476,10 @@ export function LearningWorkspacePage({
         )}
 
         {curriculumSourceLabel && mode === "student" && (
-          <span className="learning-workspace__trainee-tag" title={data?.curriculum?.source || undefined}>
+          <span
+            className="learning-workspace__trainee-tag"
+            title={data?.curriculum?.source || undefined}
+          >
             <BookOpen size={14} />
             {curriculumSourceLabel}
           </span>
