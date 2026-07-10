@@ -1,4 +1,4 @@
-import { BookOpen, Brain, ChartLine, Sparkles, Zap } from "lucide-react";
+import { Link } from "react-router-dom";
 import "./AuthCard.css";
 
 function BrandLogo({ tone = "dark" }) {
@@ -20,81 +20,64 @@ function BrandLogo({ tone = "dark" }) {
                 </svg>
             </span>
             <span className="auth-brand__wordmark">
-                Smart <span>Learnly</span>
+                Smart Learnly
+                <small>Learning platform</small>
             </span>
         </span>
     );
 }
 
-function FeatureItem({ icon: Icon, title, description }) {
+function BrandStory() {
     return (
-        <div className="auth-feature-item">
-            <span className="auth-feature-icon">
-                <Icon size={18} strokeWidth={2} />
-            </span>
-            <div className="auth-feature-text">
-                <strong>{title}</strong>
-                <span>{description}</span>
+        <aside className="auth-story" aria-label="Smart Learnly introduction">
+            <div className="auth-story__inner">
+                <BrandLogo tone="light" />
+
+                <div className="auth-story__content">
+                    <p className="auth-story__kicker">Smart Learnly</p>
+                    <h2 className="auth-story__title">
+                        Build real skills,
+                        <br />
+                        one lesson at a time.
+                    </h2>
+                    <p className="auth-story__copy">
+                        A focused learning space for courses, practice tests,
+                        flashcards, and progress tracking.
+                    </p>
+                </div>
+
+                <div className="auth-story__quote">
+                    <span>For learners, trainers, and teams who want a clearer path to progress.</span>
+                </div>
             </div>
-        </div>
+        </aside>
     );
 }
 
 export function AuthPage({ children }) {
     return (
         <div className="auth-page">
-            <aside className="auth-stage">
-                <div className="auth-stage__inner">
-                    <div className="auth-stage__top">
-                        <BrandLogo tone="light" />
-                    </div>
-
-                    <div className="auth-stage__body">
-                        <div className="auth-stage__hero">
-                            <h2 className="auth-stage__title">
-                                Your journey to
-                                <br />
-                                <span className="auth-stage__highlight">
-                                    mastery
-                                </span>{" "}
-                                starts here
-                            </h2>
-                            <p className="auth-stage__lede">
-                                Join many of learners building real skills with
-                                personalized AI guidance.
-                            </p>
-                        </div>
-
-                        <div className="auth-stage__features">
-                            <FeatureItem
-                                icon={Brain}
-                                title="Adaptive Learning"
-                                description="AI adjusts content to your pace"
-                            />
-                            <FeatureItem
-                                icon={ChartLine}
-                                title="Track Progress"
-                                description="Visual dashboards show your growth"
-                            />
-                            <FeatureItem
-                                icon={BookOpen}
-                                title="Expert Content"
-                                description="Quality courses from certified trainers"
-                            />
-                        </div>
-                    </div>
-
-                    <div className="auth-stage__foot">
-                        <span>Trusted by learners worldwide</span>
-                    </div>
-                </div>
-            </aside>
+            <BrandStory />
 
             <main className="auth-form">
+                <header className="auth-form__header">
+                    <BrandLogo tone="dark" />
+                    <Link to="/" className="auth-form__header-link">
+                        Back to home
+                    </Link>
+                </header>
+
                 <div className="auth-form__brand-mobile">
                     <BrandLogo tone="dark" />
                 </div>
+
                 <div className="auth-form__inner">{children}</div>
+
+                <footer className="auth-form__foot">
+                    <span>© 2025 Smart Learnly</span>
+                    <Link to="/terms">Terms</Link>
+                    <Link to="/privacy">Privacy</Link>
+                </footer>
             </main>
         </div>
     );

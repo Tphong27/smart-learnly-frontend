@@ -102,12 +102,12 @@ export function LoginPage() {
   return (
     <AuthPage>
       <AuthCard
-        title="Welcome back"
-        subtitle="Sign in to continue your learning journey."
+        title="Sign in"
+        subtitle="Good to see you again. Pick up where you left off."
         alert={serverError ? { type: "error", message: serverError } : null}
         footer={
           <>
-            Don&apos;t have an account? <Link to="/register">Sign up</Link>
+            New here? <Link to="/register">Create an account</Link>
           </>
         }
       >
