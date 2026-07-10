@@ -35,14 +35,14 @@
   color: #fff;
   display: grid;
   place-items: center;
-  font-family: 'Manrope', sans-serif;
+  font-family: 'Lato', sans-serif;
   font-size: 26px;
   font-weight: 800;
 }
 
 .profile-page__name {
   margin: 0 0 4px;
-  font-family: 'Manrope', sans-serif;
+  font-family: 'Lato', sans-serif;
   font-size: 20px;
   font-weight: 800;
   color: var(--ink, #14213d);
@@ -105,7 +105,7 @@
 
 .profile-card__title {
   margin: 0 0 4px;
-  font-family: 'Manrope', sans-serif;
+  font-family: 'Lato', sans-serif;
   font-size: 18px;
   font-weight: 800;
   color: var(--ink, #14213d);

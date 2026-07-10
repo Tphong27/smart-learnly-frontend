@@ -8,6 +8,13 @@ import "../course.css";
 
 const DEFAULT_PAGE_SIZE = 3;
 
+const PRICE_RANGES = {
+  FREE: { minPrice: 0, maxPrice: 0 },
+  UNDER_500K: { minPrice: 1, maxPrice: 500000 },
+  BETWEEN_500K_AND_1M: { minPrice: 500000, maxPrice: 1000000 },
+  OVER_1M: { minPrice: 1000001 },
+};
+
 export function CourseListPage({
   embedded = false,
   showHero = true,
@@ -17,6 +24,7 @@ export function CourseListPage({
   detailState,
   excludeEnrolled = false,
   cardVariant = "default",
+  showAdvancedFilters = false,
 }) {
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -41,7 +49,12 @@ export function CourseListPage({
 
   const keyword = searchParams.get("keyword") || "";
   const categorySlug = searchParams.get("categorySlug") || "";
+  const priceRange = searchParams.get("priceRange") || "";
+  const onSale = searchParams.get("onSale") === "true";
+  const featured = searchParams.get("featured") === "true";
+  const sort = searchParams.get("sort") || "POPULAR";
   const page = Number(searchParams.get("page") || 0);
+  const priceFilter = PRICE_RANGES[priceRange] || {};
 
   useEffect(() => {
     let mounted = true;
@@ -74,6 +87,11 @@ export function CourseListPage({
       size,
       keyword,
       categorySlug,
+      minPrice,
+      maxPrice,
+      onSale,
+      featured,
+      sort,
     }) {
       const enrolledIds = hasAccessToken()
         ? await courseService.getMyEnrolledCourseIds()
@@ -89,6 +107,11 @@ export function CourseListPage({
           size,
           keyword,
           categorySlug,
+          minPrice,
+          maxPrice,
+          onSale,
+          featured,
+          sort,
         });
 
         const pageItems = Array.isArray(pageData.items) ? pageData.items : [];
@@ -146,6 +169,11 @@ export function CourseListPage({
             size: pageSize,
             keyword,
             categorySlug,
+            minPrice: priceFilter.minPrice,
+            maxPrice: priceFilter.maxPrice,
+            onSale,
+            featured,
+            sort,
           });
         } else {
           data = await courseService.getPublicCoursesWithDetails({
@@ -153,6 +181,11 @@ export function CourseListPage({
             size: pageSize,
             keyword,
             categorySlug,
+            minPrice: priceFilter.minPrice,
+            maxPrice: priceFilter.maxPrice,
+            onSale,
+            featured,
+            sort,
           });
         }
 
@@ -177,18 +210,33 @@ export function CourseListPage({
     return () => {
       mounted = false;
     };
-  }, [keyword, categorySlug, page, pageSize, excludeEnrolled]);
+  }, [
+    keyword,
+    categorySlug,
+    page,
+    pageSize,
+    excludeEnrolled,
+    priceFilter.maxPrice,
+    priceFilter.minPrice,
+    onSale,
+    featured,
+    sort,
+  ]);
 
   function updateQuery(nextValues) {
     const next = {
       keyword,
       categorySlug,
+      priceRange,
+      onSale: onSale ? "true" : "",
+      featured: featured ? "true" : "",
+      sort: sort === "POPULAR" ? "" : sort,
       page: String(page),
       ...nextValues,
     };
 
     Object.keys(next).forEach((key) => {
-      if (!next[key] || next[key] === "0") {
+      if (!next[key] || next[key] === "0" || next[key] === "POPULAR") {
         delete next[key];
       }
     });
@@ -206,6 +254,45 @@ export function CourseListPage({
   function handleCategoryChange(value) {
     updateQuery({
       categorySlug: value,
+      page: "0",
+    });
+  }
+
+  function handlePriceRangeChange(value) {
+    updateQuery({
+      priceRange: value,
+      page: "0",
+    });
+  }
+
+  function handleSaleChange(value) {
+    updateQuery({
+      onSale: value ? "true" : "",
+      page: "0",
+    });
+  }
+
+  function handleFeaturedChange(value) {
+    updateQuery({
+      featured: value ? "true" : "",
+      page: "0",
+    });
+  }
+
+  function handleSortChange(value) {
+    updateQuery({
+      sort: value === "POPULAR" ? "" : value,
+      page: "0",
+    });
+  }
+
+  function clearAdvancedFilters() {
+    updateQuery({
+      categorySlug: "",
+      priceRange: "",
+      onSale: "",
+      featured: "",
+      sort: "",
       page: "0",
     });
   }
@@ -249,12 +336,21 @@ export function CourseListPage({
 
         {showToolbar && (
           <CourseListToolbar
-            totalElements={pageInfo.totalElements}
             viewMode={viewMode}
             onViewModeChange={handleViewModeChange}
             categories={categories}
             categorySlug={categorySlug}
             onCategoryChange={handleCategoryChange}
+            showAdvancedFilters={showAdvancedFilters}
+            priceRange={priceRange}
+            onPriceRangeChange={handlePriceRangeChange}
+            onSale={onSale}
+            onSaleChange={handleSaleChange}
+            featured={featured}
+            onFeaturedChange={handleFeaturedChange}
+            sort={sort}
+            onSortChange={handleSortChange}
+            onClearFilters={clearAdvancedFilters}
           />
         )}
 
