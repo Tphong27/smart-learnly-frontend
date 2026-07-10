@@ -13,7 +13,12 @@ function getCoursePath(course) {
     return `/courses/${course.slug || course.id}`;
 }
 
-export function CourseCard({ course, viewMode = "grid", detailState }) {
+export function CourseCard({
+    course,
+    viewMode = "grid",
+    detailState,
+    variant = "default",
+}) {
     const title = course.title || "Untitled course";
     const shortDescription = course.description || "No description available.";
 
@@ -39,6 +44,94 @@ export function CourseCard({ course, viewMode = "grid", detailState }) {
     const displayPrice = getDisplayPrice(course);
     const hasDiscount = hasValidDiscount(course);
     const discountPercent = getDiscountPercent(course);
+
+    // Popular Courses section (Figma design)
+    if (variant === "popular") {
+        return (
+            <article className={`course-card course-card--${viewMode}`}>
+                <Link
+                    to={getCoursePath(course)}
+                    state={detailState}
+                    className="course-card__media"
+                >
+                    {avatarUrl ? (
+                        <img
+                            src={avatarUrl}
+                            alt={title}
+                            loading="lazy"
+                            onError={(event) => {
+                                event.currentTarget.style.display = "none";
+                                event.currentTarget
+                                    .closest(".course-card__media")
+                                    ?.classList.add(
+                                        "course-card__media--fallback",
+                                    );
+                            }}
+                        />
+                    ) : (
+                        <div className="course-card__placeholder">
+                            <BookOpen size={32} />
+                        </div>
+                    )}
+                </Link>
+
+                <div className="course-card__body">
+                    <div className="course-card__top">
+                        <span className="course-card__category">
+                            {categoryName}
+                        </span>
+
+                        <h3>{title}</h3>
+
+                        <p>{shortDescription}</p>
+                    </div>
+
+                    <div className="course-card__footer">
+                        {hasDiscount ? (
+                            <>
+                                <span className="course-card__price-original">
+                                    {formatVnd(originalPrice)}
+                                </span>
+
+                                <div className="course-card__price-row">
+                                    <div className="course-card__price-left">
+                                        <span className="course-card__price-current">
+                                            {formatVnd(displayPrice)}
+                                        </span>
+                                        <span className="course-card__discount-badge">
+                                            -{discountPercent}%
+                                        </span>
+                                    </div>
+
+                                    <Link
+                                        to={getCoursePath(course)}
+                                        state={detailState}
+                                        className="course-card__link"
+                                    >
+                                        View course <ArrowRight size={15} />
+                                    </Link>
+                                </div>
+                            </>
+                        ) : (
+                            <div className="course-card__price-row">
+                                <span className="course-card__price-current">
+                                    {formatVnd(displayPrice)}
+                                </span>
+
+                                <Link
+                                    to={getCoursePath(course)}
+                                    state={detailState}
+                                    className="course-card__link"
+                                >
+                                    View course <ArrowRight size={15} />
+                                </Link>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </article>
+        );
+    }
 
     return (
         <article className={`course-card course-card--${viewMode}`}>
