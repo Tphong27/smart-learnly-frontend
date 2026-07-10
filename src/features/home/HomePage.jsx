@@ -1,9 +1,7 @@
 import {
     ArrowRight,
-    BrainCircuit,
-    Layers3,
-    MessageCircleMore,
-    Target,
+    SunMedium,
+    Zap,
 } from "lucide-react";
 import { useDocumentTitle } from "../../shared/hooks/useDocumentTitle";
 import { CourseListPage } from "../course/pages/CourseListPage";
@@ -11,6 +9,15 @@ import { BrandLogo } from "../../shared/components/SiteHeader";
 
 function Logo() {
     return <BrandLogo />;
+}
+
+function RoadStop({ className }) {
+    return (
+        <span className={`feature-road__stop ${className}`} aria-hidden="true">
+            <SunMedium size={42} strokeWidth={2.2} />
+            <Zap className="feature-road__stop-zap" size={16} fill="currentColor" />
+        </span>
+    );
 }
 
 export function HomePage() {
@@ -314,6 +321,7 @@ export function HomePage() {
                             embedded
                             showHero={false}
                             showFilters={false}
+                            showAdvancedFilters={true}
                             pageSize={6}
                             cardVariant="popular"
                             detailState={{
@@ -327,80 +335,68 @@ export function HomePage() {
 
                 <section className="feature-section" id="features">
                     <div className="feature-section__inner">
-                        <h2 className="feature-section__title">
+                        <h2 className="feature-section__title" id="learning-intelligence-title">
                             <span>Intelligence where it makes a</span>
                             <span>difference</span>
                         </h2>
 
-                        <div className="feature-section__grid">
+                        <div
+                            className="feature-roadmap"
+                            aria-labelledby="learning-intelligence-title"
+                        >
                             <svg
-                                className="feature-section__connector"
+                                className="feature-roadmap__road"
                                 viewBox="0 0 1489 791"
                                 preserveAspectRatio="none"
                                 aria-hidden="true"
                             >
                                 <path
-                                    d="M 180 60 C 380 60, 520 320, 720 360 C 920 400, 1080 200, 1280 230 C 1340 240, 1370 320, 1320 420 C 1280 500, 1100 520, 880 510 C 660 500, 540 440, 380 540 C 240 620, 220 700, 360 740"
+                                    className="feature-roadmap__road-outline"
+                                    d="M -36 62 H 1238 C 1365 62 1460 158 1460 220 C 1460 292 1365 340 1238 340 H 892 C 814 340 766 393 766 471 V 791"
                                     fill="none"
-                                    stroke="#1e1b4b"
-                                    strokeWidth="2.5"
                                     strokeLinecap="round"
-                                    strokeDasharray="10 10"
-                                    opacity="0.45"
+                                    strokeLinejoin="round"
+                                />
+                                <path
+                                    className="feature-roadmap__road-surface"
+                                    d="M -36 62 H 1238 C 1365 62 1460 158 1460 220 C 1460 292 1365 340 1238 340 H 892 C 814 340 766 393 766 471 V 791"
+                                    fill="none"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                />
+                                <path
+                                    className="feature-roadmap__road-dashes"
+                                    d="M -36 62 H 1238 C 1365 62 1460 158 1460 220 C 1460 292 1365 340 1238 340 H 892 C 814 340 766 393 766 471 V 791"
+                                    fill="none"
+                                    strokeLinecap="butt"
                                 />
                             </svg>
 
-                            <div className="feature-item feature-item--top-left">
-                                <span className="feature-item__icon">
-                                    <MessageCircleMore size={64} strokeWidth={1.6} />
-                                </span>
-                                <div className="feature-item__content">
-                                    <h3>AI Study Chatbot</h3>
-                                    <p>
-                                        Get answers grounded in your approved
-                                        course materials, 24/7.
-                                    </p>
-                                </div>
-                            </div>
+                            <RoadStop className="feature-road__stop--chatbot" />
+                            <RoadStop className="feature-road__stop--analysis" />
+                            <RoadStop className="feature-road__stop--review" />
+                            <RoadStop className="feature-road__stop--flashcards" />
 
-                            <div className="feature-item feature-item--top-right">
-                                <span className="feature-item__icon">
-                                    <BrainCircuit size={64} strokeWidth={1.6} />
-                                </span>
-                                <div className="feature-item__content">
-                                    <h3>Weakness Analysis</h3>
-                                    <p>
-                                        See the topics and skills that need
-                                        your attention after every test.
-                                    </p>
-                                </div>
-                            </div>
+                            <article className="feature-roadmap__item feature-roadmap__item--chatbot">
+                                <h3>AI Study Chatbot</h3>
+                                <p>Get answers grounded in your approved course materials, 24/7.</p>
+                            </article>
 
-                            <div className="feature-item feature-item--mid-right">
-                                <span className="feature-item__icon">
-                                    <Target size={64} strokeWidth={1.6} />
-                                </span>
-                                <div className="feature-item__content">
-                                    <h3>Personalized Review</h3>
-                                    <p>
-                                        Receive focused recommendations based
-                                        on your actual performance.
-                                    </p>
-                                </div>
-                            </div>
+                            <article className="feature-roadmap__item feature-roadmap__item--analysis">
+                                <h3>Weakness Analysis</h3>
+                                <p>See the topics and skills that need your attention after every test.</p>
+                            </article>
 
-                            <div className="feature-item feature-item--bottom-left">
-                                <div className="feature-item__content">
-                                    <h3>Smart Flashcards</h3>
-                                    <p>
-                                        Review key concepts with efficient,
-                                        active-recall practice.
-                                    </p>
-                                </div>
-                                <span className="feature-item__icon">
-                                    <Layers3 size={64} strokeWidth={1.6} />
-                                </span>
-                            </div>
+                            <article className="feature-roadmap__item feature-roadmap__item--review">
+                                <h3>Personalized Review</h3>
+                                <p>Receive focused recommendations based on your actual performance.</p>
+                            </article>
+
+                            <article className="feature-roadmap__item feature-roadmap__item--flashcards">
+                                <h3>Smart Flashcards</h3>
+                                <p>Review key concepts with efficient, active-recall practice.</p>
+                            </article>
+
                         </div>
 
                         <div className="feature-cta">

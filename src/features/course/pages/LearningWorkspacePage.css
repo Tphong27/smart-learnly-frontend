@@ -1,9 +1,9 @@
 /* ─── CSS Variables ──────────────────────────────────────────────────────────── */
 :root {
     --lw-font:
-        "DM Sans", ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI",
+        "Lato", ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI",
         sans-serif;
-    --lw-font-display: "Manrope", var(--lw-font);
+    --lw-font-display: "Lato", var(--lw-font);
     --lw-bg: #eef2f8;
     --lw-surface: #ffffff;
     --lw-surface-alt: #f4f7fc;
