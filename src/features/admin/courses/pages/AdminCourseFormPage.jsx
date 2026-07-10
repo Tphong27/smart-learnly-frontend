@@ -6,6 +6,7 @@ import { ArrowLeft, Save } from "lucide-react";
 import { Button, Form, FormField, useToast } from "@/shared/components/ui";
 import { categoryService, courseService } from "@/services";
 import ThumbnailUploader from "@/features/course/components/ThumbnailUploader";
+import { getCurrentUser } from "@/services/api-client";
 import { courseSchema } from "../schemas/course-schemas";
 import "@/features/course/components/ThumbnailUploader.css";
 import "../../admin-shared.css";
@@ -68,6 +69,19 @@ export function AdminCourseFormPage() {
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(isEdit);
   const [serverError, setServerError] = useState(null);
+  const currentUser = getCurrentUser();
+
+  const isTrainer = String(currentUser?.role || "").toLowerCase() === "trainer";
+
+  const courseListPath = isTrainer ? "/staff/courses" : "/admin/courses";
+
+  const courseContentPath = isTrainer
+    ? `/staff/courses/${courseId}/content`
+    : `/admin/courses/${courseId}/content`;
+
+  const courseFormPath = isTrainer
+    ? `/staff/courses/${courseId}/edit`
+    : `/admin/courses/${courseId}`;
 
   const defaultValues = useMemo(
     () => ({
@@ -104,6 +118,14 @@ export function AdminCourseFormPage() {
 
   const isFree = watch("isFree");
   const thumbnailUrl = watch("thumbnailUrl");
+
+  useEffect(() => {
+    if (isTrainer && !isEdit) {
+      navigate("/staff/courses", {
+        replace: true,
+      });
+    }
+  }, [isTrainer, isEdit, navigate]);
 
   useEffect(() => {
     let cancelled = false;
@@ -160,6 +182,9 @@ export function AdminCourseFormPage() {
       if (isEdit) {
         await courseService.update(courseId, payload);
         toast.success("Course updated successfully");
+        navigate(courseListPath, {
+          replace: true,
+        });
         return;
       } else {
         const created = await courseService.create(payload);
@@ -202,7 +227,7 @@ export function AdminCourseFormPage() {
           variant="ghost"
           size="sm"
           leftIcon={<ArrowLeft size={14} />}
-          onClick={() => navigate("/admin/courses")}
+          onClick={() => navigate(courseListPath)}
         >
           Back
         </Button>
@@ -465,19 +490,34 @@ export function AdminCourseFormPage() {
 
             <div style={{ gridColumn: "span 2" }}>
               <input type="hidden" {...register("thumbnailUrl")} />
-              <div className="input-field" style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                <label className="input-field__label" style={{ fontWeight: "500", fontSize: "14px" }}>
+              <div
+                className="input-field"
+                style={{ display: "flex", flexDirection: "column", gap: "8px" }}
+              >
+                <label
+                  className="input-field__label"
+                  style={{ fontWeight: "500", fontSize: "14px" }}
+                >
                   Course thumbnail
                 </label>
                 <ThumbnailUploader
                   key={thumbnailUrl || "empty-thumbnail"}
                   value={thumbnailUrl}
                   onUploadSuccess={(url) => {
-                    setValue("thumbnailUrl", url, { shouldDirty: true, shouldValidate: true });
+                    setValue("thumbnailUrl", url, {
+                      shouldDirty: true,
+                      shouldValidate: true,
+                    });
                   }}
                 />
                 {errors.thumbnailUrl && (
-                  <p style={{ color: "red", fontSize: "12px", margin: "4px 0 0" }}>
+                  <p
+                    style={{
+                      color: "red",
+                      fontSize: "12px",
+                      margin: "4px 0 0",
+                    }}
+                  >
                     {errors.thumbnailUrl.message}
                   </p>
                 )}
@@ -580,7 +620,7 @@ export function AdminCourseFormPage() {
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => navigate(`/admin/courses/${courseId}/content`)}
+                  onClick={() => navigate(courseContentPath)}
                 >
                   Course Structure
                 </Button>
@@ -590,7 +630,7 @@ export function AdminCourseFormPage() {
               <Button
                 type="button"
                 variant="ghost"
-                onClick={() => navigate("/admin/courses")}
+                onClick={() => navigate(courseListPath)}
               >
                 Cancel
               </Button>
