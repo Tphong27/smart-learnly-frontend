@@ -26,8 +26,7 @@ import { ClassSelectionPopup } from "../components/ClassSelectionPopup";
 import { CourseReviewsSection } from "../components/CourseReviewsSection";
 import "../../admin/admin-shared.css";
 import "./CourseDetailPage.css";
-import "../components/CourseReviewsSection.css";
-import "../components/ClassStatusBadge.css";
+import "./components/CourseReviewsSection.css";
 
 function LessonIcon({ type }) {
     const t = (type || "").toLowerCase();

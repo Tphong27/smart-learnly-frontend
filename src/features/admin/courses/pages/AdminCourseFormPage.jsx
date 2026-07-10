@@ -221,61 +221,40 @@ export function AdminCourseFormPage() {
       }}
     >
       {/* Khối Header độc lập */}
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "flex-start",
-          gap: "16px",
-          marginBottom: "24px",
-          flexWrap: "wrap",
-        }}
-      >
-        <div style={{ display: "block", minWidth: 0 }}>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            leftIcon={<ArrowLeft size={14} />}
-            onClick={() => navigate("/admin/courses")}
-          >
-            Back
-          </Button>
-          <h1
-            style={{
-              marginTop: "12px",
-              marginBottom: "4px",
-              fontSize: "24px",
-              fontWeight: "700",
-              color: "#0f172a",
-              display: "block",
-              lineHeight: "1.2",
-            }}
-          >
-            {isEdit ? "Update course" : "Create new course"}
-          </h1>
-          <p
-            style={{
-              color: "#64748b",
-              margin: 0,
-              fontSize: "14px",
-              display: "block",
-            }}
-          >
-            Provide the main course details. Sections and lessons can be managed
-            in the next step hehe.
-          </p>
-        </div>
-
-        {isEdit && (
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => navigate(`/admin/courses/${courseId}/content`)}
-          >
-            Course Structure
-          </Button>
-        )}
+      <div style={{ display: "block", marginBottom: "24px" }}>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          leftIcon={<ArrowLeft size={14} />}
+          onClick={() => navigate(courseListPath)}
+        >
+          Back
+        </Button>
+        <h1
+          style={{
+            marginTop: "12px",
+            marginBottom: "4px",
+            fontSize: "24px",
+            fontWeight: "700",
+            color: "#0f172a",
+            display: "block",
+            lineHeight: "1.2",
+          }}
+        >
+          {isEdit ? "Update course" : "Create new course"}
+        </h1>
+        <p
+          style={{
+            color: "#64748b",
+            margin: 0,
+            fontSize: "14px",
+            display: "block",
+          }}
+        >
+          Provide the main course details. Sections and lessons can be managed
+          in the next step hehe.
+        </p>
       </div>
 
       {/* Khối Form container độc lập */}
@@ -629,27 +608,40 @@ export function AdminCourseFormPage() {
           <div
             style={{
               display: "flex",
-              justifyContent: "flex-end",
+              justifyContent: "space-between",
               gap: 12,
               marginTop: 28,
               paddingTop: 20,
               borderTop: "1px solid #e2e8f0",
             }}
           >
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => navigate("/admin/courses")}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              loading={isSubmitting}
-              leftIcon={<Save size={16} />}
-            >
-              {isEdit ? "Save changes" : "Create course"}
-            </Button>
+            <div>
+              {isEdit && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => navigate(courseContentPath)}
+                >
+                  Course Structure
+                </Button>
+              )}
+            </div>
+            <div style={{ display: "flex", gap: 12 }}>
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => navigate(courseListPath)}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                loading={isSubmitting}
+                leftIcon={<Save size={16} />}
+              >
+                {isEdit ? "Save changes" : "Create course"}
+              </Button>
+            </div>
           </div>
         </Form>
       </div>

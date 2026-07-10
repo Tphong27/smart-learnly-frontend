@@ -525,10 +525,20 @@ export default function AdminCourseContentPage() {
     }
   };
 
-  const handleEditLesson = (lesson) => {
-    if (!lesson?.id || !courseId) return;
-    navigate(`/admin/courses/${courseId}/lessons/${lesson.id}`);
-  };
+  const handleEditLesson = useCallback(
+    (lesson) => {
+      if (!lesson?.id) {
+        showToast({
+          type: "error",
+          message: "Lesson ID was not found.",
+        });
+        return;
+      }
+
+      navigate(`/admin/courses/${courseId}/lessons/${lesson.id}`);
+    },
+    [courseId, navigate, showToast],
+  );
 
   const onDragEnd = async (result) => {
     if (readOnly) return;

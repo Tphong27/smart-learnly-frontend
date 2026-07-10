@@ -2071,8 +2071,7 @@
 
 /* ─── Quiz Player ──────────────────────────────────────────────────────────── */
 .quiz-player {
-    width: 100%;
-    max-width: 980px;
+    max-width: 720px;
     margin: 0 auto;
 }
 
