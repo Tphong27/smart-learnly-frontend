@@ -1,363 +1,464 @@
-import { useState, useEffect } from "react";
 import {
-  ArrowRight,
-  BookOpen,
-  BrainCircuit,
-  ClipboardCheck,
-  FileQuestion,
-  Layers3,
-  MessageCircleMore,
-  Play,
-  Search,
-  Target,
-  TrendingUp,
+    ArrowRight,
+    BrainCircuit,
+    Layers3,
+    MessageCircleMore,
+    Target,
 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
 import { useDocumentTitle } from "../../shared/hooks/useDocumentTitle";
 import { CourseListPage } from "../course/pages/CourseListPage";
 import { BrandLogo } from "../../shared/components/SiteHeader";
 
-const features = [
-  {
-    icon: MessageCircleMore,
-    title: "AI Study Chatbot",
-    text: "Get answers grounded in your approved course materials.",
-  },
-  {
-    icon: BrainCircuit,
-    title: "Weakness Analysis",
-    text: "See the topics and skills that need your attention after every test.",
-  },
-  {
-    icon: Target,
-    title: "Personalized Review",
-    text: "Receive focused recommendations based on your actual performance.",
-  },
-  {
-    icon: Layers3,
-    title: "Smart Flashcards",
-    text: "Review key concepts with efficient, active-recall practice.",
-  },
-  {
-    icon: FileQuestion,
-    title: "AI Content Generation",
-    text: "Help trainers draft questions and flashcards with human review.",
-  },
-  {
-    icon: TrendingUp,
-    title: "Performance Dashboard",
-    text: "Monitor class progress and identify learners at risk early.",
-  },
-];
-
-const steps = [
-  {
-    icon: BookOpen,
-    title: "Choose your path",
-    text: "Find the right public course or join your assigned class.",
-  },
-  {
-    icon: Play,
-    title: "Learn with support",
-    text: "Study lessons and materials with contextual AI guidance.",
-  },
-  {
-    icon: ClipboardCheck,
-    title: "Practice actively",
-    text: "Use tests, assignments, and flashcards to build confidence.",
-  },
-  {
-    icon: TrendingUp,
-    title: "Improve with focus",
-    text: "Review your weaknesses and act on personalized recommendations.",
-  },
-];
-
 function Logo() {
-  return <BrandLogo />;
-}
-
-function SectionHeading({ eyebrow, title, text, align = "center" }) {
-  return (
-    <div className={`section-heading ${align === "left" ? "align-left" : ""}`}>
-      <span className="eyebrow">{eyebrow}</span>
-      <h2>{title}</h2>
-      {text && <p>{text}</p>}
-    </div>
-  );
-}
-
-function TypingAnimation({
-  texts,
-  typingSpeed = 80,
-  deletingSpeed = 40,
-  pauseDuration = 2000,
-}) {
-  const [displayText, setDisplayText] = useState("");
-  const [textIndex, setTextIndex] = useState(0);
-  const [isDeleting, setIsDeleting] = useState(false);
-
-  useEffect(() => {
-    const currentText = texts[textIndex];
-
-    const timeout = setTimeout(
-      () => {
-        if (!isDeleting) {
-          setDisplayText(currentText.substring(0, displayText.length + 1));
-          if (displayText.length === currentText.length) {
-            setTimeout(() => setIsDeleting(true), pauseDuration);
-            return;
-          }
-        } else {
-          setDisplayText(currentText.substring(0, displayText.length - 1));
-          if (displayText.length === 1) {
-            setIsDeleting(false);
-            setTextIndex((prev) => (prev + 1) % texts.length);
-          }
-        }
-      },
-      isDeleting ? deletingSpeed : typingSpeed,
-    );
-
-    return () => clearTimeout(timeout);
-  }, [
-    displayText,
-    isDeleting,
-    textIndex,
-    texts,
-    typingSpeed,
-    deletingSpeed,
-    pauseDuration,
-  ]);
-
-  return (
-    <span className="typing-text">
-      {displayText}
-      <span className="typing-cursor">|</span>
-    </span>
-  );
+    return <BrandLogo />;
 }
 
 export function HomePage() {
-  useDocumentTitle("Learn smarter. Achieve faster.");
-  const navigate = useNavigate();
-  const [searchQuery, setSearchQuery] = useState("");
+    useDocumentTitle("Learn smarter. Achieve faster.");
 
-  const handleSearch = (query) => {
-    setSearchQuery(query);
-  };
+    return (
+        <div className="landing-page" id="top">
+            <main>
+                {/* Hero Section - Figma Design */}
+                <section className="hero">
+                    {/* Decorative purple circle (bottom left) */}
+                    <div className="hero-decor-circle" />
 
-  const handleSearchSubmit = () => {
-    const currentUrl = new URL(window.location.href);
-    if (searchQuery.trim()) {
-      currentUrl.searchParams.set("keyword", searchQuery.trim());
-    } else {
-      currentUrl.searchParams.delete("keyword");
-    }
-    navigate(currentUrl.pathname + currentUrl.search);
-    const coursesSection = document.getElementById("courses");
-    if (coursesSection) {
-      coursesSection.scrollIntoView({ behavior: "smooth" });
-    }
-  };
+                    {/* Main content container */}
+                    <div className="container hero-main-container">
+                        {/* Left column: Content */}
+                        <div className="hero-content">
+                            <h1 className="hero-heading">
+                                Learning skill for a{" "}
+                                <span className="hero-heading-underline">
+                                    better career
+                                </span>
+                            </h1>
 
-  return (
-    <div className="landing-page" id="top">
-      <main>
-        <section className="hero">
-          <div className="hero-glow hero-glow-one" />
-          <div className="hero-glow hero-glow-two" />
-          <div className="container">
-            <div className="hero-copy">
-              <h1>
-                Learn smarter.
-                <br />
-                <TypingAnimation
-                  texts={["Achieve faster.", "Grow stronger.", "Excel daily."]}
-                  typingSpeed={100}
-                  deletingSpeed={50}
-                  pauseDuration={2500}
-                />
-              </h1>
-              <p>
-                Personalized learning, practice, and progress tracking built for
-                modern trainees, trainers, and training centers.
-              </p>
-              <div className="hero-search">
-                <div className="search-input-wrapper">
-                  <Search size={20} className="search-icon" />
-                  <input
-                    type="text"
-                    placeholder="Search for courses..."
-                    value={searchQuery}
-                    onChange={(e) => handleSearch(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        handleSearchSubmit();
-                      }
-                    }}
-                  />
-                  <button
-                    type="button"
-                    className="search-btn"
-                    onClick={handleSearchSubmit}
-                    onMouseMove={(e) => {
-                      const btn = e.currentTarget;
-                      const rect = btn.getBoundingClientRect();
-                      const x = e.clientX - rect.left;
-                      const y = e.clientY - rect.top;
-                      const centerX = rect.width / 2;
-                      const centerY = rect.height / 2;
-                      const rotateX = (y - centerY) / 8;
-                      const rotateY = (centerX - x) / 8;
-                      btn.style.transform = `perspective(400px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) translateY(-3px) scale(1.02)`;
-                      btn.style.boxShadow = `${(centerX - x) / 4}px ${(centerY - y) / 4}px 20px rgba(47, 104, 221, 0.4)`;
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.transform = "";
-                      e.currentTarget.style.boxShadow = "";
-                    }}
-                    aria-label="Search"
-                  >
-                    Search
-                  </button>
+                            <p className="hero-description">
+                                Personalized learning, practice, and progress
+                                tracking built for modern trainees, trainers,
+                                and training centers.
+                            </p>
+
+                            {/* CTA Buttons */}
+                            <div className="hero-buttons">
+                                <a
+                                    href="/register"
+                                    className="hero-btn hero-btn-primary"
+                                >
+                                    Start Learning!
+                                </a>
+                                <a
+                                    href="#courses"
+                                    className="hero-btn hero-btn-outline"
+                                >
+                                    Explore Courses
+                                </a>
+                            </div>
+
+                            {/* Social Proof */}
+                            <div className="hero-social-proof">
+                                <div className="hero-avatars">
+                                    <div className="hero-avatar">
+                                        <img src="/avatars/student1.jpg" alt="" />
+                                    </div>
+                                    <div className="hero-avatar">
+                                        <img src="/avatars/student2.jpg" alt="" />
+                                    </div>
+                                    <div className="hero-avatar">
+                                        <img src="/avatars/student3.jpg" alt="" />
+                                    </div>
+                                </div>
+                                <span className="hero-social-text">
+                                    +100K Students like Smart Learnly
+                                </span>
+                            </div>
+                        </div>
+
+                        {/* Right column: Illustration */}
+                        <div className="hero-illustration">
+                            <div className="hero-illustration-frame">
+                                <svg
+                                    viewBox="0 0 462 401"
+                                    fill="none"
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    className="hero-illustration-svg"
+                                >
+                                    {/* Background blob */}
+                                    <ellipse
+                                        cx="230"
+                                        cy="200"
+                                        rx="220"
+                                        ry="180"
+                                        fill="#cfe3ff"
+                                    />
+
+                                    {/* Floor lines */}
+                                    <line
+                                        x1="20"
+                                        y1="320"
+                                        x2="450"
+                                        y2="320"
+                                        stroke="#2e2e2e"
+                                        strokeWidth="3"
+                                    />
+                                    <line
+                                        x1="40"
+                                        y1="340"
+                                        x2="440"
+                                        y2="340"
+                                        stroke="#2e2e2e"
+                                        strokeWidth="3"
+                                    />
+
+                                    {/* Plant pot */}
+                                    <rect
+                                        x="60"
+                                        y="290"
+                                        width="70"
+                                        height="40"
+                                        fill="#5d56d4"
+                                        stroke="#2e2e2e"
+                                        strokeWidth="3"
+                                    />
+                                    {/* Plant leaves */}
+                                    <path
+                                        d="M75 290 Q70 240 85 220 Q90 250 95 290"
+                                        fill="#5d56d4"
+                                        stroke="#2e2e2e"
+                                        strokeWidth="3"
+                                    />
+                                    <path
+                                        d="M95 290 Q100 230 115 215 Q120 250 115 290"
+                                        fill="#5d56d4"
+                                        stroke="#2e2e2e"
+                                        strokeWidth="3"
+                                    />
+                                    <path
+                                        d="M85 290 Q95 250 105 235 Q115 270 110 290"
+                                        fill="#5d56d4"
+                                        stroke="#2e2e2e"
+                                        strokeWidth="3"
+                                    />
+
+                                    {/* Computer/Screen */}
+                                    <rect
+                                        x="200"
+                                        y="80"
+                                        width="120"
+                                        height="100"
+                                        rx="8"
+                                        fill="#fff"
+                                        stroke="#2e2e2e"
+                                        strokeWidth="3"
+                                    />
+                                    {/* Screen content - profile icon */}
+                                    <circle
+                                        cx="240"
+                                        cy="115"
+                                        r="12"
+                                        fill="#5d56d4"
+                                        stroke="#2e2e2e"
+                                        strokeWidth="3"
+                                    />
+                                    <path
+                                        d="M220 160 Q240 145 260 160"
+                                        fill="#5d56d4"
+                                        stroke="#2e2e2e"
+                                        strokeWidth="3"
+                                    />
+                                    {/* Screen content - bars */}
+                                    <line
+                                        x1="270"
+                                        y1="105"
+                                        x2="305"
+                                        y2="105"
+                                        stroke="#2e2e2e"
+                                        strokeWidth="3"
+                                    />
+                                    <line
+                                        x1="270"
+                                        y1="120"
+                                        x2="295"
+                                        y2="120"
+                                        stroke="#2e2e2e"
+                                        strokeWidth="3"
+                                    />
+                                    <line
+                                        x1="270"
+                                        y1="135"
+                                        x2="300"
+                                        y2="135"
+                                        stroke="#2e2e2e"
+                                        strokeWidth="3"
+                                    />
+
+                                    {/* Screen stand */}
+                                    <line
+                                        x1="260"
+                                        y1="180"
+                                        x2="260"
+                                        y2="200"
+                                        stroke="#2e2e2e"
+                                        strokeWidth="3"
+                                    />
+                                    <line
+                                        x1="230"
+                                        y1="200"
+                                        x2="290"
+                                        y2="200"
+                                        stroke="#2e2e2e"
+                                        strokeWidth="3"
+                                    />
+
+                                    {/* Person body */}
+                                    <path
+                                        d="M280 200 L290 280 L360 290 L380 250 L390 200 L390 180 L280 180 Z"
+                                        fill="#2e2e2e"
+                                        stroke="#2e2e2e"
+                                        strokeWidth="3"
+                                    />
+
+                                    {/* Person head */}
+                                    <circle
+                                        cx="335"
+                                        cy="155"
+                                        r="25"
+                                        fill="#fff"
+                                        stroke="#2e2e2e"
+                                        strokeWidth="3"
+                                    />
+                                    {/* Hair */}
+                                    <path
+                                        d="M315 145 Q320 125 335 125 Q355 125 360 150"
+                                        fill="#5d56d4"
+                                        stroke="#2e2e2e"
+                                        strokeWidth="3"
+                                    />
+
+                                    {/* Arms holding tablet */}
+                                    <path
+                                        d="M290 220 L250 200 L240 240"
+                                        stroke="#2e2e2e"
+                                        strokeWidth="3"
+                                        fill="#fff"
+                                    />
+                                    <path
+                                        d="M380 220 L390 250 L370 270"
+                                        stroke="#2e2e2e"
+                                        strokeWidth="3"
+                                        fill="#fff"
+                                    />
+
+                                    {/* Tablet/book in hands */}
+                                    <rect
+                                        x="220"
+                                        y="225"
+                                        width="80"
+                                        height="55"
+                                        rx="4"
+                                        fill="#fff"
+                                        stroke="#2e2e2e"
+                                        strokeWidth="3"
+                                    />
+                                    <line
+                                        x1="260"
+                                        y1="225"
+                                        x2="260"
+                                        y2="280"
+                                        stroke="#2e2e2e"
+                                        strokeWidth="3"
+                                    />
+                                    <circle
+                                        cx="245"
+                                        cy="250"
+                                        r="8"
+                                        fill="#5d56d4"
+                                    />
+                                    <circle
+                                        cx="275"
+                                        cy="250"
+                                        r="8"
+                                        fill="#5d56d4"
+                                    />
+
+                                    {/* Decorative dots */}
+                                    <circle cx="40" cy="60" r="4" fill="#5d56d4" />
+                                    <circle cx="60" cy="80" r="3" fill="#5d56d4" />
+                                    <circle cx="30" cy="100" r="3" fill="#5d56d4" />
+                                    <circle cx="420" cy="80" r="4" fill="#5d56d4" />
+                                    <circle cx="440" cy="100" r="3" fill="#5d56d4" />
+                                    <circle cx="410" cy="120" r="3" fill="#5d56d4" />
+                                </svg>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Bottom divider */}
+                    <div className="hero-divider" />
+                </section>
+
+                {/* Popular Courses Section - Figma Design */}
+                <section className="courses-section" id="courses">
+                    <div className="container">
+                        <div className="courses-heading">
+                            <h2>Popular Courses</h2>
+                            <p>
+                                Start with practical programs designed to build
+                                confidence and capability.
+                            </p>
+                        </div>
+
+                        <CourseListPage
+                            embedded
+                            showHero={false}
+                            showFilters={false}
+                            pageSize={6}
+                            cardVariant="popular"
+                            detailState={{
+                                from: "/",
+                                fromHash: "#courses",
+                                backLabel: "Back to homepage",
+                            }}
+                        />
+                    </div>
+                </section>
+
+                <section className="feature-section" id="features">
+                    <div className="feature-section__inner">
+                        <h2 className="feature-section__title">
+                            <span>Intelligence where it makes a</span>
+                            <span>difference</span>
+                        </h2>
+
+                        <div className="feature-section__grid">
+                            <svg
+                                className="feature-section__connector"
+                                viewBox="0 0 1489 791"
+                                preserveAspectRatio="none"
+                                aria-hidden="true"
+                            >
+                                <path
+                                    d="M 180 60 C 380 60, 520 320, 720 360 C 920 400, 1080 200, 1280 230 C 1340 240, 1370 320, 1320 420 C 1280 500, 1100 520, 880 510 C 660 500, 540 440, 380 540 C 240 620, 220 700, 360 740"
+                                    fill="none"
+                                    stroke="#1e1b4b"
+                                    strokeWidth="2.5"
+                                    strokeLinecap="round"
+                                    strokeDasharray="10 10"
+                                    opacity="0.45"
+                                />
+                            </svg>
+
+                            <div className="feature-item feature-item--top-left">
+                                <span className="feature-item__icon">
+                                    <MessageCircleMore size={64} strokeWidth={1.6} />
+                                </span>
+                                <div className="feature-item__content">
+                                    <h3>AI Study Chatbot</h3>
+                                    <p>
+                                        Get answers grounded in your approved
+                                        course materials, 24/7.
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div className="feature-item feature-item--top-right">
+                                <span className="feature-item__icon">
+                                    <BrainCircuit size={64} strokeWidth={1.6} />
+                                </span>
+                                <div className="feature-item__content">
+                                    <h3>Weakness Analysis</h3>
+                                    <p>
+                                        See the topics and skills that need
+                                        your attention after every test.
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div className="feature-item feature-item--mid-right">
+                                <span className="feature-item__icon">
+                                    <Target size={64} strokeWidth={1.6} />
+                                </span>
+                                <div className="feature-item__content">
+                                    <h3>Personalized Review</h3>
+                                    <p>
+                                        Receive focused recommendations based
+                                        on your actual performance.
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div className="feature-item feature-item--bottom-left">
+                                <div className="feature-item__content">
+                                    <h3>Smart Flashcards</h3>
+                                    <p>
+                                        Review key concepts with efficient,
+                                        active-recall practice.
+                                    </p>
+                                </div>
+                                <span className="feature-item__icon">
+                                    <Layers3 size={64} strokeWidth={1.6} />
+                                </span>
+                            </div>
+                        </div>
+
+                        <div className="feature-cta">
+                            <div className="feature-cta__text">
+                                <h3>
+                                    <span>
+                                        Ready to make every learning
+                                    </span>
+                                    <span>moment count?</span>
+                                </h3>
+                                <p>
+                                    Explore a course today or discover how
+                                    Smart Learnly can support your training
+                                    center.
+                                </p>
+                            </div>
+                            <a className="feature-cta__button" href="#courses">
+                                <span>Explore courses</span>
+                                <ArrowRight size={17} />
+                            </a>
+                        </div>
+                    </div>
+                </section>
+
+                </main>
+            <footer className="site-footer">
+                <div className="container footer-top">
+                    <div className="footer-brand">
+                        <Logo />
+                        <p>
+                            Smarter learning for people and training centers
+                            ready to grow.
+                        </p>
+                    </div>
+                    <div>
+                        <strong>Platform</strong>
+                        <a href="#features">Features</a>
+                        <a href="#courses">Courses</a>
+                        <a href="#how-it-works">How it works</a>
+                    </div>
+                    <div>
+                        <strong>Solutions</strong>
+                        <a href="#centers">For trainees</a>
+                        <a href="#centers">For educators</a>
+                        <a href="#centers">For centers</a>
+                    </div>
+                    <div>
+                        <strong>Company</strong>
+                        <a href="#about">About</a>
+                        <a href="mailto:hello@smartlearnly.com">Contact</a>
+                        <a href="/login">Log in</a>
+                    </div>
                 </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section className="courses-section section" id="courses">
-          <div className="container">
-            <div className="courses-heading">
-              <SectionHeading
-                eyebrow="Explore learning"
-                title="Courses made for real progress"
-                text="Start with practical programs designed to build confidence and capability."
-                align="left"
-              />
-              <a className="text-link" href="/learning/courses">
-                Browse all courses <ArrowRight size={16} />
-              </a>
-            </div>
-
-            <CourseListPage
-              embedded
-              showHero={false}
-              showFilters={true}
-              showToolbar={true}
-              pageSize={6}
-              detailState={{
-                from: "/",
-                fromHash: "#courses",
-                backLabel: "Back to homepage",
-              }}
-            />
-          </div>
-        </section>
-
-        <section className="feature-section section" id="features">
-          <div className="container">
-            <SectionHeading
-              eyebrow="Everything works together"
-              title="Intelligence where it makes a difference"
-              text="Practical tools that help learners improve and educators make better decisions."
-            />
-            <div className="feature-grid">
-              {features.map(({ icon: Icon, title, text }, index) => (
-                <article className="feature-card" key={title}>
-                  <span className={`feature-number`}>0{index + 1}</span>
-                  <span className="feature-icon">
-                    <Icon size={21} />
-                  </span>
-                  <h3>{title}</h3>
-                  <p>{text}</p>
-                </article>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        <section className="process-section section" id="how-it-works">
-          <div className="container process-grid">
-            <div className="process-intro">
-              <SectionHeading
-                eyebrow="How it works"
-                title="A simple loop for lasting progress"
-                text="Smart Learnly turns every learning activity into a clear next step, helping effort become measurable growth."
-                align="left"
-              />
-              <a className="button button-primary" href="/register">
-                Start your learning journey <ArrowRight size={16} />
-              </a>
-            </div>
-            <div className="steps-list">
-              {steps.map(({ icon: Icon, title, text }, index) => (
-                <article className="step-item" key={title}>
-                  <span className="step-number">0{index + 1}</span>
-                  <span className="step-icon">
-                    <Icon size={20} />
-                  </span>
-                  <div>
-                    <h3>{title}</h3>
-                    <p>{text}</p>
-                  </div>
-                </article>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        <section className="cta-section">
-          <div className="container cta-card">
-            <div>
-              <span className="eyebrow">Your next step starts here</span>
-              <h2>Ready to make every learning moment count?</h2>
-              <p>
-                Explore a course today or discover how Smart Learnly can support
-                your training center.
-              </p>
-            </div>
-            <div className="cta-actions">
-              <a className="button button-primary button-large" href="#courses">
-                Explore courses <ArrowRight size={17} />
-              </a>
-            </div>
-          </div>
-        </section>
-      </main>
-      <footer className="site-footer">
-        <div className="container footer-top">
-          <div className="footer-brand">
-            <Logo />
-            <p>
-              Smarter learning for people and training centers ready to grow.
-            </p>
-          </div>
-          <div>
-            <strong>Platform</strong>
-            <a href="#features">Features</a>
-            <a href="#courses">Courses</a>
-            <a href="#how-it-works">How it works</a>
-          </div>
-          <div>
-            <strong>Solutions</strong>
-            <a href="#centers">For trainees</a>
-            <a href="#centers">For educators</a>
-            <a href="#centers">For centers</a>
-          </div>
-          <div>
-            <strong>Company</strong>
-            <a href="#about">About</a>
-            <a href="mailto:hello@smartlearnly.com">Contact</a>
-            <a href="/login">Log in</a>
-          </div>
+                <div className="container footer-bottom">
+                    <span>© 2026 Smart Learnly Platform</span>
+                    <span>Learn smarter. Achieve faster.</span>
+                </div>
+            </footer>
         </div>
-        <div className="container footer-bottom">
-          <span>© 2026 Smart Learnly Platform</span>
-          <span>Learn smarter. Achieve faster.</span>
-        </div>
-      </footer>
-    </div>
-  );
+    );
 }

@@ -1,76 +1,64 @@
-# AGENTS.md — Smart Learnly Frontend
+# Figma to Code - Complete Setup
 
-This file gives AI coding agents the minimum context and rules required before changing this repository.
+## Project Stack
+- **Framework**: React 19 + TypeScript + Vite
+- **Styling**: Tailwind CSS
+- **Components**: `@/shared/components/ui/*`
+- **Icons**: lucide-react
+- **Forms**: react-hook-form + zod
+- **Utilities**: class-variance-authority, clsx, tailwind-merge
 
-## Repository responsibility
+## Figma MCP Tools Available
 
-This repository contains the frontend application for Smart Learnly Platform (SLP).
+### get_design_context
+Get full design context from a Figma node (LAYOUT, COLORS, TYPOGRAPHY, SPACING).
 
-The frontend is responsible for:
+```
+Parameters:
+- nodeId: "123:456" (from Figma URL)
+- artifactType: "REUSABLE_COMPONENT" | "COMPONENT_WITHIN_A_WEB_PAGE_OR_APP_SCREEN"
+```
 
-- Page routing.
-- Screen implementation.
-- Role-based navigation visibility.
-- Form UX and client-side validation.
-- API integration with the backend.
-- Learning workspace UI.
-- Course catalog and enrollment UI.
-- Trainer, SME, TMO, Admin workspaces.
-- Dashboard and reporting visualization.
-- Loading, empty, error, and unauthorized states.
+### get_metadata
+Get only structure overview (IDs, types, names, positions). Use for exploring.
 
-The frontend is not responsible for:
+### get_screenshot
+Get screenshot of the design.
 
-- Database schema.
-- Backend authorization enforcement.
-- Payment verification.
-- AI prompt execution.
-- RAG ingestion logic.
-- Server-side audit logging.
+### get_variable_defs
+Get Figma Variables for colors/spacing tokens.
 
-## Current technical baseline
+## Workflow
 
-Known baseline:
+```
+1. Open Figma → Select a FRAME/COMPONENT → Copy URL
+2. In Cursor: "Generate code from this Figma design: [paste URL]"
+3. AI calls get_design_context(nodeId)
+4. AI generates React/Tailwind code using your UI components
+5. Review and refine
+```
 
-- React.
-- Vite.
-- ESLint.
-- JavaScript/JSX unless the team later migrates to TypeScript.
+## Design System Components
 
-Use the repository's actual `package.json` as the source of truth before adding libraries.
+Available in `@/shared/components/ui/`:
+- `Button` - variants: primary, secondary, outline, ghost, danger, success
+- `Input` - variants: default, error; sizes: sm, md, lg
+- `Badge` - variants: default, success, warning, error, info
+- `Modal`
+- `Card`
+- `Avatar`
+- `Select`
+- `Checkbox`
+- `Tabs`
 
-## Product truth rules
+## Design Best Practices for Figma
 
-Do not invent screens or business flows. Use project documents as the authority:
+### MUST HAVE ✅
+- **Auto Layout** on all frames
+- **Figma Variables** for colors (semantic naming)
+- **Component Properties** for variants
 
-- SRS defines scenarios and feature behavior.
-- Screen Design Specification defines page IDs, site map, navigation, and screen flows.
-- RTW/Permission Matrix defines feature/action access where available.
-- Backend API contracts define request and response shapes.
-
-If UI and backend behavior conflict, stop and ask for clarification.
-
-## Frontend implementation rules
-
-1. Keep screens aligned with Screen Design page IDs when possible.
-2. Do not hardcode fake business behavior as final logic.
-3. Put mock data in clearly named mock files only.
-4. Do not expose secrets in frontend environment variables.
-5. Treat frontend role-based hiding as UX only; backend remains the authority.
-6. Always implement loading, empty, error, and unauthorized states for API-driven screens.
-7. Avoid creating one huge component. Split by page, section, and reusable component.
-8. Keep API calls centralized in service/client files.
-9. Do not duplicate backend validation rules blindly; mirror only user-friendly checks.
-10. Do not display AI-generated draft feedback or generated content as official unless backend status says it is approved/published.
-
-## Definition of done for frontend tasks
-
-A frontend task is not done until:
-
-- The route or component builds.
-- The screen has loading, error, empty, and success handling where applicable.
-- The UI respects role visibility.
-- API request/response assumptions are documented.
-- Forms prevent obvious invalid input before submission.
-- No secrets are committed.
-- No unrelated visual redesign is introduced.
+### AVOID ❌
+- Frames without Auto Layout
+- Hardcoded colors (use Variables)
+- Grouped layers instead of components
