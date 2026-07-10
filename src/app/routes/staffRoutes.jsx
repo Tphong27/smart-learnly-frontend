@@ -107,9 +107,9 @@ function getStaffRoutes() {
             },
           ],
         },
-        // NHÓM RIÊNG 1: Chỉ Trainer và TMO vào được quản lý lớp học
+        // NHÓM RIÊNG 1: Trainer, TMO và Admin vào được quản lý lớp học
         {
-          element: <RoleGuard allowedRoles={[ROLES.TRAINER, ROLES.TMO]} />,
+          element: <RoleGuard allowedRoles={[ROLES.TRAINER, ROLES.TMO, ROLES.ADMIN]} />,
           children: [
             {
               path: "classrooms",

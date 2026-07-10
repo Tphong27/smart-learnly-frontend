@@ -513,6 +513,11 @@ export default function AdminCourseContentPage() {
     }
   };
 
+  const handleEditLesson = (lesson) => {
+    if (!lesson?.id || !courseId) return;
+    navigate(`/admin/courses/${courseId}/lessons/${lesson.id}`);
+  };
+
   const onDragEnd = async (result) => {
     if (readOnly) return;
     const { destination, source, draggableId, type } = result;
