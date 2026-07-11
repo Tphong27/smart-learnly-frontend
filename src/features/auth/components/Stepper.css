@@ -1,0 +1,133 @@
+.stepper {
+  width: 100%;
+  margin-bottom: 24px;
+}
+
+.stepper__list {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.stepper__item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 18px;
+}
+
+.stepper__item--upcoming {
+  color: #8a91a1;
+}
+
+.stepper__bullet {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  border: 1.5px solid currentColor;
+  background: #ffffff;
+  color: #17233e;
+  font-weight: 800;
+  font-size: 13px;
+  transition:
+    background 0.18s ease,
+    border-color 0.18s ease,
+    color 0.18s ease;
+}
+
+.stepper__item--done .stepper__bullet {
+  background: #6546d9;
+  border-color: #211b36;
+  color: #ffffff;
+}
+
+.stepper__item--current .stepper__bullet {
+  background: #f3cc63;
+  border-color: #211b36;
+  color: #17233e;
+  box-shadow: 3px 3px 0 #211b36;
+}
+
+.stepper__text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.stepper__label {
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: -0.2px;
+  color: inherit;
+}
+
+.stepper__item--upcoming .stepper__label {
+  color: #8a91a1;
+}
+
+.stepper__item--current .stepper__label {
+  color: #17233e;
+}
+
+.stepper__item--done .stepper__label {
+  color: #17233e;
+}
+
+.stepper__description {
+  margin-top: 2px;
+  font-size: 11.5px;
+  color: #68718a;
+  line-height: 1.35;
+}
+
+.stepper__connector {
+  position: absolute;
+  top: 16px;
+  right: -50%;
+  width: 100%;
+  height: 2px;
+  background: #d5d2cc;
+  z-index: 0;
+}
+
+.stepper__item--done .stepper__connector {
+  background: #6546d9;
+}
+
+.stepper__bar {
+  position: relative;
+  width: 100%;
+  height: 6px;
+  margin-top: 4px;
+  border-radius: 99px;
+  background: #ebe8e3;
+  overflow: hidden;
+}
+
+.stepper__bar-fill {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, #825ef5, #6546d9);
+  transition: width 0.32s cubic-bezier(0.16, 0.84, 0.44, 1);
+}
+
+@media (max-width: 480px) {
+  .stepper__bullet {
+    width: 28px;
+    height: 28px;
+    font-size: 12px;
+  }
+  .stepper__label {
+    font-size: 12.5px;
+  }
+  .stepper__description {
+    display: none;
+  }
+}

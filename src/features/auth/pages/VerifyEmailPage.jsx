@@ -23,6 +23,7 @@ export function VerifyEmailPage() {
   const {
     register,
     handleSubmit,
+    getValues,
     formState: { errors, isSubmitting },
   } = useForm({
     resolver: zodResolver(verifyEmailSchema),
@@ -50,7 +51,7 @@ export function VerifyEmailPage() {
   }
 
   async function handleResend() {
-    const email = (watchedEmail || emailFromQuery || '').trim()
+    const email = (getValues('email') || emailFromQuery || '').trim()
     if (!email) {
       setServerError('Please enter your email first.')
       return
@@ -88,7 +89,20 @@ export function VerifyEmailPage() {
         }
       >
         <Form onSubmit={handleSubmit(onSubmit)}>
-          <input type="hidden" {...register('email')} />
+          {emailFromQuery ? (
+            <input type="hidden" {...register('email')} />
+          ) : (
+            <FormField
+              label="Email"
+              type="email"
+              placeholder="you@example.com"
+              required
+              registration={register('email')}
+              error={errors.email?.message}
+              leftIcon={<Mail size={16} />}
+              autoComplete="email"
+            />
+          )}
 
           <FormField
             label="6-digit verification code"

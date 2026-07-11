@@ -35,6 +35,7 @@ function CourseSuggestionThumbnail({ course }) {
 export function SiteHeader() {
     const navigate = useNavigate();
     const searchRef = useRef(null);
+    const [isCompact, setIsCompact] = useState(() => window.scrollY > 24);
     const [query, setQuery] = useState("");
     const [courses, setCourses] = useState([]);
     const [isOpen, setIsOpen] = useState(false);
@@ -89,6 +90,28 @@ export function SiteHeader() {
 
         document.addEventListener("pointerdown", handlePointerDown);
         return () => document.removeEventListener("pointerdown", handlePointerDown);
+    }, []);
+
+    useEffect(() => {
+        let frameId = null;
+
+        function handleScroll() {
+            if (frameId) return;
+
+            frameId = window.requestAnimationFrame(() => {
+                const shouldCompact = window.scrollY > 24;
+                setIsCompact((current) =>
+                    current === shouldCompact ? current : shouldCompact,
+                );
+                frameId = null;
+            });
+        }
+
+        window.addEventListener("scroll", handleScroll, { passive: true });
+        return () => {
+            window.removeEventListener("scroll", handleScroll);
+            if (frameId) window.cancelAnimationFrame(frameId);
+        };
     }, []);
 
     function submitSearch() {
@@ -150,7 +173,7 @@ export function SiteHeader() {
     }
 
     return (
-        <header className="site-header">
+        <header className={`site-header${isCompact ? " site-header--compact" : ""}`}>
             <div className="header-container">
                 {/* Logo */}
                 <a

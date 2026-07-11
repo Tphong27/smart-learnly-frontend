@@ -664,11 +664,40 @@ a:hover {
 .site-header {
     position: fixed;
     top: 0;
-    left: 0;
-    right: 0;
+    left: 50%;
+    right: auto;
+    width: 100%;
+    transform: translateX(-50%);
     z-index: 1000;
     background: white;
     border-bottom: 1px solid rgba(0, 0, 0, 0.31);
+    transition:
+        top 360ms cubic-bezier(0.22, 1, 0.36, 1),
+        width 360ms cubic-bezier(0.22, 1, 0.36, 1),
+        border-color 260ms ease,
+        border-radius 360ms cubic-bezier(0.22, 1, 0.36, 1),
+        box-shadow 260ms ease,
+        background-color 260ms ease;
+}
+
+/* Full-width at the top; a compact navigation island while reading. */
+.site-header--compact {
+    top: 10px;
+    left: 50%;
+    width: calc(100% - 225px);
+    transform: translateX(-50%);
+    border: 1.5px solid #211b36;
+    border-radius: 20px;
+    background: rgba(255, 253, 249, 0.98);
+    box-shadow:
+        4px 4px 0 #211b36,
+        0 12px 28px rgba(33, 27, 54, 0.12);
+}
+
+.site-header--compact .header-container {
+    height: 70px;
+    padding-right: 18px;
+    padding-left: 18px;
 }
 
 .header-container {
@@ -679,6 +708,9 @@ a:hover {
     margin: 0 auto;
     padding: 0 20px;
     height: 74px;
+    transition:
+        height 360ms cubic-bezier(0.22, 1, 0.36, 1),
+        padding 360ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 /* Logo */
@@ -739,7 +771,9 @@ a:hover {
 
 .header-search:focus-within {
     border-color: #825ef5;
-    box-shadow: 2px 2px 0px #000, 0 0 0 3px rgba(130, 94, 245, 0.18);
+    box-shadow:
+        2px 2px 0px #000,
+        0 0 0 3px rgba(130, 94, 245, 0.18);
 }
 
 .header-search-icon {
@@ -798,7 +832,9 @@ a:hover {
     border: 1.5px solid #111827;
     border-radius: 16px;
     background: #ffffff;
-    box-shadow: 4px 4px 0 rgba(17, 24, 39, 0.92), 0 16px 32px rgba(15, 23, 42, 0.16);
+    box-shadow:
+        2px 2px 0 rgba(17, 24, 39, 0.92),
+        0 16px 32px rgba(15, 23, 42, 0.16);
 }
 
 .header-search__search-action,
@@ -1002,6 +1038,11 @@ a:hover {
 }
 
 @media (max-width: 900px) {
+    .site-header {
+        left: 0;
+        transform: none;
+    }
+
     .header-container {
         height: auto;
         min-height: 74px;
@@ -1024,6 +1065,32 @@ a:hover {
 
     .header-search__menu {
         max-height: min(420px, calc(100vh - 150px));
+    }
+
+    .site-header--compact {
+        top: 0;
+        left: 0;
+        right: 0;
+        width: 100%;
+        transform: none;
+        border: 0;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.31);
+        border-radius: 0;
+        background: #ffffff;
+        box-shadow: none;
+    }
+
+    .site-header--compact .header-container {
+        height: auto;
+        min-height: 74px;
+        padding-right: 20px;
+        padding-left: 20px;
+    }
+}
+
+@media (min-width: 901px) and (max-width: 1100px) {
+    .site-header--compact {
+        width: calc(100% - 80px);
     }
 }
 
@@ -1052,7 +1119,16 @@ a:hover {
 
     .header-search__menu {
         border-radius: 12px;
-        box-shadow: 3px 3px 0 rgba(17, 24, 39, 0.92), 0 12px 24px rgba(15, 23, 42, 0.14);
+        box-shadow:
+            3px 3px 0 rgba(17, 24, 39, 0.92),
+            0 12px 24px rgba(15, 23, 42, 0.14);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .site-header,
+    .header-container {
+        transition: none;
     }
 }
 
@@ -2368,7 +2444,9 @@ a:hover {
     font-size: 14px;
     font-weight: 600;
     text-align: left;
-    transition: background 0.16s ease, color 0.16s ease;
+    transition:
+        background 0.16s ease,
+        color 0.16s ease;
 }
 
 .filter-dropdown__option:hover,
@@ -2409,7 +2487,10 @@ a:hover {
     font-family: "Lato", sans-serif;
     font-size: 13px;
     font-weight: 700;
-    transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+    transition:
+        transform 0.2s ease,
+        box-shadow 0.2s ease,
+        background 0.2s ease;
 }
 
 .catalog-filter-chip {
@@ -3208,7 +3289,9 @@ a:hover {
     border-radius: 50%;
     color: #ffffff;
     background: #f38749;
-    box-shadow: 0 0 0 5px #ffffff, 0 0 0 7px #f38749;
+    box-shadow:
+        0 0 0 5px #ffffff,
+        0 0 0 7px #f38749;
 }
 
 .feature-road__stop-zap {
@@ -3301,7 +3384,11 @@ a:hover {
     border-radius: 30px;
     box-shadow: 2px 2px 0 #000;
     background-image:
-        linear-gradient(140.166deg, rgba(139, 92, 246, 0.05) 0%, rgba(99, 102, 241, 0.08) 100%),
+        linear-gradient(
+            140.166deg,
+            rgba(139, 92, 246, 0.05) 0%,
+            rgba(99, 102, 241, 0.08) 100%
+        ),
         linear-gradient(180deg, #fefeff 0%, #f8f7ff 100%);
     margin: 0 auto;
 }
@@ -3353,7 +3440,9 @@ a:hover {
     font-weight: 600;
     letter-spacing: -0.1px;
     text-decoration: none;
-    transition: transform 0.25s ease, box-shadow 0.25s ease;
+    transition:
+        transform 0.25s ease,
+        box-shadow 0.25s ease;
 }
 
 .feature-cta__button:hover {
@@ -3396,7 +3485,11 @@ a:hover {
         width: 22px;
         border: 1px solid #343434;
         border-radius: 999px;
-        background: repeating-linear-gradient(to bottom, #a6a6a6 0 24px, #ffffff 24px 34px);
+        background: repeating-linear-gradient(
+            to bottom,
+            #a6a6a6 0 24px,
+            #ffffff 24px 34px
+        );
         content: "";
     }
 
@@ -3422,7 +3515,9 @@ a:hover {
         border: 2px solid #f38749;
         border-radius: 50%;
         background: radial-gradient(circle, #ffffff 0 25%, #f38749 27% 100%);
-        box-shadow: 0 0 0 4px #ffffff, 0 0 0 6px #f38749;
+        box-shadow:
+            0 0 0 4px #ffffff,
+            0 0 0 6px #f38749;
         content: "";
     }
 
@@ -3514,9 +3609,6 @@ a:hover {
         justify-content: center;
     }
 }
-
-
-
 
 .course-card {
     overflow: hidden;

@@ -69,6 +69,24 @@
     box-sizing: border-box !important;
 }
 
+/* The admin content scrolls inside .app-content-area, so the shared Header
+   receives a compact class when that pane moves. Keep the full header at the
+   top; then turn it into a clear navigation island while reading. */
+.app-admin-header-zone > .app-header.app-header--compact {
+    top: 14px !important;
+    right: 24px !important;
+    left: 284px !important;
+    width: calc(100vw - 308px) !important;
+    height: 62px !important;
+    min-height: 62px !important;
+    max-height: 62px !important;
+    margin: 0 !important;
+    border: 1.5px solid #211b36 !important;
+    border-radius: 18px !important;
+    background: #fffdf9 !important;
+    box-shadow: 4px 4px 0 #211b36, 0 12px 28px rgba(33, 27, 54, 0.12) !important;
+}
+
 /* ==========================================================================
    VÙNG KHÔNG GIAN CUỘN NỘI DUNG (MAIN CONTENT AREA)
    ========================================================================== */
