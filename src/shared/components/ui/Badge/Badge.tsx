@@ -8,14 +8,16 @@ const badgeVariants = cva(
     variants: {
       variant: {
         default: 'bg-gray-100 text-gray-800',
-        success: 'bg-green-100 text-green-800',
-        warning: 'bg-amber-100 text-amber-800',
-        error: 'bg-red-100 text-red-800',
-        info: 'bg-blue-100 text-blue-800',
+        neutral: 'bg-[var(--sl-line-soft, #eef1f7)] text-[var(--sl-ink, #0f172a)]',
+        purple: 'bg-[var(--sl-purple-soft, #f3eefe)] text-[var(--sl-purple-dark, #6d28d2)]',
+        success: 'bg-[var(--sl-success-soft, #e7f8ee)] text-[#137333]',
+        warning: 'bg-[var(--sl-warning-soft, #fff5d6)] text-[#8a5b00]',
+        error: 'bg-[var(--sl-danger-soft, #fde7e7)] text-[#b91c1c]',
+        info: 'bg-[var(--sl-info-soft, #e6efff)] text-[#2f5fbf]',
       },
     },
     defaultVariants: {
-      variant: 'default',
+      variant: 'purple',
     },
   }
 );

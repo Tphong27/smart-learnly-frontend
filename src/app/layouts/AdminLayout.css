@@ -96,11 +96,19 @@
     flex: 1 !important;
     overflow-y: auto !important;
     overflow-x: hidden !important;
+    scroll-behavior: smooth;
     padding: 24px !important;
     margin-top: 70px !important;
     height: calc(100vh - 70px) !important;
     box-sizing: border-box !important;
     background-color: var(--surface) !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    html,
+    .app-content-area {
+        scroll-behavior: auto;
+    }
 }
 
 /* Khung bọc giới hạn nội dung */

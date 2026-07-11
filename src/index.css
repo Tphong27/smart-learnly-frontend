@@ -40,8 +40,18 @@
   box-sizing: border-box;
 }
 
-html {
+html,
+body,
+#root {
   scroll-behavior: smooth;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html,
+  body,
+  #root {
+    scroll-behavior: auto;
+  }
 }
 
 body {

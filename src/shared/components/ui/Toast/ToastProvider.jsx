@@ -12,7 +12,7 @@ export function ToastProvider({ children }) {
   }, [])
 
   const showToast = useCallback(
-    ({ type = 'info', message, title, duration = 3000 }) => {
+    ({ type = 'info', message, title, duration = 3000, action }) => {
       const id =
         typeof crypto !== 'undefined' && crypto.randomUUID
           ? crypto.randomUUID()
@@ -23,6 +23,7 @@ export function ToastProvider({ children }) {
         type,
         title,
         message,
+        action,
       }
 
       setToasts((currentToasts) => [...currentToasts, toast])

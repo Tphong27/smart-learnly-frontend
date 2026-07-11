@@ -9,6 +9,7 @@ export function Modal({
   children,
   footer,
   size = 'md',
+  position = 'center',
   closeOnOverlayClick = true,
   onClose,
 }) {
@@ -40,12 +41,12 @@ export function Modal({
 
   return (
     <div
-      className="modal-overlay"
+      className={`modal-overlay modal-overlay--${position}`}
       role="presentation"
       onClick={handleOverlayClick}
     >
       <section
-        className={`modal modal--${size}`}
+        className={`modal modal--${size} modal--${position}`}
         role="dialog"
         aria-modal="true"
         aria-labelledby={title ? 'modal-title' : undefined}

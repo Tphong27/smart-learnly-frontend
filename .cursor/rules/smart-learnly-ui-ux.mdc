@@ -1,0 +1,10 @@
+---
+description: Apply Smart Learnly’s design language to UI review, redesign, and implementation work.
+globs: src/**/*.{jsx,tsx,css}
+alwaysApply: false
+---
+
+For UI/UX work, read `@DESIGN_LANGUAGE.md` and follow the `smart-learnly-ui-ux` skill when available.
+
+Preserve the project’s purple/ink/off-white visual language, selective tactile border/shadow treatment, practical learning-oriented content, accessible interactions, and responsive behaviour. Do not introduce generic AI art, glossy SaaS gradients, a new blue primary, or decorative UI that does not support the task.
+

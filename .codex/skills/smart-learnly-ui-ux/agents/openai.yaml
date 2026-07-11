@@ -1,0 +1,4 @@
+interface:
+  display_name: "Smart Learnly UI UX"
+  short_description: "Redesign Smart Learnly pages consistently"
+  default_prompt: "Use $smart-learnly-ui-ux to redesign this Smart Learnly page consistently."
