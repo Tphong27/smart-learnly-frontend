@@ -1,5 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { CheckSquare, Plus, RefreshCw, Save, Trash2, Upload, X } from "lucide-react";
+import {
+  CheckSquare,
+  Plus,
+  RefreshCw,
+  Save,
+  Trash2,
+  Upload,
+  X,
+} from "lucide-react";
 import { getCurrentUser } from "@/services";
 import { courseService } from "@/services/course.service";
 import { flashcardService as defaultFlashcardService } from "@/services/flashcard.service";
@@ -17,6 +25,7 @@ import {
   toCardPayload,
   validateCardDraft,
 } from "./flashcard-utils";
+import { useToast } from "@/shared/components/ui/Toast/useToast";
 import "./Flashcards.css";
 
 function flashcardCacheKey(lessonId) {
@@ -36,6 +45,7 @@ export function FlashcardLessonEditor({
   flashcardService = defaultFlashcardService,
   stagingEnabled = true,
 }) {
+  const { removeToast } = useToast();
   const [flashcardSet, setFlashcardSet] = useState(null);
   const [cards, setCards] = useState([]);
   const [title, setTitle] = useState(defaultTitle);
@@ -65,25 +75,26 @@ export function FlashcardLessonEditor({
   const toastIdsRef = useRef(new Set());
 
   const clearFlashcardToasts = useCallback(() => {
-    if (!dismissToast) return;
-    toastIdsRef.current.forEach((toastId) => dismissToast(toastId));
+    toastIdsRef.current.forEach((toastId) => {
+      removeToast(toastId);
+    });
     toastIdsRef.current.clear();
-  }, [dismissToast]);
+  }, [removeToast]);
 
   const notify = useCallback(
     (message, type = "info") => {
-      if (!message) return null;
+      if (!message) {
+        return null;
+      }
       const toastId = showToast?.(message, type);
-      if (toastId && dismissToast) {
+      if (toastId) {
         toastIdsRef.current.add(toastId);
         window.setTimeout(() => {
           toastIdsRef.current.delete(toastId);
         }, 3500);
       }
       return toastId;
-    },
-    [dismissToast, showToast],
-  );
+    },[showToast]);
 
   useEffect(() => () => clearFlashcardToasts(), [clearFlashcardToasts]);
 
@@ -205,7 +216,10 @@ export function FlashcardLessonEditor({
       onTitleSaved?.(savedSet.title);
       notify("Flashcard set saved.", "success");
     } catch (saveError) {
-      notify(getErrorMessage(saveError, "Failed to save flashcard set."), "error");
+      notify(
+        getErrorMessage(saveError, "Failed to save flashcard set."),
+        "error",
+      );
     } finally {
       setSavingSet(false);
     }
@@ -245,7 +259,9 @@ export function FlashcardLessonEditor({
           payload,
         );
         setCards((currentCards) => [...currentCards, savedCard]);
-        setCardPage(Math.floor(orderedCards.length / CURRENT_FLASHCARD_PAGE_SIZE));
+        setCardPage(
+          Math.floor(orderedCards.length / CURRENT_FLASHCARD_PAGE_SIZE),
+        );
         setActivePreviewCardId(savedCard.id);
         notify("Card added.", "success");
       }
@@ -333,7 +349,10 @@ export function FlashcardLessonEditor({
       setFlashcardSet(savedSet);
       setCards(savedSet.cards);
     } catch (reorderError) {
-      notify(getErrorMessage(reorderError, "Failed to reorder cards."), "error");
+      notify(
+        getErrorMessage(reorderError, "Failed to reorder cards."),
+        "error",
+      );
       loadSet();
     } finally {
       setReordering(false);
@@ -357,12 +376,9 @@ export function FlashcardLessonEditor({
     await refreshCurrentFlashcards();
   };
 
-  const handleStagingImportCreated = useCallback(
-    () => {
-      refreshStagingReview();
-    },
-    [refreshStagingReview],
-  );
+  const handleStagingImportCreated = useCallback(() => {
+    refreshStagingReview();
+  }, [refreshStagingReview]);
 
   const handleEditCard = (card) => {
     clearFlashcardToasts();
@@ -435,7 +451,9 @@ export function FlashcardLessonEditor({
         await flashcardService.deleteCard(cardId);
       }
 
-      const remainingCards = orderedCards.filter((card) => !deletedIdSet.has(card.id));
+      const remainingCards = orderedCards.filter(
+        (card) => !deletedIdSet.has(card.id),
+      );
       setCards((currentCards) =>
         currentCards.filter((card) => !deletedIdSet.has(card.id)),
       );
@@ -494,7 +512,9 @@ export function FlashcardLessonEditor({
         <>
           <div className="flashcard-toolbar">
             <div>
-              <h2 className="flashcard-toolbar__title">{title || "Flashcards"}</h2>
+              <h2 className="flashcard-toolbar__title">
+                {title || "Flashcards"}
+              </h2>
               <div className="flashcard-toolbar__meta">
                 {orderedCards.length} card{orderedCards.length === 1 ? "" : "s"}
               </div>
@@ -548,7 +568,9 @@ export function FlashcardLessonEditor({
               <div className="flashcard-panel flashcard-current-list-panel">
                 <div className="flashcard-panel__header">
                   <div>
-                    <h3 className="flashcard-panel__title">Current Flashcards</h3>
+                    <h3 className="flashcard-panel__title">
+                      Current Flashcards
+                    </h3>
                     {selectionMode && (
                       <div className="flashcard-toolbar__meta">
                         {selectedVisibleCardIds.length} selected
@@ -626,7 +648,11 @@ export function FlashcardLessonEditor({
                       onClick={toggleSelectionMode}
                       disabled={savingCard || reordering || bulkDeleting}
                     >
-                      {selectionMode ? <X size={16} /> : <CheckSquare size={16} />}
+                      {selectionMode ? (
+                        <X size={16} />
+                      ) : (
+                        <CheckSquare size={16} />
+                      )}
                       {selectionMode ? "Cancel" : "Select"}
                     </button>
                   </div>
@@ -646,7 +672,9 @@ export function FlashcardLessonEditor({
                     selectionMode={selectionMode}
                     selectedCardIds={selectedCardIds}
                     onToggleSelect={toggleSelectedCard}
-                    onSelect={(card) => setActivePreviewCardId(card?.id || null)}
+                    onSelect={(card) =>
+                      setActivePreviewCardId(card?.id || null)
+                    }
                     onEdit={handleEditCard}
                     onDelete={handleDeleteCard}
                     onMove={handleMoveCard}
@@ -658,13 +686,16 @@ export function FlashcardLessonEditor({
                         {Math.min(
                           cardPageStartIndex + CURRENT_FLASHCARD_PAGE_SIZE,
                           orderedCards.length,
-                        )} of {orderedCards.length}
+                        )}{" "}
+                        of {orderedCards.length}
                       </span>
                       <div className="flashcard-current-pagination__controls">
                         <button
                           type="button"
                           className="flashcard-btn"
-                          onClick={() => setCardPage((current) => Math.max(0, current - 1))}
+                          onClick={() =>
+                            setCardPage((current) => Math.max(0, current - 1))
+                          }
                           disabled={safeCardPage === 0}
                         >
                           Previous
@@ -699,7 +730,9 @@ export function FlashcardLessonEditor({
                 <FlashcardPreview
                   cards={orderedCards}
                   activeCardId={activeCardId}
-                  onActiveCardChange={(cardId) => setActivePreviewCardId(cardId)}
+                  onActiveCardChange={(cardId) =>
+                    setActivePreviewCardId(cardId)
+                  }
                   emptyMessage="Add a card to preview this flashcard set."
                 />
               </div>
@@ -762,7 +795,9 @@ export function FlashcardLessonEditor({
             aria-modal="true"
             aria-labelledby="flashcard-delete-card-title"
           >
-            <h3 id="flashcard-delete-card-title">Delete this flashcard card?</h3>
+            <h3 id="flashcard-delete-card-title">
+              Delete this flashcard card?
+            </h3>
             <p>
               This card will be removed from the set. You can cancel to keep it.
             </p>

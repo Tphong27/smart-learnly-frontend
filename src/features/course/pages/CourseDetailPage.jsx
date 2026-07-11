@@ -27,7 +27,7 @@ import { CourseReviewsSection } from "../components/CourseReviewsSection";
 import "../../admin/admin-shared.css";
 import "./CourseDetailPage.css";
 import "../components/CourseReviewsSection.css";
-import "../components/ClassStatusBadge.css";
+// import "../components/ClassStatusBadge.css";
 
 function LessonIcon({ type }) {
     const t = (type || "").toLowerCase();
@@ -403,59 +403,63 @@ export function CourseDetailPage() {
                         </div>
                     </div>
 
-                    {objectives.length > 0 && (() => {
-                        const MAX_VISIBLE = 4;
-                        const visibleObjectives = showAllObjectives
-                            ? objectives
-                            : objectives.slice(0, MAX_VISIBLE);
-                        const hiddenCount =
-                            objectives.length - MAX_VISIBLE;
-                        return (
-                            <section className="course-detail__section">
-                                <div className="course-detail__section-head">
-                                    <div className="course-detail__section-head-text">
-                                        <h2 className="course-detail__section-title">
-                                            What you will learn
-                                        </h2>
-                                        <p className="course-detail__section-sub">
-                                            {objectives.length}{" "}
-                                            {objectives.length === 1
-                                                ? "objective"
-                                                : "objectives"}
-                                        </p>
+                    {objectives.length > 0 &&
+                        (() => {
+                            const MAX_VISIBLE = 4;
+                            const visibleObjectives = showAllObjectives
+                                ? objectives
+                                : objectives.slice(0, MAX_VISIBLE);
+                            const hiddenCount = objectives.length - MAX_VISIBLE;
+                            return (
+                                <section className="course-detail__section">
+                                    <div className="course-detail__section-head">
+                                        <div className="course-detail__section-head-text">
+                                            <h2 className="course-detail__section-title">
+                                                What you will learn
+                                            </h2>
+                                            <p className="course-detail__section-sub">
+                                                {objectives.length}{" "}
+                                                {objectives.length === 1
+                                                    ? "objective"
+                                                    : "objectives"}
+                                            </p>
+                                        </div>
+                                        {hiddenCount > 0 && (
+                                            <button
+                                                type="button"
+                                                className="course-detail__expand-link"
+                                                onClick={() =>
+                                                    setShowAllObjectives(
+                                                        (prev) => !prev,
+                                                    )
+                                                }
+                                            >
+                                                {showAllObjectives
+                                                    ? "Show less"
+                                                    : `Show ${hiddenCount} more`}
+                                            </button>
+                                        )}
                                     </div>
-                                    {hiddenCount > 0 && (
-                                        <button
-                                            type="button"
-                                            className="course-detail__expand-link"
-                                            onClick={() =>
-                                                setShowAllObjectives(
-                                                    (prev) => !prev,
-                                                )
-                                            }
-                                        >
-                                            {showAllObjectives
-                                                ? "Show less"
-                                                : `Show ${hiddenCount} more`}
-                                        </button>
-                                    )}
-                                </div>
-                                <ul className="course-detail__objectives">
-                                    {visibleObjectives.map((obj) => (
-                                        <li key={obj.id}>
-                                            <CheckCircle2 size={16} />
-                                            <div>
-                                                {obj.code && (
-                                                    <strong>{obj.code}</strong>
-                                                )}
-                                                <span>{obj.description}</span>
-                                            </div>
-                                        </li>
-                                    ))}
-                                </ul>
-                            </section>
-                        );
-                    })()}
+                                    <ul className="course-detail__objectives">
+                                        {visibleObjectives.map((obj) => (
+                                            <li key={obj.id}>
+                                                <CheckCircle2 size={16} />
+                                                <div>
+                                                    {obj.code && (
+                                                        <strong>
+                                                            {obj.code}
+                                                        </strong>
+                                                    )}
+                                                    <span>
+                                                        {obj.description}
+                                                    </span>
+                                                </div>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </section>
+                            );
+                        })()}
 
                     <section className="course-detail__section">
                         <div className="course-detail__section-head">
