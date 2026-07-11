@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { courseService } from "@/services/course.service";
 import { assignmentService } from "@/services/flashtest.service";
-import { useToast } from "@/shared/components/ui/Toast/useToast";
+import { Button, useToast } from "@/shared/components/ui";
 import RichTextEditor from "@/shared/components/rich-text/RichTextEditor";
 import { FlashcardLessonEditor } from "@/features/course/components/flashcards/FlashcardLessonEditor";
 import {
@@ -38,6 +38,9 @@ import { QuizQuestionsPanel } from "../QuizQuestionManager";
 import { HlsVideoUploader } from "./HlsVideoUploader";
 import { PdfMaterialUploader } from "./PdfMaterialUploader";
 import { LessonResourceUploader } from "./LessonResourceUploader";
+import "../../course-admin.css";
+import "@/features/course/course-admin.css";
+import "@/features/course/course-lesson-editor.css";
 
 /**
  * Shared lesson editor used by both admin (`/admin/courses/.../lessons/:lessonId`)
@@ -71,6 +74,8 @@ export function LessonDetailEditor({ context }) {
         location.state?.flashcardSetId ||
         new URLSearchParams(location.search).get("flashcardSetId");
 
+    const [titleError, setTitleError] = useState("");
+    const [summaryError, setSummaryError] = useState("");
     const [activeTab, setActiveTab] = useState("edit");
     const [title, setTitle] = useState("");
     const [loading, setLoading] = useState(false);
@@ -405,18 +410,22 @@ export function LessonDetailEditor({ context }) {
         e.preventDefault();
 
         if (!title.trim()) {
-            showToast("Please enter tỉtle", "error");
+            setTitleError("Lesson title is required.");
+            showToast("Please enter a title", "error");
             return;
         }
+        setTitleError("");
 
         const isQuiz = lessonType === "QUIZ";
         const usesLessonResources = !isQuiz && lessonType !== "ESSAY";
         const cleanSummary = sanitizeLessonHtml(summary);
 
         if (!isQuiz && isEmptyLessonHtml(cleanSummary)) {
-            showToast("Lesson Summary Blank", "error");
+            setSummaryError("Lesson summary cannot be empty.");
+            showToast("Lesson summary is required", "error");
             return;
         }
+        setSummaryError("");
 
         setLoading(true);
 
@@ -539,147 +548,67 @@ export function LessonDetailEditor({ context }) {
 
     if (pageLoading)
         return (
-            <div
-                style={{
-                    padding: "40px",
-                    fontWeight: "bold",
-                    color: "#64748b",
-                    textAlign: "center",
-                }}
-            >
-                Loading lesson data...
+            <div className="sl-cm-page" role="status" aria-live="polite">
+                <div className="sl-cm-workspace">
+                    <div className="sl-cm-skeleton" style={{ width: "35%", marginBottom: 16 }} />
+                    <div className="sl-cm-skeleton" style={{ width: "60%", marginBottom: 24 }} />
+                    <div className="sl-cm-skeleton" style={{ width: "100%", height: 200 }} />
+                </div>
             </div>
         );
 
     const showQuizTab = features.quizManager && lessonType === "QUIZ";
 
     return (
-        <div
-            style={{
-                padding: "30px",
-                maxWidth: "1350px",
-                margin: "0 auto",
-                fontFamily: "Inter, sans-serif",
-            }}
-        >
-            <button
-                type="button"
-                onClick={() => backPath && navigate(backPath)}
-                style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "8px",
-                    background: "none",
-                    border: "none",
-                    color: "#475569",
-                    cursor: "pointer",
-                    padding: 0,
-                    marginBottom: "20px",
-                    fontSize: "14px",
-                    fontWeight: "500",
-                }}
-            >
-                <ArrowLeft size={16} /> Back
-            </button>
+        <div className="sl-cm-lesson-editor">
+            <div className="sl-cm-lesson-editor__header">
+                <div>
+                    <button
+                        type="button"
+                        className="sl-cm-back"
+                        onClick={() => backPath && navigate(backPath)}
+                    >
+                        <ArrowLeft size={16} aria-hidden="true" /> Back to curriculum
+                    </button>
+                    <h1 className="sl-cm-lesson-editor__title">
+                        {title || "Untitled lesson"}
+                    </h1>
+                </div>
+            </div>
 
-            <h1
-                style={{
-                    marginBottom: "24px",
-                    color: "#0f172a",
-                    fontSize: "28px",
-                    fontWeight: "700",
-                }}
-            >
-                Update Lesson
-            </h1>
-
-            <div
-                style={{
-                    display: "flex",
-                    gap: "8px",
-                    borderBottom: "1px solid #e2e8f0",
-                    marginBottom: "30px",
-                    paddingBottom: "1px",
-                }}
-            >
+            <div className="sl-cm-lesson-editor__tabs" role="tablist">
                 <button
                     type="button"
+                    role="tab"
+                    aria-selected={activeTab === "edit"}
+                    className="sl-cm-lesson-editor__tab"
                     onClick={() => {
                         setCurrentPage(0);
                         setActiveTab("edit");
                     }}
-                    style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "8px",
-                        padding: "12px 20px",
-                        fontSize: "15px",
-                        fontWeight: "600",
-                        border: "none",
-                        background: "none",
-                        cursor: "pointer",
-                        color: activeTab === "edit" ? "#2563eb" : "#64748b",
-                        borderBottom:
-                            activeTab === "edit"
-                                ? "2px solid #2563eb"
-                                : "2px solid transparent",
-                        transition: "all 0.2s",
-                    }}
                 >
-                    <Edit3 size={18} /> Edit Content
+                    <Edit3 size={16} aria-hidden="true" /> Edit content
                 </button>
                 {features.audit && (
                     <button
                         type="button"
+                        role="tab"
+                        aria-selected={activeTab === "history"}
+                        className="sl-cm-lesson-editor__tab"
                         onClick={() => setActiveTab("history")}
-                        style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: "8px",
-                            padding: "12px 20px",
-                            fontSize: "15px",
-                            fontWeight: "600",
-                            border: "none",
-                            background: "none",
-                            cursor: "pointer",
-                            color:
-                                activeTab === "history" ? "#2563eb" : "#64748b",
-                            borderBottom:
-                                activeTab === "history"
-                                    ? "2px solid #2563eb"
-                                    : "2px solid transparent",
-                            transition: "all 0.2s",
-                        }}
                     >
-                        <History size={18} /> Audit History
+                        <History size={16} aria-hidden="true" /> Audit history
                     </button>
                 )}
                 {showQuizTab && (
                     <button
                         type="button"
+                        role="tab"
+                        aria-selected={activeTab === "questions"}
+                        className="sl-cm-lesson-editor__tab"
                         onClick={() => setActiveTab("questions")}
-                        style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: "8px",
-                            padding: "12px 20px",
-                            fontSize: "15px",
-                            fontWeight: "600",
-                            border: "none",
-                            background: "none",
-                            cursor: "pointer",
-                            color:
-                                activeTab === "questions"
-                                    ? "#2563eb"
-                                    : "#64748b",
-                            borderBottom:
-                                activeTab === "questions"
-                                    ? "2px solid #2563eb"
-                                    : "2px solid transparent",
-                            transition: "all 0.2s",
-                        }}
                     >
-                        <ListChecks size={18} /> Manage Questions
+                        <ListChecks size={16} aria-hidden="true" /> Manage questions
                     </button>
                 )}
             </div>
@@ -702,77 +631,49 @@ export function LessonDetailEditor({ context }) {
                         stagingEnabled={features.flashcardStaging !== false}
                     />
                 ) : (
-                    <form onSubmit={handleSave}>
-                        <div style={{ display: "flex", gap: "40px" }}>
-                            <div
-                                style={{
-                                    flex: "3",
-                                    display: "flex",
-                                    flexDirection: "column",
-                                    gap: "28px",
-                                    backgroundColor: "#fff",
-                                    padding: "28px",
-                                    borderRadius: "16px",
-                                    boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
-                                }}
-                            >
-                                <div
-                                    style={{
-                                        display: "grid",
-                                        gridTemplateColumns:
-                                            "minmax(0, 2fr) minmax(180px, 1fr) minmax(170px, 0.8fr)",
-                                        gap: "20px",
-                                        alignItems: "start",
-                                    }}
-                                >
+                    <form onSubmit={handleSave} className="sl-cm-lesson-editor__grid" noValidate>
+                        <section className="sl-cm-lesson-editor__panel" aria-label="Lesson details">
+                            <div className="sl-cm-lesson-editor__meta-row">
                                     <div>
                                         <label
-                                            style={{
-                                                display: "block",
-                                                marginBottom: "8px",
-                                                fontWeight: "600",
-                                                color: "#1e293b",
-                                                fontSize: "14px",
-                                            }}
+                                            className="sl-cm-lesson-editor__field-label"
+                                            htmlFor="lesson-title-input"
                                         >
                                             Title{" "}
-                                            <span style={{ color: "#ef4444" }}>
-                                                *
-                                            </span>
+                                            <span className="required">*</span>
                                         </label>
                                         <input
+                                            id="lesson-title-input"
                                             type="text"
                                             value={title}
                                             onChange={(e) =>
                                                 setTitle(e.target.value)
                                             }
-                                            style={{
-                                                width: "100%",
-                                                padding: "11px 16px",
-                                                borderRadius: "8px",
-                                                border: "1px solid #cbd5e1",
-                                                fontSize: "15px",
-                                                boxSizing: "border-box",
-                                            }}
-                                            required
+                                            className="sl-cm-lesson-editor__field-control"
+                                            aria-invalid={titleError ? "true" : undefined}
+                                            aria-describedby={titleError ? "lesson-title-error" : undefined}
                                         />
+                                        {titleError ? (
+                                            <p
+                                                id="lesson-title-error"
+                                                className="sl-cm-lesson-editor__field-help"
+                                                style={{ color: "var(--sl-danger)", fontWeight: 600 }}
+                                                role="alert"
+                                            >
+                                                {titleError}
+                                            </p>
+                                        ) : null}
                                     </div>
                                     <div>
                                         <label
-                                            style={{
-                                                display: "block",
-                                                marginBottom: "8px",
-                                                fontWeight: "600",
-                                                color: "#1e293b",
-                                                fontSize: "14px",
-                                            }}
+                                            className="sl-cm-lesson-editor__field-label"
+                                            htmlFor="lesson-type-select"
                                         >
                                             Lesson Type{" "}
-                                            <span style={{ color: "#ef4444" }}>
-                                                *
-                                            </span>
+                                            <span className="required">*</span>
                                         </label>
                                         <select
+                                            id="lesson-type-select"
                                             value={lessonType}
                                             onChange={(e) =>
                                                 setLessonType(e.target.value)
@@ -780,15 +681,7 @@ export function LessonDetailEditor({ context }) {
                                             disabled={
                                                 lessonType === "FLASHCARD"
                                             }
-                                            style={{
-                                                width: "100%",
-                                                padding: "11px 16px",
-                                                borderRadius: "8px",
-                                                border: "1px solid #cbd5e1",
-                                                fontSize: "15px",
-                                                boxSizing: "border-box",
-                                                backgroundColor: "#fff",
-                                            }}
+                                            className="sl-cm-lesson-editor__field-control"
                                         >
                                             <option value="VIDEO">
                                                 Video Lecture
@@ -807,33 +700,19 @@ export function LessonDetailEditor({ context }) {
                                     </div>
                                     <div>
                                         <label
-                                            style={{
-                                                display: "block",
-                                                marginBottom: "8px",
-                                                fontWeight: "600",
-                                                color: "#1e293b",
-                                                fontSize: "14px",
-                                            }}
+                                            className="sl-cm-lesson-editor__field-label"
+                                            htmlFor="lesson-status-select"
                                         >
                                             Status{" "}
-                                            <span style={{ color: "#ef4444" }}>
-                                                *
-                                            </span>
+                                            <span className="required">*</span>
                                         </label>
                                         <select
+                                            id="lesson-status-select"
                                             value={status}
                                             onChange={(e) =>
                                                 setStatus(e.target.value)
                                             }
-                                            style={{
-                                                width: "100%",
-                                                padding: "11px 16px",
-                                                borderRadius: "8px",
-                                                border: "1px solid #cbd5e1",
-                                                fontSize: "15px",
-                                                boxSizing: "border-box",
-                                                backgroundColor: "#fff",
-                                            }}
+                                            className="sl-cm-lesson-editor__field-control"
                                             required
                                         >
                                             {LESSON_STATUS_OPTIONS.map(
@@ -847,14 +726,7 @@ export function LessonDetailEditor({ context }) {
                                                 ),
                                             )}
                                         </select>
-                                        <p
-                                            style={{
-                                                margin: "6px 0 0",
-                                                color: "#64748b",
-                                                fontSize: "12px",
-                                                lineHeight: 1.4,
-                                            }}
-                                        >
+                                        <p className="sl-cm-lesson-editor__field-help">
                                             {getLessonStatusMeta(status)
                                                 ?.description || ""}
                                         </p>
@@ -864,17 +736,13 @@ export function LessonDetailEditor({ context }) {
                                 {lessonType === "QUIZ" ? (
                                     <div>
                                         <label
-                                            style={{
-                                                display: "block",
-                                                marginBottom: "8px",
-                                                fontWeight: "600",
-                                                color: "#1e293b",
-                                                fontSize: "14px",
-                                            }}
+                                            className="sl-cm-lesson-editor__field-label"
+                                            htmlFor="lesson-quiz-title"
                                         >
                                             Quiz Title
                                         </label>
                                         <input
+                                            id="lesson-quiz-title"
                                             type="text"
                                             value={
                                                 parseQuizContent(textContent)
@@ -893,22 +761,9 @@ export function LessonDetailEditor({ context }) {
                                                 );
                                             }}
                                             placeholder="Enter quiz title"
-                                            style={{
-                                                width: "100%",
-                                                padding: "11px 16px",
-                                                borderRadius: "8px",
-                                                border: "1px solid #cbd5e1",
-                                                fontSize: "15px",
-                                                boxSizing: "border-box",
-                                            }}
+                                            className="sl-cm-lesson-editor__field-control"
                                         />
-                                        <p
-                                            style={{
-                                                marginTop: "10px",
-                                                fontSize: "13px",
-                                                color: "#64748b",
-                                            }}
-                                        >
+                                        <p className="sl-cm-lesson-editor__field-help">
                                             Manage quiz questions in the
                                             "Manage Questions" tab above.
                                         </p>
@@ -916,28 +771,38 @@ export function LessonDetailEditor({ context }) {
                                 ) : (
                                     <div>
                                         <label
-                                            style={{
-                                                display: "block",
-                                                marginBottom: "8px",
-                                                fontWeight: "600",
-                                                color: "#1e293b",
-                                                fontSize: "14px",
-                                            }}
+                                            className="sl-cm-lesson-editor__field-label"
+                                            htmlFor="lesson-summary-editor"
                                         >
                                             Summary{" "}
-                                            <span style={{ color: "#ef4444" }}>
-                                                *
-                                            </span>
+                                            <span className="required">*</span>
                                         </label>
 
                                         <RichTextEditor
                                             value={summary}
-                                            onChange={setSummary}
+                                            onChange={(value) => {
+                                                setSummary(value);
+                                                if (value && value.trim()) {
+                                                    setSummaryError("");
+                                                }
+                                            }}
                                             placeholder="Content Learning..."
                                             minHeight={260}
                                             imageUploader={uploadSummaryImage}
                                             videoUploader={uploadSummaryVideo}
                                         />
+                                        {summaryError ? (
+                                            <p
+                                                className="sl-cm-lesson-editor__field-help"
+                                                style={{
+                                                    color: "var(--sl-danger)",
+                                                    fontWeight: 600,
+                                                }}
+                                                role="alert"
+                                            >
+                                                {summaryError}
+                                            </p>
+                                        ) : null}
                                     </div>
                                 )}
 
@@ -950,35 +815,11 @@ export function LessonDetailEditor({ context }) {
                                         onBusyChange={setUploadingResources}
                                     />
                                 )}
-                            </div>
+                            </section>
 
-                            <div
-                                style={{
-                                    flex: lessonType === "ESSAY" ? "3" : "2",
-                                    minWidth: 0,
-                                    backgroundColor: "#f8fafc",
-                                    padding: "30px",
-                                    borderRadius: "16px",
-                                    border: "1px solid #e2e8f0",
-                                    display: "flex",
-                                    flexDirection: "column",
-                                }}
-                            >
-                                <div
-                                    style={{
-                                        flexGrow: 1,
-                                        display: "flex",
-                                        flexDirection: "column",
-                                        gap: "16px",
-                                    }}
-                                >
-                                    <h3
-                                        style={{
-                                            margin: 0,
-                                            fontSize: "16px",
-                                            color: "#0f172a",
-                                        }}
-                                    >
+                            <aside className="sl-cm-lesson-editor__panel sl-cm-lesson-editor__panel--accent" aria-label="Content and tools">
+                                <div className="sl-cm-lesson-editor__panel-body">
+                                    <h3 className="sl-cm-lesson-editor__panel-title">
                                         Content
                                     </h3>
                                     {lessonType === "VIDEO" && (
@@ -1005,22 +846,8 @@ export function LessonDetailEditor({ context }) {
                                         />
                                     )}
                                     {lessonType === "QUIZ" && (
-                                        <div
-                                            style={{
-                                                backgroundColor: "#fff",
-                                                padding: "20px",
-                                                borderRadius: "12px",
-                                                border: "1px solid #cbd5e1",
-                                                textAlign: "center",
-                                            }}
-                                        >
-                                            <p
-                                                style={{
-                                                    color: "#64748b",
-                                                    margin: 0,
-                                                    fontSize: "14px",
-                                                }}
-                                            >
+                                        <div className="sl-cm-lesson-editor__hint">
+                                            <p>
                                                 Quiz content is edited in the
                                                 left panel. Add questions and
                                                 options using the Quiz Editor.
@@ -1028,22 +855,7 @@ export function LessonDetailEditor({ context }) {
                                         </div>
                                     )}
                                     {lessonType === "ESSAY" && (
-                                        <div
-                                            style={{
-                                                backgroundColor: "#fff",
-                                                padding: "20px",
-                                                borderRadius: "12px",
-                                                border: "1px solid #cbd5e1",
-                                                display: "flex",
-                                                flexDirection: "column",
-                                                gap: "18px",
-                                                width: "100%",
-                                                boxSizing: "border-box",
-                                                minWidth: 0,
-                                                flex: "1 1 auto",
-                                                minHeight: "320px",
-                                            }}
-                                        >
+                                        <div className="sl-cm-lesson-editor__essay-card">
                                             {assignmentLoading ? (
                                                 <div
                                                     style={{
@@ -1251,69 +1063,38 @@ export function LessonDetailEditor({ context }) {
                                     )}
                                 </div>
 
-                                <div
-                                    style={{
-                                        display: "flex",
-                                        gap: "14px",
-                                        marginTop: "30px",
-                                        borderTop: "1px solid #e2e8f0",
-                                        paddingTop: "24px",
-                                    }}
-                                >
-                                    <button
+                                <div className="sl-cm-lesson-editor__sticky">
+                                    <Button
                                         type="submit"
+                                        variant="primary"
+                                        loading={loading}
                                         disabled={
-                                            loading ||
                                             uploadingPdf ||
                                             uploadingResources ||
                                             videoUploaderBusy ||
                                             assignmentSaving
                                         }
-                                        style={{
-                                            display: "flex",
-                                            alignItems: "center",
-                                            gap: "10px",
-                                            backgroundColor: "#2563eb",
-                                            color: "#fff",
-                                            border: "none",
-                                            padding: "13px 28px",
-                                            borderRadius: "10px",
-                                            cursor: "pointer",
-                                            fontWeight: "600",
-                                            fontSize: "15px",
-                                        }}
+                                        leftIcon={<Save size={16} />}
                                     >
-                                        <Save size={18} />{" "}
-                                        {loading
-                                            ? "Saving..."
-                                            : assignmentSaving
-                                              ? "Saving assignment..."
+                                        {assignmentSaving
+                                            ? "Saving assignment..."
                                             : videoUploaderBusy
                                               ? "Processing..."
-                                              : "Save Changes"}
-                                    </button>
-                                    <button
+                                              : "Save changes"}
+                                    </Button>
+                                    <Button
                                         type="button"
+                                        variant="outline"
                                         onClick={() =>
                                             backPath && navigate(backPath)
                                         }
-                                        style={{
-                                            backgroundColor: "#fff",
-                                            border: "1px solid #cbd5e1",
-                                            padding: "13px 28px",
-                                            borderRadius: "10px",
-                                            cursor: "pointer",
-                                            color: "#475569",
-                                            fontWeight: "500",
-                                            fontSize: "15px",
-                                        }}
                                     >
                                         Cancel
-                                    </button>
+                                    </Button>
+                                    <div className="sl-cm-lesson-editor__sticky-spacer" />
                                 </div>
-                            </div>
-                        </div>
-                    </form>
+                            </aside>
+                        </form>
                 )
             ) : (
                 <div

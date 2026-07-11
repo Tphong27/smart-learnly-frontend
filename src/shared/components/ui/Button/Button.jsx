@@ -8,15 +8,19 @@ export function Button({
   fullWidth = false,
   loading = false,
   disabled = false,
+  tactile,
   leftIcon = null,
   rightIcon = null,
   className = "",
   ...props
 }) {
+  const tactileEnabled = tactile ?? variant === "primary";
+
   const buttonClassName = [
     "button",
     `button--${variant}`,
     `button--${size}`,
+    tactileEnabled ? "button--tactile" : "",
     fullWidth ? "button--full" : "",
     className,
   ]
@@ -40,7 +44,7 @@ export function Button({
       <span className="button__content">
         {loading ? "Loading..." : children}
       </span>
-      
+
       {!loading && rightIcon && (
         <span className="button__icon">{rightIcon}</span>
       )}

@@ -1,290 +1,20 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
+import { Eye } from "lucide-react";
 import { courseService } from "../../../services/course.service";
 import { flashcardService } from "../../../services/flashcard.service";
 import { getCurrentUser } from "../../../services/api-client";
 import { useToast } from "../../../shared/components/ui/Toast/useToast";
 import { CurriculumStructureEditor } from "../components/CurriculumStructureEditor";
-import "./AdminCourseContent.css";
-
-const reorder = (list, startIndex, endIndex) => {
-  const result = Array.from(list);
-  const [removed] = result.splice(startIndex, 1);
-  result.splice(endIndex, 0, removed);
-  return result;
-};
-
-function SectionItem({
-  section,
-  index,
-  setTargetSectionId,
-  setIsLessonModalOpen,
-  courseId,
-  navigate,
-  onEditSection,
-  onDeleteSection,
-  lessons,
-  loadingLessons,
-  onLessonClick,
-  onDeleteLesson,
-  onManageQuestions,
-  dragHandleProps,
-  readOnly = false,
-}) {
-  const [isExpanded, setIsExpanded] = useState(true);
-
-  const renderLessonIcon = (type) => {
-    const t = String(type).toLowerCase();
-    if (t === "video") {
-      return (
-        <div className="lesson-icon video">
-          <span className="material-symbols-outlined">play_circle</span>
-        </div>
-      );
-    }
-    if (["document", "text", "pdf"].includes(t)) {
-      return (
-        <div className="lesson-icon doc">
-          <span className="material-symbols-outlined">description</span>
-        </div>
-      );
-    }
-    if (t === "flashcard") {
-      return (
-        <div className="lesson-icon flashcard">
-          <span className="material-symbols-outlined">view_carousel</span>
-        </div>
-      );
-    }
-    if (t === "essay") {
-      return (
-        <div className="lesson-icon doc">
-          <span className="material-symbols-outlined">assignment</span>
-        </div>
-      );
-    }
-    return (
-      <div className="lesson-icon quiz">
-        <span className="material-symbols-outlined">quiz</span>
-      </div>
-    );
-  };
-
-  const renderLessonStatus = (lesson) => {
-    const meta = getLessonStatusMeta(lesson?.status);
-
-    return (
-      <span className={`badge status status-${meta.value}`}>{meta.label}</span>
-    );
-  };
-
-  return (
-    <div className="section-item">
-      <div className="section-header">
-        <div
-          className="section-title-wrapper"
-          style={{ display: "flex", alignItems: "center", gap: "8px" }}
-        >
-          <span
-            {...(readOnly ? {} : dragHandleProps)}
-            className="material-symbols-outlined drag-handle"
-            style={{ cursor: readOnly ? "default" : "grab" }}
-          >
-            drag_indicator
-          </span>
-
-          <span
-            className="material-symbols-outlined toggle-expand"
-            onClick={() => setIsExpanded(!isExpanded)}
-            style={{
-              cursor: "pointer",
-              userSelect: "none",
-              color: "#434655",
-              transition: "transform 0.2s ease",
-            }}
-          >
-            {isExpanded ? "expand_more" : "chevron_right"}
-          </span>
-
-          <h3
-            onClick={() => setIsExpanded(!isExpanded)}
-            style={{ cursor: "pointer", userSelect: "none", margin: 0 }}
-          >
-            Section {index + 1}: {section?.title}
-          </h3>
-        </div>
-
-        {!readOnly && (
-          <div className="section-actions">
-            <button
-              className="icon-btn"
-              title="Edit section"
-              onClick={() => onEditSection(section)}
-            >
-              <span className="material-symbols-outlined">edit</span>
-            </button>
-
-            <button
-              className="icon-btn delete"
-              title="Delete section"
-              onClick={() => onDeleteSection(section.id, section.title)}
-            >
-              <span className="material-symbols-outlined">delete</span>
-            </button>
-
-            <button
-              onClick={() => {
-                setIsExpanded(true);
-                setTargetSectionId(section.id);
-                setIsLessonModalOpen(true);
-              }}
-              className="btn-outline"
-            >
-              + Add Lesson
-            </button>
-          </div>
-        )}
-      </div>
-
-      {isExpanded && (
-        <Droppable droppableId={`section-${section.id}`} type="LESSON">
-          {(provided) => (
-            <div
-              className="lessons-container"
-              ref={provided.innerRef}
-              {...provided.droppableProps}
-            >
-              {loadingLessons ? (
-                <div
-                  style={{
-                    padding: "16px 48px",
-                    color: "#737686",
-                    fontStyle: "italic",
-                    fontSize: "14px",
-                  }}
-                >
-                  Loading lessons...
-                </div>
-              ) : lessons.length > 0 ? (
-                lessons.map((lesson, lIndex) => (
-                  <Draggable
-                    key={lesson?.id || lIndex}
-                    draggableId={`lesson-${lesson.id}`}
-                    index={lIndex}
-                    isDragDisabled={readOnly}
-                  >
-                    {(provided, snapshot) => (
-                      <div
-                        ref={provided.innerRef}
-                        {...(readOnly ? {} : provided.draggableProps)}
-                        {...(readOnly ? {} : provided.dragHandleProps)}
-                        className="lesson-item"
-                        style={{
-                          ...provided.draggableProps.style,
-                          background: snapshot.isDragging
-                            ? "#e8eaff"
-                            : undefined,
-                        }}
-                      >
-                        <div className="lesson-info">
-                          <span className="material-symbols-outlined drag-handle">
-                            drag_indicator
-                          </span>
-                          {renderLessonIcon(lesson?.lessonType)}
-                          <span className="lesson-title">
-                            {index + 1}.{lIndex + 1}. {lesson?.title}
-                          </span>
-                          <span className="badge type">
-                            {lesson?.lessonType || "VIDEO"}
-                          </span>
-                          {renderLessonStatus(lesson)}
-                          {lesson?.isPreview && (
-                            <span className="badge preview">Preview</span>
-                          )}
-                        </div>
-
-                        {!readOnly && (
-                          <div className="lesson-actions">
-                            <span className="lesson-duration">
-                              {lesson?.durationSeconds
-                                ? `${Math.floor(lesson.durationSeconds / 60)} mins`
-                                : "--"}
-                            </span>
-                            <button
-                              onClick={() =>
-                                lesson?.id &&
-                                navigate(
-                                  `/admin/courses/${courseId}/lessons/${lesson.id}`,
-                                )
-                              }
-                              className="btn-outline"
-                            >
-                              Edit content
-                            </button>
-                            {String(lesson?.lessonType).toUpperCase() ===
-                              "QUIZ" && (
-                              <button
-                                onClick={() =>
-                                  lesson?.id && onManageQuestions(lesson)
-                                }
-                                className="btn-outline"
-                              >
-                                Manage questions
-                              </button>
-                            )}
-                            <button
-                              className="icon-btn delete"
-                              title="Delete lesson"
-                              onClick={() =>
-                                lesson?.id &&
-                                onDeleteLesson(lesson.id, lesson.title, lesson)
-                              }
-                            >
-                              <span className="material-symbols-outlined">
-                                delete
-                              </span>
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </Draggable>
-                ))
-              ) : (
-                <div
-                  style={{
-                    padding: "20px",
-                    textAlign: "center",
-                    color: "#737686",
-                    fontSize: "14px",
-                  }}
-                >
-                  This section has no lessons yet.
-                </div>
-              )}
-              {provided.placeholder}
-            </div>
-          )}
-        </Droppable>
-      )}
-    </div>
-  );
-}
+import "../course-admin.css";
 
 export default function AdminCourseContentPage() {
   const params = useParams();
   const courseId = params.courseId || params.id;
   const navigate = useNavigate();
-  // const location = useLocation();
   const { showToast: emitToast } = useToast();
   const currentUser = getCurrentUser();
   const isTrainer = String(currentUser?.role || "").toLowerCase() === "trainer";
-  const canUpdateContent = ["admin", "tmo", "sme", "trainer"].includes(
-    String(currentUser?.role || "").toLowerCase(),
-  );
-
-  const readOnly = !canUpdateContent;
 
   const courseListPath = isTrainer ? "/staff/courses" : "/admin/courses";
 
@@ -372,10 +102,13 @@ export default function AdminCourseContentPage() {
   const handleCreateSection = async ({ title }) => {
     try {
       await courseService.createSection(courseId, { title, isActive: true });
-      showToast("Section added successfully!", "success");
+      showToast({ type: "success", message: "Section added successfully!" });
       fetchSections();
     } catch (error) {
-      showToast("Error creating section", "error");
+      showToast({
+        type: "error",
+        message: error?.response?.data?.message || "Could not create section.",
+      });
     }
   };
 
@@ -393,21 +126,52 @@ export default function AdminCourseContentPage() {
   };
 
   const handleDeleteSection = async (sectionId, sectionTitle) => {
-    if (
-      window.confirm(
-        `Are you sure you want to delete "${sectionTitle}"? All lessons inside will be deleted.`,
-      )
-    ) {
-      try {
-        await courseService.deleteSection(sectionId);
-        showToast({
-          type: "success",
-          message: "Section deleted successfully!",
-        });
-        fetchSections();
-      } catch (error) {
-        showToast({ type: "error", message: "Error deleting section" });
-      }
+    const previousSections = sections;
+    const target = sections.find((s) => s.id === sectionId);
+    if (!target) return;
+
+    // Optimistic remove — rollback if delete fails
+    setSections((current) => current.filter((s) => s.id !== sectionId));
+
+    try {
+      await courseService.deleteSection(sectionId);
+      showToast({
+        type: "success",
+        message: `Section “${sectionTitle}” deleted.`,
+        duration: 5000,
+        action: {
+          label: "Undo",
+          onClick: async () => {
+            try {
+              await courseService.createSection(courseId, {
+                title: target.title,
+                isActive: target.isActive ?? true,
+                sortOrder: target.sortOrder ?? 0,
+              });
+              showToast({
+                type: "success",
+                message: "Section restored.",
+              });
+              fetchSections();
+            } catch (restoreErr) {
+              showToast({
+                type: "error",
+                message:
+                  restoreErr?.response?.data?.message ||
+                  "Could not restore the section.",
+              });
+              setSections(previousSections);
+            }
+          },
+        },
+      });
+    } catch (error) {
+      // Rollback optimistic remove
+      setSections(previousSections);
+      showToast({
+        type: "error",
+        message: error?.response?.data?.message || "Could not delete section.",
+      });
     }
   };
 
@@ -420,9 +184,12 @@ export default function AdminCourseContentPage() {
 
     try {
       await courseService.reorderSections(courseId, orderedIds);
-      showToast("Sections reordered successfully!", "success");
+      showToast({ type: "success", message: "Sections reordered." });
     } catch (error) {
-      showToast("Error reordering sections", "error");
+      showToast({
+        type: "error",
+        message: error?.response?.data?.message || "Could not reorder sections.",
+      });
       fetchSections();
     }
   };
@@ -452,7 +219,7 @@ export default function AdminCourseContentPage() {
           );
         }
 
-        showToast("Flashcard lesson added successfully!", "success");
+        showToast({ type: "success", message: "Flashcard lesson added." });
         fetchLessonsForSection(sectionId);
 
         if (createdLesson?.lessonId) {
@@ -473,38 +240,45 @@ export default function AdminCourseContentPage() {
         sortOrder: 0,
       });
 
-      showToast("Lesson added successfully!", "success");
+      showToast({ type: "success", message: "Lesson added." });
       fetchLessonsForSection(sectionId);
     } catch (error) {
-      showToast("Error creating lesson", "error");
+      showToast({
+        type: "error",
+        message: error?.response?.data?.message || "Could not create lesson.",
+      });
     }
   };
 
   const handleDeleteLesson = async (lessonId, lessonTitle, lesson = null) => {
-    if (window.confirm(`Are you sure you want to delete "${lessonTitle}"?`)) {
-      try {
-        const isFlashcard =
-          String(lesson?.lessonType || "").toLowerCase() === "flashcard";
+    try {
+      const isFlashcard =
+        String(lesson?.lessonType || "").toLowerCase() === "flashcard";
 
-        if (isFlashcard) {
-          const flashcardSet =
-            await flashcardService.getAdminSetByLesson(lessonId);
-          await flashcardService.deleteSet(flashcardSet.id);
-        } else {
-          await courseService.deleteLesson(lessonId);
-        }
-
-        showToast({ type: "success", message: "Lesson deleted successfully!" });
-        setSectionLessons((prev) => {
-          const updated = { ...prev };
-          for (const key of Object.keys(updated)) {
-            updated[key] = updated[key].filter((l) => l.id !== lessonId);
-          }
-          return updated;
-        });
-      } catch (error) {
-        showToast("Error deleting lesson", "error");
+      if (isFlashcard) {
+        const flashcardSet =
+          await flashcardService.getAdminSetByLesson(lessonId);
+        await flashcardService.deleteSet(flashcardSet.id);
+      } else {
+        await courseService.deleteLesson(lessonId);
       }
+
+      showToast({
+        type: "success",
+        message: `Lesson “${lessonTitle}” deleted.`,
+      });
+      setSectionLessons((prev) => {
+        const updated = { ...prev };
+        for (const key of Object.keys(updated)) {
+          updated[key] = updated[key].filter((l) => l.id !== lessonId);
+        }
+        return updated;
+      });
+    } catch (error) {
+      showToast({
+        type: "error",
+        message: error?.response?.data?.message || "Could not delete lesson.",
+      });
     }
   };
 
@@ -518,9 +292,12 @@ export default function AdminCourseContentPage() {
 
     try {
       await courseService.reorderLessons(sectionId, orderedIds);
-      showToast("Lessons reordered successfully!", "success");
+      showToast({ type: "success", message: "Lessons reordered." });
     } catch (error) {
-      showToast("Error reordering lessons", "error");
+      showToast({
+        type: "error",
+        message: error?.response?.data?.message || "Could not reorder lessons.",
+      });
       fetchLessonsForSection(sectionId);
     }
   };
@@ -539,62 +316,6 @@ export default function AdminCourseContentPage() {
     },
     [courseId, navigate, showToast],
   );
-
-  const onDragEnd = async (result) => {
-    if (readOnly) return;
-    const { destination, source, draggableId, type } = result;
-    if (!destination) return;
-    if (
-      destination.droppableId === source.droppableId &&
-      destination.index === source.index
-    )
-      return;
-
-    if (type === "SECTION") {
-      const reordered = reorder(sections, source.index, destination.index);
-      const newSections = reordered.map((s, idx) => ({ ...s, sortOrder: idx }));
-      setSections(newSections);
-
-      try {
-        await courseService.reorderSections(
-          courseId,
-          newSections.map((s) => s.id),
-        );
-        showToast("Sections reordered successfully!", "success");
-      } catch (error) {
-        showToast("Error reordering sections", "error");
-        fetchSections();
-      }
-    } else if (type === "LESSON") {
-      const sourceSectionId = source.droppableId.replace("section-", "");
-      const destSectionId = destination.droppableId.replace("section-", "");
-
-      if (sourceSectionId === destSectionId) {
-        const lessons = [...(sectionLessons[sourceSectionId] || [])];
-        const reordered = reorder(lessons, source.index, destination.index);
-        const newLessons = reordered.map((l, idx) => ({
-          ...l,
-          sortOrder: idx,
-        }));
-
-        setSectionLessons((prev) => ({
-          ...prev,
-          [sourceSectionId]: newLessons,
-        }));
-
-        try {
-          await courseService.reorderLessons(
-            sourceSectionId,
-            newLessons.map((l) => l.id),
-          );
-          showToast("Lessons reordered successfully!", "success");
-        } catch (error) {
-          showToast("Error reordering lessons", "error");
-          fetchLessonsForSection(sourceSectionId);
-        }
-      }
-    }
-  };
 
   const stats = React.useMemo(() => {
     let totalVideos = 0;
@@ -624,69 +345,76 @@ export default function AdminCourseContentPage() {
     };
   }, [sections, sectionLessons]);
 
-  if (loadingSections)
+  if (loadingSections) {
     return (
-      <div style={{ padding: "50px", textAlign: "center" }}>
-        Loading data...
+      <div className="sl-cm-page" role="status" aria-live="polite">
+        <div className="sl-cm-workspace" aria-busy="true">
+          <div className="sl-cm-skeleton" style={{ width: "40%", marginBottom: 12 }} />
+          <div className="sl-cm-skeleton" style={{ width: "70%", marginBottom: 24 }} />
+          <div className="sl-cm-skeleton" style={{ width: "100%", height: 64 }} />
+          <div className="sl-cm-skeleton" style={{ width: "100%", height: 64 }} />
+        </div>
       </div>
     );
+  }
 
   return (
-    <div className="admin-course-page">
-      <div className="page-container">
-        <div className="page-header">
-          <button onClick={() => navigate(courseListPath)} className="back-btn">
-            <span
-              className="material-symbols-outlined"
-              style={{ fontSize: "18px" }}
-            >
-              arrow_back
-            </span>
-            Back to list
+    <div className="sl-cm-page">
+      <header className="sl-cm-header">
+        <div>
+          <button
+            type="button"
+            className="sl-cm-back"
+            onClick={() => navigate(courseListPath)}
+          >
+            ← Back to courses
           </button>
-          <div className="header-title-wrapper">
-            <div>
-              <h2>Course Structure</h2>
-              <p>Organize and manage your course content</p>
-            </div>
-            <div className="header-actions">
-              <button
-                type="button"
-                onClick={() =>
-                  window.open(
-                    `/admin/courses/${courseId}/preview?returnTo=${encodeURIComponent(
-                      courseContentPath,
-                    )}`,
-                    "_blank",
-                    "noopener,noreferrer",
-                  )
-                }
-                className="btn-outline"
-              >
-                <span className="material-symbols-outlined">visibility</span>{" "}
-                View as User
-              </button>
-            </div>
-          </div>
+          <h1 className="sl-cm-header__title">Curriculum</h1>
+          <p className="sl-cm-header__subtitle">
+            Organise sections and lessons so learners can follow a logical flow.
+          </p>
+          <p className="sl-cm-summary" style={{ marginTop: 10 }}>
+            <strong>{stats.totalSections}</strong> sections ·
+            <strong> {stats.totalLessons}</strong> lessons ·
+            <strong> {stats.totalVideos}</strong> videos ·
+            <strong> {stats.totalQuizzes}</strong> quizzes
+          </p>
         </div>
+        <div className="sl-cm-header__actions">
+          <button
+            type="button"
+            className="sl-cm-btn sl-cm-btn--secondary"
+            onClick={() =>
+              window.open(
+                `/admin/courses/${courseId}/preview?returnTo=${encodeURIComponent(
+                  courseContentPath,
+                )}`,
+                "_blank",
+                "noopener,noreferrer",
+              )
+            }
+          >
+            <Eye size={16} aria-hidden="true" /> Preview as learner
+          </button>
+        </div>
+      </header>
 
-        <CurriculumStructureEditor
-          sections={sections}
-          getLessons={(section) => sectionLessons[section.id] || []}
-          isSectionLessonsLoading={(sectionId) =>
-            loadingLessons[sectionId] || false
-          }
-          stats={stats}
-          onCreateSection={handleCreateSection}
-          onUpdateSection={handleUpdateSection}
-          onDeleteSection={handleDeleteSection}
-          onReorderSections={handleReorderSections}
-          onCreateLesson={handleCreateLesson}
-          onDeleteLesson={handleDeleteLesson}
-          onReorderLessons={handleReorderLessons}
-          onEditLesson={handleEditLesson}
-        />
-      </div>
+      <CurriculumStructureEditor
+        sections={sections}
+        getLessons={(section) => sectionLessons[section.id] || []}
+        isSectionLessonsLoading={(sectionId) =>
+          loadingLessons[sectionId] || false
+        }
+        stats={stats}
+        onCreateSection={handleCreateSection}
+        onUpdateSection={handleUpdateSection}
+        onDeleteSection={handleDeleteSection}
+        onReorderSections={handleReorderSections}
+        onCreateLesson={handleCreateLesson}
+        onDeleteLesson={handleDeleteLesson}
+        onReorderLessons={handleReorderLessons}
+        onEditLesson={handleEditLesson}
+      />
     </div>
   );
 }

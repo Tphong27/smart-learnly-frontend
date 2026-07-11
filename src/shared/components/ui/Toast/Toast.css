@@ -13,7 +13,7 @@
 
 .toast {
   display: grid;
-  grid-template-columns: auto 1fr auto;
+  grid-template-columns: auto 1fr auto auto;
   gap: 12px;
   align-items: flex-start;
 
@@ -101,6 +101,31 @@
 .toast__close:hover {
   background: #f3f4f6;
   color: #111827;
+}
+
+.toast__action {
+  align-self: center;
+  min-height: 36px;
+  padding: 0 14px;
+  border: 1.5px solid #211b36;
+  border-radius: 10px;
+  background: var(--sl-purple, #825ef5);
+  color: #ffffff;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+
+.toast__action:hover {
+  background: var(--sl-purple-dark, #6d28d2);
+  transform: translate(-1px, -1px);
+}
+
+.toast__action:focus-visible {
+  outline: 3px solid rgba(130, 94, 245, 0.4);
+  outline-offset: 2px;
 }
 
 @keyframes toast-enter {

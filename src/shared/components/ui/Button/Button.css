@@ -1,25 +1,32 @@
+/* Button — Smart Learnly design system
+ * Primary: tím (#825ef5) + ink border (#211b36) + offset shadow (tactile).
+ * Secondary: trắng + line nhẹ.
+ * Outline: trắng + tím text (dùng cho ghost actions).
+ */
+
 .button {
-  --button-bg: linear-gradient(135deg, #2f73f1, #245bd9);
+  --button-bg: var(--sl-purple, #825ef5);
   --button-color: #ffffff;
-  --button-border: transparent;
-  --button-hover-bg: linear-gradient(135deg, #2768ee, #1d4ed8);
-  --button-shadow: 0 8px 20px rgba(39, 104, 238, 0.22);
-  --button-shadow-hover: 0 12px 28px rgba(39, 104, 238, 0.32);
+  --button-border: var(--sl-ink-deep, #211b36);
+  --button-hover-bg: var(--sl-purple-dark, #6d28d2);
+  --button-shadow: 3px 3px 0 var(--sl-ink-deep, #211b36);
+  --button-shadow-hover: 5px 5px 0 var(--sl-ink-deep, #211b36);
+  --button-focus-ring: rgba(130, 94, 245, 0.4);
 
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
 
-  border: 1px solid var(--button-border);
-  border-radius: 12px;
+  border: 1.5px solid var(--button-border);
+  border-radius: var(--sl-radius-md, 14px);
   background: var(--button-bg);
   color: var(--button-color);
   box-shadow: var(--button-shadow);
 
   font-family: inherit;
   font-weight: 700;
-  letter-spacing: -0.1px;
+  letter-spacing: -0.01em;
   line-height: 1;
   cursor: pointer;
   transition:
@@ -28,35 +35,51 @@
     color 0.2s ease,
     box-shadow 0.2s ease,
     transform 0.15s ease;
+  text-decoration: none;
 }
 
 .button:hover:not(:disabled) {
   background: var(--button-hover-bg);
   box-shadow: var(--button-shadow-hover);
-  transform: translateY(-1px);
+  transform: translate(-1px, -1px);
 }
 
 .button:active:not(:disabled) {
-  transform: translateY(0);
+  transform: translate(0, 0);
+  box-shadow: var(--button-shadow);
 }
 
 .button:focus-visible {
-  outline: 3px solid rgba(39, 104, 238, 0.28);
+  outline: 3px solid var(--button-focus-ring);
   outline-offset: 2px;
 }
 
-.button:disabled {
+.button:disabled,
+.button[aria-busy="true"] {
   cursor: not-allowed;
-  opacity: 0.6;
+  opacity: 0.55;
   transform: none;
-  box-shadow: none;
+  box-shadow: var(--button-shadow);
 }
 
+/* Non-tactile override (no shadow, no hover shift) */
+.button:not(.button--tactile) {
+  box-shadow: none;
+}
+.button:not(.button--tactile):hover:not(:disabled) {
+  box-shadow: none;
+  transform: translateY(-1px);
+}
+.button:not(.button--tactile):active:not(:disabled) {
+  transform: translateY(0);
+}
+
+/* Sizes */
 .button--sm {
   min-height: 36px;
   padding: 0 14px;
-  font-size: 13.5px;
-  border-radius: 10px;
+  font-size: 13px;
+  border-radius: var(--sl-radius-sm, 10px);
 }
 
 .button--md {
@@ -69,69 +92,102 @@
   min-height: 52px;
   padding: 0 22px;
   font-size: 15.5px;
-  border-radius: 13px;
+  border-radius: var(--sl-radius-lg, 16px);
 }
 
 .button--full {
   width: 100%;
 }
 
+/* Variants */
 .button--primary {
-  --button-bg: linear-gradient(135deg, #2f73f1, #245bd9);
+  --button-bg: var(--sl-purple, #825ef5);
   --button-color: #ffffff;
-  --button-hover-bg: linear-gradient(135deg, #2768ee, #1d4ed8);
-  --button-shadow: 0 8px 20px rgba(39, 104, 238, 0.22);
-  --button-shadow-hover: 0 12px 28px rgba(39, 104, 238, 0.32);
+  --button-border: var(--sl-ink-deep, #211b36);
+  --button-hover-bg: var(--sl-purple-dark, #6d28d2);
+  --button-shadow: 3px 3px 0 var(--sl-ink-deep, #211b36);
+  --button-shadow-hover: 5px 5px 0 var(--sl-ink-deep, #211b36);
 }
 
 .button--secondary {
-  --button-bg: #f4f6fb;
-  --button-color: #1f2a44;
-  --button-border: #e3e8f1;
-  --button-hover-bg: #ebeff7;
-  --button-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
-  --button-shadow-hover: 0 6px 16px rgba(15, 23, 42, 0.08);
-}
-
-.button--outline {
   --button-bg: #ffffff;
-  --button-color: var(--blue, #2768ee);
-  --button-border: #cfe0fe;
-  --button-hover-bg: #eff5ff;
-  --button-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
-  --button-shadow-hover: 0 6px 18px rgba(39, 104, 238, 0.14);
-}
-
-.button--ghost {
-  --button-bg: transparent;
-  --button-color: #33425d;
-  --button-border: transparent;
-  --button-hover-bg: #f3f5fa;
+  --button-color: var(--sl-ink, #0f172a);
+  --button-border: var(--sl-line, #e4eaf4);
+  --button-hover-bg: var(--sl-purple-soft, #f3eefe);
+  --button-border-hover: var(--sl-purple-border, #d8c8fb);
   --button-shadow: none;
   --button-shadow-hover: none;
 }
 
-.button--danger {
-  --button-bg: linear-gradient(135deg, #ef4444, #dc2626);
-  --button-color: #ffffff;
-  --button-hover-bg: linear-gradient(135deg, #dc2626, #b91c1c);
-  --button-shadow: 0 8px 20px rgba(220, 38, 38, 0.22);
-  --button-shadow-hover: 0 12px 28px rgba(220, 38, 38, 0.32);
+.button--secondary:hover:not(:disabled) {
+  border-color: var(--button-border-hover, var(--sl-purple-border, #d8c8fb));
+  color: var(--sl-purple-dark, #6d28d2);
 }
 
+.button--outline {
+  --button-bg: #ffffff;
+  --button-color: var(--sl-purple, #825ef5);
+  --button-border: var(--sl-purple-border, #d8c8fb);
+  --button-hover-bg: var(--sl-purple-soft, #f3eefe);
+  --button-shadow: none;
+  --button-shadow-hover: none;
+}
+
+.button--outline:hover:not(:disabled) {
+  color: var(--sl-purple-dark, #6d28d2);
+  border-color: var(--sl-purple, #825ef5);
+}
+
+.button--ghost {
+  --button-bg: transparent;
+  --button-color: var(--sl-muted, #64708a);
+  --button-border: transparent;
+  --button-hover-bg: var(--sl-surface, #f7f9fc);
+  --button-shadow: none;
+  --button-shadow-hover: none;
+}
+
+.button--ghost:hover:not(:disabled) {
+  color: var(--sl-ink, #0f172a);
+}
+
+.button--danger {
+  --button-bg: #ffffff;
+  --button-color: #b91c1c;
+  --button-border: #fca5a5;
+  --button-hover-bg: #fff1f2;
+  --button-shadow: none;
+  --button-shadow-hover: none;
+}
+
+.button--danger:not(.button--tactile):hover:not(:disabled) {
+  color: #b91c1c;
+  border-color: #f87171;
+}
+
+.button--danger.button--tactile {
+  --button-bg: #dc2626;
+  --button-color: #ffffff;
+  --button-border: var(--sl-ink-deep, #211b36);
+  --button-hover-bg: #b91c1c;
+  --button-shadow: 3px 3px 0 var(--sl-ink-deep, #211b36);
+  --button-shadow-hover: 5px 5px 0 var(--sl-ink-deep, #211b36);
+}
+
+.button--success {
+  --button-bg: #168c76;
+  --button-color: #ffffff;
+  --button-border: var(--sl-ink-deep, #211b36);
+  --button-hover-bg: #137a66;
+  --button-shadow: 3px 3px 0 var(--sl-ink-deep, #211b36);
+  --button-shadow-hover: 5px 5px 0 var(--sl-ink-deep, #211b36);
+}
+
+/* Icon wrapper */
 .button__icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-}
-
-.button--xs-icon {
-  width: 32px;
-  min-width: 32px;
-  height: 32px;
-  min-height: 32px;
-  padding: 0;
-  border-radius: 8px;
 }
 
 .button__spinner {
@@ -155,6 +211,26 @@
   justify-content: center;
 }
 
+/* Icon-only (44x44 touch target) */
+.button--icon {
+  width: 44px;
+  min-width: 44px;
+  height: 44px;
+  min-height: 44px;
+  padding: 0;
+  border-radius: var(--sl-radius-md, 14px);
+}
+
+.button--icon.button--sm {
+  width: 36px;
+  min-width: 36px;
+  height: 36px;
+  min-height: 36px;
+}
+
+/* Legacy toolbar variants — giữ tone xanh nhẹ để không vỡ code cũ;
+ * chỉ dùng cho actions phụ không phải primary action.
+ */
 .button--toolbar {
   --button-bg: #ffffff;
   --button-color: #1f2937;
@@ -190,28 +266,7 @@
   --button-border: #fecaca;
 }
 
-.button--icon {
-  width: 36px;
-  min-width: 36px;
-  height: 36px;
-  min-height: 36px;
-  padding: 0;
-  border-radius: 7px;
-}
-
-.button--toolbar.button--sm {
-  min-height: 38px;
-  padding: 0 14px;
-  font-size: 14px;
-}
-
-.button--toolbar-danger.button--sm {
-  min-height: 38px;
-  padding: 0 14px;
-  font-size: 14px;
-}
-
-/* Action outline buttons: white background, colored border + text */
+/* Compact action buttons (legacy) */
 .button--create,
 .button--save {
   --button-bg: #ffffff;
@@ -286,17 +341,13 @@
   --button-border: #94a3b8;
 }
 
-/* Compact icon-only button */
-.button--icon {
-  width: 36px;
-  min-width: 36px;
-  height: 36px;
-  min-height: 36px;
-  padding: 0;
-  border-radius: 7px;
+.button--toolbar.button--sm,
+.button--toolbar-danger.button--sm {
+  min-height: 38px;
+  padding: 0 14px;
+  font-size: 14px;
 }
 
-/* Small action button giống toolbar */
 .button--create.button--sm,
 .button--save.button--sm,
 .button--edit.button--sm,
@@ -305,4 +356,12 @@
   min-height: 38px;
   padding: 0 14px;
   font-size: 14px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .button,
+  .button:hover,
+  .button:active {
+    transition-duration: 0.01ms !important;
+  }
 }

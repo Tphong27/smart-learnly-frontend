@@ -1,609 +1,614 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Edit2, Eye, Plus, Search, Trash2, Users } from "lucide-react";
-import { Button, FormField, Modal, useToast } from "@/shared/components/ui";
+import {
+    AlertTriangle,
+    BookOpen,
+    Edit2,
+    Eye,
+    MoreVertical,
+    Plus,
+    Search,
+    SlidersHorizontal,
+    Trash2,
+    Users,
+    X,
+} from "lucide-react";
+import { Button, Modal, useToast } from "@/shared/components/ui";
 import { categoryService, courseService } from "@/services";
 import { getCurrentUser } from "@/services/api-client";
-import { formatPrice, formatDate } from "@/shared/utils/formatters";
+import { formatDate, formatPrice } from "@/shared/utils/formatters";
 import { DEFAULT_PAGE_SIZE } from "@/shared/constants/pagination";
-import "../../admin-shared.css";
+import "@/features/course/course-admin.css";
+import "./AdminCoursesPage.css";
 
 function CourseStatusBadge({ status }) {
-  const normalized = (status || "").toLowerCase();
-  const className = `admin-status admin-status--${normalized || "draft"}`;
-  const labels = {
-    draft: "Draft",
-    published: "Published",
-    inactive: "Inactive",
-  };
-  return (
-    <span className={className}>{labels[normalized] || status || "Draft"}</span>
-  );
+    const normalized = (status || "").toLowerCase();
+    const labels = {
+        draft: "Draft",
+        published: "Published",
+        inactive: "Inactive",
+    };
+
+    return (
+        <span className={`admin-status admin-status--${normalized || "draft"}`}>
+            {labels[normalized] || status || "Draft"}
+        </span>
+    );
+}
+
+function CourseThumbnail({ course }) {
+    const imageUrl = course.thumbnailUrl || course.avatarUrl;
+    return (
+        <span className="course-management__thumbnail">
+            {imageUrl ? (
+                <img src={imageUrl} alt="" />
+            ) : (
+                <BookOpen size={19} aria-hidden="true" />
+            )}
+        </span>
+    );
 }
 
 function DeleteCourseModal({ open, target, onClose, onConfirmed }) {
-  const toast = useToast();
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
+    const toast = useToast();
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState(null);
 
-  async function handleConfirm() {
-    if (!target) return;
-    setError(null);
-    setLoading(true);
-    try {
-      await courseService.remove(target.id);
-      toast.success("Course deleted");
-      onConfirmed(target);
-    } catch (err) {
-      setError(err?.message || "Could not delete this course.");
-    } finally {
-      setLoading(false);
+    async function handleConfirm() {
+        if (!target) return;
+
+        setError(null);
+        setLoading(true);
+        try {
+            await courseService.remove(target.id);
+            toast.success("Course deleted");
+            onConfirmed(target);
+        } catch (err) {
+            setError(err?.message || "Could not delete this course.");
+        } finally {
+            setLoading(false);
+        }
     }
-  }
 
-  return (
-    <Modal
-      open={open}
-      title="Confirm course deletion"
-      size="sm"
-      onClose={loading ? undefined : onClose}
-    >
-      <p style={{ margin: 0, color: "#475569", fontSize: 14, lineHeight: 1.6 }}>
-        Are you sure you want to delete <strong>{target?.title}</strong>? The
-        course will be soft-deleted and may no longer be visible to learners.
-      </p>
-      {error && (
-        <div className="auth-card__alert" style={{ marginTop: 14 }}>
-          {error}
+    return (
+        <Modal
+            open={open}
+            title="Delete this course?"
+            size="sm"
+            onClose={loading ? undefined : onClose}
+        >
+            <div className="course-management-delete">
+                <p>
+                    Delete <strong>{target?.title}</strong>? Learners will no longer be able to access it. This action is reversible only through system recovery.
+                </p>
+                {error ? <p className="course-management-delete__error">{error}</p> : null}
+                <div className="course-management-delete__actions">
+                    <Button
+                        type="button"
+                        variant="outline"
+                        onClick={onClose}
+                        disabled={loading}
+                    >
+                        Cancel
+                    </Button>
+                    <Button
+                        type="button"
+                        variant="danger"
+                        onClick={handleConfirm}
+                        loading={loading}
+                    >
+                        Delete course
+                    </Button>
+                </div>
+            </div>
+        </Modal>
+    );
+}
+
+function RowActionsMenu({ course, isTrainer, previewReturnPath, onRequestDelete }) {
+    const [open, setOpen] = useState(false);
+
+    useEffect(() => {
+        if (!open) return undefined;
+        function handle(event) {
+            setOpen(false);
+        }
+        function handleKey(event) {
+            if (event.key === "Escape") setOpen(false);
+        }
+        document.addEventListener("mousedown", handle);
+        document.addEventListener("keydown", handleKey);
+        return () => {
+            document.removeEventListener("mousedown", handle);
+            document.removeEventListener("keydown", handleKey);
+        };
+    }, [open]);
+
+    return (
+        <div className="course-management__menu" onClick={(e) => e.stopPropagation()}>
+            <button
+                type="button"
+                className="course-management__action"
+                aria-haspopup="menu"
+                aria-expanded={open}
+                aria-label={`More actions for ${course.title}`}
+                onClick={() => setOpen((v) => !v)}
+            >
+                <MoreVertical size={16} />
+            </button>
+            {open ? (
+                <ul role="menu" className="course-management__menu-list">
+                    <li role="none">
+                        <Link
+                            role="menuitem"
+                            to={`/admin/courses/${course.id}/content`}
+                            className="course-management__menu-item"
+                            onClick={() => setOpen(false)}
+                        >
+                            <BookOpen size={14} aria-hidden="true" /> Open curriculum
+                        </Link>
+                    </li>
+                    {!isTrainer ? (
+                        <li role="none">
+                            <Link
+                                role="menuitem"
+                                to={`/staff/classrooms?courseId=${encodeURIComponent(course.id)}`}
+                                className="course-management__menu-item"
+                                onClick={() => setOpen(false)}
+                            >
+                                <Users size={14} aria-hidden="true" /> View classes
+                            </Link>
+                        </li>
+                    ) : null}
+                    <li role="none">
+                        <Link
+                            role="menuitem"
+                            to={`/admin/courses/${course.id}/preview?returnTo=${encodeURIComponent(previewReturnPath)}`}
+                            className="course-management__menu-item"
+                            onClick={() => setOpen(false)}
+                        >
+                            <Eye size={14} aria-hidden="true" /> Preview
+                        </Link>
+                    </li>
+                    <li role="none">
+                        <Link
+                            role="menuitem"
+                            to={isTrainer ? `/staff/courses/${course.id}/edit` : `/admin/courses/${course.id}`}
+                            className="course-management__menu-item"
+                            onClick={() => setOpen(false)}
+                        >
+                            <Edit2 size={14} aria-hidden="true" /> Edit
+                        </Link>
+                    </li>
+                    {!isTrainer ? (
+                        <li role="none">
+                            <button
+                                type="button"
+                                role="menuitem"
+                                className="course-management__menu-item course-management__menu-item--danger"
+                                onClick={() => {
+                                    setOpen(false);
+                                    onRequestDelete?.(course);
+                                }}
+                            >
+                                <Trash2 size={14} aria-hidden="true" /> Delete
+                            </button>
+                        </li>
+                    ) : null}
+                </ul>
+            ) : null}
         </div>
-      )}
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "flex-end",
-          gap: 10,
-          marginTop: 18,
-        }}
-      >
-        <Button
-          type="button"
-          variant="ghost"
-          onClick={onClose}
-          disabled={loading}
-        >
-          Cancel
-        </Button>
-        <Button
-          type="button"
-          variant="danger"
-          onClick={handleConfirm}
-          loading={loading}
-        >
-          Delete
-        </Button>
-      </div>
-    </Modal>
-  );
+    );
 }
 
 export function AdminCoursesPage() {
-  const toast = useToast();
-  const navigate = useNavigate();
-  const currentUser = getCurrentUser();
-  const isTrainer = String(currentUser?.role || "").toLowerCase() === "trainer";
-  const previewReturnPath = isTrainer ? "/staff/courses" : "/admin/courses";
+    const toast = useToast();
+    const navigate = useNavigate();
+    const currentUser = getCurrentUser();
+    const isTrainer = String(currentUser?.role || "").toLowerCase() === "trainer";
+    const previewReturnPath = isTrainer ? "/staff/courses" : "/admin/courses";
 
-  const [page, setPage] = useState(0);
-  const [totalPages, setTotalPages] = useState(0);
-  const [totalItems, setTotalItems] = useState(0);
-  const [items, setItems] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+    const [page, setPage] = useState(0);
+    const [totalPages, setTotalPages] = useState(0);
+    const [totalItems, setTotalItems] = useState(0);
+    const [items, setItems] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+    const [keyword, setKeyword] = useState("");
+    const [statusFilter, setStatusFilter] = useState("all");
+    const [categoryFilter, setCategoryFilter] = useState("all");
+    const [categories, setCategories] = useState([]);
+    const [deleteState, setDeleteState] = useState({ open: false, target: null });
+    const [pageRequest, setPageRequest] = useState(0);
 
-  const [keyword, setKeyword] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [categoryFilter, setCategoryFilter] = useState("all");
-  const [categories, setCategories] = useState([]);
+    useEffect(() => {
+        let cancelled = false;
+        categoryService
+            .list()
+            .then((data) => {
+                if (!cancelled) setCategories(data || []);
+            })
+            .catch(() => {
+                if (!cancelled) setCategories([]);
+            });
 
-  const [deleteState, setDeleteState] = useState({ open: false, target: null });
-  const [pageRequest, setPageRequest] = useState(0);
+        return () => {
+            cancelled = true;
+        };
+    }, []);
 
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const cats = await categoryService.list();
-        if (!cancelled) setCategories(cats || []);
-      } catch {
-        if (!cancelled) setCategories([]);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+    useEffect(() => {
+        let cancelled = false;
 
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const data = await courseService.listAdmin({
-          page: pageRequest,
-          size: DEFAULT_PAGE_SIZE,
+        async function loadCourses() {
+            setLoading(true);
+            setError(null);
+            try {
+                const data = await courseService.listAdmin({
+                    page: pageRequest,
+                    size: DEFAULT_PAGE_SIZE,
+                });
+                if (cancelled) return;
+                setItems(data.items || []);
+                setTotalPages(data.totalPages || 0);
+                setTotalItems(data.totalItems || 0);
+                setPage(data.page ?? pageRequest);
+            } catch (err) {
+                if (cancelled) return;
+                const message = err?.message || "Could not load the course list.";
+                setError(message);
+                toast.error(message);
+            } finally {
+                if (!cancelled) setLoading(false);
+            }
+        }
+
+        loadCourses();
+        return () => {
+            cancelled = true;
+        };
+    }, [pageRequest, toast]);
+
+    const filteredItems = useMemo(() => {
+        const query = keyword.trim().toLowerCase();
+
+        return items.filter((course) => {
+            if (statusFilter !== "all" && (course.status || "").toLowerCase() !== statusFilter) return false;
+            if (categoryFilter !== "all" && String(course.categoryId) !== String(categoryFilter)) return false;
+            if (!query) return true;
+
+            const haystack = `${course.title || ""} ${course.slug || ""} ${course.shortDescription || ""}`.toLowerCase();
+            return haystack.includes(query);
         });
-        if (cancelled) return;
-        setItems(data.items || []);
-        setTotalPages(data.totalPages || 0);
-        setTotalItems(data.totalItems || 0);
-        setPage(data.page ?? pageRequest);
-      } catch (err) {
-        if (cancelled) return;
-        const message = err?.message || "Could not load the course list.";
-        setError(message);
-        toast.error(message);
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [pageRequest, toast]);
+    }, [items, keyword, statusFilter, categoryFilter]);
 
-  const filteredItems = useMemo(() => {
-    return items.filter((c) => {
-      if (
-        statusFilter !== "all" &&
-        (c.status || "").toLowerCase() !== statusFilter
-      )
-        return false;
-      if (categoryFilter !== "all" && c.categoryId !== categoryFilter)
-        return false;
-      if (keyword.trim()) {
-        const q = keyword.trim().toLowerCase();
-        const haystack =
-          `${c.title} ${c.slug} ${c.shortDescription || ""}`.toLowerCase();
-        if (!haystack.includes(q)) return false;
-      }
-      return true;
-    });
-  }, [items, keyword, statusFilter, categoryFilter]);
+    const hasFilters = Boolean(keyword || statusFilter !== "all" || categoryFilter !== "all");
 
-  function handleDeleted(target) {
-    setDeleteState({ open: false, target: null });
-    setItems((prev) => prev.filter((c) => c.id !== target.id));
-    setTotalItems((n) => Math.max(0, n - 1));
-  }
+    const attentionCounts = useMemo(() => {
+        let draft = 0;
+        let inactive = 0;
+        for (const c of items) {
+            const s = String(c.status || "").toLowerCase();
+            if (s === "draft") draft += 1;
+            else if (s === "inactive") inactive += 1;
+        }
+        return { draft, inactive, total: draft + inactive };
+    }, [items]);
 
-  function handlePrev() {
-    if (page > 0) setPageRequest(page - 1);
-  }
-  function handleNext() {
-    if (page + 1 < totalPages) setPageRequest(page + 1);
-  }
+    function clearFilters() {
+        setKeyword("");
+        setStatusFilter("all");
+        setCategoryFilter("all");
+    }
 
-  return (
-    // 📌 SỬA TẠI ĐÂY: Sử dụng khối cô lập hoàn toàn để ép các phần tử xếp dọc tự nhiên, không thể chồng chéo
-    <div
-      style={{
-        display: "block",
-        width: "100%",
-        padding: "24px",
-        boxSizing: "border-box",
-      }}
-    >
-      {/* Khối Header độc lập */}
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: "24px",
-          gap: "16px",
-        }}
-      >
-        <div style={{ display: "block" }}>
-          <h1
-            style={{
-              fontSize: "24px",
-              fontWeight: "700",
-              margin: "0 0 4px 0",
-              color: "#0f172a",
-              lineHeight: "1.2",
-            }}
-          >
-            Course management
-          </h1>
-          <p style={{ color: "#64748b", margin: 0, fontSize: "14px" }}>
-            {isTrainer
-              ? "View and update courses assigned to your classes."
-              : "Create, update, and manage the lifecycle of every course on the platform."}
-          </p>
-        </div>
-        {!isTrainer && (
-          <Button
-            leftIcon={<Plus size={16} />}
-            onClick={() => navigate("/admin/courses/new")}
-          >
-            Add course
-          </Button>
-        )}
-      </div>
+    function handleDeleted(target) {
+        setDeleteState({ open: false, target: null });
+        setItems((current) => current.filter((course) => course.id !== target.id));
+        setTotalItems((current) => Math.max(0, current - 1));
+    }
 
-      {/* Khối Content Box độc lập */}
-      <div
-        style={{
-          display: "block",
-          background: "#ffffff",
-          borderRadius: "8px",
-          border: "1px solid #e2e8f0",
-          padding: "24px",
-          boxShadow: "0 1px 3px 0 rgba(0, 0, 0, 0.1)",
-        }}
-      >
-        <div
-          className="admin-toolbar"
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            marginBottom: "20px",
-            gap: "16px",
-            flexWrap: "wrap",
-          }}
-        >
-          <div
-            className="admin-toolbar__filters"
-            style={{
-              display: "flex",
-              gap: "12px",
-              flex: 1,
-              alignItems: "center",
-            }}
-          >
-            <div
-              className="admin-toolbar__search"
-              style={{ minWidth: "300px" }}
-            >
-              <FormField
-                placeholder="Search by title, slug, or description..."
-                value={keyword}
-                onChange={(e) => setKeyword(e.target.value)}
-                leftIcon={<Search size={16} />}
-              />
-            </div>
-            <select
-              className="admin-toolbar__select"
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              style={{
-                padding: "8px 12px",
-                borderRadius: "6px",
-                border: "1px solid #e2e8f0",
-                background: "#fff",
-                height: "40px",
-              }}
-            >
-              <option value="all">All statuses</option>
-              <option value="draft">Draft</option>
-              <option value="published">Published</option>
-              <option value="inactive">Inactive</option>
-            </select>
-            <select
-              className="admin-toolbar__select"
-              value={categoryFilter}
-              onChange={(e) => setCategoryFilter(e.target.value)}
-              style={{
-                padding: "8px 12px",
-                borderRadius: "6px",
-                border: "1px solid #e2e8f0",
-                background: "#fff",
-                height: "40px",
-              }}
-            >
-              <option value="all">All categories</option>
-              {categories.map((cat) => (
-                <option key={cat.id} value={cat.id}>
-                  {cat.name}
-                </option>
-              ))}
-            </select>
-          </div>
-          <span style={{ color: "#64748b", fontSize: 13, fontWeight: "500" }}>
-            {totalItems} courses
-          </span>
-        </div>
+    return (
+        <main className="sl-cm-page admin-page course-management-page">
+            <header className="sl-cm-header course-management__header">
+                <div>
+                    <span className="course-management__eyebrow">Course catalog</span>
+                    <h1>Course management</h1>
+                    <p>
+                        {isTrainer
+                            ? "Review the courses assigned to your classes and open their learning content."
+                            : "Create, organize, and manage the learning experiences available on the platform."}
+                    </p>
+                </div>
 
-        <div className="admin-table-wrap" style={{ overflowX: "auto" }}>
-          {loading ? (
-            <div
-              className="admin-loading"
-              style={{ padding: "40px", textAlign: "center" }}
-            >
-              Loading...
-            </div>
-          ) : error ? (
-            <div
-              className="admin-error"
-              style={{ padding: "40px", color: "red" }}
-            >
-              {error}
-            </div>
-          ) : filteredItems.length === 0 ? (
-            <div
-              className="admin-empty"
-              style={{ padding: "40px", textAlign: "center", color: "#64748b" }}
-            >
-              {isTrainer
-                ? "No courses have been assigned to you."
-                : "No courses match the current filters."}
-            </div>
-          ) : (
-            <table
-              className="admin-table"
-              style={{ width: "100%", borderCollapse: "collapse" }}
-            >
-              <thead>
-                <tr
-                  style={{
-                    borderBottom: "1px solid #e2e8f0",
-                    textAlign: "left",
-                    background: "#f8fafc",
-                  }}
-                >
-                  <th
-                    style={{
-                      padding: "12px 16px",
-                      color: "#475569",
-                      fontSize: "13px",
-                      fontWeight: "600",
-                    }}
-                  >
-                    Title
-                  </th>
-                  <th
-                    style={{
-                      padding: "12px 16px",
-                      color: "#475569",
-                      fontSize: "13px",
-                      fontWeight: "600",
-                    }}
-                  >
-                    Category
-                  </th>
-                  <th
-                    style={{
-                      padding: "12px 16px",
-                      color: "#475569",
-                      fontSize: "13px",
-                      fontWeight: "600",
-                    }}
-                  >
-                    Level
-                  </th>
-                  <th
-                    style={{
-                      padding: "12px 16px",
-                      color: "#475569",
-                      fontSize: "13px",
-                      fontWeight: "600",
-                    }}
-                  >
-                    Price
-                  </th>
-                  <th
-                    style={{
-                      padding: "12px 16px",
-                      color: "#475569",
-                      fontSize: "13px",
-                      fontWeight: "600",
-                    }}
-                  >
-                    Status
-                  </th>
-                  <th
-                    style={{
-                      padding: "12px 16px",
-                      color: "#475569",
-                      fontSize: "13px",
-                      fontWeight: "600",
-                    }}
-                  >
-                    Updated
-                  </th>
-                  <th
-                    style={{
-                      width: 140,
-                      textAlign: "right",
-                      padding: "12px 16px",
-                      color: "#475569",
-                      fontSize: "13px",
-                      fontWeight: "600",
-                    }}
-                  >
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredItems.map((course) => (
-                  <tr
-                    key={course.id}
-                    style={{ borderBottom: "1px solid #f1f5f9" }}
-                  >
-                    <td style={{ padding: "12px 16px" }}>
-                      <div
-                        style={{
-                          display: "flex",
-                          flexDirection: "column",
-                          gap: 4,
-                        }}
-                      >
-                        <strong style={{ color: "#1e293b" }}>
-                          {course.title}
-                        </strong>
-                        <code style={{ color: "#94a3b8", fontSize: 12 }}>
-                          {course.slug}
-                        </code>
-                      </div>
-                    </td>
-                    <td style={{ padding: "12px 16px" }}>
-                      {course.categoryName || (
-                        <span style={{ color: "#94a3b8" }}>--</span>
-                      )}
-                    </td>
-                    <td
-                      style={{
-                        padding: "12px 16px",
-                        textTransform: "capitalize",
-                      }}
+                {!isTrainer ? (
+                    <Button
+                        leftIcon={<Plus size={17} />}
+                        onClick={() => navigate("/admin/courses/new")}
                     >
-                      {course.level || (
-                        <span style={{ color: "#94a3b8" }}>--</span>
-                      )}
-                    </td>
-                    <td style={{ padding: "12px 16px" }}>
-                      {formatPrice(
-                        course.discountedPrice ?? course.price,
-                        course.isFree,
-                      )}
-                    </td>
-                    <td style={{ padding: "12px 16px" }}>
-                      <CourseStatusBadge status={course.status} />
-                    </td>
-                    <td style={{ padding: "12px 16px" }}>
-                      {formatDate(course.updatedAt || course.createdAt)}
-                    </td>
-                    <td style={{ padding: "12px 16px" }}>
-                      <div
-                        className="admin-table__actions"
-                        style={{
-                          display: "flex",
-                          gap: "12px",
-                          justifyContent: "flex-end",
-                        }}
-                      >
-                        <Link
-                          to={`/staff/classrooms?courseId=${encodeURIComponent(course.id)}`}
-                          className="admin-table__icon-btn"
-                          title="View classes for this course"
-                          style={{ color: "#0f766e" }}
+                        Create course
+                    </Button>
+                ) : null}
+            </header>
+
+            {!isTrainer && !loading && attentionCounts.total > 0 ? (
+                <div className="sl-cm-attention" role="status" aria-live="polite">
+                    <span className="sl-cm-attention__icon" aria-hidden="true">
+                        <AlertTriangle size={18} color="#8a5b00" />
+                    </span>
+                    <div className="sl-cm-attention__body">
+                        <p className="sl-cm-attention__title">
+                            {attentionCounts.draft > 0
+                                ? `${attentionCounts.draft} course${attentionCounts.draft === 1 ? "" : "s"} still in draft`
+                                : `${attentionCounts.inactive} inactive course${attentionCounts.inactive === 1 ? "" : "s"}`}
+                        </p>
+                        <div className="sl-cm-attention__links">
+                            <span>Review and publish so learners can enrol.</span>
+                        </div>
+                    </div>
+                </div>
+            ) : null}
+
+            <section className="sl-cm-workspace course-management__panel" aria-labelledby="course-list-title">
+                <div className="course-management__panel-header">
+                    <div>
+                        <span className="course-management__eyebrow">Manage catalog</span>
+                        <h2 id="course-list-title">All courses</h2>
+                    </div>
+                    <span className="course-management__count">{totalItems} courses</span>
+                </div>
+
+                <div className="course-management__filters">
+                    <label className="course-management__search">
+                        <Search size={18} aria-hidden="true" />
+                        <span className="sr-only">Search courses</span>
+                        <input
+                            type="search"
+                            placeholder="Search title, slug, or description"
+                            value={keyword}
+                            onChange={(event) => setKeyword(event.target.value)}
+                        />
+                    </label>
+
+                    <label className="course-management__select">
+                        <SlidersHorizontal size={16} aria-hidden="true" />
+                        <span className="sr-only">Filter by status</span>
+                        <select
+                            value={statusFilter}
+                            onChange={(event) => setStatusFilter(event.target.value)}
                         >
-                          <Users size={16} />
-                        </Link>
-                        <Link
-                          to={`/admin/courses/${course.id}/preview?returnTo=${encodeURIComponent(
-                            previewReturnPath,
-                          )}`}
-                          className="admin-table__icon-btn"
-                          title="Preview course"
-                          style={{ color: "#64748b" }}
+                            <option value="all">All statuses</option>
+                            <option value="draft">Draft</option>
+                            <option value="published">Published</option>
+                            <option value="inactive">Inactive</option>
+                        </select>
+                    </label>
+
+                    <label className="course-management__select">
+                        <span className="sr-only">Filter by category</span>
+                        <select
+                            value={categoryFilter}
+                            onChange={(event) => setCategoryFilter(event.target.value)}
                         >
-                          <Eye size={16} />
-                        </Link>
-                        <Link
-                          to={
-                            isTrainer
-                              ? `/staff/courses/${course.id}/edit`
-                              : `/admin/courses/${course.id}`
-                          }
-                          className="admin-table__icon-btn"
-                          title="Edit"
-                          style={{ color: "#3b82f6" }}
-                        >
-                          <Edit2 size={16} />
-                        </Link>
-                        {!isTrainer && (
-                          <button
+                            <option value="all">All categories</option>
+                            {categories.map((category) => (
+                                <option key={category.id} value={category.id}>
+                                    {category.name}
+                                </option>
+                            ))}
+                        </select>
+                    </label>
+
+                    {hasFilters ? (
+                        <button
                             type="button"
-                            className="admin-table__icon-btn admin-table__icon-btn--danger"
-                            title="Delete"
-                            onClick={() =>
-                              setDeleteState({ open: true, target: course })
-                            }
-                            style={{
-                              color: "#ef4444",
-                              background: "none",
-                              border: "none",
-                              cursor: "pointer",
-                              padding: 0,
-                            }}
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
+                            className="course-management__clear"
+                            onClick={clearFilters}
+                        >
+                            <X size={15} /> Clear filters
+                        </button>
+                    ) : null}
+                </div>
 
-        {totalPages > 1 && (
-          <div
-            className="admin-pagination"
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              marginTop: "20px",
-              paddingTop: "16px",
-              borderTop: "1px solid #e2e8f0",
-            }}
-          >
-            <span style={{ fontSize: "14px", color: "#64748b" }}>
-              Page {page + 1} / {totalPages}
-            </span>
-            <div
-              className="admin-pagination__controls"
-              style={{ display: "flex", gap: "8px" }}
-            >
-              <button
-                type="button"
-                className="admin-pagination__btn"
-                onClick={handlePrev}
-                disabled={page === 0}
-                style={{
-                  padding: "6px 12px",
-                  borderRadius: "4px",
-                  border: "1px solid #cbd5e1",
-                  cursor: page === 0 ? "not-allowed" : "pointer",
-                  background: "#fff",
-                }}
-              >
-                Previous
-              </button>
-              <button
-                type="button"
-                className="admin-pagination__btn"
-                onClick={handleNext}
-                disabled={page + 1 >= totalPages}
-                style={{
-                  padding: "6px 12px",
-                  borderRadius: "4px",
-                  border: "1px solid #cbd5e1",
-                  cursor: page + 1 >= totalPages ? "not-allowed" : "pointer",
-                  background: "#fff",
-                }}
-              >
-                Next
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
+                <div className="course-management__results">
+                    <span>{filteredItems.length} shown on this page</span>
+                    {hasFilters ? <span>Filters are applied</span> : null}
+                </div>
 
-      <DeleteCourseModal
-        open={deleteState.open}
-        target={deleteState.target}
-        onClose={() => setDeleteState({ open: false, target: null })}
-        onConfirmed={handleDeleted}
-      />
-      <div style={{ height: "40px" }}></div>
-    </div>
-  );
+                <div className="course-management__table-wrap" role="region" aria-label="Course list">
+                    {loading ? (
+                        <div className="course-management__state">Loading courses…</div>
+                    ) : null}
+                    {!loading && error ? (
+                        <div className="course-management__state course-management__state--error">
+                            {error}
+                        </div>
+                    ) : null}
+                    {!loading && !error && filteredItems.length === 0 ? (
+                        <div className="course-management__state">
+                            <BookOpen size={28} aria-hidden="true" />
+                            <strong>
+                                {isTrainer ? "No courses assigned yet" : "No courses match these filters"}
+                            </strong>
+                            <span>
+                                {isTrainer
+                                    ? "Courses assigned to your classes will appear here."
+                                    : "Try another search term or clear your filters."}
+                            </span>
+                            {!isTrainer && !hasFilters ? (
+                                <Button
+                                    leftIcon={<Plus size={16} />}
+                                    onClick={() => navigate("/admin/courses/new")}
+                                >
+                                    Create course
+                                </Button>
+                            ) : null}
+                        </div>
+                    ) : null}
+                    {!loading && !error && filteredItems.length > 0 ? (
+                        <>
+                            <table className="course-management__table">
+                                <thead>
+                                    <tr>
+                                        <th>Course</th>
+                                        <th>Category &amp; level</th>
+                                        <th>Access</th>
+                                        <th>Status</th>
+                                        <th>Updated</th>
+                                        <th><span className="sr-only">Actions</span></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {filteredItems.map((course) => (
+                                        <tr key={course.id}>
+                                            <td data-label="Course">
+                                                <div className="course-management__course-cell">
+                                                    <CourseThumbnail course={course} />
+                                                    <div>
+                                                        <strong>{course.title}</strong>
+                                                        <code>{course.slug || "No slug"}</code>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td data-label="Category">
+                                                <div className="course-management__meta-cell">
+                                                    <strong>{course.categoryName || "Uncategorized"}</strong>
+                                                    <span>{course.level || "Level not set"}</span>
+                                                </div>
+                                            </td>
+                                            <td data-label="Access">
+                                                <div className="course-management__meta-cell">
+                                                    <strong>
+                                                        {formatPrice(course.discountedPrice ?? course.price, course.isFree)}
+                                                    </strong>
+                                                    <span>
+                                                        {course.isFree
+                                                            ? "Free course"
+                                                            : course.discountedPrice != null
+                                                                ? "Discounted price"
+                                                                : "Standard price"}
+                                                    </span>
+                                                </div>
+                                            </td>
+                                            <td data-label="Status">
+                                                <CourseStatusBadge status={course.status} />
+                                            </td>
+                                            <td data-label="Updated">
+                                                <time dateTime={course.updatedAt || course.createdAt}>
+                                                    {formatDate(course.updatedAt || course.createdAt)}
+                                                </time>
+                                            </td>
+                                            <td data-label="Actions">
+                                                <div className="course-management__actions">
+                                                    <Link
+                                                        to={isTrainer
+                                                            ? `/staff/courses/${course.id}/edit`
+                                                            : `/admin/courses/${course.id}/content`}
+                                                        className="course-management__action course-management__action--primary"
+                                                        title="Open"
+                                                        aria-label={`Open ${course.title}`}
+                                                    >
+                                                        Open
+                                                    </Link>
+                                                    <RowActionsMenu
+                                                        course={course}
+                                                        isTrainer={isTrainer}
+                                                        previewReturnPath={previewReturnPath}
+                                                        onRequestDelete={(c) =>
+                                                            setDeleteState({ open: true, target: c })
+                                                        }
+                                                    />
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+
+                            {/* Mobile stacked cards — same data, compact layout */}
+                            <ul className="course-management__cards" aria-label="Course list">
+                                {filteredItems.map((course) => (
+                                    <li key={course.id} className="course-management__card">
+                                        <div className="course-management__card-head">
+                                            <CourseThumbnail course={course} />
+                                            <div>
+                                                <strong>{course.title}</strong>
+                                                <code>{course.slug || "No slug"}</code>
+                                            </div>
+                                        </div>
+                                        <div className="course-management__card-meta">
+                                            <CourseStatusBadge status={course.status} />
+                                            <span>
+                                                {course.categoryName || "Uncategorized"} · {course.level || "—"}
+                                            </span>
+                                            <span>
+                                                {formatPrice(course.discountedPrice ?? course.price, course.isFree)}
+                                            </span>
+                                            <time dateTime={course.updatedAt || course.createdAt}>
+                                                {formatDate(course.updatedAt || course.createdAt)}
+                                            </time>
+                                        </div>
+                                        <div className="course-management__card-actions">
+                                            <Button
+                                                size="sm"
+                                                onClick={() =>
+                                                    navigate(
+                                                        isTrainer
+                                                            ? `/staff/courses/${course.id}/edit`
+                                                            : `/admin/courses/${course.id}/content`,
+                                                    )
+                                                }
+                                            >
+                                                Open
+                                            </Button>
+                                            <RowActionsMenu
+                                                course={course}
+                                                isTrainer={isTrainer}
+                                                previewReturnPath={previewReturnPath}
+                                                onRequestDelete={(c) =>
+                                                    setDeleteState({ open: true, target: c })
+                                                }
+                                            />
+                                        </div>
+                                    </li>
+                                ))}
+                            </ul>
+                        </>
+                    ) : null}
+                </div>
+
+                {totalPages > 1 ? (
+                    <nav className="course-management__pagination" aria-label="Course list pagination">
+                        <span>
+                            Page {page + 1} of {totalPages}
+                        </span>
+                        <div>
+                            <button
+                                type="button"
+                                onClick={() => setPageRequest((current) => Math.max(0, current - 1))}
+                                disabled={page === 0}
+                            >
+                                Previous
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() =>
+                                    setPageRequest((current) => Math.min(totalPages - 1, current + 1))
+                                }
+                                disabled={page + 1 >= totalPages}
+                            >
+                                Next
+                            </button>
+                        </div>
+                    </nav>
+                ) : null}
+            </section>
+
+            <DeleteCourseModal
+                open={deleteState.open}
+                target={deleteState.target}
+                onClose={() => setDeleteState({ open: false, target: null })}
+                onConfirmed={handleDeleted}
+            />
+        </main>
+    );
 }

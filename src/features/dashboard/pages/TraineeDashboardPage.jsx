@@ -1,225 +1,466 @@
 import { useEffect, useMemo, useState } from "react";
-import { BookOpen, GraduationCap } from "lucide-react";
+import {
+    ArrowRight,
+    BarChart3,
+    BookOpen,
+    CheckCircle2,
+    CirclePlay,
+    GraduationCap,
+    Sparkles,
+} from "lucide-react";
 import { Link } from "react-router-dom";
-import { courseService } from "@/services";
-import { EnrolledCourseCard } from "@/features/course";
-import { CourseFilters } from "@/features/course/components/CourseFilters";
-import { CourseListToolbar } from "@/features/course/components/CourseListToolbar";
-import "@/features/course/course.css";
+import {
+    courseService,
+    getCurrentUser,
+    traineeProgressService,
+} from "@/services";
 import "./TraineeDashboardPage.css";
 
-function normalizeEnrolledCourse(course) {
-  return {
-    ...course,
-    avatarUrl: course.avatarUrl,
-    categoryName: course.category?.name,
-    enrolledClass: course.enrolledClass || null,
-  };
+const EMPTY_METRIC = { completed: 0, total: 0, percent: 0 };
+
+function getGreeting() {
+    const hour = new Date().getHours();
+    if (hour < 12) return "Good morning";
+    if (hour < 18) return "Good afternoon";
+    return "Good evening";
+}
+
+function getFirstName(user) {
+    const name = user?.fullName || user?.firstName || user?.email || "there";
+    return name.trim().split(/\s+/)[0] || "there";
+}
+
+function getCourseId(course) {
+    return course?.courseId || course?.id || "";
+}
+
+function getClassId(course) {
+    return course?.classId || course?.enrolledClass?.id || "";
+}
+
+function getLearningPath(course) {
+    const courseId = getCourseId(course);
+    const classId = getClassId(course);
+
+    if (!courseId) return "/learning/progress";
+    if (!classId) return `/learning/courses/${courseId}`;
+
+    return `/learning/courses/${courseId}?classId=${classId}`;
+}
+
+function toNumber(value) {
+    const number = Number(value);
+    return Number.isFinite(number) ? number : 0;
+}
+
+function createProgressMap(progressCourses = []) {
+    const byCourseAndClass = new Map();
+    const byCourse = new Map();
+
+    progressCourses.forEach((course) => {
+        const courseId = getCourseId(course);
+        const classId = getClassId(course);
+        if (!courseId) return;
+
+        byCourseAndClass.set(`${courseId}:${classId}`, course);
+        if (!byCourse.has(String(courseId)))
+            byCourse.set(String(courseId), course);
+    });
+
+    return { byCourseAndClass, byCourse };
+}
+
+function enrichCourse(course, progressMap) {
+    const courseId = getCourseId(course);
+    const classId = getClassId(course);
+    const progress =
+        progressMap.byCourseAndClass.get(`${courseId}:${classId}`) ||
+        progressMap.byCourse.get(String(courseId)) ||
+        {};
+
+    return {
+        ...course,
+        ...progress,
+        id: course.id || progress.id || progress.courseId,
+        courseId,
+        classId: classId || progress.classId || "",
+        title: course.title || progress.title || "Untitled course",
+        categoryName:
+            course.category?.name || progress.categoryName || "Course",
+        className: course.enrolledClass?.className || progress.className || "",
+        trainerName: course.enrolledClass?.trainerName || "",
+        thumbnailUrl: course.avatarUrl || progress.thumbnailUrl || "",
+        accessAllowed:
+            course.accessAllowed !== false && progress.accessAllowed !== false,
+        accessBlockedReason:
+            course.accessBlockedReason || progress.accessBlockedReason || "",
+        overallPercent: toNumber(progress.overallPercent),
+        courseStatus: progress.courseStatus || "IN_PROGRESS",
+        lesson: progress.lesson || EMPTY_METRIC,
+    };
+}
+
+function getItemCount(course) {
+    const lesson = course.lesson || EMPTY_METRIC;
+    return `${toNumber(lesson.completed)} of ${toNumber(lesson.total)} lessons`;
+}
+
+function isCompleted(course) {
+    return course.courseStatus === "COMPLETED" || course.overallPercent >= 100;
+}
+
+function CourseThumbnail({ course, className = "" }) {
+    return (
+        <div className={`trainee-dashboard-course-image ${className}`}>
+            {course.thumbnailUrl ? (
+                <img src={course.thumbnailUrl} alt="" />
+            ) : (
+                <BookOpen size={28} aria-hidden="true" />
+            )}
+        </div>
+    );
+}
+
+function ProgressLine({ value }) {
+    const percent = Math.min(100, Math.max(0, toNumber(value)));
+    return (
+        <div
+            className="trainee-dashboard-progress"
+            role="progressbar"
+            aria-label={`Course progress: ${percent}%`}
+            aria-valuemin="0"
+            aria-valuemax="100"
+            aria-valuenow={percent}
+        >
+            <span style={{ width: `${percent}%` }} />
+        </div>
+    );
 }
 
 export function TraineeDashboardPage() {
-  const [enrolledCourses, setEnrolledCourses] = useState([]);
-  const [keyword, setKeyword] = useState("");
-  const [categorySlug, setCategorySlug] = useState("");
-  const [viewMode, setViewMode] = useState(
-    localStorage.getItem("traineeDashboardCourseViewMode") || "grid",
-  );
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+    const [courses, setCourses] = useState([]);
+    const [progress, setProgress] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState("");
 
-  useEffect(() => {
-    let mounted = true;
+    const currentUser = getCurrentUser();
 
-    async function loadEnrolledCourses() {
-      setLoading(true);
-      setError("");
+    useEffect(() => {
+        let mounted = true;
 
-      try {
-        const data = await courseService.getMyCourses();
+        async function loadDashboard() {
+            setLoading(true);
+            setError("");
 
-        if (!mounted) return;
+            const [courseResult, progressResult] = await Promise.allSettled([
+                courseService.getMyCourses(),
+                traineeProgressService.getMyProgress(),
+            ]);
 
-        setEnrolledCourses(
-          Array.isArray(data) ? data.map(normalizeEnrolledCourse) : [],
-        );
-      } catch (err) {
-        if (!mounted) return;
+            if (!mounted) return;
 
-        setError(err?.message || "Could not load your enrolled courses.");
-        setEnrolledCourses([]);
-      } finally {
-        if (mounted) {
-          setLoading(false);
+            if (courseResult.status === "rejected") {
+                setError(
+                    courseResult.reason?.message ||
+                        "Could not load your learning dashboard.",
+                );
+                setCourses([]);
+                setProgress(null);
+            } else {
+                setCourses(
+                    Array.isArray(courseResult.value) ? courseResult.value : [],
+                );
+                setProgress(
+                    progressResult.status === "fulfilled"
+                        ? progressResult.value
+                        : null,
+                );
+            }
+
+            setLoading(false);
         }
-      }
-    }
 
-    loadEnrolledCourses();
+        loadDashboard();
 
-    return () => {
-      mounted = false;
-    };
-  }, []);
+        return () => {
+            mounted = false;
+        };
+    }, []);
 
-  const categories = useMemo(() => {
-    const map = new Map();
+    const dashboard = useMemo(() => {
+        const progressMap = createProgressMap(progress?.courses || []);
+        const enrolledCourses = courses.map((course) =>
+            enrichCourse(course, progressMap),
+        );
+        const activeCourses = enrolledCourses
+            .filter((course) => !isCompleted(course))
+            .sort((left, right) => right.overallPercent - left.overallPercent);
+        const accessibleActiveCourses = activeCourses.filter(
+            (course) => course.accessAllowed,
+        );
+        const featuredCourse =
+            accessibleActiveCourses[0] || activeCourses[0] || null;
+        const completedCourses =
+            progress?.completedCourses ??
+            enrolledCourses.filter(isCompleted).length;
+        const overallProgress = enrolledCourses.length
+            ? Math.round(
+                  enrolledCourses.reduce(
+                      (sum, course) => sum + course.overallPercent,
+                      0,
+                  ) / enrolledCourses.length,
+              )
+            : 0;
 
-    enrolledCourses.forEach((course) => {
-      const category = course.category;
+        return {
+            activeCourses,
+            completedCourses,
+            featuredCourse,
+            overallProgress,
+        };
+    }, [courses, progress]);
 
-      if (!category?.slug) return;
+    return (
+        <main className="trainee-dashboard-page">
+            <header className="trainee-dashboard-intro">
+                <div>
+                    <h1>
+                        {getGreeting()},{" "}
+                        <span>{getFirstName(currentUser)}</span>
+                    </h1>
+                    <p>
+                        Pick up a course, build your momentum, and keep your
+                        progress moving.
+                    </p>
+                </div>
 
-      map.set(category.slug, {
-        id: category.id || category.slug,
-        name: category.name || "Course",
-        slug: category.slug,
-      });
-    });
+                <Link
+                    to="/learning/progress"
+                    className="trainee-dashboard-text-link"
+                >
+                    View full progress <ArrowRight size={16} />
+                </Link>
+            </header>
 
-    return Array.from(map.values());
-  }, [enrolledCourses]);
+            {loading && (
+                <div className="trainee-dashboard-state">
+                    Loading your learning space…
+                </div>
+            )}
 
-  const filteredCourses = useMemo(() => {
-    const normalizedKeyword = keyword.trim().toLowerCase();
+            {!loading && error && (
+                <div className="trainee-dashboard-state trainee-dashboard-state--error">
+                    {error}
+                </div>
+            )}
 
-    return enrolledCourses.filter((course) => {
-      const title = course.title?.toLowerCase() || "";
-      const description = course.description?.toLowerCase() || "";
-      const categoryName = course.category?.name?.toLowerCase() || "";
-      const className = course.enrolledClass?.className?.toLowerCase() || "";
-      const trainerName = course.enrolledClass?.trainerName?.toLowerCase() || "";
-      const currentCategorySlug = course.category?.slug || "";
+            {!loading && !error && dashboard.featuredCourse && (
+                <section
+                    className="trainee-dashboard-feature"
+                    aria-labelledby="continue-learning-title"
+                >
+                    <CourseThumbnail
+                        course={dashboard.featuredCourse}
+                        className="trainee-dashboard-feature__image"
+                    />
 
-      const matchesKeyword =
-        !normalizedKeyword ||
-        title.includes(normalizedKeyword) ||
-        description.includes(normalizedKeyword) ||
-        categoryName.includes(normalizedKeyword) ||
-        className.includes(normalizedKeyword) ||
-        trainerName.includes(normalizedKeyword);
+                    <div className="trainee-dashboard-feature__content">
+                        <span className="trainee-dashboard-feature__eyebrow">
+                            <CirclePlay size={16} aria-hidden="true" /> Continue
+                            learning
+                        </span>
+                        <p className="trainee-dashboard-feature__category">
+                            {dashboard.featuredCourse.categoryName}
+                            {dashboard.featuredCourse.className
+                                ? ` · ${dashboard.featuredCourse.className}`
+                                : ""}
+                        </p>
+                        <h2 id="continue-learning-title">
+                            {dashboard.featuredCourse.title}
+                        </h2>
+                        <div className="trainee-dashboard-feature__progress-copy">
+                            <span>
+                                {getItemCount(dashboard.featuredCourse)}
+                            </span>
+                            <strong>
+                                {dashboard.featuredCourse.overallPercent}%
+                                complete
+                            </strong>
+                        </div>
+                        <ProgressLine
+                            value={dashboard.featuredCourse.overallPercent}
+                        />
+                        {!dashboard.featuredCourse.accessAllowed && (
+                            <p className="trainee-dashboard-feature__notice">
+                                {dashboard.featuredCourse.accessBlockedReason ||
+                                    "Course access is currently unavailable."}
+                            </p>
+                        )}
+                        <div className="trainee-dashboard-feature__actions">
+                            {dashboard.featuredCourse.accessAllowed ? (
+                                <Link
+                                    to={getLearningPath(
+                                        dashboard.featuredCourse,
+                                    )}
+                                    className="trainee-dashboard-primary-action"
+                                >
+                                    {dashboard.featuredCourse.overallPercent > 0
+                                        ? "Continue learning"
+                                        : "Start course"}
+                                    <ArrowRight size={17} />
+                                </Link>
+                            ) : null}
+                            <Link
+                                to={`/courses/${dashboard.featuredCourse.slug || dashboard.featuredCourse.id}`}
+                                className="trainee-dashboard-secondary-action"
+                            >
+                                View course
+                            </Link>
+                        </div>
+                    </div>
+                </section>
+            )}
 
-      const matchesCategory =
-        !categorySlug || currentCategorySlug === categorySlug;
+            {!loading && !error && courses.length > 0 && (
+                <section
+                    className="trainee-dashboard-stat-grid"
+                    aria-label="Learning summary"
+                >
+                    <article className="trainee-dashboard-stat-card">
+                        <GraduationCap size={21} aria-hidden="true" />
+                        <div>
+                            <strong>{dashboard.activeCourses.length}</strong>
+                            <span>Active courses</span>
+                        </div>
+                    </article>
+                    <article className="trainee-dashboard-stat-card trainee-dashboard-stat-card--success">
+                        <CheckCircle2 size={21} aria-hidden="true" />
+                        <div>
+                            <strong>{dashboard.completedCourses}</strong>
+                            <span>Completed</span>
+                        </div>
+                    </article>
+                    <article className="trainee-dashboard-stat-card trainee-dashboard-stat-card--progress">
+                        <BarChart3 size={21} aria-hidden="true" />
+                        <div>
+                            <strong>{dashboard.overallProgress}%</strong>
+                            <span>Overall progress</span>
+                        </div>
+                    </article>
+                </section>
+            )}
 
-      return matchesKeyword && matchesCategory;
-    });
-  }, [enrolledCourses, keyword, categorySlug]);
+            {!loading && !error && dashboard.activeCourses.length > 0 && (
+                <section
+                    className="trainee-dashboard-course-section"
+                    aria-labelledby="active-courses-title"
+                >
+                    <div className="trainee-dashboard-section-heading">
+                        <div>
+                            <h2 id="active-courses-title">Active learning</h2>
+                        </div>
+                        <Link
+                            to="/learning/progress"
+                            className="trainee-dashboard-text-link"
+                        >
+                            View all <ArrowRight size={16} />
+                        </Link>
+                    </div>
 
-  function handleViewModeChange(nextMode) {
-    setViewMode(nextMode);
-    localStorage.setItem("traineeDashboardCourseViewMode", nextMode);
-  }
+                    <div className="trainee-dashboard-course-grid">
+                        {dashboard.activeCourses.slice(0, 3).map((course) => (
+                            <article
+                                className="trainee-dashboard-course-card"
+                                key={`${course.id}:${course.classId || "course"}`}
+                            >
+                                <CourseThumbnail course={course} />
+                                <div className="trainee-dashboard-course-card__body">
+                                    <span>{course.categoryName}</span>
+                                    <h3>{course.title}</h3>
+                                    <p>
+                                        {course.className
+                                            ? `${course.className}${course.trainerName ? ` · ${course.trainerName}` : ""}`
+                                            : "Self-paced course"}
+                                    </p>
+                                    <div className="trainee-dashboard-course-card__progress-label">
+                                        <span>
+                                            {course.overallPercent}% complete
+                                        </span>
+                                        <span>{getItemCount(course)}</span>
+                                    </div>
+                                    <ProgressLine
+                                        value={course.overallPercent}
+                                    />
+                                    {course.accessAllowed ? (
+                                        <Link
+                                            to={getLearningPath(course)}
+                                            className="trainee-dashboard-card-action"
+                                        >
+                                            {course.overallPercent > 0
+                                                ? "Continue"
+                                                : "Start course"}{" "}
+                                            <ArrowRight size={16} />
+                                        </Link>
+                                    ) : (
+                                        <span className="trainee-dashboard-card-blocked">
+                                            Access unavailable
+                                        </span>
+                                    )}
+                                </div>
+                            </article>
+                        ))}
+                    </div>
+                </section>
+            )}
 
-  return (
-    <main className="trainee-dashboard-page">
-      <section className="trainee-dashboard-hero">
-        <span className="course-hero__eyebrow">Dashboard</span>
-        <h1>Welcome back to your learning space</h1>
-        <p>
-          Continue your enrolled courses, track your learning access, and open
-          your course workspace.
-        </p>
-      </section>
+            {!loading && !error && courses.length === 0 && (
+                <section className="trainee-dashboard-empty">
+                    <Sparkles size={28} aria-hidden="true" />
+                    <h2>Start your learning journey</h2>
+                    <p>
+                        You have not enrolled in a course yet. Find a course
+                        that fits your next goal.
+                    </p>
+                    <Link
+                        to="/learning/courses"
+                        className="trainee-dashboard-primary-action"
+                    >
+                        Browse course catalog <ArrowRight size={17} />
+                    </Link>
+                </section>
+            )}
 
-      <section className="trainee-dashboard-section">
-        <div className="my-courses-section__header">
-          <div>
-            <h2>My Enrolled Courses</h2>
-            <p>Courses that you have enrolled in or have active access to.</p>
-          </div>
-        </div>
-
-        {loading && (
-          <div className="course-state">
-            <p>Loading your enrolled courses...</p>
-          </div>
-        )}
-
-        {!loading && error && (
-          <div className="course-state course-state--error">
-            <p>{error}</p>
-          </div>
-        )}
-
-        {!loading && !error && enrolledCourses.length > 0 && (
-          <div className="trainee-dashboard-toolbar">
-            <CourseFilters
-              keyword={keyword}
-              categorySlug={categorySlug}
-              categories={categories}
-              onKeywordChange={setKeyword}
-              onCategoryChange={setCategorySlug}
-            />
-
-            <CourseListToolbar
-              totalElements={filteredCourses.length}
-              viewMode={viewMode}
-              onViewModeChange={handleViewModeChange}
-            />
-          </div>
-        )}
-
-        {!loading && !error && enrolledCourses.length === 0 && (
-          <div className="course-state">
-            <GraduationCap size={32} />
-            <h3>No enrolled courses yet</h3>
-            <p>You have not enrolled in any course yet.</p>
-            <Link to="/learning/courses" className="button button--primary">
-              Browse Course Catalog
-            </Link>
-          </div>
-        )}
-
-        {!loading &&
-          !error &&
-          enrolledCourses.length > 0 &&
-          filteredCourses.length === 0 && (
-            <div className="course-state">
-              <h3>No matching enrolled courses</h3>
-              <p>Try another keyword or category.</p>
-              <button
-                type="button"
-                onClick={() => {
-                  setKeyword("");
-                  setCategorySlug("");
-                }}
-              >
-                Clear filters
-              </button>
-            </div>
-          )}
-
-        {!loading && !error && filteredCourses.length > 0 && (
-          <div
-            className={`enrolled-course-list enrolled-course-list--${viewMode}`}
-          >
-            {filteredCourses.map((course) => (
-              <EnrolledCourseCard
-                key={`${course.enrollmentId || course.id || course.slug}-${
-                  course.enrolledClass?.id || "no-class"
-                }`}
-                course={course}
-                viewMode={viewMode}
-              />
-            ))}
-          </div>
-        )}
-      </section>
-
-      <section className="trainee-dashboard-cta">
-        <div>
-          <h3>Explore more courses</h3>
-          <p>Find another course that matches your next learning goal.</p>
-        </div>
-
-        <Link
-          to="/learning/courses"
-          className="button button--primary button--md"
-        >
-          <BookOpen size={16} />
-          Open Course Catalog
-        </Link>
-      </section>
-    </main>
-  );
+            {!loading && !error && courses.length > 0 && (
+                <section
+                    className="trainee-dashboard-quick-actions"
+                    aria-labelledby="quick-actions-title"
+                >
+                    <div>
+                        <span className="trainee-dashboard__eyebrow">
+                            Practice and review
+                        </span>
+                        <h2 id="quick-actions-title">Quick actions</h2>
+                        <p>
+                            Choose the learning activity that helps you make
+                            progress today.
+                        </p>
+                    </div>
+                    <div className="trainee-dashboard-quick-actions__links">
+                        <Link to="/learning/flashcards">
+                            <BookOpen size={18} /> Practice flashcards{" "}
+                            <ArrowRight size={16} />
+                        </Link>
+                        <Link to="/learning/tests">
+                            <CheckCircle2 size={18} /> View my tests{" "}
+                            <ArrowRight size={16} />
+                        </Link>
+                        <Link to="/learning/progress">
+                            <BarChart3 size={18} /> Review progress{" "}
+                            <ArrowRight size={16} />
+                        </Link>
+                    </div>
+                </section>
+            )}
+        </main>
+    );
 }
