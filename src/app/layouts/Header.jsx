@@ -18,6 +18,7 @@ function getInitials(name) {
 export function Header({ user, onLogout, onToggleSidebar }) {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
+  const [isCompact, setIsCompact] = useState(() => window.scrollY > 24);
   const menuRef = useRef(null);
 
   const displayName =
@@ -42,8 +43,37 @@ export function Header({ user, onLogout, onToggleSidebar }) {
     return undefined;
   }, [open]);
 
+  useEffect(() => {
+    let frameId = null;
+    const scrollContainer = document.querySelector(".app-content-area");
+
+    function handleScroll() {
+      if (frameId) return;
+
+      frameId = window.requestAnimationFrame(() => {
+        const scrollTop = Math.max(
+          window.scrollY,
+          scrollContainer?.scrollTop || 0,
+        );
+        const shouldCompact = scrollTop > 24;
+        setIsCompact((current) =>
+          current === shouldCompact ? current : shouldCompact,
+        );
+        frameId = null;
+      });
+    }
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    scrollContainer?.addEventListener("scroll", handleScroll, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+      scrollContainer?.removeEventListener("scroll", handleScroll);
+      if (frameId) window.cancelAnimationFrame(frameId);
+    };
+  }, []);
+
   return (
-    <header className="app-header">
+    <header className={`app-header${isCompact ? " app-header--compact" : ""}`}>
       <div className="app-header__inner">
         {/* Left: Logo + Search */}
         <div className="app-header__left">

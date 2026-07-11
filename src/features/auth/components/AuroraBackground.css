@@ -1,0 +1,165 @@
+.aurora {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+  background:
+    radial-gradient(
+      120% 80% at 50% 0%,
+      #9475ff 0%,
+      #825ef5 38%,
+      #5a36d8 100%
+    );
+}
+
+.aurora__grid {
+  position: absolute;
+  inset: 0;
+  opacity: 0.18;
+  background-image:
+    linear-gradient(rgba(23, 17, 45, 0.55) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(23, 17, 45, 0.55) 1px, transparent 1px);
+  background-size: 32px 32px;
+  mask-image: linear-gradient(to bottom, black 0%, black 55%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, black 0%, black 55%, transparent 100%);
+}
+
+.aurora__blob {
+  position: absolute;
+  display: block;
+  width: 520px;
+  height: 520px;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.55;
+  will-change: transform;
+  /* Each blob has its own idle drift; pointer offset is applied via --mx/--my. */
+  transform: translate3d(var(--mx, 0), var(--my, 0), 0);
+}
+
+.aurora__blob--purple {
+  top: -160px;
+  left: -120px;
+  background: radial-gradient(circle, #c8b5ff 0%, transparent 70%);
+  animation: aurora-drift-a 18s ease-in-out infinite alternate;
+}
+
+.aurora__blob--yellow {
+  top: 30%;
+  right: -180px;
+  background: radial-gradient(circle, #f8d568 0%, transparent 70%);
+  opacity: 0.45;
+  animation: aurora-drift-b 22s ease-in-out infinite alternate;
+}
+
+.aurora__blob--cyan {
+  bottom: -200px;
+  left: 35%;
+  width: 620px;
+  height: 620px;
+  background: radial-gradient(circle, #6fe7d8 0%, transparent 70%);
+  opacity: 0.32;
+  animation: aurora-drift-c 26s ease-in-out infinite alternate;
+}
+
+@keyframes aurora-drift-a {
+  0%   { transform: translate3d(calc(var(--mx, 0px) + 0px),  calc(var(--my, 0px) + 0px),  0) scale(1); }
+  50%  { transform: translate3d(calc(var(--mx, 0px) + 40px), calc(var(--my, 0px) - 30px), 0) scale(1.08); }
+  100% { transform: translate3d(calc(var(--mx, 0px) - 20px), calc(var(--my, 0px) + 30px), 0) scale(0.95); }
+}
+
+@keyframes aurora-drift-b {
+  0%   { transform: translate3d(calc(var(--mx, 0px) + 0px),  calc(var(--my, 0px) + 0px),  0) scale(1); }
+  50%  { transform: translate3d(calc(var(--mx, 0px) - 30px), calc(var(--my, 0px) + 25px), 0) scale(1.05); }
+  100% { transform: translate3d(calc(var(--mx, 0px) + 20px), calc(var(--my, 0px) - 35px), 0) scale(0.92); }
+}
+
+@keyframes aurora-drift-c {
+  0%   { transform: translate3d(calc(var(--mx, 0px) + 0px),  calc(var(--my, 0px) + 0px),  0) scale(1); }
+  50%  { transform: translate3d(calc(var(--mx, 0px) + 25px), calc(var(--my, 0px) + 20px), 0) scale(1.04); }
+  100% { transform: translate3d(calc(var(--mx, 0px) - 25px), calc(var(--my, 0px) - 20px), 0) scale(0.96); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .aurora__blob {
+    animation: none !important;
+  }
+  .aurora__icon {
+    animation: none !important;
+    transform: rotate(var(--base-tilt, 0deg)) !important;
+  }
+}
+
+/* Education icons floating on the aurora plane. */
+
+.aurora__icons {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.aurora__icon {
+  position: absolute;
+  display: block;
+  /* The SVG strokes read "currentColor" — bind to the ink variable. */
+  color: var(--ink);
+  opacity: 1;
+  /* Bold doodle palette: 4 saturated pastels with a deep plum ink.
+     Tweak any single value here to re-tint all icons at once. */
+  --ink: #1a1233;
+  --fill-main: #ffd84d;        /* saturated marigold */
+  --fill-accent: #b69aff;      /* vivid lavender */
+  /* Rotation is fixed per-icon; counter-translate via --ix/--iy vars. */
+  transform: rotate(var(--base-tilt, 0deg)) translate3d(
+      var(--ix, 0px),
+      var(--iy, 0px),
+      0
+    );
+  will-change: transform;
+  animation: aurora-icon-float 12s ease-in-out infinite alternate;
+  /* Hide from accessibility tree and pointer events; purely decorative. */
+  user-select: none;
+}
+
+.aurora__icon svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  /* Strong "drawn-on-paper" shadow gives the icons real lift over the aurora. */
+  filter: drop-shadow(0 8px 18px rgba(8, 4, 30, 0.55));
+}
+
+/* Per-icon accents — each icon picks its own pair so the background feels
+   like a constellation of differently-coloured sticker illustrations. */
+.aurora__icon--book       { --fill-main: #ffd84d; --fill-accent: #b69aff; }
+.aurora__icon--flashcard  { --fill-main: #8be0a8; --fill-accent: #ffd84d; }
+.aurora__icon--quiz       { --fill-main: #b69aff; --fill-accent: #ff8a73; }
+.aurora__icon--notebook   { --fill-main: #ffd84d; --fill-accent: #6cc8e8; }
+.aurora__icon--pencil     { --fill-main: #ffd84d; --fill-accent: #ff8a73; }
+.aurora__icon--mortarboard{ --fill-main: #b69aff; --fill-accent: #8be0a8; }
+.aurora__icon--check      { --fill-main: #8be0a8; --fill-accent: #ffd84d; }
+
+@keyframes aurora-icon-float {
+  0%   { translate: 0px 0px; }
+  50%  { translate: -6px 8px; }
+  100% { translate: 4px -6px; }
+}
+
+/* On narrower screens hide a subset that would crowd the form. */
+@media (max-width: 900px) {
+  .aurora__icon {
+    width: 70px !important;
+    height: 70px !important;
+    opacity: 0.78;
+  }
+}
+
+@media (max-width: 600px) {
+  /* Only keep the 4 corner icons so the central area stays clear. */
+  .aurora__icon:nth-child(2),
+  .aurora__icon:nth-child(5),
+  .aurora__icon:nth-child(7) {
+    display: none;
+  }
+}
