@@ -44,6 +44,7 @@ function normalizeCourse(course) {
     lesson: normalizeMetric(course.lesson, "Lesson"),
     quiz: normalizeMetric(course.quiz, "Quiz"),
     flashcard: normalizeMetric(course.flashcard, "Flashcard"),
+    assignment: normalizeMetric(course.assignment, "Assignment"),
   };
 }
 
