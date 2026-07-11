@@ -5,7 +5,18 @@ import {
 } from "lucide-react";
 import { useDocumentTitle } from "../../shared/hooks/useDocumentTitle";
 import { CourseListPage } from "../course/pages/CourseListPage";
+import { CourseCard } from "../course/components/CourseCard";
 import { BrandLogo } from "../../shared/components/SiteHeader";
+
+const HERO_POPULAR_COURSE = {
+    id: "react-nang-cao-kien-truc-frontend",
+    slug: "react-nang-cao-kien-truc-frontend",
+    title: "React nâng cao và kiến trúc Frontend",
+    description: "Tổ chức ứng dụng React có khả năng mở rộng với routing, state management, testing và tối ưu hiệu năng.",
+    category: { name: "Programming" },
+    isFree: true,
+    price: 10000,
+};
 
 function Logo() {
     return <BrandLogo />;
@@ -85,6 +96,17 @@ export function HomePage() {
 
                         {/* Right column: Illustration */}
                         <div className="hero-illustration">
+                            <CourseCard
+                                course={HERO_POPULAR_COURSE}
+                                viewMode="grid"
+                                highlightLabel="Most enrolled"
+                                detailState={{
+                                    from: "/",
+                                    fromHash: "#top",
+                                    backLabel: "Back to homepage",
+                                }}
+                            />
+
                             <div className="hero-illustration-frame">
                                 <svg
                                     viewBox="0 0 462 401"
