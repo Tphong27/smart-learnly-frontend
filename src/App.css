@@ -647,6 +647,29 @@ a:hover {
 }
 
 /* ==================== RESPONSIVE ==================== */
+@media (max-width: 900px) {
+    .hero {
+        min-height: auto;
+    }
+
+    .hero-main-container {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 46px;
+        padding: 110px 28px 78px !important;
+    }
+
+    .hero-content,
+    .hero-illustration {
+        flex: 1 1 auto;
+        max-width: none;
+    }
+
+    .hero-illustration {
+        justify-content: flex-start;
+    }
+}
+
 @media (max-width: 768px) {
     .services-grid {
         grid-template-columns: 1fr;
@@ -1256,34 +1279,20 @@ a:hover {
    ============================================ */
 .hero {
     position: relative;
-    min-height: 860px;
-    background:
-        radial-gradient(
-            circle at 70% 20%,
-            rgba(220, 235, 255, 0.85),
-            transparent 35%
-        ),
-        radial-gradient(
-            circle at 20% 80%,
-            rgba(235, 220, 255, 0.6),
-            transparent 30%
-        ),
-        linear-gradient(180deg, #f8faff 0%, #fff 100%);
+    min-height: 760px;
+    background-color: #fff8e5;
+    background-image:
+        linear-gradient(rgba(255, 251, 237, 0.46), rgba(255, 251, 237, 0.46)),
+        url("/auth-school-background.jpg");
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: cover;
     overflow: hidden;
 }
 
 /* Decorative purple circle (bottom left) */
 .hero-decor-circle {
-    position: absolute;
-    bottom: -100px;
-    left: -128px;
-    width: 443px;
-    height: 337px;
-    background: #5d56d4;
-    border-radius: 100px;
-    box-shadow: 4px -4px 0px #000;
-    transform: rotate(-15deg);
-    z-index: 1;
+    display: none;
 }
 
 /* Main container - 2 column layout */
@@ -1294,7 +1303,7 @@ a:hover {
     align-items: center;
     justify-content: space-between;
     gap: 80px;
-    padding: 150px 0 !important;
+    padding: 132px 0 !important;
     max-width: 1320px;
     margin: 0 auto;
     width: 100%;
@@ -1327,7 +1336,7 @@ a:hover {
 
 .hero-description {
     margin: 0 0 32px;
-    color: #5a6780;
+    color: #3f4d68;
     font-family: "Lato", sans-serif;
     font-size: 18px;
     line-height: 1.75;
@@ -1418,7 +1427,7 @@ a:hover {
 .hero-social-text {
     font-family: "Lato", sans-serif;
     font-size: 18px;
-    color: #2e2e2e;
+    color: #26344f;
     font-weight: 400;
 }
 
@@ -1431,9 +1440,7 @@ a:hover {
 }
 
 .hero-illustration-frame {
-    position: relative;
-    width: 100%;
-    max-width: 500px;
+    display: none;
 }
 
 .hero-illustration-svg {
@@ -1441,40 +1448,262 @@ a:hover {
     height: auto;
 }
 
+.hero-course-preview__scene {
+    position: relative;
+    width: min(100%, 462px);
+    padding: 18px 34px 40px 0;
+}
+
+.hero-course-preview {
+    position: relative;
+    z-index: 2;
+    width: 100%;
+    padding: 24px;
+    border: 1.5px solid #211b36;
+    border-radius: 20px;
+    background: #fffdf7;
+    box-shadow: 6px 6px 0 #211b36;
+    color: #17233e;
+}
+
+.hero-course-preview__bookmark {
+    position: absolute;
+    z-index: 1;
+    top: 0;
+    left: 30px;
+    width: 48px;
+    height: 38px;
+    border: 1.5px solid #211b36;
+    border-radius: 8px 8px 3px 3px;
+    background: #f3c95b;
+}
+
+.hero-course-preview__bookmark::after {
+    position: absolute;
+    right: 10px;
+    bottom: -8px;
+    width: 16px;
+    height: 16px;
+    border-right: 1.5px solid #211b36;
+    border-bottom: 1.5px solid #211b36;
+    background: #f3c95b;
+    content: "";
+    transform: rotate(45deg);
+}
+
+.hero-course-preview__milestone {
+    position: absolute;
+    z-index: 3;
+    top: 43px;
+    right: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 7px 9px;
+    border: 1.5px solid #211b36;
+    border-radius: 9px;
+    color: #211b36;
+    background: #f3c95b;
+    box-shadow: 2px 2px 0 #211b36;
+    font-size: 11px;
+    font-weight: 900;
+}
+
+.hero-course-preview__topline,
+.hero-course-preview__course,
+.hero-course-preview__meta,
+.hero-course-preview__meta span,
+.hero-course-preview__progress > div:first-child,
+.hero-course-preview__action {
+    display: flex;
+    align-items: center;
+}
+
+.hero-course-preview__topline {
+    justify-content: space-between;
+    gap: 12px;
+    color: #6546d9;
+    font-size: 11px;
+    font-weight: 900;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+}
+
+.hero-course-preview__status {
+    padding: 5px 8px;
+    border-radius: 999px;
+    color: #126e5b;
+    background: #e3f5ef;
+    font-size: 10px;
+    letter-spacing: .04em;
+}
+
+.hero-course-preview__course {
+    gap: 13px;
+    margin: 22px 0 18px;
+}
+
+.hero-course-preview__icon {
+    display: grid;
+    width: 52px;
+    height: 52px;
+    place-items: center;
+    flex: 0 0 auto;
+    border: 1.5px solid #211b36;
+    border-radius: 13px;
+    color: #211b36;
+    background: #f3c95b;
+}
+
+.hero-course-preview__course p {
+    margin: 0 0 5px;
+    color: #64708a;
+    font-size: 12px;
+    font-weight: 800;
+}
+
+.hero-course-preview__course h2 {
+    margin: 0;
+    color: #17233e;
+    font-size: clamp(1.25rem, 2vw, 1.55rem);
+    line-height: 1.16;
+    letter-spacing: -.04em;
+}
+
+.hero-course-preview__meta {
+    flex-wrap: wrap;
+    gap: 8px 16px;
+    padding: 14px 0;
+    border-top: 1px solid #e7e1d8;
+    border-bottom: 1px solid #e7e1d8;
+    color: #64708a;
+    font-size: 12px;
+    font-weight: 800;
+}
+
+.hero-course-preview__meta span {
+    gap: 6px;
+}
+
+.hero-course-preview__progress {
+    margin-top: 18px;
+}
+
+.hero-course-preview__progress > div:first-child {
+    justify-content: space-between;
+    margin-bottom: 8px;
+    color: #64708a;
+    font-size: 12px;
+    font-weight: 800;
+}
+
+.hero-course-preview__progress strong {
+    color: #17233e;
+}
+
+.hero-course-preview__progress-bar {
+    height: 9px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: #e7e2ee;
+}
+
+.hero-course-preview__progress-bar span {
+    display: block;
+    width: 68%;
+    height: 100%;
+    border-radius: inherit;
+    background: #825ef5;
+}
+
+.hero-course-preview__action {
+    justify-content: center;
+    gap: 8px;
+    min-height: 44px;
+    margin-top: 21px;
+    border: 1.5px solid #211b36;
+    border-radius: 10px;
+    color: #ffffff;
+    background: #825ef5;
+    box-shadow: 3px 3px 0 #211b36;
+    font-size: 14px;
+    font-weight: 900;
+    text-decoration: none;
+    transition: transform 180ms ease, box-shadow 180ms ease, background 180ms ease;
+}
+
+.hero-course-preview__action:hover {
+    transform: translate(-2px, -2px);
+    box-shadow: 5px 5px 0 #211b36;
+    background: #6d28d2;
+}
+
+.hero-course-preview__action:focus-visible {
+    outline: 3px solid rgba(130, 94, 245, .35);
+    outline-offset: 3px;
+}
+
+.hero-course-preview__next {
+    position: absolute;
+    z-index: 3;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 214px;
+    padding: 11px 12px;
+    border: 1.5px solid #211b36;
+    border-radius: 12px;
+    color: #17233e;
+    background: #ffffff;
+    box-shadow: 3px 3px 0 #211b36;
+}
+
+.hero-course-preview__next-icon {
+    display: grid;
+    width: 32px;
+    height: 32px;
+    place-items: center;
+    flex: 0 0 auto;
+    border-radius: 9px;
+    color: #ffffff;
+    background: #825ef5;
+}
+
+.hero-course-preview__next div {
+    min-width: 0;
+    display: grid;
+    gap: 2px;
+}
+
+.hero-course-preview__next span:not(.hero-course-preview__next-icon),
+.hero-course-preview__next small {
+    color: #64708a;
+    font-size: 10px;
+    font-weight: 800;
+}
+
+.hero-course-preview__next strong {
+    overflow: hidden;
+    color: #17233e;
+    font-size: 12px;
+    line-height: 1.2;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
 /* Bottom divider */
 .hero-divider {
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    height: 1px;
-    background: linear-gradient(90deg, transparent, #e4eaf4, transparent);
+    display: none;
 }
 
 .hero::before {
-    position: absolute;
-    top: -50%;
-    right: -20%;
-    width: 800px;
-    height: 800px;
-    background: radial-gradient(
-        circle,
-        rgba(130, 94, 245, 0.08) 0%,
-        transparent 70%
-    );
-    border-radius: 50%;
-    content: "";
-    animation: float 20s ease-in-out infinite;
+    display: none;
 }
 
 .hero::after {
-    position: absolute;
-    right: 0;
-    bottom: 0;
-    left: 0;
-    height: 1px;
-    background: linear-gradient(90deg, transparent, #e4eaf4, transparent);
-    content: "";
+    display: none;
 }
 
 @keyframes float {
@@ -4090,6 +4319,31 @@ html {
     .hero h1 {
         font-size: clamp(36px, 8vw, 52px);
         letter-spacing: -2px;
+    }
+
+    .hero-main-container {
+        padding: 94px 22px 60px !important;
+    }
+
+    .hero-buttons {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .hero-btn {
+        padding-right: 22px;
+        padding-left: 22px;
+    }
+
+    .hero-social-proof {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 11px;
+    }
+
+    .hero-course-preview {
+        width: 100%;
+        padding: 20px;
     }
 
     .hero-copy > p {
