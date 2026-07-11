@@ -6,7 +6,7 @@ import { assignmentService } from "@/services/flashtest.service";
 import { ProgressBar } from "./ProgressBar";
 import { ProgressMetric } from "./ProgressMetric";
 
-function AssignmentMetric({ courseId }) {
+function AssignmentMetric({ courseId, classId }) {
   const [counts, setCounts] = useState({ completed: 0, total: 0 });
 
   useEffect(() => {
@@ -15,13 +15,14 @@ function AssignmentMetric({ courseId }) {
       const currentUser = getCurrentUser();
       const studentId =
         currentUser?.id || currentUser?.userId || currentUser?.accountId || "";
-      if (!studentId || !courseId) {
+      if (!studentId || !courseId || !classId) {
         setCounts({ completed: 0, total: 0 });
         return;
       }
       try {
         const assignments = await assignmentService.getAvailable({
           courseId,
+          classId,
           isFlashtest: false,
         });
         const checks = await Promise.allSettled(
@@ -47,7 +48,7 @@ function AssignmentMetric({ courseId }) {
     return () => {
       cancelled = true;
     };
-  }, [courseId]);
+  }, [courseId, classId]);
 
   return (
     <ProgressMetric
@@ -152,7 +153,6 @@ export function CourseProgressCard({ course }) {
             percent={course.lesson.percent}
             to={learningPath}
           />
-
           <ProgressMetric
             label="Quiz"
             completed={course.quiz.completed}
@@ -160,7 +160,6 @@ export function CourseProgressCard({ course }) {
             percent={course.quiz.percent}
             to="/learning/tests"
           />
-
           <ProgressMetric
             label="Flashcard"
             completed={course.flashcard.completed}
@@ -168,8 +167,10 @@ export function CourseProgressCard({ course }) {
             percent={course.flashcard.percent}
             to={`/learning/flashcards?courseId=${course.courseId}`}
           />
-
-          <AssignmentMetric courseId={course.courseId} />
+          <AssignmentMetric
+            courseId={course.courseId}
+            classId={course.classId}
+          />
         </div>
       )}
     </article>

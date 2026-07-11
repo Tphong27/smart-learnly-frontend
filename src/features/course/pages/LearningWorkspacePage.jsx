@@ -588,6 +588,7 @@ export function LearningWorkspacePage({
                 <LearningLessonTabs
                   key={`tabs-${getLessonId(activeLesson)}`}
                   lesson={activeLesson}
+                  classId={resolvedClassId}
                   activeTab={activeLessonTab}
                   onTabChange={setActiveLessonTab}
                   note={activeLessonNote}
