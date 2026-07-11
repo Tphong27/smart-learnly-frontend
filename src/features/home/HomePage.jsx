@@ -1,16 +1,22 @@
 import {
     ArrowRight,
-    BookOpen,
-    CheckCircle2,
-    CirclePlay,
-    Clock3,
-    Layers3,
     SunMedium,
     Zap,
 } from "lucide-react";
 import { useDocumentTitle } from "../../shared/hooks/useDocumentTitle";
 import { CourseListPage } from "../course/pages/CourseListPage";
+import { CourseCard } from "../course/components/CourseCard";
 import { BrandLogo } from "../../shared/components/SiteHeader";
+
+const HERO_POPULAR_COURSE = {
+    id: "react-nang-cao-kien-truc-frontend",
+    slug: "react-nang-cao-kien-truc-frontend",
+    title: "React nâng cao và kiến trúc Frontend",
+    description: "Tổ chức ứng dụng React có khả năng mở rộng với routing, state management, testing và tối ưu hiệu năng.",
+    category: { name: "Programming" },
+    isFree: true,
+    price: 10000,
+};
 
 function Logo() {
     return <BrandLogo />;
@@ -90,59 +96,16 @@ export function HomePage() {
 
                         {/* Right column: Illustration */}
                         <div className="hero-illustration">
-                            <div className="hero-course-preview__scene">
-                                <span className="hero-course-preview__bookmark" aria-hidden="true" />
-                                <span className="hero-course-preview__milestone">
-                                    <CheckCircle2 size={15} aria-hidden="true" /> Week 2
-                                </span>
-
-                                <article className="hero-course-preview">
-                                    <div className="hero-course-preview__topline">
-                                        <span>Featured course</span>
-                                        <span className="hero-course-preview__status">In progress</span>
-                                    </div>
-
-                                    <div className="hero-course-preview__course">
-                                        <span className="hero-course-preview__icon" aria-hidden="true">
-                                            <BookOpen size={25} />
-                                        </span>
-                                        <div>
-                                            <p>Frontend development</p>
-                                            <h2>React foundations</h2>
-                                        </div>
-                                    </div>
-
-                                    <div className="hero-course-preview__meta">
-                                        <span><Layers3 size={15} /> 8 lessons</span>
-                                        <span><Clock3 size={15} /> 4h 20m</span>
-                                    </div>
-
-                                    <div className="hero-course-preview__progress">
-                                        <div>
-                                            <span>Your progress</span>
-                                            <strong>68%</strong>
-                                        </div>
-                                        <div className="hero-course-preview__progress-bar" aria-label="68% course progress">
-                                            <span />
-                                        </div>
-                                    </div>
-
-                                    <a href="#courses" className="hero-course-preview__action">
-                                        <CirclePlay size={18} /> Explore this course <ArrowRight size={16} />
-                                    </a>
-                                </article>
-
-                                <div className="hero-course-preview__next">
-                                    <span className="hero-course-preview__next-icon" aria-hidden="true">
-                                        <CirclePlay size={18} />
-                                    </span>
-                                    <div>
-                                        <span>Up next</span>
-                                        <strong>State and props</strong>
-                                        <small>12 min lesson</small>
-                                    </div>
-                                </div>
-                            </div>
+                            <CourseCard
+                                course={HERO_POPULAR_COURSE}
+                                viewMode="grid"
+                                highlightLabel="Most enrolled"
+                                detailState={{
+                                    from: "/",
+                                    fromHash: "#top",
+                                    backLabel: "Back to homepage",
+                                }}
+                            />
 
                             <div className="hero-illustration-frame">
                                 <svg

@@ -1283,7 +1283,7 @@ a:hover {
     background-color: #fff8e5;
     background-image:
         linear-gradient(rgba(255, 251, 237, 0.46), rgba(255, 251, 237, 0.46)),
-        url("/auth-school-background.jpg");
+        url("/auth-school-background.jpg?v=20260711");
     background-position: center;
     background-repeat: no-repeat;
     background-size: cover;
@@ -1446,6 +1446,10 @@ a:hover {
 .hero-illustration-svg {
     width: 100%;
     height: auto;
+}
+
+.hero-illustration > .course-card--catalog {
+    width: min(100%, 360px);
 }
 
 .hero-course-preview__scene {
