@@ -48,6 +48,13 @@ export const questionBankService = {
     return unwrap(response)
   },
 
+  async restoreBank(bankId, targetStatus) {
+    const response = await apiClient.post(`/admin/question-banks/${bankId}/restore`, {
+      status: targetStatus,
+    })
+    return unwrap(response)
+  },
+
   async listQuestions(params = {}) {
     const response = await apiClient.get('/admin/questions', { params })
     return normalizePage(response)
