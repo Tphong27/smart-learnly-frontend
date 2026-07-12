@@ -9,6 +9,7 @@ export { ClassStatusBadge } from "./components/ClassStatusBadge";
 export { ClassListFilters } from "./components/ClassListFilters";
 export { ClassOverviewTab } from "./components/ClassOverviewTab";
 export { ClassCurriculumTab } from "./components/ClassCurriculumTab";
+export { ClassAnalyticsPage } from "./pages/ClassAnalyticsPage";
 
 export const classroomFeature = {
   name: "Class Operations",

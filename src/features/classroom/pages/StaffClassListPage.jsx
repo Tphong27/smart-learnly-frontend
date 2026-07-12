@@ -1,21 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { AlertCircle, Loader, Plus, Trash2 } from "lucide-react";
+import { AlertCircle, BarChart3, Loader, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/shared/components/ui";
 import { classService } from "@/services";
-import { normalizeRole, ROLES } from "@/shared/constants/roles";
+import { ROLES } from "@/shared/constants/roles";
 import { ClassCard } from "../components/ClassCard";
 import { ClassListFilters } from "../components/ClassListFilters";
-
-function getCurrentRole() {
-  try {
-    const raw = localStorage.getItem("user");
-    const user = raw ? JSON.parse(raw) : null;
-    return normalizeRole(user?.role) || "";
-  } catch {
-    return "";
-  }
-}
+import { getCurrentRole } from "@/shared/utils/auth";
 
 export function StaffClassListPage() {
   const navigate = useNavigate();
@@ -35,7 +26,6 @@ export function StaffClassListPage() {
     size: 15,
     keyword: "",
     status: "",
-    courseId: courseIdFilter,
   });
 
   const [pageInfo, setPageInfo] = useState({
@@ -47,20 +37,6 @@ export function StaffClassListPage() {
   const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
-    setFilters((current) => {
-      if (current.courseId === courseIdFilter) {
-        return current;
-      }
-
-      return {
-        ...current,
-        page: 0,
-        courseId: courseIdFilter,
-      };
-    });
-  }, [courseIdFilter]);
-
-  useEffect(() => {
     let mounted = true;
 
     async function fetchClasses() {
@@ -68,9 +44,14 @@ export function StaffClassListPage() {
         setLoading(true);
         setError("");
 
+        const requestFilters = {
+          ...filters,
+          courseId: courseIdFilter,
+        };
+
         const data = isTrainer
-          ? await classService.listTrainer(filters)
-          : await classService.listAdmin(filters);
+          ? await classService.listTrainer(requestFilters)
+          : await classService.listAdmin(requestFilters);
 
         if (!mounted) return;
 
@@ -97,7 +78,7 @@ export function StaffClassListPage() {
     return () => {
       mounted = false;
     };
-  }, [filters, refreshKey, isTrainer]);
+  }, [filters, refreshKey, isTrainer, courseIdFilter]);
 
   function reloadClasses() {
     setRefreshKey((current) => current + 1);
@@ -110,20 +91,14 @@ export function StaffClassListPage() {
         page: 0,
         keyword: nextFilters.keyword ?? "",
         status: nextFilters.status ?? "",
-        courseId: nextFilters.courseId ?? "",
       };
 
       const isSameFilter =
         current.page === next.page &&
         current.keyword === next.keyword &&
-        current.status === next.status &&
-        current.courseId === next.courseId;
+        current.status === next.status;
 
-      if (isSameFilter) {
-        return current;
-      }
-
-      return next;
+      return isSameFilter ? current : next;
     });
   }, []);
 
@@ -230,21 +205,37 @@ export function StaffClassListPage() {
                   navigate(`/staff/classrooms/${classItem.id}/workspace`)
                 }
                 actionButtons={
-                  isTmo ? (
-                    <Button
+                  <>
+                    <button
                       type="button"
-                      variant="delete"
-                      size="xs-icon"
-                      title="Soft Delete"
-                      aria-label="Soft Delete class"
+                      className="btn-icon"
+                      title="Class Analytics"
+                      aria-label="Open class analytics"
                       onClick={(event) => {
                         event.stopPropagation();
-                        handleDeleteClass(classItem.id);
+
+                        navigate(`/staff/classrooms/${classItem.id}/analytics`);
                       }}
                     >
-                      <Trash2 size={16} strokeWidth={2.2} />
-                    </Button>
-                  ) : null
+                      <BarChart3 size={16} strokeWidth={2.2} />
+                    </button>
+
+                    {isTmo && (
+                      <Button
+                        type="button"
+                        variant="delete"
+                        size="xs-icon"
+                        title="Soft Delete"
+                        aria-label="Soft Delete class"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          handleDeleteClass(classItem.id);
+                        }}
+                      >
+                        <Trash2 size={16} strokeWidth={2.2} />
+                      </Button>
+                    )}
+                  </>
                 }
               />
             ))}

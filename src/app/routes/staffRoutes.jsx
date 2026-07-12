@@ -19,6 +19,7 @@ import {
   TmoCreateClassPage,
   ClassDetailPage,
   TrainerLessonDetailPage,
+  ClassAnalyticsPage,
 } from "@/features/classroom";
 
 function PlaceholderPage({ title }) {
@@ -47,6 +48,10 @@ function getStaffRoutes() {
             <RoleGuard allowedRoles={[ROLES.TRAINER, ROLES.TMO, ROLES.SME]} />
           ),
           children: [
+            {
+              path: "classrooms/:classId/analytics",
+              element: <ClassAnalyticsPage />,
+            },
             { path: "courses", element: <AdminCoursesPage /> },
             {
               path: "courses/:courseId/edit",

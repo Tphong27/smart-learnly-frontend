@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import {
   AlertCircle,
+  BarChart3,
   BookOpen,
   ClipboardList,
   Info,
@@ -10,20 +11,11 @@ import {
 } from "lucide-react";
 import { Button } from "@/shared/components/ui";
 import { classService } from "@/services";
-import { normalizeRole, ROLES } from "@/shared/constants/roles";
+import { ROLES } from "@/shared/constants/roles";
 import { ClassStatusBadge } from "../components/ClassStatusBadge";
 import { ClassOverviewTab } from "../components/ClassOverviewTab";
 import { ClassCurriculumTab } from "../components/ClassCurriculumTab";
-
-function getCurrentRole() {
-  try {
-    const raw = localStorage.getItem("user");
-    const user = raw ? JSON.parse(raw) : null;
-    return normalizeRole(user?.role) || "";
-  } catch {
-    return "";
-  }
-}
+import { getCurrentRole } from "@/shared/utils/auth";
 
 export function ClassDetailPage() {
   const { classId } = useParams();
@@ -37,7 +29,8 @@ export function ClassDetailPage() {
   // Cho phép deep-link đến 1 tab qua query string ?tab=curriculum (ví dụ khi
   // trang trainer lesson detail navigate về đây sau khi save).
   const [searchParams] = useSearchParams();
-  const initialTab = searchParams.get("tab") === "curriculum" ? "curriculum" : "overview";
+  const initialTab =
+    searchParams.get("tab") === "curriculum" ? "curriculum" : "overview";
   const [activeTab, setActiveTab] = useState(initialTab);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -47,6 +40,10 @@ export function ClassDetailPage() {
     setLoading(true);
     setError("");
     setRefreshKey((current) => current + 1);
+  }
+
+  function openAnalytics() {
+    navigate(`/staff/classrooms/${classId}/analytics`);
   }
 
   useEffect(() => {
@@ -161,6 +158,15 @@ export function ClassDetailPage() {
         {(isTrainer || isTmo) && (
           <div className="workspace-header__actions">
             <button
+              className="class-analytics-button"
+              type="button"
+              onClick={openAnalytics}
+            >
+              <BarChart3 size={16} strokeWidth={2.2} />
+              Analytics
+            </button>
+
+            <button
               className="class-assignment-button"
               type="button"
               onClick={openAssignments}
@@ -192,7 +198,11 @@ export function ClassDetailPage() {
         </div>
       )}
 
-      <div className="workspace-tabs" role="tablist" aria-label="Class workspace tabs">
+      <div
+        className="workspace-tabs"
+        role="tablist"
+        aria-label="Class workspace tabs"
+      >
         <button
           type="button"
           role="tab"

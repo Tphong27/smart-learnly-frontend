@@ -15,6 +15,20 @@ export function toNumber(value, fallback = 0) {
   return Number.isNaN(numberValue) ? fallback : numberValue;
 }
 
+export function formatNumber(value, digits = 1, fallback = "--") {
+  if (value === null || value === undefined || value === "") {
+    return fallback;
+  }
+
+  const numberValue = Number(value);
+
+  if (Number.isNaN(numberValue)) {
+    return fallback;
+  }
+
+  return numberValue.toFixed(digits);
+}
+
 export function formatCurrency(
   value,
   currency = DEFAULT_CURRENCY,
