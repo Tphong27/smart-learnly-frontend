@@ -4,7 +4,7 @@
 .app-layout-shell {
     min-height: 100vh;
     padding: 1px;
-    background: #f7f9fc;
+    background-color: #fdf8e4;
     box-sizing: border-box;
 }
 
@@ -19,7 +19,7 @@
 .app-layout-shell__content {
     flex: 1;
     min-width: 0;
-    background: #f7f9fc;
+    background: transparent;
 }
 
 /* --- Sidebar --- */

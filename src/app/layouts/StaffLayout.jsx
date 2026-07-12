@@ -1,5 +1,6 @@
 import { Outlet } from "react-router-dom";
+import { LayoutBackground } from "./LayoutBackground";
 
 export function StaffLayout({ children }) {
-  return <>{children || <Outlet />}</>;
+  return <LayoutBackground>{children || <Outlet />}</LayoutBackground>;
 }

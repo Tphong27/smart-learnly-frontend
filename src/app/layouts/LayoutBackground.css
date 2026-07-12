@@ -1,0 +1,60 @@
+.layout-background {
+    --layout-grid-size: 50px;
+    --layout-grid-highlight-radius: 360px;
+    --layout-grid-highlight-opacity: 0.7;
+    --layout-spotlight-x: 72%;
+    --layout-spotlight-y: 12rem;
+    position: relative;
+    isolation: isolate;
+    min-height: 100vh;
+    background-color: #fdf8e4;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='84' height='84' viewBox='0 0 84 84'%3E%3Cpath d='M0 0H84M0 0V84' fill='none' stroke='%2364758b' stroke-opacity='.34' stroke-width='1.5' stroke-dasharray='7 9'/%3E%3C/svg%3E");
+    background-size: var(--layout-grid-size) var(--layout-grid-size);
+    background-position: 0 0;
+}
+
+.layout-background::before {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    content: "";
+    pointer-events: none;
+    opacity: var(--layout-grid-highlight-opacity);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='84' height='84' viewBox='0 0 84 84'%3E%3Cpath d='M0 0H84M0 0V84' fill='none' stroke='%236366f1' stroke-opacity='.95' stroke-width='2' stroke-dasharray='7 9'/%3E%3C/svg%3E");
+    background-size: var(--layout-grid-size) var(--layout-grid-size);
+    background-position: 0 0;
+    -webkit-mask-image: radial-gradient(
+        circle var(--layout-grid-highlight-radius) at var(--layout-spotlight-x)
+            var(--layout-spotlight-y),
+        #000 0%,
+        rgba(0, 0, 0, 0.9) 28%,
+        transparent 72%
+    );
+    mask-image: radial-gradient(
+        circle var(--layout-grid-highlight-radius) at var(--layout-spotlight-x)
+            var(--layout-spotlight-y),
+        #000 0%,
+        rgba(0, 0, 0, 0.9) 28%,
+        transparent 72%
+    );
+}
+
+.layout-background--public {
+    --layout-grid-highlight-opacity: 0.78;
+}
+
+@media (max-width: 700px), (hover: none), (pointer: coarse) {
+    .layout-background {
+        --layout-grid-size: 72px;
+        --layout-grid-highlight-radius: 260px;
+        --layout-spotlight-x: 50%;
+        --layout-spotlight-y: 10rem;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .layout-background {
+        --layout-spotlight-x: 50%;
+        --layout-spotlight-y: 10rem;
+    }
+}
