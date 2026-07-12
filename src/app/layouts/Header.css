@@ -69,16 +69,11 @@
 }
 
 .app-header__logo-mark {
-    display: grid;
-    width: 40px;
+    display: block;
+    width: 56px;
     height: 40px;
-    place-items: center;
-    border-radius: 12px;
-    background: linear-gradient(145deg, #3478f6, #7047e8);
-    color: #ffffff;
-    box-shadow:
-        0 4px 12px rgba(52, 120, 246, 0.3),
-        0 6px 20px rgba(112, 71, 232, 0.2);
+    object-fit: contain;
+    border-radius: 8px;
 }
 
 .app-header__logo-text {

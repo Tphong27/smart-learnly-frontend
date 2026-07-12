@@ -1,7 +1,7 @@
 .layout-background {
     --layout-grid-size: 50px;
     --layout-grid-highlight-radius: 360px;
-    --layout-grid-highlight-opacity: 0.7;
+    --layout-grid-highlight-opacity: 1;
     --layout-spotlight-x: 72%;
     --layout-spotlight-y: 12rem;
     position: relative;

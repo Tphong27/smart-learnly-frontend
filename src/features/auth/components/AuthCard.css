@@ -22,8 +22,7 @@
 .auth-brand { display: inline-flex; align-items: center; gap: 10px; font-size: 17px; font-weight: 900; letter-spacing: -0.55px; }
 .auth-brand--light { color: #ffffff; }
 .auth-brand--dark { color: #17233e; }
-.auth-brand__mark { display: grid; place-items: center; width: 34px; height: 34px; border: 1.5px solid currentColor; border-radius: 10px; }
-.auth-brand__mark svg { width: 19px; height: 19px; }
+.auth-brand__mark { display: block; width: 62px; height: 44px; object-fit: contain; border-radius: 9px; }
 .auth-brand__wordmark span { color: #cfe7ff; }
 
 .auth-page__home {

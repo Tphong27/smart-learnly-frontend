@@ -46,7 +46,7 @@ export function downloadInvoice({ invoice, order, purchasedItem, onBlocked }) {
           <main class="invoice">
             <header class="header">
               <div class="brand-wrap">
-                <div class="logo">SL</div>
+                <img class="logo" src="/smart-learnly-logo.png" alt="Smart Learnly logo" />
 
                 <div>
                   <div class="brand">Smart Learnly Platform</div>

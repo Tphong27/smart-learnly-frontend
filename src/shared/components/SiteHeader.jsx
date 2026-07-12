@@ -6,9 +6,9 @@ import {
     LoaderCircle,
     Search,
     X,
-    Zap,
 } from "lucide-react";
 import { courseService } from "@/services";
+import { SmartLearnlyMark } from "./SmartLearnlyMark";
 
 function CourseSuggestionThumbnail({ course }) {
     const [imageFailed, setImageFailed] = useState(false);
@@ -181,9 +181,7 @@ export function SiteHeader() {
                     className="header-logo"
                     aria-label="Smart Learnly home"
                 >
-                    <span className="header-logo-icon">
-                        <Zap size={18} strokeWidth={2.5} />
-                    </span>
+                    <SmartLearnlyMark className="header-logo-icon" />
                     <span className="header-logo-text">Smart Learnly</span>
                 </a>
 
@@ -325,9 +323,7 @@ export function SiteHeader() {
 export function BrandLogo() {
     return (
         <a className="brand" href="/" aria-label="Smart Learnly home">
-            <span className="brand-mark">
-                <Zap size={18} strokeWidth={2.6} />
-            </span>
+            <SmartLearnlyMark className="brand-mark" />
             <span>Smart Learnly</span>
         </a>
     );

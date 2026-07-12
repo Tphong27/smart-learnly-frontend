@@ -1,24 +1,13 @@
 import { ArrowUpRight } from "lucide-react";
 import { Link } from "react-router-dom";
 import { AuroraBackground } from "./AuroraBackground";
+import { SmartLearnlyMark } from "@/shared/components/SmartLearnlyMark";
 import "./AuthCard.css";
 
 function BrandLogo({ tone = "light" }) {
     return (
         <span className={`auth-brand auth-brand--${tone}`}>
-            <span className="auth-brand__mark" aria-hidden="true">
-                <svg
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2.4"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                >
-                    <path d="M4 19V5l8 5 8-5v14" />
-                    <path d="M4 12l8 5 8-5" opacity="0.62" />
-                </svg>
-            </span>
+            <SmartLearnlyMark className="auth-brand__mark" />
             <span className="auth-brand__wordmark">
                 Smart <span>Learnly</span>
             </span>

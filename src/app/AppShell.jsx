@@ -25,6 +25,7 @@ import getAdminRoutes from "./routes/adminRoutes";
 import { NotFoundPage } from "./pages/error/NotFoundPage";
 import { ForbiddenPage } from "./pages/error/ForbiddenPage";
 import { ServerErrorPage } from "./pages/error/ServerErrorPage";
+import { SiteFooter } from "@/shared/components/SiteFooter";
 
 const appRoutes = [
     {
@@ -160,6 +161,7 @@ export function AppShell() {
     return (
         <BrowserRouter>
             <AppRoutes />
+            <SiteFooter />
         </BrowserRouter>
     );
 }

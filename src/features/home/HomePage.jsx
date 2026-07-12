@@ -6,7 +6,6 @@ import {
 import { useDocumentTitle } from "../../shared/hooks/useDocumentTitle";
 import { CourseListPage } from "../course/pages/CourseListPage";
 import { CourseCard } from "../course/components/CourseCard";
-import { BrandLogo } from "../../shared/components/SiteHeader";
 
 const HERO_POPULAR_COURSE = {
     id: "react-nang-cao-kien-truc-frontend",
@@ -17,10 +16,6 @@ const HERO_POPULAR_COURSE = {
     isFree: true,
     price: 10000,
 };
-
-function Logo() {
-    return <BrandLogo />;
-}
 
 function RoadStop({ className }) {
     return (
@@ -444,39 +439,6 @@ export function HomePage() {
                 </section>
 
                 </main>
-            <footer className="site-footer">
-                <div className="container footer-top">
-                    <div className="footer-brand">
-                        <Logo />
-                        <p>
-                            Smarter learning for people and training centers
-                            ready to grow.
-                        </p>
-                    </div>
-                    <div>
-                        <strong>Platform</strong>
-                        <a href="#features">Features</a>
-                        <a href="#courses">Courses</a>
-                        <a href="#how-it-works">How it works</a>
-                    </div>
-                    <div>
-                        <strong>Solutions</strong>
-                        <a href="#centers">For trainees</a>
-                        <a href="#centers">For educators</a>
-                        <a href="#centers">For centers</a>
-                    </div>
-                    <div>
-                        <strong>Company</strong>
-                        <a href="#about">About</a>
-                        <a href="mailto:hello@smartlearnly.com">Contact</a>
-                        <a href="/login">Log in</a>
-                    </div>
-                </div>
-                <div className="container footer-bottom">
-                    <span>© 2026 Smart Learnly Platform</span>
-                    <span>Learn smarter. Achieve faster.</span>
-                </div>
-            </footer>
         </div>
     );
 }

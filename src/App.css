@@ -691,8 +691,6 @@ a:hover {
     width: 100%;
     transform: translateX(-50%);
     z-index: 1000;
-    background: white;
-    border-bottom: 1px solid rgba(0, 0, 0, 0.31);
     transition:
         top 360ms cubic-bezier(0.22, 1, 0.36, 1),
         width 360ms cubic-bezier(0.22, 1, 0.36, 1),
@@ -744,15 +742,11 @@ a:hover {
 }
 
 .header-logo-icon {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 36px;
-    height: 36px;
-    border-radius: 10px;
-    color: white;
-    background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
-    box-shadow: 0px 4px 7.5px rgba(99, 102, 241, 0.3);
+    display: block;
+    width: 54px;
+    height: 38px;
+    border-radius: 8px;
+    object-fit: contain;
 }
 
 .header-logo-text {
@@ -1003,7 +997,7 @@ a:hover {
     font-family: "Lato", sans-serif;
     font-size: 16px;
     font-weight: 600;
-    color: #0f172a;
+    color: #825ef5;
     cursor: pointer;
     transition: color 0.2s ease;
 }
@@ -1172,20 +1166,15 @@ a:hover {
 }
 
 .brand-mark {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 36px;
-    height: 36px;
-    border-radius: 10px;
-    color: white;
-    background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
-    box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
+    display: block;
+    width: 54px;
+    height: 38px;
+    border-radius: 8px;
+    object-fit: contain;
     transition: all 0.3s ease;
 }
 
 .brand:hover .brand-mark {
-    box-shadow: 0 6px 20px rgba(99, 102, 241, 0.4);
     transform: scale(1.05);
 }
 
@@ -1278,7 +1267,7 @@ a:hover {
    ============================================ */
 .hero {
     position: relative;
-    min-height: 760px;
+    min-height: 100vh;
     background-color: #fff8e5;
     background-image:
         linear-gradient(rgba(255, 251, 237, 0.46), rgba(255, 251, 237, 0.46)),
@@ -3454,7 +3443,12 @@ a:hover {
 .feature-section {
     overflow: hidden;
     padding: 100px 0 80px;
-    background: linear-gradient(180deg, #ffffff 0%, #fafbff 100%);
+    background-image:
+        linear-gradient(180deg, rgba(4, 31, 23, 0.16), rgba(3, 24, 18, 0.3)),
+        url("/feature-chalkboard.jpg");
+    background-position: center bottom;
+    background-size: cover;
+    background-repeat: no-repeat;
 }
 
 .feature-section__inner {
@@ -3471,13 +3465,18 @@ a:hover {
     margin: 0 0 66px;
     display: flex;
     flex-direction: column;
-    color: #1e1b4b;
-    font-family: "Lato", sans-serif;
-    font-size: 42px;
-    font-weight: 700;
-    letter-spacing: -1.5px;
-    line-height: 50.4px;
+    color: #fffdf3;
+    font-family: "Patrick Hand", "Segoe Print", "Bradley Hand", cursive;
+    font-size: clamp(48px, 4.4vw, 68px);
+    font-weight: 400;
+    letter-spacing: 0.025em;
+    line-height: 0.98;
     text-align: center;
+    text-shadow:
+        0 0 1px rgba(255, 255, 255, 0.95),
+        0 0 5px rgba(255, 255, 255, 0.28),
+        1px 2px 0 rgba(9, 45, 34, 0.36);
+    transform: rotate(-0.6deg);
 }
 
 .feature-roadmap {
@@ -3563,26 +3562,28 @@ a:hover {
     position: absolute;
     z-index: 1;
     width: 32.65%;
-    color: #343434;
+    color: #fffdf3;
 }
 
 .feature-roadmap__item h3 {
     margin: 0;
-    color: #343434;
+    color: #fffdf3;
     font-family: "Lato", sans-serif;
     font-size: clamp(24px, 2.15vw, 32px);
     font-weight: 700;
     line-height: 1.18;
+    text-shadow: 0 2px 4px rgba(2, 24, 17, 0.5);
 }
 
 .feature-roadmap__item p {
     max-width: 470px;
     margin: 8px 0 0;
-    color: #343434;
+    color: rgba(255, 253, 243, 0.88);
     font-family: "Lato", sans-serif;
     font-size: clamp(14px, 1.2vw, 18px);
     font-weight: 500;
     line-height: 1.48;
+    text-shadow: 0 1px 3px rgba(2, 24, 17, 0.52);
 }
 
 .feature-roadmap__item--chatbot {
@@ -3783,9 +3784,9 @@ a:hover {
 
     .feature-section__title {
         margin-bottom: 36px;
-        font-size: 30px;
-        letter-spacing: -1px;
-        line-height: 1.15;
+        font-size: 42px;
+        letter-spacing: 0.02em;
+        line-height: 1;
     }
 
     .feature-roadmap {
@@ -4094,71 +4095,6 @@ a:hover {
     color: #62d6b9;
 }
 
-.site-footer {
-    padding: 70px 0 28px;
-    color: #9ca3af;
-    background: linear-gradient(
-        180deg,
-        var(--bg-teal-tint) 0%,
-        rgba(240, 253, 250, 0.8) 100%
-    );
-    border-top: 1px solid var(--border-teal);
-}
-
-.footer-top {
-    display: grid;
-    grid-template-columns: 2fr repeat(3, 1fr);
-    gap: 50px;
-    padding-bottom: 50px;
-}
-
-.site-footer .brand {
-    color: var(--theme-primary-dark);
-}
-
-.footer-brand p {
-    max-width: 280px;
-    margin: 18px 0 0;
-    color: var(--text-muted);
-    font-size: 13px;
-    line-height: 1.7;
-}
-
-.footer-top > div:not(.footer-brand) {
-    display: grid;
-    align-content: start;
-    gap: 14px;
-}
-
-.footer-top strong {
-    margin-bottom: 6px;
-    color: var(--theme-primary-dark);
-    font-size: 13px;
-    font-weight: 600;
-    font-family: var(--font-heading);
-}
-
-.footer-top a {
-    color: var(--text-muted);
-    font-size: 12px;
-    transition: all 0.3s ease;
-}
-
-.footer-top a:hover {
-    color: var(--theme-primary);
-    transform: translateX(3px);
-}
-
-.footer-bottom {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    border-top: 1px solid var(--border-teal);
-    padding-top: 24px;
-    color: var(--text-muted);
-    font-size: 11px;
-}
-
 .app-placeholder {
     border: 1px solid #e0e7f1;
     border-radius: 8px;
@@ -4238,10 +4174,6 @@ html {
 
 .landing-page .feature-section {
     animation: fadeInUp 0.8s ease-out 0.2s both;
-}
-
-.landing-page .site-footer {
-    animation: fadeInUp 0.8s ease-out 0.3s both;
 }
 
 /* Text link hover effects */
@@ -4365,24 +4297,9 @@ html {
         gap: 16px;
     }
 
-    .footer-top {
-        grid-template-columns: 1fr 1fr;
-        gap: 30px;
-    }
-
-    .footer-brand {
-        grid-column: 1 / -1;
-    }
-
     .courses-heading {
         flex-direction: column;
         align-items: flex-start;
         gap: 16px;
-    }
-}
-
-@media (max-width: 480px) {
-    .footer-top {
-        grid-template-columns: 1fr;
     }
 }

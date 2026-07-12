@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Bell, LogOut, User, ChevronDown, Menu, Zap } from "lucide-react";
+import { Bell, LogOut, User, ChevronDown, Menu } from "lucide-react";
 import { getDashboardPathByRole } from "@/app/routes/dashboard-path";
 import { normalizeRole } from "@/shared/constants/roles";
+import { SmartLearnlyMark } from "@/shared/components/SmartLearnlyMark";
 import "./Header.css";
 
 function getInitials(name) {
@@ -91,9 +92,7 @@ export function Header({ user, onLogout, onToggleSidebar }) {
 
           {/* Logo */}
           <Link to={dashboardPath} className="app-header__logo">
-            <span className="app-header__logo-mark">
-              <Zap size={18} />
-            </span>
+            <SmartLearnlyMark className="app-header__logo-mark" />
             <span className="app-header__logo-text">
               <span className="app-header__logo-title">Smart Learnly</span>
             </span>
