@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Archive, Edit2, Eye, Plus, Search } from 'lucide-react'
+import { Archive, Edit2, Eye, Plus, RotateCcw, Search } from 'lucide-react'
 import { Button, FormField, Modal, useToast } from '@/shared/components/ui'
 import { courseService, getCurrentUser, questionBankService } from '@/services'
 import '../../admin-shared.css'
@@ -144,7 +144,9 @@ export function AdminQuestionBanksPage() {
   const [refreshKey, setRefreshKey] = useState(0)
   const [modalOpen, setModalOpen] = useState(false)
   const [editingBank, setEditingBank] = useState(null)
-  const [archivingId, setArchivingId] = useState(null)
+  const [archivingId, setArchivingId] = useState(null);
+  const [restoreModalOpen, setRestoreModalOpen] = useState(false);
+  const [restoringBank, setRestoringBank] = useState(null)
 
   useEffect(() => {
     let cancelled = false
@@ -220,6 +222,33 @@ export function AdminQuestionBanksPage() {
     }
   }
 
+  function openRestoreModal(bank) {
+    setRestoringBank(bank)
+    setRestoreModalOpen(true)
+  }
+
+  function closeRestoreModal() {
+    setRestoreModalOpen(false)
+    setRestoringBank(null)
+  }
+
+  async function handleRestore(targetStatus) {
+    if (!writable || !restoringBank) return
+    const bankId = restoringBank.bankId || restoringBank.id
+    try {
+      await questionBankService.restoreBank(bankId, targetStatus)
+      toast.success(
+        targetStatus === 'approved'
+          ? 'Question bank restored and approved'
+          : 'Question bank restored to draft'
+      )
+      closeRestoreModal()
+      setRefreshKey((key) => key + 1)
+    } catch (err) {
+      toast.error(err?.message || 'Could not restore question bank.')
+    }
+  }
+
   return (
     <div className="admin-page">
       <header className="admin-page__header">
@@ -292,6 +321,11 @@ export function AdminQuestionBanksPage() {
                             <Archive size={15} />
                           </button>
                         )}
+                        {writable && bank.status === 'archived' && (
+                          <button type="button" className="admin-table__icon-btn" title="Restore" onClick={() => openRestoreModal(bank)}>
+                            <RotateCcw size={15} />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -314,6 +348,58 @@ export function AdminQuestionBanksPage() {
           }}
         />
       )}
+
+      <RestoreBankModal
+        open={restoreModalOpen}
+        bank={restoringBank}
+        onClose={closeRestoreModal}
+        onConfirm={handleRestore}
+      />
     </div>
+  )
+}
+
+function RestoreBankModal({ open, bank, onClose, onConfirm }) {
+  return (
+    <RestoreBankModalContent key={open ? "open" : "closed"} open={open} bank={bank} onClose={onClose} onConfirm={onConfirm} />
+  );
+}
+
+function RestoreBankModalContent({ open, bank, onClose, onConfirm }) {
+  const [targetStatus, setTargetStatus] = useState('draft')
+  return (
+    <Modal open={open} title="Restore question bank" size="sm" onClose={onClose}>
+      <p style={{ marginTop: 0, color: '#475569' }}>
+        Restore <strong>{bank?.name || 'this question bank'}</strong> so it can be edited again. Choose the status to apply after restoring.
+      </p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 18 }}>
+        <label style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <input
+            type="radio"
+            name="restore-target-list"
+            value="draft"
+            checked={targetStatus === 'draft'}
+            onChange={() => setTargetStatus('draft')}
+          />
+          <span>Restore as <strong>Draft</strong> (still needs review)</span>
+        </label>
+        <label style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <input
+            type="radio"
+            name="restore-target-list"
+            value="approved"
+            checked={targetStatus === 'approved'}
+            onChange={() => setTargetStatus('approved')}
+          />
+          <span>Restore as <strong>Approved</strong> (ready to use)</span>
+        </label>
+      </div>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+        <Button type="button" variant="ghost" onClick={onClose}>Cancel</Button>
+        <Button type="button" leftIcon={<RotateCcw size={15} />} onClick={() => onConfirm(targetStatus)}>
+          Restore
+        </Button>
+      </div>
+    </Modal>
   )
 }
