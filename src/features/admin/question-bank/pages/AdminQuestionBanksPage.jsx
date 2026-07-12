@@ -196,6 +196,7 @@ export function AdminQuestionBanksPage() {
   }
 
   function openEditModal(bank) {
+    if (bank?.status === 'archived') return
     setEditingBank(bank)
     setModalOpen(true)
   }
