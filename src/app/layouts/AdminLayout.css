@@ -3,7 +3,7 @@
    ========================================================================== */
 
 :root {
-    --surface: #f8fafc;
+    --surface: #fdf8e4;
     --line: #e2e8f0;
 }
 
@@ -101,7 +101,7 @@
     margin-top: 70px !important;
     height: calc(100vh - 70px) !important;
     box-sizing: border-box !important;
-    background-color: var(--surface) !important;
+    background-color: transparent !important;
 }
 
 @media (prefers-reduced-motion: reduce) {

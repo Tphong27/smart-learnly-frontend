@@ -1,5 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { Header } from "./Header";
+import { LayoutBackground } from "./LayoutBackground";
 import { authService, getCurrentUser } from "@/services";
 import { SiteHeader } from "@/shared/components/SiteHeader";
 import { ROLES } from "@/shared/constants/roles";
@@ -11,10 +12,10 @@ export function AuthAwareLayout({ children }) {
 
   if (!storedUser) {
     return (
-      <>
+      <LayoutBackground variant="public">
         <SiteHeader />
         {children}
-      </>
+      </LayoutBackground>
     );
   }
 
@@ -33,9 +34,9 @@ export function AuthAwareLayout({ children }) {
   }
 
   return (
-    <div className="app-layout-shell course-auth-layout">
+    <LayoutBackground className="app-layout-shell course-auth-layout">
       <Header user={user} onLogout={handleLogout} onToggleSidebar={undefined} />
       <main className="course-auth-layout__content">{children}</main>
-    </div>
+    </LayoutBackground>
   );
 }

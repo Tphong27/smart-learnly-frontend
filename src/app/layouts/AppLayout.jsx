@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Outlet, useNavigate } from "react-router-dom";
 import { Header } from "./Header";
 import { Sidebar } from "./Sidebar";
+import { LayoutBackground } from "./LayoutBackground";
 import { authService, getCurrentUser } from "@/services";
 import { ROLES } from "@/shared/constants/roles";
 import "./AppLayout.css";
@@ -28,7 +29,7 @@ export function AppLayout() {
     }
 
     return (
-        <div className="app-layout-shell">
+        <LayoutBackground className="app-layout-shell">
             {/* Header at top level */}
             <Header
                 user={user}
@@ -47,6 +48,6 @@ export function AppLayout() {
                     <Outlet />
                 </main>
             </div>
-        </div>
+        </LayoutBackground>
     );
 }

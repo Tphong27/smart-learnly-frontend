@@ -1,6 +1,7 @@
 import { Outlet, useNavigate } from "react-router-dom";
 import { Sidebar } from "./Sidebar";
 import { Header } from "./Header";
+import { LayoutBackground } from "./LayoutBackground";
 import Breadcrumb from "../../shared/components/Breadcrumb";
 import { getCurrentUser } from "@/services";
 import "./AdminLayout.css";
@@ -22,7 +23,7 @@ export function AdminLayout() {
   };
 
   return (
-    <div className="app-layout-wrapper">
+    <LayoutBackground className="app-layout-wrapper">
       {/* 📌 SIDEBAR CỐ ĐỊNH BÊN TRÁI */}
       <Sidebar userRole={user.role} />
 
@@ -43,6 +44,6 @@ export function AdminLayout() {
           </div>
         </main>
       </div>
-    </div>
+    </LayoutBackground>
   );
 }
