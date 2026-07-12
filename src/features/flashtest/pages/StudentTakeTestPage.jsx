@@ -16,7 +16,11 @@ import {
   attemptService,
   testService,
 } from "@/services/flashtest.service.js";
-import { sanitizeAnswerHtml, sanitizeLessonHtml } from "@/shared/utils/htmlSanitizer";
+import {
+  sanitizeAnswerHtml,
+  sanitizeLessonHtml,
+  sanitizeQuestionHtml,
+} from "@/shared/utils/htmlSanitizer";
 import "../flashtest.css";
 
 const API_BASE_URL =
@@ -588,10 +592,15 @@ export function StudentTakeTestPage({
                   <span className="ft-badge ft-badge--mcq">Answered</span>
                 )}
               </div>
-              <strong>
-                {questions[activeQuestionIndex].questionText ||
-                  questions[activeQuestionIndex].content}
-              </strong>
+              <div
+                className="ft-question-rich-text ft-question-card__prompt"
+                dangerouslySetInnerHTML={{
+                  __html: sanitizeQuestionHtml(
+                    questions[activeQuestionIndex].questionText ||
+                      questions[activeQuestionIndex].content,
+                  ),
+                }}
+              />
               <div className="ft-option-list">
                 {(questions[activeQuestionIndex].options || []).map((answer) => (
                   <label className="ft-option" key={answer.id}>

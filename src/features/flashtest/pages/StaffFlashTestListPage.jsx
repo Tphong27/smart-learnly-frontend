@@ -1,6 +1,17 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeft, ClipboardList, Edit2, Eye, Plus, RefreshCw, Search } from "lucide-react";
+import {
+  ArrowLeft,
+  BarChart3,
+  CheckSquare,
+  ClipboardList,
+  Edit2,
+  Eye,
+  FileText,
+  Plus,
+  RefreshCw,
+  Search,
+} from "lucide-react";
 import {
   assignmentService,
   testService,
@@ -190,10 +201,27 @@ export function StaffFlashTestListPage({ variant = "flash" }) {
     return viewRows.length;
   }, [assignments, classId, isAssignmentMode, showCurriculumEssays, tests]);
 
+  const summary = useMemo(() => {
+    const activeCount = rows.filter((item) => {
+      const dueDate = item.dueDate || item.due_date;
+      return !(
+        item.flashType === "essay" &&
+        dueDate &&
+        new Date(dueDate).getTime() <= nowMs
+      );
+    }).length;
+    return {
+      active: activeCount,
+      expired: Math.max(0, rows.length - activeCount),
+      mcq: rows.filter((item) => item.flashType === "mcq").length,
+      essay: rows.filter((item) => item.flashType === "essay").length,
+    };
+  }, [nowMs, rows]);
+
   return (
-    <section className="ft-page">
-      <header className="ft-page-header">
-        <div>
+    <section className="ft-page ft-page--staff-list">
+      <header className="ft-staff-hero">
+        <div className="ft-staff-hero__content">
           <span className="ft-page-kicker">Staff workspace</span>
           <h1 className="ft-page-title">{pageTitle}</h1>
           <p className="ft-page-subtitle">
@@ -203,8 +231,22 @@ export function StaffFlashTestListPage({ variant = "flash" }) {
               ? "Manage MCQ practice tests, essay assignments, and realtime progress."
               : "Manage MCQ tests and realtime trainee progress."}
           </p>
+          <div className="ft-staff-hero__meta" aria-label={`${pageTitle} summary`}>
+            <span>
+              <BarChart3 size={15} />
+              {summary.active} active
+            </span>
+            <span>
+              <CheckSquare size={15} />
+              {summary.mcq} MCQ
+            </span>
+            <span>
+              <FileText size={15} />
+              {summary.essay} essay
+            </span>
+          </div>
         </div>
-        <div className="ft-toolbar">
+        <div className="ft-toolbar ft-staff-hero__actions">
           <button
             className="ft-icon-button"
             type="button"
@@ -228,7 +270,22 @@ export function StaffFlashTestListPage({ variant = "flash" }) {
         </div>
       </header>
 
-      <div className="ft-panel">
+      <div className="ft-ops-stats" aria-label="Assessment operations overview">
+        <div className="ft-ops-stat ft-ops-stat--primary">
+          <span>Visible items</span>
+          <strong>{rows.length}</strong>
+        </div>
+        <div className="ft-ops-stat">
+          <span>Active</span>
+          <strong>{summary.active}</strong>
+        </div>
+        <div className="ft-ops-stat">
+          <span>Expired</span>
+          <strong>{summary.expired}</strong>
+        </div>
+      </div>
+
+      <div className="ft-panel ft-ops-panel">
         <div className="ft-list-toolbar">
           <label className="ft-search">
             <Search size={16} />
@@ -283,7 +340,7 @@ export function StaffFlashTestListPage({ variant = "flash" }) {
             <p className="ft-muted">Try another keyword or clear the search box.</p>
           </div>
         ) : (
-          <div className="ft-table-wrap">
+          <div className="ft-table-wrap ft-table-wrap--ops">
             <table className="ft-table">
               <thead>
                 <tr>

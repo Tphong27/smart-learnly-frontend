@@ -3,6 +3,7 @@ import { Client } from "@stomp/stompjs";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   ArrowLeft,
+  BarChart3,
   CheckCircle,
   ChevronUp,
   Clock,
@@ -10,6 +11,7 @@ import {
   Eye,
   RefreshCw,
   RotateCcw,
+  Users,
   X,
   XCircle,
 } from "lucide-react";
@@ -225,6 +227,18 @@ export function TeacherMonitorPage() {
         String(a.studentName).localeCompare(String(b.studentName)),
       );
   }, [attemptHistory]);
+
+  const monitorStats = useMemo(() => {
+    const submitted = rowList.filter((row) => statusInfo(row.status).done).length;
+    const doing = rowList.filter((row) => {
+      const info = statusInfo(row.status);
+      return !info.done && info.className !== "ft-status--expired";
+    }).length;
+    const expired = rowList.filter(
+      (row) => statusInfo(row.status).className === "ft-status--expired",
+    ).length;
+    return { submitted, doing, expired };
+  }, [rowList]);
 
   const mergeEvent = useCallback((event) => {
     if (!event?.studentId) return;
@@ -650,17 +664,30 @@ export function TeacherMonitorPage() {
   }, [id, mergeEvent, normalizedType]);
 
   return (
-    <section className="ft-page">
-      <header className="ft-page-header">
-        <div>
-          <span className="ft-page-kicker"></span>
-          <h1 className="ft-page-title">Test</h1>
+    <section className="ft-page ft-page--monitor">
+      <header className="ft-monitor-hero">
+        <div className="ft-monitor-hero__content">
+          <span className="ft-page-kicker">Trainer monitor</span>
+          <h1 className="ft-page-title">
+            {normalizedType === "essay" ? "Assignment Monitor" : "Test Monitor"}
+          </h1>
           <p className="ft-page-subtitle">
-            {normalizedType === "essay" ? "Essay assignment" : "MCQ practice"} ·{" "}
-            {connected ? "" : ""}
+            {normalizedType === "essay"
+              ? "Review submissions, download files, and grade trainee work."
+              : "Watch live attempts, reopen access, and inspect completed answers."}
           </p>
+          <div className="ft-monitor-hero__meta">
+            <span>
+              <Users size={15} />
+              {rowList.length} trainees
+            </span>
+            <span>
+              <BarChart3 size={15} />
+              {connected ? "Live connected" : "Manual refresh"}
+            </span>
+          </div>
           {accessInfo?.code && (
-            <div className="ft-access-code-panel">
+            <div className="ft-access-code-panel ft-access-code-panel--monitor">
               <span>Access code</span>
               <strong>{accessInfo.code}</strong>
               <small>
@@ -672,7 +699,7 @@ export function TeacherMonitorPage() {
             </div>
           )}
         </div>
-        <div className="ft-toolbar">
+        <div className="ft-toolbar ft-monitor-hero__actions">
           <button
             className="ft-icon-button"
             type="button"
@@ -690,6 +717,21 @@ export function TeacherMonitorPage() {
           </button>
         </div>
       </header>
+
+      <div className="ft-ops-stats ft-monitor-stats" aria-label="Monitor summary">
+        <div className="ft-ops-stat ft-ops-stat--primary">
+          <span>Submitted</span>
+          <strong>{monitorStats.submitted}</strong>
+        </div>
+        <div className="ft-ops-stat">
+          <span>Doing</span>
+          <strong>{monitorStats.doing}</strong>
+        </div>
+        <div className="ft-ops-stat">
+          <span>Expired</span>
+          <strong>{monitorStats.expired}</strong>
+        </div>
+      </div>
 
       {normalizedType === "mcq" && (
         <div
@@ -719,7 +761,7 @@ export function TeacherMonitorPage() {
       )}
 
       {(normalizedType !== "mcq" || activeTab === "live") && (
-        <div className="ft-table-wrap">
+        <div className="ft-table-wrap ft-table-wrap--ops">
           <table className="ft-table">
             <thead>
               <tr>
@@ -906,7 +948,7 @@ export function TeacherMonitorPage() {
       )}
 
       {normalizedType === "mcq" && activeTab === "history" && (
-        <div className="ft-table-wrap">
+        <div className="ft-table-wrap ft-table-wrap--ops">
           <table className="ft-table">
             <thead>
               <tr>

@@ -392,9 +392,9 @@ export function StaffFlashTestCreatePage({ variant = "flash" }) {
   };
 
   return (
-    <section className="ft-page">
-      <header className="ft-page-header">
-        <div>
+    <section className="ft-page ft-page--builder">
+      <header className="ft-builder-hero">
+        <div className="ft-builder-hero__content">
           <span className="ft-page-kicker">
             {isAssignmentMode ? "Assignments" : isFlashMode ? "Flash Tests" : "Tests"}
           </span>
@@ -409,7 +409,7 @@ export function StaffFlashTestCreatePage({ variant = "flash" }) {
               : "Create a timed MCQ test for trainees."}
           </p>
         </div>
-        <div className="ft-toolbar">
+        <div className="ft-toolbar ft-builder-hero__actions">
           <button
             className="ft-icon-button"
             type="button"
@@ -430,7 +430,7 @@ export function StaffFlashTestCreatePage({ variant = "flash" }) {
         </div>
       </header>
 
-      <div className="ft-panel">
+      <div className="ft-panel ft-builder-shell">
         <div className="ft-ribbon" aria-label={`${pageName} setup summary`}>
           <div className="ft-ribbon__item is-active">
             <FileText size={18} />

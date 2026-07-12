@@ -4,11 +4,15 @@ import {
   ArrowLeft,
   ArrowRight,
   BookOpen,
+  CalendarClock,
   CheckSquare,
+  Clock3,
+  ClipboardCheck,
   FileText,
   KeyRound,
   RefreshCw,
   Search,
+  Trophy,
   X,
 } from "lucide-react";
 import {
@@ -44,6 +48,15 @@ function getDuration(item) {
 function formatDate(value) {
   if (!value) return "--";
   return new Date(value).toLocaleString();
+}
+
+function formatShortDate(value) {
+  if (!value) return "--";
+  return new Date(value).toLocaleDateString(undefined, {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
 }
 
 function isCompletedStatus(status) {
@@ -110,6 +123,25 @@ function formatMcqScore(attempt, questionTotal) {
   return "--";
 }
 
+function isPastDate(value, referenceMs) {
+  if (!value) return false;
+  const time = new Date(value).getTime();
+  return Number.isFinite(time) && time <= referenceMs;
+}
+
+function getAccessExpiresAt(item, result) {
+  return (
+    result?.expiresAt ||
+    result?.accessCodeExpiresAt ||
+    result?.access_code_expires_at ||
+    item?.accessCodeExpiresAt ||
+    item?.access_code_expires_at ||
+    item?.codeExpiresAt ||
+    item?.code_expires_at ||
+    ""
+  );
+}
+
 export function TraineeFlashTestListPage({ variant = "flash" }) {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -142,6 +174,17 @@ export function TraineeFlashTestListPage({ variant = "flash" }) {
   const [accessCode, setAccessCode] = useState("");
   const [accessError, setAccessError] = useState("");
   const [verifyingAccess, setVerifyingAccess] = useState(false);
+  const pageTitle = isAssignmentMode
+    ? "My Assignments"
+    : isFlashMode ? "My Flash Tests" : "My Tests";
+  const pageSubtitle = isAssignmentMode
+    ? "Track essay work from your enrolled classes and continue before each due date."
+    : isFlashMode
+    ? "Practice with trainer-published MCQ and essay work while your progress stays visible."
+    : "Review available trainer tests, check your latest result, and start the next one.";
+  const countLabel = isAssignmentMode
+    ? "assignments"
+    : isFlashMode ? "flash tests" : "tests";
 
   const loadAvailableTests = useCallback(async () => {
     setLoading(true);
@@ -249,18 +292,25 @@ export function TraineeFlashTestListPage({ variant = "flash" }) {
     return () => window.clearTimeout(timer);
   }, [loadAvailableTests]);
 
-  const rows = useMemo(() => {
-    const merged = [
+  useEffect(() => {
+    const interval = window.setInterval(() => setNowMs(Date.now()), 30000);
+    return () => window.clearInterval(interval);
+  }, []);
+
+  const assessmentItems = useMemo(() => {
+    return [
       ...tests.map((item) => ({ ...item, flashType: "mcq" })),
       ...assignments.map((item) => ({ ...item, flashType: "essay" })),
     ].sort((a, b) =>
       new Date(b.createdAt || b.created_at || 0).getTime() -
       new Date(a.createdAt || a.created_at || 0).getTime(),
     );
+  }, [assignments, tests]);
 
+  const rows = useMemo(() => {
     const q = keyword.trim().toLowerCase();
-    if (!q) return merged;
-    return merged.filter((item) =>
+    if (!q) return assessmentItems;
+    return assessmentItems.filter((item) =>
       [
         item.title,
         item.name,
@@ -272,13 +322,29 @@ export function TraineeFlashTestListPage({ variant = "flash" }) {
         .toLowerCase()
         .includes(q),
     );
-  }, [assignments, keyword, tests]);
+  }, [assessmentItems, keyword]);
 
   const total = tests.length + assignments.length;
 
+  const summary = useMemo(() => {
+    const completed = assessmentItems.filter((item) =>
+      Boolean(resultMap[`${item.flashType}-${item.id}`]?.taken),
+    ).length;
+    const active = assessmentItems.filter((item) => {
+      const dueDate = item.dueDate || item.due_date;
+      if (item.flashType !== "essay" || !dueDate) return true;
+      return new Date(dueDate).getTime() > nowMs;
+    }).length;
+    const scores = assessmentItems
+      .map((item) => numberOrNull(resultMap[`${item.flashType}-${item.id}`]?.score))
+      .filter((value) => value != null);
+    const bestScore = scores.length ? Math.max(...scores) : null;
+    return { active, completed, bestScore };
+  }, [assessmentItems, nowMs, resultMap]);
+
   const openAccessModal = (item, isEssay) => {
     const dueDate = item?.dueDate || item?.due_date;
-    if (isEssay && dueDate && new Date(dueDate).getTime() <= Date.now()) {
+    if (isEssay && dueDate && new Date(dueDate).getTime() <= nowMs) {
       return;
     }
     if (isAssignmentMode) {
@@ -306,6 +372,12 @@ export function TraineeFlashTestListPage({ variant = "flash" }) {
     const item = accessModal.item;
     if (!item?.id) return;
 
+    const currentExpiresAt = getAccessExpiresAt(item);
+    if (isPastDate(currentExpiresAt, nowMs)) {
+      setAccessError("This code has expired. Please ask your trainer for a new code.");
+      return;
+    }
+
     setVerifyingAccess(true);
     setAccessError("");
     try {
@@ -314,6 +386,10 @@ export function TraineeFlashTestListPage({ variant = "flash" }) {
         : await testService.verifyAccessCode(item.id, code);
       if (!result?.valid) {
         setAccessError("The code is incorrect or has expired.");
+        return;
+      }
+      if (isPastDate(getAccessExpiresAt(item, result), nowMs)) {
+        setAccessError("This code has expired. Please ask your trainer for a new code.");
         return;
       }
       const type = accessModal.isEssay ? "essay" : "mcq";
@@ -329,24 +405,28 @@ export function TraineeFlashTestListPage({ variant = "flash" }) {
   };
 
   return (
-    <section className="ft-page">
-      <header className="ft-page-header">
-        <div>
+    <section className="ft-page ft-page--learner-list">
+      <header className="ft-learner-hero">
+        <div className="ft-learner-hero__content">
           <span className="ft-page-kicker">Learning workspace</span>
-          <h1 className="ft-page-title">
-            {isAssignmentMode
-              ? "My Assignments"
-              : isFlashMode ? "My Flash Tests" : "My Tests"}
-          </h1>
-          <p className="ft-page-subtitle">
-            {isAssignmentMode
-              ? "Start essay assignments from your enrolled class."
-              : isFlashMode
-              ? "Start available MCQ practice tests and essay assignments."
-              : "Start available MCQ tests from your trainers."}
-          </p>
+          <h1 className="ft-page-title">{pageTitle}</h1>
+          <p className="ft-page-subtitle">{pageSubtitle}</p>
+          <div className="ft-learner-hero__meta" aria-label="Assessment summary">
+            <span>
+              <ClipboardCheck size={15} />
+              {summary.active} ready
+            </span>
+            <span>
+              <Trophy size={15} />
+              {summary.completed} completed
+            </span>
+            <span>
+              <Clock3 size={15} />
+              {total} total
+            </span>
+          </div>
         </div>
-        <div className="ft-toolbar">
+        <div className="ft-toolbar ft-learner-hero__actions">
           <button
             className="ft-icon-button"
             type="button"
@@ -367,7 +447,22 @@ export function TraineeFlashTestListPage({ variant = "flash" }) {
         </div>
       </header>
 
-      <div className="ft-panel">
+      <div className="ft-learner-stats" aria-label="Assessment progress overview">
+        <div className="ft-learner-stat ft-learner-stat--primary">
+          <span>Ready now</span>
+          <strong>{summary.active}</strong>
+        </div>
+        <div className="ft-learner-stat">
+          <span>Completed</span>
+          <strong>{summary.completed}</strong>
+        </div>
+        <div className="ft-learner-stat">
+          <span>Best score</span>
+          <strong>{summary.bestScore == null ? "--" : formatScoreValue(summary.bestScore)}</strong>
+        </div>
+      </div>
+
+      <div className="ft-panel ft-learner-list-panel">
         <div className="ft-list-toolbar">
           <label className="ft-search">
             <Search size={16} />
@@ -379,7 +474,7 @@ export function TraineeFlashTestListPage({ variant = "flash" }) {
             />
           </label>
           <span className="ft-list-count">
-            {total} {isAssignmentMode ? "assignments" : isFlashMode ? "flash tests" : "tests"}
+            {rows.length} of {total} {countLabel}
           </span>
         </div>
 
@@ -409,11 +504,11 @@ export function TraineeFlashTestListPage({ variant = "flash" }) {
             <span className="ft-empty-icon">
               <Search size={26} />
             </span>
-            <strong>{isAssignmentMode ? "No matching assignments" : "No matching flash tests"}</strong>
+            <strong>{isAssignmentMode ? "No matching assignments" : "No matching tests"}</strong>
             <p className="ft-muted">Try another keyword or clear the search box.</p>
           </div>
         ) : (
-          <div className="ft-table-wrap">
+          <div className="ft-table-wrap ft-table-wrap--ops ft-table-wrap--learner">
             <table className="ft-table">
               <thead>
                 <tr>
@@ -432,15 +527,17 @@ export function TraineeFlashTestListPage({ variant = "flash" }) {
                   const result = resultMap[`${item.flashType}-${item.id}`];
                   const taken = Boolean(result?.taken);
                   const dueDate = item.dueDate || item.due_date;
+                  const displayDate = dueDate || item.createdAt || item.created_at;
                   const expired =
                     isEssay &&
                     dueDate &&
                     new Date(dueDate).getTime() <= nowMs;
+                  const statusLabel = taken ? "Completed" : expired ? "Expired" : "Ready";
                   return (
                     <tr key={`${item.flashType}-${item.id}`}>
                       <td>
                         <div className="ft-table-title">
-                          <strong>{item.title || item.name || "Untitled flash test"}</strong>
+                          <strong>{item.title || item.name || "Untitled test"}</strong>
                         </div>
                       </td>
                       <td>
@@ -453,38 +550,44 @@ export function TraineeFlashTestListPage({ variant = "flash" }) {
                           {isEssay ? "Essay" : "MCQ"}
                         </span>
                       </td>
-                      <td>{getDuration(item)} mins</td>
                       <td>
-                        <strong className="ft-score-cell">
-                          {isEssay ? result?.score || "--" : result?.score || "--"}
-                        </strong>
+                        <span className="ft-table-icon-text">
+                          <Clock3 size={14} />
+                          {getDuration(item)} mins
+                        </span>
                       </td>
-                      <td>{formatDate(dueDate || item.createdAt || item.created_at)}</td>
+                      <td>
+                        <strong className="ft-score-cell">{result?.score || "--"}</strong>
+                      </td>
+                      <td>
+                        <span className="ft-table-icon-text" title={formatDate(displayDate)}>
+                          <CalendarClock size={14} />
+                          {formatShortDate(displayDate)}
+                        </span>
+                      </td>
                       <td>
                         <span
                           className={`ft-badge ${
-                            expired ? "ft-badge--expired" : "ft-status--submitted"
+                            expired ? "ft-badge--expired" : taken ? "ft-status--submitted" : "ft-badge--ready"
                           }`}
                         >
-                          {expired ? "Expired" : "Active"}
+                          {statusLabel}
                         </span>
                       </td>
                       <td className="ft-table-action">
-                        <div className="ft-table-actions">
-                          {taken ? (
-                            <span className="ft-button ft-button--disabled">Completed</span>
-                          ) : expired ? (
-                            <span className="ft-button ft-button--disabled">Expired</span>
-                          ) : (
-                            <button
-                              type="button"
-                              className="ft-button ft-button--primary"
-                              onClick={() => openAccessModal(item, isEssay)}
-                            >
-                              Start <ArrowRight size={16} />
-                            </button>
-                          )}
-                        </div>
+                        {taken ? (
+                          <span className="ft-button ft-button--disabled">Completed</span>
+                        ) : expired ? (
+                          <span className="ft-button ft-button--disabled">Expired</span>
+                        ) : (
+                          <button
+                            type="button"
+                            className="ft-button ft-button--primary"
+                            onClick={() => openAccessModal(item, isEssay)}
+                          >
+                            Start <ArrowRight size={16} />
+                          </button>
+                        )}
                       </td>
                     </tr>
                   );
