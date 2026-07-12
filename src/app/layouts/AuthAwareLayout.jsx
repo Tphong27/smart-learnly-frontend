@@ -3,7 +3,7 @@ import { Header } from "./Header";
 import { authService, getCurrentUser } from "@/services";
 import { SiteHeader } from "@/shared/components/SiteHeader";
 import { ROLES } from "@/shared/constants/roles";
-import "./app-layout.css";
+import "./AppLayout.css";
 
 export function AuthAwareLayout({ children }) {
   const navigate = useNavigate();

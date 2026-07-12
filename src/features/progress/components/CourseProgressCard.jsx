@@ -1,65 +1,8 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { BookOpen, ChevronDown, ChevronRight } from "lucide-react";
 import { Link } from "react-router-dom";
-import { getCurrentUser } from "@/services/api-client";
-import { assignmentService } from "@/services/flashtest.service";
 import { ProgressBar } from "./ProgressBar";
 import { ProgressMetric } from "./ProgressMetric";
-
-function AssignmentMetric({ courseId }) {
-  const [counts, setCounts] = useState({ completed: 0, total: 0 });
-
-  useEffect(() => {
-    let cancelled = false;
-    async function loadAssignments() {
-      const currentUser = getCurrentUser();
-      const studentId =
-        currentUser?.id || currentUser?.userId || currentUser?.accountId || "";
-      if (!studentId || !courseId) {
-        setCounts({ completed: 0, total: 0 });
-        return;
-      }
-      try {
-        const assignments = await assignmentService.getAvailable({
-          courseId,
-          isFlashtest: false,
-        });
-        const checks = await Promise.allSettled(
-          assignments.map((assignment) =>
-            assignmentService.getSubmissionByStudent(assignment.id, studentId),
-          ),
-        );
-        const completed = checks.filter(
-          (result) =>
-            result.status === "fulfilled" &&
-            ["SUBMITTED", "GRADED", "EXPIRED", "LATE"].includes(
-              String(result.value?.status || "").toUpperCase(),
-            ),
-        ).length;
-        if (!cancelled) {
-          setCounts({ completed, total: assignments.length });
-        }
-      } catch {
-        if (!cancelled) setCounts({ completed: 0, total: 0 });
-      }
-    }
-    loadAssignments();
-    return () => {
-      cancelled = true;
-    };
-  }, [courseId]);
-
-  return (
-    <ProgressMetric
-      label="Assignment"
-      completed={counts.completed}
-      total={counts.total}
-      percent={0}
-      hideProgress
-      to={`/learning/assignments?courseId=${courseId}`}
-    />
-  );
-}
 
 function getLearningPath(course) {
   const courseId = course.courseId || course.id;
@@ -82,6 +25,37 @@ export function CourseProgressCard({ course }) {
   const [expanded, setExpanded] = useState(true);
   const isCompleted = course.courseStatus === "COMPLETED";
   const learningPath = getLearningPath(course);
+
+  const lesson = course.lesson ?? {
+    completed: 0,
+    total: 0,
+    percent: 0,
+  };
+
+  const quiz = course.quiz ?? {
+    completed: 0,
+    total: 0,
+    percent: 0,
+  };
+
+  const flashcard = course.flashcard ?? {
+    completed: 0,
+    total: 0,
+    percent: 0,
+  };
+
+  const assignment = course.assignment ?? {
+    completed: 0,
+    total: 0,
+    percent: 0,
+  };
+  console.log("CourseProgressCard:", {
+    courseId: course?.courseId,
+    lesson: course?.lesson,
+    quiz: course?.quiz,
+    flashcard: course?.flashcard,
+    assignment: course?.assignment,
+  });
 
   return (
     <article className="course-progress-card">
@@ -147,29 +121,35 @@ export function CourseProgressCard({ course }) {
         <div className="course-progress-card__metrics">
           <ProgressMetric
             label="Lesson"
-            completed={course.lesson.completed}
-            total={course.lesson.total}
-            percent={course.lesson.percent}
+            completed={lesson.completed}
+            total={lesson.total}
+            percent={lesson.percent}
             to={learningPath}
           />
 
           <ProgressMetric
             label="Quiz"
-            completed={course.quiz.completed}
-            total={course.quiz.total}
-            percent={course.quiz.percent}
+            completed={quiz.completed}
+            total={quiz.total}
+            percent={quiz.percent}
             to="/learning/tests"
           />
 
           <ProgressMetric
             label="Flashcard"
-            completed={course.flashcard.completed}
-            total={course.flashcard.total}
-            percent={course.flashcard.percent}
+            completed={flashcard.completed}
+            total={flashcard.total}
+            percent={flashcard.percent}
             to={`/learning/flashcards?courseId=${course.courseId}`}
           />
 
-          <AssignmentMetric courseId={course.courseId} />
+          <ProgressMetric
+            label="Assignment"
+            completed={assignment.completed}
+            total={assignment.total}
+            percent={assignment.percent}
+            to={`/learning/assignments?courseId=${course.courseId}`}
+          />
         </div>
       )}
     </article>

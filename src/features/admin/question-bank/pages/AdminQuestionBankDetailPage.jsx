@@ -200,9 +200,6 @@ export function AdminQuestionBankDetailPage() {
           <h1 className="admin-page__title" style={{ marginTop: 8 }}>
             {bank?.name || "Question bank"}
           </h1>
-          <p className="admin-page__subtitle">
-            {bank?.description || "Browse and manage questions in this bank."}
-          </p>
         </div>
         {writable && bank?.status !== "archived" && (
           <div style={{ display: "inline-flex", gap: 10 }}>

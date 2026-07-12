@@ -4,7 +4,7 @@ import { Header } from "./Header";
 import { Sidebar } from "./Sidebar";
 import { authService, getCurrentUser } from "@/services";
 import { ROLES } from "@/shared/constants/roles";
-import "./app-layout.css";
+import "./AppLayout.css";
 
 export function AppLayout() {
     const [sidebarOpen, setSidebarOpen] = useState(false);

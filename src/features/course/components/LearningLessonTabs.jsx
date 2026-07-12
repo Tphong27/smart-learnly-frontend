@@ -30,6 +30,7 @@ function getLessonId(lesson) {
 
 function OverviewContent({
   lesson,
+  classId,
   workspaceMode,
   onQuizCompleted,
   onFlashcardCompleted,
@@ -41,6 +42,7 @@ function OverviewContent({
     return (
       <FlashcardPractice
         lessonId={getLessonId(lesson)}
+        classId={classId}
         adminMode={workspaceMode === "admin-preview"}
         readOnly={workspaceMode !== "student"}
         onCompleted={() => onFlashcardCompleted?.(getLessonId(lesson))}
@@ -227,7 +229,8 @@ function EssayLessonContent({ lesson, readOnly = false, onCompleted }) {
     }
   };
 
-  const instructionUrl = assignment?.instructionFileUrl || lesson?.attachmentUrl;
+  const instructionUrl =
+    assignment?.instructionFileUrl || lesson?.attachmentUrl;
 
   if (loading) {
     return <div className="tab-overview__empty">Loading essay...</div>;
@@ -330,7 +333,9 @@ function EssayLessonContent({ lesson, readOnly = false, onCompleted }) {
         </div>
       )}
 
-      {readOnly && message && <p className="essay-submit__message">{message}</p>}
+      {readOnly && message && (
+        <p className="essay-submit__message">{message}</p>
+      )}
     </div>
   );
 }
@@ -407,6 +412,7 @@ function ResourcesContent({ lesson }) {
 
 export function LearningLessonTabs({
   lesson,
+  classId,
   activeTab,
   onTabChange,
   note,
@@ -448,6 +454,7 @@ export function LearningLessonTabs({
           <div className="tab-overview">
             <OverviewContent
               lesson={lesson}
+              classId={classId}
               workspaceMode={workspaceMode}
               onQuizCompleted={onQuizCompleted}
               onFlashcardCompleted={onFlashcardCompleted}

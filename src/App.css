@@ -84,7 +84,6 @@ h6 {
 
 h1 {
     font-size: clamp(40px, 5vw, 60px);
-    letter-spacing: -2px;
 }
 h2 {
     font-size: clamp(32px, 4vw, 42px);
@@ -1283,7 +1282,7 @@ a:hover {
     background-color: #fff8e5;
     background-image:
         linear-gradient(rgba(255, 251, 237, 0.46), rgba(255, 251, 237, 0.46)),
-        url("/auth-school-background.jpg");
+        url("/auth-school-background.jpg?v=20260711");
     background-position: center;
     background-repeat: no-repeat;
     background-size: cover;
@@ -1448,6 +1447,10 @@ a:hover {
     height: auto;
 }
 
+.hero-illustration > .course-card--catalog {
+    width: min(100%, 360px);
+}
+
 .hero-course-preview__scene {
     position: relative;
     width: min(100%, 462px);
@@ -1525,7 +1528,7 @@ a:hover {
     color: #6546d9;
     font-size: 11px;
     font-weight: 900;
-    letter-spacing: .08em;
+    letter-spacing: 0.08em;
     text-transform: uppercase;
 }
 
@@ -1535,7 +1538,7 @@ a:hover {
     color: #126e5b;
     background: #e3f5ef;
     font-size: 10px;
-    letter-spacing: .04em;
+    letter-spacing: 0.04em;
 }
 
 .hero-course-preview__course {
@@ -1567,7 +1570,7 @@ a:hover {
     color: #17233e;
     font-size: clamp(1.25rem, 2vw, 1.55rem);
     line-height: 1.16;
-    letter-spacing: -.04em;
+    letter-spacing: -0.04em;
 }
 
 .hero-course-preview__meta {
@@ -1629,7 +1632,10 @@ a:hover {
     font-size: 14px;
     font-weight: 900;
     text-decoration: none;
-    transition: transform 180ms ease, box-shadow 180ms ease, background 180ms ease;
+    transition:
+        transform 180ms ease,
+        box-shadow 180ms ease,
+        background 180ms ease;
 }
 
 .hero-course-preview__action:hover {
@@ -1639,7 +1645,7 @@ a:hover {
 }
 
 .hero-course-preview__action:focus-visible {
-    outline: 3px solid rgba(130, 94, 245, .35);
+    outline: 3px solid rgba(130, 94, 245, 0.35);
     outline-offset: 3px;
 }
 
