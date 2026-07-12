@@ -2,9 +2,11 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import {
   Archive,
+  AlertTriangle,
   CheckCircle2,
   Edit2,
   Plus,
+  RotateCcw,
   Search,
   Upload,
 } from "lucide-react";
@@ -90,6 +92,7 @@ export function AdminQuestionBankDetailPage() {
   const [importOpen, setImportOpen] = useState(false);
   const [questionFormModal, setQuestionFormModal] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
+  const [restoreModalOpen, setRestoreModalOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -187,6 +190,25 @@ export function AdminQuestionBankDetailPage() {
     }
   }
 
+  async function handleRestore(targetStatus) {
+    if (!writable || !bankId) return;
+    try {
+      await questionBankService.restoreBank(bankId, targetStatus);
+      toast.success(
+        targetStatus === "approved"
+          ? "Question bank restored and approved"
+          : "Question bank restored to draft"
+      );
+      setRestoreModalOpen(false);
+      setRefreshKey((key) => key + 1);
+    } catch (err) {
+      toast.error(err?.message || "Could not restore question bank.");
+    }
+  }
+
+  const isBankArchived = bank?.status === "archived";
+  const canEditQuestion = writable && !isBankArchived;
+
   return (
     <div className="admin-page">
       <header className="admin-page__header">
@@ -204,7 +226,7 @@ export function AdminQuestionBankDetailPage() {
             {bank?.description || "Browse and manage questions in this bank."}
           </p>
         </div>
-        {writable && bank?.status !== "archived" && (
+        {writable && !isBankArchived && (
           <div style={{ display: "inline-flex", gap: 10 }}>
             <Button
               variant="secondary"
@@ -218,7 +240,51 @@ export function AdminQuestionBankDetailPage() {
             </Button>
           </div>
         )}
+        {writable && isBankArchived && (
+          <Button
+            variant="secondary"
+            leftIcon={<RotateCcw size={16} />}
+            onClick={() => setRestoreModalOpen(true)}
+          >
+            Restore
+          </Button>
+        )}
       </header>
+
+      {isBankArchived && (
+        <section
+          className="admin-card"
+          style={{
+            marginBottom: 18,
+            borderLeft: "4px solid #f59e0b",
+            background: "#fffbeb",
+          }}
+          role="alert"
+        >
+          <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
+            <AlertTriangle size={20} style={{ color: "#b45309", flexShrink: 0, marginTop: 2 }} />
+            <div style={{ flex: 1 }}>
+              <strong style={{ color: "#92400e" }}>
+                This question bank is archived.
+              </strong>
+              <p style={{ margin: "4px 0 8px", color: "#78350f", fontSize: 14 }}>
+                All questions and media are read-only. Restore the bank to make
+                changes again.
+              </p>
+              {writable && (
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  leftIcon={<RotateCcw size={14} />}
+                  onClick={() => setRestoreModalOpen(true)}
+                >
+                  Restore question bank
+                </Button>
+              )}
+            </div>
+          </div>
+        </section>
+      )}
 
       {bank && (
         <section className="admin-card" style={{ marginBottom: 18 }}>
@@ -360,7 +426,7 @@ export function AdminQuestionBankDetailPage() {
                         }}
                       />
                     </div>
-                    {writable && question.status !== "archived" && (
+                    {canEditQuestion && question.status !== "archived" && (
                       <div className="question-card__actions">
                         <button
                           type="button"
@@ -525,7 +591,59 @@ export function AdminQuestionBankDetailPage() {
           </div>
         )}
       </Modal>
+      <RestoreBankModal
+        open={restoreModalOpen}
+        bank={bank}
+        onClose={() => setRestoreModalOpen(false)}
+        onConfirm={handleRestore}
+      />
     </div>
+  );
+}
+
+function RestoreBankModal({ open, bank, onClose, onConfirm }) {
+  return (
+    <RestoreBankModalContent key={open ? "open" : "closed"} open={open} bank={bank} onClose={onClose} onConfirm={onConfirm} />
+  );
+}
+
+function RestoreBankModalContent({ open, bank, onClose, onConfirm }) {
+  const [targetStatus, setTargetStatus] = useState("draft");
+  return (
+    <Modal open={open} title="Restore question bank" size="sm" onClose={onClose}>
+      <p style={{ marginTop: 0, color: "#475569" }}>
+        Restore <strong>{bank?.name || "this question bank"}</strong> so it can
+        be edited again. Choose the status to apply after restoring.
+      </p>
+      <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 18 }}>
+        <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <input
+            type="radio"
+            name="restore-target-detail"
+            value="draft"
+            checked={targetStatus === "draft"}
+            onChange={() => setTargetStatus("draft")}
+          />
+          <span>Restore as <strong>Draft</strong> (still needs review)</span>
+        </label>
+        <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <input
+            type="radio"
+            name="restore-target-detail"
+            value="approved"
+            checked={targetStatus === "approved"}
+            onChange={() => setTargetStatus("approved")}
+          />
+          <span>Restore as <strong>Approved</strong> (ready to use)</span>
+        </label>
+      </div>
+      <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
+        <Button type="button" variant="ghost" onClick={onClose}>Cancel</Button>
+        <Button type="button" leftIcon={<RotateCcw size={15} />} onClick={() => onConfirm(targetStatus)}>
+          Restore
+        </Button>
+      </div>
+    </Modal>
   );
 }
 
