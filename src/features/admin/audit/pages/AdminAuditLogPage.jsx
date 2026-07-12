@@ -234,7 +234,6 @@ export function AdminAuditLogPage() {
       <header className="admin-page__header">
         <div>
           <h1 className="admin-page__title">System Activity Log</h1>
-          <p className="admin-page__subtitle">Trace important security, business, and data change events.</p>
         </div>
       </header>
 

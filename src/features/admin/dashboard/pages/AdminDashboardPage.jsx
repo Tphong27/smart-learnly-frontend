@@ -93,9 +93,6 @@ export function AdminDashboardPage() {
       <header className="admin-page__header">
         <div>
           <h1 className="admin-page__title">Admin Dashboard</h1>
-          <p className="admin-page__subtitle">
-            Operational overview for users, learning content, classes, and review queues.
-          </p>
         </div>
 
         <div className="dashboard-range-controls" aria-label="Dashboard date range">

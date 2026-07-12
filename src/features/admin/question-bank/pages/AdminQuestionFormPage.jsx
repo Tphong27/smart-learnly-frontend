@@ -567,9 +567,6 @@ export function AdminQuestionForm({
       <div className="admin-page">
         <section className="admin-card">
           <h1 className="admin-page__title">Unauthorized</h1>
-          <p className="admin-page__subtitle">
-            Only Admin and SME users can create or edit questions.
-          </p>
           <Link to="/admin/question-banks" className="button button--secondary">
             Back to Question Bank
           </Link>
@@ -603,10 +600,6 @@ export function AdminQuestionForm({
           <h1 className="admin-page__title" style={{ marginTop: 8 }}>
             {editing ? "Edit question" : "Create question"}
           </h1>
-          <p className="admin-page__subtitle">
-            {bank?.name || "Question Bank"} - supports multiple choice and
-            true/false.
-          </p>
         </div>
         </header>
       )}

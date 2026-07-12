@@ -225,7 +225,6 @@ export function AdminQuestionBanksPage() {
       <header className="admin-page__header">
         <div>
           <h1 className="admin-page__title">Question Bank</h1>
-          <p className="admin-page__subtitle">Manage course-scoped question banks for quiz and test authoring.</p>
         </div>
         {writable && (
           <Button leftIcon={<Plus size={16} />} onClick={openCreateModal}>Create bank</Button>

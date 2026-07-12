@@ -34,10 +34,6 @@ export function AdminSystemSettingsPage() {
       <header className="admin-page__header">
         <div>
           <h1 className="admin-page__title">System Settings</h1>
-          <p className="admin-page__subtitle">
-            Manage system-wide configuration. Changes take effect immediately, no application
-            restart required.
-          </p>
         </div>
       </header>
 

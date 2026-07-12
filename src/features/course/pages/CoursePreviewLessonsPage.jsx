@@ -225,11 +225,6 @@ export function CoursePreviewLessonsPage() {
                     <h1 className="admin-page__title" style={{ marginTop: 8 }}>
                         Preview sample content
                     </h1>
-                    <p className="admin-page__subtitle">
-                        {course?.title
-                            ? `Sample lessons from the course: ${course.title}`
-                            : "Lessons marked as preview will appear here."}
-                    </p>
                 </div>
                 {course && (
                     <Link

@@ -301,7 +301,6 @@ export function AdminUsersPage() {
       <header className="admin-page__header">
         <div>
           <h1 className="admin-page__title">User management</h1>
-          <p className="admin-page__subtitle">Create accounts, update roles, control status, and reset local passwords.</p>
         </div>
         <Button leftIcon={<Plus size={16} />} onClick={() => setFormState({ open: true, mode: "create", initial: null })}>
           Add user

@@ -19,7 +19,6 @@
 .app-layout-shell__content {
     flex: 1;
     min-width: 0;
-    padding: 24px;
     background: #f7f9fc;
 }
 
