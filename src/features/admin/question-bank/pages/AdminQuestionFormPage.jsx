@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { FileAudio, Image as ImageIcon, ImagePlus, Loader2, Plus, Trash2, X } from "lucide-react";
+import { FileAudio, Image as ImageIcon, ImagePlus, Loader2, Plus, Trash2, X, AlertTriangle } from "lucide-react";
 import { Button, FormField, Modal, useToast } from "@/shared/components/ui";
 import { courseService, getCurrentUser, questionBankService } from "@/services";
 import { isEmptyQuestionHtml, sanitizeQuestionHtml } from "@/shared/utils/htmlSanitizer";
@@ -584,6 +584,64 @@ export function AdminQuestionForm({
         <div className="admin-loading">Loading question form...</div>
       </div>
     );
+
+  const bankIsArchived = bank?.status === "archived";
+
+  if (bankIsArchived) {
+    return (
+      <div className="admin-page">
+        {framed && (
+          <header className="admin-page__header">
+            <div>
+              <Link
+                to={
+                  returnBankId
+                    ? `/admin/question-banks/${returnBankId}`
+                    : "/admin/question-banks"
+                }
+                className="button button--ghost button--sm"
+              >
+                Back
+              </Link>
+              <h1 className="admin-page__title" style={{ marginTop: 8 }}>
+                Cannot edit question
+              </h1>
+            </div>
+          </header>
+        )}
+        <section
+          className="admin-card"
+          style={{
+            borderLeft: "4px solid #f59e0b",
+            background: "#fffbeb",
+          }}
+          role="alert"
+        >
+          <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
+            <AlertTriangle size={20} style={{ color: "#b45309", flexShrink: 0, marginTop: 2 }} />
+            <div>
+              <strong style={{ color: "#92400e" }}>
+                The question bank "{bank?.name || ""}" is archived.
+              </strong>
+              <p style={{ margin: "4px 0 8px", color: "#78350f", fontSize: 14 }}>
+                Restore the bank before editing any of its questions.
+              </p>
+              <Link
+                to={
+                  returnBankId
+                    ? `/admin/question-banks/${returnBankId}`
+                    : "/admin/question-banks"
+                }
+                className="button button--secondary button--sm"
+              >
+                Back to question bank
+              </Link>
+            </div>
+          </div>
+        </section>
+      </div>
+    );
+  }
 
   return renderFrame(
     <>
