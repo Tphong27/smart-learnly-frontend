@@ -296,7 +296,6 @@ export function QuestionImportModal({ open, bank, existingQuestions = [], onClos
     setFileName(null)
     setImageFiles([])
     revokeImageQuestionMedia(imageQuestions)
-    revokeImageQuestionMedia(imageQuestions)
     setImageQuestions([])
     setImageOcrText('')
     setImageWarnings([])
