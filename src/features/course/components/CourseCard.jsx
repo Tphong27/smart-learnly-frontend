@@ -57,7 +57,15 @@ export function CourseCard({
       <div className="course-card__body">
         <div className="course-card__top">
           <span className="course-card__category">{categoryName}</span>
-          <h3>{title}</h3>
+          <h3>
+            <Link
+              to={getCoursePath(course)}
+              state={detailState}
+              className="course-card__title-link"
+            >
+              {title}
+            </Link>
+          </h3>
           <p>{shortDescription}</p>
         </div>
 

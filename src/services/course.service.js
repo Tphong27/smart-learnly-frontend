@@ -47,9 +47,22 @@ function normalizeCourse(payload) {
 }
 
 export const courseService = {
-  async listAdmin({ page = 0, size = 20 } = {}) {
+  async listAdmin({
+    page = 0,
+    size = 20,
+    keyword,
+    status,
+    categoryId,
+    level,
+  } = {}) {
+    const params = { page, size };
+    if (keyword?.trim()) params.keyword = keyword.trim();
+    if (status && status !== "all") params.status = status;
+    if (categoryId && categoryId !== "all") params.categoryId = categoryId;
+    if (level && level !== "all") params.level = level;
+
     const response = await apiClient.get("/admin/courses", {
-      params: { page, size },
+      params,
     });
 
     const root = unwrap(response);

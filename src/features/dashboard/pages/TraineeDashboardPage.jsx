@@ -5,7 +5,7 @@ import {
     BookOpen,
     CheckCircle2,
     CirclePlay,
-    GraduationCap,
+    Flame,
     Sparkles,
 } from "lucide-react";
 import { Link } from "react-router-dom";
@@ -97,11 +97,16 @@ function isCompleted(course) {
     return course.courseStatus === "COMPLETED" || course.overallPercent >= 100;
 }
 
-function CourseThumbnail({ course, className = "" }) {
+function CourseThumbnail({ course, className = "", loading = "lazy" }) {
     return (
         <div className={`trainee-dashboard-course-image ${className}`}>
             {course.thumbnailUrl ? (
-                <img src={course.thumbnailUrl} alt="" />
+                <img
+                    src={course.thumbnailUrl}
+                    alt=""
+                    loading={loading}
+                    decoding="async"
+                />
             ) : (
                 <BookOpen size={28} aria-hidden="true" />
             )}
@@ -121,6 +126,35 @@ function ProgressLine({ value }) {
             aria-valuenow={percent}
         >
             <span style={{ width: `${percent}%` }} />
+        </div>
+    );
+}
+
+function MomentumRing({ value }) {
+    const percent = Math.min(100, Math.max(0, Math.round(toNumber(value))));
+
+    return (
+        <div
+            className="trainee-dashboard-momentum__ring"
+            role="progressbar"
+            aria-label={`Overall lesson progress: ${percent}%`}
+            aria-valuemin="0"
+            aria-valuemax="100"
+            aria-valuenow={percent}
+        >
+            <svg viewBox="0 0 44 44" aria-hidden="true">
+                <circle className="trainee-dashboard-momentum__ring-track" cx="22" cy="22" r="18" />
+                <circle
+                    className="trainee-dashboard-momentum__ring-value"
+                    cx="22"
+                    cy="22"
+                    r="18"
+                    pathLength="100"
+                    strokeDasharray="100"
+                    strokeDashoffset={100 - percent}
+                />
+            </svg>
+            <strong>{percent}%</strong>
         </div>
     );
 }
@@ -198,11 +232,27 @@ export function TraineeDashboardPage() {
                   ) / enrolledCourses.length,
               )
             : 0;
+        const lessonTotals = enrolledCourses.reduce(
+            (total, course) => ({
+                completed:
+                    total.completed + toNumber(course.lesson?.completed),
+                lessons: total.lessons + toNumber(course.lesson?.total),
+            }),
+            { completed: 0, lessons: 0 },
+        );
+        const lessonProgress = lessonTotals.lessons
+            ? Math.round(
+                  (lessonTotals.completed / lessonTotals.lessons) * 100,
+              )
+            : overallProgress;
 
         return {
             activeCourses,
             completedCourses,
             featuredCourse,
+            lessonCompleted: lessonTotals.completed,
+            lessonProgress,
+            lessonTotal: lessonTotals.lessons,
             overallProgress,
         };
     }, [courses, progress]);
@@ -234,6 +284,53 @@ export function TraineeDashboardPage() {
                 </div>
             )}
 
+            {!loading && !error && courses.length > 0 && (
+                <section
+                    className="trainee-dashboard-momentum"
+                    aria-labelledby="learning-momentum-title"
+                >
+                    <div className="trainee-dashboard-momentum__intro">
+                        <span className="trainee-dashboard-momentum__icon">
+                            <Flame size={22} aria-hidden="true" />
+                        </span>
+                        <div>
+                            <h2 id="learning-momentum-title">
+                                Keep your learning momentum
+                            </h2>
+                            <p>
+                                {dashboard.completedCourses >= courses.length
+                                    ? "Great work—your enrolled courses are complete."
+                                    : dashboard.lessonTotal > 0
+                                      ? "Complete one more lesson today and keep moving toward your goal."
+                                      : "Start your next lesson to build your learning momentum."}
+                            </p>
+                        </div>
+                    </div>
+
+                    <div className="trainee-dashboard-momentum__progress">
+                        <MomentumRing value={dashboard.lessonProgress} />
+                        <div>
+                            <strong>
+                                {dashboard.lessonCompleted}/
+                                {dashboard.lessonTotal} lessons
+                            </strong>
+                            <span>completed</span>
+                        </div>
+                    </div>
+
+                    <dl className="trainee-dashboard-momentum__stats">
+                        <div>
+                            <dd>{dashboard.activeCourses.length}</dd>
+                            <dt>Active courses</dt>
+                        </div>
+                        <div>
+                            <dd>{dashboard.completedCourses}</dd>
+                            <dt>Completed</dt>
+                        </div>
+                    </dl>
+                </section>
+            )}
+
             {!loading && !error && dashboard.featuredCourse && (
                 <section
                     className="trainee-dashboard-feature"
@@ -242,6 +339,7 @@ export function TraineeDashboardPage() {
                     <CourseThumbnail
                         course={dashboard.featuredCourse}
                         className="trainee-dashboard-feature__image"
+                        loading="eager"
                     />
 
                     <div className="trainee-dashboard-feature__content">
@@ -302,30 +400,25 @@ export function TraineeDashboardPage() {
 
             {!loading && !error && courses.length > 0 && (
                 <section
-                    className="trainee-dashboard-stat-grid"
+                    className="trainee-dashboard-summary"
                     aria-label="Learning summary"
                 >
-                    <article className="trainee-dashboard-stat-card">
-                        <GraduationCap size={21} aria-hidden="true" />
-                        <div>
-                            <strong>{dashboard.activeCourses.length}</strong>
-                            <span>Active courses</span>
-                        </div>
-                    </article>
-                    <article className="trainee-dashboard-stat-card trainee-dashboard-stat-card--success">
-                        <CheckCircle2 size={21} aria-hidden="true" />
-                        <div>
-                            <strong>{dashboard.completedCourses}</strong>
-                            <span>Completed</span>
-                        </div>
-                    </article>
-                    <article className="trainee-dashboard-stat-card trainee-dashboard-stat-card--progress">
-                        <BarChart3 size={21} aria-hidden="true" />
-                        <div>
-                            <strong>{dashboard.overallProgress}%</strong>
-                            <span>Overall progress</span>
-                        </div>
-                    </article>
+                    <div>
+                        <span>Enrolled courses</span>
+                        <strong>{courses.length}</strong>
+                    </div>
+                    <div>
+                        <span>Active learning</span>
+                        <strong>{dashboard.activeCourses.length}</strong>
+                    </div>
+                    <div>
+                        <span>Courses completed</span>
+                        <strong>{dashboard.completedCourses}</strong>
+                    </div>
+                    <div>
+                        <span>Average progress</span>
+                        <strong>{dashboard.overallProgress}%</strong>
+                    </div>
                 </section>
             )}
 
@@ -335,9 +428,7 @@ export function TraineeDashboardPage() {
                     aria-labelledby="active-courses-title"
                 >
                     <div className="trainee-dashboard-section-heading">
-                        <div>
-                            <h2 id="active-courses-title">Active learning</h2>
-                        </div>
+                        <h2 id="active-courses-title">My learning</h2>
                         <Link
                             to="/learning/progress"
                             className="trainee-dashboard-text-link"
@@ -346,21 +437,25 @@ export function TraineeDashboardPage() {
                         </Link>
                     </div>
 
-                    <div className="trainee-dashboard-course-grid">
-                        {dashboard.activeCourses.slice(0, 3).map((course) => (
+                    <div className="trainee-dashboard-course-list">
+                        {dashboard.activeCourses.slice(0, 4).map((course) => (
                             <article
-                                className="trainee-dashboard-course-card"
+                                className="trainee-dashboard-course-row"
                                 key={`${course.id}:${course.classId || "course"}`}
                             >
                                 <CourseThumbnail course={course} />
-                                <div className="trainee-dashboard-course-card__body">
-                                    <span>{course.categoryName}</span>
+                                <div className="trainee-dashboard-course-row__content">
+                                    <span className="trainee-dashboard-course-row__category">
+                                        {course.categoryName}
+                                    </span>
                                     <h3>{course.title}</h3>
                                     <p>
                                         {course.className
                                             ? `${course.className}${course.trainerName ? ` · ${course.trainerName}` : ""}`
                                             : "Self-paced course"}
                                     </p>
+                                </div>
+                                <div className="trainee-dashboard-course-row__progress">
                                     <div className="trainee-dashboard-course-card__progress-label">
                                         <span>
                                             {course.overallPercent}% complete
@@ -370,11 +465,12 @@ export function TraineeDashboardPage() {
                                     <ProgressLine
                                         value={course.overallPercent}
                                     />
+                                </div>
+                                <div className="trainee-dashboard-course-row__action">
                                     {course.accessAllowed ? (
                                         <Button
                                             to={getLearningPath(course)}
                                             size="sm"
-                                            fullWidth
                                             rightIcon={<ArrowRight size={16} />}
                                         >
                                             {course.overallPercent > 0
@@ -415,16 +511,7 @@ export function TraineeDashboardPage() {
                     className="trainee-dashboard-quick-actions"
                     aria-labelledby="quick-actions-title"
                 >
-                    <div>
-                        <span className="trainee-dashboard__eyebrow">
-                            Practice and review
-                        </span>
-                        <h2 id="quick-actions-title">Quick actions</h2>
-                        <p>
-                            Choose the learning activity that helps you make
-                            progress today.
-                        </p>
-                    </div>
+                    <h2 id="quick-actions-title">Quick links</h2>
                     <div className="trainee-dashboard-quick-actions__links">
                         <Link to="/learning/flashcards">
                             <BookOpen size={18} /> Practice flashcards{" "}
