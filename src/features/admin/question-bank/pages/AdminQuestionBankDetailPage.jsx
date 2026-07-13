@@ -63,8 +63,11 @@ function normalizeQuestionMedia(question) {
   const audios = sortedAttachments.filter(
     (item) => String(item.mediaType || '').toLowerCase() === 'audio' && mediaUrl(item),
   );
+  const videos = sortedAttachments.filter(
+    (item) => String(item.mediaType || '').toLowerCase() === 'video' && mediaUrl(item),
+  );
 
-  return { images, audios };
+  return { images, audios, videos };
 }
 
 export function AdminQuestionBankDetailPage() {
@@ -467,7 +470,7 @@ export function AdminQuestionBankDetailPage() {
               const questionId = question.questionId || question.id;
               const moduleLabel =
                 moduleNameById.get(question.moduleId) || "No module";
-              const { images, audios } = normalizeQuestionMedia(question);
+              const { images, audios, videos } = normalizeQuestionMedia(question);
               const visibleImages = images.slice(0, 3);
               return (
                 <article className="question-card" key={questionId}>
@@ -561,6 +564,26 @@ export function AdminQuestionBankDetailPage() {
                             <audio controls preload="metadata" src={url}>
                               <track kind="captions" />
                             </audio>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                  {videos.length > 0 && (
+                    <div className="question-card__video-list" aria-label={`Question ${questionNumber} video attachments`}>
+                      {videos.map((video, videoIndex) => {
+                        const url = mediaUrl(video);
+                        return (
+                          <div
+                            className="question-card__video-player"
+                            key={video.attachmentId || video.id || url || videoIndex}
+                          >
+                            <div className="question-card__video-label">
+                              <strong>Video {videoIndex + 1}</strong>
+                            </div>
+                            <video controls preload="metadata" src={url}>
+                              <track kind="captions" />
+                            </video>
                           </div>
                         );
                       })}
