@@ -1,4 +1,9 @@
-import { BrowserRouter, Navigate, useRoutes } from "react-router-dom";
+import {
+    BrowserRouter,
+    Navigate,
+    useLocation,
+    useRoutes,
+} from "react-router-dom";
 import { PublicLayout } from "./layouts/PublicLayout";
 import { AuthAwareLayout } from "./layouts/AuthAwareLayout";
 import { AppLayout } from "./layouts/AppLayout";
@@ -131,6 +136,21 @@ const appRoutes = [
                 ],
             },
 
+            // Staff learning preview - keep staff inside the /staff route space.
+            {
+                element: (
+                    <RoleGuard
+                        allowedRoles={[ROLES.TRAINER, ROLES.TMO, ROLES.SME]}
+                    />
+                ),
+                children: [
+                    {
+                        path: "/staff/courses/:courseId/preview",
+                        element: <LearningWorkspacePage mode="admin-preview" />,
+                    },
+                ],
+            },
+
             // Nhóm 1: Trang cá nhân dùng chung AppLayout hệ thống
             {
                 element: <AppLayout />,
@@ -157,11 +177,25 @@ function AppRoutes() {
     return useRoutes(appRoutes);
 }
 
+function RoutedApp() {
+    const { pathname } = useLocation();
+    const showPublicFooter =
+        pathname === "/" ||
+        /^\/courses\/[^/]+$/.test(pathname) ||
+        /^\/trainers\/[^/]+$/.test(pathname);
+
+    return (
+        <>
+            <AppRoutes />
+            {showPublicFooter && <SiteFooter />}
+        </>
+    );
+}
+
 export function AppShell() {
     return (
         <BrowserRouter>
-            <AppRoutes />
-            <SiteFooter />
+            <RoutedApp />
         </BrowserRouter>
     );
 }

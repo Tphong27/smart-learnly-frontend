@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { useParams } from "react-router-dom";
+import { useLocation, useParams } from "react-router-dom";
 import { courseService } from "@/services/course.service";
 import { flashcardService } from "@/services/flashcard.service";
 import { getCurrentUser } from "@/services/api-client";
@@ -7,6 +7,7 @@ import { LessonDetailEditor } from "@/features/course/components/lesson-editor/L
 
 export default function AdminLessonDetailPage() {
   const { courseId, lessonId } = useParams();
+  const location = useLocation();
 
   const currentUser = getCurrentUser();
 
@@ -14,7 +15,7 @@ export default function AdminLessonDetailPage() {
     String(currentUser?.role || "")
       .toLowerCase() === "trainer";
 
-  const backPath = isTrainer
+  const backPath = location.pathname.startsWith("/staff/")
     ? `/staff/courses/${courseId}/content`
     : `/admin/courses/${courseId}/content`;
 

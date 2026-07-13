@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { CheckCircle2, Clock3, XCircle } from 'lucide-react'
 import { Button } from '@/shared/components/ui'
 import { orderService, paymentStatusService } from '@/services'
@@ -151,13 +151,13 @@ export function PaymentResultPage() {
           </p>
 
           <div className="payment-result__actions">
-            <Link to="/learning/courses" className="button button--primary">
+            <Button to="/learning/courses">
               Go to my courses
-            </Link>
+            </Button>
 
-            <Link to="/learning/transactions" className="button button--ghost">
+            <Button to="/learning/transactions" variant="ghost">
               View transactions
-            </Link>
+            </Button>
           </div>
         </div>
       </div>
@@ -183,13 +183,13 @@ export function PaymentResultPage() {
           <p>{reason}</p>
 
           <div className="payment-result__actions">
-            <Link to="/learning/transactions" className="button button--primary">
+            <Button to="/learning/transactions">
               View transactions
-            </Link>
+            </Button>
 
-            <Link to="/" className="button button--ghost">
+            <Button to="/" variant="ghost">
               Browse courses
-            </Link>
+            </Button>
           </div>
         </div>
       </div>
@@ -206,9 +206,9 @@ export function PaymentResultPage() {
         </p>
 
         <div className="payment-result__actions">
-          <Link to="/learning/transactions" className="button button--ghost">
+          <Button to="/learning/transactions" variant="ghost">
             View transactions
-          </Link>
+          </Button>
         </div>
       </div>
     </div>

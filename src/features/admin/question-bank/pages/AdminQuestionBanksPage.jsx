@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { Archive, Edit2, Eye, Plus, RotateCcw, Search } from 'lucide-react'
 import { Button, FormField, Modal, useToast } from '@/shared/components/ui'
 import { courseService, getCurrentUser, questionBankService } from '@/services'
+import { AdminFilterToolbar } from '@/features/admin/components/AdminFilterToolbar'
 import '../../admin-shared.css'
 
 function canWriteQuestionBank() {
@@ -139,6 +140,7 @@ export function AdminQuestionBanksPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [search, setSearch] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
   const [status, setStatus] = useState('all')
   const [courseId, setCourseId] = useState('')
   const [refreshKey, setRefreshKey] = useState(0)
@@ -147,6 +149,14 @@ export function AdminQuestionBanksPage() {
   const [archivingId, setArchivingId] = useState(null);
   const [restoreModalOpen, setRestoreModalOpen] = useState(false);
   const [restoringBank, setRestoringBank] = useState(null)
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setDebouncedSearch(search.trim())
+    }, 300)
+
+    return () => window.clearTimeout(timer)
+  }, [search])
 
   useEffect(() => {
     let cancelled = false
@@ -168,7 +178,7 @@ export function AdminQuestionBanksPage() {
       setError(null)
       try {
         const params = {}
-        if (search.trim()) params.search = search.trim()
+        if (debouncedSearch) params.search = debouncedSearch
         if (status !== 'all') params.status = status
         if (courseId) params.courseId = courseId
         const data = await questionBankService.listBanks(params)
@@ -185,11 +195,20 @@ export function AdminQuestionBanksPage() {
     })()
     return () => { cancelled = true }
     // toast is intentionally included; useToast() returns a stable reference (useMemo in ToastProvider.jsx).
-  }, [courseId, refreshKey, search, status, toast])
+  }, [courseId, debouncedSearch, refreshKey, status, toast])
 
   const courseNameById = useMemo(() => {
     return new Map(courses.map((course) => [course.id, course.title]))
   }, [courses])
+
+  const hasActiveFilters = Boolean(search.trim() || courseId || status !== 'all')
+
+  function clearFilters() {
+    setSearch('')
+    setDebouncedSearch('')
+    setCourseId('')
+    setStatus('all')
+  }
 
   function openCreateModal() {
     setEditingBank(null)
@@ -262,25 +281,56 @@ export function AdminQuestionBanksPage() {
         )}
       </header>
 
-      <section className="admin-card admin-card--flush">
-        <div className="admin-toolbar">
-          <div className="admin-toolbar__filters">
-            <div className="admin-toolbar__search">
-              <FormField placeholder="Search banks..." value={search} onChange={(event) => setSearch(event.target.value)} leftIcon={<Search size={16} />} />
-            </div>
-            <select className="admin-toolbar__select" value={courseId} onChange={(event) => setCourseId(event.target.value)}>
-              <option value="">All courses</option>
-              {courses.map((course) => <option key={course.id} value={course.id}>{course.title}</option>)}
-            </select>
-            <select className="admin-toolbar__select" value={status} onChange={(event) => setStatus(event.target.value)}>
-              <option value="all">All statuses</option>
-              <option value="draft">Draft</option>
-              <option value="approved">Approved</option>
-              <option value="archived">Archived</option>
-            </select>
-          </div>
-          <span style={{ color: '#64748b', fontSize: 13 }}>{items.length} banks</span>
-        </div>
+      <section className="admin-card admin-card--flush admin-card--filterable">
+        <AdminFilterToolbar
+          ariaLabel="Question bank search and filters"
+          search={(
+            <FormField
+              id="question-bank-search"
+              aria-label="Search question banks"
+              placeholder="Search question banks..."
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              leftIcon={<Search size={16} />}
+            />
+          )}
+          fields={[
+            {
+              id: 'question-bank-course',
+              name: 'courseId',
+              label: 'Course',
+              type: 'select',
+              value: courseId,
+              defaultValue: '',
+              options: [
+                { value: '', label: 'All courses' },
+                ...courses.map((course) => ({ value: course.id, label: course.title })),
+              ],
+            },
+            {
+              id: 'question-bank-status',
+              name: 'status',
+              label: 'Status',
+              type: 'select',
+              value: status,
+              defaultValue: 'all',
+              options: [
+                { value: 'all', label: 'All statuses' },
+                { value: 'draft', label: 'Draft' },
+                { value: 'approved', label: 'Approved' },
+                { value: 'archived', label: 'Archived' },
+              ],
+            },
+          ]}
+          activeFilterCount={Number(Boolean(courseId)) + Number(status !== 'all')}
+          canClear={hasActiveFilters}
+          resultLabel={`${items.length} ${items.length === 1 ? 'bank' : 'banks'}`}
+          onApply={(nextFilters) => {
+            setCourseId(nextFilters.courseId)
+            setStatus(nextFilters.status)
+          }}
+          onClear={clearFilters}
+        />
 
         <div className="admin-table-wrap">
           {loading ? (

@@ -6,7 +6,7 @@
 }
 
 .input-field__label {
-  color: var(--ink, #14213d);
+  color: var(--sl-ink, #0f172a);
   font-size: 13.5px;
   font-weight: 600;
   letter-spacing: -0.1px;
@@ -26,10 +26,10 @@
 .input-field__control {
   width: 100%;
   min-height: 46px;
-  border: 1px solid #dde4ee;
-  border-radius: 12px;
+  border: 1px solid var(--sl-line, #e4eaf4);
+  border-radius: var(--sl-radius-md, 14px);
   background: #ffffff;
-  color: var(--ink, #14213d);
+  color: var(--sl-ink, #0f172a);
   padding: 0 14px;
   font-size: 15px;
   font-family: inherit;
@@ -45,12 +45,12 @@
 }
 
 .input-field__control:hover:not(:disabled):not(:focus) {
-  border-color: #c5cfdf;
+  border-color: var(--sl-purple-border, #d8c8fb);
 }
 
 .input-field__control:focus {
-  border-color: var(--blue, #2768ee);
-  box-shadow: 0 0 0 4px rgba(39, 104, 238, 0.12);
+  border-color: var(--sl-purple, #825ef5);
+  box-shadow: 0 0 0 4px rgba(130, 94, 245, 0.16);
 }
 
 .input-field__control:disabled {
@@ -79,7 +79,7 @@
 }
 
 .input-field__wrapper:focus-within .input-field__icon {
-  color: var(--blue, #2768ee);
+  color: var(--sl-purple, #825ef5);
 }
 
 .input-field__icon--left {

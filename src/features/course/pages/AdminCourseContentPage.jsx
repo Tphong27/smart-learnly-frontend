@@ -1,10 +1,15 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import { Eye } from "lucide-react";
+import {
+  useLocation,
+  useParams,
+  useNavigate,
+  useSearchParams,
+} from "react-router-dom";
+import { Eye, Maximize2, Minimize2, RotateCcw } from "lucide-react";
 import { courseService } from "../../../services/course.service";
 import { flashcardService } from "../../../services/flashcard.service";
-import { getCurrentUser } from "../../../services/api-client";
 import { useToast } from "../../../shared/components/ui/Toast/useToast";
+import { Button } from "../../../shared/components/ui";
 import { CurriculumStructureEditor } from "../components/CurriculumStructureEditor";
 import "../course-admin.css";
 
@@ -12,15 +17,26 @@ export default function AdminCourseContentPage() {
   const params = useParams();
   const courseId = params.courseId || params.id;
   const navigate = useNavigate();
+  const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { showToast: emitToast } = useToast();
-  const currentUser = getCurrentUser();
-  const isTrainer = String(currentUser?.role || "").toLowerCase() === "trainer";
+  const isStaffRoute = location.pathname.startsWith("/staff/");
+  const courseBasePath = isStaffRoute ? "/staff/courses" : "/admin/courses";
 
-  const courseListPath = isTrainer ? "/staff/courses" : "/admin/courses";
+  const courseListPath = courseBasePath;
 
-  const courseContentPath = isTrainer
-    ? `/staff/courses/${courseId}/content`
-    : `/admin/courses/${courseId}/content`;
+  const courseContentPath = `${courseBasePath}/${courseId}/content`;
+  const coursePreviewPath = `${courseBasePath}/${courseId}/preview`;
+  const lessonBasePath = `${courseBasePath}/${courseId}/lessons`;
+  const focusMode = searchParams.get("focus") === "1";
+  const pageClassName = `sl-cm-page sl-cm-page--curriculum${focusMode ? " sl-cm-page--focus" : ""}`;
+
+  function toggleFocusMode() {
+    const nextParams = new URLSearchParams(searchParams);
+    if (focusMode) nextParams.delete("focus");
+    else nextParams.set("focus", "1");
+    setSearchParams(nextParams, { replace: true });
+  }
 
   const showToast = useCallback(
     (messageOrOptions, type) => {
@@ -36,10 +52,12 @@ export default function AdminCourseContentPage() {
   const [sections, setSections] = useState([]);
   const [sectionLessons, setSectionLessons] = useState({});
   const [loadingSections, setLoadingSections] = useState(true);
+  const [loadError, setLoadError] = useState("");
   const [loadingLessons, setLoadingLessons] = useState({});
 
   const fetchSections = useCallback(async () => {
     setLoadingSections(true);
+    setLoadError("");
     try {
       const data = await courseService.getCourseContent(courseId);
       const nextSections = Array.isArray(data) ? data : [];
@@ -55,9 +73,11 @@ export default function AdminCourseContentPage() {
         return lessonsBySection;
       });
     } catch (error) {
+      const message = error.response?.data?.message || "Error loading content";
+      setLoadError(message);
       showToast({
         type: "error",
-        message: error.response?.data?.message || "Error loading content",
+        message,
       });
     } finally {
       setLoadingSections(false);
@@ -84,7 +104,11 @@ export default function AdminCourseContentPage() {
   }, []);
 
   useEffect(() => {
-    if (courseId) fetchSections();
+    if (!courseId) return undefined;
+    const frame = window.requestAnimationFrame(() => {
+      fetchSections();
+    });
+    return () => window.cancelAnimationFrame(frame);
   }, [courseId, fetchSections]);
 
   useEffect(() => {
@@ -104,11 +128,13 @@ export default function AdminCourseContentPage() {
       await courseService.createSection(courseId, { title, isActive: true });
       showToast({ type: "success", message: "Section added successfully!" });
       fetchSections();
+      return true;
     } catch (error) {
       showToast({
         type: "error",
         message: error?.response?.data?.message || "Could not create section.",
       });
+      return false;
     }
   };
 
@@ -120,8 +146,10 @@ export default function AdminCourseContentPage() {
       });
       showToast({ type: "success", message: "Section updated successfully!" });
       fetchSections();
-    } catch (error) {
+      return true;
+    } catch {
       showToast({ type: "error", message: "Error updating section" });
+      return false;
     }
   };
 
@@ -224,11 +252,11 @@ export default function AdminCourseContentPage() {
 
         if (createdLesson?.lessonId) {
           navigate(
-            `/admin/courses/${courseId}/lessons/${createdLesson.lessonId}`,
+            `${lessonBasePath}/${createdLesson.lessonId}`,
             { state: { flashcardSetId: createdLesson.setId } },
           );
         }
-        return;
+        return true;
       }
 
       await courseService.createLesson(sectionId, {
@@ -242,11 +270,13 @@ export default function AdminCourseContentPage() {
 
       showToast({ type: "success", message: "Lesson added." });
       fetchLessonsForSection(sectionId);
+      return true;
     } catch (error) {
       showToast({
         type: "error",
         message: error?.response?.data?.message || "Could not create lesson.",
       });
+      return false;
     }
   };
 
@@ -312,9 +342,9 @@ export default function AdminCourseContentPage() {
         return;
       }
 
-      navigate(`/admin/courses/${courseId}/lessons/${lesson.id}`);
+      navigate(`${lessonBasePath}/${lesson.id}`);
     },
-    [courseId, navigate, showToast],
+    [lessonBasePath, navigate, showToast],
   );
 
   const stats = React.useMemo(() => {
@@ -347,7 +377,16 @@ export default function AdminCourseContentPage() {
 
   if (loadingSections) {
     return (
-      <div className="sl-cm-page" role="status" aria-live="polite">
+      <div className={pageClassName} role="status" aria-live="polite">
+        {focusMode && (
+          <button
+            type="button"
+            className="sl-cm-btn sl-cm-btn--secondary sl-cm-focus-escape"
+            onClick={toggleFocusMode}
+          >
+            <Minimize2 size={16} aria-hidden="true" /> Exit focus
+          </button>
+        )}
         <div className="sl-cm-workspace" aria-busy="true">
           <div className="sl-cm-skeleton" style={{ width: "40%", marginBottom: 12 }} />
           <div className="sl-cm-skeleton" style={{ width: "70%", marginBottom: 24 }} />
@@ -358,8 +397,42 @@ export default function AdminCourseContentPage() {
     );
   }
 
+  if (loadError) {
+    return (
+      <div className={pageClassName}>
+        {focusMode && (
+          <button
+            type="button"
+            className="sl-cm-btn sl-cm-btn--secondary sl-cm-focus-escape"
+            onClick={toggleFocusMode}
+          >
+            <Minimize2 size={16} aria-hidden="true" /> Exit focus
+          </button>
+        )}
+        <div className="sl-cm-workspace sl-cm-load-error" role="alert">
+          <h1 className="sl-cm-header__title">Curriculum unavailable</h1>
+          <p>{loadError}</p>
+          <div className="sl-cm-load-error__actions">
+            <Button
+              variant="outline"
+              onClick={() => navigate(courseListPath)}
+            >
+              Back to courses
+            </Button>
+            <Button
+              leftIcon={<RotateCcw size={16} />}
+              onClick={fetchSections}
+            >
+              Try again
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="sl-cm-page">
+    <div className={pageClassName}>
       <header className="sl-cm-header">
         <div>
           <button
@@ -373,29 +446,29 @@ export default function AdminCourseContentPage() {
           <p className="sl-cm-header__subtitle">
             Organise sections and lessons so learners can follow a logical flow.
           </p>
-          <p className="sl-cm-summary" style={{ marginTop: 10 }}>
-            <strong>{stats.totalSections}</strong> sections ·
-            <strong> {stats.totalLessons}</strong> lessons ·
-            <strong> {stats.totalVideos}</strong> videos ·
-            <strong> {stats.totalQuizzes}</strong> quizzes
-          </p>
         </div>
         <div className="sl-cm-header__actions">
           <button
             type="button"
             className="sl-cm-btn sl-cm-btn--secondary"
-            onClick={() =>
-              window.open(
-                `/admin/courses/${courseId}/preview?returnTo=${encodeURIComponent(
-                  courseContentPath,
-                )}`,
-                "_blank",
-                "noopener,noreferrer",
-              )
-            }
+            onClick={toggleFocusMode}
+            aria-pressed={focusMode}
+          >
+            {focusMode ? (
+              <Minimize2 size={16} aria-hidden="true" />
+            ) : (
+              <Maximize2 size={16} aria-hidden="true" />
+            )}
+            {focusMode ? "Exit focus" : "Focus mode"}
+          </button>
+          <a
+            className="sl-cm-btn sl-cm-btn--secondary"
+            href={`${coursePreviewPath}?returnTo=${encodeURIComponent(courseContentPath)}`}
+            target="_blank"
+            rel="noopener noreferrer"
           >
             <Eye size={16} aria-hidden="true" /> Preview as learner
-          </button>
+          </a>
         </div>
       </header>
 

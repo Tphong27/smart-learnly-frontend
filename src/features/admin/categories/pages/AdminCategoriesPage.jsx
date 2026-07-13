@@ -3,6 +3,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Edit2, Plus, Search, Trash2 } from 'lucide-react'
 import { Button, Form, FormField, Modal, useToast } from '@/shared/components/ui'
+import { AdminFilterToolbar } from '@/features/admin/components/AdminFilterToolbar'
 import { categoryService } from '@/services'
 import { categorySchema } from '../schemas/category-schemas'
 import '../../admin-shared.css'
@@ -228,6 +229,14 @@ export function AdminCategoriesPage() {
   const [deleteState, setDeleteState] = useState({ open: false, target: null })
 
   useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setSubmittedKeyword(keyword.trim())
+    }, 300)
+
+    return () => window.clearTimeout(timer)
+  }, [keyword])
+
+  useEffect(() => {
     let cancelled = false
     ;(async () => {
       setLoading(true)
@@ -254,12 +263,6 @@ export function AdminCategoriesPage() {
     }
   }, [refreshKey, activeFilter, submittedKeyword, toast])
 
-  function handleSearchSubmit(event) {
-    event.preventDefault()
-    setSubmittedKeyword(keyword.trim())
-    setRefreshKey((k) => k + 1)
-  }
-
   function handleSaved() {
     setFormState({ open: false, mode: 'create', initial: null })
     setRefreshKey((k) => k + 1)
@@ -268,6 +271,12 @@ export function AdminCategoriesPage() {
   function handleDeleted() {
     setDeleteState({ open: false, target: null })
     setRefreshKey((k) => k + 1)
+  }
+
+  function clearCategoryFilters() {
+    setKeyword('')
+    setSubmittedKeyword('')
+    setActiveFilter('all')
   }
 
   return (
@@ -281,30 +290,39 @@ export function AdminCategoriesPage() {
         </Button>
       </header>
 
-      <section className="admin-card admin-card--flush">
-        <div className="admin-toolbar">
-          <form className="admin-toolbar__filters" onSubmit={handleSearchSubmit}>
-            <div className="admin-toolbar__search">
-              <FormField
-                placeholder="Search by name or slug..."
-                value={keyword}
-                onChange={(e) => setKeyword(e.target.value)}
-                leftIcon={<Search size={16} />}
-              />
-            </div>
-            <select
-              className="admin-toolbar__select"
-              value={activeFilter}
-              onChange={(e) => setActiveFilter(e.target.value)}
-            >
-              <option value="all">All statuses</option>
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
-            </select>
-            <Button type="submit" variant="secondary">Filter</Button>
-          </form>
-          <span style={{ color: '#64708a', fontSize: 13 }}>{items.length} categories</span>
-        </div>
+      <section className="admin-card admin-card--flush admin-card--filterable">
+        <AdminFilterToolbar
+          ariaLabel="Category search and filters"
+          search={(
+            <FormField
+              id="admin-category-search"
+              aria-label="Search categories"
+              placeholder="Search by name or slug..."
+              value={keyword}
+              onChange={(event) => setKeyword(event.target.value)}
+              leftIcon={<Search size={16} />}
+            />
+          )}
+          fields={[
+            {
+              name: 'status',
+              label: 'Status',
+              type: 'select',
+              value: activeFilter,
+              defaultValue: 'all',
+              options: [
+                { value: 'all', label: 'All statuses' },
+                { value: 'active', label: 'Active' },
+                { value: 'inactive', label: 'Inactive' },
+              ],
+            },
+          ]}
+          activeFilterCount={Number(activeFilter !== 'all')}
+          canClear={Boolean(keyword.trim() || activeFilter !== 'all')}
+          resultLabel={`${items.length} categories`}
+          onApply={(nextFilters) => setActiveFilter(nextFilters.status)}
+          onClear={clearCategoryFilters}
+        />
 
         <div className="admin-table-wrap">
           {loading ? (

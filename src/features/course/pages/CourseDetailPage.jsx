@@ -12,7 +12,7 @@ import {
     Sparkles,
     Star,
 } from "lucide-react";
-import { useToast } from "@/shared/components/ui";
+import { Button, useToast } from "@/shared/components/ui";
 import {
     formatVnd,
     getDiscountPercent,
@@ -428,6 +428,7 @@ export function CourseDetailPage() {
                                             <button
                                                 type="button"
                                                 className="course-detail__expand-link"
+                                                aria-expanded={showAllObjectives}
                                                 onClick={() =>
                                                     setShowAllObjectives(
                                                         (prev) => !prev,
@@ -480,6 +481,7 @@ export function CourseDetailPage() {
                                 <button
                                     type="button"
                                     className="course-detail__expand-link"
+                                    aria-expanded={expandAll}
                                     onClick={toggleExpandAll}
                                 >
                                     {expandAll
@@ -509,6 +511,7 @@ export function CourseDetailPage() {
                                                     toggleModule(mod.id)
                                                 }
                                                 aria-expanded={isOpen}
+                                                aria-controls={`course-module-${mod.id}`}
                                             >
                                                 <span className="course-detail__module-index">
                                                     {String(idx + 1).padStart(
@@ -538,6 +541,7 @@ export function CourseDetailPage() {
                                             </button>
 
                                             <ul
+                                                id={`course-module-${mod.id}`}
                                                 className={`course-detail__lessons${
                                                     isOpen ? " is-open" : ""
                                                 }`}
@@ -615,28 +619,26 @@ export function CourseDetailPage() {
 
                         {!isEnrolled && (
                             <div className="course-detail__action-grid">
-                                <button
-                                    type="button"
+                                <Button
                                     onClick={handleBuyNowClick}
-                                    disabled={
+                                    loading={
                                         buyNowLoading || freeEnrollLoading
                                     }
-                                    className="course-detail__buy-btn"
+                                    loadingLabel="Processing..."
+                                    fullWidth
                                 >
-                                    {freeEnrollLoading || buyNowLoading
-                                        ? "Processing..."
-                                        : isFreeCourse(course)
-                                          ? "Enroll Now"
-                                          : "Buy Now"}
-                                </button>
+                                    {isFreeCourse(course)
+                                        ? "Enroll now"
+                                        : "Buy now"}
+                                </Button>
 
-                                <button
-                                    type="button"
+                                <Button
                                     onClick={handleTryItOutClick}
-                                    className="course-detail__try-btn"
+                                    variant="outline"
+                                    fullWidth
                                 >
                                     Try it out
-                                </button>
+                                </Button>
                             </div>
                         )}
 

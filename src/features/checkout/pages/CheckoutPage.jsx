@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { orderService, paymentStatusService } from "@/services";
-import { useToast } from "@/shared/components/ui";
+import { Button, useToast } from "@/shared/components/ui";
 import { PaymentInstructionCard } from "../components/PaymentInstructionCard";
 import { CheckoutSummary } from "../components/CheckoutSummary";
 import "../checkout.css";
@@ -131,9 +131,9 @@ export function CheckoutPage() {
           {error || "Checkout order not found."}
         </div>
 
-        <Link to="/learning/courses" className="button button--primary">
+        <Button to="/learning/courses">
           Back to Course Catalog
-        </Link>
+        </Button>
       </section>
     );
   }

@@ -726,8 +726,13 @@ export function QuestionImportModal({ open, bank, existingQuestions = [], onClos
             <div className="question-import__media-title">{config.label}</div>
             <div className="question-import__media-hint">{config.typeLabel}. Max {config.maxSizeLabel}. {items.length}/{config.maxCount} used.</div>
           </div>
-          <label className={'button button--secondary button--sm ' + (items.length >= config.maxCount ? 'is-disabled' : '')}>
-            <Upload size={14} />
+          <Button
+            as="label"
+            variant="secondary"
+            size="sm"
+            leftIcon={<Upload size={14} />}
+            disabled={items.length >= config.maxCount}
+          >
             Add
             <input
               type="file"
@@ -740,7 +745,7 @@ export function QuestionImportModal({ open, bank, existingQuestions = [], onClos
                 event.target.value = ''
               }}
             />
-          </label>
+          </Button>
         </div>
         {items.length ? (
           <div className="question-import__media-list">

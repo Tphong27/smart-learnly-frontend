@@ -1,351 +1,307 @@
-/* Button — Smart Learnly design system
- * Primary: tím (#825ef5) + ink border (#211b36) + offset shadow (tactile).
- * Secondary: trắng + line nhẹ.
- * Outline: trắng + tím text (dùng cho ghost actions).
- */
+/* Smart Learnly action button — one interaction model for button, Link and a. */
 
 .button {
-  --button-bg: var(--sl-purple, #825ef5);
-  --button-color: #ffffff;
-  --button-border: var(--sl-ink-deep, #211b36);
-  --button-hover-bg: var(--sl-purple-dark, #6d28d2);
-  --button-shadow: 3px 3px 0 var(--sl-ink-deep, #211b36);
-  --button-shadow-hover: 5px 5px 0 var(--sl-ink-deep, #211b36);
-  --button-focus-ring: rgba(130, 94, 245, 0.4);
+    --button-bg: var(--sl-purple, #5624d0);
+    --button-color: #ffffff;
+    --button-border: var(--sl-purple, #5624d0);
+    --button-hover-bg: var(--sl-purple-dark, #401b9c);
+    --button-shadow: none;
+    --button-shadow-hover: none;
+    --button-shadow-active: none;
+    --button-focus-ring: rgba(86, 36, 208, 0.28);
 
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
 
-  border: 1.5px solid var(--button-border);
-  border-radius: var(--sl-radius-md, 14px);
-  background: var(--button-bg);
-  color: var(--button-color);
-  box-shadow: var(--button-shadow);
+    border: 1px solid var(--button-border);
+    border-radius: var(--sl-radius-md, 4px);
+    background: var(--button-bg);
+    color: var(--button-color);
+    box-shadow: var(--button-shadow);
 
-  font-family: inherit;
-  font-weight: 700;
-  letter-spacing: -0.01em;
-  line-height: 1;
-  cursor: pointer;
-  transition:
-    background 0.2s ease,
-    border-color 0.2s ease,
-    color 0.2s ease,
-    box-shadow 0.2s ease,
-    transform 0.15s ease;
-  text-decoration: none;
+    font-family: inherit;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    line-height: 1;
+    cursor: pointer;
+    touch-action: manipulation;
+    transition:
+        background 0.2s ease,
+        border-color 0.2s ease,
+        color 0.2s ease,
+        box-shadow 0.2s ease;
+    text-decoration: none;
 }
 
-.button:hover:not(:disabled) {
-  background: var(--button-hover-bg);
-  box-shadow: var(--button-shadow-hover);
-  transform: translate(-1px, -1px);
+.button:hover:not(:disabled):not([aria-disabled="true"]) {
+    background: var(--button-hover-bg);
+    color: var(--button-color);
+    box-shadow: var(--button-shadow-hover);
+    transform: none;
 }
 
-.button:active:not(:disabled) {
-  transform: translate(0, 0);
-  box-shadow: var(--button-shadow);
+.button:active:not(:disabled):not([aria-disabled="true"]) {
+    transform: none;
+    box-shadow: var(--button-shadow-active);
 }
 
 .button:focus-visible {
-  outline: 3px solid var(--button-focus-ring);
-  outline-offset: 2px;
+    outline: 3px solid var(--button-focus-ring);
+    outline-offset: 2px;
 }
 
 .button:disabled,
+.button[aria-disabled="true"],
 .button[aria-busy="true"] {
-  cursor: not-allowed;
-  opacity: 0.55;
-  transform: none;
-  box-shadow: var(--button-shadow);
-}
-
-/* Non-tactile override (no shadow, no hover shift) */
-.button:not(.button--tactile) {
-  box-shadow: none;
-}
-.button:not(.button--tactile):hover:not(:disabled) {
-  box-shadow: none;
-  transform: translateY(-1px);
-}
-.button:not(.button--tactile):active:not(:disabled) {
-  transform: translateY(0);
+    cursor: not-allowed;
+    opacity: 0.55;
+    transform: none;
+    box-shadow: var(--button-shadow);
 }
 
 /* Sizes */
 .button--sm {
-  min-height: 36px;
-  padding: 0 14px;
-  font-size: 13px;
-  border-radius: var(--sl-radius-sm, 10px);
+    min-height: 44px;
+    padding: 0 14px;
+    font-size: 13px;
+    border-radius: var(--sl-radius-sm, 10px);
 }
 
 .button--md {
-  min-height: 44px;
-  padding: 0 18px;
-  font-size: 14.5px;
+    min-height: 44px;
+    padding: 0 18px;
+    font-size: 14.5px;
 }
 
 .button--lg {
-  min-height: 52px;
-  padding: 0 22px;
-  font-size: 15.5px;
-  border-radius: var(--sl-radius-lg, 16px);
+    min-height: 52px;
+    padding: 0 22px;
+    font-size: 15.5px;
+    border-radius: var(--sl-radius-lg, 16px);
 }
 
 .button--full {
-  width: 100%;
+    width: 100%;
 }
 
 /* Variants */
 .button--primary {
-  --button-bg: var(--sl-purple, #825ef5);
-  --button-color: #ffffff;
-  --button-border: var(--sl-ink-deep, #211b36);
-  --button-hover-bg: var(--sl-purple-dark, #6d28d2);
-  --button-shadow: 3px 3px 0 var(--sl-ink-deep, #211b36);
-  --button-shadow-hover: 5px 5px 0 var(--sl-ink-deep, #211b36);
+    --button-bg: var(--sl-purple, #5624d0);
+    --button-color: #ffffff;
+    --button-border: var(--sl-purple, #5624d0);
+    --button-hover-bg: var(--sl-purple-dark, #401b9c);
 }
 
 .button--secondary {
-  --button-bg: #ffffff;
-  --button-color: var(--sl-ink, #0f172a);
-  --button-border: var(--sl-line, #e4eaf4);
-  --button-hover-bg: var(--sl-purple-soft, #f3eefe);
-  --button-border-hover: var(--sl-purple-border, #d8c8fb);
-  --button-shadow: none;
-  --button-shadow-hover: none;
+    --button-bg: #ffffff;
+    --button-color: var(--sl-ink, #0f172a);
+    --button-border: var(--sl-line, #e4eaf4);
+    --button-hover-bg: var(--sl-surface, #f7f9fa);
+    --button-border-hover: var(--sl-ink, #2d2f31);
 }
 
-.button--secondary:hover:not(:disabled) {
-  border-color: var(--button-border-hover, var(--sl-purple-border, #d8c8fb));
-  color: var(--sl-purple-dark, #6d28d2);
+.button--secondary:hover:not(:disabled):not([aria-disabled="true"]) {
+    border-color: var(--button-border-hover, var(--sl-purple-border, #d8c8fb));
+    color: var(--sl-ink, #2d2f31);
 }
 
 .button--outline {
-  --button-bg: #ffffff;
-  --button-color: var(--sl-purple, #825ef5);
-  --button-border: var(--sl-purple-border, #d8c8fb);
-  --button-hover-bg: var(--sl-purple-soft, #f3eefe);
-  --button-shadow: none;
-  --button-shadow-hover: none;
+    --button-bg: #ffffff;
+    --button-color: var(--sl-purple, #825ef5);
+    --button-border: var(--sl-line, #d1d7dc);
+    --button-hover-bg: var(--sl-surface, #f7f9fa);
 }
 
-.button--outline:hover:not(:disabled) {
-  color: var(--sl-purple-dark, #6d28d2);
-  border-color: var(--sl-purple, #825ef5);
+.button--outline:hover:not(:disabled):not([aria-disabled="true"]) {
+    color: var(--sl-purple-dark, #6d28d2);
+    border-color: var(--sl-purple, #825ef5);
 }
 
 .button--ghost {
-  --button-bg: transparent;
-  --button-color: var(--sl-muted, #64708a);
-  --button-border: transparent;
-  --button-hover-bg: var(--sl-surface, #f7f9fc);
-  --button-shadow: none;
-  --button-shadow-hover: none;
+    --button-bg: transparent;
+    --button-color: var(--sl-muted, #64708a);
+    --button-border: transparent;
+    --button-hover-bg: var(--sl-surface, #f7f9fc);
+
+    border-width: 1px;
 }
 
-.button--ghost:hover:not(:disabled) {
-  color: var(--sl-ink, #0f172a);
+.button--ghost:hover:not(:disabled):not([aria-disabled="true"]) {
+    color: var(--sl-ink, #0f172a);
 }
 
 .button--danger {
-  --button-bg: #ffffff;
-  --button-color: #b91c1c;
-  --button-border: #fca5a5;
-  --button-hover-bg: #fff1f2;
-  --button-shadow: none;
-  --button-shadow-hover: none;
+    --button-bg: #ffffff;
+    --button-color: #b91c1c;
+    --button-border: #fca5a5;
+    --button-hover-bg: #fff1f2;
 }
 
-.button--danger:not(.button--tactile):hover:not(:disabled) {
-  color: #b91c1c;
-  border-color: #f87171;
-}
-
-.button--danger.button--tactile {
-  --button-bg: #dc2626;
-  --button-color: #ffffff;
-  --button-border: var(--sl-ink-deep, #211b36);
-  --button-hover-bg: #b91c1c;
-  --button-shadow: 3px 3px 0 var(--sl-ink-deep, #211b36);
-  --button-shadow-hover: 5px 5px 0 var(--sl-ink-deep, #211b36);
+.button--danger:hover:not(:disabled):not([aria-disabled="true"]) {
+    color: #b91c1c;
+    border-color: #f87171;
 }
 
 .button--success {
-  --button-bg: #168c76;
-  --button-color: #ffffff;
-  --button-border: var(--sl-ink-deep, #211b36);
-  --button-hover-bg: #137a66;
-  --button-shadow: 3px 3px 0 var(--sl-ink-deep, #211b36);
-  --button-shadow-hover: 5px 5px 0 var(--sl-ink-deep, #211b36);
+    --button-bg: #168c76;
+    --button-color: #ffffff;
+    --button-border: #168c76;
+    --button-hover-bg: #137a66;
 }
 
 /* Icon wrapper */
 .button__icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .button__spinner {
-  width: 16px;
-  height: 16px;
-  border: 2px solid currentColor;
-  border-top-color: transparent;
-  border-radius: 999px;
-  animation: button-spin 0.7s linear infinite;
+    width: 16px;
+    height: 16px;
+    border: 2px solid currentColor;
+    border-top-color: transparent;
+    border-radius: 999px;
+    animation: button-spin 0.7s linear infinite;
 }
 
 @keyframes button-spin {
-  to {
-    transform: rotate(360deg);
-  }
+    to {
+        transform: rotate(360deg);
+    }
 }
 
 .button__content {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
 }
 
 /* Icon-only (44x44 touch target) */
 .button--icon {
-  width: 44px;
-  min-width: 44px;
-  height: 44px;
-  min-height: 44px;
-  padding: 0;
-  border-radius: var(--sl-radius-md, 14px);
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
+    min-height: 44px;
+    padding: 0;
+    border-radius: var(--sl-radius-md, 14px);
 }
 
 .button--icon.button--sm {
-  width: 36px;
-  min-width: 36px;
-  height: 36px;
-  min-height: 36px;
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
+    min-height: 44px;
 }
 
 /* Legacy toolbar variants — giữ tone xanh nhẹ để không vỡ code cũ;
  * chỉ dùng cho actions phụ không phải primary action.
  */
 .button--toolbar {
-  --button-bg: #ffffff;
-  --button-color: #1f2937;
-  --button-border: #e2e8f0;
-  --button-hover-bg: #f8fafc;
-  --button-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
-  --button-shadow-hover: 0 2px 6px rgba(15, 23, 42, 0.08);
+    --button-bg: #ffffff;
+    --button-color: #1f2937;
+    --button-border: #e2e8f0;
+    --button-hover-bg: #f8fafc;
 
-  border-radius: 7px;
-  font-weight: 600;
-  letter-spacing: 0;
+    border-radius: 7px;
+    font-weight: 600;
+    letter-spacing: 0;
 }
 
-.button--toolbar:hover:not(:disabled) {
-  --button-color: #2563eb;
+.button--toolbar:hover:not(:disabled):not([aria-disabled="true"]) {
+    --button-color: #2563eb;
 }
 
 .button--toolbar-danger {
-  --button-bg: #ffffff;
-  --button-color: #b91c1c;
-  --button-border: #e2e8f0;
-  --button-hover-bg: #fff1f2;
-  --button-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
-  --button-shadow-hover: 0 2px 6px rgba(220, 38, 38, 0.08);
+    --button-bg: #ffffff;
+    --button-color: #b91c1c;
+    --button-border: #e2e8f0;
+    --button-hover-bg: #fff1f2;
 
-  border-radius: 7px;
-  font-weight: 600;
-  letter-spacing: 0;
+    border-radius: 7px;
+    font-weight: 600;
+    letter-spacing: 0;
 }
 
-.button--toolbar-danger:hover:not(:disabled) {
-  --button-color: #dc2626;
-  --button-border: #fecaca;
+.button--toolbar-danger:hover:not(:disabled):not([aria-disabled="true"]) {
+    --button-color: #dc2626;
+    --button-border: #fecaca;
 }
 
 /* Compact action buttons (legacy) */
 .button--create,
 .button--save {
-  --button-bg: #ffffff;
-  --button-color: #2563eb;
-  --button-border: #93c5fd;
-  --button-hover-bg: #eff6ff;
-  --button-shadow: 0 1px 2px rgba(37, 99, 235, 0.06);
-  --button-shadow-hover: 0 3px 8px rgba(37, 99, 235, 0.12);
+    --button-bg: #ffffff;
+    --button-color: #2563eb;
+    --button-border: #93c5fd;
+    --button-hover-bg: #eff6ff;
 
-  border-radius: 7px;
-  font-weight: 600;
-  letter-spacing: 0;
+    border-radius: 7px;
+    font-weight: 600;
+    letter-spacing: 0;
 }
 
-.button--create:hover:not(:disabled),
-.button--save:hover:not(:disabled) {
-  --button-color: #1d4ed8;
-  --button-border: #60a5fa;
+.button--create:hover:not(:disabled):not([aria-disabled="true"]),
+.button--save:hover:not(:disabled):not([aria-disabled="true"]) {
+    --button-color: #1d4ed8;
+    --button-border: #60a5fa;
 }
 
 .button--edit {
-  --button-bg: #ffffff;
-  --button-color: #b45309;
-  --button-border: #facc15;
-  --button-hover-bg: #fefce8;
-  --button-shadow: 0 1px 2px rgba(180, 83, 9, 0.06);
-  --button-shadow-hover: 0 3px 8px rgba(180, 83, 9, 0.12);
+    --button-bg: #ffffff;
+    --button-color: #b45309;
+    --button-border: #facc15;
+    --button-hover-bg: #fefce8;
 
-  border-radius: 7px;
-  font-weight: 600;
-  letter-spacing: 0;
+    border-radius: 7px;
+    font-weight: 600;
+    letter-spacing: 0;
 }
 
-.button--edit:hover:not(:disabled) {
-  --button-color: #92400e;
-  --button-border: #eab308;
+.button--edit:hover:not(:disabled):not([aria-disabled="true"]) {
+    --button-color: #92400e;
+    --button-border: #eab308;
 }
 
 .button--delete {
-  --button-bg: #ffffff;
-  --button-color: #dc2626;
-  --button-border: #fca5a5;
-  --button-hover-bg: #fff1f2;
-  --button-shadow: 0 1px 2px rgba(220, 38, 38, 0.06);
-  --button-shadow-hover: 0 3px 8px rgba(220, 38, 38, 0.12);
+    --button-bg: #ffffff;
+    --button-color: #dc2626;
+    --button-border: #fca5a5;
+    --button-hover-bg: #fff1f2;
 
-  border-radius: 7px;
-  font-weight: 600;
-  letter-spacing: 0;
+    border-radius: 7px;
+    font-weight: 600;
+    letter-spacing: 0;
 }
 
-.button--delete:hover:not(:disabled) {
-  --button-color: #b91c1c;
-  --button-border: #f87171;
+.button--delete:hover:not(:disabled):not([aria-disabled="true"]) {
+    --button-color: #b91c1c;
+    --button-border: #f87171;
 }
 
 .button--cancel {
-  --button-bg: #ffffff;
-  --button-color: #475569;
-  --button-border: #cbd5e1;
-  --button-hover-bg: #f8fafc;
-  --button-shadow: 0 1px 2px rgba(71, 85, 105, 0.05);
-  --button-shadow-hover: 0 3px 8px rgba(71, 85, 105, 0.1);
+    --button-bg: #ffffff;
+    --button-color: #475569;
+    --button-border: #cbd5e1;
+    --button-hover-bg: #f8fafc;
 
-  border-radius: 7px;
-  font-weight: 600;
-  letter-spacing: 0;
+    border-radius: 7px;
+    font-weight: 600;
+    letter-spacing: 0;
 }
 
-.button--cancel:hover:not(:disabled) {
-  --button-color: #334155;
-  --button-border: #94a3b8;
+.button--cancel:hover:not(:disabled):not([aria-disabled="true"]) {
+    --button-color: #334155;
+    --button-border: #94a3b8;
 }
 
 .button--toolbar.button--sm,
 .button--toolbar-danger.button--sm {
-  min-height: 38px;
-  padding: 0 14px;
-  font-size: 14px;
+    min-height: 44px;
+    padding: 0 14px;
+    font-size: 14px;
 }
 
 .button--create.button--sm,
@@ -353,15 +309,20 @@
 .button--edit.button--sm,
 .button--delete.button--sm,
 .button--cancel.button--sm {
-  min-height: 38px;
-  padding: 0 14px;
-  font-size: 14px;
+    min-height: 44px;
+    padding: 0 14px;
+    font-size: 14px;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .button,
-  .button:hover,
-  .button:active {
-    transition-duration: 0.01ms !important;
-  }
+    .button,
+    .button:hover,
+    .button:active {
+        transition: none;
+        transform: none;
+    }
+
+    .button__spinner {
+        animation: none;
+    }
 }

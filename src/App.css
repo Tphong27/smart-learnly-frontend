@@ -1,7 +1,6 @@
 @import url("https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700;900&display=swap");
 
-/* ==================== COURSES-MASTER THEME ==================== */
-/* Updated to match Figma Design - Neubrutalism Style */
+/* ==================== SMART LEARNLY FLAT THEME ==================== */
 :root {
     /* Primary Colors - Purple Theme (from Figma) */
     --theme-primary: #825ef5; /* Purple - Primary CTA */
@@ -30,22 +29,22 @@
     --bg-light: #f9fafc;
     --bg-blue-soft: #eef2ff;
 
-    /* Border & Shadow - Neubrutalism */
-    --border-color: #000000;
-    --shadow-card: 4px 4px 0px #000000;
-    --shadow-card-hover: 6px 6px 0px #000000;
-    --shadow-button: 2px 2px 0px #2e2e2e;
-    --shadow-3d: 4px -4px 0px #000000;
+    /* Neutral borders and restrained elevation */
+    --border-color: #d1d7dc;
+    --shadow-card: none;
+    --shadow-card-hover: 0 2px 8px rgba(45, 47, 49, 0.12);
+    --shadow-button: none;
+    --shadow-3d: none;
 
     /* Fonts - Lato (from Figma) */
     --font-heading: "Lato", sans-serif;
     --font-body: "Lato", sans-serif;
 
-    /* Border Radius - Neubrutalism style */
-    --radius-sm: 10px;
-    --radius-md: 14px;
-    --radius-lg: 16px;
-    --radius-xl: 20px;
+    /* Compact radius scale */
+    --radius-sm: 4px;
+    --radius-md: 4px;
+    --radius-lg: 8px;
+    --radius-xl: 8px;
     --radius-full: 9999px;
 
     /* Spacing */
@@ -124,82 +123,6 @@ a:hover {
     width: var(--container-width);
     margin: 0 auto;
     padding: 0 20px;
-}
-
-/* ==================== BUTTONS ==================== */
-/* Claymorphism-inspired buttons with teal theme */
-.btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    padding: 18px 38px;
-    font-family: var(--font-heading);
-    font-size: 14px;
-    font-weight: 600;
-    text-transform: capitalize;
-    border: 0;
-    border-radius: var(--radius-button);
-    cursor: pointer;
-    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); /* Spring-like animation */
-    letter-spacing: 0.5px;
-}
-
-.btn-primary {
-    background: linear-gradient(
-        145deg,
-        var(--theme-primary-light),
-        var(--theme-primary)
-    );
-    color: var(--text-light);
-    box-shadow: var(--shadow-button);
-}
-
-.btn-primary:hover {
-    transform: translateY(-3px) scale(1.02);
-    box-shadow: 0 12px 28px rgba(13, 148, 136, 0.35);
-    background: linear-gradient(
-        145deg,
-        var(--theme-primary),
-        var(--theme-primary-dark)
-    );
-}
-
-.btn-primary:active {
-    transform: translateY(-1px) scale(0.98);
-    box-shadow: 0 4px 12px rgba(13, 148, 136, 0.25);
-}
-
-.btn-outline {
-    background: transparent;
-    border: 2px solid var(--accent-orange);
-    color: var(--accent-orange);
-}
-
-.btn-outline:hover {
-    background: var(--accent-orange);
-    color: var(--text-light);
-    transform: translateY(-2px);
-}
-
-.btn-blue {
-    background: linear-gradient(
-        145deg,
-        var(--theme-primary-light),
-        var(--theme-primary)
-    );
-    color: var(--text-light);
-    box-shadow: var(--shadow-button);
-}
-
-.btn-blue:hover {
-    background: linear-gradient(
-        145deg,
-        var(--theme-primary),
-        var(--theme-primary-dark)
-    );
-    transform: translateY(-3px);
-    box-shadow: 0 12px 28px rgba(13, 148, 136, 0.35);
 }
 
 /* ==================== CARDS ==================== */
@@ -681,7 +604,7 @@ a:hover {
 }
 
 /* ============================================
-   HEADER - Figma Neubrutalism Design
+   HEADER - simple e-learning navigation
    ============================================ */
 .site-header {
     position: fixed;
@@ -700,18 +623,16 @@ a:hover {
         background-color 260ms ease;
 }
 
-/* Full-width at the top; a compact navigation island while reading. */
+/* Full-width at the top; compact state remains visually flat. */
 .site-header--compact {
     top: 10px;
     left: 50%;
     width: calc(100% - 225px);
     transform: translateX(-50%);
-    border: 1.5px solid #211b36;
-    border-radius: 20px;
-    background: rgba(255, 253, 249, 0.98);
-    box-shadow:
-        4px 4px 0 #211b36,
-        0 12px 28px rgba(33, 27, 54, 0.12);
+    border: 1px solid var(--line, #d1d7dc);
+    border-radius: 4px;
+    background: #ffffff;
+    box-shadow: 0 2px 8px rgba(45, 47, 49, 0.12);
 }
 
 .site-header--compact .header-container {
@@ -772,24 +693,24 @@ a:hover {
     gap: 8px;
     padding: 6px 16px;
     background: white;
-    border: 1px solid #000;
-    border-radius: 14px;
-    box-shadow: 1px 1px 0px #000;
+    border: 1px solid var(--line, #d1d7dc);
+    border-radius: 4px;
+    box-shadow: none;
     width: 100%;
     height: 41px;
     transition: all 0.2s ease;
 }
 
 .header-search:hover {
-    transform: translate(-1px, -1px);
-    box-shadow: 3px 3px 0px #000;
+    transform: none;
+    border-color: var(--ink, #2d2f31);
+    background: var(--surface, #f7f9fa);
+    box-shadow: none;
 }
 
 .header-search:focus-within {
-    border-color: #825ef5;
-    box-shadow:
-        2px 2px 0px #000,
-        0 0 0 3px rgba(130, 94, 245, 0.18);
+    border-color: var(--primary, #5624d0);
+    box-shadow: 0 0 0 3px rgba(86, 36, 208, 0.14);
 }
 
 .header-search-icon {
@@ -845,12 +766,10 @@ a:hover {
     width: 100%;
     max-height: min(460px, calc(100vh - 100px));
     overflow-y: auto;
-    border: 1.5px solid #111827;
-    border-radius: 16px;
+    border: 1px solid var(--line, #d1d7dc);
+    border-radius: 4px;
     background: #ffffff;
-    box-shadow:
-        2px 2px 0 rgba(17, 24, 39, 0.92),
-        0 16px 32px rgba(15, 23, 42, 0.16);
+    box-shadow: 0 2px 8px rgba(45, 47, 49, 0.14);
 }
 
 .header-search__search-action,
@@ -1006,53 +925,6 @@ a:hover {
     color: #6366f1;
 }
 
-/* Header Buttons - Neubrutalism */
-.header-btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    padding: 12px 24px;
-    font-family: "Lato", sans-serif;
-    font-size: 14px;
-    font-weight: 600;
-    border-radius: 20px;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    text-decoration: none;
-    box-shadow: 2px 2px 0px #2e2e2e;
-}
-
-.header-btn:hover {
-    transform: translate(-1px, -1px);
-    box-shadow: 3px 3px 0px #2e2e2e;
-}
-
-.header-btn:active {
-    transform: translate(1px, 1px);
-    box-shadow: 1px 1px 0px #2e2e2e;
-}
-
-.header-btn-outline {
-    background: white;
-    color: #6366f1;
-    border: 1px solid #6d28d2;
-}
-
-.header-btn-outline:hover {
-    background: #6366f1;
-    color: white;
-}
-
-.header-btn-primary {
-    background: #825ef5;
-    color: white;
-    border: 1px solid #000;
-}
-
-.header-btn-primary:hover {
-    background: #7c52e8;
-}
-
 @media (max-width: 900px) {
     .site-header {
         left: 0;
@@ -1127,17 +999,9 @@ a:hover {
         gap: 8px;
     }
 
-    .header-btn {
-        min-height: 40px;
-        padding: 9px 14px;
-        font-size: 13px;
-    }
-
     .header-search__menu {
-        border-radius: 12px;
-        box-shadow:
-            3px 3px 0 rgba(17, 24, 39, 0.92),
-            0 12px 24px rgba(15, 23, 42, 0.14);
+        border-radius: 4px;
+        box-shadow: 0 2px 8px rgba(45, 47, 49, 0.14);
     }
 }
 
@@ -1162,7 +1026,7 @@ a:hover {
 }
 
 .brand:hover {
-    transform: translateY(-2px);
+    transform: none;
 }
 
 .brand-mark {
@@ -1178,104 +1042,16 @@ a:hover {
     transform: scale(1.05);
 }
 
-.button {
-    display: inline-flex;
-    min-height: 44px;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    border: 1px solid transparent;
-    border-radius: var(--clay-radius-button);
-    padding: 0 20px;
-    font-size: 14px;
-    font-weight: 600;
-    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-    text-decoration: none;
-    cursor: pointer;
-}
-
-.button:hover {
-    transform: translateY(-3px);
-}
-
-.button-primary {
-    color: white;
-    background: linear-gradient(
-        145deg,
-        var(--theme-primary-light),
-        var(--theme-primary)
-    );
-    box-shadow: 0 4px 15px rgba(13, 148, 136, 0.3);
-}
-
-.button-primary:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 8px 25px rgba(13, 148, 136, 0.4);
-    background: linear-gradient(
-        145deg,
-        var(--theme-primary),
-        var(--theme-primary-dark)
-    );
-}
-
-.button-secondary {
-    border: 1px solid rgba(13, 148, 136, 0.25);
-    color: var(--theme-primary);
-    background: white;
-    box-shadow: 0 4px 15px rgba(13, 148, 136, 0.1);
-}
-
-.button-secondary:hover {
-    background: rgba(13, 148, 136, 0.08);
-    border-color: rgba(13, 148, 136, 0.4);
-}
-
-.button-ghost {
-    min-height: 40px;
-    padding: 0 16px;
-    color: var(--theme-primary);
-    background: transparent;
-    border: 1.5px solid rgba(13, 148, 136, 0.3);
-    transition: all 0.3s ease;
-}
-
-.button-ghost:hover {
-    color: #fff;
-    background: rgba(13, 148, 136, 0.1);
-    border-color: var(--theme-primary);
-    transform: translateY(-3px);
-    box-shadow: 0 4px 12px rgba(13, 148, 136, 0.15);
-}
-
-.button-small {
-    min-height: 40px;
-    padding: 0 16px;
-}
-
-.button-large {
-    min-height: 52px;
-    padding: 0 24px;
-    border-radius: var(--clay-radius-inner);
-}
-
 /* ============================================
-   LANDING PAGE STYLES - Figma Neubrutalism Design
+   LANDING PAGE STYLES - simple content-first design
    ============================================ */
 
 /* ============================================
-   HERO SECTION - Figma Neubrutalism Design
+   HERO SECTION - simple content-first design
    ============================================ */
 .hero {
     position: relative;
     min-height: 100vh;
-    background-color: #fff8e5;
-    background-image:
-        linear-gradient(rgba(255, 251, 237, 0.46), rgba(255, 251, 237, 0.46)),
-        url("/auth-school-background.jpg?v=20260711");
-    background-position: center;
-    background-repeat: no-repeat;
-    background-size: cover;
-    overflow: hidden;
 }
 
 /* Decorative purple circle (bottom left) */
@@ -1338,41 +1114,8 @@ a:hover {
     margin-bottom: 32px;
 }
 
-.hero-btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    padding: 16px 56px;
-    font-family: "Lato", sans-serif;
-    font-size: 16px;
-    font-weight: 600;
-    border-radius: 20px;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    text-decoration: none;
-    box-shadow: 2px 2px 0px #2e2e2e;
-}
-
-.hero-btn:hover {
-    transform: translate(-2px, -2px);
-    box-shadow: 4px 4px 0px #2e2e2e;
-}
-
-.hero-btn:active {
-    transform: translate(2px, 2px);
-    box-shadow: 1px 1px 0px #2e2e2e;
-}
-
-.hero-btn-primary {
-    background: #825ef5;
-    color: white;
-    border: 2px solid #2e2e2e;
-}
-
-.hero-btn-outline {
-    background: white;
-    color: #2e2e2e;
-    border: 2px solid #2e2e2e;
+.hero-buttons .button {
+    min-width: 190px;
 }
 
 /* Social Proof */
@@ -1451,10 +1194,10 @@ a:hover {
     z-index: 2;
     width: 100%;
     padding: 24px;
-    border: 1.5px solid #211b36;
-    border-radius: 20px;
-    background: #fffdf7;
-    box-shadow: 6px 6px 0 #211b36;
+    border: 1px solid var(--line, #d1d7dc);
+    border-radius: 8px;
+    background: #ffffff;
+    box-shadow: 0 2px 8px rgba(45, 47, 49, 0.12);
     color: #17233e;
 }
 
@@ -1465,9 +1208,9 @@ a:hover {
     left: 30px;
     width: 48px;
     height: 38px;
-    border: 1.5px solid #211b36;
-    border-radius: 8px 8px 3px 3px;
-    background: #f3c95b;
+    border: 1px solid var(--line, #d1d7dc);
+    border-radius: 4px 4px 2px 2px;
+    background: #f2f3f5;
 }
 
 .hero-course-preview__bookmark::after {
@@ -1476,9 +1219,9 @@ a:hover {
     bottom: -8px;
     width: 16px;
     height: 16px;
-    border-right: 1.5px solid #211b36;
-    border-bottom: 1.5px solid #211b36;
-    background: #f3c95b;
+    border-right: 1px solid var(--line, #d1d7dc);
+    border-bottom: 1px solid var(--line, #d1d7dc);
+    background: #f2f3f5;
     content: "";
     transform: rotate(45deg);
 }
@@ -1492,11 +1235,11 @@ a:hover {
     align-items: center;
     gap: 5px;
     padding: 7px 9px;
-    border: 1.5px solid #211b36;
-    border-radius: 9px;
-    color: #211b36;
-    background: #f3c95b;
-    box-shadow: 2px 2px 0 #211b36;
+    border: 1px solid var(--line, #d1d7dc);
+    border-radius: 4px;
+    color: var(--ink, #2d2f31);
+    background: #f2f3f5;
+    box-shadow: none;
     font-size: 11px;
     font-weight: 900;
 }
@@ -1541,10 +1284,10 @@ a:hover {
     height: 52px;
     place-items: center;
     flex: 0 0 auto;
-    border: 1.5px solid #211b36;
-    border-radius: 13px;
-    color: #211b36;
-    background: #f3c95b;
+    border: 1px solid var(--line, #d1d7dc);
+    border-radius: 4px;
+    color: var(--ink, #2d2f31);
+    background: #f2f3f5;
 }
 
 .hero-course-preview__course p {
@@ -1613,11 +1356,11 @@ a:hover {
     gap: 8px;
     min-height: 44px;
     margin-top: 21px;
-    border: 1.5px solid #211b36;
-    border-radius: 10px;
+    border: 1px solid var(--primary, #5624d0);
+    border-radius: 4px;
     color: #ffffff;
     background: #825ef5;
-    box-shadow: 3px 3px 0 #211b36;
+    box-shadow: none;
     font-size: 14px;
     font-weight: 900;
     text-decoration: none;
@@ -1628,8 +1371,8 @@ a:hover {
 }
 
 .hero-course-preview__action:hover {
-    transform: translate(-2px, -2px);
-    box-shadow: 5px 5px 0 #211b36;
+    transform: none;
+    box-shadow: none;
     background: #6d28d2;
 }
 
@@ -1648,11 +1391,11 @@ a:hover {
     gap: 10px;
     width: 214px;
     padding: 11px 12px;
-    border: 1.5px solid #211b36;
-    border-radius: 12px;
+    border: 1px solid var(--line, #d1d7dc);
+    border-radius: 4px;
     color: #17233e;
     background: #ffffff;
-    box-shadow: 3px 3px 0 #211b36;
+    box-shadow: 0 2px 8px rgba(45, 47, 49, 0.12);
 }
 
 .hero-course-preview__next-icon {
@@ -1661,7 +1404,7 @@ a:hover {
     height: 32px;
     place-items: center;
     flex: 0 0 auto;
-    border-radius: 9px;
+    border-radius: 4px;
     color: #ffffff;
     background: #825ef5;
 }
@@ -1781,7 +1524,7 @@ a:hover {
 .hero-badge:hover {
     background: rgba(130, 94, 245, 0.1);
     border-color: rgba(130, 94, 245, 0.4);
-    transform: translateY(-2px);
+    transform: none;
 }
 
 .hero h1 {
@@ -1845,44 +1588,6 @@ a:hover {
     max-width: 560px;
 }
 
-/* Neubrutalism Buttons - Figma Style */
-.btn-neubrutalism {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    padding: 16px 40px;
-    font-family: "Lato", sans-serif;
-    font-size: 16px;
-    font-weight: 600;
-    border: 2px solid #2e2e2e;
-    border-radius: 20px;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    text-decoration: none;
-    box-shadow: 4px 4px 0px #2e2e2e;
-}
-
-.btn-neubrutalism:hover {
-    transform: translate(-2px, -2px);
-    box-shadow: 6px 6px 0px #2e2e2e;
-}
-
-.btn-neubrutalism:active {
-    transform: translate(2px, 2px);
-    box-shadow: 2px 2px 0px #2e2e2e;
-}
-
-.btn-neubrutalism-primary {
-    background: var(--theme-primary);
-    color: white;
-}
-
-.btn-neubrutalism-outline {
-    background: white;
-    color: #2e2e2e;
-}
-
 /* Hero Review Section */
 .hero-trust {
     display: flex;
@@ -1917,7 +1622,7 @@ a:hover {
 }
 
 .avatar-stack i:hover {
-    transform: translateY(-3px);
+    transform: none;
     z-index: 1;
 }
 
@@ -1955,17 +1660,20 @@ a:hover {
     padding: 0 20px;
     height: 58px;
     background: rgba(255, 255, 255, 0.95);
-    border: 2px solid rgba(13, 148, 136, 0.15);
-    border-radius: var(--clay-radius-outer);
-    box-shadow: var(--shadow-card);
-    backdrop-filter: blur(10px);
-    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    border: 1px solid var(--line, #d1d7dc);
+    border-radius: 4px;
+    box-shadow: none;
+    backdrop-filter: none;
+    transition:
+        border-color 0.2s ease,
+        box-shadow 0.2s ease,
+        background-color 0.2s ease;
 }
 
 .search-input-wrapper:focus-within {
     border-color: var(--theme-primary);
-    box-shadow: var(--shadow-card-hover);
-    transform: translateY(-3px);
+    box-shadow: 0 0 0 3px rgba(86, 36, 208, 0.14);
+    transform: none;
     background: white;
 }
 
@@ -1992,38 +1700,6 @@ a:hover {
 .search-input-wrapper input::placeholder {
     color: #9ca3af;
     font-weight: 500;
-}
-
-.search-btn {
-    padding: 10px 22px;
-    background: linear-gradient(
-        145deg,
-        var(--theme-primary-light),
-        var(--theme-primary)
-    );
-    color: white;
-    border: none;
-    border-radius: var(--clay-radius-button);
-    font-size: 14px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-    flex-shrink: 0;
-    box-shadow: 0 4px 15px rgba(13, 148, 136, 0.25);
-}
-
-.search-btn:hover {
-    transform: translateY(-3px) scale(1.03);
-    box-shadow: 0 8px 25px rgba(13, 148, 136, 0.35);
-    background: linear-gradient(
-        145deg,
-        var(--theme-primary),
-        var(--theme-primary-dark)
-    );
-}
-
-.search-btn:active {
-    transform: translateY(-1px) scale(0.98);
 }
 
 .dashboard-wrap {
@@ -2488,7 +2164,6 @@ a:hover {
 .solution-section,
 /* ==================== COURSES SECTION - Figma Design ==================== */
 .courses-section {
-    background: #f7f9fc;
     padding: 100px 0 56px;
     position: relative;
     width: 100%;
@@ -2507,6 +2182,19 @@ a:hover {
     flex-direction: column;
     align-items: center;
     gap: 15px;
+}
+
+.landing-page .courses-heading {
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    text-align: center;
+}
+
+.landing-page .courses-heading h2,
+.landing-page .courses-heading p {
+    width: 100%;
+    text-align: center;
 }
 
 .courses-heading h2 {
@@ -2562,9 +2250,9 @@ a:hover {
     min-height: 48px;
     padding: 12.8px 16px 12.8px 18.8px;
     background: #ffffff;
-    border: 1px solid #000000;
-    border-radius: 16px;
-    box-shadow: 1px 1px 0px #000;
+    border: 1px solid var(--line, #d1d7dc);
+    border-radius: 4px;
+    box-shadow: none;
     cursor: pointer;
     font-family: "Lato", sans-serif;
     font-size: 16px;
@@ -2579,15 +2267,17 @@ a:hover {
 }
 
 .filter-dropdown:hover {
-    transform: translate(-1px, -1px);
-    box-shadow: 2px 2px 0px #000;
+    transform: none;
+    border-color: var(--ink, #2d2f31);
+    background: var(--surface, #f7f9fa);
+    box-shadow: none;
 }
 
 .filter-dropdown.is-open {
     z-index: 20;
-    transform: translate(-1px, -1px);
-    border-color: #6d48eb;
-    box-shadow: 3px 3px 0 #0f172a;
+    transform: none;
+    border-color: var(--primary, #5624d0);
+    box-shadow: 0 0 0 3px rgba(86, 36, 208, 0.14);
 }
 
 .filter-dropdown__trigger {
@@ -2613,7 +2303,7 @@ a:hover {
 .filter-dropdown__trigger:focus-visible {
     outline: 3px solid rgba(130, 94, 245, 0.38);
     outline-offset: 2px;
-    border-radius: 14px;
+    border-radius: 4px;
 }
 
 .filter-dropdown__value {
@@ -2646,9 +2336,9 @@ a:hover {
     overflow-y: auto;
     padding: 8px;
     background: #ffffff;
-    border: 1px solid #0f172a;
-    border-radius: 16px;
-    box-shadow: 4px 4px 0 #0f172a;
+    border: 1px solid var(--line, #d1d7dc);
+    border-radius: 4px;
+    box-shadow: 0 2px 8px rgba(45, 47, 49, 0.14);
 }
 
 .filter-dropdown__option {
@@ -2662,7 +2352,7 @@ a:hover {
     color: #23213e;
     background: transparent;
     border: 0;
-    border-radius: 10px;
+    border-radius: 2px;
     cursor: pointer;
     font-family: "Lato", sans-serif;
     font-size: 14px;
@@ -2702,11 +2392,11 @@ a:hover {
     min-height: 42px;
     align-items: center;
     gap: 7px;
-    border: 1px solid #0f172a;
-    border-radius: 14px;
+    border: 1px solid var(--line, #d1d7dc);
+    border-radius: 4px;
     padding: 0 13px;
     background: #ffffff;
-    box-shadow: 1px 1px 0 #0f172a;
+    box-shadow: none;
     color: #23213e;
     font-family: "Lato", sans-serif;
     font-size: 13px;
@@ -2724,15 +2414,17 @@ a:hover {
 .catalog-filter-chip:hover,
 .catalog-filter-clear:hover,
 .catalog-sort:focus-within {
-    transform: translate(-1px, -1px);
-    box-shadow: 2px 2px 0 #0f172a;
+    transform: none;
+    border-color: var(--ink, #2d2f31);
+    background: var(--surface, #f7f9fa);
+    box-shadow: none;
 }
 
 .catalog-filter-chip.is-active {
     border-color: #6d48eb;
     color: #ffffff;
     background: #825ef5;
-    box-shadow: 1px 1px 0 #0f172a;
+    box-shadow: none;
 }
 
 .catalog-filter-chip.is-active svg {
@@ -2794,15 +2486,17 @@ a:hover {
     min-width: 40px;
     padding: 1.8px 11px;
     background: #ffffff;
-    border: 1px solid #000000;
-    border-radius: 12px;
+    border: 1px solid var(--line, #d1d7dc);
+    border-radius: 4px;
     cursor: pointer;
     transition: all 0.2s ease;
 }
 
 .view-btn:hover {
-    transform: translate(-1px, -1px);
-    box-shadow: 2px 2px 0px #000;
+    transform: none;
+    border-color: var(--ink, #2d2f31);
+    background: var(--surface, #f7f9fa);
+    box-shadow: none;
 }
 
 .view-btn.active {
@@ -2867,10 +2561,10 @@ a:hover {
 /* Course Cards within Popular Courses Section - Figma design */
 .courses-section .course-card {
     overflow: hidden;
-    border: 1px solid #000000;
-    border-radius: 20px;
+    border: 1px solid var(--line, #d1d7dc);
+    border-radius: 8px;
     background: #ffffff;
-    box-shadow: 1px 1px 0px 0px #000;
+    box-shadow: none;
     display: flex;
     flex-direction: column;
     min-width: 0;
@@ -2878,8 +2572,9 @@ a:hover {
 }
 
 .courses-section .course-card:hover {
-    transform: translate(-2px, -2px);
-    box-shadow: 3px 3px 0px 0px #000;
+    transform: none;
+    border-color: #b7bcc2;
+    box-shadow: 0 2px 8px rgba(45, 47, 49, 0.12);
 }
 
 .courses-section .course-card__media {
@@ -3063,8 +2758,8 @@ a:hover {
     height: 40px;
     padding: 1.8px 15px;
     background: #ffffff;
-    border: 1px solid #000000;
-    border-radius: 12px;
+    border: 1px solid var(--line, #d1d7dc);
+    border-radius: 4px;
     font-family: "Lato", sans-serif;
     font-size: 16px;
     font-weight: 700;
@@ -3075,8 +2770,10 @@ a:hover {
 }
 
 .courses-section .course-pagination button:hover {
-    transform: translate(-1px, -1px);
-    box-shadow: 2px 2px 0px #000;
+    transform: none;
+    border-color: var(--ink, #2d2f31);
+    background: var(--surface, #f7f9fa);
+    box-shadow: none;
 }
 
 .courses-section .course-pagination button.is-active {
@@ -3118,19 +2815,20 @@ a:hover {
     }
 }
 
-/* Neubrutalism Course Card */
+/* Simple course card */
 .course-card {
     background: var(--bg-white);
     border: 1px solid var(--border-color);
-    border-radius: 20px;
+    border-radius: 8px;
     overflow: hidden;
-    box-shadow: 1px 1px 0px #000;
+    box-shadow: none;
     transition: all 0.2s ease;
 }
 
 .course-card:hover {
-    transform: translate(-2px, -2px);
-    box-shadow: 3px 3px 0px #000;
+    transform: none;
+    border-color: #b7bcc2;
+    box-shadow: 0 2px 8px rgba(45, 47, 49, 0.12);
 }
 
 .course-card-cover {
@@ -3616,9 +3314,9 @@ a:hover {
     justify-content: space-between;
     gap: 48px;
     padding: 42px 64px;
-    border: 2px solid #a6a6a6;
-    border-radius: 30px;
-    box-shadow: 2px 2px 0 #000;
+    border: 1px solid var(--line, #d1d7dc);
+    border-radius: 8px;
+    box-shadow: none;
     background-image:
         linear-gradient(
             140.166deg,
@@ -3665,12 +3363,12 @@ a:hover {
     align-items: center;
     justify-content: space-between;
     gap: 12px;
-    border: 1px solid #000;
-    border-radius: 20px;
+    border: 1px solid var(--primary, #5624d0);
+    border-radius: 4px;
     padding: 0 18px;
     color: #ffffff;
-    background: linear-gradient(130.157deg, #6366f1 0%, #8b5cf6 100%);
-    box-shadow: 1px 1px 0.5px #000;
+    background: var(--primary, #5624d0);
+    box-shadow: none;
     font-family: "Lato", sans-serif;
     font-size: 14px;
     font-weight: 600;
@@ -3682,8 +3380,9 @@ a:hover {
 }
 
 .feature-cta__button:hover {
-    transform: translate(-2px, -2px);
-    box-shadow: 3px 3px 0.5px #000;
+    transform: none;
+    background: var(--primary-dark, #401b9c);
+    box-shadow: none;
 }
 
 .feature-cta__button:focus-visible {
@@ -4201,52 +3900,6 @@ html {
     transform: translateX(3px);
 }
 
-/* Button improvements - teal claymorphism */
-.button {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    border: none;
-    border-radius: var(--clay-radius-button);
-    padding: 12px 24px;
-    font-family: var(--font-heading);
-    font-size: 14px;
-    font-weight: 600;
-    text-decoration: none;
-    cursor: pointer;
-    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-.button-primary {
-    color: white;
-    background: linear-gradient(
-        145deg,
-        var(--theme-primary-light),
-        var(--theme-primary)
-    );
-    box-shadow: 0 4px 15px rgba(13, 148, 136, 0.3);
-}
-
-.button-primary:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 8px 25px rgba(13, 148, 136, 0.4);
-}
-
-.button-primary:active {
-    transform: translateY(-2px);
-}
-
-.button-ghost {
-    color: var(--theme-primary);
-    background: transparent;
-}
-
-.button-ghost:hover {
-    color: var(--theme-primary-dark);
-    background: rgba(13, 148, 136, 0.08);
-}
-
 /* Responsive improvements */
 @media (max-width: 768px) {
     .hero {
@@ -4268,9 +3921,9 @@ html {
         align-items: stretch;
     }
 
-    .hero-btn {
-        padding-right: 22px;
-        padding-left: 22px;
+    .hero-buttons .button {
+        width: 100%;
+        min-width: 0;
     }
 
     .hero-social-proof {
@@ -4299,7 +3952,9 @@ html {
 
     .courses-heading {
         flex-direction: column;
-        align-items: flex-start;
+        align-items: center;
         gap: 16px;
+        width: 100%;
+        text-align: center;
     }
 }

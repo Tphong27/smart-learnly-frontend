@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
-import { useForm } from "react-hook-form";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ArrowLeft, Save } from "lucide-react";
 import { Button, Form, FormField, useToast } from "@/shared/components/ui";
@@ -61,6 +61,7 @@ function buildPayload(values, mode) {
 export function AdminCourseFormPage() {
   const params = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const toast = useToast();
 
   const courseId = params.courseId;
@@ -72,16 +73,13 @@ export function AdminCourseFormPage() {
   const currentUser = getCurrentUser();
 
   const isTrainer = String(currentUser?.role || "").toLowerCase() === "trainer";
+  const isStaffRoute = location.pathname.startsWith("/staff/");
 
-  const courseListPath = isTrainer ? "/staff/courses" : "/admin/courses";
+  const courseListPath = isStaffRoute ? "/staff/courses" : "/admin/courses";
 
-  const courseContentPath = isTrainer
+  const courseContentPath = isStaffRoute
     ? `/staff/courses/${courseId}/content`
     : `/admin/courses/${courseId}/content`;
-
-  const courseFormPath = isTrainer
-    ? `/staff/courses/${courseId}/edit`
-    : `/admin/courses/${courseId}`;
 
   const defaultValues = useMemo(
     () => ({
@@ -107,7 +105,7 @@ export function AdminCourseFormPage() {
     register,
     handleSubmit,
     reset,
-    watch,
+    control,
     setValue,
     formState: { errors, isSubmitting },
   } = useForm({
@@ -116,8 +114,8 @@ export function AdminCourseFormPage() {
     mode: "onBlur",
   });
 
-  const isFree = watch("isFree");
-  const thumbnailUrl = watch("thumbnailUrl");
+  const isFree = useWatch({ control, name: "isFree" });
+  const thumbnailUrl = useWatch({ control, name: "thumbnailUrl" });
 
   useEffect(() => {
     if (isTrainer && !isEdit) {

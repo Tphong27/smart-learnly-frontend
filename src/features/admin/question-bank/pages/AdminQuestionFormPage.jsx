@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { FileAudio, FileVideo, Image as ImageIcon, ImagePlus, Loader2, Plus, Trash2, X, AlertTriangle } from "lucide-react";
 import { Button, FormField, Modal, useToast } from "@/shared/components/ui";
 import { courseService, getCurrentUser, questionBankService } from "@/services";
@@ -583,9 +583,9 @@ export function AdminQuestionForm({
       <div className="admin-page">
         <section className="admin-card">
           <h1 className="admin-page__title">Unauthorized</h1>
-          <Link to="/admin/question-banks" className="button button--secondary">
+          <Button to="/admin/question-banks" variant="secondary">
             Back to Question Bank
-          </Link>
+          </Button>
         </section>
       </div>
     );
@@ -606,16 +606,17 @@ export function AdminQuestionForm({
         {framed && (
           <header className="admin-page__header">
             <div>
-              <Link
+              <Button
                 to={
                   returnBankId
                     ? `/admin/question-banks/${returnBankId}`
                     : "/admin/question-banks"
                 }
-                className="button button--ghost button--sm"
+                variant="ghost"
+                size="sm"
               >
                 Back
-              </Link>
+              </Button>
               <h1 className="admin-page__title" style={{ marginTop: 8 }}>
                 Cannot edit question
               </h1>
@@ -639,16 +640,17 @@ export function AdminQuestionForm({
               <p style={{ margin: "4px 0 8px", color: "#78350f", fontSize: 14 }}>
                 Restore the bank before editing any of its questions.
               </p>
-              <Link
+              <Button
                 to={
                   returnBankId
                     ? `/admin/question-banks/${returnBankId}`
                     : "/admin/question-banks"
                 }
-                className="button button--secondary button--sm"
+                variant="secondary"
+                size="sm"
               >
                 Back to question bank
-              </Link>
+              </Button>
             </div>
           </div>
         </section>
@@ -661,16 +663,17 @@ export function AdminQuestionForm({
       {framed && (
         <header className="admin-page__header">
         <div>
-          <Link
+          <Button
             to={
               returnBankId
                 ? `/admin/question-banks/${returnBankId}`
                 : "/admin/question-banks"
             }
-            className="button button--ghost button--sm"
+            variant="ghost"
+            size="sm"
           >
             Back
-          </Link>
+          </Button>
           <h1 className="admin-page__title" style={{ marginTop: 8 }}>
             {editing ? "Edit question" : "Create question"}
           </h1>

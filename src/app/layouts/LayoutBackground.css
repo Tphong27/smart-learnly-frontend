@@ -43,6 +43,13 @@
     --layout-grid-highlight-opacity: 0.78;
 }
 
+/* Keep the grid identity, but let admin content stay visually quiet. */
+.layout-background--app.app-layout-shell {
+    --layout-grid-highlight-opacity: 0;
+    background-color: #f7f9fa;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='84' height='84' viewBox='0 0 84 84'%3E%3Cpath d='M0 0H84M0 0V84' fill='none' stroke='%236a6f73' stroke-opacity='.16' stroke-width='1' stroke-dasharray='7 9'/%3E%3C/svg%3E");
+}
+
 @media (max-width: 700px), (hover: none), (pointer: coarse) {
     .layout-background {
         --layout-grid-size: 72px;

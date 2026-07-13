@@ -47,14 +47,14 @@
     min-width: 0;
 }
 
-/* Hero card - neo-brutalism */
+/* Hero card - flat brand surface */
 .course-detail__hero-card {
     position: relative;
     background: #825ef5;
-    border: 1px solid #000000;
-    border-radius: 20px;
+    border: 1px solid #5624d0;
+    border-radius: 8px;
     padding: 28px;
-    box-shadow: 2px 2px 0 #000000;
+    box-shadow: none;
     display: flex;
     flex-direction: column;
     gap: 18px;
@@ -66,8 +66,8 @@
 }
 
 .course-detail__hero-card:hover {
-    transform: translate(-2px, -2px);
-    box-shadow: 4px 4px 0 #000000;
+    transform: none;
+    box-shadow: none;
 }
 
 /* Decorative blob inside hero card */
@@ -178,10 +178,10 @@
     position: sticky;
     top: 92px;
     background: #ffffff;
-    border: 1px solid #000000;
-    border-radius: 16px;
+    border: 1px solid var(--line, #d1d7dc);
+    border-radius: 8px;
     overflow: hidden;
-    box-shadow: 2px 2px 0 #000000;
+    box-shadow: none;
     transition:
         transform 0.25s ease,
         box-shadow 0.25s ease;
@@ -189,13 +189,14 @@
 }
 
 .course-detail__sidecard:hover {
-    transform: translate(-2px, -2px);
-    box-shadow: 4px 4px 0 #000000;
+    transform: none;
+    border-color: #b7bcc2;
+    box-shadow: 0 2px 8px rgba(45, 47, 49, 0.12);
 }
 
 .course-detail__sidecard-thumb {
     aspect-ratio: 318 / 179;
-    background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+    background: var(--primary);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -306,66 +307,11 @@
     gap: 10px;
 }
 
-.course-detail__buy-btn,
-.course-detail__try-btn {
-    min-height: 46px;
-    padding: 14px 18px;
-    border-radius: 23px;
-    font-size: 16px;
-    font-weight: 600;
-    letter-spacing: -0.1px;
-    cursor: pointer;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-    white-space: nowrap;
-    transition:
-        transform 0.18s ease,
-        box-shadow 0.18s ease,
-        opacity 0.18s ease;
-}
-
-.course-detail__buy-btn {
-    background: linear-gradient(133deg, #6366f1 0%, #8b5cf6 100%);
-    color: #ffffff;
-    border: 1.5px solid #000000;
-    box-shadow: 2px 2px 0 #000000;
-}
-
-.course-detail__buy-btn:hover:not(:disabled) {
-    transform: translate(-2px, -2px);
-    box-shadow: 4px 4px 0 #000000;
-}
-
-.course-detail__buy-btn:active:not(:disabled) {
-    transform: translate(2px, 2px);
-    box-shadow: 1px 1px 0 #000000;
-}
-
-.course-detail__buy-btn:disabled {
-    cursor: not-allowed;
-    opacity: 0.65;
-    transform: none;
-    box-shadow: 2px 2px 0 #000000;
-}
-
-.course-detail__try-btn {
-    background: rgba(255, 255, 255, 0.6);
-    color: #6d28d2;
-    border: 1.5px solid #6d28d2;
-    box-shadow: 2px 2px 0 #6d28d2;
-}
-
-.course-detail__try-btn:hover {
-    background: #f5f3ff;
-    transform: translate(-2px, -2px);
-    box-shadow: 4px 4px 0 #6d28d2;
-}
-
-.course-detail__try-btn:active {
-    transform: translate(2px, 2px);
-    box-shadow: 1px 1px 0 #6d28d2;
+.course-detail__expand-link:focus-visible,
+.course-detail__module-head:focus-visible,
+.course-detail__back-link:focus-visible {
+    outline: 3px solid rgba(130, 94, 245, 0.38);
+    outline-offset: 3px;
 }
 
 /* ---------- Enrolled box ---------- */
@@ -442,7 +388,7 @@
     margin-top: 6px;
     width: 48px;
     height: 3px;
-    background: linear-gradient(90deg, #825ef5, #6366f1);
+    background: var(--primary);
     border-radius: 999px;
 }
 
@@ -514,8 +460,8 @@
     gap: 12px;
     padding: 16px 18px;
     background: #ffffff;
-    border: 1px solid #000;
-    border-radius: 14px;
+    border: 1px solid var(--line, #d1d7dc);
+    border-radius: 4px;
     transition:
         transform 0.2s ease,
         box-shadow 0.2s ease;
@@ -523,9 +469,9 @@
 }
 
 .course-detail__objectives li:hover {
-    transform: translate(-3px, -3px);
-    box-shadow: 3px 3px rgb(0, 0, 0);
-    border-color: #000;
+    transform: none;
+    box-shadow: 0 2px 8px rgba(45, 47, 49, 0.12);
+    border-color: #b7bcc2;
 }
 
 @keyframes objectiveEnter {

@@ -1,3 +1,4 @@
+import { useId } from 'react'
 import './Input.css'
 
 export function Input({
@@ -12,7 +13,8 @@ export function Input({
   inputClassName = '',
   ...props
 }) {
-  const inputId = id || props.name
+  const generatedId = useId()
+  const inputId = id || props.name || generatedId
 
   const wrapperClassName = [
     'input-field',
@@ -51,6 +53,7 @@ export function Input({
           id={inputId}
           className={controlClassName}
           aria-invalid={Boolean(error)}
+          aria-required={required || undefined}
           aria-describedby={
             error
               ? `${inputId}-error`

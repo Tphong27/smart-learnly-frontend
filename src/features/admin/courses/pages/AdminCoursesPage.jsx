@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
     AlertTriangle,
     BookOpen,
@@ -7,6 +8,7 @@ import {
     Eye,
     MoreVertical,
     Plus,
+    RotateCcw,
     Search,
     SlidersHorizontal,
     Trash2,
@@ -14,6 +16,7 @@ import {
     X,
 } from "lucide-react";
 import { Button, Modal, useToast } from "@/shared/components/ui";
+import Pagination from "@/shared/components/Pagination";
 import { categoryService, courseService } from "@/services";
 import { getCurrentUser } from "@/services/api-client";
 import { formatDate, formatPrice } from "@/shared/utils/formatters";
@@ -62,10 +65,10 @@ function DeleteCourseModal({ open, target, onClose, onConfirmed }) {
         try {
             await courseService.remove(target.id);
             toast.success("Course deleted");
+            setLoading(false);
             onConfirmed(target);
         } catch (err) {
             setError(err?.message || "Could not delete this course.");
-        } finally {
             setLoading(false);
         }
     }
@@ -75,7 +78,8 @@ function DeleteCourseModal({ open, target, onClose, onConfirmed }) {
             open={open}
             title="Delete this course?"
             size="sm"
-            onClose={loading ? undefined : onClose}
+            onClose={onClose}
+            closeDisabled={loading}
         >
             <div className="course-management-delete">
                 <p>
@@ -105,98 +109,165 @@ function DeleteCourseModal({ open, target, onClose, onConfirmed }) {
     );
 }
 
-function RowActionsMenu({ course, isTrainer, previewReturnPath, onRequestDelete }) {
+function RowActionsMenu({
+    course,
+    basePath,
+    canViewClasses,
+    canDelete,
+    previewReturnPath,
+    onRequestDelete,
+}) {
     const [open, setOpen] = useState(false);
+    const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
+    const triggerRef = useRef(null);
+    const menuRef = useRef(null);
+
+    const updateMenuPosition = useCallback(() => {
+        const trigger = triggerRef.current;
+        if (!trigger) return;
+
+        const rect = trigger.getBoundingClientRect();
+        const gutter = 12;
+        const gap = 6;
+        const menuWidth = 220;
+        const menuHeight = menuRef.current?.offsetHeight || 220;
+        const left = Math.min(
+            Math.max(gutter, rect.right - menuWidth),
+            window.innerWidth - menuWidth - gutter,
+        );
+        const below = rect.bottom + gap;
+        const top = below + menuHeight <= window.innerHeight - gutter
+            ? below
+            : Math.max(gutter, rect.top - menuHeight - gap);
+
+        setMenuPosition({ top, left });
+    }, []);
 
     useEffect(() => {
         if (!open) return undefined;
-        function handle(event) {
-            setOpen(false);
+
+        const frame = window.requestAnimationFrame(updateMenuPosition);
+
+        function handlePointerDown(event) {
+            if (
+                !triggerRef.current?.contains(event.target)
+                && !menuRef.current?.contains(event.target)
+            ) {
+                setOpen(false);
+            }
         }
+
         function handleKey(event) {
-            if (event.key === "Escape") setOpen(false);
+            if (event.key === "Escape") {
+                setOpen(false);
+                triggerRef.current?.focus();
+            }
         }
-        document.addEventListener("mousedown", handle);
+
+        document.addEventListener("mousedown", handlePointerDown);
         document.addEventListener("keydown", handleKey);
+        window.addEventListener("resize", updateMenuPosition);
+        window.addEventListener("scroll", updateMenuPosition, true);
+
         return () => {
-            document.removeEventListener("mousedown", handle);
+            window.cancelAnimationFrame(frame);
+            document.removeEventListener("mousedown", handlePointerDown);
             document.removeEventListener("keydown", handleKey);
+            window.removeEventListener("resize", updateMenuPosition);
+            window.removeEventListener("scroll", updateMenuPosition, true);
         };
-    }, [open]);
+    }, [open, updateMenuPosition]);
+
+    const contentPath = `${basePath}/${course.id}/content`;
+    const previewPath = `${basePath}/${course.id}/preview?returnTo=${encodeURIComponent(previewReturnPath)}`;
+    const editPath = basePath.startsWith("/staff")
+        ? `${basePath}/${course.id}/edit`
+        : `${basePath}/${course.id}`;
+
+    const menu = open ? (
+        <ul
+            ref={menuRef}
+            role="menu"
+            className="course-management__menu-list course-management__menu-list--portal"
+            style={menuPosition}
+        >
+            <li role="none">
+                <Link
+                    role="menuitem"
+                    to={contentPath}
+                    className="course-management__menu-item"
+                    onClick={() => setOpen(false)}
+                >
+                    <BookOpen size={14} aria-hidden="true" /> Open curriculum
+                </Link>
+            </li>
+            {canViewClasses ? (
+                <li role="none">
+                    <Link
+                        role="menuitem"
+                        to={`/staff/classrooms?courseId=${encodeURIComponent(course.id)}`}
+                        className="course-management__menu-item"
+                        onClick={() => setOpen(false)}
+                    >
+                        <Users size={14} aria-hidden="true" /> View classes
+                    </Link>
+                </li>
+            ) : null}
+            <li role="none">
+                <Link
+                    role="menuitem"
+                    to={previewPath}
+                    className="course-management__menu-item"
+                    onClick={() => setOpen(false)}
+                >
+                    <Eye size={14} aria-hidden="true" /> Preview
+                </Link>
+            </li>
+            <li role="none">
+                <Link
+                    role="menuitem"
+                    to={editPath}
+                    className="course-management__menu-item"
+                    onClick={() => setOpen(false)}
+                >
+                    <Edit2 size={14} aria-hidden="true" /> Edit
+                </Link>
+            </li>
+            {canDelete ? (
+                <li role="none">
+                    <button
+                        type="button"
+                        role="menuitem"
+                        className="course-management__menu-item course-management__menu-item--danger"
+                        onClick={() => {
+                            setOpen(false);
+                            onRequestDelete?.(course);
+                        }}
+                    >
+                        <Trash2 size={14} aria-hidden="true" /> Delete
+                    </button>
+                </li>
+            ) : null}
+        </ul>
+    ) : null;
 
     return (
-        <div className="course-management__menu" onClick={(e) => e.stopPropagation()}>
+        <div className="course-management__menu">
             <button
+                ref={triggerRef}
                 type="button"
                 className="course-management__action"
                 aria-haspopup="menu"
                 aria-expanded={open}
                 aria-label={`More actions for ${course.title}`}
-                onClick={() => setOpen((v) => !v)}
+                onClick={() => {
+                    if (!open) updateMenuPosition();
+                    setOpen((value) => !value);
+                }}
             >
-                <MoreVertical size={16} />
+                <MoreVertical size={16} aria-hidden="true" />
             </button>
-            {open ? (
-                <ul role="menu" className="course-management__menu-list">
-                    <li role="none">
-                        <Link
-                            role="menuitem"
-                            to={`/admin/courses/${course.id}/content`}
-                            className="course-management__menu-item"
-                            onClick={() => setOpen(false)}
-                        >
-                            <BookOpen size={14} aria-hidden="true" /> Open curriculum
-                        </Link>
-                    </li>
-                    {!isTrainer ? (
-                        <li role="none">
-                            <Link
-                                role="menuitem"
-                                to={`/staff/classrooms?courseId=${encodeURIComponent(course.id)}`}
-                                className="course-management__menu-item"
-                                onClick={() => setOpen(false)}
-                            >
-                                <Users size={14} aria-hidden="true" /> View classes
-                            </Link>
-                        </li>
-                    ) : null}
-                    <li role="none">
-                        <Link
-                            role="menuitem"
-                            to={`/admin/courses/${course.id}/preview?returnTo=${encodeURIComponent(previewReturnPath)}`}
-                            className="course-management__menu-item"
-                            onClick={() => setOpen(false)}
-                        >
-                            <Eye size={14} aria-hidden="true" /> Preview
-                        </Link>
-                    </li>
-                    <li role="none">
-                        <Link
-                            role="menuitem"
-                            to={isTrainer ? `/staff/courses/${course.id}/edit` : `/admin/courses/${course.id}`}
-                            className="course-management__menu-item"
-                            onClick={() => setOpen(false)}
-                        >
-                            <Edit2 size={14} aria-hidden="true" /> Edit
-                        </Link>
-                    </li>
-                    {!isTrainer ? (
-                        <li role="none">
-                            <button
-                                type="button"
-                                role="menuitem"
-                                className="course-management__menu-item course-management__menu-item--danger"
-                                onClick={() => {
-                                    setOpen(false);
-                                    onRequestDelete?.(course);
-                                }}
-                            >
-                                <Trash2 size={14} aria-hidden="true" /> Delete
-                            </button>
-                        </li>
-                    ) : null}
-                </ul>
-            ) : null}
+            {menu ? createPortal(menu, document.body) : null}
         </div>
     );
 }
@@ -204,9 +275,15 @@ function RowActionsMenu({ course, isTrainer, previewReturnPath, onRequestDelete 
 export function AdminCoursesPage() {
     const toast = useToast();
     const navigate = useNavigate();
+    const location = useLocation();
     const currentUser = getCurrentUser();
-    const isTrainer = String(currentUser?.role || "").toLowerCase() === "trainer";
-    const previewReturnPath = isTrainer ? "/staff/courses" : "/admin/courses";
+    const currentRole = String(currentUser?.role || "").toLowerCase();
+    const isTrainer = currentRole === "trainer";
+    const isStaffRoute = location.pathname.startsWith("/staff/");
+    const courseBasePath = isStaffRoute ? "/staff/courses" : "/admin/courses";
+    const previewReturnPath = isStaffRoute ? "/staff/courses" : "/admin/courses";
+    const canViewClasses = currentRole === "tmo";
+    const canDelete = !isTrainer;
 
     const [page, setPage] = useState(0);
     const [totalPages, setTotalPages] = useState(0);
@@ -220,6 +297,8 @@ export function AdminCoursesPage() {
     const [categories, setCategories] = useState([]);
     const [deleteState, setDeleteState] = useState({ open: false, target: null });
     const [pageRequest, setPageRequest] = useState(0);
+    const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
+    const [reloadRequest, setReloadRequest] = useState(0);
 
     useEffect(() => {
         let cancelled = false;
@@ -246,7 +325,7 @@ export function AdminCoursesPage() {
             try {
                 const data = await courseService.listAdmin({
                     page: pageRequest,
-                    size: DEFAULT_PAGE_SIZE,
+                    size: pageSize,
                 });
                 if (cancelled) return;
                 setItems(data.items || []);
@@ -267,7 +346,7 @@ export function AdminCoursesPage() {
         return () => {
             cancelled = true;
         };
-    }, [pageRequest, toast]);
+    }, [pageRequest, pageSize, reloadRequest, toast]);
 
     const filteredItems = useMemo(() => {
         const query = keyword.trim().toLowerCase();
@@ -301,10 +380,13 @@ export function AdminCoursesPage() {
         setCategoryFilter("all");
     }
 
-    function handleDeleted(target) {
+    function handleDeleted() {
         setDeleteState({ open: false, target: null });
-        setItems((current) => current.filter((course) => course.id !== target.id));
-        setTotalItems((current) => Math.max(0, current - 1));
+        if (items.length === 1 && pageRequest > 0) {
+            setPageRequest((current) => Math.max(0, current - 1));
+        } else {
+            setReloadRequest((current) => current + 1);
+        }
     }
 
     return (
@@ -420,7 +502,16 @@ export function AdminCoursesPage() {
                     ) : null}
                     {!loading && error ? (
                         <div className="course-management__state course-management__state--error">
-                            {error}
+                            <AlertTriangle size={28} aria-hidden="true" />
+                            <strong>Could not load courses</strong>
+                            <span>{error}</span>
+                            <Button
+                                variant="outline"
+                                leftIcon={<RotateCcw size={16} />}
+                                onClick={() => setReloadRequest((current) => current + 1)}
+                            >
+                                Try again
+                            </Button>
                         </div>
                     ) : null}
                     {!loading && !error && filteredItems.length === 0 ? (
@@ -501,8 +592,8 @@ export function AdminCoursesPage() {
                                                 <div className="course-management__actions">
                                                     <Link
                                                         to={isTrainer
-                                                            ? `/staff/courses/${course.id}/edit`
-                                                            : `/admin/courses/${course.id}/content`}
+                                                            ? `${courseBasePath}/${course.id}/edit`
+                                                            : `${courseBasePath}/${course.id}/content`}
                                                         className="course-management__action course-management__action--primary"
                                                         title="Open"
                                                         aria-label={`Open ${course.title}`}
@@ -511,7 +602,9 @@ export function AdminCoursesPage() {
                                                     </Link>
                                                     <RowActionsMenu
                                                         course={course}
-                                                        isTrainer={isTrainer}
+                                                        basePath={courseBasePath}
+                                                        canViewClasses={canViewClasses}
+                                                        canDelete={canDelete}
                                                         previewReturnPath={previewReturnPath}
                                                         onRequestDelete={(c) =>
                                                             setDeleteState({ open: true, target: c })
@@ -553,8 +646,8 @@ export function AdminCoursesPage() {
                                                 onClick={() =>
                                                     navigate(
                                                         isTrainer
-                                                            ? `/staff/courses/${course.id}/edit`
-                                                            : `/admin/courses/${course.id}/content`,
+                                                            ? `${courseBasePath}/${course.id}/edit`
+                                                            : `${courseBasePath}/${course.id}/content`,
                                                     )
                                                 }
                                             >
@@ -562,7 +655,9 @@ export function AdminCoursesPage() {
                                             </Button>
                                             <RowActionsMenu
                                                 course={course}
-                                                isTrainer={isTrainer}
+                                                basePath={courseBasePath}
+                                                canViewClasses={canViewClasses}
+                                                canDelete={canDelete}
                                                 previewReturnPath={previewReturnPath}
                                                 onRequestDelete={(c) =>
                                                     setDeleteState({ open: true, target: c })
@@ -576,39 +671,29 @@ export function AdminCoursesPage() {
                     ) : null}
                 </div>
 
-                {totalPages > 1 ? (
-                    <nav className="course-management__pagination" aria-label="Course list pagination">
-                        <span>
-                            Page {page + 1} of {totalPages}
-                        </span>
-                        <div>
-                            <button
-                                type="button"
-                                onClick={() => setPageRequest((current) => Math.max(0, current - 1))}
-                                disabled={page === 0}
-                            >
-                                Previous
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() =>
-                                    setPageRequest((current) => Math.min(totalPages - 1, current + 1))
-                                }
-                                disabled={page + 1 >= totalPages}
-                            >
-                                Next
-                            </button>
-                        </div>
-                    </nav>
-                ) : null}
+                <Pagination
+                    page={page + 1}
+                    totalPages={totalPages}
+                    totalItems={totalItems}
+                    size={pageSize}
+                    disabled={loading}
+                    ariaLabel="Course list pagination"
+                    onPageChange={(nextPage) => setPageRequest(nextPage - 1)}
+                    onSizeChange={(nextSize) => {
+                        setPageRequest(0);
+                        setPageSize(nextSize);
+                    }}
+                />
             </section>
 
-            <DeleteCourseModal
-                open={deleteState.open}
-                target={deleteState.target}
-                onClose={() => setDeleteState({ open: false, target: null })}
-                onConfirmed={handleDeleted}
-            />
+            {deleteState.open ? (
+                <DeleteCourseModal
+                    open
+                    target={deleteState.target}
+                    onClose={() => setDeleteState({ open: false, target: null })}
+                    onConfirmed={handleDeleted}
+                />
+            ) : null}
         </main>
     );
 }

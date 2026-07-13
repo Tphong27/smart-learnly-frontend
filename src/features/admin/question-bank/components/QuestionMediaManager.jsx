@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { ArrowDown, ArrowDownToLine, ArrowUp, ArrowUpToLine, Eye, FileAudio, FileVideo, ImagePlus, Trash2, Upload } from 'lucide-react'
-import { Modal, useToast } from '@/shared/components/ui'
+import { Button, Modal, useToast } from '@/shared/components/ui'
 
 function clampMoveIndex(targetIndex, length) {
   if (length <= 0) return 0
@@ -129,8 +129,13 @@ export function QuestionMediaManager({ mediaType, items, disabled, onAddFiles, o
           <div className="question-media-manager__title">{config.label}</div>
           <div className="question-media-manager__hint">{config.typeLabel}. Max {config.maxSizeLabel}. {items.length}/{config.maxCount} used.</div>
         </div>
-        <label className={'button button--secondary button--sm ' + (disabled || remainingSlots === 0 ? 'is-disabled' : '')}>
-          <Upload size={14} />
+        <Button
+          as="label"
+          variant="secondary"
+          size="sm"
+          leftIcon={<Upload size={14} />}
+          disabled={disabled || remainingSlots === 0}
+        >
           Add
           <input
             type="file"
@@ -140,7 +145,7 @@ export function QuestionMediaManager({ mediaType, items, disabled, onAddFiles, o
             disabled={disabled || remainingSlots === 0}
             onChange={handleFiles}
           />
-        </label>
+        </Button>
       </div>
 
       {items.length ? (

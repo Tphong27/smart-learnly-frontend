@@ -16,11 +16,20 @@ function getInitials(name) {
     .toUpperCase();
 }
 
-export function Header({ user, onLogout, onToggleSidebar }) {
+export function Header({
+  user,
+  onLogout,
+  onToggleSidebar,
+  embedded = false,
+  showBrand = true,
+  workspaceLabel = "Workspace",
+  sidebarOpen = false,
+}) {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
+  const [notificationOpen, setNotificationOpen] = useState(false);
   const [isCompact, setIsCompact] = useState(() => window.scrollY > 24);
-  const menuRef = useRef(null);
+  const actionsRef = useRef(null);
 
   const displayName =
     user?.fullName ||
@@ -33,16 +42,27 @@ export function Header({ user, onLogout, onToggleSidebar }) {
 
   useEffect(() => {
     function handleClick(event) {
-      if (menuRef.current && !menuRef.current.contains(event.target)) {
+      if (actionsRef.current && !actionsRef.current.contains(event.target)) {
         setOpen(false);
+        setNotificationOpen(false);
       }
     }
-    if (open) {
+    function handleEscape(event) {
+      if (event.key === "Escape") {
+        setOpen(false);
+        setNotificationOpen(false);
+      }
+    }
+    if (open || notificationOpen) {
       document.addEventListener("mousedown", handleClick);
-      return () => document.removeEventListener("mousedown", handleClick);
+      document.addEventListener("keydown", handleEscape);
+      return () => {
+        document.removeEventListener("mousedown", handleClick);
+        document.removeEventListener("keydown", handleEscape);
+      };
     }
     return undefined;
-  }, [open]);
+  }, [notificationOpen, open]);
 
   useEffect(() => {
     let frameId = null;
@@ -74,7 +94,9 @@ export function Header({ user, onLogout, onToggleSidebar }) {
   }, []);
 
   return (
-    <header className={`app-header${isCompact ? " app-header--compact" : ""}`}>
+    <header
+      className={`app-header${isCompact ? " app-header--compact" : ""}${embedded ? " app-header--embedded" : ""}`}
+    >
       <div className="app-header__inner">
         {/* Left: Logo + Search */}
         <div className="app-header__left">
@@ -85,43 +107,74 @@ export function Header({ user, onLogout, onToggleSidebar }) {
               className="app-header__menu-button"
               onClick={onToggleSidebar}
               aria-label="Open sidebar"
+              aria-controls="app-sidebar-navigation"
+              aria-expanded={sidebarOpen}
             >
               <Menu size={18} />
             </button>
           )}
 
-          {/* Logo */}
-          <Link to={dashboardPath} className="app-header__logo">
-            <SmartLearnlyMark className="app-header__logo-mark" />
-            <span className="app-header__logo-text">
-              <span className="app-header__logo-title">Smart Learnly</span>
-            </span>
-          </Link>
-
-          {/* Vertical divider */}
-          <div className="app-header__divider-vertical" />
+          {showBrand ? (
+            <>
+              <Link to={dashboardPath} className="app-header__logo">
+                <SmartLearnlyMark className="app-header__logo-mark" />
+                <span className="app-header__logo-text">
+                  <span className="app-header__logo-title">Smart Learnly</span>
+                </span>
+              </Link>
+              <div className="app-header__divider-vertical" />
+            </>
+          ) : (
+            <div className="app-header__context">
+              <span className="app-header__context-eyebrow">Workspace</span>
+              <span className="app-header__context-title">{workspaceLabel}</span>
+            </div>
+          )}
         </div>
 
         {/* Right: Actions + Profile */}
-        <div className="app-header__actions">
+        <div className="app-header__actions" ref={actionsRef}>
           {/* Notification */}
-          <button
-            type="button"
-            className="app-header__icon-button"
-            aria-label="Notifications"
-          >
-            <Bell size={18} />
-            <span className="app-header__notification-dot" />
-          </button>
+          <div className="app-header__notification">
+            <button
+              type="button"
+              className="app-header__icon-button"
+              aria-label="Notifications"
+              aria-expanded={notificationOpen}
+              aria-haspopup="dialog"
+              onClick={() => {
+                setNotificationOpen((value) => !value);
+                setOpen(false);
+              }}
+            >
+              <Bell size={18} />
+              <span className="app-header__notification-dot" />
+            </button>
+            {notificationOpen && (
+              <div
+                className="app-header__notification-panel"
+                role="dialog"
+                aria-label="Notifications"
+              >
+                <strong>Notifications</strong>
+                <p>You are all caught up.</p>
+              </div>
+            )}
+          </div>
 
           <div className="app-header__divider" />
 
           {/* User Profile Dropdown */}
-          <div className="app-header__user" ref={menuRef}>
+          <div className="app-header__user">
             <button
               type="button"
-              onClick={() => setOpen((value) => !value)}
+              onClick={() => {
+                setOpen((value) => !value);
+                setNotificationOpen(false);
+              }}
               className={`app-header__user-button ${open ? "app-header__user-button--active" : ""}`}
+              aria-expanded={open}
+              aria-haspopup="menu"
             >
               {user?.avatarUrl ? (
                 <img
