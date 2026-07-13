@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
@@ -10,7 +10,6 @@ import {
     Plus,
     RotateCcw,
     Search,
-    SlidersHorizontal,
     Trash2,
     Users,
     X,
@@ -23,6 +22,27 @@ import { formatDate, formatPrice } from "@/shared/utils/formatters";
 import { DEFAULT_PAGE_SIZE } from "@/shared/constants/pagination";
 import "@/features/course/course-admin.css";
 import "./AdminCoursesPage.css";
+
+const STATUS_FILTERS = [
+    { value: "all", label: "All" },
+    { value: "draft", label: "Draft" },
+    { value: "published", label: "Published" },
+    { value: "inactive", label: "Inactive" },
+];
+
+const LEVEL_FILTERS = [
+    { value: "all", label: "All levels" },
+    { value: "beginner", label: "Beginner" },
+    { value: "intermediate", label: "Intermediate" },
+    { value: "advanced", label: "Advanced" },
+];
+
+function formatLevel(level) {
+    if (!level) return "Not set";
+    return String(level)
+        .replace(/[-_]+/g, " ")
+        .replace(/\b\w/g, (character) => character.toUpperCase());
+}
 
 function CourseStatusBadge({ status }) {
     const normalized = (status || "").toLowerCase();
@@ -292,13 +312,24 @@ export function AdminCoursesPage() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [keyword, setKeyword] = useState("");
+    const [debouncedKeyword, setDebouncedKeyword] = useState("");
     const [statusFilter, setStatusFilter] = useState("all");
     const [categoryFilter, setCategoryFilter] = useState("all");
+    const [levelFilter, setLevelFilter] = useState("all");
     const [categories, setCategories] = useState([]);
     const [deleteState, setDeleteState] = useState({ open: false, target: null });
     const [pageRequest, setPageRequest] = useState(0);
     const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
     const [reloadRequest, setReloadRequest] = useState(0);
+
+    useEffect(() => {
+        const timeout = window.setTimeout(() => {
+            setDebouncedKeyword(keyword.trim());
+            setPageRequest(0);
+        }, 300);
+
+        return () => window.clearTimeout(timeout);
+    }, [keyword]);
 
     useEffect(() => {
         let cancelled = false;
@@ -326,6 +357,10 @@ export function AdminCoursesPage() {
                 const data = await courseService.listAdmin({
                     page: pageRequest,
                     size: pageSize,
+                    keyword: debouncedKeyword,
+                    status: statusFilter,
+                    categoryId: categoryFilter,
+                    level: levelFilter,
                 });
                 if (cancelled) return;
                 setItems(data.items || []);
@@ -346,38 +381,36 @@ export function AdminCoursesPage() {
         return () => {
             cancelled = true;
         };
-    }, [pageRequest, pageSize, reloadRequest, toast]);
+    }, [
+        categoryFilter,
+        debouncedKeyword,
+        levelFilter,
+        pageRequest,
+        pageSize,
+        reloadRequest,
+        statusFilter,
+        toast,
+    ]);
 
-    const filteredItems = useMemo(() => {
-        const query = keyword.trim().toLowerCase();
-
-        return items.filter((course) => {
-            if (statusFilter !== "all" && (course.status || "").toLowerCase() !== statusFilter) return false;
-            if (categoryFilter !== "all" && String(course.categoryId) !== String(categoryFilter)) return false;
-            if (!query) return true;
-
-            const haystack = `${course.title || ""} ${course.slug || ""} ${course.shortDescription || ""}`.toLowerCase();
-            return haystack.includes(query);
-        });
-    }, [items, keyword, statusFilter, categoryFilter]);
-
-    const hasFilters = Boolean(keyword || statusFilter !== "all" || categoryFilter !== "all");
-
-    const attentionCounts = useMemo(() => {
-        let draft = 0;
-        let inactive = 0;
-        for (const c of items) {
-            const s = String(c.status || "").toLowerCase();
-            if (s === "draft") draft += 1;
-            else if (s === "inactive") inactive += 1;
-        }
-        return { draft, inactive, total: draft + inactive };
-    }, [items]);
+    const hasFilters = Boolean(
+        keyword
+        || statusFilter !== "all"
+        || categoryFilter !== "all"
+        || levelFilter !== "all",
+    );
 
     function clearFilters() {
         setKeyword("");
+        setDebouncedKeyword("");
         setStatusFilter("all");
         setCategoryFilter("all");
+        setLevelFilter("all");
+        setPageRequest(0);
+    }
+
+    function changeFilter(setter, value) {
+        setter(value);
+        setPageRequest(0);
     }
 
     function handleDeleted() {
@@ -393,12 +426,11 @@ export function AdminCoursesPage() {
         <main className="sl-cm-page admin-page course-management-page">
             <header className="sl-cm-header course-management__header">
                 <div>
-                    <span className="course-management__eyebrow">Course catalog</span>
                     <h1>Course management</h1>
                     <p>
                         {isTrainer
                             ? "Review the courses assigned to your classes and open their learning content."
-                            : "Create, organize, and manage the learning experiences available on the platform."}
+                            : "Create, publish, and maintain the learning experiences available on the platform."}
                     </p>
                 </div>
 
@@ -412,88 +444,86 @@ export function AdminCoursesPage() {
                 ) : null}
             </header>
 
-            {!isTrainer && !loading && attentionCounts.total > 0 ? (
-                <div className="sl-cm-attention" role="status" aria-live="polite">
-                    <span className="sl-cm-attention__icon" aria-hidden="true">
-                        <AlertTriangle size={18} color="#8a5b00" />
-                    </span>
-                    <div className="sl-cm-attention__body">
-                        <p className="sl-cm-attention__title">
-                            {attentionCounts.draft > 0
-                                ? `${attentionCounts.draft} course${attentionCounts.draft === 1 ? "" : "s"} still in draft`
-                                : `${attentionCounts.inactive} inactive course${attentionCounts.inactive === 1 ? "" : "s"}`}
-                        </p>
-                        <div className="sl-cm-attention__links">
-                            <span>Review and publish so learners can enrol.</span>
-                        </div>
-                    </div>
-                </div>
-            ) : null}
-
-            <section className="sl-cm-workspace course-management__panel" aria-labelledby="course-list-title">
-                <div className="course-management__panel-header">
-                    <div>
-                        <span className="course-management__eyebrow">Manage catalog</span>
-                        <h2 id="course-list-title">All courses</h2>
-                    </div>
-                    <span className="course-management__count">{totalItems} courses</span>
-                </div>
+            <section className="course-management__panel" aria-labelledby="course-list-title">
+                <h2 id="course-list-title" className="sr-only">Courses</h2>
 
                 <div className="course-management__filters">
-                    <label className="course-management__search">
-                        <Search size={18} aria-hidden="true" />
-                        <span className="sr-only">Search courses</span>
-                        <input
-                            type="search"
-                            placeholder="Search title, slug, or description"
-                            value={keyword}
-                            onChange={(event) => setKeyword(event.target.value)}
-                        />
+                    <label className="course-management__field course-management__field--search">
+                        <span className="course-management__field-label">Search</span>
+                        <span className="course-management__control course-management__search">
+                            <Search size={18} aria-hidden="true" />
+                            <input
+                                type="search"
+                                placeholder="Search title, slug, or description"
+                                value={keyword}
+                                onChange={(event) => setKeyword(event.target.value)}
+                            />
+                        </span>
                     </label>
 
-                    <label className="course-management__select">
-                        <SlidersHorizontal size={16} aria-hidden="true" />
-                        <span className="sr-only">Filter by status</span>
-                        <select
-                            value={statusFilter}
-                            onChange={(event) => setStatusFilter(event.target.value)}
-                        >
-                            <option value="all">All statuses</option>
-                            <option value="draft">Draft</option>
-                            <option value="published">Published</option>
-                            <option value="inactive">Inactive</option>
-                        </select>
+                    <label className="course-management__field">
+                        <span className="course-management__field-label">Category</span>
+                        <span className="course-management__control course-management__select">
+                            <select
+                                value={categoryFilter}
+                                onChange={(event) => changeFilter(setCategoryFilter, event.target.value)}
+                            >
+                                <option value="all">All categories</option>
+                                {categories.map((category) => (
+                                    <option key={category.id} value={category.id}>
+                                        {category.name}
+                                    </option>
+                                ))}
+                            </select>
+                        </span>
                     </label>
 
-                    <label className="course-management__select">
-                        <span className="sr-only">Filter by category</span>
-                        <select
-                            value={categoryFilter}
-                            onChange={(event) => setCategoryFilter(event.target.value)}
-                        >
-                            <option value="all">All categories</option>
-                            {categories.map((category) => (
-                                <option key={category.id} value={category.id}>
-                                    {category.name}
-                                </option>
-                            ))}
-                        </select>
+                    <label className="course-management__field">
+                        <span className="course-management__field-label">Level</span>
+                        <span className="course-management__control course-management__select">
+                            <select
+                                value={levelFilter}
+                                onChange={(event) => changeFilter(setLevelFilter, event.target.value)}
+                            >
+                                {LEVEL_FILTERS.map((level) => (
+                                    <option key={level.value} value={level.value}>
+                                        {level.label}
+                                    </option>
+                                ))}
+                            </select>
+                        </span>
                     </label>
 
-                    {hasFilters ? (
-                        <button
-                            type="button"
-                            className="course-management__clear"
-                            onClick={clearFilters}
-                        >
-                            <X size={15} /> Clear filters
-                        </button>
-                    ) : null}
+                    <button
+                        type="button"
+                        className="course-management__clear"
+                        onClick={clearFilters}
+                        disabled={!hasFilters}
+                    >
+                        <X size={15} aria-hidden="true" /> Reset
+                    </button>
                 </div>
 
-                <div className="course-management__results">
-                    <span>{filteredItems.length} shown on this page</span>
-                    {hasFilters ? <span>Filters are applied</span> : null}
+                <div className="course-management__status-bar">
+                    <div className="course-management__tabs" aria-label="Filter courses by status">
+                        {STATUS_FILTERS.map((status) => {
+                            const selected = statusFilter === status.value;
+                            return (
+                                <button
+                                    key={status.value}
+                                    type="button"
+                                    className={`course-management__tab${selected ? " is-active" : ""}`}
+                                    aria-pressed={selected}
+                                    onClick={() => changeFilter(setStatusFilter, status.value)}
+                                >
+                                    {status.label}
+                                </button>
+                            );
+                        })}
+                    </div>
+                    <p className="course-management__result-count" aria-live="polite">
+                        <strong>{totalItems}</strong> {totalItems === 1 ? "course" : "courses"}
+                    </p>
                 </div>
 
                 <div className="course-management__table-wrap" role="region" aria-label="Course list">
@@ -514,14 +544,16 @@ export function AdminCoursesPage() {
                             </Button>
                         </div>
                     ) : null}
-                    {!loading && !error && filteredItems.length === 0 ? (
+                    {!loading && !error && items.length === 0 ? (
                         <div className="course-management__state">
                             <BookOpen size={28} aria-hidden="true" />
                             <strong>
-                                {isTrainer ? "No courses assigned yet" : "No courses match these filters"}
+                                {isTrainer && !hasFilters
+                                    ? "No courses assigned yet"
+                                    : "No courses match these filters"}
                             </strong>
                             <span>
-                                {isTrainer
+                                {isTrainer && !hasFilters
                                     ? "Courses assigned to your classes will appear here."
                                     : "Try another search term or clear your filters."}
                             </span>
@@ -535,38 +567,48 @@ export function AdminCoursesPage() {
                             ) : null}
                         </div>
                     ) : null}
-                    {!loading && !error && filteredItems.length > 0 ? (
+                    {!loading && !error && items.length > 0 ? (
                         <>
                             <table className="course-management__table">
                                 <thead>
                                     <tr>
                                         <th>Course</th>
-                                        <th>Category &amp; level</th>
-                                        <th>Access</th>
+                                        <th>Category</th>
+                                        <th>Level</th>
+                                        <th>Price</th>
                                         <th>Status</th>
                                         <th>Updated</th>
                                         <th><span className="sr-only">Actions</span></th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {filteredItems.map((course) => (
+                                    {items.map((course) => (
                                         <tr key={course.id}>
                                             <td data-label="Course">
-                                                <div className="course-management__course-cell">
+                                                <Link
+                                                    to={isTrainer
+                                                        ? `${courseBasePath}/${course.id}/edit`
+                                                        : `${courseBasePath}/${course.id}/content`}
+                                                    className="course-management__course-cell"
+                                                >
                                                     <CourseThumbnail course={course} />
                                                     <div>
                                                         <strong>{course.title}</strong>
                                                         <code>{course.slug || "No slug"}</code>
                                                     </div>
-                                                </div>
+                                                </Link>
                                             </td>
                                             <td data-label="Category">
-                                                <div className="course-management__meta-cell">
-                                                    <strong>{course.categoryName || "Uncategorized"}</strong>
-                                                    <span>{course.level || "Level not set"}</span>
-                                                </div>
+                                                <span className="course-management__category">
+                                                    {course.categoryName || "Uncategorized"}
+                                                </span>
                                             </td>
-                                            <td data-label="Access">
+                                            <td data-label="Level">
+                                                <span className="course-management__level">
+                                                    {formatLevel(course.level)}
+                                                </span>
+                                            </td>
+                                            <td data-label="Price">
                                                 <div className="course-management__meta-cell">
                                                     <strong>
                                                         {formatPrice(course.discountedPrice ?? course.price, course.isFree)}
@@ -619,7 +661,7 @@ export function AdminCoursesPage() {
 
                             {/* Mobile stacked cards — same data, compact layout */}
                             <ul className="course-management__cards" aria-label="Course list">
-                                {filteredItems.map((course) => (
+                                {items.map((course) => (
                                     <li key={course.id} className="course-management__card">
                                         <div className="course-management__card-head">
                                             <CourseThumbnail course={course} />
@@ -628,17 +670,30 @@ export function AdminCoursesPage() {
                                                 <code>{course.slug || "No slug"}</code>
                                             </div>
                                         </div>
-                                        <div className="course-management__card-meta">
+                                        <dl className="course-management__card-meta">
+                                            <div>
+                                                <dt>Category</dt>
+                                                <dd>{course.categoryName || "Uncategorized"}</dd>
+                                            </div>
+                                            <div>
+                                                <dt>Level</dt>
+                                                <dd>{formatLevel(course.level)}</dd>
+                                            </div>
+                                            <div>
+                                                <dt>Price</dt>
+                                                <dd>{formatPrice(course.discountedPrice ?? course.price, course.isFree)}</dd>
+                                            </div>
+                                            <div>
+                                                <dt>Updated</dt>
+                                                <dd>
+                                                    <time dateTime={course.updatedAt || course.createdAt}>
+                                                        {formatDate(course.updatedAt || course.createdAt)}
+                                                    </time>
+                                                </dd>
+                                            </div>
+                                        </dl>
+                                        <div className="course-management__card-status">
                                             <CourseStatusBadge status={course.status} />
-                                            <span>
-                                                {course.categoryName || "Uncategorized"} · {course.level || "—"}
-                                            </span>
-                                            <span>
-                                                {formatPrice(course.discountedPrice ?? course.price, course.isFree)}
-                                            </span>
-                                            <time dateTime={course.updatedAt || course.createdAt}>
-                                                {formatDate(course.updatedAt || course.createdAt)}
-                                            </time>
                                         </div>
                                         <div className="course-management__card-actions">
                                             <Button
