@@ -345,6 +345,10 @@
   grid-template-columns: 112px minmax(260px, 1fr) auto;
 }
 
+.question-media-manager__item--video {
+  grid-template-columns: 80px minmax(0, 1fr) auto;
+}
+
 .question-media-manager__preview {
   align-items: center;
   background: #f8fafc;
@@ -392,6 +396,34 @@
   width: 100%;
 }
 
+.question-media-manager__video-label {
+  color: #7c3aed;
+  font-size: 14px;
+  font-weight: 800;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.question-media-manager__video-player {
+  align-items: center;
+  background: #0f172a;
+  border-radius: 8px;
+  color: #94a3b8;
+  display: flex;
+  min-height: 72px;
+  overflow: hidden;
+  padding: 6px;
+  width: 100%;
+}
+
+.question-media-manager__video-player video {
+  border-radius: 6px;
+  max-height: 80px;
+  width: 100%;
+}
+
 .question-media-manager__meta {
   display: grid;
   gap: 3px;
@@ -434,7 +466,8 @@
 @media (max-width: 720px) {
   .question-media-manager__toolbar,
   .question-media-manager__item,
-  .question-media-manager__item--audio {
+  .question-media-manager__item--audio,
+  .question-media-manager__item--video {
     align-items: stretch;
     grid-template-columns: 1fr;
   }
@@ -495,6 +528,13 @@
 
 .question-media-preview-modal audio {
   width: 100%;
+}
+
+.question-media-preview-modal video {
+  width: 100%;
+  max-height: min(68vh, 720px);
+  border-radius: 8px;
+  background: #0f172a;
 }
 
 .question-media-preview-modal__meta {
@@ -599,6 +639,42 @@
   width: 100%;
 }
 
+.question-card__video-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.question-card__video-player {
+  align-items: center;
+  background: #f8fafc;
+  border: 1px solid #dbe3ef;
+  border-radius: 10px;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: 110px minmax(240px, 1fr);
+  padding: 10px 12px;
+}
+
+.question-card__video-label {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.question-card__video-label strong {
+  color: #b45309;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.question-card__video-player video {
+  width: 100%;
+  max-height: 320px;
+  background: #0f172a;
+  border-radius: 6px;
+}
+
 .question-card__media-modal-name {
   color: #64748b;
   font-size: 13px;
@@ -613,6 +689,10 @@
   }
 
   .question-card__audio-player {
+    grid-template-columns: 1fr;
+  }
+
+  .question-card__video-player {
     grid-template-columns: 1fr;
   }
 }
