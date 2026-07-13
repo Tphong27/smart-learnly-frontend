@@ -12,24 +12,11 @@ import { Link } from "react-router-dom";
 import { Button } from "@/shared/components/ui";
 import {
     courseService,
-    getCurrentUser,
     traineeProgressService,
 } from "@/services";
 import "./TraineeDashboardPage.css";
 
 const EMPTY_METRIC = { completed: 0, total: 0, percent: 0 };
-
-function getGreeting() {
-    const hour = new Date().getHours();
-    if (hour < 12) return "Good morning";
-    if (hour < 18) return "Good afternoon";
-    return "Good evening";
-}
-
-function getFirstName(user) {
-    const name = user?.fullName || user?.firstName || user?.email || "there";
-    return name.trim().split(/\s+/)[0] || "there";
-}
 
 function getCourseId(course) {
     return course?.courseId || course?.id || "";
@@ -145,8 +132,6 @@ export function TraineeDashboardPage() {
     const [error, setError] = useState("");
     const [reloadKey, setReloadKey] = useState(0);
 
-    const currentUser = getCurrentUser();
-
     useEffect(() => {
         let mounted = true;
 
@@ -224,26 +209,6 @@ export function TraineeDashboardPage() {
 
     return (
         <main className="trainee-dashboard-page">
-            <header className="trainee-dashboard-intro">
-                <div>
-                    <h1>
-                        {getGreeting()},{" "}
-                        <span>{getFirstName(currentUser)}</span>
-                    </h1>
-                    <p>
-                        Pick up a course, build your momentum, and keep your
-                        progress moving.
-                    </p>
-                </div>
-
-                <Link
-                    to="/learning/progress"
-                    className="trainee-dashboard-text-link"
-                >
-                    View full progress <ArrowRight size={16} />
-                </Link>
-            </header>
-
             {loading && (
                 <div
                     className="trainee-dashboard-state"

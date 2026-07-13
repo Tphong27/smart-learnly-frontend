@@ -2,7 +2,7 @@
 import { Navigate } from "react-router-dom";
 import { RoleGuard } from "./RoleGuard";
 import { ROLES } from "@/shared/constants/roles";
-import { AppLayout } from "../layouts/AppLayout";
+import { TraineeLayout } from "../layouts/TraineeLayout";
 import { CheckoutPage, MyTransactionsPage, PaymentResultPage } from "@/features/checkout";
 import { MyEnrollmentsPage } from "@/features/enrollment";
 import {
@@ -36,7 +36,7 @@ function PlaceholderPage({ title }) {
 function getTraineeRoutes() {
   return [
     {
-      // Learning workspace - fullscreen, outside AppLayout (giống admin "view as user")
+      // Learning workspace - fullscreen, outside TraineeLayout (giống admin "view as user")
       // để màn hình học bài hiển thị y hệt chế độ admin-preview.
       path: "/learning/courses/:courseId",
       element: <RoleGuard allowedRoles={[ROLES.TRAINEE]} />,
@@ -62,7 +62,7 @@ function getTraineeRoutes() {
       element: <RoleGuard allowedRoles={[ROLES.TRAINEE]} />,
       children: [
         {
-          element: <AppLayout />,
+          element: <TraineeLayout />,
           children: [
             {
               path: "courses",
@@ -113,7 +113,7 @@ function getTraineeRoutes() {
       element: <RoleGuard allowedRoles={[ROLES.TRAINEE]} />,
       children: [
         {
-          element: <AppLayout />,
+          element: <TraineeLayout />,
           children: [{ index: true, element: <CheckoutPage /> }],
         },
       ],
@@ -122,7 +122,7 @@ function getTraineeRoutes() {
       element: <RoleGuard allowedRoles={[ROLES.TRAINEE]} />,
       children: [
         {
-          element: <AppLayout />,
+          element: <TraineeLayout />,
           children: [
             {
               path: "/my-courses",
@@ -149,7 +149,7 @@ function getTraineeRoutes() {
       element: <RoleGuard allowedRoles={[ROLES.TRAINEE]} />,
       children: [
         {
-          element: <AppLayout />,
+          element: <TraineeLayout />,
           children: [{ index: true, element: <TraineeDashboardPage /> }],
         },
       ],
