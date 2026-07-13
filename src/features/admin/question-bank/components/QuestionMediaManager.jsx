@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ArrowDown, ArrowDownToLine, ArrowUp, ArrowUpToLine, Eye, FileAudio, ImagePlus, Trash2, Upload } from 'lucide-react'
+import { ArrowDown, ArrowDownToLine, ArrowUp, ArrowUpToLine, Eye, FileAudio, FileVideo, ImagePlus, Trash2, Upload } from 'lucide-react'
 import { Modal, useToast } from '@/shared/components/ui'
 
 function clampMoveIndex(targetIndex, length) {
@@ -31,6 +31,27 @@ const MEDIA_CONFIG = {
     maxSizeLabel: '20MB',
     typeLabel: 'MP3, M4A, or WAV',
     Icon: FileAudio,
+  },
+  video: {
+    label: 'Video',
+    empty: 'No video attached',
+    accept: 'video/mp4,video/mpeg,video/webm,video/quicktime,video/x-matroska,video/x-msvideo,video/x-ms-wmv,video/3gpp,video/x-flv,.mp4,.mov,.mkv,.avi,.wmv,.3gp,.flv,.webm,.mpg,.mpeg',
+    allowedTypes: [
+      'video/mp4',
+      'video/mpeg',
+      'video/webm',
+      'video/quicktime',
+      'video/x-matroska',
+      'video/x-msvideo',
+      'video/x-ms-wmv',
+      'video/3gpp',
+      'video/x-flv',
+    ],
+    maxSize: 100 * 1024 * 1024,
+    maxCount: 1,
+    maxSizeLabel: '100MB',
+    typeLabel: 'MP4, WebM, MOV, AVI, MKV, WMV, 3GP, FLV, or MPEG',
+    Icon: FileVideo,
   },
 }
 
@@ -127,8 +148,23 @@ export function QuestionMediaManager({ mediaType, items, disabled, onAddFiles, o
           {items.map((item, index) => {
             const url = itemUrl(item)
             return (
-              <div className={'question-media-manager__item ' + (mediaType === 'audio' ? 'question-media-manager__item--audio' : '')} key={item.localId || item.attachmentId || item.id || mediaType + '-' + index}>
-                {mediaType === 'audio' ? (
+              <div className={'question-media-manager__item ' + (mediaType === 'audio' ? 'question-media-manager__item--audio ' : '') + (mediaType === 'video' ? 'question-media-manager__item--video ' : '')} key={item.localId || item.attachmentId || item.id || mediaType + '-' + index}>
+                {mediaType === 'video' ? (
+                  <>
+                    <div className="question-media-manager__video-label">
+                      <strong>Video</strong>
+                    </div>
+                    <div className="question-media-manager__video-player">
+                      {url ? (
+                        <video controls preload="metadata" src={url}>
+                          <track kind="captions" />
+                        </video>
+                      ) : (
+                        <Icon size={20} />
+                      )}
+                    </div>
+                  </>
+                ) : mediaType === 'audio' ? (
                   <>
                     <div className="question-media-manager__audio-label">
                       <strong>Audio{index + 1}</strong>
@@ -189,6 +225,11 @@ export function QuestionMediaManager({ mediaType, items, disabled, onAddFiles, o
         {previewItem && (
           <div className="question-media-preview-modal">
             {mediaType === 'image' && previewUrl ? <img src={previewUrl} alt={itemName(previewItem)} /> : null}
+            {mediaType === 'video' && previewUrl ? (
+              <video controls src={previewUrl}>
+                <track kind="captions" />
+              </video>
+            ) : null}
 
             <div className="question-media-preview-modal__meta">
               <span>{mediaMetaLabel(previewItem, items.findIndex((item) => item === previewItem))}</span>

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { FileAudio, Image as ImageIcon, ImagePlus, Loader2, Plus, Trash2, X, AlertTriangle } from "lucide-react";
+import { FileAudio, FileVideo, Image as ImageIcon, ImagePlus, Loader2, Plus, Trash2, X, AlertTriangle } from "lucide-react";
 import { Button, FormField, Modal, useToast } from "@/shared/components/ui";
 import { courseService, getCurrentUser, questionBankService } from "@/services";
 import { isEmptyQuestionHtml, sanitizeQuestionHtml } from "@/shared/utils/htmlSanitizer";
@@ -64,7 +64,15 @@ function normalizeQuestionMedia(question) {
       localId: item.attachmentId || item.id,
       source: "remote",
     }));
-  return { images, audios };
+  const videos = attachments
+    .filter((item) => item.mediaType === "video")
+    .sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0))
+    .map((item) => ({
+      ...item,
+      localId: item.attachmentId || item.id,
+      source: "remote",
+    }));
+  return { images, audios, videos };
 }
 function normalizeModules(payload) {
   const root = payload?.data ?? payload;
@@ -194,6 +202,7 @@ export function AdminQuestionForm({
   const pendingPreviewUrls = useRef(new Set());
   const [imageMedia, setImageMedia] = useState([]);
   const [audioMedia, setAudioMedia] = useState([]);
+  const [videoMedia, setVideoMedia] = useState([]);
   const [removedAttachmentIds, setRemovedAttachmentIds] = useState([]);
   const [activeMediaTab, setActiveMediaTab] = useState("image");
   const [uploadingAnswerIndex, setUploadingAnswerIndex] = useState(null);
@@ -210,6 +219,7 @@ export function AdminQuestionForm({
           const normalizedMedia = normalizeQuestionMedia(question);
           setImageMedia(normalizedMedia.images);
           setAudioMedia(normalizedMedia.audios);
+          setVideoMedia(normalizedMedia.videos || []);
           setRemovedAttachmentIds([]);
           setValues({
             questionText: question.questionText || "",
@@ -411,14 +421,20 @@ export function AdminQuestionForm({
     [],
   );
 
+  function mediaSetter(mediaType) {
+    if (mediaType === "image") return setImageMedia;
+    if (mediaType === "audio") return setAudioMedia;
+    if (mediaType === "video") return setVideoMedia;
+    throw new Error(`Unsupported media type: ${mediaType}`);
+  }
+
   function addMediaFiles(mediaType, files) {
     const nextItems = files.map((file) => {
       const previewUrl = URL.createObjectURL(file);
       pendingPreviewUrls.current.add(previewUrl);
       return pendingMediaItem(file, mediaType, previewUrl);
     });
-    const setter = mediaType === "image" ? setImageMedia : setAudioMedia;
-    setter((current) => [...current, ...nextItems]);
+    mediaSetter(mediaType)((current) => [...current, ...nextItems]);
   }
 
   function removeMedia(mediaType, item) {
@@ -432,15 +448,13 @@ export function AdminQuestionForm({
       URL.revokeObjectURL(item.previewUrl);
       pendingPreviewUrls.current.delete(item.previewUrl);
     }
-    const setter = mediaType === "image" ? setImageMedia : setAudioMedia;
-    setter((current) =>
+    mediaSetter(mediaType)((current) =>
       current.filter((candidate) => candidate.localId !== item.localId),
     );
   }
 
   function moveMediaTo(mediaType, fromIndex, toIndex) {
-    const setter = mediaType === "image" ? setImageMedia : setAudioMedia;
-    setter((current) => {
+    mediaSetter(mediaType)((current) => {
       if (fromIndex < 0 || fromIndex >= current.length) return current;
       const safeTo = Math.max(0, Math.min(toIndex, current.length - 1));
       if (fromIndex === safeTo) return current;
@@ -494,6 +508,7 @@ export function AdminQuestionForm({
     }
     await syncMediaType(savedQuestionId, "image", imageMedia);
     await syncMediaType(savedQuestionId, "audio", audioMedia);
+    await syncMediaType(savedQuestionId, "video", videoMedia);
   }
 
   async function handleSubmit(event) {
@@ -892,6 +907,15 @@ export function AdminQuestionForm({
               >
                 <FileAudio size={15} /> Audio <span>{audioMedia.length}</span>
               </button>
+              <button
+                type="button"
+                className={`question-authoring-media-tab ${activeMediaTab === "video" ? "is-active" : ""}`}
+                role="tab"
+                aria-selected={activeMediaTab === "video"}
+                onClick={() => setActiveMediaTab("video")}
+              >
+                <FileVideo size={15} /> Video <span>{videoMedia.length}</span>
+              </button>
             </div>
             <div className="question-authoring-media-panel">
               {activeMediaTab === "image" ? (
@@ -903,7 +927,7 @@ export function AdminQuestionForm({
                   onRemove={(item) => removeMedia("image", item)}
                   onMoveTo={(from, to) => moveMediaTo("image", from, to)}
                 />
-              ) : (
+              ) : activeMediaTab === "audio" ? (
                 <QuestionMediaManager
                   mediaType="audio"
                   items={audioMedia}
@@ -911,6 +935,15 @@ export function AdminQuestionForm({
                   onAddFiles={(files) => addMediaFiles("audio", files)}
                   onRemove={(item) => removeMedia("audio", item)}
                   onMoveTo={(from, to) => moveMediaTo("audio", from, to)}
+                />
+              ) : (
+                <QuestionMediaManager
+                  mediaType="video"
+                  items={videoMedia}
+                  disabled={submitting || values.status === "archived"}
+                  onAddFiles={(files) => addMediaFiles("video", files)}
+                  onRemove={(item) => removeMedia("video", item)}
+                  onMoveTo={(from, to) => moveMediaTo("video", from, to)}
                 />
               )}
             </div>
