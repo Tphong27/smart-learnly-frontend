@@ -85,12 +85,10 @@
     width: 100%;
     max-width: 416px;
     padding: 34px;
-    border: 1.5px solid #211b36;
-    border-radius: 18px;
+    border: 1px solid var(--line, #d1d7dc);
+    border-radius: 8px;
     background: #ffffff;
-    box-shadow:
-        6px 6px 0 #211b36,
-        0 24px 60px -20px rgba(15, 8, 50, 0.55);
+    box-shadow: 0 4px 16px rgba(45, 47, 49, 0.14);
     color: #17233e;
     animation: auth-card-rise 0.5s cubic-bezier(0.16, 0.84, 0.44, 1);
 }
@@ -115,10 +113,10 @@
     width: 48px;
     height: 48px;
     margin-bottom: 18px;
-    border: 1.5px solid #211b36;
-    border-radius: 13px;
-    background: #f3cc63;
-    color: #211b36;
+    border: 1px solid var(--line, #d1d7dc);
+    border-radius: 4px;
+    background: #f2f3f5;
+    color: var(--ink, #2d2f31);
 }
 .auth-card__title {
     margin: 0 0 8px;
@@ -188,7 +186,7 @@
 }
 .auth-card .input-field__control {
     min-height: 48px;
-    border: 1.5px solid #d5d2cc;
+    border: 1px solid #d1d7dc;
     border-radius: 10px;
     box-shadow: none;
     font-size: 14px;
@@ -204,11 +202,11 @@
     color: #6646d9;
 }
 .auth-card .button--primary {
-    --button-bg: #825ef5;
-    --button-hover-bg: #7c52e8;
-    --button-border: #000000;
-    border-width: 1.5px;
-    border-radius: 10px;
+    --button-bg: var(--primary, #5624d0);
+    --button-hover-bg: var(--primary-dark, #401b9c);
+    --button-border: var(--primary, #5624d0);
+    border-width: 1px;
+    border-radius: 4px;
     font-weight: 900;
 }
 .auth-card .button--outline {
@@ -216,7 +214,7 @@
     --button-color: #3e315c;
     --button-border: #bdb5ce;
     --button-hover-bg: #f4f0ff;
-    border-radius: 10px;
+    border-radius: 4px;
     font-weight: 800;
 }
 .auth-toggle-eye {
@@ -274,8 +272,8 @@
     }
     .auth-card {
         padding: 27px 22px;
-        border-radius: 15px;
-        box-shadow: 4px 4px 0 #211b36;
+        border-radius: 8px;
+        box-shadow: 0 4px 16px rgba(45, 47, 49, 0.14);
     }
     .auth-card__title {
         font-size: 25px;

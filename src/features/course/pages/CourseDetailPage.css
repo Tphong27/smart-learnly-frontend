@@ -47,14 +47,14 @@
     min-width: 0;
 }
 
-/* Hero card - neo-brutalism */
+/* Hero card - flat brand surface */
 .course-detail__hero-card {
     position: relative;
     background: #825ef5;
-    border: 1px solid #000000;
-    border-radius: 20px;
+    border: 1px solid #5624d0;
+    border-radius: 8px;
     padding: 28px;
-    box-shadow: 2px 2px 0 #000000;
+    box-shadow: none;
     display: flex;
     flex-direction: column;
     gap: 18px;
@@ -66,8 +66,8 @@
 }
 
 .course-detail__hero-card:hover {
-    transform: translate(-2px, -2px);
-    box-shadow: 4px 4px 0 #000000;
+    transform: none;
+    box-shadow: none;
 }
 
 /* Decorative blob inside hero card */
@@ -178,10 +178,10 @@
     position: sticky;
     top: 92px;
     background: #ffffff;
-    border: 1px solid #000000;
-    border-radius: 16px;
+    border: 1px solid var(--line, #d1d7dc);
+    border-radius: 8px;
     overflow: hidden;
-    box-shadow: 2px 2px 0 #000000;
+    box-shadow: none;
     transition:
         transform 0.25s ease,
         box-shadow 0.25s ease;
@@ -189,8 +189,9 @@
 }
 
 .course-detail__sidecard:hover {
-    transform: translate(-2px, -2px);
-    box-shadow: 4px 4px 0 #000000;
+    transform: none;
+    border-color: #b7bcc2;
+    box-shadow: 0 2px 8px rgba(45, 47, 49, 0.12);
 }
 
 .course-detail__sidecard-thumb {
@@ -459,8 +460,8 @@
     gap: 12px;
     padding: 16px 18px;
     background: #ffffff;
-    border: 1px solid #000;
-    border-radius: 14px;
+    border: 1px solid var(--line, #d1d7dc);
+    border-radius: 4px;
     transition:
         transform 0.2s ease,
         box-shadow 0.2s ease;
@@ -468,9 +469,9 @@
 }
 
 .course-detail__objectives li:hover {
-    transform: translate(-3px, -3px);
-    box-shadow: 3px 3px rgb(0, 0, 0);
-    border-color: #000;
+    transform: none;
+    box-shadow: 0 2px 8px rgba(45, 47, 49, 0.12);
+    border-color: #b7bcc2;
 }
 
 @keyframes objectiveEnter {

@@ -103,7 +103,7 @@
 .sl-cm-lesson-editor__field-control {
   width: 100%;
   padding: 10px 14px;
-  border: 1.5px solid var(--sl-line);
+  border: 1px solid var(--sl-line);
   border-radius: var(--sl-radius-md);
   font-family: inherit;
   font-size: 14px;

@@ -1,22 +1,22 @@
 /* Smart Learnly action button — one interaction model for button, Link and a. */
 
 .button {
-    --button-bg: var(--sl-purple, #825ef5);
+    --button-bg: var(--sl-purple, #5624d0);
     --button-color: #ffffff;
-    --button-border: #000000;
-    --button-hover-bg: #7c52e8;
-    --button-shadow: var(--sl-button-shadow, 2px 2px 0 #000000);
-    --button-shadow-hover: var(--sl-button-shadow-hover, 3px 3px 0 #000000);
-    --button-shadow-active: var(--sl-button-shadow-active, 1px 1px 0 #2e2e2e);
-    --button-focus-ring: rgba(130, 94, 245, 0.4);
+    --button-border: var(--sl-purple, #5624d0);
+    --button-hover-bg: var(--sl-purple-dark, #401b9c);
+    --button-shadow: none;
+    --button-shadow-hover: none;
+    --button-shadow-active: none;
+    --button-focus-ring: rgba(86, 36, 208, 0.28);
 
     display: inline-flex;
     align-items: center;
     justify-content: center;
     gap: 8px;
 
-    border: 1.5px solid var(--button-border);
-    border-radius: var(--sl-radius-md, 14px);
+    border: 1px solid var(--button-border);
+    border-radius: var(--sl-radius-md, 4px);
     background: var(--button-bg);
     color: var(--button-color);
     box-shadow: var(--button-shadow);
@@ -31,8 +31,7 @@
         background 0.2s ease,
         border-color 0.2s ease,
         color 0.2s ease,
-        box-shadow 0.2s ease,
-        transform 0.15s ease;
+        box-shadow 0.2s ease;
     text-decoration: none;
 }
 
@@ -40,11 +39,11 @@
     background: var(--button-hover-bg);
     color: var(--button-color);
     box-shadow: var(--button-shadow-hover);
-    transform: translate(-1px, -1px);
+    transform: none;
 }
 
 .button:active:not(:disabled):not([aria-disabled="true"]) {
-    transform: translate(1px, 1px);
+    transform: none;
     box-shadow: var(--button-shadow-active);
 }
 
@@ -89,30 +88,30 @@
 
 /* Variants */
 .button--primary {
-    --button-bg: var(--sl-purple, #825ef5);
+    --button-bg: var(--sl-purple, #5624d0);
     --button-color: #ffffff;
-    --button-border: #000000;
-    --button-hover-bg: #7c52e8;
+    --button-border: var(--sl-purple, #5624d0);
+    --button-hover-bg: var(--sl-purple-dark, #401b9c);
 }
 
 .button--secondary {
     --button-bg: #ffffff;
     --button-color: var(--sl-ink, #0f172a);
     --button-border: var(--sl-line, #e4eaf4);
-    --button-hover-bg: var(--sl-purple-soft, #f3eefe);
-    --button-border-hover: var(--sl-purple-border, #d8c8fb);
+    --button-hover-bg: var(--sl-surface, #f7f9fa);
+    --button-border-hover: var(--sl-ink, #2d2f31);
 }
 
 .button--secondary:hover:not(:disabled):not([aria-disabled="true"]) {
     border-color: var(--button-border-hover, var(--sl-purple-border, #d8c8fb));
-    color: var(--sl-purple-dark, #6d28d2);
+    color: var(--sl-ink, #2d2f31);
 }
 
 .button--outline {
     --button-bg: #ffffff;
     --button-color: var(--sl-purple, #825ef5);
-    --button-border: var(--sl-purple-border, #d8c8fb);
-    --button-hover-bg: var(--sl-purple-soft, #f3eefe);
+    --button-border: var(--sl-line, #d1d7dc);
+    --button-hover-bg: var(--sl-surface, #f7f9fa);
 }
 
 .button--outline:hover:not(:disabled):not([aria-disabled="true"]) {
@@ -123,7 +122,7 @@
 .button--ghost {
     --button-bg: transparent;
     --button-color: var(--sl-muted, #64708a);
-    --button-border: #000000;
+    --button-border: transparent;
     --button-hover-bg: var(--sl-surface, #f7f9fc);
 
     border-width: 1px;
@@ -148,7 +147,7 @@
 .button--success {
     --button-bg: #168c76;
     --button-color: #ffffff;
-    --button-border: #000000;
+    --button-border: #168c76;
     --button-hover-bg: #137a66;
 }
 

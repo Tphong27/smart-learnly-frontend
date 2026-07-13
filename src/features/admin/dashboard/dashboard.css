@@ -32,8 +32,8 @@
 }
 
 .dashboard-range-controls__btn--active {
-  background: #7c1fd1;
-  border-color: #7c1fd1;
+  background: var(--primary, #5624d0);
+  border-color: var(--primary, #5624d0);
   color: #ffffff;
 }
 
@@ -46,7 +46,7 @@
 }
 
 .dashboard-meta-row__updating {
-  color: var(--blue, #2768ee);
+  color: var(--primary, #5624d0);
   font-weight: 800;
 }
 
@@ -90,7 +90,10 @@
   place-items: center;
   width: 44px;
   height: 44px;
-  border-radius: 14px;
+  border: 1px solid var(--line, #d1d7dc);
+  border-radius: 4px;
+  background: #f2f3f5;
+  color: var(--ink, #2d2f31);
   flex-shrink: 0;
 }
 
@@ -110,28 +113,28 @@
 }
 
 .dashboard-metric-card--blue .dashboard-metric-card__icon {
-  background: #dbeafe;
-  color: #1d4ed8;
+  background: #f2f3f5;
+  color: var(--ink, #2d2f31);
 }
 
 .dashboard-metric-card--green .dashboard-metric-card__icon {
-  background: #dcfce7;
-  color: #15803d;
+  background: #f2f3f5;
+  color: var(--ink, #2d2f31);
 }
 
 .dashboard-metric-card--amber .dashboard-metric-card__icon {
-  background: #fef3c7;
-  color: #b45309;
+  background: #f2f3f5;
+  color: var(--ink, #2d2f31);
 }
 
 .dashboard-metric-card--purple .dashboard-metric-card__icon {
-  background: #ede9fe;
-  color: #6d28d9;
+  background: #f2f3f5;
+  color: var(--ink, #2d2f31);
 }
 
 .dashboard-metric-card--slate .dashboard-metric-card__icon {
-  background: #f1f5f9;
-  color: #334155;
+  background: #f2f3f5;
+  color: var(--ink, #2d2f31);
 }
 
 .dashboard-section-grid {
@@ -209,7 +212,7 @@
   height: 100%;
   min-width: 4px;
   border-radius: inherit;
-  background: var(--blue, #2768ee);
+  background: var(--primary, #5624d0);
 }
 
 .dashboard-empty-text {
@@ -229,7 +232,7 @@
 }
 
 .dashboard-card-link {
-  color: var(--blue, #2768ee);
+  color: var(--primary, #5624d0);
   font-size: 13px;
   font-weight: 800;
   text-decoration: none;

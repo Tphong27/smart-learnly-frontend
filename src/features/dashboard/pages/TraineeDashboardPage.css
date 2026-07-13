@@ -90,10 +90,10 @@
     display: grid;
     grid-template-columns: minmax(260px, 0.78fr) minmax(0, 1.22fr);
     overflow: hidden;
-    border: 1.5px solid #211b36;
-    border-radius: 20px;
+    border: 1px solid var(--line, #d1d7dc);
+    border-radius: 8px;
     background: #fff;
-    box-shadow: 4px 4px 0 #211b36;
+    box-shadow: none;
 }
 
 .trainee-dashboard-course-image {

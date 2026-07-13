@@ -133,12 +133,12 @@
 }
 
 .progress-tab {
-  border: 1.5px solid #000000;
-  border-radius: 10px;
+  border: 1px solid var(--primary, #5624d0);
+  border-radius: 4px;
   padding: 10px 18px;
-  background: linear-gradient(133deg, #6366f1 0%, #8b5cf6 100%);
+  background: var(--primary, #5624d0);
   color: #ffffff;
-  box-shadow: 2px 2px 0 #000000;
+  box-shadow: none;
   font-family: inherit;
   font-size: 14px;
   font-weight: 800;
@@ -153,9 +153,10 @@
 }
 
 .progress-tab:hover {
-  transform: translate(-2px, -2px);
-  box-shadow: 4px 4px 0 #000000;
-  filter: brightness(1.05);
+  transform: none;
+  background: var(--primary-dark, #401b9c);
+  box-shadow: none;
+  filter: none;
 }
 
 .progress-tab--active {
@@ -182,7 +183,7 @@
 
 .progress-search {
   min-height: 48px;
-  border: 1.5px solid #d6e2f2;
+  border: 1px solid #d6e2f2;
   border-radius: 18px;
   padding: 0 22px;
   background: #ffffff;
@@ -227,7 +228,7 @@
 
 .progress-category-filter {
   min-height: 48px;
-  border: 1.5px solid #d6e2f2;
+  border: 1px solid #d6e2f2;
   border-radius: 18px;
   padding: 0 14px 0 18px;
   background: #ffffff;
@@ -306,13 +307,13 @@
 }
 
 .progress-section__toggle {
-  border: 1.5px solid #000000;
-  border-radius: 10px;
+  border: 1px solid var(--primary, #5624d0);
+  border-radius: 4px;
   padding: 10px 14px;
   margin: 0 0 6px;
-  background: linear-gradient(133deg, #6366f1 0%, #8b5cf6 100%);
+  background: var(--primary, #5624d0);
   color: #ffffff;
-  box-shadow: 2px 2px 0 #000000;
+  box-shadow: none;
   display: inline-flex;
   align-items: center;
   gap: 10px;
@@ -342,9 +343,10 @@
 
 .progress-section__toggle:hover,
 .course-progress-card__toggle:hover {
-  transform: translate(-2px, -2px);
-  box-shadow: 4px 4px 0 #000000;
-  filter: brightness(1.05);
+  transform: none;
+  background: var(--primary-dark, #401b9c);
+  box-shadow: none;
+  filter: none;
 }
 
 .progress-section__header p {
@@ -477,11 +479,11 @@
 .course-progress-card__toggle {
   width: 38px;
   height: 38px;
-  border: 1.5px solid #000000;
-  border-radius: 10px;
-  background: linear-gradient(133deg, #6366f1 0%, #8b5cf6 100%);
+  border: 1px solid var(--primary, #5624d0);
+  border-radius: 4px;
+  background: var(--primary, #5624d0);
   color: #ffffff;
-  box-shadow: 2px 2px 0 #000000;
+  box-shadow: none;
   display: grid;
   place-items: center;
   cursor: pointer;
@@ -499,12 +501,12 @@
   grid-template-columns: minmax(0, 1fr) 52px;
   align-items: center;
   gap: 12px;
-  border: 1.5px solid #000000;
-  border-radius: 10px;
+  border: 1px solid var(--primary, #5624d0);
+  border-radius: 4px;
   padding: 9px 11px;
   color: #ffffff;
-  background: linear-gradient(133deg, #6366f1 0%, #8b5cf6 100%);
-  box-shadow: 2px 2px 0 #000000;
+  background: var(--primary, #5624d0);
+  box-shadow: none;
   text-decoration: none;
   cursor: pointer;
   transition: transform 0.18s ease, box-shadow 0.18s ease, filter 0.18s ease;
@@ -529,9 +531,10 @@ a.course-metric .progress-bar__fill {
 
 .course-progress-card__overall:hover,
 a.course-metric:hover {
-  transform: translate(-2px, -2px);
-  box-shadow: 4px 4px 0 #000000;
-  filter: brightness(1.05);
+  transform: none;
+  background: var(--primary-dark, #401b9c);
+  box-shadow: none;
+  filter: none;
 }
 
 /* =========================
@@ -561,11 +564,11 @@ a.course-metric:hover {
 }
 
 a.course-metric {
-  border: 1.5px solid #000000;
-  border-radius: 10px;
+  border: 1px solid var(--primary, #5624d0);
+  border-radius: 4px;
   color: #ffffff;
-  background: linear-gradient(133deg, #6366f1 0%, #8b5cf6 100%);
-  box-shadow: 2px 2px 0 #000000;
+  background: var(--primary, #5624d0);
+  box-shadow: none;
   transition: transform 0.18s ease, box-shadow 0.18s ease, filter 0.18s ease;
 }
 

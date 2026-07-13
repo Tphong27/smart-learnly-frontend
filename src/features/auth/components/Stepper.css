@@ -31,7 +31,7 @@
   width: 32px;
   height: 32px;
   border-radius: 999px;
-  border: 1.5px solid currentColor;
+  border: 1px solid currentColor;
   background: #ffffff;
   color: #17233e;
   font-weight: 800;
@@ -44,15 +44,15 @@
 
 .stepper__item--done .stepper__bullet {
   background: #6546d9;
-  border-color: #211b36;
+  border-color: #6546d9;
   color: #ffffff;
 }
 
 .stepper__item--current .stepper__bullet {
-  background: #f3cc63;
-  border-color: #211b36;
-  color: #17233e;
-  box-shadow: 3px 3px 0 #211b36;
+  background: #f3f0fa;
+  border-color: #5624d0;
+  color: #5624d0;
+  box-shadow: none;
 }
 
 .stepper__text {

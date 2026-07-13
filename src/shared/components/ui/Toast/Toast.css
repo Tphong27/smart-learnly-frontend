@@ -107,8 +107,8 @@
   align-self: center;
   min-height: 36px;
   padding: 0 14px;
-  border: 1.5px solid #211b36;
-  border-radius: 10px;
+  border: 1px solid var(--sl-purple, #5624d0);
+  border-radius: 4px;
   background: var(--sl-purple, #825ef5);
   color: #ffffff;
   font: inherit;
@@ -120,7 +120,7 @@
 
 .toast__action:hover {
   background: var(--sl-purple-dark, #6d28d2);
-  transform: translate(-1px, -1px);
+  transform: none;
 }
 
 .toast__action:focus-visible {

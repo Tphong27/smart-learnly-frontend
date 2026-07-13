@@ -34,8 +34,8 @@
   flex-direction: column;
 
   background: #ffffff;
-  border: 1.5px solid var(--sl-ink-deep, #211b36);
-  border-radius: var(--sl-radius-lg, 16px);
+  border: 1px solid var(--sl-line, #d1d7dc);
+  border-radius: var(--sl-radius-lg, 8px);
   box-shadow: var(--sl-shadow-modal, 0 24px 80px rgba(15, 23, 42, 0.28));
   animation: modal-dialog-in 180ms ease-out;
   outline: none;
@@ -64,7 +64,7 @@
   height: 100vh;
   max-height: 100vh;
   border: 0;
-  border-left: 1.5px solid var(--sl-ink-deep, #211b36);
+  border-left: 1px solid var(--sl-line, #d1d7dc);
   border-radius: 0;
   animation: modal-slide-in-right 0.22s ease-out;
 }
@@ -74,9 +74,9 @@
     max-width: 100%;
     height: auto;
     max-height: 90vh;
-    border-radius: 18px 18px 0 0;
+    border-radius: 8px 8px 0 0;
     border-left: none;
-    border-top: 1.5px solid var(--sl-ink-deep, #211b36);
+    border-top: 1px solid var(--sl-line, #d1d7dc);
     animation: modal-slide-in-bottom 0.22s ease-out;
   }
 }
