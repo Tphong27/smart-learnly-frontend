@@ -2,6 +2,13 @@ import { useState } from 'react'
 import { ArrowDown, ArrowDownToLine, ArrowUp, ArrowUpToLine, Eye, FileAudio, ImagePlus, Trash2, Upload } from 'lucide-react'
 import { Modal, useToast } from '@/shared/components/ui'
 
+function clampMoveIndex(targetIndex, length) {
+  if (length <= 0) return 0
+  if (targetIndex < 0) return 0
+  if (targetIndex >= length) return length - 1
+  return targetIndex
+}
+
 const MEDIA_CONFIG = {
   image: {
     label: 'Images',
@@ -52,13 +59,20 @@ function mediaMetaLabel(item, index) {
   return parts.join(' / ')
 }
 
-export function QuestionMediaManager({ mediaType, items, disabled, onAddFiles, onRemove, onMove }) {
+export function QuestionMediaManager({ mediaType, items, disabled, onAddFiles, onRemove, onMoveTo }) {
   const config = MEDIA_CONFIG[mediaType]
   const toast = useToast()
   const Icon = config.Icon
   const remainingSlots = Math.max(0, config.maxCount - items.length)
   const [previewItem, setPreviewItem] = useState(null)
   const previewUrl = previewItem ? itemUrl(previewItem) : null
+
+  function requestMoveTo(index, targetIndex) {
+    if (disabled || items.length < 2) return
+    const safeTarget = clampMoveIndex(targetIndex, items.length)
+    if (index === safeTarget) return
+    onMoveTo(index, safeTarget)
+  }
 
   function validateFiles(files) {
     if (!files.length) return []
@@ -85,16 +99,6 @@ export function QuestionMediaManager({ mediaType, items, disabled, onAddFiles, o
     const validFiles = validateFiles(Array.from(event.target.files || []))
     event.target.value = ''
     if (validFiles.length) onAddFiles(validFiles)
-  }
-
-  function moveTo(index, targetIndex) {
-    if (disabled || index === targetIndex) return
-    const direction = targetIndex > index ? 1 : -1
-    let currentIndex = index
-    while (currentIndex !== targetIndex) {
-      onMove(currentIndex, direction)
-      currentIndex += direction
-    }
   }
 
   return (
@@ -159,10 +163,10 @@ export function QuestionMediaManager({ mediaType, items, disabled, onAddFiles, o
                   </>
                 )}
                 <div className="question-media-manager__actions">
-                  <button type="button" className="admin-table__icon-btn" disabled={disabled || index === 0} onClick={() => moveTo(index, 0)} aria-label="Move media to primary"><ArrowUpToLine size={15} /></button>
-                  <button type="button" className="admin-table__icon-btn" disabled={disabled || index === 0} onClick={() => onMove(index, -1)} aria-label="Move media up"><ArrowUp size={15} /></button>
-                  <button type="button" className="admin-table__icon-btn" disabled={disabled || index === items.length - 1} onClick={() => onMove(index, 1)} aria-label="Move media down"><ArrowDown size={15} /></button>
-                  <button type="button" className="admin-table__icon-btn" disabled={disabled || index === items.length - 1} onClick={() => moveTo(index, items.length - 1)} aria-label="Move media to end"><ArrowDownToLine size={15} /></button>
+                  <button type="button" className="admin-table__icon-btn" disabled={disabled || index === 0} onClick={() => requestMoveTo(index, 0)} aria-label="Move media to primary"><ArrowUpToLine size={15} /></button>
+                  <button type="button" className="admin-table__icon-btn" disabled={disabled || index === 0} onClick={() => requestMoveTo(index, index - 1)} aria-label="Move media up"><ArrowUp size={15} /></button>
+                  <button type="button" className="admin-table__icon-btn" disabled={disabled || index === items.length - 1} onClick={() => requestMoveTo(index, index + 1)} aria-label="Move media down"><ArrowDown size={15} /></button>
+                  <button type="button" className="admin-table__icon-btn" disabled={disabled || index === items.length - 1} onClick={() => requestMoveTo(index, items.length - 1)} aria-label="Move media to end"><ArrowDownToLine size={15} /></button>
                   <button type="button" className="admin-table__icon-btn admin-table__icon-btn--danger" disabled={disabled} onClick={() => onRemove(item)} aria-label="Remove media"><Trash2 size={15} /></button>
                 </div>
               </div>

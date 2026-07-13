@@ -184,6 +184,7 @@ export function AdminQuestionBanksPage() {
       }
     })()
     return () => { cancelled = true }
+    // toast is intentionally included; useToast() returns a stable reference (useMemo in ToastProvider.jsx).
   }, [courseId, refreshKey, search, status, toast])
 
   const courseNameById = useMemo(() => {
