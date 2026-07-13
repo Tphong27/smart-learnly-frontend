@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import { Button, FormField, Modal, useToast } from "@/shared/components/ui";
 import { sanitizeAnswerHtml, sanitizeQuestionHtml } from "@/shared/utils/htmlSanitizer";
-import { courseService, getCurrentUser, questionBankService } from "@/services";
+import { auditLogService, courseService, getCurrentUser, questionBankService } from "@/services";
 import { formatDate } from "@/shared/utils/formatters";
 import { DEFAULT_PAGE_SIZE } from "@/shared/constants/pagination";
 import "../../admin-shared.css";
@@ -93,6 +93,44 @@ export function AdminQuestionBankDetailPage() {
   const [questionFormModal, setQuestionFormModal] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
   const [restoreModalOpen, setRestoreModalOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState("questions");
+  const [activity, setActivity] = useState([]);
+  const [activityLoading, setActivityLoading] = useState(false);
+  const [activityError, setActivityError] = useState(null);
+  const [activityTotalItems, setActivityTotalItems] = useState(0);
+  const [activityPage, setActivityPage] = useState(0);
+  const ACTIVITY_PAGE_SIZE = 10;
+
+  useEffect(() => {
+    if (activeTab !== "activity" || !bankId) return;
+    let cancelled = false;
+    (async () => {
+      setActivityLoading(true);
+      setActivityError(null);
+      try {
+        const data = await auditLogService.list({
+          targetType: "QUESTION_BANK",
+          targetId: bankId,
+          page: activityPage,
+          size: ACTIVITY_PAGE_SIZE,
+        });
+        if (cancelled) return;
+        setActivity(data.items || []);
+        setActivityTotalItems(data.totalItems || 0);
+      } catch (err) {
+        if (!cancelled) {
+          const message = err?.message || "Could not load activity.";
+          setActivityError(message);
+          toast.error(message);
+        }
+      } finally {
+        if (!cancelled) setActivityLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [activeTab, bankId, activityPage, refreshKey, toast]);
 
   useEffect(() => {
     let cancelled = false;
@@ -148,6 +186,7 @@ export function AdminQuestionBankDetailPage() {
     refreshKey,
     search,
     status,
+    // toast is intentionally included; useToast() returns a stable reference (useMemo in ToastProvider.jsx).
     toast,
     type,
   ]);
@@ -307,6 +346,32 @@ export function AdminQuestionBankDetailPage() {
         </section>
       )}
 
+      <nav
+        className="admin-card admin-card--flush"
+        style={{ marginBottom: 18, padding: 0 }}
+        aria-label="Detail sections"
+      >
+        <div className="admin-toolbar" style={{ padding: 0, gap: 4 }}>
+          <button
+            type="button"
+            className={`admin-tab ${activeTab === "questions" ? "is-active" : ""}`}
+            onClick={() => setActiveTab("questions")}
+            aria-pressed={activeTab === "questions"}
+          >
+            Questions ({pageInfo.totalItems})
+          </button>
+          <button
+            type="button"
+            className={`admin-tab ${activeTab === "activity" ? "is-active" : ""}`}
+            onClick={() => setActiveTab("activity")}
+            aria-pressed={activeTab === "activity"}
+          >
+            Activity
+          </button>
+        </div>
+      </nav>
+
+      {activeTab === "questions" && (
       <section className="admin-card admin-card--flush">
         <div className="admin-toolbar">
           <div className="admin-toolbar__filters">
@@ -561,6 +626,87 @@ export function AdminQuestionBankDetailPage() {
           </div>
         )}
       </section>
+      )}
+
+      {activeTab === "activity" && (
+        <section className="admin-card admin-card--flush" aria-label="Bank activity log">
+          <div className="admin-toolbar" style={{ padding: 0 }}>
+            <strong>Activity log</strong>
+            <span style={{ color: "#64748b", fontSize: 13 }}>
+              {activityTotalItems} events
+            </span>
+          </div>
+          {activityLoading ? (
+            <div className="admin-loading">Loading activity...</div>
+          ) : activityError ? (
+            <div className="admin-error">{activityError}</div>
+          ) : activity.length === 0 ? (
+            <div className="admin-empty">
+              No activity recorded for this bank yet.
+            </div>
+          ) : (
+            <>
+              <table className="admin-table">
+                <thead>
+                  <tr>
+                    <th>When</th>
+                    <th>Actor</th>
+                    <th>Action</th>
+                    <th>Result</th>
+                    <th>Summary</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {activity.map((log) => (
+                    <tr key={log.auditLogId || log.id}>
+                      <td>{formatDate(log.occurredAt)}</td>
+                      <td>{log.actorEmail || "System"}</td>
+                      <td>
+                        <span className="admin-status admin-status--draft">
+                          {log.action}
+                        </span>
+                      </td>
+                      <td>{log.result}</td>
+                      <td>{log.summary || log.actorRole || ""}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  padding: "12px 16px",
+                  borderTop: "1px solid #e5e7eb",
+                }}
+              >
+                <span style={{ color: "#64748b", fontSize: 13 }}>
+                  Page {activityPage + 1}
+                </span>
+                <div style={{ display: "inline-flex", gap: 8 }}>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    disabled={activityPage === 0}
+                    onClick={() => setActivityPage((value) => Math.max(0, value - 1))}
+                  >
+                    Previous
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    disabled={(activityPage + 1) * ACTIVITY_PAGE_SIZE >= activityTotalItems}
+                    onClick={() => setActivityPage((value) => value + 1)}
+                  >
+                    Next
+                  </Button>
+                </div>
+              </div>
+            </>
+          )}
+        </section>
+      )}
 
       <AdminQuestionFormModal
         open={Boolean(questionFormModal)}

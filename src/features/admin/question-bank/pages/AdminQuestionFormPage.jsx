@@ -438,14 +438,15 @@ export function AdminQuestionForm({
     );
   }
 
-  function moveMedia(mediaType, index, direction) {
+  function moveMediaTo(mediaType, fromIndex, toIndex) {
     const setter = mediaType === "image" ? setImageMedia : setAudioMedia;
     setter((current) => {
+      if (fromIndex < 0 || fromIndex >= current.length) return current;
+      const safeTo = Math.max(0, Math.min(toIndex, current.length - 1));
+      if (fromIndex === safeTo) return current;
       const next = [...current];
-      const targetIndex = index + direction;
-      if (targetIndex < 0 || targetIndex >= next.length) return current;
-      const [item] = next.splice(index, 1);
-      next.splice(targetIndex, 0, item);
+      const [item] = next.splice(fromIndex, 1);
+      next.splice(safeTo, 0, item);
       return next;
     });
   }
@@ -907,9 +908,7 @@ export function AdminQuestionForm({
                   disabled={submitting || values.status === "archived"}
                   onAddFiles={(files) => addMediaFiles("image", files)}
                   onRemove={(item) => removeMedia("image", item)}
-                  onMove={(index, direction) =>
-                    moveMedia("image", index, direction)
-                  }
+                  onMoveTo={(from, to) => moveMediaTo("image", from, to)}
                 />
               ) : (
                 <QuestionMediaManager
@@ -918,9 +917,7 @@ export function AdminQuestionForm({
                   disabled={submitting || values.status === "archived"}
                   onAddFiles={(files) => addMediaFiles("audio", files)}
                   onRemove={(item) => removeMedia("audio", item)}
-                  onMove={(index, direction) =>
-                    moveMedia("audio", index, direction)
-                  }
+                  onMoveTo={(from, to) => moveMediaTo("audio", from, to)}
                 />
               )}
             </div>
