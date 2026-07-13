@@ -9,38 +9,6 @@
  *  - Quiet page background; white cards for grouped content.
  */
 
-:root {
-  --sl-purple: #825ef5;
-  --sl-purple-dark: #6d28d2;
-  --sl-purple-soft: #f3eefe;
-  --sl-purple-border: #d8c8fb;
-  --sl-ink: #0f172a;
-  --sl-ink-deep: #211b36;
-  --sl-muted: #64708a;
-  --sl-line: #e4eaf4;
-  --sl-line-soft: #eef1f7;
-  --sl-surface: #f7f9fc;
-  --sl-surface-warm: #f8f7f4;
-  --sl-success: #168c76;
-  --sl-success-soft: #e7f8ee;
-  --sl-warning: #b76e00;
-  --sl-warning-soft: #fff5d6;
-  --sl-danger: #b91c1c;
-  --sl-danger-soft: #fde7e7;
-  --sl-info: #2f5fbf;
-  --sl-info-soft: #e6efff;
-
-  --sl-radius-sm: 10px;
-  --sl-radius-md: 14px;
-  --sl-radius-lg: 16px;
-  --sl-radius-xl: 20px;
-
-  --sl-shadow-tactile: 3px 3px 0 #211b36;
-  --sl-shadow-tactile-hover: 5px 5px 0 #211b36;
-  --sl-shadow-soft: 0 1px 2px rgba(15, 23, 42, 0.04), 0 4px 12px rgba(15, 23, 42, 0.04);
-  --sl-shadow-modal: 0 20px 25px -5px rgba(15, 23, 42, 0.12), 0 12px 24px -8px rgba(15, 23, 42, 0.08);
-}
-
 /* ==========================================================================
    Page shell
    ========================================================================== */

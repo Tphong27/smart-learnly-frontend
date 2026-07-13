@@ -9,6 +9,7 @@ import {
     Sparkles,
 } from "lucide-react";
 import { Link } from "react-router-dom";
+import { Button } from "@/shared/components/ui";
 import {
     courseService,
     getCurrentUser,
@@ -142,6 +143,7 @@ export function TraineeDashboardPage() {
     const [progress, setProgress] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
+    const [reloadKey, setReloadKey] = useState(0);
 
     const currentUser = getCurrentUser();
 
@@ -185,7 +187,7 @@ export function TraineeDashboardPage() {
         return () => {
             mounted = false;
         };
-    }, []);
+    }, [reloadKey]);
 
     const dashboard = useMemo(() => {
         const progressMap = createProgressMap(progress?.courses || []);
@@ -243,14 +245,27 @@ export function TraineeDashboardPage() {
             </header>
 
             {loading && (
-                <div className="trainee-dashboard-state">
+                <div
+                    className="trainee-dashboard-state"
+                    role="status"
+                    aria-live="polite"
+                >
                     Loading your learning space…
                 </div>
             )}
 
             {!loading && error && (
-                <div className="trainee-dashboard-state trainee-dashboard-state--error">
-                    {error}
+                <div
+                    className="trainee-dashboard-state trainee-dashboard-state--error"
+                    role="alert"
+                >
+                    <strong>We could not load your dashboard.</strong>
+                    <span>{error}</span>
+                    <Button
+                        onClick={() => setReloadKey((current) => current + 1)}
+                    >
+                        Try again
+                    </Button>
                 </div>
             )}
 
@@ -298,24 +313,23 @@ export function TraineeDashboardPage() {
                         )}
                         <div className="trainee-dashboard-feature__actions">
                             {dashboard.featuredCourse.accessAllowed ? (
-                                <Link
+                                <Button
                                     to={getLearningPath(
                                         dashboard.featuredCourse,
                                     )}
-                                    className="trainee-dashboard-primary-action"
+                                    rightIcon={<ArrowRight size={17} />}
                                 >
                                     {dashboard.featuredCourse.overallPercent > 0
                                         ? "Continue learning"
                                         : "Start course"}
-                                    <ArrowRight size={17} />
-                                </Link>
+                                </Button>
                             ) : null}
-                            <Link
+                            <Button
                                 to={`/courses/${dashboard.featuredCourse.slug || dashboard.featuredCourse.id}`}
-                                className="trainee-dashboard-secondary-action"
+                                variant="outline"
                             >
                                 View course
-                            </Link>
+                            </Button>
                         </div>
                     </div>
                 </section>
@@ -392,15 +406,16 @@ export function TraineeDashboardPage() {
                                         value={course.overallPercent}
                                     />
                                     {course.accessAllowed ? (
-                                        <Link
+                                        <Button
                                             to={getLearningPath(course)}
-                                            className="trainee-dashboard-card-action"
+                                            size="sm"
+                                            fullWidth
+                                            rightIcon={<ArrowRight size={16} />}
                                         >
                                             {course.overallPercent > 0
                                                 ? "Continue"
-                                                : "Start course"}{" "}
-                                            <ArrowRight size={16} />
-                                        </Link>
+                                                : "Start course"}
+                                        </Button>
                                     ) : (
                                         <span className="trainee-dashboard-card-blocked">
                                             Access unavailable
@@ -421,12 +436,12 @@ export function TraineeDashboardPage() {
                         You have not enrolled in a course yet. Find a course
                         that fits your next goal.
                     </p>
-                    <Link
+                    <Button
                         to="/learning/courses"
-                        className="trainee-dashboard-primary-action"
+                        rightIcon={<ArrowRight size={17} />}
                     >
-                        Browse course catalog <ArrowRight size={17} />
-                    </Link>
+                        Browse course catalog
+                    </Button>
                 </section>
             )}
 

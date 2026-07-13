@@ -457,12 +457,6 @@
   padding: 16px;
 }
 
-.button.is-disabled {
-  cursor: not-allowed;
-  opacity: 0.55;
-  pointer-events: none;
-}
-
 @media (max-width: 720px) {
   .question-media-manager__toolbar,
   .question-media-manager__item,

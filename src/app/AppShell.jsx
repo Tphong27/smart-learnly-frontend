@@ -1,4 +1,9 @@
-import { BrowserRouter, Navigate, useRoutes } from "react-router-dom";
+import {
+    BrowserRouter,
+    Navigate,
+    useLocation,
+    useRoutes,
+} from "react-router-dom";
 import { PublicLayout } from "./layouts/PublicLayout";
 import { AuthAwareLayout } from "./layouts/AuthAwareLayout";
 import { AppLayout } from "./layouts/AppLayout";
@@ -157,11 +162,25 @@ function AppRoutes() {
     return useRoutes(appRoutes);
 }
 
+function RoutedApp() {
+    const { pathname } = useLocation();
+    const showPublicFooter =
+        pathname === "/" ||
+        /^\/courses\/[^/]+$/.test(pathname) ||
+        /^\/trainers\/[^/]+$/.test(pathname);
+
+    return (
+        <>
+            <AppRoutes />
+            {showPublicFooter && <SiteFooter />}
+        </>
+    );
+}
+
 export function AppShell() {
     return (
         <BrowserRouter>
-            <AppRoutes />
-            <SiteFooter />
+            <RoutedApp />
         </BrowserRouter>
     );
 }

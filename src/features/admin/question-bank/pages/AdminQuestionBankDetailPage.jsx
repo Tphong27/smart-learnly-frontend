@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import {
   Archive,
   AlertTriangle,
@@ -11,6 +11,8 @@ import {
   Upload,
 } from "lucide-react";
 import { Button, FormField, Modal, useToast } from "@/shared/components/ui";
+import { AdminFilterToolbar } from "@/features/admin/components/AdminFilterToolbar";
+import Pagination from "@/shared/components/Pagination";
 import { sanitizeAnswerHtml, sanitizeQuestionHtml } from "@/shared/utils/htmlSanitizer";
 import { auditLogService, courseService, getCurrentUser, questionBankService } from "@/services";
 import { formatDate } from "@/shared/utils/formatters";
@@ -19,8 +21,6 @@ import "../../admin-shared.css";
 import "./question-bank.css";
 import { QuestionImportModal } from "../components/QuestionImportModal";
 import { AdminQuestionFormModal } from "./AdminQuestionFormPage";
-
-const PAGE_SIZE = DEFAULT_PAGE_SIZE;
 
 function canWriteQuestionBank() {
   const role = getCurrentUser()?.role;
@@ -90,6 +90,7 @@ export function AdminQuestionBankDetailPage() {
   const [difficulty, setDifficulty] = useState("all");
   const [moduleId, setModuleId] = useState("all");
   const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [refreshKey, setRefreshKey] = useState(0);
   const [archivingId, setArchivingId] = useState(null);
   const [importOpen, setImportOpen] = useState(false);
@@ -103,6 +104,15 @@ export function AdminQuestionBankDetailPage() {
   const [activityTotalItems, setActivityTotalItems] = useState(0);
   const [activityPage, setActivityPage] = useState(0);
   const ACTIVITY_PAGE_SIZE = 10;
+
+  function clearQuestionFilters() {
+    setSearch("");
+    setModuleId("all");
+    setType("all");
+    setStatus("all");
+    setDifficulty("all");
+    setPage(0);
+  }
 
   useEffect(() => {
     if (activeTab !== "activity" || !bankId) return;
@@ -157,7 +167,7 @@ export function AdminQuestionBankDetailPage() {
             difficulty: difficulty === "all" ? undefined : difficulty,
             moduleId: moduleId === "all" ? undefined : moduleId,
             page,
-            size: PAGE_SIZE,
+            size: pageSize,
           }),
         ]);
         if (cancelled) return;
@@ -186,6 +196,7 @@ export function AdminQuestionBankDetailPage() {
     difficulty,
     moduleId,
     page,
+    pageSize,
     refreshKey,
     search,
     status,
@@ -255,12 +266,13 @@ export function AdminQuestionBankDetailPage() {
     <div className="admin-page">
       <header className="admin-page__header">
         <div>
-          <Link
+          <Button
             to="/admin/question-banks"
-            className="button button--ghost button--sm"
+            variant="ghost"
+            size="sm"
           >
             Back to banks
-          </Link>
+          </Button>
           <h1 className="admin-page__title" style={{ marginTop: 8 }}>
             {bank?.name || "Question bank"}
           </h1>
@@ -372,80 +384,94 @@ export function AdminQuestionBankDetailPage() {
       </nav>
 
       {activeTab === "questions" && (
-      <section className="admin-card admin-card--flush">
-        <div className="admin-toolbar">
-          <div className="admin-toolbar__filters">
-            <div className="admin-toolbar__search">
-              <FormField
-                placeholder="Search questions..."
-                value={search}
-                onChange={(event) => {
-                  setSearch(event.target.value);
-                  setPage(0);
-                }}
-                leftIcon={<Search size={16} />}
-              />
-            </div>
-            <select
-              className="admin-toolbar__select"
-              value={moduleId}
+      <section className="admin-card admin-card--flush admin-card--filterable">
+        <AdminFilterToolbar
+          ariaLabel="Question search and filters"
+          search={(
+            <FormField
+              id="question-list-search"
+              aria-label="Search questions"
+              placeholder="Search questions..."
+              value={search}
               onChange={(event) => {
-                setModuleId(event.target.value);
+                setSearch(event.target.value);
                 setPage(0);
               }}
-            >
-              <option value="all">All modules</option>
-              {modules.map((module) => (
-                <option key={module.id} value={module.id}>
-                  {module.title}
-                </option>
-              ))}
-            </select>
-            <select
-              className="admin-toolbar__select"
-              value={type}
-              onChange={(event) => {
-                setType(event.target.value);
-                setPage(0);
-              }}
-            >
-              <option value="all">All types</option>
-              <option value="multiple_choice">Multiple choice</option>
-              <option value="true_false">True/False</option>
-            </select>
-            <select
-              className="admin-toolbar__select"
-              value={status}
-              onChange={(event) => {
-                setStatus(event.target.value);
-                setPage(0);
-              }}
-            >
-              <option value="all">All statuses</option>
-              <option value="draft">Draft</option>
-              <option value="approved">Approved</option>
-              <option value="archived">Archived</option>
-            </select>
-            <select
-              className="admin-toolbar__select"
-              value={difficulty}
-              onChange={(event) => {
-                setDifficulty(event.target.value);
-                setPage(0);
-              }}
-            >
-              <option value="all">All difficulty</option>
-              <option value="1">1</option>
-              <option value="2">2</option>
-              <option value="3">3</option>
-              <option value="4">4</option>
-              <option value="5">5</option>
-            </select>
-          </div>
-          <span style={{ color: "#64748b", fontSize: 13 }}>
-            {pageInfo.totalItems} questions
-          </span>
-        </div>
+              leftIcon={<Search size={16} />}
+            />
+          )}
+          fields={[
+            {
+              name: "moduleId",
+              label: "Module",
+              type: "select",
+              value: moduleId,
+              defaultValue: "all",
+              options: [
+                { value: "all", label: "All modules" },
+                ...modules.map((module) => ({ value: module.id, label: module.title })),
+              ],
+            },
+            {
+              name: "type",
+              label: "Question type",
+              type: "select",
+              value: type,
+              defaultValue: "all",
+              options: [
+                { value: "all", label: "All types" },
+                { value: "multiple_choice", label: "Multiple choice" },
+                { value: "true_false", label: "True/False" },
+              ],
+            },
+            {
+              name: "status",
+              label: "Status",
+              type: "select",
+              value: status,
+              defaultValue: "all",
+              options: [
+                { value: "all", label: "All statuses" },
+                { value: "draft", label: "Draft" },
+                { value: "approved", label: "Approved" },
+                { value: "archived", label: "Archived" },
+              ],
+            },
+            {
+              name: "difficulty",
+              label: "Difficulty",
+              type: "select",
+              value: difficulty,
+              defaultValue: "all",
+              options: [
+                { value: "all", label: "All difficulties" },
+                ...[1, 2, 3, 4, 5].map((level) => ({ value: String(level), label: String(level) })),
+              ],
+            },
+          ]}
+          activeFilterCount={[
+            moduleId !== "all",
+            type !== "all",
+            status !== "all",
+            difficulty !== "all",
+          ].filter(Boolean).length}
+          canClear={Boolean(
+            search.trim()
+            || moduleId !== "all"
+            || type !== "all"
+            || status !== "all"
+            || difficulty !== "all"
+          )}
+          resultLabel={`${pageInfo.totalItems} questions`}
+          onApply={(nextFilters) => {
+            setModuleId(nextFilters.moduleId);
+            setType(nextFilters.type);
+            setStatus(nextFilters.status);
+            setDifficulty(nextFilters.difficulty);
+            setPage(0);
+          }}
+          onClear={clearQuestionFilters}
+        />
 
         {loading ? (
           <div className="admin-loading">Loading questions...</div>
@@ -463,7 +489,7 @@ export function AdminQuestionBankDetailPage() {
                   (left.displayOrder ?? left.orderIndex ?? 0) -
                   (right.displayOrder ?? right.orderIndex ?? 0),
               );
-              const questionNumber = page * PAGE_SIZE + index + 1;
+              const questionNumber = page * pageSize + index + 1;
               const questionId = question.questionId || question.id;
               const moduleLabel =
                 moduleNameById.get(question.moduleId) || "No module";
@@ -620,31 +646,19 @@ export function AdminQuestionBankDetailPage() {
           </div>
         )}
 
-        {pageInfo.totalPages > 1 && (
-          <div className="admin-pagination">
-            <span>
-              Page {pageInfo.page + 1} / {pageInfo.totalPages}
-            </span>
-            <div className="admin-pagination__controls">
-              <Button
-                size="sm"
-                variant="secondary"
-                disabled={page <= 0}
-                onClick={() => setPage((value) => Math.max(0, value - 1))}
-              >
-                Previous
-              </Button>
-              <Button
-                size="sm"
-                variant="secondary"
-                disabled={page + 1 >= pageInfo.totalPages}
-                onClick={() => setPage((value) => value + 1)}
-              >
-                Next
-              </Button>
-            </div>
-          </div>
-        )}
+        <Pagination
+          page={pageInfo.page + 1}
+          totalPages={pageInfo.totalPages}
+          totalItems={pageInfo.totalItems}
+          size={pageSize}
+          disabled={loading}
+          ariaLabel="Question list pagination"
+          onPageChange={(nextPage) => setPage(nextPage - 1)}
+          onSizeChange={(nextSize) => {
+            setPage(0);
+            setPageSize(nextSize);
+          }}
+        />
       </section>
       )}
 
@@ -692,37 +706,15 @@ export function AdminQuestionBankDetailPage() {
                   ))}
                 </tbody>
               </table>
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  padding: "12px 16px",
-                  borderTop: "1px solid #e5e7eb",
-                }}
-              >
-                <span style={{ color: "#64748b", fontSize: 13 }}>
-                  Page {activityPage + 1}
-                </span>
-                <div style={{ display: "inline-flex", gap: 8 }}>
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    disabled={activityPage === 0}
-                    onClick={() => setActivityPage((value) => Math.max(0, value - 1))}
-                  >
-                    Previous
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    disabled={(activityPage + 1) * ACTIVITY_PAGE_SIZE >= activityTotalItems}
-                    onClick={() => setActivityPage((value) => value + 1)}
-                  >
-                    Next
-                  </Button>
-                </div>
-              </div>
+              <Pagination
+                page={activityPage + 1}
+                totalPages={Math.max(1, Math.ceil(activityTotalItems / ACTIVITY_PAGE_SIZE))}
+                totalItems={activityTotalItems}
+                size={ACTIVITY_PAGE_SIZE}
+                disabled={activityLoading}
+                ariaLabel="Question bank activity pagination"
+                onPageChange={(nextPage) => setActivityPage(nextPage - 1)}
+              />
             </>
           )}
         </section>

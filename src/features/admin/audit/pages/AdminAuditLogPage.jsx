@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Eye, RotateCcw, Search } from "lucide-react";
-import { Button, Modal, useToast } from "@/shared/components/ui";
+import { Eye, Search } from "lucide-react";
+import { FormField, Modal, useToast } from "@/shared/components/ui";
+import { AdminFilterToolbar } from "@/features/admin/components/AdminFilterToolbar";
+import Pagination from "@/shared/components/Pagination";
 import {
   AUDIT_ACTIONS,
   AUDIT_DOMAINS,
@@ -171,6 +173,7 @@ export function AdminAuditLogPage() {
     from: searchParams.get("from") || "",
     to: searchParams.get("to") || "",
     page: Number(searchParams.get("page") || 0),
+    size: Math.max(1, Number(searchParams.get("size")) || DEFAULT_PAGE_SIZE),
   }), [searchParams]);
 
   function updateFilter(key, value) {
@@ -188,7 +191,28 @@ export function AdminAuditLogPage() {
   }
 
   function clearFilters() {
-    setSearchParams({ page: "0" });
+    setSearchParams({ page: "0", size: String(filters.size) });
+  }
+
+  function updatePageSize(nextSize) {
+    const next = new URLSearchParams(searchParams);
+    next.set("page", "0");
+    next.set("size", String(nextSize));
+    setSearchParams(next);
+  }
+
+  function applyFilters(nextFilters) {
+    const next = new URLSearchParams(searchParams);
+    ["domain", "action", "result", "actorRole", "targetType", "from", "to"].forEach((key) => {
+      const rawValue = nextFilters[key];
+      const value = key === "actorRole" || key === "targetType"
+        ? String(rawValue || "").trim().toUpperCase()
+        : rawValue;
+      if (value) next.set(key, value);
+      else next.delete(key);
+    });
+    next.set("page", "0");
+    setSearchParams(next);
   }
 
   useEffect(() => {
@@ -204,7 +228,7 @@ export function AdminAuditLogPage() {
           from: fromDateTimeLocal(filters.from),
           to: fromDateTimeLocal(filters.to),
           page: filters.page,
-          size: DEFAULT_PAGE_SIZE,
+          size: filters.size,
         });
 
         if (cancelled) return;
@@ -237,38 +261,98 @@ export function AdminAuditLogPage() {
         </div>
       </header>
 
-      <section className="admin-card admin-card--flush">
-        <div className="admin-toolbar">
-          <div className="admin-toolbar__filters">
-            <input
-              className="admin-toolbar__select admin-toolbar__search"
-              placeholder="Search actor, action, summary, target..."
+      <section className="admin-card admin-card--flush admin-card--filterable">
+        <AdminFilterToolbar
+          ariaLabel="Audit log search and filters"
+          search={(
+            <FormField
+              id="audit-log-search"
+              aria-label="Search audit logs"
+              placeholder="Search actor, action, summary, or target..."
               value={filters.keyword}
               onChange={(event) => updateFilter("keyword", event.target.value)}
+              leftIcon={<Search size={16} />}
             />
-            <select className="admin-toolbar__select" value={filters.domain} onChange={(event) => updateFilter("domain", event.target.value)}>
-              <option value="">All domains</option>
-              {AUDIT_DOMAINS.map((domain) => <option key={domain} value={domain}>{domain}</option>)}
-            </select>
-            <select className="admin-toolbar__select" value={filters.action} onChange={(event) => updateFilter("action", event.target.value)}>
-              <option value="">All actions</option>
-              {AUDIT_ACTIONS.map((action) => <option key={action} value={action}>{formatLabel(action)}</option>)}
-            </select>
-            <select className="admin-toolbar__select" value={filters.result} onChange={(event) => updateFilter("result", event.target.value)}>
-              <option value="">All results</option>
-              {AUDIT_RESULTS.map((result) => <option key={result} value={result}>{result}</option>)}
-            </select>
-            <input className="admin-toolbar__select" placeholder="Actor role" value={filters.actorRole} onChange={(event) => updateFilter("actorRole", event.target.value.toUpperCase())} />
-            <input className="admin-toolbar__select" placeholder="Target type" value={filters.targetType} onChange={(event) => updateFilter("targetType", event.target.value.toUpperCase())} />
-            <input className="admin-toolbar__select" type="datetime-local" value={toDateTimeLocal(filters.from)} onChange={(event) => updateFilter("from", event.target.value)} />
-            <input className="admin-toolbar__select" type="datetime-local" value={toDateTimeLocal(filters.to)} onChange={(event) => updateFilter("to", event.target.value)} />
-          </div>
-
-          <div style={{ display: "flex", gap: 8 }}>
-            <Button type="button" variant="ghost" leftIcon={<RotateCcw size={14} />} onClick={clearFilters}>Clear</Button>
-            <Button type="button" leftIcon={<Search size={14} />} onClick={() => updatePage(0)}>Refresh</Button>
-          </div>
-        </div>
+          )}
+          fields={[
+            {
+              name: "domain",
+              label: "Domain",
+              type: "select",
+              value: filters.domain,
+              options: [
+                { value: "", label: "All domains" },
+                ...AUDIT_DOMAINS.map((domain) => ({ value: domain, label: domain })),
+              ],
+            },
+            {
+              name: "action",
+              label: "Action",
+              type: "select",
+              value: filters.action,
+              options: [
+                { value: "", label: "All actions" },
+                ...AUDIT_ACTIONS.map((action) => ({ value: action, label: formatLabel(action) })),
+              ],
+            },
+            {
+              name: "result",
+              label: "Result",
+              type: "select",
+              value: filters.result,
+              options: [
+                { value: "", label: "All results" },
+                ...AUDIT_RESULTS.map((result) => ({ value: result, label: result })),
+              ],
+            },
+            {
+              name: "actorRole",
+              label: "Actor role",
+              value: filters.actorRole,
+              placeholder: "For example: ADMIN",
+            },
+            {
+              name: "targetType",
+              label: "Target type",
+              value: filters.targetType,
+              placeholder: "For example: USER",
+            },
+            {
+              name: "from",
+              label: "From date and time",
+              type: "datetime-local",
+              value: toDateTimeLocal(filters.from),
+            },
+            {
+              name: "to",
+              label: "To date and time",
+              type: "datetime-local",
+              value: toDateTimeLocal(filters.to),
+            },
+          ]}
+          activeFilterCount={[
+            filters.domain,
+            filters.action,
+            filters.result,
+            filters.actorRole,
+            filters.targetType,
+            filters.from,
+            filters.to,
+          ].filter(Boolean).length}
+          canClear={Boolean(
+            filters.keyword
+            || filters.domain
+            || filters.action
+            || filters.result
+            || filters.actorRole
+            || filters.targetType
+            || filters.from
+            || filters.to
+          )}
+          resultLabel={`${totalItems} events`}
+          onApply={applyFilters}
+          onClear={clearFilters}
+        />
 
         {loading ? (
           <div className="admin-loading">Loading audit logs...</div>
@@ -319,14 +403,16 @@ export function AdminAuditLogPage() {
           </div>
         )}
 
-        <div className="admin-pagination">
-          <span>{totalItems} event{totalItems === 1 ? "" : "s"}</span>
-          <div className="admin-pagination__controls">
-            <button className="admin-pagination__btn" type="button" disabled={page === 0} onClick={() => updatePage(page - 1)}>Previous</button>
-            <span className="admin-pagination__btn admin-pagination__btn--active">{page + 1} / {Math.max(totalPages, 1)}</span>
-            <button className="admin-pagination__btn" type="button" disabled={page + 1 >= totalPages} onClick={() => updatePage(page + 1)}>Next</button>
-          </div>
-        </div>
+        <Pagination
+          page={page + 1}
+          totalPages={totalPages}
+          totalItems={totalItems}
+          size={filters.size}
+          disabled={loading}
+          ariaLabel="Audit log pagination"
+          onPageChange={(nextPage) => updatePage(nextPage - 1)}
+          onSizeChange={updatePageSize}
+        />
       </section>
 
       <AuditDetailModal auditLogId={detailId} open={Boolean(detailId)} onClose={() => setDetailId(null)} />

@@ -41,6 +41,7 @@ export function CourseListPage({
   );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [retryKey, setRetryKey] = useState(0);
 
   function hasAccessToken() {
     const token = localStorage.getItem("accessToken");
@@ -53,7 +54,9 @@ export function CourseListPage({
   const onSale = searchParams.get("onSale") === "true";
   const featured = searchParams.get("featured") === "true";
   const sort = searchParams.get("sort") || "POPULAR";
-  const page = Number(searchParams.get("page") || 0);
+  const requestedPage = Number(searchParams.get("page") || 0);
+  const page =
+    Number.isInteger(requestedPage) && requestedPage >= 0 ? requestedPage : 0;
   const priceFilter = PRICE_RANGES[priceRange] || {};
 
   useEffect(() => {
@@ -221,6 +224,7 @@ export function CourseListPage({
     onSale,
     featured,
     sort,
+    retryKey,
   ]);
 
   function updateQuery(nextValues) {
@@ -355,17 +359,17 @@ export function CourseListPage({
         )}
 
         {loading && (
-          <div className="course-state">
+          <div className="course-state" role="status" aria-live="polite">
             <p>Loading courses...</p>
           </div>
         )}
 
         {!loading && error && (
-          <div className="course-state course-state--error">
+          <div className="course-state course-state--error" role="alert">
             <p>{error}</p>
             <button
               type="button"
-              onClick={() => updateQuery({ page: String(page) })}
+              onClick={() => setRetryKey((current) => current + 1)}
             >
               Try again
             </button>
@@ -395,16 +399,34 @@ export function CourseListPage({
 
             {pageInfo.totalPages > 1 && (
               <nav className="course-pagination" aria-label="Course pagination">
+                <button
+                  type="button"
+                  disabled={pageInfo.page <= 0}
+                  onClick={() => updateQuery({ page: String(pageInfo.page - 1) })}
+                  aria-label="Go to previous course page"
+                >
+                  Previous
+                </button>
                 {pageNumbers.map((pageNumber) => (
                   <button
                     key={pageNumber}
                     type="button"
                     className={pageNumber === pageInfo.page ? "is-active" : ""}
                     onClick={() => updateQuery({ page: String(pageNumber) })}
+                    aria-label={`Go to course page ${pageNumber + 1}`}
+                    aria-current={pageNumber === pageInfo.page ? "page" : undefined}
                   >
                     {pageNumber + 1}
                   </button>
                 ))}
+                <button
+                  type="button"
+                  disabled={pageInfo.page >= pageInfo.totalPages - 1}
+                  onClick={() => updateQuery({ page: String(pageInfo.page + 1) })}
+                  aria-label="Go to next course page"
+                >
+                  Next
+                </button>
               </nav>
             )}
           </>

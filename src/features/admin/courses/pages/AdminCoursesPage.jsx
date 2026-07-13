@@ -14,6 +14,7 @@ import {
     X,
 } from "lucide-react";
 import { Button, Modal, useToast } from "@/shared/components/ui";
+import Pagination from "@/shared/components/Pagination";
 import { categoryService, courseService } from "@/services";
 import { getCurrentUser } from "@/services/api-client";
 import { formatDate, formatPrice } from "@/shared/utils/formatters";
@@ -110,7 +111,7 @@ function RowActionsMenu({ course, isTrainer, previewReturnPath, onRequestDelete 
 
     useEffect(() => {
         if (!open) return undefined;
-        function handle(event) {
+        function handle() {
             setOpen(false);
         }
         function handleKey(event) {
@@ -220,6 +221,7 @@ export function AdminCoursesPage() {
     const [categories, setCategories] = useState([]);
     const [deleteState, setDeleteState] = useState({ open: false, target: null });
     const [pageRequest, setPageRequest] = useState(0);
+    const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
 
     useEffect(() => {
         let cancelled = false;
@@ -246,7 +248,7 @@ export function AdminCoursesPage() {
             try {
                 const data = await courseService.listAdmin({
                     page: pageRequest,
-                    size: DEFAULT_PAGE_SIZE,
+                    size: pageSize,
                 });
                 if (cancelled) return;
                 setItems(data.items || []);
@@ -267,7 +269,7 @@ export function AdminCoursesPage() {
         return () => {
             cancelled = true;
         };
-    }, [pageRequest, toast]);
+    }, [pageRequest, pageSize, toast]);
 
     const filteredItems = useMemo(() => {
         const query = keyword.trim().toLowerCase();
@@ -576,31 +578,19 @@ export function AdminCoursesPage() {
                     ) : null}
                 </div>
 
-                {totalPages > 1 ? (
-                    <nav className="course-management__pagination" aria-label="Course list pagination">
-                        <span>
-                            Page {page + 1} of {totalPages}
-                        </span>
-                        <div>
-                            <button
-                                type="button"
-                                onClick={() => setPageRequest((current) => Math.max(0, current - 1))}
-                                disabled={page === 0}
-                            >
-                                Previous
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() =>
-                                    setPageRequest((current) => Math.min(totalPages - 1, current + 1))
-                                }
-                                disabled={page + 1 >= totalPages}
-                            >
-                                Next
-                            </button>
-                        </div>
-                    </nav>
-                ) : null}
+                <Pagination
+                    page={page + 1}
+                    totalPages={totalPages}
+                    totalItems={totalItems}
+                    size={pageSize}
+                    disabled={loading}
+                    ariaLabel="Course list pagination"
+                    onPageChange={(nextPage) => setPageRequest(nextPage - 1)}
+                    onSizeChange={(nextSize) => {
+                        setPageRequest(0);
+                        setPageSize(nextSize);
+                    }}
+                />
             </section>
 
             <DeleteCourseModal

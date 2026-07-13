@@ -8,6 +8,7 @@ import {
     X,
 } from "lucide-react";
 import { courseService } from "@/services";
+import { Button } from "@/shared/components/ui";
 import { SmartLearnlyMark } from "./SmartLearnlyMark";
 
 function CourseSuggestionThumbnail({ course }) {
@@ -304,15 +305,12 @@ export function SiteHeader() {
                         <ChevronDown size={16} />
                     </button>
 
-                    <a href="/login" className="header-btn header-btn-outline">
+                    <Button to="/login" variant="outline">
                         Log in
-                    </a>
-                    <a
-                        href="/register"
-                        className="header-btn header-btn-primary"
-                    >
+                    </Button>
+                    <Button to="/register">
                         Register
-                    </a>
+                    </Button>
                 </nav>
             </div>
         </header>

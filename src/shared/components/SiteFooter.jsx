@@ -9,8 +9,7 @@ const footerGroups = [
     title: "Platform",
     links: [
       { label: "Explore courses", href: "/#courses" },
-      { label: "Features", href: "/#features" },
-      { label: "How it works", href: "/#how-it-works" },
+      { label: "Learning tools", href: "/#features" },
     ],
   },
   {

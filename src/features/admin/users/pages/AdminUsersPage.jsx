@@ -4,6 +4,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Edit2, Plus, Search, Trash2, UserCog } from "lucide-react";
 import { Button, Form, FormField, Modal, useToast } from "@/shared/components/ui";
+import { AdminFilterToolbar } from "@/features/admin/components/AdminFilterToolbar";
+import Pagination from "@/shared/components/Pagination";
 import { userService } from "@/services";
 import {
   formatDateTime,
@@ -102,7 +104,6 @@ function UserFormModal({ open, mode, initial, onClose, onSaved }) {
   useEffect(() => {
     if (!open) return;
     reset(defaultValues);
-    setServerError(null);
   }, [defaultValues, open, reset]);
 
   async function onSubmit(values) {
@@ -230,6 +231,7 @@ export function AdminUsersPage() {
   const toast = useToast();
   const [items, setItems] = useState([]);
   const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [totalPages, setTotalPages] = useState(0);
   const [totalElements, setTotalElements] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -243,6 +245,15 @@ export function AdminUsersPage() {
   const [deleteState, setDeleteState] = useState({ open: false, target: null });
 
   useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setPage(0);
+      setSubmittedKeyword(keyword.trim());
+    }, 300);
+
+    return () => window.clearTimeout(timer);
+  }, [keyword]);
+
+  useEffect(() => {
     let cancelled = false;
 
     async function loadUsers() {
@@ -251,7 +262,7 @@ export function AdminUsersPage() {
       try {
         const data = await userService.listAdmin({
           page,
-          size: DEFAULT_PAGE_SIZE,
+          size: pageSize,
           keyword: submittedKeyword,
           role: roleFilter,
           status: statusFilter,
@@ -274,16 +285,10 @@ export function AdminUsersPage() {
     return () => {
       cancelled = true;
     };
-  }, [page, refreshKey, roleFilter, statusFilter, submittedKeyword, toast]);
+  }, [page, pageSize, refreshKey, roleFilter, statusFilter, submittedKeyword, toast]);
 
   function refreshList() {
     setRefreshKey((key) => key + 1);
-  }
-
-  function handleSearchSubmit(event) {
-    event.preventDefault();
-    setPage(0);
-    setSubmittedKeyword(keyword.trim());
   }
 
   function handleSaved() {
@@ -294,6 +299,14 @@ export function AdminUsersPage() {
   function handleDeleted() {
     setDeleteState({ open: false, target: null });
     refreshList();
+  }
+
+  function clearUserFilters() {
+    setKeyword("");
+    setSubmittedKeyword("");
+    setRoleFilter("");
+    setStatusFilter("");
+    setPage(0);
   }
 
   return (
@@ -307,29 +320,53 @@ export function AdminUsersPage() {
         </Button>
       </header>
 
-      <section className="admin-card admin-card--flush">
-        <div className="admin-toolbar">
-          <form className="admin-toolbar__filters" onSubmit={handleSearchSubmit}>
-            <div className="admin-toolbar__search">
-              <FormField
-                placeholder="Search name, email, phone..."
-                value={keyword}
-                onChange={(event) => setKeyword(event.target.value)}
-                leftIcon={<Search size={16} />}
-              />
-            </div>
-            <select className="admin-toolbar__select" value={roleFilter} onChange={(event) => { setPage(0); setRoleFilter(event.target.value); }}>
-              <option value="">All roles</option>
-              {USER_ROLES.map((role) => <option key={role} value={role}>{role}</option>)}
-            </select>
-            <select className="admin-toolbar__select" value={statusFilter} onChange={(event) => { setPage(0); setStatusFilter(event.target.value); }}>
-              <option value="">All statuses</option>
-              {USER_STATUSES.map((status) => <option key={status} value={status}>{formatLabel(status)}</option>)}
-            </select>
-            <Button type="submit" variant="secondary">Filter</Button>
-          </form>
-          <span style={{ color: "#64708a", fontSize: 13 }}>{totalElements} users</span>
-        </div>
+      <section className="admin-card admin-card--flush admin-card--filterable">
+        <AdminFilterToolbar
+          ariaLabel="User search and filters"
+          search={(
+            <FormField
+              id="admin-user-search"
+              aria-label="Search users"
+              placeholder="Search name, email, or phone..."
+              value={keyword}
+              onChange={(event) => setKeyword(event.target.value)}
+              leftIcon={<Search size={16} />}
+            />
+          )}
+          fields={[
+            {
+              name: "role",
+              label: "Role",
+              type: "select",
+              value: roleFilter,
+              defaultValue: "",
+              options: [
+                { value: "", label: "All roles" },
+                ...USER_ROLES.map((role) => ({ value: role, label: role })),
+              ],
+            },
+            {
+              name: "status",
+              label: "Status",
+              type: "select",
+              value: statusFilter,
+              defaultValue: "",
+              options: [
+                { value: "", label: "All statuses" },
+                ...USER_STATUSES.map((status) => ({ value: status, label: formatLabel(status) })),
+              ],
+            },
+          ]}
+          activeFilterCount={Number(Boolean(roleFilter)) + Number(Boolean(statusFilter))}
+          canClear={Boolean(keyword.trim() || roleFilter || statusFilter)}
+          resultLabel={`${totalElements} users`}
+          onApply={(nextFilters) => {
+            setRoleFilter(nextFilters.role);
+            setStatusFilter(nextFilters.status);
+            setPage(0);
+          }}
+          onClear={clearUserFilters}
+        />
 
         <div className="admin-table-wrap">
           {loading ? (
@@ -399,14 +436,19 @@ export function AdminUsersPage() {
           )}
         </div>
 
-        <div className="admin-pagination">
-          <span>{totalElements} user{totalElements === 1 ? "" : "s"}</span>
-          <div className="admin-pagination__controls">
-            <button className="admin-pagination__btn" type="button" disabled={page === 0} onClick={() => setPage((current) => Math.max(0, current - 1))}>Previous</button>
-            <span className="admin-pagination__btn admin-pagination__btn--active">{page + 1} / {Math.max(totalPages, 1)}</span>
-            <button className="admin-pagination__btn" type="button" disabled={page + 1 >= totalPages} onClick={() => setPage((current) => current + 1)}>Next</button>
-          </div>
-        </div>
+        <Pagination
+          page={page + 1}
+          totalPages={totalPages}
+          totalItems={totalElements}
+          size={pageSize}
+          disabled={loading}
+          ariaLabel="User list pagination"
+          onPageChange={(nextPage) => setPage(nextPage - 1)}
+          onSizeChange={(nextSize) => {
+            setPage(0);
+            setPageSize(nextSize);
+          }}
+        />
       </section>
 
       {formState.open && (
