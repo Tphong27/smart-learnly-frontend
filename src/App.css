@@ -1060,9 +1060,7 @@ a:hover {
     position: relative;
     min-height: 100vh;
     background-color: #fff8e5;
-    background-image:
-        linear-gradient(rgba(255, 251, 237, 0.46), rgba(255, 251, 237, 0.46)),
-        url("/auth-school-background.jpg?v=20260711");
+    background-image: url("/auth-school-background.jpg?v=20260711");
     background-position: center;
     background-repeat: no-repeat;
     background-size: cover;
@@ -2176,7 +2174,6 @@ a:hover {
 .solution-section,
 /* ==================== COURSES SECTION - Figma Design ==================== */
 .courses-section {
-    background: #f7f9fc;
     padding: 100px 0 56px;
     position: relative;
     width: 100%;

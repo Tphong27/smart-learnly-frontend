@@ -13,7 +13,7 @@
   min-height: 34px;
   padding: 0 12px;
   border: 1px solid #dde4ee;
-  border-radius: 999px;
+  border-radius: 3px;
   background: #ffffff;
   color: #475569;
   font-weight: 700;
@@ -32,8 +32,8 @@
 }
 
 .dashboard-range-controls__btn--active {
-  background: var(--blue, #2768ee);
-  border-color: var(--blue, #2768ee);
+  background: #7c1fd1;
+  border-color: #7c1fd1;
   color: #ffffff;
 }
 
@@ -80,9 +80,9 @@
   min-height: 136px;
   padding: 18px;
   border: 1px solid var(--line, #e7ecf4);
-  border-radius: 18px;
+  border-radius: 2px;
   background: #ffffff;
-  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.04);
+  box-shadow: none;
 }
 
 .dashboard-metric-card__icon {

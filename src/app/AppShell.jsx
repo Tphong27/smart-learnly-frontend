@@ -136,6 +136,21 @@ const appRoutes = [
                 ],
             },
 
+            // Staff learning preview - keep staff inside the /staff route space.
+            {
+                element: (
+                    <RoleGuard
+                        allowedRoles={[ROLES.TRAINER, ROLES.TMO, ROLES.SME]}
+                    />
+                ),
+                children: [
+                    {
+                        path: "/staff/courses/:courseId/preview",
+                        element: <LearningWorkspacePage mode="admin-preview" />,
+                    },
+                ],
+            },
+
             // Nhóm 1: Trang cá nhân dùng chung AppLayout hệ thống
             {
                 element: <AppLayout />,

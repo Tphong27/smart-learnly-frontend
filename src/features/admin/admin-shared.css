@@ -4,6 +4,9 @@
     flex-direction: column;
     gap: 20px;
     width: 100%;
+    max-width: 1440px;
+    margin: 0 auto;
+    padding: 36px clamp(24px, 3vw, 48px) 64px;
 }
 
 .admin-page__header {
@@ -12,12 +15,14 @@
     justify-content: space-between;
     gap: 16px;
     flex-wrap: wrap;
+    padding-bottom: 24px;
+    border-bottom: 1px solid #d9dbe5;
 }
 
 .admin-page__title {
     margin: 0 0 4px;
     font-family: "Lato", sans-serif;
-    font-size: 22px;
+    font-size: clamp(24px, 2.5vw, 32px);
     font-weight: 800;
     color: var(--ink, #14213d);
 }
@@ -25,9 +30,9 @@
 .admin-card {
     background: #ffffff;
     border: 1px solid var(--line, #e7ecf4);
-    border-radius: 18px;
+    border-radius: 2px;
     padding: 22px;
-    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.04);
+    box-shadow: none;
 }
 
 .admin-card--flush {
@@ -574,6 +579,10 @@
 }
 
 @media (max-width: 720px) {
+    .admin-page {
+        padding: 24px 16px 40px;
+    }
+
     .admin-form-grid {
         grid-template-columns: 1fr;
     }

@@ -43,6 +43,13 @@
     --layout-grid-highlight-opacity: 0.78;
 }
 
+/* Keep the original Smart Learnly grid visible behind admin workspaces. */
+.layout-background--app.app-layout-shell {
+    --layout-grid-highlight-opacity: 1;
+    background-color: #fdf8e4;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='84' height='84' viewBox='0 0 84 84'%3E%3Cpath d='M0 0H84M0 0V84' fill='none' stroke='%2364758b' stroke-opacity='.34' stroke-width='1.5' stroke-dasharray='7 9'/%3E%3C/svg%3E");
+}
+
 @media (max-width: 700px), (hover: none), (pointer: coarse) {
     .layout-background {
         --layout-grid-size: 72px;

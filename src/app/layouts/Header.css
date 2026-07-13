@@ -76,6 +76,32 @@
     border-radius: 8px;
 }
 
+.app-header__context {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.app-header__context-eyebrow {
+    color: #8a94a8;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+    line-height: 1;
+    text-transform: uppercase;
+}
+
+.app-header__context-title {
+    overflow: hidden;
+    color: #211b36;
+    font-size: 14px;
+    font-weight: 800;
+    line-height: 1.2;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
 .app-header__logo-text {
     display: flex;
     flex-direction: column;
@@ -183,6 +209,10 @@
 }
 
 /* --- Notification Button --- */
+.app-header__notification {
+    position: relative;
+}
+
 .app-header__icon-button {
     position: relative;
     display: flex;
@@ -399,6 +429,150 @@
     color: #dc2626;
 }
 
+.app-header__notification-panel {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    z-index: 70;
+    width: min(280px, calc(100vw - 32px));
+    padding: 16px;
+    border: 1px solid #dfe3ec;
+    border-radius: 14px;
+    background: #ffffff;
+    box-shadow: 0 14px 36px rgba(20, 33, 61, 0.14);
+}
+
+.app-header__notification-panel strong {
+    display: block;
+    color: #211b36;
+    font-size: 14px;
+}
+
+.app-header__notification-panel p {
+    margin: 5px 0 0;
+    color: #64748b;
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.app-header__menu-button:focus-visible,
+.app-header__icon-button:focus-visible,
+.app-header__user-button:focus-visible,
+.app-header__user-menu-item:focus-visible,
+.app-header__logo:focus-visible {
+    outline: 3px solid rgba(130, 94, 245, 0.35);
+    outline-offset: 2px;
+}
+
+/* Embedded dashboard header: stable app bar, not a second floating island. */
+.app-header--embedded,
+.app-header--embedded.app-header--compact {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    width: 100%;
+    height: 56px;
+    padding: 0 24px;
+    margin: 0;
+    border: 0;
+    border-bottom: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+}
+
+.app-header--embedded .app-header__menu-button {
+    display: none;
+}
+
+.app-header--embedded .app-header__context {
+    display: none;
+}
+
+.app-header--embedded .app-header__actions {
+    gap: 12px;
+}
+
+.app-header--embedded .app-header__icon-button {
+    width: 44px;
+    height: 44px;
+    border: 1px solid #000000;
+    border-radius: 12px;
+    background: #ffffff;
+    box-shadow: 2px 2px 0 #000000;
+    color: #211b36;
+    transition: transform 180ms ease, box-shadow 180ms ease,
+        background-color 180ms ease, color 180ms ease;
+}
+
+.app-header--embedded .app-header__icon-button:hover {
+    border-color: #000000;
+    background: #f6f0ff;
+    box-shadow: 3px 3px 0 #000000;
+    color: #7c1fd1;
+    transform: translate(-1px, -1px);
+}
+
+.app-header--embedded .app-header__icon-button:active {
+    transform: translate(1px, 1px);
+    box-shadow: 1px 1px 0 #2e2e2e;
+}
+
+.app-header--embedded .app-header__notification-dot {
+    top: 7px;
+    right: 7px;
+    background: #a435f0;
+}
+
+.app-header--embedded .app-header__divider {
+    display: none;
+}
+
+.app-header--embedded .app-header__user-button {
+    min-height: 44px;
+    padding: 4px 10px 4px 6px;
+    border: 1px solid #000000;
+    border-radius: 12px;
+    background: #ffffff;
+    box-shadow: 2px 2px 0 #000000;
+    transition: transform 180ms ease, box-shadow 180ms ease,
+        background-color 180ms ease;
+}
+
+.app-header--embedded .app-header__user-button:hover,
+.app-header--embedded .app-header__user-button--active {
+    border-color: #000000;
+    background: #fdfcff;
+    box-shadow: 3px 3px 0 #000000;
+    transform: translate(-1px, -1px);
+}
+
+.app-header--embedded .app-header__user-button:active {
+    transform: translate(1px, 1px);
+    box-shadow: 1px 1px 0 #2e2e2e;
+}
+
+.app-header--embedded .app-header__avatar {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    box-shadow: none;
+}
+
+.app-header--embedded .app-header__avatar--initials {
+    background: #181820;
+}
+
+.app-header--embedded .app-header__user-name {
+    font-size: 13px;
+}
+
+.app-header--embedded .app-header__chevron {
+    margin-left: 2px;
+}
+
 @keyframes fadeInHeaderDropdown {
     from {
         opacity: 0;
@@ -430,6 +604,19 @@
         border: 0;
         border-bottom: 1px solid rgba(231, 236, 244, 0.8);
         box-shadow: none;
+    }
+
+    .app-header--embedded .app-header__menu-button {
+        display: inline-grid;
+    }
+
+    .app-header--embedded,
+    .app-header--embedded.app-header--compact {
+        height: 56px;
+    }
+
+    .app-header--embedded .app-header__context {
+        display: flex;
     }
 }
 
@@ -464,10 +651,28 @@
     .app-header__divider {
         display: none;
     }
+
+    .app-header--embedded {
+        padding: 0 12px;
+    }
+
+    .app-header--embedded .app-header__icon-button {
+        width: 44px;
+        height: 44px;
+    }
+
+    .app-header__context-eyebrow {
+        display: none;
+    }
 }
 
 @media (prefers-reduced-motion: reduce) {
     .app-header {
+        transition: none;
+    }
+
+    .app-header--embedded .app-header__icon-button,
+    .app-header--embedded .app-header__user-button {
         transition: none;
     }
 }

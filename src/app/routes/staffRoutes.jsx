@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import { Navigate } from "react-router-dom";
 import { RoleGuard } from "./RoleGuard";
 import { ROLES } from "@/shared/constants/roles";
@@ -14,6 +15,7 @@ import {
 // import { StaffLayout } from "@/app/layouts/StaffLayout";
 import { AdminCoursesPage, AdminCourseFormPage } from "@/features/admin";
 import AdminCourseContentPage from "@/features/course/pages/AdminCourseContentPage";
+import AdminLessonDetailPage from "@/features/course/pages/AdminLessonDetailPage";
 import {
   StaffClassListPage,
   TmoCreateClassPage,
@@ -60,6 +62,10 @@ function getStaffRoutes() {
             {
               path: "courses/:courseId/content",
               element: <AdminCourseContentPage />,
+            },
+            {
+              path: "courses/:courseId/lessons/:lessonId",
+              element: <AdminLessonDetailPage />,
             },
             {
               path: "tests",

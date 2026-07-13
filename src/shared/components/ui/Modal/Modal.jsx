@@ -11,17 +11,23 @@ export function Modal({
   size = 'md',
   position = 'center',
   closeOnOverlayClick = true,
+  closeDisabled = false,
   closeLabel = 'Close dialog',
   onClose,
 }) {
   const dialogRef = useRef(null)
   const onCloseRef = useRef(onClose)
+  const closeDisabledRef = useRef(closeDisabled)
   const titleId = useId()
   const descriptionId = useId()
 
   useEffect(() => {
     onCloseRef.current = onClose
   }, [onClose])
+
+  useEffect(() => {
+    closeDisabledRef.current = closeDisabled
+  }, [closeDisabled])
 
   useEffect(() => {
     if (!open) return
@@ -45,7 +51,7 @@ export function Modal({
 
     function handleKeyDown(event) {
       if (event.key === 'Escape') {
-        onCloseRef.current?.()
+        if (!closeDisabledRef.current) onCloseRef.current?.()
         return
       }
 
@@ -84,7 +90,7 @@ export function Modal({
   if (!open) return null
 
   function handleOverlayClick(event) {
-    if (closeOnOverlayClick && event.target === event.currentTarget) {
+    if (!closeDisabled && closeOnOverlayClick && event.target === event.currentTarget) {
       onCloseRef.current?.()
     }
   }
@@ -124,6 +130,7 @@ export function Modal({
             type="button"
             className="modal__close"
             aria-label={closeLabel}
+            disabled={closeDisabled}
             onClick={() => onCloseRef.current?.()}
           >
             <X size={20} />

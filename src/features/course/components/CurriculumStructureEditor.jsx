@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   ChevronDown,
   Edit3,
@@ -15,7 +16,6 @@ import {
   Sparkles,
   AlertTriangle,
   CheckCircle2,
-  Eye,
   X,
 } from "lucide-react";
 import { getLessonStatusMeta } from "../utils/lesson-status";
@@ -116,67 +116,116 @@ const STATUS_ICON = {
    Kebab menu
    ========================================================================== */
 
-function useClickOutside(ref, onClose) {
-  useEffect(() => {
-    function handle(event) {
-      if (ref.current && !ref.current.contains(event.target)) {
-        onClose?.();
-      }
-    }
-    function handleKey(event) {
-      if (event.key === "Escape") onClose?.();
-    }
-    document.addEventListener("mousedown", handle);
-    document.addEventListener("keydown", handle);
-    return () => {
-      document.removeEventListener("mousedown", handle);
-      document.removeEventListener("keydown", handle);
-    };
-  }, [onClose, ref]);
-}
-
 function KebabMenu({ label = "Actions", items }) {
   const [open, setOpen] = useState(false);
-  const ref = useRef(null);
-  useClickOutside(ref, () => setOpen(false));
+  const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
+  const triggerRef = useRef(null);
+  const menuRef = useRef(null);
+
+  const updateMenuPosition = useCallback(() => {
+    const trigger = triggerRef.current;
+    if (!trigger) return;
+
+    const rect = trigger.getBoundingClientRect();
+    const gutter = 12;
+    const gap = 6;
+    const menuWidth = 220;
+    const menuHeight = menuRef.current?.offsetHeight || items.length * 43 + 12;
+    const left = Math.min(
+      Math.max(gutter, rect.right - menuWidth),
+      window.innerWidth - menuWidth - gutter,
+    );
+    const below = rect.bottom + gap;
+    const top = below + menuHeight <= window.innerHeight - gutter
+      ? below
+      : Math.max(gutter, rect.top - menuHeight - gap);
+
+    setMenuPosition({ top, left });
+  }, [items.length]);
+
+  useEffect(() => {
+    if (!open) return undefined;
+
+    const frame = window.requestAnimationFrame(updateMenuPosition);
+
+    function handlePointerDown(event) {
+      if (
+        !triggerRef.current?.contains(event.target)
+        && !menuRef.current?.contains(event.target)
+      ) {
+        setOpen(false);
+      }
+    }
+
+    function handleKey(event) {
+      if (event.key === "Escape") {
+        setOpen(false);
+        triggerRef.current?.focus();
+      }
+    }
+
+    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("keydown", handleKey);
+    window.addEventListener("resize", updateMenuPosition);
+    window.addEventListener("scroll", updateMenuPosition, true);
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("keydown", handleKey);
+      window.removeEventListener("resize", updateMenuPosition);
+      window.removeEventListener("scroll", updateMenuPosition, true);
+    };
+  }, [open, updateMenuPosition]);
+
+  const menu = open ? (
+    <ul
+      ref={menuRef}
+      role="menu"
+      className="sl-cm-kebab__menu sl-cm-kebab__menu--portal"
+      style={menuPosition}
+    >
+      {items.map((item) => {
+        const Icon = item.icon;
+        const danger = item.variant === "danger";
+        return (
+          <li key={item.id} role="none">
+            <button
+              type="button"
+              role="menuitem"
+              disabled={item.disabled}
+              className={`sl-cm-kebab__item${danger ? " sl-cm-kebab__item--danger" : ""}`}
+              onClick={() => {
+                setOpen(false);
+                item.onSelect?.();
+              }}
+            >
+              {Icon ? <Icon size={15} aria-hidden="true" /> : null}
+              <span>{item.label}</span>
+            </button>
+          </li>
+        );
+      })}
+    </ul>
+  ) : null;
 
   return (
-    <div className="sl-cm-kebab" ref={ref}>
+    <div className="sl-cm-kebab">
       <button
+        ref={triggerRef}
         type="button"
         className="sl-cm-btn sl-cm-btn--icon sl-cm-kebab__trigger"
         aria-haspopup="menu"
         aria-expanded={open}
         aria-label={label}
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => {
+          if (!open) updateMenuPosition();
+          setOpen((value) => !value);
+        }}
       >
         <MoreVertical size={18} aria-hidden="true" />
       </button>
-      {open && (
-        <ul role="menu" className="sl-cm-kebab__menu">
-          {items.map((item) => {
-            const Icon = item.icon;
-            const danger = item.variant === "danger";
-            return (
-              <li key={item.id} role="none">
-                <button
-                  type="button"
-                  role="menuitem"
-                  disabled={item.disabled}
-                  className={`sl-cm-kebab__item${danger ? " sl-cm-kebab__item--danger" : ""}`}
-                  onClick={() => {
-                    setOpen(false);
-                    item.onSelect?.();
-                  }}
-                >
-                  {Icon ? <Icon size={15} aria-hidden="true" /> : null}
-                  <span>{item.label}</span>
-                </button>
-              </li>
-            );
-          })}
-        </ul>
-      )}
+      {menu ? createPortal(menu, document.body) : null}
     </div>
   );
 }
@@ -199,7 +248,6 @@ function SectionRow({
   onManageQuestions,
   showManageQuestions,
   lessonEditLabel,
-  dragHandleProps,
   onMoveSectionUp,
   onMoveSectionDown,
   onMoveLesson,
@@ -229,14 +277,13 @@ function SectionRow({
     <article className="sl-cm-section" aria-labelledby={sectionTitleId}>
       <header className="sl-cm-section__header">
         {!readOnly && (
-          <button
-            type="button"
-            {...dragHandleProps}
+          <span
             className="sl-cm-section__handle"
-            aria-label={`Reorder section ${index + 1}`}
+            aria-hidden="true"
+            title="Use the actions menu to reorder this section."
           >
             <GripVertical size={18} aria-hidden="true" />
-          </button>
+          </span>
         )}
 
         <button
@@ -250,14 +297,17 @@ function SectionRow({
           <ChevronDown size={18} aria-hidden="true" />
         </button>
 
-        <h3
+        <button
+          type="button"
           id={sectionTitleId}
           className="sl-cm-section__title"
+          aria-expanded={isExpanded}
+          aria-controls={lessonsListId}
           onClick={() => setIsExpanded((v) => !v)}
         >
           <span className="sl-cm-section__index">Section {index + 1}</span>
           <span className="sl-cm-section__name">{section?.title}</span>
-        </h3>
+        </button>
 
         <span className="sl-cm-section__meta" aria-label="Section summary">
           <span>
@@ -386,26 +436,23 @@ function LessonRow({
   onMoveLessonUp,
   onMoveLessonDown,
 }) {
-  const draggableId = `lesson-${lesson.id}`;
-  const statusValue = String(lesson?.status || "draft").toLowerCase();
   const durationText = lesson?.durationSeconds
     ? `${Math.floor(lesson.durationSeconds / 60)} mins`
     : "—";
-  const isQuiz = statusValue === "quiz";
+  const isQuiz = lessonTypeKey(lesson?.lessonType) === "quiz";
 
   const lessonType = getLessonTypeMeta(lesson?.lessonType);
 
   return (
     <div className="sl-cm-lesson">
       {!readOnly && (
-        <button
-          type="button"
+        <span
           className="sl-cm-lesson__handle"
-          aria-label={`Reorder lesson ${sectionIndex + 1}.${lessonIndex + 1}`}
+          aria-hidden="true"
           title="Use Move up / Move down in the actions menu to reorder."
         >
           <GripVertical size={16} aria-hidden="true" />
-        </button>
+        </span>
       )}
 
       <span
@@ -497,22 +544,21 @@ function SectionFormModal({
 }) {
   const [value, setValue] = useState(initialValue || "");
   const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
-  useEffect(() => {
-    if (open) {
-      setValue(initialValue || "");
-      setError("");
-    }
-  }, [open, initialValue]);
-
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
     const trimmed = value.trim();
     if (!trimmed) {
       setError("Section name is required.");
       return;
     }
-    onSubmit?.(trimmed);
+    setSubmitting(true);
+    try {
+      await onSubmit?.(trimmed);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -520,13 +566,20 @@ function SectionFormModal({
       open={open}
       title={title}
       onClose={onClose}
+      closeDisabled={submitting}
       position="right"
       footer={
         <>
-          <Button type="button" variant="outline" onClick={onClose}>
+          <Button type="button" variant="outline" onClick={onClose} disabled={submitting}>
             Cancel
           </Button>
-          <Button type="submit" form="sl-cm-section-form" variant="primary">
+          <Button
+            type="submit"
+            form="sl-cm-section-form"
+            variant="primary"
+            loading={submitting}
+            loadingLabel="Saving..."
+          >
             {submitLabel}
           </Button>
         </>
@@ -582,24 +635,21 @@ function LessonCreateModal({
   );
   const [isPreview, setIsPreview] = useState(false);
   const [titleError, setTitleError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
-  useEffect(() => {
-    if (open) {
-      setTitle("");
-      setLessonType(lessonTypeOptions?.[0]?.value || "video");
-      setIsPreview(false);
-      setTitleError("");
-    }
-  }, [open, lessonTypeOptions]);
-
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
     const trimmed = title.trim();
     if (!trimmed) {
       setTitleError("Lesson title is required.");
       return;
     }
-    onSubmit?.({ title: trimmed, lessonType, isPreview });
+    setSubmitting(true);
+    try {
+      await onSubmit?.({ title: trimmed, lessonType, isPreview });
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const options = lessonTypeOptions?.length
@@ -612,12 +662,14 @@ function LessonCreateModal({
       title="Add new lesson"
       position="right"
       onClose={onClose}
+      closeDisabled={submitting}
       footer={
         <>
           <Button
             type="button"
             variant="outline"
             onClick={onClose}
+            disabled={submitting}
           >
             Cancel
           </Button>
@@ -625,6 +677,8 @@ function LessonCreateModal({
             type="submit"
             form="sl-cm-lesson-form"
             variant="primary"
+            loading={submitting}
+            loadingLabel="Creating..."
           >
             Create lesson
           </Button>
@@ -801,20 +855,20 @@ export function CurriculumStructureEditor({
   );
 
   const handleCreateSection = async (title) => {
-    await onCreateSection?.({ title });
-    setIsSectionModalOpen(false);
+    const saved = await onCreateSection?.({ title });
+    if (saved !== false) setIsSectionModalOpen(false);
   };
 
   const handleUpdateSection = async (title) => {
     if (!editingSection?.id) return;
-    await onUpdateSection?.(editingSection.id, { title });
-    setEditingSection(null);
+    const saved = await onUpdateSection?.(editingSection.id, { title });
+    if (saved !== false) setEditingSection(null);
   };
 
   const handleCreateLesson = async (payload) => {
     if (!lessonModalSection?.id) return;
-    await onCreateLesson?.(lessonModalSection.id, payload);
-    setLessonModalSection(null);
+    const saved = await onCreateLesson?.(lessonModalSection.id, payload);
+    if (saved !== false) setLessonModalSection(null);
   };
 
   const requestDeleteSection = (sectionId, title) => {
@@ -898,6 +952,14 @@ export function CurriculumStructureEditor({
       )}
 
       <div className="sl-cm-workspace">
+        {stats ? (
+          <p className="sl-cm-summary" aria-label="Curriculum summary">
+            <strong>{stats.totalSections ?? sortedSections.length}</strong> sections ·
+            <strong>{stats.totalLessons ?? 0}</strong> lessons ·
+            <strong>{stats.totalVideos ?? 0}</strong> videos ·
+            <strong>{stats.totalQuizzes ?? 0}</strong> quizzes
+          </p>
+        ) : null}
         <div className="sl-cm-tree">
           {sortedSections.length > 0 ? (
             sortedSections.map((section, index) => (
@@ -923,7 +985,6 @@ export function CurriculumStructureEditor({
                   onManageQuestions={onManageQuestions}
                   showManageQuestions={showManageQuestions}
                   lessonEditLabel={lessonEditLabel}
-                  dragHandleProps={{}}
                   isFirstSection={index === 0}
                   isLastSection={index === sortedSections.length - 1}
                   onMoveSectionUp={() => moveSection(section, "up")}
@@ -938,7 +999,7 @@ export function CurriculumStructureEditor({
                 <Sparkles size={26} />
               </span>
               <h3 className="sl-cm-empty__title">{emptyAddTitle}</h3>
-              <p className="sl-cm-empty__desc">{emptyAddSubtitle}</p>
+              <p className="sl-cm-empty__desc">{emptyMessage}</p>
               {!readOnly && (
                 <Button
                   leftIcon={<Plus size={16} />}
@@ -966,30 +1027,36 @@ export function CurriculumStructureEditor({
         )}
       </div>
 
-      <SectionFormModal
-        open={isSectionModalOpen}
-        title="Add new section"
-        submitLabel="Save section"
-        initialValue=""
-        onSubmit={handleCreateSection}
-        onClose={() => setIsSectionModalOpen(false)}
-      />
+      {isSectionModalOpen ? (
+        <SectionFormModal
+          open
+          title="Add new section"
+          submitLabel="Save section"
+          initialValue=""
+          onSubmit={handleCreateSection}
+          onClose={() => setIsSectionModalOpen(false)}
+        />
+      ) : null}
 
-      <SectionFormModal
-        open={Boolean(editingSection)}
-        title="Edit section"
-        submitLabel="Update section"
-        initialValue={editingSection?.title || ""}
-        onSubmit={handleUpdateSection}
-        onClose={() => setEditingSection(null)}
-      />
+      {editingSection ? (
+        <SectionFormModal
+          open
+          title="Edit section"
+          submitLabel="Update section"
+          initialValue={editingSection.title || ""}
+          onSubmit={handleUpdateSection}
+          onClose={() => setEditingSection(null)}
+        />
+      ) : null}
 
-      <LessonCreateModal
-        open={Boolean(lessonModalSection)}
-        lessonTypeOptions={lessonTypeOptions}
-        onSubmit={handleCreateLesson}
-        onClose={() => setLessonModalSection(null)}
-      />
+      {lessonModalSection ? (
+        <LessonCreateModal
+          open
+          lessonTypeOptions={lessonTypeOptions}
+          onSubmit={handleCreateLesson}
+          onClose={() => setLessonModalSection(null)}
+        />
+      ) : null}
 
       <ConfirmModal
         open={Boolean(confirm)}
