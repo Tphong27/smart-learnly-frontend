@@ -102,6 +102,32 @@ export const questionBankService = {
     return unwrap(response)
   },
 
+  async listAnswerMedia(questionId, answerId) {
+    const response = await apiClient.get(`/admin/questions/${questionId}/answers/${answerId}/media`)
+    return normalizeList(response)
+  },
+
+  async uploadAnswerMedia(questionId, answerId, mediaType, file) {
+    const formData = new FormData()
+    formData.append('file', file)
+    const response = await apiClient.post(
+      `/admin/questions/${questionId}/answers/${answerId}/media`,
+      formData,
+      {
+        params: { mediaType },
+        headers: { 'Content-Type': 'multipart/form-data' },
+      }
+    )
+    return unwrap(response)
+  },
+
+  async removeAnswerMedia(questionId, answerId, attachmentId) {
+    const response = await apiClient.delete(
+      `/admin/questions/${questionId}/answers/${answerId}/media/${attachmentId}`
+    )
+    return unwrap(response)
+  },
+
   async archiveQuestion(questionId) {
     const response = await apiClient.delete(`/admin/questions/${questionId}`)
     return unwrap(response)
