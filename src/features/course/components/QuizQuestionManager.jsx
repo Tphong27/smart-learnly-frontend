@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
-import { Pencil, Trash2, Plus, Upload } from "lucide-react";
-import { Modal, Button, useToast } from "@/shared/components/ui";
+import { useEffect, useState } from "react";
+import { Pencil, Trash2, Plus, Upload, CheckCircle2 } from "lucide-react";
+import { Button, useToast } from "@/shared/components/ui";
 import { courseService } from "@/services/course.service";
 import { normalizeLessonStatus } from "@/features/course/utils/lesson-status";
 import {
@@ -11,43 +11,177 @@ import {
   parseQuizContent,
   serializeQuizContent,
   getOptionMedia,
+  getOptionText,
 } from "../utils/quiz-question-schema";
 import { QuizQuestionEditModal } from "./QuizQuestionEditModal";
 import { QuizImportModal } from "./QuizImportModal";
-import "./QuizQuestionManager.css";
+import "@/features/admin/admin-shared.css";
+import "./quiz-question-manager.css";
 
-function correctAnswerLabel(question) {
-  if (!Array.isArray(question.correct_answers)) return "-";
-  if (question.type === QUESTION_TYPES.FILL) {
-    return question.correct_answers.join(", ");
-  }
-  return question.correct_answers.join(", ");
-}
+const TYPE_BADGE_CLASS = {
+  [QUESTION_TYPES.SINGLE]: "admin-status admin-status--approved",
+  [QUESTION_TYPES.MULTIPLE]: "admin-status admin-status--pending_verify",
+  [QUESTION_TYPES.FILL]: "admin-status admin-status--draft",
+};
 
-function HtmlCell({ html }) {
+function HtmlText({ html }) {
   return <span dangerouslySetInnerHTML={{ __html: sanitizeQuizHtml(html) }} />;
 }
 
 function mediaLabel(media) {
   if (!media) return "";
-  return media.type === "video" ? "Video" : "Image";
+  if (media.type === "video") return "Video";
+  if (media.type === "audio") return "Audio";
+  if (media.type === "image") return "Image";
+  return "";
 }
 
-function questionMediaSummary(question) {
-  const optionMediaCount = Array.isArray(question.options)
-    ? question.options.filter((option) => getOptionMedia(option)).length
-    : 0;
-  const parts = [];
-  if (question.media) parts.push(`Question ${mediaLabel(question.media)}`);
-  if (optionMediaCount > 0) parts.push(`${optionMediaCount} option media`);
-  return parts.join(" • ");
+function mediaChipClass(media) {
+  const type = media?.type;
+  if (type === "video") return "quiz-question-card__media-chip quiz-question-card__media-chip--video";
+  if (type === "audio") return "quiz-question-card__media-chip quiz-question-card__media-chip--audio";
+  return "quiz-question-card__media-chip quiz-question-card__media-chip--image";
+}
+
+function optionLetter(index) {
+  return String.fromCharCode(65 + index);
+}
+
+function QuizQuestionCard({ question, index, onEdit, onDelete }) {
+  const type = question.type;
+  const isChoice = type === QUESTION_TYPES.SINGLE || type === QUESTION_TYPES.MULTIPLE;
+  const isFill = type === QUESTION_TYPES.FILL;
+  const options = Array.isArray(question.options) ? question.options : [];
+  const correctSet = new Set(
+    Array.isArray(question.correct_answers) ? question.correct_answers : [],
+  );
+  const optionMediaCount = options.filter((opt) => getOptionMedia(opt)).length;
+
+  return (
+    <article className="quiz-question-card">
+      <div className="quiz-question-card__header">
+        <div>
+          <div className="quiz-question-card__eyebrow">
+            <span>Question {index + 1}</span>
+            <span className={TYPE_BADGE_CLASS[type] || "admin-status admin-status--draft"}>
+              {QUESTION_TYPE_LABELS[type] || type || "Unknown"}
+            </span>
+          </div>
+          {question.title ? (
+            <h3 className="quiz-question-card__title">
+              <HtmlText html={question.title} />
+            </h3>
+          ) : (
+            <h3 className="quiz-question-card__title quiz-question-card__title--empty">
+              Media-only question
+            </h3>
+          )}
+          <div className="quiz-question-card__meta">
+            {question.media && (
+              <span className={mediaChipClass(question.media)}>
+                Question {mediaLabel(question.media)}
+              </span>
+            )}
+            {optionMediaCount > 0 && (
+              <span className="quiz-question-card__media-chip">
+                {optionMediaCount} option media
+              </span>
+            )}
+          </div>
+        </div>
+        <div className="quiz-question-card__actions">
+          <button
+            type="button"
+            className="admin-table__icon-btn"
+            onClick={() => onEdit(index)}
+            title="Edit question"
+          >
+            <Pencil size={15} />
+          </button>
+          <button
+            type="button"
+            className="admin-table__icon-btn admin-table__icon-btn--danger"
+            onClick={() => onDelete(index)}
+            title="Delete question"
+          >
+            <Trash2 size={15} />
+          </button>
+        </div>
+      </div>
+
+      {isChoice && options.length > 0 && (
+        <div className="quiz-question-card__answers">
+          {options.map((option, optIdx) => {
+            const optionNumber = optIdx + 1;
+            const isCorrect = correctSet.has(optionNumber);
+            const optMedia = getOptionMedia(option);
+            const text = getOptionText(option);
+            return (
+              <div
+                key={optIdx}
+                className={`quiz-question-card__answer${isCorrect ? " quiz-question-card__answer--correct" : ""}`}
+              >
+                <span className="quiz-question-card__answer-index">{optionLetter(optIdx)}</span>
+                <span className="quiz-question-card__answer-text">
+                  {text ? <HtmlText html={text} /> : <em>-</em>}
+                  {optMedia && (
+                    <>
+                      {" "}
+                      <span className={mediaChipClass(optMedia)}>{mediaLabel(optMedia)}</span>
+                    </>
+                  )}
+                </span>
+                {isCorrect && (
+                  <span className="quiz-question-card__correct">
+                    <CheckCircle2 size={14} /> Correct
+                  </span>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {isFill && (
+        <div className="quiz-question-card__answers">
+          {(Array.isArray(question.correct_answers) ? question.correct_answers : []).map(
+            (answer, idx) => (
+              <div
+                key={idx}
+                className="quiz-question-card__answer quiz-question-card__answer--correct"
+              >
+                <span className="quiz-question-card__answer-index">{idx + 1}</span>
+                <span className="quiz-question-card__answer-text">{answer}</span>
+                <span className="quiz-question-card__correct">
+                  <CheckCircle2 size={14} /> Accepted
+                </span>
+              </div>
+            ),
+          )}
+        </div>
+      )}
+
+      {question.explain_question && (
+        <div className="quiz-question-card__explanation">
+          <strong>Explanation:</strong> <HtmlText html={question.explain_question} />
+        </div>
+      )}
+    </article>
+  );
 }
 
 /**
- * Modal quản lý câu hỏi quiz: import JSON/Excel, validate, bảng câu hỏi, edit/delete, save.
- * Props: { open, lesson, onClose, onSaved }
+ * Panel quản lý câu hỏi quiz - render inline trong tab lesson editor.
+ * Không còn Modal wrapper. Nhận `service` qua prop để dùng chung
+ * cho admin (courseService) và trainer (trainerLessonService).
+ * Props: { lessonId, lessonTitle, onSaved, service }
  */
-export function QuizQuestionManager({ open, lesson, onClose, onSaved }) {
+export function QuizQuestionsPanel({
+  lessonId,
+  lessonTitle,
+  onSaved,
+  service = courseService,
+}) {
   const toast = useToast();
 
   const [quizTitle, setQuizTitle] = useState("");
@@ -60,15 +194,15 @@ export function QuizQuestionManager({ open, lesson, onClose, onSaved }) {
   const [editOpen, setEditOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
 
-  // Load câu hỏi hiện có khi mở modal.
+  // Load câu hỏi hiện có khi lessonId đổi.
   useEffect(() => {
-    if (!open || !lesson?.id) return;
+    if (!lessonId) return;
     let cancelled = false;
     (async () => {
       setLoading(true);
       setErrors([]);
       try {
-        const response = await courseService.getLessonDetail(lesson.id);
+        const response = await service.getLessonDetail(lessonId);
         const data = response?.data || response;
         const parsed = parseQuizContent(data?.content || "");
         if (!cancelled) {
@@ -87,7 +221,7 @@ export function QuizQuestionManager({ open, lesson, onClose, onSaved }) {
     return () => {
       cancelled = true;
     };
-  }, [open, lesson?.id, toast]);
+  }, [lessonId, toast, service]);
 
   const handleImported = (importedQuestions) => {
     setQuestions((prev) => [...prev, ...importedQuestions]);
@@ -116,7 +250,7 @@ export function QuizQuestionManager({ open, lesson, onClose, onSaved }) {
   };
 
   const handleSave = async () => {
-    if (!lesson?.id) return;
+    if (!lessonId) return;
     const { valid, errors: validationErrors } = validateQuizQuestions(questions);
     if (!valid) {
       setErrors(validationErrors);
@@ -125,7 +259,7 @@ export function QuizQuestionManager({ open, lesson, onClose, onSaved }) {
     }
     setSaving(true);
     try {
-      const detail = await courseService.getLessonDetail(lesson.id);
+      const detail = await service.getLessonDetail(lessonId);
       const lessonData = detail?.data || detail;
       const content = serializeQuizContent(quizTitle, questions);
       const payload = {
@@ -142,10 +276,10 @@ export function QuizQuestionManager({ open, lesson, onClose, onSaved }) {
           : [],
         sortOrder: lessonData.sortOrder ?? 0,
       };
-      await courseService.updateLesson(lesson.id, payload);
+      await service.updateLesson(lessonId, payload);
       toast.success("Quiz questions saved.");
+      setErrors([]);
       onSaved?.();
-      onClose?.();
     } catch (error) {
       const responseData = error?.response?.data;
       let message = "Failed to save quiz questions.";
@@ -162,57 +296,59 @@ export function QuizQuestionManager({ open, lesson, onClose, onSaved }) {
     }
   };
 
-  const footer = useMemo(
-    () => (
-      <>
-        <Button variant="ghost" onClick={onClose} disabled={saving}>
-          Close
-        </Button>
-        <Button variant="primary" onClick={handleSave} loading={saving}>
-          Save questions
-        </Button>
-      </>
-    ),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [saving, questions, quizTitle],
-  );
-
   return (
-    <>
-      <Modal
-        open={open}
-        title={`Manage questions${lesson?.title ? ` — ${lesson.title}` : ""}`}
-        size="lg"
-        onClose={onClose}
-        footer={footer}
-      >
-        {loading ? (
-          <p className="quiz-mgr__loading">Loading quiz questions...</p>
-        ) : (
-          <div className="quiz-mgr">
-            <label className="quiz-mgr__label">Quiz title</label>
+    <div className="quiz-question-panel">
+      <section className="admin-card admin-card--flush">
+        <div className="admin-toolbar">
+          <div className="admin-toolbar__filters">
+            <label className="quiz-question-panel__title-label" htmlFor="quiz-question-panel-title">
+              Quiz title
+            </label>
             <input
+              id="quiz-question-panel-title"
               type="text"
-              className="quiz-mgr__title-input"
+              className="quiz-question-panel__title-input"
               value={quizTitle}
               onChange={(e) => setQuizTitle(e.target.value)}
-              placeholder="Quiz title"
+              placeholder={lessonTitle || "Quiz title"}
             />
+            <span className="quiz-question-panel__count">
+              {questions.length} question(s)
+            </span>
+          </div>
+          <div className="quiz-question-panel__actions">
+            <Button
+              variant="secondary"
+              leftIcon={<Upload size={15} />}
+              onClick={() => setImportOpen(true)}
+              disabled={saving}
+            >
+              Import questions
+            </Button>
+            <Button
+              variant="secondary"
+              leftIcon={<Plus size={15} />}
+              onClick={() => openEdit(-1)}
+              disabled={saving}
+            >
+              Add question
+            </Button>
+            <Button
+              variant="primary"
+              onClick={handleSave}
+              loading={saving}
+            >
+              Save questions
+            </Button>
+          </div>
+        </div>
 
-            <div className="quiz-mgr__table-header">
-              <span className="quiz-mgr__label">Questions ({questions.length})</span>
-              <div className="quiz-mgr__header-actions">
-                <button type="button" className="quiz-mgr__add-btn" onClick={() => setImportOpen(true)}>
-                  <Upload size={15} /> Import questions
-                </button>
-                <button type="button" className="quiz-mgr__add-btn" onClick={() => openEdit(-1)}>
-                  <Plus size={15} /> Add question
-                </button>
-              </div>
-            </div>
-
+        {loading ? (
+          <div className="admin-loading">Loading quiz questions...</div>
+        ) : (
+          <>
             {errors.length > 0 && (
-              <ul className="quiz-mgr__errors">
+              <ul className="quiz-question-panel__errors">
                 {errors.map((err, i) => (
                   <li key={i}>{err.message}</li>
                 ))}
@@ -220,69 +356,25 @@ export function QuizQuestionManager({ open, lesson, onClose, onSaved }) {
             )}
 
             {questions.length === 0 ? (
-              <div className="quiz-mgr__empty">
-                No questions imported yet. Paste JSON or import an Excel/CSV file.
+              <div className="admin-empty">
+                No questions yet. Import JSON/Excel or add manually.
               </div>
             ) : (
-              <table className="quiz-mgr__table">
-                <thead>
-                  <tr>
-                    <th>#</th>
-                    <th>Question</th>
-                    <th>Media</th>
-                    <th>Type</th>
-                    <th>Options</th>
-                    <th>Correct answer</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {questions.map((question, idx) => (
-                    <tr key={idx}>
-                      <td>{idx + 1}</td>
-                      <td>
-                        {question.title ? <HtmlCell html={question.title} /> : <em>Media-only question</em>}
-                      </td>
-                      <td>{questionMediaSummary(question) || "-"}</td>
-                      <td>
-                        <span className={`quiz-mgr__badge quiz-mgr__badge--${question.type}`}>
-                          {QUESTION_TYPE_LABELS[question.type] || question.type}
-                        </span>
-                      </td>
-                      <td>
-                        {question.type === QUESTION_TYPES.FILL
-                          ? "-"
-                          : question.number_of_options ?? question.options?.length ?? 0}
-                      </td>
-                      <td>{correctAnswerLabel(question)}</td>
-                      <td>
-                        <div className="quiz-mgr__row-actions">
-                          <button
-                            type="button"
-                            className="quiz-mgr__icon-btn"
-                            onClick={() => openEdit(idx)}
-                            title="Edit question"
-                          >
-                            <Pencil size={16} />
-                          </button>
-                          <button
-                            type="button"
-                            className="quiz-mgr__icon-btn quiz-mgr__icon-btn--danger"
-                            onClick={() => handleDelete(idx)}
-                            title="Delete question"
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              <div className="quiz-question-card-list">
+                {questions.map((question, idx) => (
+                  <QuizQuestionCard
+                    key={idx}
+                    question={question}
+                    index={idx}
+                    onEdit={openEdit}
+                    onDelete={handleDelete}
+                  />
+                ))}
+              </div>
             )}
-          </div>
+          </>
         )}
-      </Modal>
+      </section>
 
       <QuizQuestionEditModal
         key={editOpen ? `edit-${editIndex}` : "closed"}
@@ -301,6 +393,6 @@ export function QuizQuestionManager({ open, lesson, onClose, onSaved }) {
         onClose={() => setImportOpen(false)}
         onImport={handleImported}
       />
-    </>
+    </div>
   );
 }

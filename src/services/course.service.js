@@ -47,9 +47,22 @@ function normalizeCourse(payload) {
 }
 
 export const courseService = {
-  async listAdmin({ page = 0, size = 20 } = {}) {
+  async listAdmin({
+    page = 0,
+    size = 20,
+    keyword,
+    status,
+    categoryId,
+    level,
+  } = {}) {
+    const params = { page, size };
+    if (keyword?.trim()) params.keyword = keyword.trim();
+    if (status && status !== "all") params.status = status;
+    if (categoryId && categoryId !== "all") params.categoryId = categoryId;
+    if (level && level !== "all") params.level = level;
+
     const response = await apiClient.get("/admin/courses", {
-      params: { page, size },
+      params,
     });
 
     const root = unwrap(response);
@@ -111,37 +124,28 @@ export const courseService = {
     const keyword = params.keyword?.trim();
     const categorySlug = params.categorySlug || params.categoryId;
 
-    let response;
+    const requestParams = {
+      page,
+      size,
+      sort: params.sort || "POPULAR",
+    };
 
-    if (keyword) {
-      response = await apiClient.get("/courses/search", {
-        skipAuthorization: true,
-        skipAuthRedirect: true,
-        params: {
-          keyword,
-          page,
-          size,
-        },
-      });
-    } else if (categorySlug) {
-      response = await apiClient.get(`/courses/category/${categorySlug}`, {
-        skipAuthorization: true,
-        skipAuthRedirect: true,
-        params: {
-          page,
-          size,
-        },
-      });
-    } else {
-      response = await apiClient.get("/courses", {
-        skipAuthorization: true,
-        skipAuthRedirect: true,
-        params: {
-          page,
-          size,
-        },
-      });
+    if (keyword) requestParams.keyword = keyword;
+    if (categorySlug) requestParams.categorySlug = categorySlug;
+    if (params.minPrice !== undefined && params.minPrice !== null) {
+      requestParams.minPrice = params.minPrice;
     }
+    if (params.maxPrice !== undefined && params.maxPrice !== null) {
+      requestParams.maxPrice = params.maxPrice;
+    }
+    if (params.onSale) requestParams.onSale = true;
+    if (params.featured) requestParams.featured = true;
+
+    const response = await apiClient.get("/courses", {
+      skipAuthorization: true,
+      skipAuthRedirect: true,
+      params: requestParams,
+    });
 
     return normalizePage(response);
   },

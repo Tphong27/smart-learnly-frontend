@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import { CheckCircle2, Flame, GraduationCap, Search } from "lucide-react";
+import { Search } from "lucide-react";
 import { traineeProgressService } from "@/services";
 import { ProgressBar } from "../components/ProgressBar";
-import { ProgressStatCard } from "../components/ProgressStatCard";
 import { CourseProgressCard } from "../components/CourseProgressCard";
 import "../TraineeProgressPage.css";
 
@@ -102,6 +101,8 @@ export function TraineeProgressPage() {
   }, [tabCourses, searchTerm, selectedCategory]);
 
   const currentTab = TAB_CONFIG[activeTab];
+  const hasActiveFilters =
+    Boolean(searchTerm.trim()) || selectedCategory !== "all";
 
   return (
     <main className="trainee-progress-page">
@@ -113,44 +114,50 @@ export function TraineeProgressPage() {
 
       {!loading && !error && progress && (
         <>
-          <section className="overall-progress-card">
+          <header className="progress-page-heading">
             <div>
-              <span>Overall Progress</span>
-              <strong>{overallProgress}%</strong>
+              <h2>Learning progress</h2>
+              <p>Review your courses and continue where you left off.</p>
+            </div>
+            <span>{progress.totalCourses} enrolled courses</span>
+          </header>
+
+          <section className="progress-overview" aria-label="Progress summary">
+            <div className="progress-overview__main">
+              <div className="progress-overview__label">
+                <span>Overall progress</span>
+                <strong>{overallProgress}%</strong>
+              </div>
+              <ProgressBar
+                value={overallProgress}
+                label={`Overall learning progress: ${overallProgress}%`}
+              />
             </div>
 
-            <ProgressBar value={overallProgress} />
+            <dl className="progress-overview__stats">
+              <div>
+                <dt>Total courses</dt>
+                <dd>{progress.totalCourses}</dd>
+              </div>
+              <div>
+                <dt>In progress</dt>
+                <dd>{progress.inProgressCourses}</dd>
+              </div>
+              <div>
+                <dt>Completed</dt>
+                <dd>{progress.completedCourses}</dd>
+              </div>
+            </dl>
           </section>
 
-          <section className="progress-stat-grid">
-            <ProgressStatCard
-              icon={GraduationCap}
-              label="Total Courses"
-              value={progress.totalCourses}
-              helper="Enrolled courses"
-            />
-
-            <ProgressStatCard
-              icon={Flame}
-              label="In Progress"
-              value={progress.inProgressCourses}
-              helper="Courses being learned"
-            />
-
-            <ProgressStatCard
-              icon={CheckCircle2}
-              label="Completed"
-              value={progress.completedCourses}
-              helper="Finished courses"
-            />
-          </section>
-
-          <section className="progress-tabs-panel">
+          <section className="progress-course-section">
             <div className="progress-tabs-panel__top">
               <div className="progress-tabs" role="tablist">
                 <button
                   type="button"
+                  id="progress-tab-in-progress"
                   role="tab"
+                  aria-controls="progress-course-panel"
                   aria-selected={activeTab === "inProgress"}
                   className={
                     activeTab === "inProgress"
@@ -159,12 +166,15 @@ export function TraineeProgressPage() {
                   }
                   onClick={() => setActiveTab("inProgress")}
                 >
-                  In Progress
+                  In progress
+                  <span>{progress.inProgressCourses}</span>
                 </button>
 
                 <button
                   type="button"
+                  id="progress-tab-completed"
                   role="tab"
+                  aria-controls="progress-course-panel"
                   aria-selected={activeTab === "completed"}
                   className={
                     activeTab === "completed"
@@ -174,6 +184,7 @@ export function TraineeProgressPage() {
                   onClick={() => setActiveTab("completed")}
                 >
                   Completed
+                  <span>{progress.completedCourses}</span>
                 </button>
               </div>
 
@@ -184,10 +195,11 @@ export function TraineeProgressPage() {
 
             <div className="progress-filter-bar">
               <label className="progress-search">
-                <Search size={18} />
+                <Search size={18} aria-hidden="true" />
+                <span className="sr-only">Search courses</span>
                 <input
                   type="search"
-                  placeholder="Search course name..."
+                  placeholder="Search courses..."
                   value={searchTerm}
                   onChange={(event) => setSearchTerm(event.target.value)}
                 />
@@ -209,18 +221,39 @@ export function TraineeProgressPage() {
               </label>
             </div>
 
-            {filteredCourses.length === 0 ? (
-              <div className="progress-empty">{currentTab.emptyMessage}</div>
-            ) : (
-              <div className="course-progress-list">
-                {filteredCourses.map((course) => (
-                  <CourseProgressCard
-                    key={course.enrollmentId || course.courseId}
-                    course={course}
-                  />
-                ))}
-              </div>
-            )}
+            <div
+              id="progress-course-panel"
+              role="tabpanel"
+              aria-labelledby={
+                activeTab === "completed"
+                  ? "progress-tab-completed"
+                  : "progress-tab-in-progress"
+              }
+            >
+              {filteredCourses.length === 0 ? (
+                <div className="progress-empty">
+                  <strong>
+                    {hasActiveFilters
+                      ? "No courses match your filters."
+                      : currentTab.emptyMessage}
+                  </strong>
+                  <span>
+                    {hasActiveFilters
+                      ? "Try another keyword or category."
+                      : "Courses will appear here when progress is available."}
+                  </span>
+                </div>
+              ) : (
+                <div className="course-progress-list">
+                  {filteredCourses.map((course) => (
+                    <CourseProgressCard
+                      key={course.enrollmentId || course.courseId}
+                      course={course}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
           </section>
         </>
       )}

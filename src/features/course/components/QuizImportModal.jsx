@@ -7,9 +7,16 @@ import {
   parseQuizImportFile,
   downloadQuizImportTemplate,
 } from "../utils/quiz-question-schema";
+import "@/features/admin/admin-shared.css";
+import "./quiz-question-manager.css";
 
 /**
  * Modal import câu hỏi từ JSON hoặc Excel/CSV.
+ *
+ * - JSON: hỗ trợ media (image/audio/video) theo `SAMPLE_QUIZ_JSON`.
+ * - Excel/CSV: chỉ text (loại câu hỏi, nội dung, đáp án A-D, correct, giải thích).
+ *   Media cần được thêm sau bằng cách chỉnh từng câu hoặc dùng JSON.
+ *
  * Props: { open, onClose, onImport(questions) }
  */
 export function QuizImportModal({ open, onClose, onImport }) {
@@ -18,6 +25,7 @@ export function QuizImportModal({ open, onClose, onImport }) {
   const [validateBeforeImport, setValidateBeforeImport] = useState(true);
   const [errors, setErrors] = useState([]);
   const [validMessage, setValidMessage] = useState("");
+  const [legacyMediaWarning, setLegacyMediaWarning] = useState("");
   const [parsedRows, setParsedRows] = useState([]);
   const [parsedQuestions, setParsedQuestions] = useState([]);
   const [fileName, setFileName] = useState("");
@@ -39,6 +47,7 @@ export function QuizImportModal({ open, onClose, onImport }) {
   const resetMessages = () => {
     setErrors([]);
     setValidMessage("");
+    setLegacyMediaWarning("");
   };
 
   const handleValidateJson = () => {
@@ -88,6 +97,11 @@ export function QuizImportModal({ open, onClose, onImport }) {
       const parsed = await parseQuizImportFile(file);
       setParsedRows(parsed.rows);
       setParsedQuestions(parsed.questions);
+      if (parsed.hasLegacyMediaColumns) {
+        setLegacyMediaWarning(
+          "Các cột media trong file Excel cũ sẽ bị bỏ qua. Hãy thêm media bằng cách chỉnh từng câu sau khi import hoặc dùng JSON import.",
+        );
+      }
       const invalidCount = parsed.rows.length - parsed.questions.length;
       if (invalidCount > 0) {
         setErrors([
@@ -118,6 +132,7 @@ export function QuizImportModal({ open, onClose, onImport }) {
     setParsedRows([]);
     setParsedQuestions([]);
     setFileName("");
+    setLegacyMediaWarning("");
   };
 
   const handleImport = () => {
@@ -156,45 +171,47 @@ export function QuizImportModal({ open, onClose, onImport }) {
       onClose={onClose}
       footer={footer}
     >
-      <div className="quiz-import">
-        <div className="quiz-import__mode-tabs" style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-          <Button
-            variant={mode === "json" ? "primary" : "secondary"}
+      <div className="quiz-question-import">
+        <div className="quiz-question-import__mode-switch">
+          <button
+            type="button"
+            className={`quiz-question-import__mode-btn${mode === "json" ? " quiz-question-import__mode-btn--active" : ""}`}
             onClick={() => {
               setMode("json");
               resetMessages();
             }}
           >
             JSON
-          </Button>
-          <Button
-            variant={mode === "file" ? "primary" : "secondary"}
+          </button>
+          <button
+            type="button"
+            className={`quiz-question-import__mode-btn${mode === "file" ? " quiz-question-import__mode-btn--active" : ""}`}
             onClick={() => {
               setMode("file");
               resetMessages();
             }}
           >
             Excel/CSV
-          </Button>
+          </button>
         </div>
 
         {mode === "json" ? (
           <>
-            <div className="quiz-import__sample">
-              <p className="quiz-import__sample-title">Sample format</p>
-              <pre className="quiz-import__sample-code">{SAMPLE_QUIZ_JSON}</pre>
+            <div className="quiz-question-import__sample">
+              <p className="quiz-question-import__sample-title">Sample format (media supported)</p>
+              <pre className="quiz-question-import__sample-code">{SAMPLE_QUIZ_JSON}</pre>
             </div>
 
-            <label className="quiz-import__label">Json data</label>
+            <label className="quiz-question-import__label">JSON data</label>
             <textarea
-              className="quiz-import__textarea"
+              className="quiz-question-import__textarea"
               rows={10}
               value={jsonText}
               onChange={(e) => setJsonText(e.target.value)}
               placeholder="Paste your questions JSON here"
             />
 
-            <label className="quiz-import__checkbox">
+            <label className="quiz-question-import__checkbox">
               <input
                 type="checkbox"
                 checked={validateBeforeImport}
@@ -204,11 +221,10 @@ export function QuizImportModal({ open, onClose, onImport }) {
             </label>
           </>
         ) : (
-          <div className="quiz-import__file-mode">
-            <p className="quiz-import__sample-title">Excel/CSV format</p>
-            <p className="quiz-import__hint">
-              Media columns are optional. Leave them blank for text-only questions or answers.
-              Use media URL/objectPath only after uploading the file to storage.
+          <>
+            <p className="quiz-question-import__hint">
+              Excel/CSV chỉ chứa text (loại câu hỏi, nội dung, đáp án A-D, đáp án đúng, giải thích).
+              Media (image/audio/video) hãy thêm bằng cách chỉnh từng câu sau khi import hoặc dùng JSON import.
             </p>
             <input
               type="file"
@@ -216,16 +232,16 @@ export function QuizImportModal({ open, onClose, onImport }) {
               onChange={handleFileChange}
               disabled={parsingFile}
             />
-            {fileName && <p className="quiz-import__valid">Selected: {fileName}</p>}
-            {parsingFile && <p className="quiz-import__valid">Parsing file...</p>}
+            {fileName && <p className="quiz-question-import__valid">Selected: {fileName}</p>}
+            {parsingFile && <p className="quiz-question-import__valid">Parsing file...</p>}
+            {legacyMediaWarning && (
+              <p className="quiz-question-import__warning">{legacyMediaWarning}</p>
+            )}
 
             {parsedRows.length > 0 && (
-              <div className="quiz-import__preview" style={{ marginTop: 12 }}>
-                <p className="quiz-import__sample-title">
-                  Preview: {validRows.length}/{parsedRows.length} valid row(s)
-                </p>
-                <div style={{ maxHeight: 240, overflow: "auto" }}>
-                  <table className="quiz-import__preview-table" style={{ width: "100%" }}>
+              <div className="quiz-question-import__preview">
+                <div className="quiz-question-import__preview-scroll">
+                  <table className="quiz-question-import__preview-table">
                     <thead>
                       <tr>
                         <th>Row</th>
@@ -239,12 +255,12 @@ export function QuizImportModal({ open, onClose, onImport }) {
                         <tr key={row.rowNumber}>
                           <td>{row.rowNumber}</td>
                           <td>{row.question.type || "-"}</td>
-                          <td>{row.question.title || (row.question.media ? "[media-only]" : "-")}</td>
+                          <td>{row.question.title || <em>-</em>}</td>
                           <td>
                             {row.errors.length === 0 ? (
-                              <span className="quiz-import__valid">Valid</span>
+                              <span className="admin-status admin-status--approved">Valid</span>
                             ) : (
-                              <span className="quiz-import__errors">
+                              <span className="quiz-question-import__row-error">
                                 {row.errors.join("; ")}
                               </span>
                             )}
@@ -256,13 +272,13 @@ export function QuizImportModal({ open, onClose, onImport }) {
                 </div>
               </div>
             )}
-          </div>
+          </>
         )}
 
-        {validMessage && <p className="quiz-import__valid">{validMessage}</p>}
+        {validMessage && <p className="quiz-question-import__valid">{validMessage}</p>}
 
         {errors.length > 0 && (
-          <ul className="quiz-import__errors">
+          <ul className="quiz-question-import__errors">
             {errors.map((err, i) => (
               <li key={i}>{err.message}</li>
             ))}

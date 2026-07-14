@@ -1,0 +1,10 @@
+---
+description: Apply Smart Learnly’s design language to UI review, redesign, and implementation work.
+globs: src/**/*.{jsx,tsx,css}
+alwaysApply: false
+---
+
+For UI/UX work, read `@DESIGN_LANGUAGE.md` in full and follow the `smart-learnly-ui-ux` skill when available.
+
+Preserve the current simple, flat, professional e-learning direction, role-specific layouts, restrained purple accents, accessible interactions, and responsive behavior. Do not reintroduce neo-brutalism, offset black shadows, hover translation, glossy gradients, glassmorphism, emoji icons, a new blue primary, or decorative UI that does not support the task.
+

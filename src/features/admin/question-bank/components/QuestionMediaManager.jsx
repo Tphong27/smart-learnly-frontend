@@ -1,5 +1,13 @@
-import { ArrowDown, ArrowUp, FileAudio, ImagePlus, Trash2, Upload } from 'lucide-react'
-import { useToast } from '@/shared/components/ui'
+import { useState } from 'react'
+import { ArrowDown, ArrowDownToLine, ArrowUp, ArrowUpToLine, Eye, FileAudio, FileVideo, ImagePlus, Trash2, Upload } from 'lucide-react'
+import { Button, Modal, useToast } from '@/shared/components/ui'
+
+function clampMoveIndex(targetIndex, length) {
+  if (length <= 0) return 0
+  if (targetIndex < 0) return 0
+  if (targetIndex >= length) return length - 1
+  return targetIndex
+}
 
 const MEDIA_CONFIG = {
   image: {
@@ -24,6 +32,27 @@ const MEDIA_CONFIG = {
     typeLabel: 'MP3, M4A, or WAV',
     Icon: FileAudio,
   },
+  video: {
+    label: 'Video',
+    empty: 'No video attached',
+    accept: 'video/mp4,video/mpeg,video/webm,video/quicktime,video/x-matroska,video/x-msvideo,video/x-ms-wmv,video/3gpp,video/x-flv,.mp4,.mov,.mkv,.avi,.wmv,.3gp,.flv,.webm,.mpg,.mpeg',
+    allowedTypes: [
+      'video/mp4',
+      'video/mpeg',
+      'video/webm',
+      'video/quicktime',
+      'video/x-matroska',
+      'video/x-msvideo',
+      'video/x-ms-wmv',
+      'video/3gpp',
+      'video/x-flv',
+    ],
+    maxSize: 100 * 1024 * 1024,
+    maxCount: 1,
+    maxSizeLabel: '100MB',
+    typeLabel: 'MP4, WebM, MOV, AVI, MKV, WMV, 3GP, FLV, or MPEG',
+    Icon: FileVideo,
+  },
 }
 
 function itemUrl(item) {
@@ -34,26 +63,52 @@ function itemName(item) {
   return item.fileName || item.originalFileName || item.file?.name || 'Attachment'
 }
 
-export function QuestionMediaManager({ mediaType, items, disabled, onAddFiles, onRemove, onMove }) {
+function formatBytes(value) {
+  const bytes = Number(value || 0)
+  if (!bytes) return null
+  if (bytes >= 1024 * 1024) return (bytes / 1024 / 1024).toFixed(1) + ' MB'
+  if (bytes >= 1024) return Math.round(bytes / 1024) + ' KB'
+  return bytes + ' B'
+}
+
+function mediaMetaLabel(item, index) {
+  const parts = []
+  parts.push(index === 0 ? 'Primary' : item.source === 'pending' ? 'Pending upload' : 'Attached')
+  const size = formatBytes(item.sizeBytes || item.fileSize || item.file?.size)
+  if (size) parts.push(size)
+  if (item.importSource && item.importSource !== 'manual') parts.push(item.importSource)
+  return parts.join(' / ')
+}
+
+export function QuestionMediaManager({ mediaType, items, disabled, onAddFiles, onRemove, onMoveTo }) {
   const config = MEDIA_CONFIG[mediaType]
   const toast = useToast()
   const Icon = config.Icon
   const remainingSlots = Math.max(0, config.maxCount - items.length)
+  const [previewItem, setPreviewItem] = useState(null)
+  const previewUrl = previewItem ? itemUrl(previewItem) : null
+
+  function requestMoveTo(index, targetIndex) {
+    if (disabled || items.length < 2) return
+    const safeTarget = clampMoveIndex(targetIndex, items.length)
+    if (index === safeTarget) return
+    onMoveTo(index, safeTarget)
+  }
 
   function validateFiles(files) {
     if (!files.length) return []
     if (files.length > remainingSlots) {
-      toast.error(`${config.label} cannot exceed ${config.maxCount} files per question.`)
+      toast.error(config.label + ' cannot exceed ' + config.maxCount + ' files per question.')
       return []
     }
     const validFiles = []
     for (const file of files) {
       if (!config.allowedTypes.includes(file.type)) {
-        toast.error(`${itemName({ file })} is not supported. ${config.typeLabel} only.`)
+        toast.error(itemName({ file }) + ' is not supported. ' + config.typeLabel + ' only.')
         return []
       }
       if (file.size > config.maxSize) {
-        toast.error(`${itemName({ file })} exceeds ${config.maxSizeLabel}.`)
+        toast.error(itemName({ file }) + ' exceeds ' + config.maxSizeLabel + '.')
         return []
       }
       validFiles.push(file)
@@ -74,8 +129,13 @@ export function QuestionMediaManager({ mediaType, items, disabled, onAddFiles, o
           <div className="question-media-manager__title">{config.label}</div>
           <div className="question-media-manager__hint">{config.typeLabel}. Max {config.maxSizeLabel}. {items.length}/{config.maxCount} used.</div>
         </div>
-        <label className={`button button--secondary button--sm ${disabled || remainingSlots === 0 ? 'is-disabled' : ''}`}>
-          <Upload size={14} />
+        <Button
+          as="label"
+          variant="secondary"
+          size="sm"
+          leftIcon={<Upload size={14} />}
+          disabled={disabled || remainingSlots === 0}
+        >
           Add
           <input
             type="file"
@@ -85,7 +145,7 @@ export function QuestionMediaManager({ mediaType, items, disabled, onAddFiles, o
             disabled={disabled || remainingSlots === 0}
             onChange={handleFiles}
           />
-        </label>
+        </Button>
       </div>
 
       {items.length ? (
@@ -93,19 +153,61 @@ export function QuestionMediaManager({ mediaType, items, disabled, onAddFiles, o
           {items.map((item, index) => {
             const url = itemUrl(item)
             return (
-              <div className="question-media-manager__item" key={item.localId || item.attachmentId || item.id || `${mediaType}-${index}`}>
-                <div className="question-media-manager__preview">
-                  {mediaType === 'image' && url ? <img src={url} alt={itemName(item)} /> : null}
-                  {mediaType === 'audio' && url ? <audio controls preload="metadata" src={url}><track kind="captions" /></audio> : null}
-                  {!url ? <Icon size={20} /> : null}
-                </div>
-                <div className="question-media-manager__meta">
-                  <strong>{index + 1}. {itemName(item)}</strong>
-                  <span>{index === 0 ? 'Primary' : item.source === 'pending' ? 'Pending upload' : 'Attached'}</span>
-                </div>
+              <div className={'question-media-manager__item ' + (mediaType === 'audio' ? 'question-media-manager__item--audio ' : '') + (mediaType === 'video' ? 'question-media-manager__item--video ' : '')} key={item.localId || item.attachmentId || item.id || mediaType + '-' + index}>
+                {mediaType === 'video' ? (
+                  <>
+                    <div className="question-media-manager__video-label">
+                      <strong>Video</strong>
+                    </div>
+                    <div className="question-media-manager__video-player">
+                      {url ? (
+                        <video controls preload="metadata" src={url}>
+                          <track kind="captions" />
+                        </video>
+                      ) : (
+                        <Icon size={20} />
+                      )}
+                    </div>
+                  </>
+                ) : mediaType === 'audio' ? (
+                  <>
+                    <div className="question-media-manager__audio-label">
+                      <strong>Audio{index + 1}</strong>
+                    </div>
+                    <div className="question-media-manager__audio-player">
+                      {url ? (
+                        <audio controls preload="metadata" src={url}>
+                          <track kind="captions" />
+                        </audio>
+                      ) : (
+                        <Icon size={20} />
+                      )}
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      className="question-media-manager__preview"
+                      disabled={!url}
+                      onClick={() => setPreviewItem(item)}
+                      aria-label={'Preview ' + itemName(item)}
+                    >
+                      {url ? <img src={url} alt={itemName(item)} /> : null}
+                      {!url ? <Icon size={20} /> : null}
+                      {url ? <span className="question-media-manager__preview-badge"><Eye size={13} /></span> : null}
+                    </button>
+                    <div className="question-media-manager__meta">
+                      <strong>{index + 1}. {itemName(item)}</strong>
+                      <span>{mediaMetaLabel(item, index)}</span>
+                    </div>
+                  </>
+                )}
                 <div className="question-media-manager__actions">
-                  <button type="button" className="admin-table__icon-btn" disabled={disabled || index === 0} onClick={() => onMove(index, -1)} aria-label="Move media up"><ArrowUp size={15} /></button>
-                  <button type="button" className="admin-table__icon-btn" disabled={disabled || index === items.length - 1} onClick={() => onMove(index, 1)} aria-label="Move media down"><ArrowDown size={15} /></button>
+                  <button type="button" className="admin-table__icon-btn" disabled={disabled || index === 0} onClick={() => requestMoveTo(index, 0)} aria-label="Move media to primary"><ArrowUpToLine size={15} /></button>
+                  <button type="button" className="admin-table__icon-btn" disabled={disabled || index === 0} onClick={() => requestMoveTo(index, index - 1)} aria-label="Move media up"><ArrowUp size={15} /></button>
+                  <button type="button" className="admin-table__icon-btn" disabled={disabled || index === items.length - 1} onClick={() => requestMoveTo(index, index + 1)} aria-label="Move media down"><ArrowDown size={15} /></button>
+                  <button type="button" className="admin-table__icon-btn" disabled={disabled || index === items.length - 1} onClick={() => requestMoveTo(index, items.length - 1)} aria-label="Move media to end"><ArrowDownToLine size={15} /></button>
                   <button type="button" className="admin-table__icon-btn admin-table__icon-btn--danger" disabled={disabled} onClick={() => onRemove(item)} aria-label="Remove media"><Trash2 size={15} /></button>
                 </div>
               </div>
@@ -118,6 +220,32 @@ export function QuestionMediaManager({ mediaType, items, disabled, onAddFiles, o
           <span>{config.empty}</span>
         </div>
       )}
+
+      <Modal
+        open={Boolean(previewItem)}
+        title={previewItem ? itemName(previewItem) : ''}
+        size="xl"
+        onClose={() => setPreviewItem(null)}
+      >
+        {previewItem && (
+          <div className="question-media-preview-modal">
+            {mediaType === 'image' && previewUrl ? <img src={previewUrl} alt={itemName(previewItem)} /> : null}
+            {mediaType === 'video' && previewUrl ? (
+              <video controls src={previewUrl}>
+                <track kind="captions" />
+              </video>
+            ) : null}
+
+            <div className="question-media-preview-modal__meta">
+              <span>{mediaMetaLabel(previewItem, items.findIndex((item) => item === previewItem))}</span>
+              {previewItem.contentType ? <span>{previewItem.contentType}</span> : null}
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   )
 }
+
+
+

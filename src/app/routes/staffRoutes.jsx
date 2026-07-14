@@ -1,7 +1,8 @@
+/* eslint-disable react-refresh/only-export-components */
 import { Navigate } from "react-router-dom";
 import { RoleGuard } from "./RoleGuard";
 import { ROLES } from "@/shared/constants/roles";
-import { AppLayout } from "../layouts/AppLayout";
+import { TrainerLayout } from "../layouts/TrainerLayout";
 // ĐÃ SỬA: Import đầy đủ các trang quản lý bài test từ feature flashtest
 import {
   StaffFlashTestListPage,
@@ -12,12 +13,15 @@ import {
   StaffTestMonitorPage,
 } from "@/features/flashtest";
 // import { StaffLayout } from "@/app/layouts/StaffLayout";
-import { AdminCoursesPage } from "@/features/admin";
+import { AdminCoursesPage, AdminCourseFormPage } from "@/features/admin";
 import AdminCourseContentPage from "@/features/course/pages/AdminCourseContentPage";
+import AdminLessonDetailPage from "@/features/course/pages/AdminLessonDetailPage";
 import {
   StaffClassListPage,
   TmoCreateClassPage,
   ClassDetailPage,
+  TrainerLessonDetailPage,
+  ClassAnalyticsPage,
 } from "@/features/classroom";
 
 function PlaceholderPage({ title }) {
@@ -36,9 +40,8 @@ function PlaceholderPage({ title }) {
 function getStaffRoutes() {
   return [
     {
-      // 🟩 ĐƯA THẲNG APPLAYOUT LÊN ĐÂY: Để Sidebar/Topbar ôm trọn cụm /staff
       path: "/staff",
-      element: <AppLayout />,
+      element: <TrainerLayout />,
       children: [
         // NHÓM CHUNG: Cả 3 quyền Trainer, TMO, SME đều xem được danh sách khoá học, bài test, flashcard
         {
@@ -46,10 +49,22 @@ function getStaffRoutes() {
             <RoleGuard allowedRoles={[ROLES.TRAINER, ROLES.TMO, ROLES.SME]} />
           ),
           children: [
+            {
+              path: "classrooms/:classId/analytics",
+              element: <ClassAnalyticsPage />,
+            },
             { path: "courses", element: <AdminCoursesPage /> },
+            {
+              path: "courses/:courseId/edit",
+              element: <AdminCourseFormPage />,
+            },
             {
               path: "courses/:courseId/content",
               element: <AdminCourseContentPage />,
+            },
+            {
+              path: "courses/:courseId/lessons/:lessonId",
+              element: <AdminLessonDetailPage />,
             },
             {
               path: "tests",
@@ -71,7 +86,6 @@ function getStaffRoutes() {
               path: "flashcards",
               element: <PlaceholderPage title="Flashcards Management" />,
             },
-            // ĐÃ SỬA: Thay thế Placeholder bằng Page thật và bổ sung cụm Route con điều hướng ổn định
             {
               path: "flashtests",
               element: <StaffFlashTestListPage />,
@@ -142,6 +156,25 @@ function getStaffRoutes() {
             {
               path: "reports",
               element: <PlaceholderPage title="Reports & Analytics" />,
+            },
+          ],
+        },
+      ],
+    },
+    // Trainer lesson editor mirror of AdminLessonDetailPage, scoped to a
+    // class draft curriculum. Audit history is hidden here.
+    {
+      path: "/trainer",
+      element: <TrainerLayout />,
+      children: [
+        {
+          element: (
+            <RoleGuard allowedRoles={[ROLES.TRAINER, ROLES.TMO, ROLES.ADMIN]} />
+          ),
+          children: [
+            {
+              path: "classes/:classId/curriculum/lessons/:lessonId",
+              element: <TrainerLessonDetailPage />,
             },
           ],
         },

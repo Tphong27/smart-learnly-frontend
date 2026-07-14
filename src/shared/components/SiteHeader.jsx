@@ -1,80 +1,75 @@
 import { useEffect, useState } from "react";
-import { Menu, X, Zap } from "lucide-react";
+import { ChevronDown } from "lucide-react";
+import { Button } from "@/shared/components/ui";
+import { SmartLearnlyMark } from "./SmartLearnlyMark";
+import { HeaderCourseSearch } from "./HeaderCourseSearch";
 
-// Brand logo dùng chung cho header và footer của các trang public.
-export function BrandLogo() {
-    return (
-        <a className="brand" href="/" aria-label="Smart Learnly home">
-            <span className="brand-mark">
-                <Zap size={18} strokeWidth={2.6} />
-            </span>
-            <span>Smart Learnly</span>
-        </a>
-    );
-}
-
-// Header dùng chung cho các trang public (homepage, course detail, ...).
-// Các liên kết điều hướng trỏ về "/#section" để hoạt động được từ mọi trang.
+// Header component - Figma Neubrutalism Design
 export function SiteHeader() {
-    const [menuOpen, setMenuOpen] = useState(false);
-    const [scrolled, setScrolled] = useState(false);
+    const [isCompact, setIsCompact] = useState(() => window.scrollY > 24);
 
     useEffect(() => {
-        const handleScroll = () => {
-            setScrolled(window.scrollY > 50);
-        };
+        let frameId = null;
+
+        function handleScroll() {
+            if (frameId) return;
+
+            frameId = window.requestAnimationFrame(() => {
+                const shouldCompact = window.scrollY > 24;
+                setIsCompact((current) =>
+                    current === shouldCompact ? current : shouldCompact,
+                );
+                frameId = null;
+            });
+        }
+
         window.addEventListener("scroll", handleScroll, { passive: true });
-        handleScroll();
-        return () => window.removeEventListener("scroll", handleScroll);
+        return () => {
+            window.removeEventListener("scroll", handleScroll);
+            if (frameId) window.cancelAnimationFrame(frameId);
+        };
     }, []);
 
-    const closeMenu = () => setMenuOpen(false);
-
     return (
-        <header className={`site-header${scrolled ? " scrolled" : ""}`}>
-            <div className="container header-inner">
-                <BrandLogo />
-                <button
-                    className="menu-button"
-                    type="button"
-                    aria-label="Toggle navigation"
-                    aria-expanded={menuOpen}
-                    onClick={() => setMenuOpen((open) => !open)}
+        <header className={`site-header${isCompact ? " site-header--compact" : ""}`}>
+            <div className="header-container">
+                {/* Logo */}
+                <a
+                    href="/"
+                    className="header-logo"
+                    aria-label="Smart Learnly home"
                 >
-                    {menuOpen ? <X size={22} /> : <Menu size={22} />}
-                </button>
-                <nav
-                    className={menuOpen ? "main-nav is-open" : "main-nav"}
-                    aria-label="Main navigation"
-                >
-                    <a href="/#courses" onClick={closeMenu}>
-                        Courses
-                    </a>
-                    <a href="/#features" onClick={closeMenu}>
-                        Features
-                    </a>
-                    <a href="/#centers" onClick={closeMenu}>
-                        For Centers
-                    </a>
-                    <a href="/#how-it-works" onClick={closeMenu}>
-                        How It Works
-                    </a>
-                    <a href="/#about" onClick={closeMenu}>
-                        About
-                    </a>
-                    <span className="nav-actions">
-                        <a className="button button-ghost" href="/login">
-                            Log in
-                        </a>
-                        <a
-                            className="button button-primary button-small"
-                            href="/register"
-                        >
-                            Register
-                        </a>
-                    </span>
+                    <SmartLearnlyMark className="header-logo-icon" />
+                    <span className="header-logo-text">Smart Learnly</span>
+                </a>
+
+                <HeaderCourseSearch />
+
+                {/* Navigation */}
+                <nav className="header-nav">
+                    <button className="header-categories-btn">
+                        <span>Categories</span>
+                        <ChevronDown size={16} />
+                    </button>
+
+                    <Button to="/login" variant="outline">
+                        Log in
+                    </Button>
+                    <Button to="/register">
+                        Register
+                    </Button>
                 </nav>
             </div>
         </header>
+    );
+}
+
+// Brand Logo component (for footer)
+export function BrandLogo() {
+    return (
+        <a className="brand" href="/" aria-label="Smart Learnly home">
+            <SmartLearnlyMark className="brand-mark" />
+            <span>Smart Learnly</span>
+        </a>
     );
 }

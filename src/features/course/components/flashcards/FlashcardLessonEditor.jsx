@@ -1,7 +1,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { CheckSquare, Plus, RefreshCw, Save, Trash2, Upload, X } from "lucide-react";
+import {
+  CheckSquare,
+  Plus,
+  RefreshCw,
+  Save,
+  Trash2,
+  Upload,
+  X,
+} from "lucide-react";
 import { getCurrentUser } from "@/services";
-import { flashcardService } from "@/services/flashcard.service";
+import {
+  flashcardService as defaultFlashcardService,
+} from "@/services/flashcard.service";
 import { isRoleAllowed, ROLES } from "@/shared/constants/roles";
 import { FlashcardCardsEditScreen } from "./FlashcardCardsEditScreen";
 import { FlashcardCardList } from "./FlashcardCardList";
@@ -18,6 +28,7 @@ import {
   toCardPayload,
   validateCurrentCardDraft,
 } from "./flashcard-utils";
+import { useToast } from "@/shared/components/ui/Toast/useToast";
 import "./Flashcards.css";
 
 function flashcardCacheKey(lessonId) {
@@ -54,8 +65,10 @@ export function FlashcardLessonEditor({
   onTitleSaved,
   onNavigateToCurrent,
   showToast,
-  dismissToast,
+  flashcardService = defaultFlashcardService,
+  stagingEnabled = true,
 }) {
+  const { removeToast } = useToast();
   const [flashcardSet, setFlashcardSet] = useState(null);
   const [cards, setCards] = useState([]);
   const [title, setTitle] = useState(defaultTitle);
@@ -78,30 +91,32 @@ export function FlashcardLessonEditor({
   const [stagingRefreshKey, setStagingRefreshKey] = useState(0);
   const [error, setError] = useState(null);
 
-  const canUseStaging = isRoleAllowed(getCurrentUser()?.role, STAGING_ROLES);
+  const canUseStaging =
+    stagingEnabled && isRoleAllowed(getCurrentUser()?.role, STAGING_ROLES);
 
   const toastIdsRef = useRef(new Set());
 
   const clearFlashcardToasts = useCallback(() => {
-    if (!dismissToast) return;
-    toastIdsRef.current.forEach((toastId) => dismissToast(toastId));
+    toastIdsRef.current.forEach((toastId) => {
+      removeToast(toastId);
+    });
     toastIdsRef.current.clear();
-  }, [dismissToast]);
+  }, [removeToast]);
 
   const notify = useCallback(
     (message, type = "info") => {
-      if (!message) return null;
+      if (!message) {
+        return null;
+      }
       const toastId = showToast?.(message, type);
-      if (toastId && dismissToast) {
+      if (toastId) {
         toastIdsRef.current.add(toastId);
         window.setTimeout(() => {
           toastIdsRef.current.delete(toastId);
         }, 3500);
       }
       return toastId;
-    },
-    [dismissToast, showToast],
-  );
+    },[showToast]);
 
   useEffect(() => () => clearFlashcardToasts(), [clearFlashcardToasts]);
 
@@ -136,21 +151,22 @@ export function FlashcardLessonEditor({
             await flashcardService.getAdminSet(cachedSetId),
           );
           if (setById.lessonId === lessonId) {
-            hydrateSet(setById);
-            return;
+            return hydrateSet(setById);
           }
         } catch {
           sessionStorage.removeItem(flashcardCacheKey(lessonId));
         }
       }
 
-      hydrateSet(await flashcardService.getAdminSetByLesson(lessonId));
+      return hydrateSet(
+  await flashcardService.getAdminSetByLesson(lessonId),
+);
     } catch (loadError) {
       setError(getErrorMessage(loadError, "Failed to load flashcard set."));
     } finally {
       setLoading(false);
     }
-  }, [hydrateSet, initialSetId, lessonId]);
+  }, [hydrateSet, initialSetId, lessonId, flashcardService]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -219,22 +235,32 @@ export function FlashcardLessonEditor({
       onTitleSaved?.(savedSet.title);
       notify("Flashcard set saved.", "success");
     } catch (saveError) {
-      notify(getErrorMessage(saveError, "Failed to save flashcard set."), "error");
+      notify(
+        getErrorMessage(saveError, "Failed to save flashcard set."),
+        "error",
+      );
     } finally {
       setSavingSet(false);
     }
   };
 
-  const handleCardPersisted = useCallback((savedCard) => {
-    if (!savedCard?.id) return;
-    setCards((currentCards) => {
-      const existingIndex = currentCards.findIndex((card) => card.id === savedCard.id);
-      if (existingIndex < 0) {
-        return [...currentCards, savedCard];
-      }
-      return currentCards.map((card) => (card.id === savedCard.id ? savedCard : card));
-    });
-  }, []);
+ const handleCardPersisted = useCallback((savedCard) => {
+  if (!savedCard?.id) return;
+
+  setCards((currentCards) => {
+    const existingIndex = currentCards.findIndex(
+      (card) => card.id === savedCard.id,
+    );
+
+    if (existingIndex < 0) {
+      return [...currentCards, savedCard];
+    }
+
+    return currentCards.map((card) =>
+      card.id === savedCard.id ? savedCard : card,
+    );
+  });
+}, []);
 
   const handleDeleteCard = (card) => {
     if (!card?.id) return;
@@ -320,9 +346,12 @@ export function FlashcardLessonEditor({
         cards: savedSet?.cards?.length ? savedSet.cards : optimisticCards,
       }));
       setCards(savedSet?.cards?.length ? savedSet.cards : optimisticCards);
-    } catch (reorderError) {
+        } catch (reorderError) {
       setCards(previousCards);
-      notify(getErrorMessage(reorderError, "Failed to reorder cards."), "error");
+      notify(
+        getErrorMessage(reorderError, "Failed to reorder cards."),
+        "error",
+      );
     } finally {
       setReordering(false);
     }
@@ -337,8 +366,8 @@ export function FlashcardLessonEditor({
   };
 
   const refreshCurrentFlashcards = useCallback(async () => {
-    await loadSet();
-  }, [loadSet]);
+  return loadSet();
+}, [loadSet]);
 
   const refreshStagingReview = useCallback(() => {
     setStagingRefreshKey((current) => current + 1);
@@ -359,12 +388,9 @@ export function FlashcardLessonEditor({
     }
   };
 
-  const handleStagingImportCreated = useCallback(
-    () => {
-      refreshStagingReview();
-    },
-    [refreshStagingReview],
-  );
+  const handleStagingImportCreated = useCallback(() => {
+    refreshStagingReview();
+  }, [refreshStagingReview]);
 
   const handleEditCard = (card) => {
     clearFlashcardToasts();
@@ -483,7 +509,9 @@ export function FlashcardLessonEditor({
         await flashcardService.deleteCard(cardId);
       }
 
-      const remainingCards = orderedCards.filter((card) => !deletedIdSet.has(card.id));
+      const remainingCards = orderedCards.filter(
+        (card) => !deletedIdSet.has(card.id),
+      );
       setCards((currentCards) =>
         currentCards.filter((card) => !deletedIdSet.has(card.id)),
       );
@@ -537,7 +565,9 @@ export function FlashcardLessonEditor({
         <>
           <div className="flashcard-toolbar">
             <div>
-              <h2 className="flashcard-toolbar__title">{title || "Flashcards"}</h2>
+              <h2 className="flashcard-toolbar__title">
+                {title || "Flashcards"}
+              </h2>
               <div className="flashcard-toolbar__meta">
                 {orderedCards.length} card{orderedCards.length === 1 ? "" : "s"}
               </div>
@@ -613,6 +643,8 @@ export function FlashcardLessonEditor({
                       )}
                     </div>
                     <div className="flashcard-actions">
+
+      
                       <button
                         type="button"
                         className="flashcard-btn flashcard-btn--primary"
@@ -747,7 +779,9 @@ export function FlashcardLessonEditor({
                   <FlashcardPreview
                     cards={orderedCards}
                     activeCardId={activeCardId}
-                    onActiveCardChange={(cardId) => setActivePreviewCardId(cardId)}
+                    onActiveCardChange={(cardId) =>
+                      setActivePreviewCardId(cardId)
+                    }
                     emptyMessage="Add a card to preview this flashcard set."
                   />
                 </div>
@@ -789,7 +823,9 @@ export function FlashcardLessonEditor({
             aria-modal="true"
             aria-labelledby="flashcard-delete-card-title"
           >
-            <h3 id="flashcard-delete-card-title">Delete this flashcard card?</h3>
+            <h3 id="flashcard-delete-card-title">
+              Delete this flashcard card?
+            </h3>
             <p>
               This card will be removed from the set. You can cancel to keep it.
             </p>

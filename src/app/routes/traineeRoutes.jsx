@@ -2,13 +2,9 @@
 import { Navigate } from "react-router-dom";
 import { RoleGuard } from "./RoleGuard";
 import { ROLES } from "@/shared/constants/roles";
-import { AppLayout } from "../layouts/AppLayout";
-import {
-  CheckoutPage,
-  PaymentResultPage as CheckoutPaymentResultPage,
-} from "@/features/checkout";
+import { TraineeLayout } from "../layouts/TraineeLayout";
+import { CheckoutPage, MyTransactionsPage, PaymentResultPage } from "@/features/checkout";
 import { MyEnrollmentsPage } from "@/features/enrollment";
-import { MyTransactionsPage, PaymentResultPage } from "@/features/payment";
 import {
   TraineeFlashTestListPage,
   TraineeFlashTestTakePage,
@@ -40,7 +36,7 @@ function PlaceholderPage({ title }) {
 function getTraineeRoutes() {
   return [
     {
-      // Learning workspace - fullscreen, outside AppLayout (giống admin "view as user")
+      // Learning workspace - fullscreen, outside TraineeLayout (giống admin "view as user")
       // để màn hình học bài hiển thị y hệt chế độ admin-preview.
       path: "/learning/courses/:courseId",
       element: <RoleGuard allowedRoles={[ROLES.TRAINEE]} />,
@@ -66,7 +62,7 @@ function getTraineeRoutes() {
       element: <RoleGuard allowedRoles={[ROLES.TRAINEE]} />,
       children: [
         {
-          element: <AppLayout />,
+          element: <TraineeLayout />,
           children: [
             {
               path: "courses",
@@ -83,10 +79,7 @@ function getTraineeRoutes() {
             },
             { path: "enrollments", element: <MyEnrollmentsPage /> },
             { path: "transactions", element: <MyTransactionsPage /> },
-            {
-              path: "progress",
-              element: <TraineeProgressPage />,
-            },
+            { path: "progress", element: <TraineeProgressPage /> },
             {
               path: "classrooms",
               element: <PlaceholderPage title="Classrooms" />,
@@ -115,34 +108,21 @@ function getTraineeRoutes() {
         },
       ],
     },
-
     {
       path: "/checkout/:orderId",
       element: <RoleGuard allowedRoles={[ROLES.TRAINEE]} />,
       children: [
         {
-          element: <AppLayout />,
+          element: <TraineeLayout />,
           children: [{ index: true, element: <CheckoutPage /> }],
         },
       ],
     },
-
-    {
-      path: "/checkout/:orderId/result",
-      element: <RoleGuard allowedRoles={[ROLES.TRAINEE]} />,
-      children: [
-        {
-          element: <AppLayout />,
-          children: [{ index: true, element: <CheckoutPaymentResultPage /> }],
-        },
-      ],
-    },
-
     {
       element: <RoleGuard allowedRoles={[ROLES.TRAINEE]} />,
       children: [
         {
-          element: <AppLayout />,
+          element: <TraineeLayout />,
           children: [
             {
               path: "/my-courses",
@@ -156,7 +136,10 @@ function getTraineeRoutes() {
               path: "/my-transactions",
               element: <Navigate to="/learning/transactions" replace />,
             },
-            { path: "/payment-result", element: <PaymentResultPage /> },
+            {
+              path: "/payment-result",
+              element: <PaymentResultPage />,
+            },
           ],
         },
       ],
@@ -166,7 +149,7 @@ function getTraineeRoutes() {
       element: <RoleGuard allowedRoles={[ROLES.TRAINEE]} />,
       children: [
         {
-          element: <AppLayout />,
+          element: <TraineeLayout />,
           children: [{ index: true, element: <TraineeDashboardPage /> }],
         },
       ],

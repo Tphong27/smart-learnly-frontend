@@ -10,7 +10,13 @@ function appendIfPresent(formData, key, value) {
   }
 }
 
-function toGenerationFormData({ file, desiredCount, language, difficulty, generationMode }) {
+function toGenerationFormData({
+  file,
+  desiredCount,
+  language,
+  difficulty,
+  generationMode,
+}) {
   const formData = new FormData();
   formData.append("file", file);
   appendIfPresent(formData, "desiredCount", desiredCount);
@@ -182,10 +188,16 @@ export const flashcardService = {
     return Array.isArray(items) ? items : [];
   },
 
-  async getLessonPractice(lessonId) {
+  async getLessonPractice(lessonId, classId) {
     const response = await apiClient.get(
       `/learning/lessons/${lessonId}/flashcards`,
+      {
+        params: {
+          classId,
+        },
+      },
     );
+
     return unwrap(response);
   },
 

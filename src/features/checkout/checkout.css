@@ -205,32 +205,6 @@
   color: #92400e;
 }
 
-.payment-result {
-  min-height: 60vh;
-  display: grid;
-  place-items: center;
-}
-
-.payment-result__card {
-  max-width: 540px;
-  text-align: center;
-}
-
-.payment-result__card h1 {
-  margin: 16px 0 8px;
-}
-
-.payment-result__card p {
-  color: #64748b;
-}
-
-.payment-result__meta {
-  display: grid;
-  gap: 4px;
-  margin: 16px 0;
-  color: #64748b;
-}
-
 @media (max-width: 900px) {
   .checkout-layout,
   .payment-instruction-card__body {

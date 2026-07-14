@@ -1,13 +1,13 @@
 import "./ScheduleCalendar.css";
 
 const WEEK_DAYS = [
-  { key: "MONDAY", shortLabel: "MON" },
-  { key: "TUESDAY", shortLabel: "TUE"},
-  { key: "WEDNESDAY", shortLabel: "WED"},
-  { key: "THURSDAY", shortLabel: "THU"},
-  { key: "FRIDAY", shortLabel: "FRI"},
-  { key: "SATURDAY", shortLabel: "SAT"},
-  { key: "SUNDAY", shortLabel: "SUN"},
+  { key: "MONDAY", shortLabel: "MON", fullLabel: "Monday" },
+  { key: "TUESDAY", shortLabel: "TUE", fullLabel: "Tuesday" },
+  { key: "WEDNESDAY", shortLabel: "WED", fullLabel: "Wednesday" },
+  { key: "THURSDAY", shortLabel: "THU", fullLabel: "Thursday" },
+  { key: "FRIDAY", shortLabel: "FRI", fullLabel: "Friday" },
+  { key: "SATURDAY", shortLabel: "SAT", fullLabel: "Saturday" },
+  { key: "SUNDAY", shortLabel: "SUN", fullLabel: "Sunday" },
 ];
 
 function parseSchedule(scheduleDescription) {
@@ -59,7 +59,7 @@ export function ScheduleCalendar({ scheduleDescription }) {
                     {day.shortLabel}
                   </span>
                   <span className="shared-schedule-calendar__day-name">
-                    {day.shortLabel}
+                    {day.fullLabel}
                   </span>
                 </th>
               ))}

@@ -8,6 +8,8 @@ import {
   validateQuizQuestions,
   normalizeMedia,
 } from "../utils/quiz-question-schema";
+import "@/features/admin/admin-shared.css";
+import "./quiz-question-manager.css";
 
 const TYPE_OPTIONS = [
   QUESTION_TYPES.SINGLE,
@@ -77,8 +79,9 @@ function MediaUploader({ label, media, onChange, onError }) {
 
     const isImage = file.type.startsWith("image/");
     const isVideo = file.type.startsWith("video/");
-    if (!isImage && !isVideo) {
-      onError("Only image or video files are supported.");
+    const isAudio = file.type.startsWith("audio/");
+    if (!isImage && !isVideo && !isAudio) {
+      onError("Only image, video, or audio files are supported.");
       return;
     }
 
@@ -87,7 +90,8 @@ function MediaUploader({ label, media, onChange, onError }) {
       const uploaded = isVideo
         ? await courseService.uploadLessonMaterial(file)
         : await courseService.uploadLessonResource(file);
-      onChange(buildMediaFromUpload(uploaded, isVideo ? "video" : "image"));
+      const mediaType = isVideo ? "video" : isAudio ? "audio" : "image";
+      onChange(buildMediaFromUpload(uploaded, mediaType));
     } catch (error) {
       const message =
         error?.response?.data?.message || "Failed to upload media file.";
@@ -98,16 +102,16 @@ function MediaUploader({ label, media, onChange, onError }) {
   };
 
   return (
-    <div className="quiz-edit-form__media">
-      <label className="quiz-edit-form__label">{label}</label>
+    <div className="quiz-question-edit-form__media">
+      <label className="quiz-question-edit-form__label">{label}</label>
       {media ? (
-        <div className="quiz-edit-form__media-preview">
+        <div className="quiz-question-edit-form__media-preview">
           <span>
-            {media.type === "video" ? "Video" : "Image"}: {media.fileName || media.url || media.objectPath}
+            {media.type === "video" ? "Video" : media.type === "audio" ? "Audio" : "Image"}: {media.fileName || media.url || media.objectPath}
           </span>
           <button
             type="button"
-            className="quiz-edit-form__icon-btn quiz-edit-form__icon-btn--danger"
+            className="quiz-question-edit-form__icon-btn quiz-question-edit-form__icon-btn--danger"
             onClick={() => onChange(null)}
             title="Remove media"
           >
@@ -115,15 +119,15 @@ function MediaUploader({ label, media, onChange, onError }) {
           </button>
         </div>
       ) : (
-        <p className="quiz-edit-form__hint">Optional. Leave empty for text-only content.</p>
+        <p className="quiz-question-edit-form__hint">Optional. Leave empty for text-only content.</p>
       )}
       <input
         type="file"
-        accept="image/*,video/mp4,video/webm,video/quicktime"
+        accept="image/*,audio/*,video/mp4,video/webm,video/quicktime"
         onChange={handleFileChange}
         disabled={uploading}
       />
-      {uploading && <p className="quiz-edit-form__hint">Uploading media...</p>}
+      {uploading && <p className="quiz-question-edit-form__hint">Uploading media...</p>}
     </div>
   );
 }
@@ -300,12 +304,12 @@ export function QuizQuestionEditModal({ open, question, onClose, onSubmit }) {
       onClose={onClose}
       footer={footer}
     >
-      <div className="quiz-edit-form">
-        <label className="quiz-edit-form__label">
-          Question title <span className="quiz-edit-form__hint">(optional if media exists)</span>
+      <div className="quiz-question-edit-form">
+        <label className="quiz-question-edit-form__label">
+          Question title <span className="quiz-question-edit-form__hint">(optional if media exists)</span>
         </label>
         <textarea
-          className="quiz-edit-form__textarea"
+          className="quiz-question-edit-form__textarea"
           rows={2}
           value={form.title}
           onChange={(e) =>
@@ -321,9 +325,9 @@ export function QuizQuestionEditModal({ open, question, onClose, onSubmit }) {
           onError={setError}
         />
 
-        <label className="quiz-edit-form__label">Explanation</label>
+        <label className="quiz-question-edit-form__label">Explanation</label>
         <textarea
-          className="quiz-edit-form__textarea"
+          className="quiz-question-edit-form__textarea"
           rows={2}
           value={form.explain_question}
           onChange={(e) =>
@@ -332,9 +336,9 @@ export function QuizQuestionEditModal({ open, question, onClose, onSubmit }) {
           placeholder="Optional"
         />
 
-        <label className="quiz-edit-form__label">Question type</label>
+        <label className="quiz-question-edit-form__label">Question type</label>
         <select
-          className="quiz-edit-form__select"
+          className="quiz-question-edit-form__select"
           value={form.type}
           onChange={(e) => handleTypeChange(e.target.value)}
         >
@@ -346,10 +350,10 @@ export function QuizQuestionEditModal({ open, question, onClose, onSubmit }) {
         </select>
 
         {isChoice && (
-          <div className="quiz-edit-form__options">
-            <label className="quiz-edit-form__label">
+          <div className="quiz-question-edit-form__options">
+            <label className="quiz-question-edit-form__label">
               Options{" "}
-              <span className="quiz-edit-form__hint">
+              <span className="quiz-question-edit-form__hint">
                 ({form.type === QUESTION_TYPES.SINGLE
                   ? "select one correct"
                   : "select all correct"}
@@ -360,7 +364,7 @@ export function QuizQuestionEditModal({ open, question, onClose, onSubmit }) {
               const optionNumber = idx + 1;
               const checked = form.correct_answers.includes(optionNumber);
               return (
-                <div key={idx} className="quiz-edit-form__option-row">
+                <div key={idx} className="quiz-question-edit-form__option-row">
                   <input
                     type={
                       form.type === QUESTION_TYPES.SINGLE ? "radio" : "checkbox"
@@ -372,7 +376,7 @@ export function QuizQuestionEditModal({ open, question, onClose, onSubmit }) {
                   <div style={{ flex: 1 }}>
                     <input
                       type="text"
-                      className="quiz-edit-form__option-input"
+                      className="quiz-question-edit-form__option-input"
                       value={opt.text}
                       onChange={(e) => updateOptionText(idx, e.target.value)}
                       placeholder={`Option ${optionNumber} text (optional if media exists)`}
@@ -387,7 +391,7 @@ export function QuizQuestionEditModal({ open, question, onClose, onSubmit }) {
                   {form.options.length > 2 && (
                     <button
                       type="button"
-                      className="quiz-edit-form__icon-btn"
+                      className="quiz-question-edit-form__icon-btn"
                       onClick={() => removeOption(idx)}
                       title="Remove option"
                     >
@@ -400,7 +404,7 @@ export function QuizQuestionEditModal({ open, question, onClose, onSubmit }) {
             {form.options.length < 6 && (
               <button
                 type="button"
-                className="quiz-edit-form__add-btn"
+                className="quiz-question-edit-form__add-btn"
                 onClick={addOption}
               >
                 <Plus size={15} /> Add option
@@ -410,18 +414,18 @@ export function QuizQuestionEditModal({ open, question, onClose, onSubmit }) {
         )}
 
         {isFill && (
-          <div className="quiz-edit-form__options">
-            <label className="quiz-edit-form__label">
+          <div className="quiz-question-edit-form__options">
+            <label className="quiz-question-edit-form__label">
               Accepted answers{" "}
-              <span className="quiz-edit-form__hint">
+              <span className="quiz-question-edit-form__hint">
                 (any match is correct)
               </span>
             </label>
             {form.correct_answers.map((ans, idx) => (
-              <div key={idx} className="quiz-edit-form__option-row">
+              <div key={idx} className="quiz-question-edit-form__option-row">
                 <input
                   type="text"
-                  className="quiz-edit-form__option-input"
+                  className="quiz-question-edit-form__option-input"
                   value={ans}
                   onChange={(e) => updateFillAnswer(idx, e.target.value)}
                   placeholder={`Answer ${idx + 1}`}
@@ -429,7 +433,7 @@ export function QuizQuestionEditModal({ open, question, onClose, onSubmit }) {
                 {form.correct_answers.length > 1 && (
                   <button
                     type="button"
-                    className="quiz-edit-form__icon-btn"
+                    className="quiz-question-edit-form__icon-btn"
                     onClick={() => removeFillAnswer(idx)}
                     title="Remove answer"
                   >
@@ -440,7 +444,7 @@ export function QuizQuestionEditModal({ open, question, onClose, onSubmit }) {
             ))}
             <button
               type="button"
-              className="quiz-edit-form__add-btn"
+              className="quiz-question-edit-form__add-btn"
               onClick={addFillAnswer}
             >
               <Plus size={15} /> Add answer
@@ -448,7 +452,7 @@ export function QuizQuestionEditModal({ open, question, onClose, onSubmit }) {
           </div>
         )}
 
-        {error && <p className="quiz-edit-form__error">{error}</p>}
+        {error && <p className="quiz-question-edit-form__error">{error}</p>}
       </div>
     </Modal>
   );

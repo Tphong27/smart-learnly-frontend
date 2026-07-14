@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Eye, Plus, Shuffle, Trash2, X } from "lucide-react";
 import { questionService } from "@/services/flashtest.service.js";
+import { sanitizeAnswerHtml, sanitizeQuestionHtml } from "@/shared/utils/htmlSanitizer";
 import "../flashtest.css";
 
 function questionText(question) {
@@ -110,7 +111,12 @@ export function QuestionSelector({
             return (
               <div className="ft-question-row-wrap" key={id}>
                 <div className="ft-question-row">
-                  <span className="ft-question-text">{questionText(question)}</span>
+                  <span
+                    className="ft-question-text ft-question-rich-text"
+                    dangerouslySetInnerHTML={{
+                      __html: sanitizeQuestionHtml(questionText(question)),
+                    }}
+                  />
                   <div className="ft-question-actions">
                     <button
                       className="ft-icon-button"
@@ -144,7 +150,12 @@ export function QuestionSelector({
                           }`}
                           key={answer.id || answer.answerId || index}
                         >
-                          <span>{answer.answerText || answer.content}</span>
+                          <span
+                            className="ft-answer-rich-text"
+                            dangerouslySetInnerHTML={{
+                              __html: sanitizeAnswerHtml(answer.answerText || answer.content),
+                            }}
+                          />
                           {(answer.correct || answer.isCorrect) && <strong>Correct</strong>}
                         </div>
                       ))
@@ -185,7 +196,12 @@ export function QuestionSelector({
             const id = questionId(question);
             return (
               <div className="ft-question-row" key={id}>
-                <span className="ft-question-text">{questionText(question)}</span>
+                <span
+                  className="ft-question-text ft-question-rich-text"
+                  dangerouslySetInnerHTML={{
+                    __html: sanitizeQuestionHtml(questionText(question)),
+                  }}
+                />
                 <button
                   className="ft-button ft-button--secondary"
                   type="button"
@@ -259,3 +275,4 @@ export function QuestionSelector({
     </div>
   );
 }
+

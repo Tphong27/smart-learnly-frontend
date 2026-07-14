@@ -14,6 +14,8 @@ export const IMPORT_COLUMNS = [
   { key: 'difficulty', label: 'Difficulty', required: false },
   { key: 'bloom_level', label: 'Bloom level', required: false },
   { key: 'module_id', label: 'Module ID', required: false },
+  { key: 'image_files', label: 'Image URLs', required: false },
+  { key: 'audio_files', label: 'Audio URLs', required: false },
 ]
 
 export const ALLOWED_TYPES = ['multiple_choice', 'true_false']
@@ -38,6 +40,10 @@ export const SAMPLE_QUESTION_BANK_JSON = JSON.stringify(
       difficulty: 1,
       bloomLevel: 'remember',
       moduleId: null,
+      media: {
+        images: ['https://example.com/question-diagram.png'],
+        audios: [],
+      },
     },
     {
       question_text: 'Java is a programming language.',
@@ -48,6 +54,10 @@ export const SAMPLE_QUESTION_BANK_JSON = JSON.stringify(
       difficulty: 'easy',
       bloom_level: 'understand',
       module_id: null,
+      media: {
+        images: [],
+        audios: ['https://example.com/listening.mp3'],
+      },
     },
   ],
   null,
@@ -70,6 +80,8 @@ const HEADER_ALIASES = {
   difficulty: ['difficulty', 'level'],
   bloom_level: ['bloom_level', 'bloom level', 'bloom'],
   module_id: ['module_id', 'module id', 'module'],
+  image_files: ['image_files', 'image files', 'image_urls', 'image urls', 'images'],
+  audio_files: ['audio_files', 'audio files', 'audio_urls', 'audio urls', 'audios'],
 }
 
 const DIFFICULTY_ALIASES = {
@@ -131,6 +143,43 @@ function getAliasedValue(source, camelKey, snakeKey) {
   return ''
 }
 
+function parseMediaUrls(value) {
+  if (Array.isArray(value)) {
+    return value.map((item) => String(item ?? '').trim()).filter(Boolean)
+  }
+  return String(value ?? '')
+    .split(';')
+    .map((item) => item.trim())
+    .filter(Boolean)
+}
+
+function collectMediaErrors(urls, label, maxCount) {
+  const errors = []
+  if (urls.length > maxCount) {
+    errors.push(label + ' supports up to ' + maxCount + ' URL' + (maxCount === 1 ? '' : 's'))
+  }
+  for (const url of urls) {
+    try {
+      const parsed = new URL(url)
+      if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+        errors.push(label + ' URL must use http or https')
+      }
+    } catch {
+      errors.push(label + ' URL is invalid')
+    }
+  }
+  return errors
+}
+
+function getJsonMediaArray(rawQuestion, mediaKey, aliasKey) {
+  const media = rawQuestion.media && typeof rawQuestion.media === 'object' && !Array.isArray(rawQuestion.media)
+    ? rawQuestion.media
+    : {}
+  if (Array.isArray(media[mediaKey])) return media[mediaKey]
+  if (Array.isArray(rawQuestion[aliasKey])) return rawQuestion[aliasKey]
+  return []
+}
+
 function normalizeJsonQuestion(rawQuestion) {
   const errors = []
   if (!rawQuestion || typeof rawQuestion !== 'object' || Array.isArray(rawQuestion)) {
@@ -160,6 +209,8 @@ function normalizeJsonQuestion(rawQuestion) {
     difficulty: String(rawQuestion.difficulty ?? '').trim(),
     bloom_level: String(getAliasedValue(rawQuestion, 'bloomLevel', 'bloom_level') ?? '').trim(),
     module_id: String(getAliasedValue(rawQuestion, 'moduleId', 'module_id') ?? '').trim(),
+    image_files: getJsonMediaArray(rawQuestion, 'images', 'imageFiles'),
+    audio_files: getJsonMediaArray(rawQuestion, 'audios', 'audioFiles'),
   }
 
   options.slice(0, 6).forEach((option, index) => {
@@ -201,6 +252,66 @@ function parseOptions(row) {
     if (row[key]) options.push(row[key])
   }
   return options
+}
+
+function toEditableMappedRow(row) {
+  const data = row?.data || {}
+  const raw = row?.raw || {}
+  const options = Array.isArray(data.options) ? data.options : []
+  const imageFiles = Array.isArray(data.imageFiles) ? data.imageFiles : parseMediaUrls(raw.image_files)
+  const audioFiles = Array.isArray(data.audioFiles) ? data.audioFiles : parseMediaUrls(raw.audio_files)
+  return {
+    question_text: String(data.questionText ?? raw.question_text ?? '').trim(),
+    question_type: String(data.questionType ?? raw.question_type ?? '').trim(),
+    option_a: String(options[0] ?? raw.option_a ?? '').trim(),
+    option_b: String(options[1] ?? raw.option_b ?? '').trim(),
+    option_c: String(options[2] ?? raw.option_c ?? '').trim(),
+    option_d: String(options[3] ?? raw.option_d ?? '').trim(),
+    option_e: String(options[4] ?? raw.option_e ?? '').trim(),
+    option_f: String(options[5] ?? raw.option_f ?? '').trim(),
+    correct_answer: String(data.correctAnswer ?? raw.correct_answer ?? '').trim(),
+    explanation: String(data.explanation ?? raw.explanation ?? '').trim(),
+    difficulty: String(data.difficulty ?? raw.difficulty ?? '').trim(),
+    bloom_level: String(data.bloomLevel ?? raw.bloom_level ?? '').trim(),
+    module_id: String(data.moduleId ?? raw.module_id ?? '').trim(),
+    image_files: imageFiles.join('; '),
+    audio_files: audioFiles.join('; '),
+  }
+}
+
+function validateMappedRows(mappedRows, existingQuestions = []) {
+  const seenTexts = new Set()
+  const parsedRows = mappedRows.map((item, index) => {
+    const rowNumber = item.rowNumber || index + 1
+    const mapped = item.mapped
+    const {
+      errors,
+      resolvedType,
+      questionText,
+      options,
+      correctRaw,
+      imageFiles,
+      audioFiles,
+    } = collectRowErrors(mapped, rowNumber, seenTexts)
+    return {
+      rowNumber,
+      data: {
+        questionText,
+        questionType: resolvedType || (mapped.question_type || '').trim().toLowerCase(),
+        options,
+        correctAnswer: correctRaw,
+        explanation: mapped.explanation || null,
+        difficulty: resolveDifficulty(mapped.difficulty),
+        bloomLevel: mapped.bloom_level ? mapped.bloom_level.trim().toLowerCase().replace(/-/g, '_') : null,
+        moduleId: mapped.module_id || null,
+        imageFiles,
+        audioFiles,
+      },
+      raw: mapped,
+      errors,
+    }
+  })
+  return validateAgainstExisting(parsedRows, existingQuestions)
 }
 
 function resolveDifficulty(value) {
@@ -303,6 +414,11 @@ function collectRowErrors(row, rowNumber, existingTexts) {
     errors.push('Explanation must not exceed 10000 characters')
   }
 
+  const imageFiles = parseMediaUrls(row.image_files)
+  const audioFiles = parseMediaUrls(row.audio_files)
+  errors.push(...collectMediaErrors(imageFiles, 'Image media', 5))
+  errors.push(...collectMediaErrors(audioFiles, 'Audio media', 3))
+
   if (questionText) {
     const lowered = questionText.toLowerCase()
     if (existingTexts.has(lowered)) {
@@ -311,7 +427,7 @@ function collectRowErrors(row, rowNumber, existingTexts) {
     existingTexts.add(lowered)
   }
 
-  return { errors, resolvedType, questionText, options, correctRaw }
+  return { errors, resolvedType, questionText, options, correctRaw, imageFiles, audioFiles }
 }
 
 export async function parseImportFile(file) {
@@ -332,7 +448,7 @@ export async function parseImportFile(file) {
     if (Array.isArray(rawRow) && rawRow.every((cell) => cell === '' || cell == null)) return
     const rowNumber = index + 2
     const mapped = mapRow(rawRow, columnMap)
-    const { errors, resolvedType, questionText, options, correctRaw } = collectRowErrors(mapped, rowNumber, seenTexts)
+    const { errors, resolvedType, questionText, options, correctRaw, imageFiles, audioFiles } = collectRowErrors(mapped, rowNumber, seenTexts)
     parsed.push({
       rowNumber,
       data: {
@@ -344,6 +460,8 @@ export async function parseImportFile(file) {
         difficulty: resolveDifficulty(mapped.difficulty),
         bloomLevel: mapped.bloom_level ? mapped.bloom_level.trim().toLowerCase().replace(/-/g, '_') : null,
         moduleId: mapped.module_id || null,
+        imageFiles,
+        audioFiles,
       },
       raw: mapped,
       errors,
@@ -372,7 +490,7 @@ export function parseImportJson(jsonText) {
   const rows = data.map((rawQuestion, index) => {
     const rowNumber = index + 1
     const { mapped, errors: shapeErrors } = normalizeJsonQuestion(rawQuestion)
-    const { errors, resolvedType, questionText, options, correctRaw } = collectRowErrors(mapped, rowNumber, seenTexts)
+    const { errors, resolvedType, questionText, options, correctRaw, imageFiles, audioFiles } = collectRowErrors(mapped, rowNumber, seenTexts)
     return {
       rowNumber,
       data: {
@@ -384,6 +502,8 @@ export function parseImportJson(jsonText) {
         difficulty: resolveDifficulty(mapped.difficulty),
         bloomLevel: mapped.bloom_level ? mapped.bloom_level.trim().toLowerCase().replace(/-/g, '_') : null,
         moduleId: mapped.module_id || null,
+        imageFiles,
+        audioFiles,
       },
       raw: mapped,
       errors: [...shapeErrors, ...errors],
@@ -391,6 +511,16 @@ export function parseImportJson(jsonText) {
   })
 
   return { headers: [], rows }
+}
+
+export function revalidateImportRows(parsedRows, existingQuestions = []) {
+  return validateMappedRows(
+    (Array.isArray(parsedRows) ? parsedRows : []).map((row, index) => ({
+      rowNumber: row?.rowNumber || index + 1,
+      mapped: toEditableMappedRow(row),
+    })),
+    existingQuestions,
+  )
 }
 
 export function validateAgainstExisting(parsedRows, existingQuestions = []) {
@@ -421,6 +551,8 @@ export function buildImportPayload(bankId, validRows) {
       difficulty: row.data.difficulty,
       bloomLevel: row.data.bloomLevel || null,
       moduleId: row.data.moduleId || null,
+      imageFiles: row.data.imageFiles || [],
+      audioFiles: row.data.audioFiles || [],
     })),
   }
 }
@@ -441,6 +573,8 @@ export function downloadTemplate() {
       difficulty: '1',
       bloom_level: 'remember',
       module_id: '',
+      image_files: 'https://example.com/question-diagram.png',
+      audio_files: '',
     },
     {
       question_text: 'Java is a programming language.',
@@ -456,6 +590,8 @@ export function downloadTemplate() {
       difficulty: '2',
       bloom_level: 'understand',
       module_id: '',
+      image_files: '',
+      audio_files: 'https://example.com/listening.mp3',
     },
   ]
 
@@ -463,7 +599,20 @@ export function downloadTemplate() {
   const dataMatrix = [headerRow, ...sampleRows.map((row) => IMPORT_COLUMNS.map((column) => row[column.key] ?? ''))]
   const worksheet = XLSX.utils.aoa_to_sheet(dataMatrix)
   worksheet['!cols'] = IMPORT_COLUMNS.map(() => ({ wch: 22 }))
+  const rules = [
+    ['Question Bank Import Rules'],
+    ['Required columns', 'question_text, question_type, option_a, option_b, correct_answer'],
+    ['Question types', 'multiple_choice or true_false'],
+    ['Correct answer', 'Multiple choice uses A-F; true_false uses True or False'],
+    ['Difficulty', '1-5, or easy/medium/hard aliases'],
+    ['Image media', 'Use image_files with http/https URLs only; separate multiple URLs with semicolons; max 5 per question'],
+    ['Audio media', 'Use audio_files with http/https URLs only; separate multiple URLs with semicolons; max 3 per question'],
+    ['Final storage', 'Imported media URLs are downloaded, validated, and re-uploaded by the backend before saving'],
+  ]
+  const rulesSheet = XLSX.utils.aoa_to_sheet(rules)
+  rulesSheet['!cols'] = [{ wch: 22 }, { wch: 110 }]
   const workbook = XLSX.utils.book_new()
   XLSX.utils.book_append_sheet(workbook, worksheet, 'Questions')
+  XLSX.utils.book_append_sheet(workbook, rulesSheet, 'Import rules')
   XLSX.writeFile(workbook, 'question-bank-template.xlsx')
 }

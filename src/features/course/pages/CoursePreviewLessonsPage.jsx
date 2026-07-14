@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import DOMPurify from "dompurify";
 import { isHtmlContent } from "../utils/lesson-content";
 import {
@@ -225,19 +225,15 @@ export function CoursePreviewLessonsPage() {
                     <h1 className="admin-page__title" style={{ marginTop: 8 }}>
                         Preview sample content
                     </h1>
-                    <p className="admin-page__subtitle">
-                        {course?.title
-                            ? `Sample lessons from the course: ${course.title}`
-                            : "Lessons marked as preview will appear here."}
-                    </p>
                 </div>
                 {course && (
-                    <Link
+                    <Button
                         to={`/courses/${course.id}`}
-                        className="button button--secondary button--sm"
+                        variant="secondary"
+                        size="sm"
                     >
                         Open course page
-                    </Link>
+                    </Button>
                 )}
             </header>
 

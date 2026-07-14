@@ -3,7 +3,7 @@
    ========================================================================== */
 
 :root {
-    --surface: #f8fafc;
+    --surface: #fdf8e4;
     --line: #e2e8f0;
 }
 
@@ -69,6 +69,22 @@
     box-sizing: border-box !important;
 }
 
+/* Keep the compact header flat and visually consistent while reading. */
+.app-admin-header-zone > .app-header.app-header--compact {
+    top: 14px !important;
+    right: 24px !important;
+    left: 284px !important;
+    width: calc(100vw - 308px) !important;
+    height: 62px !important;
+    min-height: 62px !important;
+    max-height: 62px !important;
+    margin: 0 !important;
+    border: 1px solid var(--line, #d1d7dc) !important;
+    border-radius: 4px !important;
+    background: #ffffff !important;
+    box-shadow: 0 2px 8px rgba(45, 47, 49, 0.12) !important;
+}
+
 /* ==========================================================================
    VÙNG KHÔNG GIAN CUỘN NỘI DUNG (MAIN CONTENT AREA)
    ========================================================================== */
@@ -78,11 +94,19 @@
     flex: 1 !important;
     overflow-y: auto !important;
     overflow-x: hidden !important;
+    scroll-behavior: smooth;
     padding: 24px !important;
     margin-top: 70px !important;
     height: calc(100vh - 70px) !important;
     box-sizing: border-box !important;
-    background-color: var(--surface) !important;
+    background-color: transparent !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    html,
+    .app-content-area {
+        scroll-behavior: auto;
+    }
 }
 
 /* Khung bọc giới hạn nội dung */

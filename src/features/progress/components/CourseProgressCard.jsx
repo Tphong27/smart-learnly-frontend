@@ -1,65 +1,8 @@
-import { useEffect, useState } from "react";
-import { BookOpen, ChevronDown, ChevronRight } from "lucide-react";
-import { Link } from "react-router-dom";
-import { getCurrentUser } from "@/services/api-client";
-import { assignmentService } from "@/services/flashtest.service";
+import { useId, useState } from "react";
+import { BookOpen, ChevronDown } from "lucide-react";
+import { Button } from "@/shared/components/ui";
 import { ProgressBar } from "./ProgressBar";
 import { ProgressMetric } from "./ProgressMetric";
-
-function AssignmentMetric({ courseId }) {
-  const [counts, setCounts] = useState({ completed: 0, total: 0 });
-
-  useEffect(() => {
-    let cancelled = false;
-    async function loadAssignments() {
-      const currentUser = getCurrentUser();
-      const studentId =
-        currentUser?.id || currentUser?.userId || currentUser?.accountId || "";
-      if (!studentId || !courseId) {
-        setCounts({ completed: 0, total: 0 });
-        return;
-      }
-      try {
-        const assignments = await assignmentService.getAvailable({
-          courseId,
-          isFlashtest: false,
-        });
-        const checks = await Promise.allSettled(
-          assignments.map((assignment) =>
-            assignmentService.getSubmissionByStudent(assignment.id, studentId),
-          ),
-        );
-        const completed = checks.filter(
-          (result) =>
-            result.status === "fulfilled" &&
-            ["SUBMITTED", "GRADED", "EXPIRED", "LATE"].includes(
-              String(result.value?.status || "").toUpperCase(),
-            ),
-        ).length;
-        if (!cancelled) {
-          setCounts({ completed, total: assignments.length });
-        }
-      } catch {
-        if (!cancelled) setCounts({ completed: 0, total: 0 });
-      }
-    }
-    loadAssignments();
-    return () => {
-      cancelled = true;
-    };
-  }, [courseId]);
-
-  return (
-    <ProgressMetric
-      label="Assignment"
-      completed={counts.completed}
-      total={counts.total}
-      percent={0}
-      hideProgress
-      to={`/learning/assignments?courseId=${courseId}`}
-    />
-  );
-}
 
 function getLearningPath(course) {
   const courseId = course.courseId || course.id;
@@ -79,97 +22,155 @@ function getLearningPath(course) {
 }
 
 export function CourseProgressCard({ course }) {
-  const [expanded, setExpanded] = useState(true);
+  const [expanded, setExpanded] = useState(false);
+  const detailsId = useId();
   const isCompleted = course.courseStatus === "COMPLETED";
   const learningPath = getLearningPath(course);
 
+  const lesson = course.lesson ?? {
+    completed: 0,
+    total: 0,
+    percent: 0,
+  };
+
+  const quiz = course.quiz ?? {
+    completed: 0,
+    total: 0,
+    percent: 0,
+  };
+
+  const flashcard = course.flashcard ?? {
+    completed: 0,
+    total: 0,
+    percent: 0,
+  };
+
+  const assignment = course.assignment ?? {
+    completed: 0,
+    total: 0,
+    percent: 0,
+  };
   return (
     <article className="course-progress-card">
       <div className="course-progress-card__top">
-        <div className="course-progress-card__identity">
-          <div className="course-progress-card__thumbnail">
-            {course.thumbnailUrl ? (
-              <img src={course.thumbnailUrl} alt={course.title} />
-            ) : (
-              <BookOpen size={28} />
-            )}
-          </div>
-
-          <div className="course-progress-card__info">
-            <span className="course-progress-card__category">
-              {course.categoryName}
-            </span>
-
-            <h3>{course.title}</h3>
-
-            {course.className ? (
-              <span className="course-progress-card__class">
-                Class: {course.className}
-              </span>
-            ) : (
-              <span className="course-progress-card__class course-progress-card__class--missing">
-                No class selected
-              </span>
-            )}
-
-            <Link to={learningPath} className="course-progress-card__overall">
-              <ProgressBar value={course.overallPercent} />
-              <strong>{course.overallPercent}%</strong>
-            </Link>
-          </div>
+        <div className="course-progress-card__thumbnail">
+          {course.thumbnailUrl ? (
+            <img src={course.thumbnailUrl} alt="" loading="lazy" />
+          ) : (
+            <BookOpen size={28} aria-hidden="true" />
+          )}
         </div>
 
-        <div className="course-progress-card__right">
-          <span
-            className={
-              isCompleted
-                ? "course-status-badge course-status-badge--completed"
-                : "course-status-badge course-status-badge--progress"
-            }
-          >
-            {isCompleted ? "Completed" : "In Progress"}
-          </span>
+        <div className="course-progress-card__info">
+          <div className="course-progress-card__heading-row">
+            <div>
+              <p className="course-progress-card__meta">
+                <span>{course.categoryName}</span>
+                {course.className ? ` · ${course.className}` : ""}
+              </p>
+              <h3>{course.title}</h3>
+            </div>
 
-          <button
-            type="button"
-            className="course-progress-card__toggle"
-            onClick={() => setExpanded((current) => !current)}
-            aria-label={
-              expanded ? "Collapse progress details" : "Expand progress details"
-            }
-          >
-            {expanded ? <ChevronDown size={20} /> : <ChevronRight size={20} />}
-          </button>
+            <span
+              className={
+                isCompleted
+                  ? "course-status-badge course-status-badge--completed"
+                  : "course-status-badge course-status-badge--progress"
+              }
+            >
+              {isCompleted ? "Completed" : "In progress"}
+            </span>
+          </div>
+
+          <div className="course-progress-card__progress-row">
+            <div className="course-progress-card__progress-copy">
+              <span>Course progress</span>
+              <strong>{course.overallPercent}%</strong>
+            </div>
+            <ProgressBar
+              value={course.overallPercent}
+              label={`${course.title} progress: ${course.overallPercent}%`}
+            />
+          </div>
+
+          <ul className="course-progress-card__metric-summary">
+            <li>{lesson.completed}/{lesson.total} lessons</li>
+            <li>{quiz.completed}/{quiz.total} quizzes</li>
+            <li>{flashcard.completed}/{flashcard.total} flashcards</li>
+            <li>{assignment.completed}/{assignment.total} assignments</li>
+          </ul>
+
+          {!course.accessAllowed && (
+            <p className="course-progress-card__access-note">
+              {course.accessBlockedReason || "Course access is currently unavailable."}
+            </p>
+          )}
+
+          <div className="course-progress-card__actions">
+            {course.accessAllowed && (
+              <Button to={learningPath} size="sm">
+                {isCompleted ? "Review course" : "Continue learning"}
+              </Button>
+            )}
+
+            <Button
+              variant="outline"
+              size="sm"
+              className="course-progress-card__details-button"
+              onClick={() => setExpanded((current) => !current)}
+              aria-expanded={expanded}
+              aria-controls={detailsId}
+              rightIcon={
+                <ChevronDown
+                  size={17}
+                  className={expanded ? "is-expanded" : undefined}
+                  aria-hidden="true"
+                />
+              }
+            >
+              {expanded ? "Hide details" : "View details"}
+            </Button>
+          </div>
         </div>
       </div>
 
       {expanded && (
-        <div className="course-progress-card__metrics">
+        <div
+          className="course-progress-card__metrics"
+          id={detailsId}
+          aria-label={`${course.title} progress details`}
+        >
           <ProgressMetric
-            label="Lesson"
-            completed={course.lesson.completed}
-            total={course.lesson.total}
-            percent={course.lesson.percent}
+            label="Lessons"
+            completed={lesson.completed}
+            total={lesson.total}
+            percent={lesson.percent}
             to={learningPath}
           />
 
           <ProgressMetric
-            label="Quiz"
-            completed={course.quiz.completed}
-            total={course.quiz.total}
-            percent={course.quiz.percent}
+            label="Quizzes"
+            completed={quiz.completed}
+            total={quiz.total}
+            percent={quiz.percent}
             to="/learning/tests"
           />
 
           <ProgressMetric
-            label="Flashcard"
-            completed={course.flashcard.completed}
-            total={course.flashcard.total}
-            percent={course.flashcard.percent}
+            label="Flashcards"
+            completed={flashcard.completed}
+            total={flashcard.total}
+            percent={flashcard.percent}
             to={`/learning/flashcards?courseId=${course.courseId}`}
           />
 
-          <AssignmentMetric courseId={course.courseId} />
+          <ProgressMetric
+            label="Assignments"
+            completed={assignment.completed}
+            total={assignment.total}
+            percent={assignment.percent}
+            to={`/learning/assignments?courseId=${course.courseId}`}
+          />
         </div>
       )}
     </article>

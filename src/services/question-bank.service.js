@@ -48,6 +48,13 @@ export const questionBankService = {
     return unwrap(response)
   },
 
+  async restoreBank(bankId, targetStatus) {
+    const response = await apiClient.post(`/admin/question-banks/${bankId}/restore`, {
+      status: targetStatus,
+    })
+    return unwrap(response)
+  },
+
   async listQuestions(params = {}) {
     const response = await apiClient.get('/admin/questions', { params })
     return normalizePage(response)
@@ -65,33 +72,6 @@ export const questionBankService = {
 
   async updateQuestion(questionId, payload) {
     const response = await apiClient.put(`/admin/questions/${questionId}`, payload)
-    return unwrap(response)
-  },
-  async uploadQuestionImage(questionId, file) {
-    const formData = new FormData()
-    formData.append('file', file)
-    const response = await apiClient.post(`/admin/questions/${questionId}/image`, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    })
-    return unwrap(response)
-  },
-
-  async removeQuestionImage(questionId) {
-    const response = await apiClient.delete(`/admin/questions/${questionId}/image`)
-    return unwrap(response)
-  },
-
-  async uploadQuestionAudio(questionId, file) {
-    const formData = new FormData()
-    formData.append('file', file)
-    const response = await apiClient.post(`/admin/questions/${questionId}/audio`, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    })
-    return unwrap(response)
-  },
-
-  async removeQuestionAudio(questionId) {
-    const response = await apiClient.delete(`/admin/questions/${questionId}/audio`)
     return unwrap(response)
   },
   async listQuestionMedia(questionId) {
@@ -137,10 +117,11 @@ export const questionBankService = {
     return unwrap(response)
   },
 
-  async importQuestionsBatch(bankId, rows) {
+  async importQuestionsBatch(bankId, rows, importSource = 'excel_import') {
     const response = await apiClient.post('/admin/questions/import-batch', {
       bankId,
       rows,
+      importSource,
     })
     return unwrap(response)
   },
@@ -156,7 +137,25 @@ export const questionBankService = {
     return unwrap(response)
   },
 
-  async confirmImageImport(bankId, questions) {
+  async confirmImageImport(bankId, questions, mediaFiles = {}) {
+    const imageFiles = Array.isArray(mediaFiles.imageFiles) ? mediaFiles.imageFiles : []
+    const audioFiles = Array.isArray(mediaFiles.audioFiles) ? mediaFiles.audioFiles : []
+    const hasMediaMappings = questions.some((question) => (
+      (Array.isArray(question.imageFileIndexes) && question.imageFileIndexes.length > 0)
+      || (Array.isArray(question.audioFileIndexes) && question.audioFileIndexes.length > 0)
+    ))
+    if (hasMediaMappings) {
+      const formData = new FormData()
+      formData.append('request', new Blob([JSON.stringify({ bankId, questions })], { type: 'application/json' }))
+      imageFiles.forEach((file) => formData.append('imageFiles', file))
+      audioFiles.forEach((file) => formData.append('audioFiles', file))
+      const response = await apiClient.post('/admin/question-imports/image/confirm', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        timeout: 90000,
+      })
+      return unwrap(response)
+    }
+
     const response = await apiClient.post('/admin/question-imports/image/confirm', {
       bankId,
       questions,

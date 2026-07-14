@@ -1,74 +1,216 @@
-import { Link, useLocation, useParams } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { CheckCircle2, Clock3, XCircle } from 'lucide-react'
-import { paymentStatusService } from '@/services'
-import { PaymentStatusBadge } from '../components/PaymentStatusBadge'
-import '../checkout.css'
+import { Button } from '@/shared/components/ui'
+import { orderService, paymentStatusService } from '@/services'
+import '../payment-result.css'
 
-function getResultContent(status) {
-  const normalized = String(status || '').toUpperCase()
+function getStatusCandidates(payment) {
+  return [
+    payment?.status,
+    payment?.transactionStatus,
+    payment?.sepayOrderStatus,
+  ].filter(Boolean)
+}
 
-  if (paymentStatusService.isSuccess(normalized)) {
-    return {
-      icon: CheckCircle2,
-      title: 'Payment successful',
-      message:
-        'Your payment has been confirmed. Your course access will be available in My Courses.',
-      actionLabel: 'Go to My Courses',
-      actionPath: '/learning/courses',
-    }
+function hasStatus(payment, targetStatus) {
+  const normalizedTarget = String(targetStatus || '').toUpperCase()
+
+  return getStatusCandidates(payment).some(
+    (status) => String(status || '').toUpperCase() === normalizedTarget,
+  )
+}
+
+function resolveOutcome(payment) {
+  const statuses = getStatusCandidates(payment)
+
+  if (statuses.some((status) => paymentStatusService.isSuccess(status))) {
+    return 'success'
   }
 
-  if (paymentStatusService.isProblem(normalized)) {
-    return {
-      icon: XCircle,
-      title: 'Payment was not completed',
-      message:
-        'The payment failed, expired, was cancelled, or needs review. Please return to cart or contact support if money was transferred.',
-      actionLabel: 'Back to cart',
-      actionPath: '/cart',
-    }
+  if (statuses.some((status) => paymentStatusService.isProblem(status))) {
+    return 'failed'
   }
 
-  return {
-    icon: Clock3,
-    title: 'Payment is processing',
-    message:
-      'We have not confirmed this payment yet. The system will update the result after matching the bank transaction.',
-    actionLabel: 'Back to cart',
-    actionPath: '/cart',
-  }
+  return 'pending'
 }
 
 export function PaymentResultPage() {
-  const { orderId } = useParams()
+  const [searchParams] = useSearchParams()
   const location = useLocation()
+  const navigate = useNavigate()
 
-  const status = location.state?.status ?? 'PROCESSING'
-  const transactionId = location.state?.transactionId
-  const content = getResultContent(status)
-  const Icon = content.icon
+  const orderId = searchParams.get('orderId')
+  const initialPayment = location.state?.payment ?? null
+  const initialStatus = location.state?.status ?? null
+
+  const [payment, setPayment] = useState(
+    initialPayment ?? {
+      orderId,
+      status: initialStatus,
+    },
+  )
+
+  const [outcome, setOutcome] = useState(() =>
+    resolveOutcome(
+      initialPayment ?? {
+        status: initialStatus,
+      },
+    ),
+  )
+
+  const [loading, setLoading] = useState(!initialPayment && Boolean(orderId))
+  const [error, setError] = useState(null)
+
+  useEffect(() => {
+    if (!orderId) {
+      return undefined
+    }
+
+    let cancelled = false
+
+    async function loadPaymentResult() {
+      setLoading(true)
+      setError(null)
+
+      try {
+        const data = await orderService.get(orderId)
+
+        if (cancelled) return
+
+        setPayment(data)
+        setOutcome(resolveOutcome(data))
+      } catch (err) {
+        if (cancelled) return
+
+        setError(err?.message || 'Could not check payment status.')
+      } finally {
+        if (!cancelled) {
+          setLoading(false)
+        }
+      }
+    }
+
+    loadPaymentResult()
+
+    return () => {
+      cancelled = true
+    }
+  }, [orderId])
+
+  if (!orderId) {
+    return (
+      <div className="payment-result">
+        <div className="payment-result__card payment-result__card--failed">
+          <XCircle size={48} />
+          <h1>Missing order</h1>
+          <p>We could not find the order to verify. Please return to your transactions.</p>
+          <Button onClick={() => navigate('/learning/transactions')}>
+            Go to transactions
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
+  if (loading && !payment?.status) {
+    return (
+      <div className="payment-result">
+        <div className="payment-result__card payment-result__card--pending">
+          <Clock3 size={48} />
+          <h1>Loading payment result...</h1>
+          <p>Please wait while we check your order status.</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (error && !payment?.status) {
+    return (
+      <div className="payment-result">
+        <div className="payment-result__card payment-result__card--failed">
+          <XCircle size={48} />
+          <h1>Could not load order</h1>
+          <p>{error}</p>
+          <Button onClick={() => navigate('/learning/transactions')}>
+            Go to transactions
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
+  if (outcome === 'success') {
+    return (
+      <div className="payment-result">
+        <div className="payment-result__card payment-result__card--success">
+          <CheckCircle2 size={48} />
+          <h1>Payment successful</h1>
+          <p>
+            Your order <strong>{payment?.orderCode || orderId}</strong> has been confirmed.
+          </p>
+
+          <div className="payment-result__actions">
+            <Button to="/learning/courses">
+              Go to my courses
+            </Button>
+
+            <Button to="/learning/transactions" variant="ghost">
+              View transactions
+            </Button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (outcome === 'failed') {
+    const reason = hasStatus(payment, 'EXPIRED')
+      ? 'The payment session has expired.'
+      : hasStatus(payment, 'CANCELLED')
+        ? 'The order has been cancelled.'
+        : hasStatus(payment, 'REFUNDED')
+          ? 'The payment has been refunded.'
+          : hasStatus(payment, 'MISMATCHED')
+            ? 'The payment information did not match this order.'
+            : 'The payment did not complete successfully.'
+
+    return (
+      <div className="payment-result">
+        <div className="payment-result__card payment-result__card--failed">
+          <XCircle size={48} />
+          <h1>Payment not completed</h1>
+          <p>{reason}</p>
+
+          <div className="payment-result__actions">
+            <Button to="/learning/transactions">
+              View transactions
+            </Button>
+
+            <Button to="/" variant="ghost">
+              Browse courses
+            </Button>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
-    <section className="payment-result">
-      <div className="payment-result__card">
-        <Icon size={48} />
+    <div className="payment-result">
+      <div className="payment-result__card payment-result__card--pending">
+        <Clock3 size={48} />
+        <h1>Payment is still being verified</h1>
+        <p>
+          We have not received final confirmation yet. You can check your transaction history later.
+        </p>
 
-        <PaymentStatusBadge status={status} />
-
-        <h1>{content.title}</h1>
-        <p>{content.message}</p>
-
-        <div className="payment-result__meta">
-          <small>Order ID: {orderId}</small>
-          {transactionId && (
-            <small>Transaction ID: {transactionId}</small>
-          )}
+        <div className="payment-result__actions">
+          <Button to="/learning/transactions" variant="ghost">
+            View transactions
+          </Button>
         </div>
-
-        <Link to={content.actionPath} className="button button--primary">
-          {content.actionLabel}
-        </Link>
       </div>
-    </section>
+    </div>
   )
 }

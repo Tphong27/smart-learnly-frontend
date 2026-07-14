@@ -20,32 +20,20 @@ export const QUESTION_TYPE_LABELS = {
 export const MEDIA_TYPES = {
   IMAGE: "image",
   VIDEO: "video",
+  AUDIO: "audio",
 };
 
 export const MEDIA_TYPE_VALUES = Object.values(MEDIA_TYPES);
 
+// Excel/CSV template chỉ chứa text. Media thêm bằng cách chỉnh từng câu
+// trong QuizQuestionEditModal hoặc dùng JSON import (JSON hỗ trợ đầy đủ media).
 export const QUIZ_IMPORT_COLUMNS = [
   "type",
   "title",
-  "question_media_type",
-  "question_media_url",
-  "question_media_object_path",
   "option_a_text",
-  "option_a_media_type",
-  "option_a_media_url",
-  "option_a_media_object_path",
   "option_b_text",
-  "option_b_media_type",
-  "option_b_media_url",
-  "option_b_media_object_path",
   "option_c_text",
-  "option_c_media_type",
-  "option_c_media_url",
-  "option_c_media_object_path",
   "option_d_text",
-  "option_d_media_type",
-  "option_d_media_url",
-  "option_d_media_object_path",
   "correct_answers",
   "explain_question",
 ];
@@ -55,7 +43,14 @@ export const SAMPLE_QUIZ_JSON = JSON.stringify(
   [
     {
       title: "What is the capital of <b>France</b>?",
-      media: null,
+      media: {
+        type: "audio",
+        url: "https://example.com/listening-sample.mp3",
+        objectPath: "2026/07/listening-sample.mp3",
+        fileName: "listening-sample.mp3",
+        contentType: "audio/mpeg",
+        size: 123456,
+      },
       explain_question: "This tests your <i>geography</i> knowledge",
       type: "single_choice",
       number_of_options: 4,
@@ -140,10 +135,16 @@ export function normalizeMedia(media) {
       : typeof media.content_type === "string"
         ? media.content_type.trim()
         : "";
+  const localFileName =
+    typeof media.localFileName === "string"
+      ? media.localFileName.trim()
+      : typeof media.local_file_name === "string"
+        ? media.local_file_name.trim()
+        : "";
   const sizeValue = media.size ?? media.fileSize ?? media.file_size ?? null;
   const size = Number.isFinite(Number(sizeValue)) ? Number(sizeValue) : null;
 
-  if (!type && !url && !objectPath && !fileName && !contentType && size == null) {
+  if (!type && !url && !objectPath && !fileName && !contentType && !localFileName && size == null) {
     return null;
   }
 
@@ -152,26 +153,29 @@ export function normalizeMedia(media) {
     url,
     objectPath,
     fileName,
+    localFileName,
     contentType,
     size,
   };
 }
 
-export function hasValidMedia(media) {
+export function hasValidMedia(media, { allowLocalMedia = false } = {}) {
   const normalized = normalizeMedia(media);
   return Boolean(
-    normalized && MEDIA_TYPE_VALUES.includes(normalized.type) && normalized.url,
+    normalized &&
+      MEDIA_TYPE_VALUES.includes(normalized.type) &&
+      (normalized.url || (allowLocalMedia && normalized.localFileName)),
   );
 }
 
-function validateMedia(media, push, fieldPrefix) {
+function validateMedia(media, push, fieldPrefix, { allowLocalMedia = false } = {}) {
   const normalized = normalizeMedia(media);
   if (!normalized) return;
 
   if (!MEDIA_TYPE_VALUES.includes(normalized.type)) {
-    push(fieldPrefix, "media type must be image or video.");
+    push(fieldPrefix, "media type must be image, video, or audio.");
   }
-  if (!normalized.url) {
+  if (!normalized.url && !(allowLocalMedia && normalized.localFileName)) {
     push(fieldPrefix, "media url is required when media is provided.");
   }
 }
@@ -191,16 +195,24 @@ export function getOptionMedia(option) {
   return null;
 }
 
-function optionHasContent(option) {
-  return isNonEmptyString(getOptionText(option)) || hasValidMedia(getOptionMedia(option));
+function optionHasContent(option, validationOptions = {}) {
+  return isNonEmptyString(getOptionText(option)) || hasValidMedia(getOptionMedia(option), validationOptions);
 }
 
-function normalizeOption(option) {
+function stripTemporaryMediaFields(media) {
+  const normalized = normalizeMedia(media);
+  if (!normalized) return null;
+  const persistableMedia = { ...normalized };
+  delete persistableMedia.localFileName;
+  return persistableMedia;
+}
+
+function normalizeOption(option, { persistable = false } = {}) {
   if (typeof option === "string") return option.trim();
   if (!option || typeof option !== "object" || Array.isArray(option)) return "";
 
   const text = typeof option.text === "string" ? option.text.trim() : "";
-  const media = normalizeMedia(option.media);
+  const media = persistable ? stripTemporaryMediaFields(option.media) : normalizeMedia(option.media);
   if (!media) return text;
   return { text, media };
 }
@@ -211,7 +223,7 @@ function normalizeOption(option) {
  * Validate một mảng câu hỏi theo định dạng quiz mới.
  * @returns {{ valid: boolean, errors: Array<{ index: number, field: string, message: string }> }}
  */
-export function validateQuizQuestions(questions) {
+export function validateQuizQuestions(questions, validationOptions = {}) {
   const errors = [];
 
   if (!Array.isArray(questions)) {
@@ -231,8 +243,8 @@ export function validateQuizQuestions(questions) {
       return;
     }
 
-    validateMedia(question.media, push, "media");
-    if (!isNonEmptyString(question.title) && !hasValidMedia(question.media)) {
+    validateMedia(question.media, push, "media", validationOptions);
+    if (!isNonEmptyString(question.title) && !hasValidMedia(question.media, validationOptions)) {
       push("title", "title or media is required.");
     }
 
@@ -251,7 +263,7 @@ export function validateQuizQuestions(questions) {
     }
 
     if (type === QUESTION_TYPES.SINGLE || type === QUESTION_TYPES.MULTIPLE) {
-      validateChoiceQuestion(question, type, push);
+      validateChoiceQuestion(question, type, push, validationOptions);
     } else if (type === QUESTION_TYPES.FILL) {
       validateFillQuestion(question, push);
     }
@@ -260,7 +272,7 @@ export function validateQuizQuestions(questions) {
   return { valid: errors.length === 0, errors };
 }
 
-function validateChoiceQuestion(question, type, push) {
+function validateChoiceQuestion(question, type, push, validationOptions = {}) {
   const { options, number_of_options, correct_answers } = question;
 
   if (!Array.isArray(options) || options.length < 2) {
@@ -269,10 +281,10 @@ function validateChoiceQuestion(question, type, push) {
   }
 
   options.forEach((option, index) => {
-    if (!optionHasContent(option)) {
+    if (!optionHasContent(option, validationOptions)) {
       push("options", `option ${index + 1} must have text or media.`);
     }
-    validateMedia(getOptionMedia(option), push, `options[${index}].media`);
+    validateMedia(getOptionMedia(option), push, `options[${index}].media`, validationOptions);
   });
 
   if (
@@ -327,11 +339,11 @@ function validateFillQuestion(question, push) {
 /**
  * Chuẩn hoá câu hỏi sau khi import: set number_of_options cho choice, trim chuỗi.
  */
-export function normalizeImportedQuestions(questions) {
+export function normalizeImportedQuestions(questions, { persistable = false } = {}) {
   if (!Array.isArray(questions)) return [];
   return questions.map((question) => {
     const type = question.type;
-    const media = normalizeMedia(question.media);
+    const media = persistable ? stripTemporaryMediaFields(question.media) : normalizeMedia(question.media);
     const base = {
       title: typeof question.title === "string" ? question.title.trim() : "",
       media,
@@ -347,7 +359,7 @@ export function normalizeImportedQuestions(questions) {
 
     if (type === QUESTION_TYPES.SINGLE || type === QUESTION_TYPES.MULTIPLE) {
       const options = Array.isArray(question.options)
-        ? question.options.map(normalizeOption)
+        ? question.options.map((option) => normalizeOption(option, { persistable }))
         : [];
       base.options = options;
       base.number_of_options = options.length;
@@ -400,14 +412,6 @@ function normalizeHeader(value) {
 const HEADER_ALIASES = {
   type: ["type", "question_type", "question type"],
   title: ["title", "question", "question_text", "question text", "prompt"],
-  question_media_type: ["question_media_type", "question media type", "media_type", "media type"],
-  question_media_url: ["question_media_url", "question media url", "media_url", "media url"],
-  question_media_object_path: [
-    "question_media_object_path",
-    "question media object path",
-    "media_object_path",
-    "media object path",
-  ],
   correct_answers: ["correct_answers", "correct answers", "correct_answer", "correct answer", "correct"],
   explain_question: ["explain_question", "explanation", "explain", "rationale"],
 };
@@ -419,18 +423,6 @@ for (const letter of ["a", "b", "c", "d", "e", "f"]) {
     `option_${letter}`,
     `option ${letter}`,
     letter,
-  ];
-  HEADER_ALIASES[`option_${letter}_media_type`] = [
-    `option_${letter}_media_type`,
-    `option ${letter} media type`,
-  ];
-  HEADER_ALIASES[`option_${letter}_media_url`] = [
-    `option_${letter}_media_url`,
-    `option ${letter} media url`,
-  ];
-  HEADER_ALIASES[`option_${letter}_media_object_path`] = [
-    `option_${letter}_media_object_path`,
-    `option ${letter} media object path`,
   ];
 }
 
@@ -452,12 +444,15 @@ function mapRow(rawRow, columnMap) {
   return row;
 }
 
-function buildMediaFromRow(row, prefix) {
-  return normalizeMedia({
-    type: row[`${prefix}_media_type`],
-    url: row[`${prefix}_media_url`],
-    objectPath: row[`${prefix}_media_object_path`],
-  });
+// Regex phát hiện cột media trong file Excel cũ để hiển thị warning.
+// Chấp nhận các biến thể: question_media_*, option_a_media_*, "media_url", "media type"…
+const LEGACY_MEDIA_HEADER_PATTERN = /(^|[_\s])media([_\s]|$)/i;
+
+export function detectLegacyMediaColumns(headers) {
+  if (!Array.isArray(headers)) return [];
+  return headers
+    .map((header) => String(header ?? "").trim())
+    .filter((header) => header && LEGACY_MEDIA_HEADER_PATTERN.test(header));
 }
 
 function parseCorrectAnswers(rawValue, type) {
@@ -485,7 +480,7 @@ function buildQuestionFromImportRow(row) {
   const type = String(row.type || "").trim().toLowerCase();
   const question = {
     title: row.title || "",
-    media: buildMediaFromRow(row, "question"),
+    media: null,
     explain_question: row.explain_question || "",
     type,
     correct_answers: parseCorrectAnswers(row.correct_answers, type),
@@ -495,9 +490,8 @@ function buildQuestionFromImportRow(row) {
     const options = [];
     for (const letter of ["a", "b", "c", "d", "e", "f"]) {
       const text = row[`option_${letter}_text`] || "";
-      const media = buildMediaFromRow(row, `option_${letter}`);
-      if (text || media) {
-        options.push(media ? { text, media } : text);
+      if (text) {
+        options.push(text);
       }
     }
     question.options = options;
@@ -516,6 +510,8 @@ export async function parseQuizImportFile(file) {
   if (columnMap.type == null) throw new Error("Missing required column: type");
   if (columnMap.correct_answers == null) throw new Error("Missing required column: correct_answers");
 
+  const legacyMediaColumns = detectLegacyMediaColumns(headers);
+
   const parsedRows = [];
   rows.forEach((rawRow, index) => {
     if (Array.isArray(rawRow) && rawRow.every((cell) => cell === "" || cell == null)) return;
@@ -533,6 +529,8 @@ export async function parseQuizImportFile(file) {
     headers,
     rows: parsedRows,
     questions: normalizeImportedQuestions(parsedRows.filter((row) => row.errors.length === 0).map((row) => row.question)),
+    legacyMediaColumns,
+    hasLegacyMediaColumns: legacyMediaColumns.length > 0,
   };
 }
 
@@ -541,52 +539,32 @@ export function downloadQuizImportTemplate() {
     {
       type: QUESTION_TYPES.SINGLE,
       title: "What is Java?",
-      question_media_type: "",
-      question_media_url: "",
-      question_media_object_path: "",
       option_a_text: "Programming language",
-      option_a_media_type: "",
-      option_a_media_url: "",
-      option_a_media_object_path: "",
       option_b_text: "Database",
-      option_b_media_type: "",
-      option_b_media_url: "",
-      option_b_media_object_path: "",
       option_c_text: "Operating system",
-      option_c_media_type: "",
-      option_c_media_url: "",
-      option_c_media_object_path: "",
       option_d_text: "Browser",
-      option_d_media_type: "",
-      option_d_media_url: "",
-      option_d_media_object_path: "",
       correct_answers: "A",
       explain_question: "Java is a programming language.",
     },
     {
       type: QUESTION_TYPES.MULTIPLE,
-      title: "Select the images that represent valid UI states",
-      question_media_type: "image",
-      question_media_url: "https://example.com/question.png",
-      question_media_object_path: "2026/07/question.png",
-      option_a_text: "State A",
-      option_a_media_type: "image",
-      option_a_media_url: "https://example.com/a.png",
-      option_a_media_object_path: "2026/07/a.png",
-      option_b_text: "State B",
-      option_b_media_type: "image",
-      option_b_media_url: "https://example.com/b.png",
-      option_b_media_object_path: "2026/07/b.png",
-      option_c_text: "",
-      option_c_media_type: "",
-      option_c_media_url: "",
-      option_c_media_object_path: "",
-      option_d_text: "",
-      option_d_media_type: "",
-      option_d_media_url: "",
-      option_d_media_object_path: "",
+      title: "Select all programming languages",
+      option_a_text: "Python",
+      option_b_text: "Java",
+      option_c_text: "HTML",
+      option_d_text: "CSS",
       correct_answers: "A,B",
-      explain_question: "Media columns are optional.",
+      explain_question: "HTML and CSS are markup/style languages, not programming languages.",
+    },
+    {
+      type: QUESTION_TYPES.FILL,
+      title: "PHP stands for _____ Hypertext Preprocessor",
+      option_a_text: "",
+      option_b_text: "",
+      option_c_text: "",
+      option_d_text: "",
+      correct_answers: "PHP;Personal Home Page",
+      explain_question: "Use ';' to separate multiple accepted answers for fill_in_the_blank.",
     },
   ];
 
@@ -660,6 +638,6 @@ export function parseQuizContent(content) {
 export function serializeQuizContent(title, questions) {
   return JSON.stringify({
     title: typeof title === "string" ? title : "",
-    questions: Array.isArray(questions) ? normalizeImportedQuestions(questions) : [],
+    questions: Array.isArray(questions) ? normalizeImportedQuestions(questions, { persistable: true }) : [],
   });
 }

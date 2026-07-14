@@ -1,13 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
-import { Clock3 } from "lucide-react";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { orderService, paymentStatusService } from "@/services";
-import { useToast } from "@/shared/components/ui";
+import { Button, useToast } from "@/shared/components/ui";
 import { PaymentInstructionCard } from "../components/PaymentInstructionCard";
 import { CheckoutSummary } from "../components/CheckoutSummary";
 import "../checkout.css";
 
-const POLLING_INTERVAL_MS = 5000;
+const POLLING_INTERVAL_MS = 4000;
 
 export function CheckoutPage() {
   const { orderId } = useParams();
@@ -85,12 +84,13 @@ export function CheckoutPage() {
         }));
 
         if (paymentStatusService.isFinal(nextStatus)) {
-          navigate(`/checkout/${orderId}/result`, {
+          navigate(`/payment-result?orderId=${orderId}`, {
             replace: true,
             state: {
               orderId,
               transactionId: orderPayment.transactionId,
               status: nextStatus,
+              payment: orderPayment,
             },
           });
         }
@@ -131,9 +131,9 @@ export function CheckoutPage() {
           {error || "Checkout order not found."}
         </div>
 
-        <Link to="/learning/courses" className="button button--primary">
+        <Button to="/learning/courses">
           Back to Course Catalog
-        </Link>
+        </Button>
       </section>
     );
   }
@@ -142,14 +142,9 @@ export function CheckoutPage() {
     <section className="checkout-page">
       <header className="checkout-page__header">
         <div>
-          <span className="checkout-page__eyebrow">VietQR payment</span>
+          <span className="checkout-page__eyebrow">Payment</span>
           <h1>Complete your checkout</h1>
           <p>Order {payment.orderCode || payment.orderId}</p>
-        </div>
-
-        <div className="checkout-page__hint">
-          <Clock3 size={18} />
-          <span>Status updates automatically.</span>
         </div>
       </header>
 

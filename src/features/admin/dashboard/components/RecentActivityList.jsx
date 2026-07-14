@@ -1,24 +1,5 @@
 import { Link } from "react-router-dom";
-
-function formatDateTime(value) {
-  if (!value) return "--";
-  try {
-    return new Intl.DateTimeFormat("vi-VN", {
-      dateStyle: "medium",
-      timeStyle: "short",
-    }).format(new Date(value));
-  } catch {
-    return "--";
-  }
-}
-
-function formatLabel(value) {
-  return String(value || "")
-    .toLowerCase()
-    .split("_")
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ");
-}
+import { formatDateTime, formatLabel } from "@/shared/utils/formatters";
 
 export function RecentActivityList({ items = [] }) {
   return (

@@ -1,0 +1,700 @@
+/* App layout styles for dashboard shell */
+/* ========================================================================== */
+
+.app-layout-shell {
+    --ink: #2d2f31;
+    --muted: #6a6f73;
+    --primary: #5624d0;
+    --primary-light: #6f42d9;
+    --primary-dark: #401b9c;
+    --line: #d1d7dc;
+    --surface: #f7f9fa;
+    --sl-purple: var(--primary);
+    --sl-purple-dark: var(--primary-dark);
+    --sl-purple-soft: #f3f0fa;
+    --sl-purple-border: #c7b9e8;
+    --sl-ink: var(--ink);
+    --sl-ink-deep: var(--ink);
+    --sl-muted: var(--muted);
+    --sl-line: var(--line);
+    --sl-line-soft: #e8eaed;
+    --sl-surface: var(--surface);
+    --sl-surface-warm: var(--surface);
+    --radius-sm: 4px;
+    --radius-md: 4px;
+    --radius-lg: 8px;
+    --radius-xl: 8px;
+    --sl-button-shadow: none;
+    --sl-button-shadow-hover: none;
+    --sl-button-shadow-active: none;
+    --sl-shadow-tactile: none;
+    --sl-shadow-tactile-hover: none;
+    --sl-shadow-soft: none;
+    --sl-shadow-modal: 0 2px 8px rgba(45, 47, 49, 0.14);
+
+    display: grid;
+    grid-template-columns: 248px minmax(0, 1fr);
+    min-height: 100dvh;
+    padding: 0;
+    background-color: transparent;
+    box-sizing: border-box;
+    transition: grid-template-columns 200ms ease;
+}
+
+.app-layout-shell--sidebar-collapsed {
+    grid-template-columns: 76px minmax(0, 1fr);
+}
+
+.app-layout-shell__workspace {
+    grid-column: 2;
+    display: grid;
+    grid-template-rows: 56px minmax(0, 1fr);
+    min-width: 0;
+    min-height: 100dvh;
+}
+
+.app-layout-shell__content {
+    min-width: 0;
+    background: transparent;
+    outline: none;
+}
+
+.app-layout-shell .button:hover:not(:disabled),
+.app-layout-shell .button:active:not(:disabled) {
+    transform: none;
+}
+
+.app-layout-shell .button--primary {
+    --button-border: var(--primary);
+    --button-hover-bg: var(--primary-dark);
+}
+
+.app-layout-shell .button--secondary,
+.app-layout-shell .button--outline {
+    --button-border: var(--line);
+    --button-hover-bg: var(--surface);
+}
+
+.app-layout-shell .button--ghost {
+    --button-border: transparent;
+}
+
+.app-skip-link {
+    position: fixed;
+    top: 12px;
+    left: 12px;
+    z-index: 200;
+    padding: 10px 14px;
+    border: 1px solid var(--line, #d1d7dc);
+    border-radius: 4px;
+    background: #ffffff;
+    color: var(--ink, #2d2f31);
+    font-weight: 800;
+    text-decoration: none;
+    transform: translateY(-160%);
+}
+
+.app-skip-link:focus {
+    transform: translateY(0);
+}
+
+/* --- Sidebar --- */
+.app-sidebar-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 45;
+    display: none;
+    width: 100%;
+    height: 100%;
+    padding: 0;
+    border: 0;
+    background: rgba(15, 23, 42, 0.4);
+    cursor: pointer;
+}
+
+.app-sidebar {
+    position: sticky;
+    top: 0;
+    z-index: 60;
+    grid-column: 1;
+    grid-row: 1;
+    display: flex;
+    width: 100%;
+    height: 100dvh;
+    flex-direction: column;
+    border-right: 1px solid #2d2f31;
+    border-radius: 0;
+    background: #1c1d1f;
+    box-shadow: none;
+    box-sizing: border-box;
+    overflow: hidden;
+    transition:
+        width 180ms ease-out,
+        box-shadow 180ms ease-out;
+}
+
+.app-sidebar__brand-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 56px;
+    padding: 6px 14px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.app-sidebar__brand {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    min-width: 0;
+    color: #ffffff;
+    text-decoration: none;
+}
+
+.app-sidebar__brand-mark {
+    display: block;
+    width: 42px;
+    height: 32px;
+    flex: 0 0 42px;
+    object-fit: contain;
+}
+
+.app-sidebar__brand-name {
+    overflow: hidden;
+    font-family: "Lato", sans-serif;
+    font-size: 16px;
+    font-weight: 800;
+    white-space: nowrap;
+}
+
+.app-sidebar__mobile-close {
+    display: none;
+    width: 40px;
+    height: 40px;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(255, 255, 255, 0.24);
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.08);
+    color: #ffffff;
+    cursor: pointer;
+}
+
+.app-sidebar__nav {
+    flex: 1;
+    overflow-y: auto;
+    padding: 10px 0;
+    scrollbar-color: #4b4c58 transparent;
+    scrollbar-width: thin;
+}
+
+.app-sidebar__link {
+    display: flex;
+    align-items: center;
+    position: relative;
+    gap: 16px;
+    min-height: 50px;
+    padding: 0 18px;
+    color: #f1f1f5;
+    font-size: 13px;
+    font-weight: 700;
+    text-decoration: none;
+    border-radius: 0;
+    transition:
+        background-color 150ms ease,
+        color 150ms ease;
+}
+
+.app-sidebar__link:hover {
+    color: #ffffff;
+    background: #2d2f31;
+}
+
+.app-sidebar__link--active {
+    color: #ffffff;
+    background: #2d2f31;
+    font-weight: 700;
+}
+
+.app-sidebar__link--active::before {
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 3px;
+    background: #a435f0;
+    content: "";
+}
+
+.app-sidebar__link svg {
+    flex-shrink: 0;
+    opacity: 0.86;
+}
+
+.app-sidebar__link--active svg {
+    opacity: 1;
+}
+
+.app-sidebar__link:focus-visible,
+.app-sidebar__brand:focus-visible,
+.app-sidebar__collapse-button:focus-visible,
+.app-sidebar__mobile-close:focus-visible {
+    outline: 3px solid rgba(196, 104, 255, 0.7);
+    outline-offset: -3px;
+}
+
+.app-sidebar__link-label,
+.app-sidebar__collapse-label,
+.app-sidebar__brand-name {
+    transition: opacity 120ms ease;
+}
+
+.app-sidebar--collapsed .app-sidebar__brand-row {
+    justify-content: center;
+    padding-inline: 8px;
+}
+
+.app-sidebar--collapsed .app-sidebar__brand {
+    justify-content: center;
+}
+
+.app-sidebar--collapsed .app-sidebar__brand-name,
+.app-sidebar--collapsed .app-sidebar__link-label,
+.app-sidebar--collapsed .app-sidebar__collapse-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+.app-sidebar--collapsed .app-sidebar__nav {
+    padding-inline: 0;
+}
+
+.app-sidebar--collapsed .app-sidebar__link {
+    justify-content: center;
+    padding-inline: 0;
+}
+
+/* Hover/focus preview: expands above the page without changing the grid. */
+.app-sidebar--collapsed:not(.app-sidebar--hover-suppressed):hover,
+.app-sidebar--collapsed:focus-within {
+    width: 248px;
+    box-shadow: 14px 0 28px rgba(15, 15, 22, 0.22);
+}
+
+.app-sidebar--collapsed:not(.app-sidebar--hover-suppressed):hover
+    .app-sidebar__brand-row,
+.app-sidebar--collapsed:focus-within .app-sidebar__brand-row {
+    justify-content: space-between;
+    padding-inline: 14px;
+}
+
+.app-sidebar--collapsed:not(.app-sidebar--hover-suppressed):hover
+    .app-sidebar__brand,
+.app-sidebar--collapsed:focus-within .app-sidebar__brand {
+    justify-content: flex-start;
+}
+
+.app-sidebar--collapsed:not(.app-sidebar--hover-suppressed):hover
+    .app-sidebar__brand-name,
+.app-sidebar--collapsed:not(.app-sidebar--hover-suppressed):hover
+    .app-sidebar__link-label,
+.app-sidebar--collapsed:not(.app-sidebar--hover-suppressed):hover
+    .app-sidebar__collapse-label,
+.app-sidebar--collapsed:focus-within .app-sidebar__brand-name,
+.app-sidebar--collapsed:focus-within .app-sidebar__link-label,
+.app-sidebar--collapsed:focus-within .app-sidebar__collapse-label {
+    position: static;
+    width: auto;
+    height: auto;
+    padding: 0;
+    margin: 0;
+    overflow: visible;
+    clip: auto;
+    white-space: nowrap;
+}
+
+.app-sidebar--collapsed:not(.app-sidebar--hover-suppressed):hover
+    .app-sidebar__link,
+.app-sidebar--collapsed:focus-within .app-sidebar__link {
+    justify-content: flex-start;
+    padding-inline: 18px;
+}
+
+.app-sidebar--collapsed:not(.app-sidebar--hover-suppressed):hover
+    .app-sidebar__collapse-button,
+.app-sidebar--collapsed:focus-within .app-sidebar__collapse-button {
+    justify-content: flex-start;
+    padding-inline: 12px;
+}
+
+/* --- Sidebar Footer --- */
+.app-sidebar__footer {
+    flex-shrink: 0;
+    padding: 10px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.app-sidebar__collapse-button {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 10px;
+    width: 100%;
+    min-height: 42px;
+    padding: 0 12px;
+    border: 1px solid transparent;
+    border-radius: 3px;
+    background: transparent;
+    color: #e7e7ed;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.app-sidebar__collapse-button:hover {
+    border-color: rgba(255, 255, 255, 0.12);
+    background: #272832;
+    color: #ffffff;
+}
+
+.app-sidebar--collapsed .app-sidebar__collapse-button {
+    justify-content: center;
+    padding: 0;
+}
+
+/* Focus mode keeps curriculum controls visible while removing shell chrome. */
+.app-layout-shell--focus {
+    display: block;
+}
+
+.app-layout-shell--focus > .app-sidebar,
+.app-layout-shell--focus > .app-sidebar-overlay,
+.app-layout-shell--focus .app-header--embedded {
+    display: none;
+}
+
+.app-layout-shell--focus .app-layout-shell__workspace {
+    display: block;
+    min-height: 100dvh;
+}
+
+/* --- Responsive --- */
+@media (max-width: 1024px) {
+    .app-layout-shell,
+    .app-layout-shell--sidebar-collapsed {
+        display: block;
+        min-height: 100dvh;
+    }
+
+    .app-layout-shell__workspace {
+        display: grid;
+        grid-template-rows: 56px minmax(0, 1fr);
+        min-height: 100dvh;
+    }
+
+    .app-layout-shell__content {
+        padding: 0;
+    }
+
+    .app-sidebar-overlay--open {
+        display: block;
+    }
+
+    .app-sidebar {
+        position: fixed;
+        left: 0;
+        top: 0;
+        transform: translateX(-100%);
+        width: min(288px, calc(100vw - 48px));
+        height: 100dvh;
+        border-radius: 0;
+        box-shadow:
+            0 1px 3px rgba(20, 33, 61, 0.06),
+            0 10px 40px rgba(20, 33, 61, 0.12);
+        transition: transform 300ms cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .app-sidebar--open {
+        transform: translateX(0);
+    }
+
+    .app-sidebar--collapsed:not(.app-sidebar--hover-suppressed):hover,
+    .app-sidebar--collapsed:focus-within {
+        width: min(288px, calc(100vw - 48px));
+    }
+
+    .app-sidebar--collapsed .app-sidebar__brand-row {
+        justify-content: space-between;
+        padding-inline: 14px;
+    }
+
+    .app-sidebar--collapsed .app-sidebar__brand {
+        justify-content: flex-start;
+    }
+
+    .app-sidebar--collapsed .app-sidebar__brand-name,
+    .app-sidebar--collapsed .app-sidebar__link-label {
+        position: static;
+        width: auto;
+        height: auto;
+        margin: 0;
+        overflow: visible;
+        clip: auto;
+        white-space: nowrap;
+    }
+
+    .app-sidebar--collapsed .app-sidebar__link {
+        justify-content: flex-start;
+        padding-inline: 12px;
+    }
+
+    .app-sidebar__mobile-close {
+        display: inline-flex;
+    }
+
+    .app-sidebar__footer {
+        display: none;
+    }
+
+    .app-layout-shell--focus .app-layout-shell__workspace {
+        display: block;
+    }
+}
+
+@media (max-width: 700px) {
+    .user-menu__meta {
+        display: none;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .app-layout-shell,
+    .app-sidebar,
+    .app-sidebar__link-label,
+    .app-sidebar__collapse-label,
+    .app-sidebar__brand-name {
+        transition: none;
+    }
+}
+
+/* --- Icon Button --- */
+.icon-button {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 42px;
+    height: 42px;
+    border: 1px solid #e7ecf4;
+    border-radius: 11px;
+    background: white;
+    color: #526078;
+    cursor: pointer;
+    transition:
+        background 160ms ease,
+        color 160ms ease;
+}
+
+.icon-button:hover {
+    background: #edf4ff;
+    color: #1d4ed8;
+}
+
+.icon-button__dot {
+    position: absolute;
+    top: 9px;
+    right: 9px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #f43f5e;
+    box-shadow: 0 0 0 2px white;
+}
+
+/* --- User Menu --- */
+.user-menu {
+    position: relative;
+}
+
+.user-menu__trigger {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    height: 44px;
+    padding: 4px 10px 4px 4px;
+    border: 1px solid #e7ecf4;
+    border-radius: 12px;
+    background: white;
+    cursor: pointer;
+    transition: background 160ms ease;
+}
+
+.user-menu__trigger:hover {
+    background: #f7f9fc;
+}
+
+.user-menu__avatar {
+    display: grid;
+    width: 34px;
+    height: 34px;
+    place-items: center;
+    border-radius: 50%;
+    background: linear-gradient(145deg, #3478f6, #7047e8);
+    color: white;
+    font-size: 12px;
+    font-weight: 700;
+    overflow: hidden;
+}
+
+.user-menu__avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.user-menu__meta {
+    display: grid;
+    text-align: left;
+    line-height: 1.2;
+}
+
+.user-menu__meta-name {
+    font-family: "Lato", sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    color: #14213d;
+}
+
+.user-menu__meta-role {
+    font-size: 11px;
+    font-weight: 600;
+    color: #8493ae;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.user-menu__panel {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    min-width: 220px;
+    border: 1px solid #e7ecf4;
+    border-radius: 14px;
+    background: white;
+    box-shadow: 0 18px 42px rgba(20, 33, 61, 0.12);
+    padding: 8px;
+    display: grid;
+    gap: 2px;
+}
+
+.user-menu__panel-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    background: transparent;
+    border: 0;
+    font: inherit;
+    color: #33425d;
+    font-size: 13.5px;
+    font-weight: 600;
+    cursor: pointer;
+    text-align: left;
+    width: 100%;
+}
+
+.user-menu__panel-item:hover {
+    background: #f7f9fc;
+    color: #14213d;
+}
+
+.user-menu__panel-item--danger {
+    color: #e11d48;
+}
+
+.user-menu__panel-item--danger:hover {
+    background: #fff1f3;
+    color: #be123c;
+}
+
+.user-menu__divider {
+    height: 1px;
+    background: #e7ecf4;
+    margin: 4px 0;
+}
+
+/* --- Placeholder components --- */
+.app-placeholder {
+    border: 1px solid #e0e7f1;
+    border-radius: 12px;
+    padding: 24px;
+    background: #ffffff;
+    box-shadow: 0 14px 34px rgba(31, 50, 87, 0.06);
+}
+
+.app-placeholder h1 {
+    margin: 0;
+    color: #14213d;
+    font-size: 24px;
+}
+
+.app-placeholder p {
+    margin: 8px 0 0;
+    color: #526078;
+}
+
+.placeholder-page {
+    border: 1px solid #e0e7f1;
+    border-radius: 22px;
+    padding: 36px;
+    background: white;
+    box-shadow: 0 18px 48px rgba(15, 23, 42, 0.05);
+}
+
+.placeholder-page__eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    color: #2f68dd;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+}
+
+.placeholder-page__title {
+    margin: 14px 0 10px;
+    font-family: "Lato", sans-serif;
+    font-size: clamp(28px, 3vw, 34px);
+    letter-spacing: -1px;
+    color: #14213d;
+}
+
+.placeholder-page__text {
+    margin: 0;
+    color: #62708a;
+    font-size: 15px;
+    line-height: 1.7;
+    max-width: 640px;
+}
+
+.course-auth-layout {
+    min-height: 100vh;
+    background: #f8fafc;
+}
+
+.course-auth-layout__content {
+    min-height: calc(100vh - 96px);
+    padding: 0;
+}
+
+.course-auth-layout .course-detail {
+    padding-top: 40px;
+}

@@ -1,4 +1,4 @@
-import apiClient from './api-client'
+// import apiClient from './api-client'
 
 function unwrap(response) {
   return response?.data ?? response
@@ -37,10 +37,10 @@ export function normalizePaymentStatus(payload) {
 }
 
 export const paymentStatusService = {
-  async getStatus(transactionId) {
-    const response = await apiClient.get(`/payments/${transactionId}/status`)
-    return normalizePaymentStatus(response)
-  },
+  // async getStatus(transactionId) {
+  //   const response = await apiClient.get(`/payments/${transactionId}/status`)
+  //   return normalizePaymentStatus(response)
+  // },
 
   isSuccess(status) {
     return ['SUCCESS', 'PAID', 'MATCHED'].includes(String(status || '').toUpperCase())

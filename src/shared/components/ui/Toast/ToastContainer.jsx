@@ -31,6 +31,22 @@ export function ToastContainer({ toasts, onRemove }) {
               <p className="toast__message">{toast.message}</p>
             </div>
 
+            {toast.action ? (
+              <button
+                type="button"
+                className="toast__action"
+                onClick={() => {
+                  try {
+                    toast.action?.onClick?.()
+                  } finally {
+                    onRemove(toast.id)
+                  }
+                }}
+              >
+                {toast.action.label || 'Undo'}
+              </button>
+            ) : null}
+
             <button
               type="button"
               className="toast__close"
