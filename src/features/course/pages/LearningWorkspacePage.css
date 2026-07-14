@@ -2075,6 +2075,11 @@
     margin: 0 auto;
 }
 
+.quiz-player[data-phase="taking"] {
+    width: 100%;
+    max-width: 1120px;
+}
+
 /* Error state */
 .quiz-player--error {
     padding: 32px;
