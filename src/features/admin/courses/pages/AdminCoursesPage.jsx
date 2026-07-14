@@ -103,9 +103,13 @@ function DeleteCourseModal({ open, target, onClose, onConfirmed }) {
         >
             <div className="course-management-delete">
                 <p>
-                    Delete <strong>{target?.title}</strong>? Learners will no longer be able to access it. This action is reversible only through system recovery.
+                    Delete <strong>{target?.title}</strong>? Learners will no
+                    longer be able to access it. This action is reversible only
+                    through system recovery.
                 </p>
-                {error ? <p className="course-management-delete__error">{error}</p> : null}
+                {error ? (
+                    <p className="course-management-delete__error">{error}</p>
+                ) : null}
                 <div className="course-management-delete__actions">
                     <Button
                         type="button"
@@ -156,9 +160,10 @@ function RowActionsMenu({
             window.innerWidth - menuWidth - gutter,
         );
         const below = rect.bottom + gap;
-        const top = below + menuHeight <= window.innerHeight - gutter
-            ? below
-            : Math.max(gutter, rect.top - menuHeight - gap);
+        const top =
+            below + menuHeight <= window.innerHeight - gutter
+                ? below
+                : Math.max(gutter, rect.top - menuHeight - gap);
 
         setMenuPosition({ top, left });
     }, []);
@@ -170,8 +175,8 @@ function RowActionsMenu({
 
         function handlePointerDown(event) {
             if (
-                !triggerRef.current?.contains(event.target)
-                && !menuRef.current?.contains(event.target)
+                !triggerRef.current?.contains(event.target) &&
+                !menuRef.current?.contains(event.target)
             ) {
                 setOpen(false);
             }
@@ -301,7 +306,9 @@ export function AdminCoursesPage() {
     const isTrainer = currentRole === "trainer";
     const isStaffRoute = location.pathname.startsWith("/staff/");
     const courseBasePath = isStaffRoute ? "/staff/courses" : "/admin/courses";
-    const previewReturnPath = isStaffRoute ? "/staff/courses" : "/admin/courses";
+    const previewReturnPath = isStaffRoute
+        ? "/staff/courses"
+        : "/admin/courses";
     const canViewClasses = currentRole === "tmo";
     const canDelete = !isTrainer;
 
@@ -317,7 +324,10 @@ export function AdminCoursesPage() {
     const [categoryFilter, setCategoryFilter] = useState("all");
     const [levelFilter, setLevelFilter] = useState("all");
     const [categories, setCategories] = useState([]);
-    const [deleteState, setDeleteState] = useState({ open: false, target: null });
+    const [deleteState, setDeleteState] = useState({
+        open: false,
+        target: null,
+    });
     const [pageRequest, setPageRequest] = useState(0);
     const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
     const [reloadRequest, setReloadRequest] = useState(0);
@@ -369,7 +379,8 @@ export function AdminCoursesPage() {
                 setPage(data.page ?? pageRequest);
             } catch (err) {
                 if (cancelled) return;
-                const message = err?.message || "Could not load the course list.";
+                const message =
+                    err?.message || "Could not load the course list.";
                 setError(message);
                 toast.error(message);
             } finally {
@@ -393,10 +404,10 @@ export function AdminCoursesPage() {
     ]);
 
     const hasFilters = Boolean(
-        keyword
-        || statusFilter !== "all"
-        || categoryFilter !== "all"
-        || levelFilter !== "all",
+        keyword ||
+        statusFilter !== "all" ||
+        categoryFilter !== "all" ||
+        levelFilter !== "all",
     );
 
     function clearFilters() {
@@ -444,33 +455,52 @@ export function AdminCoursesPage() {
                 ) : null}
             </header>
 
-            <section className="course-management__panel" aria-labelledby="course-list-title">
-                <h2 id="course-list-title" className="sr-only">Courses</h2>
+            <section
+                className="course-management__panel"
+                aria-labelledby="course-list-title"
+            >
+                <h2 id="course-list-title" className="sr-only">
+                    Courses
+                </h2>
 
                 <div className="course-management__filters">
                     <label className="course-management__field course-management__field--search">
-                        <span className="course-management__field-label">Search</span>
+                        <span className="course-management__field-label">
+                            Search
+                        </span>
                         <span className="course-management__control course-management__search">
                             <Search size={18} aria-hidden="true" />
                             <input
                                 type="search"
                                 placeholder="Search title, slug, or description"
                                 value={keyword}
-                                onChange={(event) => setKeyword(event.target.value)}
+                                onChange={(event) =>
+                                    setKeyword(event.target.value)
+                                }
                             />
                         </span>
                     </label>
 
                     <label className="course-management__field">
-                        <span className="course-management__field-label">Category</span>
+                        <span className="course-management__field-label">
+                            Category
+                        </span>
                         <span className="course-management__control course-management__select">
                             <select
                                 value={categoryFilter}
-                                onChange={(event) => changeFilter(setCategoryFilter, event.target.value)}
+                                onChange={(event) =>
+                                    changeFilter(
+                                        setCategoryFilter,
+                                        event.target.value,
+                                    )
+                                }
                             >
                                 <option value="all">All categories</option>
                                 {categories.map((category) => (
-                                    <option key={category.id} value={category.id}>
+                                    <option
+                                        key={category.id}
+                                        value={category.id}
+                                    >
                                         {category.name}
                                     </option>
                                 ))}
@@ -479,14 +509,24 @@ export function AdminCoursesPage() {
                     </label>
 
                     <label className="course-management__field">
-                        <span className="course-management__field-label">Level</span>
+                        <span className="course-management__field-label">
+                            Level
+                        </span>
                         <span className="course-management__control course-management__select">
                             <select
                                 value={levelFilter}
-                                onChange={(event) => changeFilter(setLevelFilter, event.target.value)}
+                                onChange={(event) =>
+                                    changeFilter(
+                                        setLevelFilter,
+                                        event.target.value,
+                                    )
+                                }
                             >
                                 {LEVEL_FILTERS.map((level) => (
-                                    <option key={level.value} value={level.value}>
+                                    <option
+                                        key={level.value}
+                                        value={level.value}
+                                    >
                                         {level.label}
                                     </option>
                                 ))}
@@ -505,7 +545,10 @@ export function AdminCoursesPage() {
                 </div>
 
                 <div className="course-management__status-bar">
-                    <div className="course-management__tabs" aria-label="Filter courses by status">
+                    <div
+                        className="course-management__tabs"
+                        aria-label="Filter courses by status"
+                    >
                         {STATUS_FILTERS.map((status) => {
                             const selected = statusFilter === status.value;
                             return (
@@ -514,21 +557,36 @@ export function AdminCoursesPage() {
                                     type="button"
                                     className={`course-management__tab${selected ? " is-active" : ""}`}
                                     aria-pressed={selected}
-                                    onClick={() => changeFilter(setStatusFilter, status.value)}
+                                    onClick={() =>
+                                        changeFilter(
+                                            setStatusFilter,
+                                            status.value,
+                                        )
+                                    }
                                 >
                                     {status.label}
                                 </button>
                             );
                         })}
                     </div>
-                    <p className="course-management__result-count" aria-live="polite">
-                        <strong>{totalItems}</strong> {totalItems === 1 ? "course" : "courses"}
+                    <p
+                        className="course-management__result-count"
+                        aria-live="polite"
+                    >
+                        <strong>{totalItems}</strong>{" "}
+                        {totalItems === 1 ? "course" : "courses"}
                     </p>
                 </div>
 
-                <div className="course-management__table-wrap" role="region" aria-label="Course list">
+                <div
+                    className="course-management__table-wrap"
+                    role="region"
+                    aria-label="Course list"
+                >
                     {loading ? (
-                        <div className="course-management__state">Loading courses…</div>
+                        <div className="course-management__state">
+                            Loading courses…
+                        </div>
                     ) : null}
                     {!loading && error ? (
                         <div className="course-management__state course-management__state--error">
@@ -538,7 +596,9 @@ export function AdminCoursesPage() {
                             <Button
                                 variant="outline"
                                 leftIcon={<RotateCcw size={16} />}
-                                onClick={() => setReloadRequest((current) => current + 1)}
+                                onClick={() =>
+                                    setReloadRequest((current) => current + 1)
+                                }
                             >
                                 Try again
                             </Button>
@@ -560,7 +620,9 @@ export function AdminCoursesPage() {
                             {!isTrainer && !hasFilters ? (
                                 <Button
                                     leftIcon={<Plus size={16} />}
-                                    onClick={() => navigate("/admin/courses/new")}
+                                    onClick={() =>
+                                        navigate("/admin/courses/new")
+                                    }
                                 >
                                     Create course
                                 </Button>
@@ -578,7 +640,11 @@ export function AdminCoursesPage() {
                                         <th>Price</th>
                                         <th>Status</th>
                                         <th>Updated</th>
-                                        <th><span className="sr-only">Actions</span></th>
+                                        <th>
+                                            <span className="sr-only">
+                                                Actions
+                                            </span>
+                                        </th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -586,21 +652,31 @@ export function AdminCoursesPage() {
                                         <tr key={course.id}>
                                             <td data-label="Course">
                                                 <Link
-                                                    to={isTrainer
-                                                        ? `${courseBasePath}/${course.id}/edit`
-                                                        : `${courseBasePath}/${course.id}/content`}
+                                                    to={
+                                                        isTrainer
+                                                            ? `${courseBasePath}/${course.id}/edit`
+                                                            : `${courseBasePath}/${course.id}/content`
+                                                    }
                                                     className="course-management__course-cell"
                                                 >
-                                                    <CourseThumbnail course={course} />
+                                                    <CourseThumbnail
+                                                        course={course}
+                                                    />
                                                     <div>
-                                                        <strong>{course.title}</strong>
-                                                        <code>{course.slug || "No slug"}</code>
+                                                        <strong>
+                                                            {course.title}
+                                                        </strong>
+                                                        <code>
+                                                            {course.slug ||
+                                                                "No slug"}
+                                                        </code>
                                                     </div>
                                                 </Link>
                                             </td>
                                             <td data-label="Category">
                                                 <span className="course-management__category">
-                                                    {course.categoryName || "Uncategorized"}
+                                                    {course.categoryName ||
+                                                        "Uncategorized"}
                                                 </span>
                                             </td>
                                             <td data-label="Level">
@@ -611,31 +687,48 @@ export function AdminCoursesPage() {
                                             <td data-label="Price">
                                                 <div className="course-management__meta-cell">
                                                     <strong>
-                                                        {formatPrice(course.discountedPrice ?? course.price, course.isFree)}
+                                                        {formatPrice(
+                                                            course.discountedPrice ??
+                                                                course.price,
+                                                            course.isFree,
+                                                        )}
                                                     </strong>
                                                     <span>
                                                         {course.isFree
                                                             ? "Free course"
-                                                            : course.discountedPrice != null
-                                                                ? "Discounted price"
-                                                                : "Standard price"}
+                                                            : course.discountedPrice !=
+                                                                null
+                                                              ? "Discounted price"
+                                                              : "Standard price"}
                                                     </span>
                                                 </div>
                                             </td>
                                             <td data-label="Status">
-                                                <CourseStatusBadge status={course.status} />
+                                                <CourseStatusBadge
+                                                    status={course.status}
+                                                />
                                             </td>
                                             <td data-label="Updated">
-                                                <time dateTime={course.updatedAt || course.createdAt}>
-                                                    {formatDate(course.updatedAt || course.createdAt)}
+                                                <time
+                                                    dateTime={
+                                                        course.updatedAt ||
+                                                        course.createdAt
+                                                    }
+                                                >
+                                                    {formatDate(
+                                                        course.updatedAt ||
+                                                            course.createdAt,
+                                                    )}
                                                 </time>
                                             </td>
                                             <td data-label="Actions">
                                                 <div className="course-management__actions">
                                                     <Link
-                                                        to={isTrainer
-                                                            ? `${courseBasePath}/${course.id}/edit`
-                                                            : `${courseBasePath}/${course.id}/content`}
+                                                        to={
+                                                            isTrainer
+                                                                ? `${courseBasePath}/${course.id}/edit`
+                                                                : `${courseBasePath}/${course.id}/content`
+                                                        }
                                                         className="course-management__action course-management__action--primary"
                                                         title="Open"
                                                         aria-label={`Open ${course.title}`}
@@ -644,12 +737,21 @@ export function AdminCoursesPage() {
                                                     </Link>
                                                     <RowActionsMenu
                                                         course={course}
-                                                        basePath={courseBasePath}
-                                                        canViewClasses={canViewClasses}
+                                                        basePath={
+                                                            courseBasePath
+                                                        }
+                                                        canViewClasses={
+                                                            canViewClasses
+                                                        }
                                                         canDelete={canDelete}
-                                                        previewReturnPath={previewReturnPath}
+                                                        previewReturnPath={
+                                                            previewReturnPath
+                                                        }
                                                         onRequestDelete={(c) =>
-                                                            setDeleteState({ open: true, target: c })
+                                                            setDeleteState({
+                                                                open: true,
+                                                                target: c,
+                                                            })
                                                         }
                                                     />
                                                 </div>
@@ -660,40 +762,69 @@ export function AdminCoursesPage() {
                             </table>
 
                             {/* Mobile stacked cards — same data, compact layout */}
-                            <ul className="course-management__cards" aria-label="Course list">
+                            <ul
+                                className="course-management__cards"
+                                aria-label="Course list"
+                            >
                                 {items.map((course) => (
-                                    <li key={course.id} className="course-management__card">
+                                    <li
+                                        key={course.id}
+                                        className="course-management__card"
+                                    >
                                         <div className="course-management__card-head">
                                             <CourseThumbnail course={course} />
                                             <div>
                                                 <strong>{course.title}</strong>
-                                                <code>{course.slug || "No slug"}</code>
+                                                <code>
+                                                    {course.slug || "No slug"}
+                                                </code>
                                             </div>
                                         </div>
                                         <dl className="course-management__card-meta">
                                             <div>
                                                 <dt>Category</dt>
-                                                <dd>{course.categoryName || "Uncategorized"}</dd>
+                                                <dd>
+                                                    {course.categoryName ||
+                                                        "Uncategorized"}
+                                                </dd>
                                             </div>
                                             <div>
                                                 <dt>Level</dt>
-                                                <dd>{formatLevel(course.level)}</dd>
+                                                <dd>
+                                                    {formatLevel(course.level)}
+                                                </dd>
                                             </div>
                                             <div>
                                                 <dt>Price</dt>
-                                                <dd>{formatPrice(course.discountedPrice ?? course.price, course.isFree)}</dd>
+                                                <dd>
+                                                    {formatPrice(
+                                                        course.discountedPrice ??
+                                                            course.price,
+                                                        course.isFree,
+                                                    )}
+                                                </dd>
                                             </div>
                                             <div>
                                                 <dt>Updated</dt>
                                                 <dd>
-                                                    <time dateTime={course.updatedAt || course.createdAt}>
-                                                        {formatDate(course.updatedAt || course.createdAt)}
+                                                    <time
+                                                        dateTime={
+                                                            course.updatedAt ||
+                                                            course.createdAt
+                                                        }
+                                                    >
+                                                        {formatDate(
+                                                            course.updatedAt ||
+                                                                course.createdAt,
+                                                        )}
                                                     </time>
                                                 </dd>
                                             </div>
                                         </dl>
                                         <div className="course-management__card-status">
-                                            <CourseStatusBadge status={course.status} />
+                                            <CourseStatusBadge
+                                                status={course.status}
+                                            />
                                         </div>
                                         <div className="course-management__card-actions">
                                             <Button
@@ -713,9 +844,14 @@ export function AdminCoursesPage() {
                                                 basePath={courseBasePath}
                                                 canViewClasses={canViewClasses}
                                                 canDelete={canDelete}
-                                                previewReturnPath={previewReturnPath}
+                                                previewReturnPath={
+                                                    previewReturnPath
+                                                }
                                                 onRequestDelete={(c) =>
-                                                    setDeleteState({ open: true, target: c })
+                                                    setDeleteState({
+                                                        open: true,
+                                                        target: c,
+                                                    })
                                                 }
                                             />
                                         </div>
@@ -745,7 +881,9 @@ export function AdminCoursesPage() {
                 <DeleteCourseModal
                     open
                     target={deleteState.target}
-                    onClose={() => setDeleteState({ open: false, target: null })}
+                    onClose={() =>
+                        setDeleteState({ open: false, target: null })
+                    }
                     onConfirmed={handleDeleted}
                 />
             ) : null}

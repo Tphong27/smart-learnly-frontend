@@ -26,11 +26,13 @@ import {
     ArrowLeft,
     Save,
     History,
-    Edit3,
-    ListChecks,
     Loader2,
     ChevronLeft,
     ChevronRight,
+    ChevronDown,
+    CheckCircle2,
+    Circle,
+    AlertCircle,
     Paperclip,
     X,
 } from "lucide-react";
@@ -41,6 +43,96 @@ import { LessonResourceUploader } from "./LessonResourceUploader";
 import "../../course-admin.css";
 import "@/features/course/course-admin.css";
 import "@/features/course/course-lesson-editor.css";
+
+const LESSON_TYPE_LABELS = {
+    VIDEO: "Video lecture",
+    PDF: "Document / Reading",
+    QUIZ: "Quiz",
+    ESSAY: "Essay assignment",
+    FLASHCARD: "Flashcard",
+};
+
+function LessonEditorSection({
+    id,
+    step,
+    title,
+    description,
+    summary,
+    state = "incomplete",
+    stateLabel,
+    expanded,
+    onToggle,
+    children,
+}) {
+    const StatusIcon =
+        state === "complete"
+            ? CheckCircle2
+            : state === "error"
+              ? AlertCircle
+              : state === "processing"
+                ? Loader2
+                : Circle;
+    const headingId = `${id}-heading`;
+    const panelId = `${id}-panel`;
+
+    return (
+        <section
+            className={`sl-lesson-step sl-lesson-step--${state}${expanded ? " is-expanded" : ""}`}
+        >
+            <h2 className="sl-lesson-step__heading" id={headingId}>
+                <button
+                    type="button"
+                    className="sl-lesson-step__trigger"
+                    aria-expanded={expanded}
+                    aria-controls={panelId}
+                    onClick={onToggle}
+                >
+                    <span
+                        className="sl-lesson-step__status-icon"
+                        aria-hidden="true"
+                    >
+                        <StatusIcon
+                            size={20}
+                            className={
+                                state === "processing"
+                                    ? "animate-spin"
+                                    : undefined
+                            }
+                        />
+                    </span>
+                    <span className="sl-lesson-step__copy">
+                        <strong>
+                            {step}. {title}
+                        </strong>
+                        <span>{summary || description}</span>
+                    </span>
+                    <span className="sl-lesson-step__meta">
+                        <span
+                            className={`sl-lesson-step__state sl-lesson-step__state--${state}`}
+                        >
+                            {stateLabel}
+                        </span>
+                        <ChevronDown
+                            size={19}
+                            className="sl-lesson-step__chevron"
+                            aria-hidden="true"
+                        />
+                    </span>
+                </button>
+            </h2>
+            {expanded && (
+                <div
+                    id={panelId}
+                    className="sl-lesson-step__content"
+                    role="region"
+                    aria-labelledby={headingId}
+                >
+                    {children}
+                </div>
+            )}
+        </section>
+    );
+}
 
 /**
  * Shared lesson editor used by both admin (`/admin/courses/.../lessons/:lessonId`)
@@ -107,6 +199,34 @@ export function LessonDetailEditor({ context }) {
     const [assignmentSaving, setAssignmentSaving] = useState(false);
     const [assignmentFile, setAssignmentFile] = useState(null);
     const [existingAssignmentFile, setExistingAssignmentFile] = useState(null);
+    const [expandedSection, setExpandedSection] = useState("basic");
+    const [hasChanges, setHasChanges] = useState(false);
+    const [saveNotice, setSaveNotice] = useState(null);
+
+    const markChanged = () => {
+        setHasChanges(true);
+        setSaveNotice(null);
+    };
+
+    const showSaveNotice = (notice) => {
+        setSaveNotice(notice);
+        window.requestAnimationFrame(() => {
+            document.getElementById("lesson-save-notice")?.scrollIntoView({
+                behavior: "smooth",
+                block: "start",
+            });
+        });
+    };
+
+    const openSection = (sectionId) => {
+        setExpandedSection(sectionId);
+        window.requestAnimationFrame(() => {
+            document
+                .getElementById(`lesson-step-${sectionId}-heading`)
+                ?.querySelector("button")
+                ?.focus();
+        });
+    };
 
     const getFileNameFromUrl = (url) => {
         if (!url) return "";
@@ -205,6 +325,7 @@ export function LessonDetailEditor({ context }) {
                     setResources(
                         Array.isArray(loadedResources) ? loadedResources : [],
                     );
+                    setHasChanges(false);
                 }
             } catch (error) {
                 console.error("Error loading lesson details:", error);
@@ -408,10 +529,19 @@ export function LessonDetailEditor({ context }) {
 
     const handleSave = async (e) => {
         e.preventDefault();
+        setSaveNotice(null);
 
         if (!title.trim()) {
             setTitleError("Lesson title is required.");
-            showToast("Please enter a title", "error");
+            showSaveNotice({
+                type: "error",
+                title: "Lesson could not be saved",
+                message: "Add a lesson title in step 1, then try again.",
+            });
+            openSection("basic");
+            window.requestAnimationFrame(() =>
+                document.getElementById("lesson-title-input")?.focus(),
+            );
             return;
         }
         setTitleError("");
@@ -420,13 +550,50 @@ export function LessonDetailEditor({ context }) {
         const usesLessonResources = !isQuiz && lessonType !== "ESSAY";
         const cleanSummary = sanitizeLessonHtml(summary);
 
+        if (isQuiz && !parseQuizContent(textContent).title?.trim()) {
+            setSummaryError("Quiz title cannot be empty.");
+            showSaveNotice({
+                type: "error",
+                title: "Lesson could not be saved",
+                message: "Add a quiz title in step 1, then try again.",
+            });
+            openSection("basic");
+            return;
+        }
+
         if (!isQuiz && isEmptyLessonHtml(cleanSummary)) {
             setSummaryError("Lesson summary cannot be empty.");
-            showToast("Lesson summary is required", "error");
+            showSaveNotice({
+                type: "error",
+                title: "Lesson could not be saved",
+                message: "Add a lesson description in step 1, then try again.",
+            });
+            openSection("basic");
             return;
         }
         setSummaryError("");
 
+        if (!materialComplete) {
+            const materialMessage =
+                lessonType === "VIDEO"
+                    ? "Upload a lesson video in step 2, then try again."
+                    : lessonType === "PDF"
+                      ? "Upload the reading material in step 2, then try again."
+                      : "Add at least one quiz question in step 2, then try again.";
+            showSaveNotice({
+                type: "error",
+                title: "Lesson could not be saved",
+                message: materialMessage,
+            });
+            openSection("material");
+            return;
+        }
+
+        showSaveNotice({
+            type: "saving",
+            title: "Saving lesson changes",
+            message: "Please wait while the lesson is being updated.",
+        });
         setLoading(true);
 
         try {
@@ -470,9 +637,23 @@ export function LessonDetailEditor({ context }) {
                     title: title.trim(),
                     description: cleanSummary,
                 });
-                if (!assignmentSaved) return;
+                if (!assignmentSaved) {
+                    showSaveNotice({
+                        type: "error",
+                        title: "Assignment could not be saved",
+                        message:
+                            "Review the assignment information and try again.",
+                    });
+                    return;
+                }
             }
 
+            setHasChanges(false);
+            setSaveNotice({
+                type: "success",
+                title: "Lesson saved",
+                message: "All lesson changes were saved successfully.",
+            });
             showToast("Update successfully!", "success");
             if (backPath) navigate(backPath);
         } catch (error) {
@@ -493,7 +674,11 @@ export function LessonDetailEditor({ context }) {
                 errorText = error.message;
             }
 
-            showToast(errorText, "error");
+            showSaveNotice({
+                type: "error",
+                title: "Lesson could not be saved",
+                message: errorText,
+            });
         } finally {
             setLoading(false);
         }
@@ -546,95 +731,308 @@ export function LessonDetailEditor({ context }) {
         }
     };
 
+    const parsedQuizContent = parseQuizContent(textContent);
+    const sanitizedSummary = sanitizeLessonHtml(summary);
+    const basicComplete = Boolean(title.trim());
+    const descriptionComplete =
+        lessonType === "QUIZ"
+            ? Boolean(parsedQuizContent.title?.trim())
+            : lessonType === "FLASHCARD"
+              ? true
+              : !isEmptyLessonHtml(sanitizedSummary);
+    const materialComplete = (() => {
+        if (lessonType === "VIDEO") return Boolean(videoUrl);
+        if (lessonType === "PDF") return Boolean(uploadedFileUrl);
+        if (lessonType === "QUIZ") {
+            return (parsedQuizContent.questions || []).length > 0;
+        }
+        return true;
+    })();
+    const detailsComplete = basicComplete && descriptionComplete;
+    const settingsComplete =
+        Boolean(status) && Number(durationSeconds || 0) >= 0;
+    const totalSections = lessonType === "FLASHCARD" ? 2 : 3;
+    const completedSections =
+        lessonType === "FLASHCARD"
+            ? [basicComplete, true].filter(Boolean).length
+            : [detailsComplete, materialComplete, settingsComplete].filter(
+                  Boolean,
+              ).length;
+    const completionPercent = Math.round(
+        (completedSections / totalSections) * 100,
+    );
+    const editorBusy =
+        loading ||
+        uploadingPdf ||
+        uploadingResources ||
+        videoUploaderBusy ||
+        assignmentSaving;
+    const typeLabel = LESSON_TYPE_LABELS[lessonType] || lessonType;
+    const statusMeta = getLessonStatusMeta(status);
+    const statusLabel = statusMeta?.label || status;
+    const materialSummary = (() => {
+        if (videoUploaderBusy)
+            return "Video upload or HLS processing in progress";
+        if (lessonType === "VIDEO") {
+            return videoUrl
+                ? `${resources.length} supporting resource${resources.length === 1 ? "" : "s"}`
+                : "Video is required";
+        }
+        if (lessonType === "PDF") {
+            return uploadedFileUrl
+                ? `${resources.length} supporting resource${resources.length === 1 ? "" : "s"}`
+                : "Reading material is required";
+        }
+        if (lessonType === "QUIZ") {
+            const count = parsedQuizContent.questions.length;
+            return `${count} question${count === 1 ? "" : "s"}`;
+        }
+        if (lessonType === "ESSAY") {
+            return assignmentFile || existingAssignmentFile
+                ? "Assignment file added"
+                : "Assignment file is optional";
+        }
+        return "Manage the flashcard set and cards";
+    })();
+
     if (pageLoading)
         return (
             <div className="sl-cm-page" role="status" aria-live="polite">
                 <div className="sl-cm-workspace">
-                    <div className="sl-cm-skeleton" style={{ width: "35%", marginBottom: 16 }} />
-                    <div className="sl-cm-skeleton" style={{ width: "60%", marginBottom: 24 }} />
-                    <div className="sl-cm-skeleton" style={{ width: "100%", height: 200 }} />
+                    <div
+                        className="sl-cm-skeleton"
+                        style={{ width: "35%", marginBottom: 16 }}
+                    />
+                    <div
+                        className="sl-cm-skeleton"
+                        style={{ width: "60%", marginBottom: 24 }}
+                    />
+                    <div
+                        className="sl-cm-skeleton"
+                        style={{ width: "100%", height: 200 }}
+                    />
                 </div>
             </div>
         );
 
-    const showQuizTab = features.quizManager && lessonType === "QUIZ";
-
     return (
         <div className="sl-cm-lesson-editor">
             <div className="sl-cm-lesson-editor__header">
-                <div>
+                <div className="sl-cm-lesson-editor__header-copy">
                     <button
                         type="button"
                         className="sl-cm-back"
                         onClick={() => backPath && navigate(backPath)}
                     >
-                        <ArrowLeft size={16} aria-hidden="true" /> Back to curriculum
+                        <ArrowLeft size={16} aria-hidden="true" /> Back to
+                        curriculum
                     </button>
                     <h1 className="sl-cm-lesson-editor__title">
-                        {title || "Untitled lesson"}
+                        {activeTab === "history"
+                            ? "Lesson audit history"
+                            : "Edit lesson"}
                     </h1>
+                    <div className="sl-cm-lesson-editor__lesson-line">
+                        <strong>{title || "Untitled lesson"}</strong>
+                    </div>
+                    <p className="sl-cm-lesson-editor__context">{typeLabel}</p>
                 </div>
-            </div>
-
-            <div className="sl-cm-lesson-editor__tabs" role="tablist">
-                <button
-                    type="button"
-                    role="tab"
-                    aria-selected={activeTab === "edit"}
-                    className="sl-cm-lesson-editor__tab"
-                    onClick={() => {
-                        setCurrentPage(0);
-                        setActiveTab("edit");
-                    }}
-                >
-                    <Edit3 size={16} aria-hidden="true" /> Edit content
-                </button>
                 {features.audit && (
-                    <button
+                    <Button
                         type="button"
-                        role="tab"
-                        aria-selected={activeTab === "history"}
-                        className="sl-cm-lesson-editor__tab"
-                        onClick={() => setActiveTab("history")}
+                        variant="outline"
+                        leftIcon={
+                            activeTab === "history" ? (
+                                <ArrowLeft size={16} />
+                            ) : (
+                                <History size={16} />
+                            )
+                        }
+                        onClick={() => {
+                            setCurrentPage(0);
+                            setActiveTab(
+                                activeTab === "history" ? "edit" : "history",
+                            );
+                        }}
                     >
-                        <History size={16} aria-hidden="true" /> Audit history
-                    </button>
-                )}
-                {showQuizTab && (
-                    <button
-                        type="button"
-                        role="tab"
-                        aria-selected={activeTab === "questions"}
-                        className="sl-cm-lesson-editor__tab"
-                        onClick={() => setActiveTab("questions")}
-                    >
-                        <ListChecks size={16} aria-hidden="true" /> Manage questions
-                    </button>
+                        {activeTab === "history"
+                            ? "Back to editor"
+                            : "Audit history"}
+                    </Button>
                 )}
             </div>
 
-            {activeTab === "questions" && showQuizTab ? (
-                <QuizQuestionsPanel
-                    lessonId={lessonId}
-                    lessonTitle={title}
-                    service={services}
-                />
-            ) : activeTab === "edit" ? (
+            {activeTab === "edit" && saveNotice && (
+                <div
+                    id="lesson-save-notice"
+                    className={`sl-cm-lesson-editor__notice sl-cm-lesson-editor__notice--${saveNotice.type}`}
+                    role={saveNotice.type === "error" ? "alert" : "status"}
+                    aria-live={
+                        saveNotice.type === "error" ? "assertive" : "polite"
+                    }
+                >
+                    <span
+                        className="sl-cm-lesson-editor__notice-icon"
+                        aria-hidden="true"
+                    >
+                        {saveNotice.type === "saving" ? (
+                            <Loader2 size={20} className="animate-spin" />
+                        ) : saveNotice.type === "success" ? (
+                            <CheckCircle2 size={20} />
+                        ) : (
+                            <AlertCircle size={20} />
+                        )}
+                    </span>
+                    <div className="sl-cm-lesson-editor__notice-copy">
+                        <strong>{saveNotice.title}</strong>
+                        <p>{saveNotice.message}</p>
+                    </div>
+                    {saveNotice.type !== "saving" && (
+                        <button
+                            type="button"
+                            className="sl-cm-lesson-editor__notice-close"
+                            aria-label="Dismiss save notification"
+                            onClick={() => setSaveNotice(null)}
+                        >
+                            <X size={18} aria-hidden="true" />
+                        </button>
+                    )}
+                </div>
+            )}
+
+            {activeTab === "edit" && (
+                <section
+                    className="sl-cm-lesson-editor__progress"
+                    aria-label="Lesson completion"
+                >
+                    <div className="sl-cm-lesson-editor__progress-copy">
+                        <div>
+                            <strong>Lesson completion</strong>
+                            <span>
+                                {completedSections} of {totalSections} required
+                                sections completed
+                            </span>
+                        </div>
+                        <strong>{completionPercent}%</strong>
+                    </div>
+                    <div
+                        className="sl-cm-lesson-editor__progress-track"
+                        role="progressbar"
+                        aria-valuemin="0"
+                        aria-valuemax="100"
+                        aria-valuenow={completionPercent}
+                    >
+                        <span style={{ width: `${completionPercent}%` }} />
+                    </div>
+                    <p
+                        className="sl-cm-lesson-editor__save-state"
+                        aria-live="polite"
+                    >
+                        {editorBusy
+                            ? "Saving or processing lesson content..."
+                            : hasChanges
+                              ? "Unsaved changes"
+                              : "All changes loaded"}
+                    </p>
+                </section>
+            )}
+
+            {activeTab === "edit" ? (
                 lessonType === "FLASHCARD" && features.flashcard ? (
-                    <FlashcardLessonEditor
-                        lessonId={lessonId}
-                        initialSetId={initialFlashcardSetId}
-                        defaultTitle={title}
-                        showToast={showToast}
-                        onTitleSaved={setTitle}
-                        flashcardService={services.flashcardService}
-                        stagingEnabled={features.flashcardStaging !== false}
-                    />
+                    <div className="sl-cm-lesson-editor__accordion-form">
+                        <div className="sl-cm-lesson-editor__steps">
+                            <LessonEditorSection
+                                id="lesson-step-basic"
+                                step="1"
+                                title="Basic information"
+                                description="Review the lesson identity before editing its flashcards."
+                                summary={`${typeLabel} · Preview ${isPreview ? "enabled" : "disabled"}`}
+                                state="complete"
+                                stateLabel="Complete"
+                                expanded={expandedSection === "basic"}
+                                onToggle={() => setExpandedSection((current) => current === "basic" ? "" : "basic")}
+                            >
+                                <div className="sl-cm-lesson-editor__preview-card">
+                                    <strong>{title || "Untitled flashcard lesson"}</strong>
+                                    <dl>
+                                        <div><dt>Type</dt><dd>{typeLabel}</dd></div>
+                                        <div><dt>Preview</dt><dd>{isPreview ? "Enabled" : "Disabled"}</dd></div>
+                                    </dl>
+                                </div>
+                                <div className="sl-lesson-step__footer">
+                                    <Button type="button" variant="outline" onClick={() => openSection("material")}>
+                                        Next: Flashcards
+                                    </Button>
+                                </div>
+                            </LessonEditorSection>
+                            <LessonEditorSection
+                                id="lesson-step-material"
+                                step="2"
+                                title="Flashcards"
+                                description="Manage the flashcard set and its learning cards."
+                                summary="Edit the set title, cards, and study content"
+                                state="complete"
+                                stateLabel="Editor ready"
+                                expanded={expandedSection === "material"}
+                                onToggle={() => setExpandedSection((current) => current === "material" ? "" : "material")}
+                            >
+                                <FlashcardLessonEditor
+                                    lessonId={lessonId}
+                                    initialSetId={initialFlashcardSetId}
+                                    defaultTitle={title}
+                                    showToast={showToast}
+                                    onTitleSaved={(nextTitle) => {
+                                        setTitle(nextTitle);
+                                        setHasChanges(false);
+                                    }}
+                                    flashcardService={services.flashcardService}
+                                    stagingEnabled={features.flashcardStaging !== false}
+                                />
+                            </LessonEditorSection>
+                        </div>
+                    </div>
                 ) : (
-                    <form onSubmit={handleSave} className="sl-cm-lesson-editor__grid" noValidate>
-                        <section className="sl-cm-lesson-editor__panel" aria-label="Lesson details">
-                            <div className="sl-cm-lesson-editor__meta-row">
-                                    <div>
+                    <form
+                        onSubmit={handleSave}
+                        className="sl-cm-lesson-editor__accordion-form"
+                        noValidate
+                    >
+                        <div className="sl-cm-lesson-editor__steps">
+                            <LessonEditorSection
+                                id="lesson-step-basic"
+                                step="1"
+                                title="Title and description"
+                                description="Add the lesson title and explain what learners will study."
+                                summary={
+                                    detailsComplete
+                                        ? "Title and description added"
+                                        : lessonType === "QUIZ"
+                                          ? "Title and quiz title are required"
+                                          : "Title and description are required"
+                                }
+                                state={
+                                    detailsComplete
+                                        ? "complete"
+                                        : titleError || summaryError
+                                          ? "error"
+                                          : "incomplete"
+                                }
+                                stateLabel={
+                                    detailsComplete
+                                        ? "Complete"
+                                        : titleError || summaryError
+                                          ? "Needs attention"
+                                          : "Incomplete"
+                                }
+                                expanded={expandedSection === "basic"}
+                                onToggle={() =>
+                                    setExpandedSection((current) =>
+                                        current === "basic" ? "" : "basic",
+                                    )
+                                }
+                            >
+                                <div className="sl-cm-lesson-editor__basic-form">
+                                    <div className="sl-cm-lesson-editor__basic-title">
                                         <label
                                             className="sl-cm-lesson-editor__field-label"
                                             htmlFor="lesson-title-input"
@@ -646,74 +1044,504 @@ export function LessonDetailEditor({ context }) {
                                             id="lesson-title-input"
                                             type="text"
                                             value={title}
-                                            onChange={(e) =>
-                                                setTitle(e.target.value)
-                                            }
+                                            onChange={(e) => {
+                                                setTitle(e.target.value);
+                                                markChanged();
+                                                if (e.target.value.trim())
+                                                    setTitleError("");
+                                            }}
                                             className="sl-cm-lesson-editor__field-control"
-                                            aria-invalid={titleError ? "true" : undefined}
-                                            aria-describedby={titleError ? "lesson-title-error" : undefined}
+                                            aria-invalid={
+                                                titleError ? "true" : undefined
+                                            }
+                                            aria-describedby={
+                                                titleError
+                                                    ? "lesson-title-error"
+                                                    : undefined
+                                            }
                                         />
                                         {titleError ? (
                                             <p
                                                 id="lesson-title-error"
                                                 className="sl-cm-lesson-editor__field-help"
-                                                style={{ color: "var(--sl-danger)", fontWeight: 600 }}
+                                                style={{
+                                                    color: "var(--sl-danger)",
+                                                    fontWeight: 600,
+                                                }}
                                                 role="alert"
                                             >
                                                 {titleError}
                                             </p>
                                         ) : null}
                                     </div>
-                                    <div>
-                                        <label
-                                            className="sl-cm-lesson-editor__field-label"
-                                            htmlFor="lesson-type-select"
-                                        >
-                                            Lesson Type{" "}
-                                            <span className="required">*</span>
-                                        </label>
-                                        <select
-                                            id="lesson-type-select"
-                                            value={lessonType}
-                                            onChange={(e) =>
-                                                setLessonType(e.target.value)
-                                            }
-                                            disabled={
-                                                lessonType === "FLASHCARD"
-                                            }
-                                            className="sl-cm-lesson-editor__field-control"
-                                        >
-                                            <option value="VIDEO">
-                                                Video Lecture
-                                            </option>
-                                            <option value="PDF">
-                                                Document / Reading
-                                            </option>
-                                            <option value="QUIZ">Quiz</option>
-                                            <option value="ESSAY">Essay</option>
-                                            {lessonType === "FLASHCARD" && (
-                                                <option value="FLASHCARD">
-                                                    Flashcard
-                                                </option>
-                                            )}
-                                        </select>
+                                    <div className="sl-cm-lesson-editor__description-field">
+                                        {lessonType === "QUIZ" ? (
+                                            <div>
+                                                <label
+                                                    className="sl-cm-lesson-editor__field-label"
+                                                    htmlFor="lesson-quiz-title"
+                                                >
+                                                    Quiz title{" "}
+                                                    <span className="required">
+                                                        *
+                                                    </span>
+                                                </label>
+                                                <input
+                                                    id="lesson-quiz-title"
+                                                    type="text"
+                                                    value={
+                                                        parseQuizContent(
+                                                            textContent,
+                                                        ).title
+                                                    }
+                                                    onChange={(event) => {
+                                                        const parsed =
+                                                            parseQuizContent(
+                                                                textContent,
+                                                            );
+                                                        setTextContent(
+                                                            serializeQuizContent(
+                                                                event.target
+                                                                    .value,
+                                                                parsed.questions,
+                                                            ),
+                                                        );
+                                                        setSummaryError("");
+                                                        markChanged();
+                                                    }}
+                                                    placeholder="Enter quiz title"
+                                                    className="sl-cm-lesson-editor__field-control"
+                                                    aria-invalid={
+                                                        summaryError
+                                                            ? "true"
+                                                            : undefined
+                                                    }
+                                                />
+                                                {summaryError ? (
+                                                    <p
+                                                        className="sl-cm-lesson-editor__field-help sl-cm-lesson-editor__field-help--error"
+                                                        role="alert"
+                                                    >
+                                                        {summaryError}
+                                                    </p>
+                                                ) : null}
+                                            </div>
+                                        ) : (
+                                            <div>
+                                                <label className="sl-cm-lesson-editor__field-label">
+                                                    Description{" "}
+                                                    <span className="required">
+                                                        *
+                                                    </span>
+                                                </label>
+                                                <RichTextEditor
+                                                    value={summary}
+                                                    onChange={(value) => {
+                                                        setSummary(value);
+                                                        setSummaryError("");
+                                                        markChanged();
+                                                    }}
+                                                    placeholder="Describe what learners will study..."
+                                                    minHeight={220}
+                                                    imageUploader={
+                                                        uploadSummaryImage
+                                                    }
+                                                    videoUploader={
+                                                        uploadSummaryVideo
+                                                    }
+                                                />
+                                                {summaryError ? (
+                                                    <p
+                                                        className="sl-cm-lesson-editor__field-help sl-cm-lesson-editor__field-help--error"
+                                                        role="alert"
+                                                    >
+                                                        {summaryError}
+                                                    </p>
+                                                ) : null}
+                                            </div>
+                                        )}
                                     </div>
-                                    <div>
-                                        <label
-                                            className="sl-cm-lesson-editor__field-label"
-                                            htmlFor="lesson-status-select"
-                                        >
-                                            Status{" "}
-                                            <span className="required">*</span>
-                                        </label>
+                                </div>
+
+                                <div className="sl-lesson-step__footer">
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        onClick={() => openSection("material")}
+                                    >
+                                        Next: Material & resources
+                                    </Button>
+                                </div>
+                            </LessonEditorSection>
+
+                            <LessonEditorSection
+                                id="lesson-step-material"
+                                step="2"
+                                title="Material and resources"
+                                description="Add the lesson material and supporting resources."
+                                summary={materialSummary}
+                                state={
+                                    videoUploaderBusy ||
+                                    uploadingPdf ||
+                                    uploadingResources ||
+                                    assignmentLoading
+                                        ? "processing"
+                                        : materialComplete
+                                          ? "complete"
+                                          : "incomplete"
+                                }
+                                stateLabel={
+                                    videoUploaderBusy ||
+                                    uploadingPdf ||
+                                    uploadingResources ||
+                                    assignmentLoading
+                                        ? "Processing"
+                                        : materialComplete
+                                          ? "Complete"
+                                          : "Items missing"
+                                }
+                                expanded={expandedSection === "material"}
+                                onToggle={() =>
+                                    setExpandedSection((current) =>
+                                        current === "material"
+                                            ? ""
+                                            : "material",
+                                    )
+                                }
+                            >
+                                <div className="sl-cm-lesson-editor__material-layout">
+                                    {lessonType !== "QUIZ" &&
+                                        lessonType !== "ESSAY" && (
+                                            <LessonResourceUploader
+                                                resources={resources}
+                                                onResourcesChange={(
+                                                    nextResources,
+                                                ) => {
+                                                    setResources(nextResources);
+                                                    markChanged();
+                                                }}
+                                                showToast={showToast}
+                                                onBusyChange={
+                                                    setUploadingResources
+                                                }
+                                            />
+                                        )}
+
+                                    <div className="sl-cm-lesson-editor__panel-body">
+                                        {lessonType === "VIDEO" && (
+                                            <HlsVideoUploader
+                                                lessonId={lessonId}
+                                                videoUrl={videoUrl}
+                                                onVideoUrlChange={(nextUrl) => {
+                                                    setVideoUrl(nextUrl);
+                                                    markChanged();
+                                                }}
+                                                showToast={showToast}
+                                                getLatestVideoUrl={
+                                                    syncLatestLessonVideoUrl
+                                                }
+                                                onBusyChange={
+                                                    setVideoUploaderBusy
+                                                }
+                                            />
+                                        )}
+
+                                        {lessonType === "PDF" && (
+                                            <PdfMaterialUploader
+                                                attachmentUrl={uploadedFileUrl}
+                                                onAttachmentUrlChange={(
+                                                    nextUrl,
+                                                ) => {
+                                                    setUploadedFileUrl(nextUrl);
+                                                    markChanged();
+                                                }}
+                                                showToast={showToast}
+                                                onBusyChange={setUploadingPdf}
+                                            />
+                                        )}
+                                        {lessonType === "QUIZ" &&
+                                            features.quizManager && (
+                                                <QuizQuestionsPanel
+                                                    lessonId={lessonId}
+                                                    lessonTitle={title}
+                                                    service={services}
+                                                    onSaved={async () => {
+                                                        const response =
+                                                            await services.getLessonDetail(
+                                                                lessonId,
+                                                            );
+                                                        const nextLesson =
+                                                            response?.data ||
+                                                            response;
+                                                        setTextContent(
+                                                            nextLesson?.content ||
+                                                                "",
+                                                        );
+                                                        setExistingLessonData(
+                                                            (current) => ({
+                                                                ...current,
+                                                                ...nextLesson,
+                                                            }),
+                                                        );
+                                                    }}
+                                                />
+                                            )}
+                                        {lessonType === "ESSAY" && (
+                                            <div className="sl-cm-lesson-editor__essay-card">
+                                                {assignmentLoading ? (
+                                                    <div
+                                                        style={{
+                                                            display: "flex",
+                                                            alignItems:
+                                                                "center",
+                                                            gap: "10px",
+                                                            color: "#64748b",
+                                                        }}
+                                                    >
+                                                        <Loader2
+                                                            className="animate-spin"
+                                                            size={18}
+                                                        />
+                                                        <span>
+                                                            Loading essay
+                                                            content...
+                                                        </span>
+                                                    </div>
+                                                ) : (
+                                                    <>
+                                                        <div
+                                                            style={{
+                                                                display: "flex",
+                                                                flexDirection:
+                                                                    "column",
+                                                                flex: "1 1 auto",
+                                                                minHeight: 0,
+                                                            }}
+                                                        >
+                                                            <span
+                                                                style={{
+                                                                    display:
+                                                                        "block",
+                                                                    marginBottom:
+                                                                        "8px",
+                                                                    fontWeight: 600,
+                                                                    color: "#1e293b",
+                                                                    fontSize:
+                                                                        "14px",
+                                                                }}
+                                                            >
+                                                                Assignment File
+                                                            </span>
+                                                            {assignmentFile ||
+                                                            existingAssignmentFile ? (
+                                                                <div
+                                                                    style={{
+                                                                        display:
+                                                                            "flex",
+                                                                        alignItems:
+                                                                            "center",
+                                                                        justifyContent:
+                                                                            "space-between",
+                                                                        gap: "12px",
+                                                                        width: "100%",
+                                                                        flex: "1 1 auto",
+                                                                        boxSizing:
+                                                                            "border-box",
+                                                                        minWidth: 0,
+                                                                        padding:
+                                                                            "12px 14px",
+                                                                        border: "1px solid #cbd5e1",
+                                                                        borderRadius:
+                                                                            "10px",
+                                                                        background:
+                                                                            "#f8fafc",
+                                                                        minHeight:
+                                                                            "84px",
+                                                                    }}
+                                                                >
+                                                                    <div
+                                                                        style={{
+                                                                            display:
+                                                                                "flex",
+                                                                            alignItems:
+                                                                                "center",
+                                                                            gap: "10px",
+                                                                            color: "#334155",
+                                                                            flex: "1 1 auto",
+                                                                            minWidth: 0,
+                                                                        }}
+                                                                    >
+                                                                        <Paperclip
+                                                                            size={
+                                                                                16
+                                                                            }
+                                                                        />
+                                                                        <span
+                                                                            style={{
+                                                                                display:
+                                                                                    "block",
+                                                                                flex: "1 1 auto",
+                                                                                minWidth: 0,
+                                                                                maxWidth:
+                                                                                    "100%",
+                                                                                overflow:
+                                                                                    "hidden",
+                                                                                textOverflow:
+                                                                                    "ellipsis",
+                                                                                whiteSpace:
+                                                                                    "nowrap",
+                                                                            }}
+                                                                        >
+                                                                            {assignmentFile?.name ||
+                                                                                existingAssignmentFile?.fileName}
+                                                                        </span>
+                                                                    </div>
+                                                                    <button
+                                                                        type="button"
+                                                                        aria-label="Remove assignment file"
+                                                                        onClick={() => {
+                                                                            setAssignmentFile(
+                                                                                null,
+                                                                            );
+                                                                            setExistingAssignmentFile(
+                                                                                null,
+                                                                            );
+                                                                            markChanged();
+                                                                        }}
+                                                                        style={{
+                                                                            border: "none",
+                                                                            background:
+                                                                                "transparent",
+                                                                            cursor: "pointer",
+                                                                            color: "#64748b",
+                                                                        }}
+                                                                    >
+                                                                        <X
+                                                                            size={
+                                                                                16
+                                                                            }
+                                                                        />
+                                                                    </button>
+                                                                </div>
+                                                            ) : (
+                                                                <label
+                                                                    style={{
+                                                                        display:
+                                                                            "flex",
+                                                                        alignItems:
+                                                                            "center",
+                                                                        justifyContent:
+                                                                            "center",
+                                                                        gap: "12px",
+                                                                        width: "100%",
+                                                                        minHeight:
+                                                                            "240px",
+                                                                        flex: "1 1 auto",
+                                                                        boxSizing:
+                                                                            "border-box",
+                                                                        padding:
+                                                                            "18px",
+                                                                        border: "1px dashed #94a3b8",
+                                                                        borderRadius:
+                                                                            "12px",
+                                                                        cursor: "pointer",
+                                                                        color: "#475569",
+                                                                        background:
+                                                                            "#fff",
+                                                                    }}
+                                                                >
+                                                                    <Paperclip
+                                                                        size={
+                                                                            20
+                                                                        }
+                                                                    />
+                                                                    <span>
+                                                                        Upload
+                                                                        essay
+                                                                        assignment
+                                                                        file
+                                                                    </span>
+                                                                    <input
+                                                                        type="file"
+                                                                        hidden
+                                                                        accept=".pdf,.doc,.docx,.ppt,.pptx,.png,.jpg,.jpeg,.zip"
+                                                                        onChange={(
+                                                                            event,
+                                                                        ) => {
+                                                                            setAssignmentFile(
+                                                                                event
+                                                                                    .target
+                                                                                    .files?.[0] ||
+                                                                                    null,
+                                                                            );
+                                                                            markChanged();
+                                                                        }}
+                                                                    />
+                                                                </label>
+                                                            )}
+                                                        </div>
+                                                    </>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                                <div className="sl-lesson-step__footer">
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        onClick={() => openSection("settings")}
+                                    >
+                                        Next: Lesson settings
+                                    </Button>
+                                </div>
+                            </LessonEditorSection>
+
+                            <LessonEditorSection
+                                id="lesson-step-settings"
+                                step="3"
+                                title="Lesson settings"
+                                description="Configure status, duration, and preview access."
+                                summary={`${statusLabel} · ${durationSeconds ? `${durationSeconds} seconds` : "No duration"} · Preview ${isPreview ? "enabled" : "disabled"}`}
+                                state={
+                                    settingsComplete
+                                        ? "complete"
+                                        : "incomplete"
+                                }
+                                stateLabel={
+                                    settingsComplete ? "Complete" : "Incomplete"
+                                }
+                                expanded={expandedSection === "settings"}
+                                onToggle={() =>
+                                    setExpandedSection((current) =>
+                                        current === "settings"
+                                            ? ""
+                                            : "settings",
+                                    )
+                                }
+                            >
+                                <div className="sl-cm-lesson-editor__settings-grid">
+                                    <div className="sl-cm-lesson-editor__settings-field">
+                                        <div>
+                                            <label
+                                                className="sl-cm-lesson-editor__field-label"
+                                                htmlFor="lesson-settings-status"
+                                            >
+                                                Lesson status
+                                            </label>
+                                            <p>
+                                                {statusMeta?.description ||
+                                                    "Choose whether learners can access this lesson."}
+                                            </p>
+                                        </div>
                                         <select
-                                            id="lesson-status-select"
+                                            id="lesson-settings-status"
                                             value={status}
-                                            onChange={(e) =>
-                                                setStatus(e.target.value)
-                                            }
+                                            onChange={(event) => {
+                                                setStatus(event.target.value);
+                                                markChanged();
+                                            }}
                                             className="sl-cm-lesson-editor__field-control"
-                                            required
                                         >
                                             {LESSON_STATUS_OPTIONS.map(
                                                 (option) => (
@@ -726,393 +1554,116 @@ export function LessonDetailEditor({ context }) {
                                                 ),
                                             )}
                                         </select>
-                                        <p className="sl-cm-lesson-editor__field-help">
-                                            {getLessonStatusMeta(status)
-                                                ?.description || ""}
-                                        </p>
                                     </div>
-                                </div>
-
-                                {lessonType === "QUIZ" ? (
-                                    <div>
-                                        <label
-                                            className="sl-cm-lesson-editor__field-label"
-                                            htmlFor="lesson-quiz-title"
-                                        >
-                                            Quiz Title
-                                        </label>
-                                        <input
-                                            id="lesson-quiz-title"
-                                            type="text"
-                                            value={
-                                                parseQuizContent(textContent)
-                                                    .title
-                                            }
-                                            onChange={(e) => {
-                                                const parsed =
-                                                    parseQuizContent(
-                                                        textContent,
-                                                    );
-                                                setTextContent(
-                                                    serializeQuizContent(
-                                                        e.target.value,
-                                                        parsed.questions,
-                                                    ),
-                                                );
-                                            }}
-                                            placeholder="Enter quiz title"
-                                            className="sl-cm-lesson-editor__field-control"
-                                        />
-                                        <p className="sl-cm-lesson-editor__field-help">
-                                            Manage quiz questions in the
-                                            "Manage Questions" tab above.
-                                        </p>
-                                    </div>
-                                ) : (
-                                    <div>
-                                        <label
-                                            className="sl-cm-lesson-editor__field-label"
-                                            htmlFor="lesson-summary-editor"
-                                        >
-                                            Summary{" "}
-                                            <span className="required">*</span>
-                                        </label>
-
-                                        <RichTextEditor
-                                            value={summary}
-                                            onChange={(value) => {
-                                                setSummary(value);
-                                                if (value && value.trim()) {
-                                                    setSummaryError("");
-                                                }
-                                            }}
-                                            placeholder="Content Learning..."
-                                            minHeight={260}
-                                            imageUploader={uploadSummaryImage}
-                                            videoUploader={uploadSummaryVideo}
-                                        />
-                                        {summaryError ? (
-                                            <p
-                                                className="sl-cm-lesson-editor__field-help"
-                                                style={{
-                                                    color: "var(--sl-danger)",
-                                                    fontWeight: 600,
-                                                }}
-                                                role="alert"
+                                    <div className="sl-cm-lesson-editor__settings-field">
+                                        <div>
+                                            <label
+                                                className="sl-cm-lesson-editor__field-label"
+                                                htmlFor="lesson-duration-input"
                                             >
-                                                {summaryError}
-                                            </p>
-                                        ) : null}
-                                    </div>
-                                )}
-
-                                {lessonType !== "QUIZ" &&
-                                    lessonType !== "ESSAY" && (
-                                    <LessonResourceUploader
-                                        resources={resources}
-                                        onResourcesChange={setResources}
-                                        showToast={showToast}
-                                        onBusyChange={setUploadingResources}
-                                    />
-                                )}
-                            </section>
-
-                            <aside className="sl-cm-lesson-editor__panel sl-cm-lesson-editor__panel--accent" aria-label="Content and tools">
-                                <div className="sl-cm-lesson-editor__panel-body">
-                                    <h3 className="sl-cm-lesson-editor__panel-title">
-                                        Content
-                                    </h3>
-                                    {lessonType === "VIDEO" && (
-                                        <HlsVideoUploader
-                                            lessonId={lessonId}
-                                            videoUrl={videoUrl}
-                                            onVideoUrlChange={setVideoUrl}
-                                            showToast={showToast}
-                                            getLatestVideoUrl={
-                                                syncLatestLessonVideoUrl
-                                            }
-                                            onBusyChange={setVideoUploaderBusy}
-                                        />
-                                    )}
-
-                                    {lessonType === "PDF" && (
-                                        <PdfMaterialUploader
-                                            attachmentUrl={uploadedFileUrl}
-                                            onAttachmentUrlChange={
-                                                setUploadedFileUrl
-                                            }
-                                            showToast={showToast}
-                                            onBusyChange={setUploadingPdf}
-                                        />
-                                    )}
-                                    {lessonType === "QUIZ" && (
-                                        <div className="sl-cm-lesson-editor__hint">
+                                                Estimated duration
+                                            </label>
                                             <p>
-                                                Quiz content is edited in the
-                                                left panel. Add questions and
-                                                options using the Quiz Editor.
+                                                Used to estimate the learner's
+                                                course duration.
                                             </p>
                                         </div>
-                                    )}
-                                    {lessonType === "ESSAY" && (
-                                        <div className="sl-cm-lesson-editor__essay-card">
-                                            {assignmentLoading ? (
-                                                <div
-                                                    style={{
-                                                        display: "flex",
-                                                        alignItems: "center",
-                                                        gap: "10px",
-                                                        color: "#64748b",
-                                                    }}
-                                                >
-                                                    <Loader2
-                                                        className="animate-spin"
-                                                        size={18}
-                                                    />
-                                                    <span>
-                                                        Loading essay content...
-                                                    </span>
-                                                </div>
-                                            ) : (
-                                                <>
-                                                    <div
-                                                        style={{
-                                                            display: "flex",
-                                                            flexDirection:
-                                                                "column",
-                                                            flex: "1 1 auto",
-                                                            minHeight: 0,
-                                                        }}
-                                                    >
-                                                        <span
-                                                            style={{
-                                                                display:
-                                                                    "block",
-                                                                marginBottom:
-                                                                    "8px",
-                                                                fontWeight: 600,
-                                                                color:
-                                                                    "#1e293b",
-                                                                fontSize:
-                                                                    "14px",
-                                                            }}
-                                                        >
-                                                            Assignment File
-                                                        </span>
-                                                        {assignmentFile ||
-                                                        existingAssignmentFile ? (
-                                                            <div
-                                                                style={{
-                                                                    display:
-                                                                        "flex",
-                                                                    alignItems:
-                                                                        "center",
-                                                                    justifyContent:
-                                                                        "space-between",
-                                                                    gap: "12px",
-                                                                    width:
-                                                                        "100%",
-                                                                    flex:
-                                                                        "1 1 auto",
-                                                                    boxSizing:
-                                                                        "border-box",
-                                                                    minWidth: 0,
-                                                                    padding:
-                                                                        "12px 14px",
-                                                                    border:
-                                                                        "1px solid #cbd5e1",
-                                                                    borderRadius:
-                                                                        "10px",
-                                                                    background:
-                                                                        "#f8fafc",
-                                                                    minHeight:
-                                                                        "84px",
-                                                                }}
-                                                            >
-                                                                <div
-                                                                    style={{
-                                                                        display:
-                                                                            "flex",
-                                                                        alignItems:
-                                                                            "center",
-                                                                        gap:
-                                                                            "10px",
-                                                                        color:
-                                                                            "#334155",
-                                                                        flex:
-                                                                            "1 1 auto",
-                                                                        minWidth: 0,
-                                                                    }}
-                                                                >
-                                                                    <Paperclip
-                                                                        size={
-                                                                            16
-                                                                        }
-                                                                    />
-                                                                    <span
-                                                                        style={{
-                                                                            display:
-                                                                                "block",
-                                                                            flex:
-                                                                                "1 1 auto",
-                                                                            minWidth: 0,
-                                                                            maxWidth:
-                                                                                "100%",
-                                                                            overflow:
-                                                                                "hidden",
-                                                                            textOverflow:
-                                                                                "ellipsis",
-                                                                            whiteSpace:
-                                                                                "nowrap",
-                                                                        }}
-                                                                    >
-                                                                        {assignmentFile?.name ||
-                                                                            existingAssignmentFile?.fileName}
-                                                                    </span>
-                                                                </div>
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={() => {
-                                                                        setAssignmentFile(
-                                                                            null,
-                                                                        );
-                                                                        setExistingAssignmentFile(
-                                                                            null,
-                                                                        );
-                                                                    }}
-                                                                    style={{
-                                                                        border:
-                                                                            "none",
-                                                                        background:
-                                                                            "transparent",
-                                                                        cursor:
-                                                                            "pointer",
-                                                                        color:
-                                                                            "#64748b",
-                                                                    }}
-                                                                >
-                                                                    <X
-                                                                        size={
-                                                                            16
-                                                                        }
-                                                                    />
-                                                                </button>
-                                                            </div>
-                                                        ) : (
-                                                            <label
-                                                                style={{
-                                                                    display:
-                                                                        "flex",
-                                                                    alignItems:
-                                                                        "center",
-                                                                    justifyContent:
-                                                                        "center",
-                                                                    gap: "12px",
-                                                                    width:
-                                                                        "100%",
-                                                                    minHeight:
-                                                                        "240px",
-                                                                    flex:
-                                                                        "1 1 auto",
-                                                                    boxSizing:
-                                                                        "border-box",
-                                                                    padding:
-                                                                        "18px",
-                                                                    border:
-                                                                        "1px dashed #94a3b8",
-                                                                    borderRadius:
-                                                                        "12px",
-                                                                    cursor:
-                                                                        "pointer",
-                                                                    color:
-                                                                        "#475569",
-                                                                    background:
-                                                                        "#fff",
-                                                                }}
-                                                            >
-                                                                <Paperclip
-                                                                    size={20}
-                                                                />
-                                                                <span>
-                                                                    Upload essay
-                                                                    assignment
-                                                                    file
-                                                                </span>
-                                                                <input
-                                                                    type="file"
-                                                                    hidden
-                                                                    accept=".pdf,.doc,.docx,.ppt,.pptx,.png,.jpg,.jpeg,.zip"
-                                                                    onChange={(
-                                                                        event,
-                                                                    ) =>
-                                                                        setAssignmentFile(
-                                                                            event
-                                                                                .target
-                                                                                .files?.[0] ||
-                                                                                null,
-                                                                        )
-                                                                    }
-                                                                />
-                                                            </label>
-                                                        )}
-                                                    </div>
-
-                                                </>
-                                            )}
+                                        <div className="sl-cm-lesson-editor__input-unit">
+                                            <input
+                                                id="lesson-duration-input"
+                                                type="number"
+                                                min="0"
+                                                inputMode="numeric"
+                                                value={durationSeconds}
+                                                onChange={(event) => {
+                                                    setDurationSeconds(
+                                                        Math.max(
+                                                            0,
+                                                            Number(
+                                                                event.target
+                                                                    .value || 0,
+                                                            ),
+                                                        ),
+                                                    );
+                                                    markChanged();
+                                                }}
+                                                className="sl-cm-lesson-editor__field-control"
+                                            />
+                                            <span aria-hidden="true">
+                                                seconds
+                                            </span>
                                         </div>
-                                    )}
-                                </div>
+                                    </div>
 
-                                <div className="sl-cm-lesson-editor__sticky">
-                                    <Button
-                                        type="submit"
-                                        variant="primary"
-                                        loading={loading}
-                                        disabled={
-                                            uploadingPdf ||
-                                            uploadingResources ||
-                                            videoUploaderBusy ||
-                                            assignmentSaving
-                                        }
-                                        leftIcon={<Save size={16} />}
-                                    >
-                                        {assignmentSaving
-                                            ? "Saving assignment..."
-                                            : videoUploaderBusy
-                                              ? "Processing..."
-                                              : "Save changes"}
-                                    </Button>
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        onClick={() =>
-                                            backPath && navigate(backPath)
-                                        }
-                                    >
-                                        Cancel
-                                    </Button>
-                                    <div className="sl-cm-lesson-editor__sticky-spacer" />
+                                    <label className="sl-cm-lesson-editor__preview-setting sl-cm-lesson-editor__preview-setting--settings">
+                                        <span className="sl-cm-lesson-editor__preview-copy">
+                                            <strong>Preview lesson</strong>
+                                            <small id="lesson-preview-help">
+                                                Let learners view this lesson
+                                                before enrolling.
+                                            </small>
+                                        </span>
+                                        <span className="sl-cm-lesson-editor__switch">
+                                            <input
+                                                type="checkbox"
+                                                checked={isPreview}
+                                                aria-describedby="lesson-preview-help"
+                                                onChange={(event) => {
+                                                    setIsPreview(
+                                                        event.target.checked,
+                                                    );
+                                                    markChanged();
+                                                }}
+                                            />
+                                            <span
+                                                className="sl-cm-lesson-editor__switch-track"
+                                                aria-hidden="true"
+                                            />
+                                        </span>
+                                    </label>
                                 </div>
-                            </aside>
-                        </form>
+                            </LessonEditorSection>
+                        </div>
+
+                        <div className="sl-cm-lesson-editor__sticky">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => backPath && navigate(backPath)}
+                            >
+                                Cancel
+                            </Button>
+                            <span
+                                className="sl-cm-lesson-editor__sticky-state"
+                                aria-live="polite"
+                            >
+                                {editorBusy
+                                    ? "Saving or processing..."
+                                    : hasChanges
+                                      ? "Unsaved changes"
+                                      : "Ready"}
+                            </span>
+                            <div className="sl-cm-lesson-editor__sticky-spacer" />
+                            <Button
+                                type="submit"
+                                variant="primary"
+                                loading={loading}
+                                disabled={editorBusy}
+                                leftIcon={<Save size={16} />}
+                            >
+                                {assignmentSaving
+                                    ? "Saving assignment..."
+                                    : videoUploaderBusy
+                                      ? "Processing..."
+                                      : "Save changes"}
+                            </Button>
+                        </div>
+                    </form>
                 )
             ) : (
-                <div
-                    style={{
-                        backgroundColor: "#fff",
-                        padding: "28px",
-                        borderRadius: "16px",
-                        boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
-                    }}
-                >
-                    <h3
-                        style={{
-                            margin: "0 0 20px 0",
-                            fontSize: "18px",
-                            color: "#1e293b",
-                        }}
-                    >
-                        Lesson Audit Logs
+                <div className="sl-cm-lesson-editor__audit">
+                    <h3 className="sl-cm-lesson-editor__audit-title">
+                        Activity log
                     </h3>
 
                     {historyLoading ? (
@@ -1234,8 +1785,7 @@ export function LessonDetailEditor({ context }) {
                                                             padding: "4px 8px",
                                                             backgroundColor:
                                                                 "#f1f5f9",
-                                                            borderRadius:
-                                                                "4px",
+                                                            borderRadius: "4px",
                                                             fontSize: "12px",
                                                             fontWeight: "500",
                                                         }}
@@ -1255,8 +1805,7 @@ export function LessonDetailEditor({ context }) {
                                                     <span
                                                         style={{
                                                             padding: "4px 8px",
-                                                            borderRadius:
-                                                                "4px",
+                                                            borderRadius: "4px",
                                                             fontSize: "12px",
                                                             fontWeight: "600",
                                                             backgroundColor:
@@ -1393,8 +1942,7 @@ export function LessonDetailEditor({ context }) {
                                                 )
                                             }
                                             disabled={
-                                                currentPage >=
-                                                    totalPages - 1 ||
+                                                currentPage >= totalPages - 1 ||
                                                 totalPages === 0
                                             }
                                             style={{

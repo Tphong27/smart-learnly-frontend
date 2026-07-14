@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import {
     ArrowRight,
-    BarChart3,
     BookOpen,
     CheckCircle2,
     CirclePlay,
@@ -265,7 +264,7 @@ export function TraineeDashboardPage() {
                     role="status"
                     aria-live="polite"
                 >
-                    Loading your learning space…
+                    Loading your learning space...
                 </div>
             )}
 
@@ -299,7 +298,7 @@ export function TraineeDashboardPage() {
                             </h2>
                             <p>
                                 {dashboard.completedCourses >= courses.length
-                                    ? "Great work—your enrolled courses are complete."
+                                    ? "Great work--your enrolled courses are complete."
                                     : dashboard.lessonTotal > 0
                                       ? "Complete one more lesson today and keep moving toward your goal."
                                       : "Start your next lesson to build your learning momentum."}
@@ -350,7 +349,7 @@ export function TraineeDashboardPage() {
                         <p className="trainee-dashboard-feature__category">
                             {dashboard.featuredCourse.categoryName}
                             {dashboard.featuredCourse.className
-                                ? ` · ${dashboard.featuredCourse.className}`
+                                ? ` - ${dashboard.featuredCourse.className}`
                                 : ""}
                         </p>
                         <h2 id="continue-learning-title">
@@ -451,7 +450,7 @@ export function TraineeDashboardPage() {
                                     <h3>{course.title}</h3>
                                     <p>
                                         {course.className
-                                            ? `${course.className}${course.trainerName ? ` · ${course.trainerName}` : ""}`
+                                            ? `${course.className}${course.trainerName ? ` - ${course.trainerName}` : ""}`
                                             : "Self-paced course"}
                                     </p>
                                 </div>
@@ -519,10 +518,6 @@ export function TraineeDashboardPage() {
                         </Link>
                         <Link to="/learning/tests">
                             <CheckCircle2 size={18} /> View my tests{" "}
-                            <ArrowRight size={16} />
-                        </Link>
-                        <Link to="/learning/progress">
-                            <BarChart3 size={18} /> Review progress{" "}
                             <ArrowRight size={16} />
                         </Link>
                     </div>

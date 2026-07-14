@@ -1,6 +1,9 @@
 .trainee-layout {
     --layout-grid-highlight-opacity: 0;
+    min-height: 100vh;
     min-width: 0;
+    display: flex;
+    flex-direction: column;
     color: var(--ink, #2d2f31);
     background-color: #fff;
     background-image: none;
@@ -347,6 +350,7 @@
 }
 
 .trainee-layout__content {
+    flex: 1 0 auto;
     min-width: 0;
 }
 

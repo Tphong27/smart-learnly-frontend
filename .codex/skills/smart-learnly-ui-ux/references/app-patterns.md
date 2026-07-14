@@ -5,7 +5,7 @@ Use these patterns with `../../../DESIGN_LANGUAGE.md`; they refine interaction a
 ## Sidebar
 
 - Group navigation by user task, not by internal modules.
-- Keep the active item unmistakable with a purple fill/marker and readable text contrast.
+- Keep the active item unmistakable with a subtle active surface, a thin purple marker, and readable text contrast.
 - Limit persistent items to the most frequent destinations; put low-frequency actions in a secondary group.
 - Support a collapsed desktop state with tooltips and an accessible mobile drawer.
 - Keep account/help/logout separate from task navigation.

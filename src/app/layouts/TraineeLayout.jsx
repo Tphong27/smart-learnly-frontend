@@ -2,6 +2,7 @@ import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { LayoutBackground } from "./LayoutBackground";
 import { TraineeHeader } from "./TraineeHeader";
 import { authService, getCurrentUser } from "@/services";
+import { SiteFooter } from "@/shared/components";
 import "./TraineeLayout.css";
 
 const TRAINEE_TABS = [
@@ -58,7 +59,7 @@ export function TraineeLayout({ children }) {
         Skip to main content
       </a>
 
-      <TraineeHeader user={user} onLogout={handleLogout} />
+      <TraineeHeader user={user} onLogout={handleLogout} roleLabel="Learner" />
 
       {showLearningNavigation && (
         <section className="trainee-shell-intro" aria-label="Learning overview">
@@ -96,6 +97,8 @@ export function TraineeLayout({ children }) {
       >
         {children || <Outlet />}
       </main>
+
+      <SiteFooter />
     </LayoutBackground>
   );
 }

@@ -62,8 +62,10 @@ export const assignmentService = {
     const response = await apiClient.get(`/assignments/${id}`);
     return unwrap(response);
   },
-  async getByLesson(lessonId) {
-    const response = await apiClient.get(`/assignments/lesson/${lessonId}`);
+  async getByLesson(lessonId, classId) {
+    const response = await apiClient.get(`/assignments/lesson/${lessonId}`, {
+      params: classId ? { classId } : undefined,
+    });
     return unwrap(response);
   },
   async create(data) {

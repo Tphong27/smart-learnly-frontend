@@ -6,15 +6,14 @@ import {
   useSearchParams,
 } from "react-router-dom";
 import {
-  ArrowLeft,
-  CheckCircle2,
+  CheckSquare2,
   PlayCircle,
   FileText,
   HelpCircle,
   Menu,
   X,
   ChevronDown,
-  Circle,
+  Square,
   BookOpen,
   Eye,
   Layers,
@@ -71,12 +70,44 @@ export function LearningWorkspacePage({
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(() => {
+    if (typeof window === "undefined") return true;
+    return !window.matchMedia("(max-width: 1024px)").matches;
+  });
   const [activeLessonTab, setActiveLessonTab] = useState("overview");
   const [completedLessonIds, setCompletedLessonIds] = useState(() => new Set());
   const [updatingLessonIds, setUpdatingLessonIds] = useState(() => new Set());
   const [lessonNotesById, setLessonNotesById] = useState({});
   const [resolvedClassId, setResolvedClassId] = useState(requestedClassId);
+
+  useEffect(() => {
+    const narrowLayout = window.matchMedia("(max-width: 1024px)");
+    const syncSidebarWithViewport = (event) => {
+      setSidebarOpen(!event.matches);
+    };
+
+    narrowLayout.addEventListener("change", syncSidebarWithViewport);
+
+    return () => {
+      narrowLayout.removeEventListener("change", syncSidebarWithViewport);
+    };
+  }, [setSidebarOpen]);
+
+  useEffect(() => {
+    if (!sidebarOpen) return undefined;
+
+    const handleEscape = (event) => {
+      if (
+        event.key === "Escape" &&
+        window.matchMedia("(max-width: 1024px)").matches
+      ) {
+        setSidebarOpen(false);
+      }
+    };
+
+    window.addEventListener("keydown", handleEscape);
+    return () => window.removeEventListener("keydown", handleEscape);
+  }, [sidebarOpen]);
 
   useEffect(() => {
     let cancelled = false;
@@ -193,7 +224,11 @@ export function LearningWorkspacePage({
   const handleSelectLesson = useCallback((lesson) => {
     setActiveLessonId(getLessonId(lesson));
     setActiveLessonTab("overview");
-  }, []);
+
+    if (window.matchMedia("(max-width: 1024px)").matches) {
+      setSidebarOpen(false);
+    }
+  }, [setActiveLessonId, setActiveLessonTab, setSidebarOpen]);
 
   const activeLesson = useMemo(() => {
     if (allLessons.length === 0) return null;
@@ -316,7 +351,7 @@ export function LearningWorkspacePage({
           return rollbackIds;
         });
 
-        setError(err?.message || "Failed to update quiz progress");
+        setError(err?.message || "Failed to update lesson progress");
       }
     },
     [completedLessonIds, mode, resolvedClassId],
@@ -330,7 +365,9 @@ export function LearningWorkspacePage({
       activeLesson?.lessonType || "",
     ).toUpperCase();
 
-    const isActivityLesson = ["QUIZ", "FLASHCARD"].includes(currentLessonType);
+    const isActivityLesson = ["QUIZ", "FLASHCARD", "ESSAY"].includes(
+      currentLessonType,
+    );
     const isCompleted = currentLessonId
       ? completedLessonIds.has(currentLessonId)
       : false;
@@ -339,7 +376,9 @@ export function LearningWorkspacePage({
       setError(
         currentLessonType === "QUIZ"
           ? "Please submit the quiz before moving to the next lesson."
-          : "Please complete all flashcards before moving to the next lesson.",
+          : currentLessonType === "ESSAY"
+            ? "Please submit the assignment before moving to the next lesson."
+            : "Please complete all flashcards before moving to the next lesson.",
       );
       return;
     }
@@ -385,7 +424,6 @@ export function LearningWorkspacePage({
   }
 
   const courseTitle = data?.courseTitle || "Course";
-  const stats = data?.stats;
   const curriculumSourceLabel = formatCurriculumSource(data?.curriculum);
 
   const isAdminPreview = mode === "admin-preview";
@@ -415,7 +453,7 @@ export function LearningWorkspacePage({
 
   const currentLessonId = getLessonId(activeLesson);
 
-  const isActivityLesson = ["QUIZ", "FLASHCARD"].includes(
+  const isActivityLesson = ["QUIZ", "FLASHCARD", "ESSAY"].includes(
     String(activeLesson?.lessonType || "").toUpperCase(),
   );
 
@@ -428,34 +466,48 @@ export function LearningWorkspacePage({
       ? Math.round((completedCount / totalLessonCount) * 100)
       : 0;
 
+  function handleLeaveWorkspace() {
+    if (isAdminPreview) {
+      if (safeReturnTo) {
+        navigate(safeReturnTo);
+        return;
+      }
+      navigate(`/admin/courses/${courseId}/content`);
+      return;
+    }
+
+    if (isGuestPreview || previewMode) {
+      if (window.history.length > 1) {
+        navigate(-1);
+      } else {
+        navigate(`/courses/${courseId}`);
+      }
+      return;
+    }
+
+    navigate("/learning/courses");
+  }
+
   return (
     <div className="learning-workspace">
+      <a
+        className="learning-workspace__skip-link"
+        href="#learning-workspace-main"
+      >
+        Skip to lesson content
+      </a>
       <header className="learning-workspace__topbar">
         <button
-          className="learning-workspace__topbar-back"
-          onClick={() => {
-            if (isAdminPreview) {
-              if (safeReturnTo) {
-                navigate(safeReturnTo);
-                return;
-              }
-              navigate(`/admin/courses/${courseId}/content`);
-              return;
-            }
-            if (isGuestPreview || previewMode) {
-              if (window.history.length > 1) {
-                navigate(-1);
-              } else {
-                navigate(`/courses/${courseId}`);
-              }
-              return;
-            }
-            navigate("/learning/courses");
-          }}
-          title="Back"
+          type="button"
+          className="learning-workspace__brand"
+          onClick={handleLeaveWorkspace}
+          aria-label="Leave course player"
         >
-          <ArrowLeft size={18} />
+          <BookOpen size={24} aria-hidden="true" />
+          <span>Smart Learnly</span>
         </button>
+
+        <span className="learning-workspace__topbar-divider" aria-hidden="true" />
 
         <h1 className="learning-workspace__course-title" title={courseTitle}>
           {courseTitle}
@@ -494,89 +546,59 @@ export function LearningWorkspacePage({
           </Link>
         )}
 
-        <div className="learning-workspace__topbar-progress">
-          <div className="learning-workspace__progress-track">
-            <div
-              className="learning-workspace__progress-fill"
-              style={{ width: `${progressPercent}%` }}
+        <div
+          className="learning-workspace__topbar-progress"
+          role="progressbar"
+          aria-label="Course progress"
+          aria-valuemin="0"
+          aria-valuemax="100"
+          aria-valuenow={progressPercent}
+        >
+          <svg
+            className="learning-workspace__progress-ring"
+            viewBox="0 0 36 36"
+            aria-hidden="true"
+          >
+            <circle
+              className="learning-workspace__progress-ring-track"
+              cx="18"
+              cy="18"
+              r="15.5"
+              pathLength="100"
             />
+            <circle
+              className="learning-workspace__progress-ring-value"
+              cx="18"
+              cy="18"
+              r="15.5"
+              pathLength="100"
+              strokeDashoffset={100 - progressPercent}
+            />
+          </svg>
+          <div className="learning-workspace__progress-copy">
+            <strong>Your progress</strong>
+            <span>
+              {progressPercent}% · {completedCount}/{totalLessonCount} lessons
+            </span>
           </div>
-          <span className="learning-workspace__progress-label">
-            {completedCount}/{totalLessonCount} done
-          </span>
         </div>
+
+        {!sidebarOpen && (
+          <button
+            type="button"
+            className="learning-workspace__curriculum-toggle"
+            aria-controls="learning-workspace-curriculum"
+            aria-expanded="false"
+            onClick={() => setSidebarOpen(true)}
+          >
+            <Menu size={18} />
+            <span>Course content</span>
+          </button>
+        )}
       </header>
 
       <div className="learning-workspace__body">
-        <aside
-          className={`learning-workspace__sidebar ${sidebarOpen ? "open" : ""}`}
-        >
-          <div className="learning-workspace__sidebar-header">
-            <h2 className="learning-workspace__sidebar-title">
-              Course content
-            </h2>
-            <button
-              className="learning-workspace__sidebar-back"
-              onClick={() => setSidebarOpen(false)}
-              title="Close sidebar"
-            >
-              <X size={18} />
-            </button>
-          </div>
-
-          {stats && (
-            <div className="learning-workspace__stats">
-              <span className="learning-workspace__stat">
-                <span className="learning-workspace__stat-value">
-                  {stats.totalSections}
-                </span>{" "}
-                sections
-              </span>
-              <span className="learning-workspace__stat">
-                <span className="learning-workspace__stat-value">
-                  {stats.totalLessons}
-                </span>{" "}
-                lessons
-              </span>
-              <span className="learning-workspace__stat">
-                <span className="learning-workspace__stat-value">
-                  {formatDuration(stats.totalDurationSeconds)}
-                </span>
-              </span>
-            </div>
-          )}
-
-          <div className="learning-workspace__curriculum">
-            {sections.map((section, sIdx) => (
-              <div
-                key={section.sectionId || sIdx}
-                className="curriculum-section"
-              >
-                <SectionAccordion
-                  section={section}
-                  sIdx={sIdx}
-                  activeLesson={activeLesson}
-                  onSelectLesson={handleSelectLesson}
-                  completedLessonIds={completedLessonIds}
-                  updatingLessonIds={updatingLessonIds}
-                  onToggleLessonComplete={toggleLessonCompleted}
-                />
-              </div>
-            ))}
-          </div>
-        </aside>
-
-        <main className="learning-workspace__main">
-          {!sidebarOpen && (
-            <button
-              className="learning-workspace__sidebar-toggle"
-              onClick={() => setSidebarOpen(true)}
-              title="Open sidebar"
-            >
-              <Menu size={18} />
-            </button>
-          )}
-
+        <main className="learning-workspace__main" id="learning-workspace-main">
           <div className="learning-workspace__content">
             {activeLesson ? (
               <div className="learning-lesson">
@@ -600,16 +622,60 @@ export function LearningWorkspacePage({
                   workspaceMode={mode}
                   onQuizCompleted={markLessonCompleted}
                   onFlashcardCompleted={markLessonCompleted}
+                  onEssayCompleted={markLessonCompleted}
                 />
               </div>
             ) : (
               <div className="learning-lesson__empty">
                 <BookOpen size={48} />
-                <p>Select a lesson from the sidebar to begin</p>
+                <p>Select a lesson from course content to begin</p>
               </div>
             )}
           </div>
         </main>
+
+        {sidebarOpen && (
+          <button
+            type="button"
+            className="learning-workspace__sidebar-scrim"
+            aria-label="Close course content"
+            onClick={() => setSidebarOpen(false)}
+          />
+        )}
+
+        <aside
+          id="learning-workspace-curriculum"
+          className={`learning-workspace__sidebar ${sidebarOpen ? "open" : ""}`}
+          aria-label="Course content"
+        >
+          <div className="learning-workspace__sidebar-header">
+            <h2 className="learning-workspace__sidebar-title">
+              Course content
+            </h2>
+            <button
+              className="learning-workspace__sidebar-back"
+              onClick={() => setSidebarOpen(false)}
+              aria-label="Close course content"
+            >
+              <X size={18} />
+            </button>
+          </div>
+
+          <div className="learning-workspace__curriculum">
+            {sections.map((section, sIdx) => (
+              <SectionAccordion
+                key={section.sectionId || sIdx}
+                section={section}
+                sIdx={sIdx}
+                activeLesson={activeLesson}
+                onSelectLesson={handleSelectLesson}
+                completedLessonIds={completedLessonIds}
+                updatingLessonIds={updatingLessonIds}
+                onToggleLessonComplete={toggleLessonCompleted}
+              />
+            ))}
+          </div>
+        </aside>
       </div>
     </div>
   );
@@ -626,22 +692,37 @@ function SectionAccordion({
 }) {
   const [expanded, setExpanded] = useState(true);
   const lessons = section.lessons || [];
+  const completedInSection = lessons.filter((lesson) =>
+    completedLessonIds.has(getLessonId(lesson)),
+  ).length;
+  const sectionDuration = lessons.reduce(
+    (total, lesson) => total + Number(lesson.durationSeconds || 0),
+    0,
+  );
 
   return (
     <div className="curriculum-section">
-      <div
+      <button
+        type="button"
         className="curriculum-section__header"
         onClick={() => setExpanded(!expanded)}
+        aria-expanded={expanded}
       >
-        <span className="curriculum-section__title">
-          Section {sIdx + 1}: {section.title}
+        <span className="curriculum-section__copy">
+          <span className="curriculum-section__title">
+            Section {sIdx + 1}: {section.title}
+          </span>
+          <span className="curriculum-section__meta">
+            {completedInSection}/{lessons.length} lessons ·{" "}
+            {formatDuration(sectionDuration)}
+          </span>
         </span>
         <span
           className={`curriculum-section__toggle ${expanded ? "expanded" : ""}`}
         >
           <ChevronDown size={16} />
         </span>
-      </div>
+      </button>
 
       {expanded && (
         <div className="curriculum-section__lessons">
@@ -650,12 +731,10 @@ function SectionAccordion({
             const isActive = lessonId === getLessonId(activeLesson);
             const isCompleted = completedLessonIds.has(lessonId);
             const isUpdating = updatingLessonIds.has(lessonId);
-            const type = (lesson.lessonType || "").toLowerCase();
             return (
               <div
                 key={lessonId || lIdx}
                 className={`curriculum-lesson ${isActive ? "curriculum-lesson--active" : ""} ${isCompleted ? "curriculum-lesson--completed" : ""}`}
-                onClick={() => onSelectLesson(lesson)}
               >
                 <button
                   type="button"
@@ -673,37 +752,37 @@ function SectionAccordion({
                   }}
                 >
                   {isCompleted ? (
-                    <CheckCircle2 size={17} />
+                    <CheckSquare2 size={18} />
                   ) : (
-                    <Circle size={17} />
+                    <Square size={18} />
                   )}
                 </button>
-                <div
-                  className={`curriculum-lesson__icon curriculum-lesson__icon--${type}`}
+                <button
+                  type="button"
+                  className="curriculum-lesson__select"
+                  onClick={() => onSelectLesson(lesson)}
+                  aria-current={isActive ? "step" : undefined}
                 >
-                  <LessonIcon type={lesson.lessonType} size={14} />
-                </div>
-                <div className="curriculum-lesson__info">
-                  <div className="curriculum-lesson__index">
-                    Lesson {sIdx + 1}.{lIdx + 1}
-                  </div>
-                  <div
-                    className="curriculum-lesson__title"
-                    title={lesson.title}
-                  >
-                    {lesson.title}
-                  </div>
-                  <div className="curriculum-lesson__meta">
-                    <span className="curriculum-lesson__duration">
-                      {formatDuration(lesson.durationSeconds)}
-                    </span>
-                    {lesson.isPreview && (
-                      <span className="curriculum-lesson__preview-badge">
-                        Preview
+                  <div className="curriculum-lesson__info">
+                    <div
+                      className="curriculum-lesson__title"
+                      title={lesson.title}
+                    >
+                      {lIdx + 1}. {lesson.title}
+                    </div>
+                    <div className="curriculum-lesson__meta">
+                      <span className="curriculum-lesson__duration">
+                        <LessonIcon type={lesson.lessonType} size={12} />
+                        {formatDuration(lesson.durationSeconds)}
                       </span>
-                    )}
+                      {lesson.isPreview && (
+                        <span className="curriculum-lesson__preview-badge">
+                          Preview
+                        </span>
+                      )}
+                    </div>
                   </div>
-                </div>
+                </button>
               </div>
             );
           })}

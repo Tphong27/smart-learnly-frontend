@@ -3132,7 +3132,7 @@ a:hover {
     align-items: center;
     gap: 6px;
     color: var(--theme-primary);
-    font-size: 13px;
+    font-size: 24px;
     font-weight: 700;
     transition: all 0.3s ease;
 }

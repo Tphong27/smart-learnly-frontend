@@ -197,11 +197,13 @@ export const categorySchema = z.object({
 
 ## CSS và UI
 
-1. Reuse CSS/shared style hiện có trước khi tạo CSS mới.
-2. Class CSS phải có tên rõ ràng theo domain/component.
-3. Không dùng inline style quá nhiều nếu style lặp lại hoặc phức tạp.
-4. UI phải có responsive cơ bản cho desktop/tablet/mobile nếu page public hoặc trainee dùng nhiều.
-5. Icon dùng `lucide-react`, không thêm icon library mới nếu không cần.
+1. Trước mọi thay đổi UI, đọc toàn bộ `DESIGN_LANGUAGE.md`; đây là nguồn thiết kế chuẩn duy nhất.
+2. Reuse CSS/shared style hiện có trước khi tạo CSS mới.
+3. Class CSS phải có tên rõ ràng theo domain/component.
+4. Không dùng inline style quá nhiều nếu style lặp lại hoặc phức tạp.
+5. UI phải có responsive cơ bản cho desktop/tablet/mobile nếu page public hoặc trainee dùng nhiều.
+6. Icon dùng `lucide-react`, không thêm icon library mới nếu không cần.
+7. Không đưa neo-brutalism, offset shadow, hover translate, gradient trang trí hoặc colored icon box trở lại nếu user không yêu cầu đổi design direction.
 
 ## Import và export
 
