@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { FileAudio, FileVideo, Image as ImageIcon, ImagePlus, Loader2, Plus, Trash2, X, AlertTriangle } from "lucide-react";
+import { FileAudio, FileVideo, Image as ImageIcon, Plus, Trash2, X, AlertTriangle } from "lucide-react";
 import { Button, FormField, Modal, useToast } from "@/shared/components/ui";
 import { courseService, getCurrentUser, questionBankService } from "@/services";
 import { isEmptyQuestionHtml, sanitizeQuestionHtml } from "@/shared/utils/htmlSanitizer";
+import { AnswerMediaRow } from "../components/AnswerMediaRow";
 import { QuestionMediaManager } from "../components/QuestionMediaManager";
 import { QuestionTextRichEditor } from "../components/QuestionTextRichEditor";
 import "../../admin-shared.css";
@@ -18,6 +19,7 @@ const blankAnswer = (index = 0) => ({
   answerText: "",
   correct: index === 0,
   displayOrder: index + 1,
+  answerMedia: { image: null, audio: null, video: null },
 });
 
 function normalizeAnswers(type, answers) {
@@ -98,9 +100,6 @@ function pendingMediaItem(file, mediaType, previewUrl) {
   };
 }
 
-const ANSWER_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
-const ANSWER_IMAGE_MAX_SIZE = 5 * 1024 * 1024;
-
 function escapeHtml(value) {
   return String(value || "")
     .replace(/&/g, "&amp;")
@@ -148,7 +147,32 @@ function buildAnswerContent(answer) {
 }
 
 function answerHasContent(answer) {
-  return Boolean(answer.answerText.trim() || answerImageUrl(answer));
+  if (answer.answerText && answer.answerText.trim()) return true;
+  if (answerImageUrl(answer)) return true;
+  const media = answer.answerMedia || {};
+  return Boolean(media.image || media.audio || media.video);
+}
+
+function normalizeAnswerMediaFromResponse(answer) {
+  const empty = { image: null, audio: null, video: null };
+  if (!answer || !Array.isArray(answer.media)) return empty;
+  const next = { ...empty };
+  for (const item of answer.media) {
+    const type = item.mediaType;
+    if (type === "image" || type === "audio" || type === "video") {
+      next[type] = {
+        attachmentId: item.attachmentId || item.id,
+        mediaUrl: item.mediaUrl,
+        url: item.mediaUrl,
+        objectPath: item.objectKey,
+        fileName: item.fileName,
+        fileSize: item.size,
+        contentType: item.contentType,
+        source: "remote",
+      };
+    }
+  }
+  return next;
 }
 function validate(values) {
   if (isEmptyQuestionHtml(values.questionText)) return "Question text is required.";
@@ -206,6 +230,7 @@ export function AdminQuestionForm({
   const [removedAttachmentIds, setRemovedAttachmentIds] = useState([]);
   const [activeMediaTab, setActiveMediaTab] = useState("image");
   const [uploadingAnswerIndex, setUploadingAnswerIndex] = useState(null);
+  const [uploadingAnswerMediaType, setUploadingAnswerMediaType] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -234,6 +259,7 @@ export function AdminQuestionForm({
                 ...parseAnswerContent(answer.answerText),
                 correct: Boolean(answer.correct || answer.isCorrect),
                 displayOrder: answer.displayOrder ?? index + 1,
+                answerMedia: normalizeAnswerMediaFromResponse(answer),
               })),
             ),
           });
@@ -331,60 +357,6 @@ export function AdminQuestionForm({
     updateAnswerImage(index, null);
   }
 
-  async function uploadAnswerImage(index, event) {
-    const file = event.target.files?.[0];
-    event.target.value = "";
-    if (!file) return;
-
-    if (!ANSWER_IMAGE_TYPES.includes(file.type)) {
-      toast.error("Answer image must be PNG, JPEG, or WebP.");
-      return;
-    }
-    if (file.size > ANSWER_IMAGE_MAX_SIZE) {
-      toast.error("Answer image must not exceed 5MB.");
-      return;
-    }
-
-    const previousImage = values.answers[index]?.answerImage;
-    if (previousImage?.previewUrl) {
-      URL.revokeObjectURL(previousImage.previewUrl);
-      pendingPreviewUrls.current.delete(previousImage.previewUrl);
-    }
-
-    const previewUrl = URL.createObjectURL(file);
-    pendingPreviewUrls.current.add(previewUrl);
-    updateAnswerImage(index, {
-      previewUrl,
-      fileName: file.name,
-      fileSize: file.size,
-      uploading: true,
-      source: "pending",
-    });
-    setUploadingAnswerIndex(index);
-
-    try {
-      const uploaded = await courseService.uploadLessonResource(file);
-      URL.revokeObjectURL(previewUrl);
-      pendingPreviewUrls.current.delete(previewUrl);
-      updateAnswerImage(index, {
-        url: uploaded?.url || uploaded?.fileUrl,
-        objectPath: uploaded?.objectPath,
-        fileName: uploaded?.fileName || file.name,
-        fileSize: uploaded?.fileSize || file.size,
-        contentType: uploaded?.contentType || file.type,
-        source: "remote",
-      });
-      toast.success("Answer image uploaded");
-    } catch (uploadError) {
-      URL.revokeObjectURL(previewUrl);
-      pendingPreviewUrls.current.delete(previewUrl);
-      updateAnswerImage(index, previousImage || null);
-      toast.error(uploadError?.message || "Could not upload answer image.");
-    } finally {
-      setUploadingAnswerIndex((current) => (current === index ? null : current));
-    }
-  }
-
   function addAnswer() {
     setValues((current) => {
       if (current.answers.length >= 6) return current;
@@ -435,6 +407,112 @@ export function AdminQuestionForm({
       return pendingMediaItem(file, mediaType, previewUrl);
     });
     mediaSetter(mediaType)((current) => [...current, ...nextItems]);
+  }
+
+  function applyAnswerMediaUpdate(index, mediaType, updater) {
+    setValues((current) => ({
+      ...current,
+      answers: current.answers.map((answer, answerIndex) => {
+        if (answerIndex !== index) return answer;
+        const currentMedia = answer.answerMedia || { image: null, audio: null, video: null };
+        return {
+          ...answer,
+          answerMedia: {
+            ...currentMedia,
+            [mediaType]: updater(currentMedia[mediaType]),
+          },
+        };
+      }),
+    }));
+  }
+
+  function handleAnswerMediaUpload(index, mediaType, file) {
+    let previousItem = null;
+    setValues((current) => {
+      const target = current.answers[index];
+      previousItem = target?.answerMedia?.[mediaType] || null;
+      return current;
+    });
+    if (previousItem?.previewUrl) {
+      URL.revokeObjectURL(previousItem.previewUrl);
+      pendingPreviewUrls.current.delete(previousItem.previewUrl);
+    }
+    const previewUrl = URL.createObjectURL(file);
+    pendingPreviewUrls.current.add(previewUrl);
+    applyAnswerMediaUpdate(index, mediaType, () => ({
+      previewUrl,
+      fileName: file.name,
+      fileSize: file.size,
+      contentType: file.type,
+      uploading: true,
+      source: "pending",
+    }));
+    setUploadingAnswerIndex(index);
+    setUploadingAnswerMediaType(mediaType);
+  }
+
+  function handleAnswerMediaRemove(index, mediaType) {
+    const current = values.answers[index]?.answerMedia?.[mediaType];
+    if (current?.previewUrl) {
+      URL.revokeObjectURL(current.previewUrl);
+      pendingPreviewUrls.current.delete(current.previewUrl);
+    }
+    if (current?.attachmentId) {
+      setRemovedAttachmentIds((prev) =>
+        prev.includes(current.attachmentId) ? prev : [...prev, current.attachmentId],
+      );
+    }
+    applyAnswerMediaUpdate(index, mediaType, () => null);
+  }
+
+  function syncAnswerMediaAfterSave(savedQuestion) {
+    const answers = savedQuestion?.answers || [];
+    if (!answers.length) return Promise.resolve();
+    const answerIdByIndex = answers.map((answer) => answer.answerId || answer.id);
+    const uploadTasks = [];
+    values.answers.forEach((answer, index) => {
+      const media = answer.answerMedia || {};
+      const answerId = answerIdByIndex[index];
+      if (!answerId) return;
+      for (const mediaType of ["image", "audio", "video"]) {
+        const item = media[mediaType];
+        if (item && item.source === "pending" && item.file) {
+          uploadTasks.push({ mediaType, file: item.file, answerId });
+        }
+      }
+    });
+    return Promise.all(uploadTasks.map((task) =>
+      questionBankService
+        .uploadAnswerMedia(savedQuestion.questionId || savedQuestion.id, task.answerId, task.mediaType, task.file)
+        .catch((uploadError) => {
+          toast.error(uploadError?.message || `Could not upload answer ${task.mediaType}.`);
+        }),
+    ));
+  }
+
+  async function syncRemovedAnswerMedia(savedQuestionId) {
+    if (!removedAttachmentIds.length) return;
+    const answers = await questionBankService
+      .getQuestion(savedQuestionId)
+      .then((q) => q?.answers || [])
+      .catch(() => []);
+    const attachmentIndex = new Map();
+    for (const answer of answers) {
+      for (const item of answer.media || []) {
+        const id = item.attachmentId || item.id;
+        if (id) attachmentIndex.set(id, answer.answerId || answer.id);
+      }
+    }
+    const deletionTasks = removedAttachmentIds
+      .map((id) => ({ id, answerId: attachmentIndex.get(id) }))
+      .filter((entry) => entry.answerId);
+    await Promise.all(
+      deletionTasks.map((entry) =>
+        questionBankService
+          .removeAnswerMedia(savedQuestionId, entry.answerId, entry.id)
+          .catch(() => null),
+      ),
+    );
   }
 
   function removeMedia(mediaType, item) {
@@ -519,7 +597,7 @@ export function AdminQuestionForm({
       return;
     }
     if (uploadingAnswerIndex !== null) {
-      setError("Please wait for the answer image upload to finish.");
+      setError("Please wait for the answer media upload to finish.");
       return;
     }
     setSubmitting(true);
@@ -557,6 +635,24 @@ export function AdminQuestionForm({
       } catch {
         toast.error(
           `${editing ? "Question updated" : "Question created"}, but media update failed. Open the question and retry.`,
+        );
+        if (onSaved) {
+          onSaved({ question: savedQuestion, bankId: returnBankId });
+        } else {
+          navigate(`/admin/question-banks/${returnBankId}`);
+        }
+        return;
+      }
+      try {
+        await syncRemovedAnswerMedia(savedQuestionId);
+      } catch {
+        // Non-fatal: continue to upload new media.
+      }
+      try {
+        await syncAnswerMediaAfterSave(savedQuestion);
+      } catch {
+        toast.error(
+          `${editing ? "Question updated" : "Question created"}, but answer media upload failed. Open the question and retry.`,
         );
         if (onSaved) {
           onSaved({ question: savedQuestion, bankId: returnBankId });
@@ -833,7 +929,20 @@ export function AdminQuestionForm({
                         }
                         placeholder={`Answer ${index + 1}`}
                       />
-                      {answer.answerImage ? (
+                      <AnswerMediaRow
+                        media={answer.answerMedia || { image: null, audio: null, video: null }}
+                        disabled={submitting || values.status === "archived"}
+                        uploading={
+                          uploadingAnswerIndex === index ? uploadingAnswerMediaType : null
+                        }
+                        onUpload={(mediaType, file) =>
+                          handleAnswerMediaUpload(index, mediaType, file)
+                        }
+                        onRemove={(mediaType) =>
+                          handleAnswerMediaRemove(index, mediaType)
+                        }
+                      />
+                      {answer.answerImage && !answer.answerMedia?.image ? (
                         <div className="question-authoring-answer__image">
                           <img
                             src={answerImageUrl(answer)}
@@ -856,20 +965,6 @@ export function AdminQuestionForm({
                       ) : null}
                     </div>
                     <div className="question-authoring-answer__actions">
-                      <label
-                        className={`admin-table__icon-btn question-authoring-answer__upload ${submitting || uploadingAnswerIndex === index ? "is-disabled" : ""}`}
-                        title="Upload answer image"
-                        aria-label="Upload answer image"
-                      >
-                        {uploadingAnswerIndex === index ? <Loader2 size={15} /> : <ImagePlus size={15} />}
-                        <input
-                          type="file"
-                          accept="image/jpeg,image/png,image/webp"
-                          hidden
-                          disabled={submitting || uploadingAnswerIndex === index}
-                          onChange={(event) => uploadAnswerImage(index, event)}
-                        />
-                      </label>
                       {values.questionType === "multiple_choice" && (
                         <button
                           type="button"
