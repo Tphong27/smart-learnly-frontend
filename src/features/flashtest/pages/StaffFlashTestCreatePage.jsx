@@ -391,6 +391,15 @@ export function StaffFlashTestCreatePage({ variant = "flash" }) {
     }
   };
 
+  const selectedCourse = courses.find(
+    (course) => String(getCourseId(course)) === String(formData.courseId),
+  );
+  const selectedCourseTitle = formData.courseId
+    ? selectedCourse
+      ? getCourseTitle(selectedCourse)
+      : "Selected course"
+    : "Course is not assigned";
+
   return (
     <section className="ft-page ft-page--builder">
       <header className="ft-builder-hero">
@@ -432,7 +441,7 @@ export function StaffFlashTestCreatePage({ variant = "flash" }) {
 
       <div className="ft-panel ft-builder-shell">
         <div className="ft-ribbon" aria-label={`${pageName} setup summary`}>
-          <div className="ft-ribbon__item is-active">
+          <div className="ft-ribbon__item">
             <FileText size={18} />
             <div>
               <strong>Content</strong>
@@ -458,11 +467,7 @@ export function StaffFlashTestCreatePage({ variant = "flash" }) {
                   ? classes.find((item) => item.id === formData.classId)?.className || "Select class"
                   : testType === "mcq"
                   ? formData.courseId
-                    ? getCourseTitle(
-                        courses.find(
-                          (course) => getCourseId(course) === formData.courseId,
-                        ),
-                      )
+                    ? selectedCourseTitle
                     : "Select course"
                   : "Optional for essay"}
               </span>

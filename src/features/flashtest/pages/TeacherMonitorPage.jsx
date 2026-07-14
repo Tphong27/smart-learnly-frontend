@@ -755,7 +755,7 @@ export function TeacherMonitorPage() {
             aria-selected={activeTab === "history"}
             onClick={() => setActiveTab("history")}
           >
-            Attemp History
+            Attempt history
           </button>
         </div>
       )}
@@ -953,9 +953,9 @@ export function TeacherMonitorPage() {
             <thead>
               <tr>
                 <th>Trainee</th>
-                <th>Attempt Number</th>
-                <th>Latest Attempt</th>
-                <th>Highest Score</th>
+                <th>Attempts</th>
+                <th>Latest attempt</th>
+                <th>Highest score</th>
                 <th className="ft-table-action">Action</th>
               </tr>
             </thead>
@@ -1013,7 +1013,7 @@ export function TeacherMonitorPage() {
               })}
               {!loading && historyRows.length === 0 && (
                 <tr>
-                  <td colSpan={5}>Don have attemp history.</td>
+                  <td colSpan={5}>No attempt history yet.</td>
                 </tr>
               )}
             </tbody>
@@ -1026,7 +1026,7 @@ export function TeacherMonitorPage() {
           <div className="ft-detail-dialog ft-detail-dialog--history">
             <div className="ft-detail-dialog__header">
               <div>
-                <span className="ft-page-kicker">Attemp History</span>
+                <span className="ft-page-kicker">Attempt history</span>
                 <h2>{historyDetailRow.studentName}</h2>
               </div>
               <button
