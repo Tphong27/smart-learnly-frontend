@@ -1153,14 +1153,15 @@ export default function AdminLessonDetailPage() {
                         showToast={showToast}
                         dismissToast={removeToast}
                         onTitleSaved={setTitle}
+                        onNavigateToCurrent={() => setActiveTab("flashcard-current")}
                     />
             ) : activeTab === "edit" ? (
                 <>
                     <form onSubmit={handleSave}>
-                        <div style={{ display: "flex", gap: "40px" }}>
+                        <div style={{ display: "flex", gap: isFlashcardLesson ? "0" : "40px" }}>
                             <div
                                 style={{
-                                    flex: "3",
+                                    flex: isFlashcardLesson ? "1" : "3",
                                     display: "flex",
                                     flexDirection: "column",
                                     gap: "28px",
@@ -1562,8 +1563,62 @@ export default function AdminLessonDetailPage() {
                                         )}
                                     </div>
                                 )}
+                                {isFlashcardLesson && (
+                                    <div
+                                        style={{
+                                            display: "flex",
+                                            justifyContent: "flex-end",
+                                            gap: "14px",
+                                            marginTop: "4px",
+                                            borderTop: "1px solid #e2e8f0",
+                                            paddingTop: "24px",
+                                        }}
+                                    >
+                                        <button
+                                            type="button"
+                                            onClick={() =>
+                                                navigate(
+                                                    `/admin/courses/${courseId}/content`,
+                                                )
+                                            }
+                                            style={{
+                                                backgroundColor: "#fff",
+                                                border: "1px solid #cbd5e1",
+                                                padding: "13px 28px",
+                                                borderRadius: "10px",
+                                                cursor: "pointer",
+                                                color: "#475569",
+                                                fontWeight: "500",
+                                                fontSize: "15px",
+                                            }}
+                                        >
+                                            Cancel
+                                        </button>
+                                        <button
+                                            type="submit"
+                                            disabled={loading}
+                                            style={{
+                                                display: "flex",
+                                                alignItems: "center",
+                                                gap: "10px",
+                                                backgroundColor: "#2563eb",
+                                                color: "#fff",
+                                                border: "none",
+                                                padding: "13px 28px",
+                                                borderRadius: "10px",
+                                                cursor: "pointer",
+                                                fontWeight: "600",
+                                                fontSize: "15px",
+                                            }}
+                                        >
+                                            <Save size={18} />
+                                            {loading ? "Saving..." : "Save Changes"}
+                                        </button>
+                                    </div>
+                                )}
                             </div>
 
+                            {!isFlashcardLesson && (
                             <div
                                 style={{
                                     flex: "2",
@@ -2340,6 +2395,7 @@ export default function AdminLessonDetailPage() {
                                     </button>
                                 </div>
                             </div>
+                            )}
                         </div>
                     </form>
                 </>

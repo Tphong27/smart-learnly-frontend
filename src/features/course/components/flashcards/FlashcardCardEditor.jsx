@@ -76,6 +76,7 @@ export function FlashcardCardEditor({
   onUploadImage,
   onError,
   titleId,
+  validate = validateCardDraft,
 }) {
   const [draft, setDraft] = useState(() => toDraft(value));
   const [openSections, setOpenSections] = useState(() =>
@@ -92,7 +93,7 @@ export function FlashcardCardEditor({
 
   const handleSubmit = (event) => {
     event.preventDefault();
-    const validationError = validateCardDraft(draft);
+    const validationError = validate(draft);
     if (validationError) {
       onError?.(validationError);
       return;
@@ -129,9 +130,11 @@ export function FlashcardCardEditor({
         <div className="flashcard-panel__body">
           <div className="flashcard-card-editor__grid">
             <section className="flashcard-card-editor__side">
-              <h4>Front side</h4>
+              <h4>Front</h4>
               <div className="flashcard-field">
-                <label htmlFor="flashcard-front-text">Front text</label>
+                <label htmlFor="flashcard-front-text" className="flashcard-sr-only">
+                  Front text
+                </label>
                 <textarea
                   id="flashcard-front-text"
                   value={draft.frontText}
@@ -169,7 +172,9 @@ export function FlashcardCardEditor({
                 onToggle={() => toggleSection("frontHint")}
               >
                 <div className="flashcard-field">
-                  <label htmlFor="flashcard-hint">Hint</label>
+                  <label htmlFor="flashcard-hint" className="flashcard-sr-only">
+                    Hint
+                  </label>
                   <textarea
                     id="flashcard-hint"
                     value={draft.hint}
@@ -181,9 +186,11 @@ export function FlashcardCardEditor({
             </section>
 
             <section className="flashcard-card-editor__side">
-              <h4>Back side</h4>
+              <h4>Back</h4>
               <div className="flashcard-field">
-                <label htmlFor="flashcard-back-text">Back text</label>
+                <label htmlFor="flashcard-back-text" className="flashcard-sr-only">
+                  Back text
+                </label>
                 <textarea
                   id="flashcard-back-text"
                   value={draft.backText}
@@ -221,7 +228,12 @@ export function FlashcardCardEditor({
                 onToggle={() => toggleSection("backExplanation")}
               >
                 <div className="flashcard-field">
-                  <label htmlFor="flashcard-explanation">Explanation</label>
+                  <label
+                    htmlFor="flashcard-explanation"
+                    className="flashcard-sr-only"
+                  >
+                    Explanation
+                  </label>
                   <textarea
                     id="flashcard-explanation"
                     value={draft.explanation}

@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Image as ImageIcon, ImagePlus, Loader2, Trash2, Upload } from "lucide-react";
 import {
   FLASHCARD_IMAGE_ACCEPT,
@@ -40,6 +40,8 @@ export function FlashcardImageInput({
   onUploadImage,
   onError,
   onUploadingChange,
+  autoOpenPicker = false,
+  onAutoOpenHandled,
 }) {
   const fileInputRef = useRef(null);
   const dropzoneRef = useRef(null);
@@ -115,7 +117,7 @@ export function FlashcardImageInput({
 
     const selected = imageSelection(event.dataTransfer?.files);
     if (!selected.file) {
-      showError("Drop a JPEG, PNG, WebP, or GIF image file.");
+      showError("Drop a JPEG, PNG, or WebP image file.");
       return;
     }
 
@@ -155,6 +157,15 @@ export function FlashcardImageInput({
       fileInputRef.current.value = "";
     }
   }
+
+  useEffect(() => {
+    if (!autoOpenPicker) return;
+
+    if (!controlsDisabled && onUploadImage) {
+      window.setTimeout(() => fileInputRef.current?.click(), 0);
+    }
+    onAutoOpenHandled?.();
+  }, [autoOpenPicker, controlsDisabled, onAutoOpenHandled, onUploadImage]);
 
   return (
     <div className="flashcard-image-input">
@@ -244,7 +255,7 @@ export function FlashcardImageInput({
         )}
       </div>
       <p className="flashcard-image-input__hint">
-        JPEG, PNG, WebP, or GIF. Max {FLASHCARD_IMAGE_MAX_SIZE_LABEL}.
+        JPEG, PNG, or WebP. Max {FLASHCARD_IMAGE_MAX_SIZE_LABEL}.
       </p>
       {message && (
         <p

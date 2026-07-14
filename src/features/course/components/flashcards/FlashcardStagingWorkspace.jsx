@@ -14,7 +14,7 @@ import { FlashcardCardEditor } from "./FlashcardCardEditor";
 import {
   getErrorMessage,
   toCardPayload,
-  validateCardDraft,
+  validateStagingCardDraft,
 } from "./flashcard-utils";
 import "./Flashcards.css";
 
@@ -59,8 +59,7 @@ const DEFAULT_PASTED_IMPORT = {
 const DEFAULT_SOURCE_FILTERS = {
   keyword: "",
   difficulty: "",
-  status: "",
-  importStatus: "all",
+  showImported: false,
 };
 
 function normalizeResponse(payload) {
@@ -82,6 +81,10 @@ function getQuestionId(question) {
   return question?.questionId || question?.id;
 }
 
+function isApprovedSourceQuestion(question) {
+  return !question?.status || normalizeStatus(question.status) === "approved";
+}
+
 function correctAnswersLabel(question) {
   const answers = Array.isArray(question?.correctAnswers)
     ? question.correctAnswers
@@ -100,6 +103,10 @@ function getBatchCards(batch) {
           Number(left?.sortOrder ?? 0) - Number(right?.sortOrder ?? 0),
       )
     : [];
+}
+
+function getPendingBatchCards(batch) {
+  return getBatchCards(batch).filter(isDraftCard);
 }
 
 function draftCardCount(batches) {
@@ -414,14 +421,18 @@ function QuestionBankImportPanel({ setId, notify, onStagingChanged }) {
       const params = {
         keyword: appliedFilters.keyword.trim() || undefined,
         difficulty: appliedFilters.difficulty || undefined,
-        status: appliedFilters.status || undefined,
       };
       const items = await flashcardService.listSourceQuestions(setId, params);
       setQuestions(items);
       setPage(0);
       setSelectedIds((current) =>
         current.filter((id) =>
-          items.some((question) => getQuestionId(question) === id && !question.imported),
+          items.some(
+            (question) =>
+              getQuestionId(question) === id &&
+              isApprovedSourceQuestion(question) &&
+              !question.imported,
+          ),
         ),
       );
     } catch (loadError) {
@@ -443,14 +454,12 @@ function QuestionBankImportPanel({ setId, notify, onStagingChanged }) {
   }, [loadQuestions]);
 
   const filteredQuestions = useMemo(() => {
-    if (appliedFilters.importStatus === "imported") {
-      return questions.filter((question) => question.imported);
+    const approvedQuestions = questions.filter(isApprovedSourceQuestion);
+    if (appliedFilters.showImported) {
+      return approvedQuestions;
     }
-    if (appliedFilters.importStatus === "all") {
-      return questions;
-    }
-    return questions.filter((question) => !question.imported);
-  }, [appliedFilters.importStatus, questions]);
+    return approvedQuestions.filter((question) => !question.imported);
+  }, [appliedFilters.showImported, questions]);
 
   const totalPages = Math.max(
     1,
@@ -461,9 +470,16 @@ function QuestionBankImportPanel({ setId, notify, onStagingChanged }) {
     safePage * SOURCE_QUESTION_PAGE_SIZE,
     safePage * SOURCE_QUESTION_PAGE_SIZE + SOURCE_QUESTION_PAGE_SIZE,
   );
-  const selectablePageQuestions = pageQuestions.filter((question) => !question.imported);
+  const selectablePageQuestions = pageQuestions.filter(
+    (question) => isApprovedSourceQuestion(question) && !question.imported,
+  );
   const selectedImportableIds = selectedIds.filter((id) =>
-    questions.some((question) => getQuestionId(question) === id && !question.imported),
+    questions.some(
+      (question) =>
+        getQuestionId(question) === id &&
+        isApprovedSourceQuestion(question) &&
+        !question.imported,
+    ),
   );
   const allVisibleSelected =
     selectablePageQuestions.length > 0 &&
@@ -483,7 +499,7 @@ function QuestionBankImportPanel({ setId, notify, onStagingChanged }) {
   }
 
   function toggleQuestion(question) {
-    if (!question || question.imported) return;
+    if (!question || !isApprovedSourceQuestion(question) || question.imported) return;
     const questionId = getQuestionId(question);
     if (!questionId) return;
     setSelectedIds((current) =>
@@ -594,41 +610,26 @@ function QuestionBankImportPanel({ setId, notify, onStagingChanged }) {
               <option value="5">5</option>
             </select>
           </div>
-          <div className="flashcard-field">
-            <label htmlFor="staging-question-status">Status</label>
-            <select
-              id="staging-question-status"
-              value={filters.status}
-              onChange={(event) =>
+          <label className="flashcard-staging__toggle">
+            <input
+              type="checkbox"
+              checked={filters.showImported}
+              onChange={(event) => {
+                const showImported = event.target.checked;
+                setPage(0);
+                setSelectedIds([]);
                 setFilters((current) => ({
                   ...current,
-                  status: event.target.value,
-                }))
-              }
-            >
-              <option value="">All</option>
-              <option value="draft">Draft</option>
-              <option value="approved">Approved</option>
-              <option value="archived">Archived</option>
-            </select>
-          </div>
-          <div className="flashcard-field">
-            <label htmlFor="staging-question-import-status">Import status</label>
-            <select
-              id="staging-question-import-status"
-              value={filters.importStatus}
-              onChange={(event) =>
-                setFilters((current) => ({
+                  showImported,
+                }));
+                setAppliedFilters((current) => ({
                   ...current,
-                  importStatus: event.target.value,
-                }))
-              }
-            >
-              <option value="not_imported">Not imported</option>
-              <option value="imported">Imported</option>
-              <option value="all">All</option>
-            </select>
-          </div>
+                  showImported,
+                }));
+              }}
+            />
+            <span>Show imported questions</span>
+          </label>
           <button
             type="button"
             className="flashcard-btn flashcard-btn--primary"
@@ -667,7 +668,6 @@ function QuestionBankImportPanel({ setId, notify, onStagingChanged }) {
                 <th>Question</th>
                 <th>Correct answers</th>
                 <th>Difficulty</th>
-                <th>Status</th>
                 <th>Import</th>
                 <th>Question bank</th>
               </tr>
@@ -675,11 +675,11 @@ function QuestionBankImportPanel({ setId, notify, onStagingChanged }) {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan="7">Loading source questions...</td>
+                      <td colSpan="6">Loading source questions...</td>
                 </tr>
               ) : filteredQuestions.length === 0 ? (
                 <tr>
-                  <td colSpan="7">No source questions match these filters.</td>
+                  <td colSpan="6">No source questions match these filters.</td>
                 </tr>
               ) : (
                 pageQuestions.map((question) => {
@@ -715,18 +715,13 @@ function QuestionBankImportPanel({ setId, notify, onStagingChanged }) {
                         {correctAnswersLabel(question)}
                       </td>
                       <td>{question.difficulty ?? "--"}</td>
-                      <td>
-                        <span className="flashcard-staging__badge">
-                          {formatLabel(question.status)}
-                        </span>
-                      </td>
-                      <td>
+                      <td className="flashcard-staging__import-state-cell">
                         {isImported ? (
                           <span className="flashcard-staging__badge flashcard-staging__badge--imported">
                             Imported
                           </span>
                         ) : (
-                          <span className="flashcard-staging__muted">Not imported</span>
+                          <span className="flashcard-staging__muted">Available</span>
                         )}
                       </td>
                       <td>{question.questionBankName || "--"}</td>
@@ -868,12 +863,16 @@ function PastedTextImportPanel({
 
     setSubmitting(true);
     let createdCount = 0;
+    const createdIds = [];
     try {
       for (const card of importableCards) {
-        await flashcardService.addCard(setId, {
+        const savedCard = await flashcardService.addCard(setId, {
           frontText: card.frontText,
           backText: card.backText,
         });
+        if (savedCard?.id) {
+          createdIds.push(savedCard.id);
+        }
         createdCount += 1;
       }
     } catch (importError) {
@@ -881,7 +880,7 @@ function PastedTextImportPanel({
       const message = getErrorMessage(importError, "Failed to import pasted flashcards.");
       if (createdCount > 0) {
         onClose?.();
-        await onCardsImported?.();
+        await onCardsImported?.(createdIds);
         notify(
           `Imported ${createdCount} of ${importableCards.length} flashcards before an error: ${message} Current Flashcards were refreshed.`,
           "error",
@@ -895,7 +894,7 @@ function PastedTextImportPanel({
     setSubmitting(false);
     resetImport();
     onClose?.();
-    await onCardsImported?.();
+    await onCardsImported?.(createdIds);
     notify(
       `Imported ${createdCount} flashcard${createdCount === 1 ? "" : "s"} to Current Flashcards.`,
       "success",
@@ -1368,7 +1367,10 @@ export function ImportFlashcardsModal({
               notify={notifyInModal}
               reviewNotice={reviewNotice}
               onStagingChanged={onStagingChanged}
-              onApproved={onApproved}
+              onApproved={async (flashcardIds = []) => {
+                await onApproved?.(flashcardIds);
+                onClose?.();
+              }}
               onUploadImage={onUploadImage}
               onEditStateChange={setReviewEditing}
             />
@@ -1420,35 +1422,50 @@ function EditStagingCardForm({
   title = "Edit staging card",
   titleId = "flashcard-staging-edit-title",
 }) {
+  const [error, setError] = useState("");
+
   if (!card) return null;
 
+  function handleSave(draft) {
+    const validationError = validateStagingCardDraft(draft);
+    if (validationError) {
+      setError(validationError);
+      notify?.(validationError, "error");
+      return;
+    }
+    onSave?.(draft);
+  }
+
   return (
-    <FlashcardCardEditor
-      key={card.id}
-      value={card}
-      mode="edit"
-      title={title}
-      submitLabel="Save staging card"
-      savingLabel="Saving"
-      saving={saving}
-      titleId={titleId}
-      onSave={onSave}
-      onCancel={onCancel}
-      onUploadImage={onUploadImage}
-      onError={(message) => notify?.(message, "error")}
-    />
+    <>
+      {error && (
+        <div className="flashcard-staging__alert" role="alert">
+          {error}
+        </div>
+      )}
+      <FlashcardCardEditor
+        value={card}
+        mode="edit"
+        title={title}
+        titleId={titleId}
+        submitLabel="Save"
+        savingLabel="Saving"
+        saving={saving}
+        validate={validateStagingCardDraft}
+        onCancel={onCancel}
+        onSave={handleSave}
+        onUploadImage={onUploadImage}
+        onError={(message) => {
+          setError(message);
+          notify?.(message, "error");
+        }}
+      />
+    </>
   );
 }
 
-function EditStagingCardModal({
-  card,
-  saving,
-  onClose,
-  onSave,
-  onUploadImage,
-  notify,
-}) {
-  if (!card) return null;
+function EditStagingCardModal(props) {
+  const titleId = props.titleId || "flashcard-staging-edit-title";
 
   return (
     <div className="flashcard-modal" role="presentation">
@@ -1456,16 +1473,9 @@ function EditStagingCardModal({
         className="flashcard-modal__dialog flashcard-modal__dialog--card-editor flashcard-modal__dialog--staging-edit"
         role="dialog"
         aria-modal="true"
-        aria-labelledby="flashcard-staging-edit-title"
+        aria-labelledby={titleId}
       >
-        <EditStagingCardForm
-          card={card}
-          saving={saving}
-          notify={notify}
-          onCancel={onClose}
-          onSave={onSave}
-          onUploadImage={onUploadImage}
-        />
+        <EditStagingCardForm {...props} titleId={titleId} />
       </div>
     </div>
   );
@@ -1703,8 +1713,7 @@ function StagingReviewPanel({
       setBatches(items);
       const draftIds = new Set(
         items.flatMap((batch) =>
-          getBatchCards(batch)
-            .filter((card) => normalizeStatus(card.status) === "draft")
+          getPendingBatchCards(batch)
             .map((card) => card.id),
         ),
       );
@@ -1736,7 +1745,7 @@ function StagingReviewPanel({
   const flatStagingCards = useMemo(
     () =>
       batches.flatMap((batch) =>
-        getBatchCards(batch).map((card) => ({ batch, card })),
+        getPendingBatchCards(batch).map((card) => ({ batch, card })),
       ),
     [batches],
   );
@@ -1767,8 +1776,7 @@ function StagingReviewPanel({
     () =>
       new Set(
         batches.flatMap((batch) =>
-          getBatchCards(batch)
-            .filter((card) => normalizeStatus(card.status) === "draft")
+          getPendingBatchCards(batch)
             .map((card) => card.id),
         ),
       ),
@@ -1778,10 +1786,9 @@ function StagingReviewPanel({
     () =>
       new Set(
         batches.flatMap((batch) =>
-          getBatchCards(batch)
+          getPendingBatchCards(batch)
             .filter(
               (card) =>
-                isDraftCard(card) &&
                 getDuplicateReasons(duplicateInfoByCardId, card.id).length === 0,
             )
             .map((card) => card.id),
@@ -1895,7 +1902,7 @@ function StagingReviewPanel({
   }
 
   async function handleSaveEdit(draft) {
-    const validationError = validateCardDraft(draft);
+    const validationError = validateStagingCardDraft(draft);
     if (validationError) {
       notify(validationError, "error");
       return;
@@ -1984,7 +1991,7 @@ function StagingReviewPanel({
           ) : batches.length === 0 || flatStagingCards.length === 0 ? (
             <div className="flashcard-empty">
               <FileText size={28} />
-              <p>No staging batches yet.</p>
+              <p>{batches.length === 0 ? "No staging batches yet." : "Nothing to review."}</p>
             </div>
           ) : (
             <>
@@ -1993,7 +2000,7 @@ function StagingReviewPanel({
                   <StagingBatchCardGroup
                     key={batch.id}
                     batch={batch}
-                    cards={getBatchCards(batch)}
+                    cards={getPendingBatchCards(batch)}
                     selectedIds={selectedIds}
                     draftIds={draftIds}
                     duplicateInfoByCardId={duplicateInfoByCardId}
@@ -2043,17 +2050,6 @@ function StagingReviewPanel({
         </div>
       </section>
 
-      {editingCard && (
-        <EditStagingCardModal
-          key={editingCard.id}
-          card={editingCard}
-          saving={savingEdit}
-          notify={notify}
-          onClose={() => setEditingCard(null)}
-          onSave={handleSaveEdit}
-          onUploadImage={onUploadImage}
-        />
-      )}
       {rejectConfirm && (
         <div className="flashcard-modal" role="presentation">
           <div
@@ -2085,6 +2081,16 @@ function StagingReviewPanel({
           </div>
         </div>
       )}
+      {editingCard && (
+        <EditStagingCardModal
+          card={editingCard}
+          saving={savingEdit}
+          notify={notify}
+          onCancel={() => setEditingCard(null)}
+          onSave={handleSaveEdit}
+          onUploadImage={onUploadImage}
+        />
+      )}
     </div>
   );
 }
@@ -2112,7 +2118,7 @@ function ImportedBatchReviewPanel({
   const [error, setError] = useState(null);
 
   const batchId = initialBatch?.id;
-  const cards = useMemo(() => getBatchCards(batch), [batch]);
+  const cards = useMemo(() => getPendingBatchCards(batch), [batch]);
   const duplicateInfoByCardId = useMemo(
     () => buildDuplicateInfoByCardId(batch ? [batch] : [], existingCards),
     [batch, existingCards],
@@ -2120,9 +2126,7 @@ function ImportedBatchReviewPanel({
   const draftIds = useMemo(
     () =>
       new Set(
-        cards
-          .filter((card) => normalizeStatus(card.status) === "draft")
-          .map((card) => card.id),
+        cards.map((card) => card.id),
       ),
     [cards],
   );
@@ -2130,11 +2134,7 @@ function ImportedBatchReviewPanel({
     () =>
       new Set(
         cards
-          .filter(
-            (card) =>
-              isDraftCard(card) &&
-              getDuplicateReasons(duplicateInfoByCardId, card.id).length === 0,
-          )
+          .filter((card) => getDuplicateReasons(duplicateInfoByCardId, card.id).length === 0)
           .map((card) => card.id),
       ),
     [cards, duplicateInfoByCardId],
@@ -2169,8 +2169,7 @@ function ImportedBatchReviewPanel({
       }
       setBatch(freshBatch);
       const freshDraftIds = new Set(
-        getBatchCards(freshBatch)
-          .filter((card) => normalizeStatus(card.status) === "draft")
+        getPendingBatchCards(freshBatch)
           .map((card) => card.id),
       );
       setSelectedIds((current) => current.filter((id) => freshDraftIds.has(id)));
@@ -2198,7 +2197,7 @@ function ImportedBatchReviewPanel({
     );
   }
 
-  function toggleBatch(currentBatch, visibleCards = getBatchCards(currentBatch)) {
+  function toggleBatch(currentBatch, visibleCards = getPendingBatchCards(currentBatch)) {
     const draftCardIds = visibleCards
       .filter((card) => draftIds.has(card.id))
       .map((card) => card.id);
@@ -2242,9 +2241,8 @@ function ImportedBatchReviewPanel({
         "success",
       );
       setSelectedIds([]);
-      await loadImportedBatch();
       onStagingChanged?.();
-      await onApproved?.();
+      await onApproved?.(response?.flashcardIds || []);
     } catch (approveError) {
       notify(
         getErrorMessage(approveError, "Failed to approve staging cards."),
@@ -2297,7 +2295,7 @@ function ImportedBatchReviewPanel({
 
   async function handleSaveEdit(draft) {
     notify(null);
-    const validationError = validateCardDraft(draft);
+    const validationError = validateStagingCardDraft(draft);
     if (validationError) {
       notify(validationError, "error");
       return;
@@ -2320,21 +2318,6 @@ function ImportedBatchReviewPanel({
     } finally {
       setSavingEdit(false);
     }
-  }
-
-  if (editingCard) {
-    return (
-      <EditStagingCardForm
-        card={editingCard}
-        saving={savingEdit}
-        notify={notify}
-        title="Card details"
-        titleId="flashcard-imported-staging-edit-title"
-        onCancel={cancelEdit}
-        onSave={handleSaveEdit}
-        onUploadImage={onUploadImage}
-      />
-    );
   }
 
   return (
@@ -2397,7 +2380,7 @@ function ImportedBatchReviewPanel({
           ) : !batch || cards.length === 0 ? (
             <div className="flashcard-empty">
               <FileText size={28} />
-              <p>No cards found for this imported batch.</p>
+              <p>Nothing to review.</p>
             </div>
           ) : (
             <div className="flashcard-staging__batches">
@@ -2454,6 +2437,18 @@ function ImportedBatchReviewPanel({
             </div>
           </div>
         </div>
+      )}
+      {editingCard && (
+        <EditStagingCardModal
+          card={editingCard}
+          saving={savingEdit}
+          notify={notify}
+          title="Card details"
+          titleId="flashcard-imported-staging-edit-title"
+          onCancel={cancelEdit}
+          onSave={handleSaveEdit}
+          onUploadImage={onUploadImage}
+        />
       )}
     </>
   );

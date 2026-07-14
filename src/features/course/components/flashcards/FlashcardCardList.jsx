@@ -1,6 +1,4 @@
 import {
-  ArrowDown,
-  ArrowUp,
   Edit3,
   GripVertical,
   Image,
@@ -10,6 +8,24 @@ import {
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { normalizeCards } from "./flashcard-utils";
 import "./Flashcards.css";
+
+function isInteractiveTarget(target) {
+  return Boolean(
+    target?.closest?.(
+      [
+        "input",
+        "textarea",
+        "button",
+        "a",
+        "img",
+        "[contenteditable='true']",
+        ".flashcard-image-input",
+        ".flashcard-inline-editor__optional-field",
+        ".flashcard-inline-editor__optional-action",
+      ].join(","),
+    ),
+  );
+}
 
 function getSideContent(card, side) {
   const text = side === "front" ? card.frontText : card.backText;
@@ -57,7 +73,6 @@ function CardSidePreview({ label, content }) {
 export function FlashcardCardList({
   cards,
   pageStartIndex = 0,
-  totalCards,
   activeCardId,
   disabled = false,
   selectionMode = false,
@@ -67,10 +82,11 @@ export function FlashcardCardList({
   onEdit,
   onDelete,
   onMove,
+  renderCardBody,
+  dragDisabled = disabled,
 }) {
   const normalizedCards = normalizeCards(cards);
   const selectedSet = new Set(selectedCardIds);
-  const resolvedTotalCards = totalCards ?? normalizedCards.length;
 
   if (normalizedCards.length === 0) {
     return (
@@ -82,11 +98,14 @@ export function FlashcardCardList({
   }
 
   function handleDragEnd(result) {
-    if (!result.destination || disabled) return;
-    onMove?.(
-      pageStartIndex + result.source.index,
-      pageStartIndex + result.destination.index,
-    );
+    if (!result.destination || disabled || dragDisabled) return;
+    const movedCard = normalizedCards[result.source.index];
+    if (!movedCard?.id) return;
+    onMove?.({
+      cardId: movedCard.id,
+      fromVisibleIndex: pageStartIndex + result.source.index,
+      toVisibleIndex: pageStartIndex + result.destination.index,
+    });
   }
 
   return (
@@ -100,13 +119,13 @@ export function FlashcardCardList({
           >
             {normalizedCards.map((card, index) => (
               <Draggable
-                key={card.id || index}
-                draggableId={String(card.id || index)}
+                key={card.id}
+                draggableId={String(card.id)}
                 index={index}
-                isDragDisabled={disabled}
+                isDragDisabled={dragDisabled || !card.id}
               >
                 {(dragProvided, dragSnapshot) => {
-                  const globalIndex = pageStartIndex + index;
+                  const customBody = renderCardBody?.(card);
                   return (
                     <div
                       className={[
@@ -120,30 +139,30 @@ export function FlashcardCardList({
                         .join(" ")}
                       ref={dragProvided.innerRef}
                       {...dragProvided.draggableProps}
-                      onClick={() => {
+                      {...(!customBody ? {} : { "data-inline-editing": "true" })}
+                      onClick={(event) => {
                         if (disabled) return;
+                        if (isInteractiveTarget(event.target)) return;
                         if (selectionMode) {
                           onToggleSelect?.(card);
                         } else {
                           onSelect?.(card);
                         }
                       }}
-                      onDoubleClick={() => {
-                        if (!disabled && !selectionMode) onEdit?.(card);
+                      onDoubleClick={(event) => {
+                        if (isInteractiveTarget(event.target)) return;
                       }}
                     >
-                      <button
-                        type="button"
+                      <div
                         className="flashcard-list-item__drag-handle"
                         title="Drag to reorder"
-                        aria-label={`Drag card ${globalIndex + 1} to reorder`}
-                        disabled={disabled}
+                        aria-label="Drag to reorder"
                         onClick={(event) => event.stopPropagation()}
                         onDoubleClick={(event) => event.stopPropagation()}
                         {...dragProvided.dragHandleProps}
                       >
                         <GripVertical size={16} />
-                      </button>
+                      </div>
                       <span className="flashcard-list-item__selection-slot">
                         {selectionMode && (
                           <input
@@ -154,48 +173,42 @@ export function FlashcardCardList({
                             onDoubleClick={(event) => event.stopPropagation()}
                             onChange={() => onToggleSelect?.(card)}
                             disabled={disabled}
-                            aria-label={`Select card ${globalIndex + 1}`}
+                            aria-label="Select card"
                           />
                         )}
                       </span>
-                      <span className="flashcard-list-item__number">
-                        {globalIndex + 1}
-                      </span>
                       <div className="flashcard-list-item__body">
-                        <CardSidePreview
-                          label="Front"
-                          content={getSideContent(card, "front")}
-                        />
-                        <CardSidePreview
-                          label="Back"
-                          content={getSideContent(card, "back")}
-                        />
+                        {customBody ? (
+                          customBody
+                        ) : (
+                          <>
+                            <CardSidePreview
+                              label="Front"
+                              content={getSideContent(card, "front")}
+                            />
+                            <CardSidePreview
+                              label="Back"
+                              content={getSideContent(card, "back")}
+                            />
+                            {(card.hint || card.explanation) && (
+                              <div className="flashcard-list-item__meta">
+                                {card.hint && (
+                                  <p>
+                                    <strong>Hint:</strong> {card.hint}
+                                  </p>
+                                )}
+                                {card.explanation && (
+                                  <p>
+                                    <strong>Explanation:</strong> {card.explanation}
+                                  </p>
+                                )}
+                              </div>
+                            )}
+                          </>
+                        )}
                       </div>
-                      <div className="flashcard-list-item__actions">
-                        <button
-                          type="button"
-                          className="flashcard-btn flashcard-btn--icon"
-                          title="Move up"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            onMove?.(globalIndex, globalIndex - 1);
-                          }}
-                          disabled={disabled || globalIndex === 0}
-                        >
-                          <ArrowUp size={15} />
-                        </button>
-                        <button
-                          type="button"
-                          className="flashcard-btn flashcard-btn--icon"
-                          title="Move down"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            onMove?.(globalIndex, globalIndex + 1);
-                          }}
-                          disabled={disabled || globalIndex >= resolvedTotalCards - 1}
-                        >
-                          <ArrowDown size={15} />
-                        </button>
+                      {!customBody && (
+                        <div className="flashcard-list-item__actions">
                         <button
                           type="button"
                           className="flashcard-btn flashcard-btn--icon"
@@ -220,7 +233,8 @@ export function FlashcardCardList({
                         >
                           <Trash2 size={15} />
                         </button>
-                      </div>
+                        </div>
+                      )}
                     </div>
                   );
                 }}
