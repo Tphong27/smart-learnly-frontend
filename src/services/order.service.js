@@ -67,8 +67,31 @@ export function normalizeOrderPayment(payload) {
 }
 
 export const orderService = {
-  async checkout({ courseId, classId }) {
+  async checkoutCourse(courseId) {
+    if (!courseId) {
+      throw new Error("Course ID is required");
+    }
+
     const response = await apiClient.post("/orders/checkout", {
+      itemType: "COURSE",
+      courseId,
+      classId: null,
+    });
+
+    return normalizeCheckout(response);
+  },
+
+  async checkoutClass(courseId, classId) {
+    if (!courseId) {
+      throw new Error("Course ID is required");
+    }
+
+    if (!classId) {
+      throw new Error("Class ID is required");
+    }
+
+    const response = await apiClient.post("/orders/checkout", {
+      itemType: "CLASS",
       courseId,
       classId,
     });
