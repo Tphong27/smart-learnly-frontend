@@ -1,5 +1,6 @@
 import {
   BarChart3,
+  CalendarDays,
   BookOpen,
   ClipboardCheck,
   CreditCard,
@@ -136,6 +137,12 @@ const navItems = [
     label: "Courses Catalog",
     path: "/learning/courses",
     icon: GraduationCap,
+    roles: [ROLES.TRAINEE],
+  },
+  {
+    label: "Opening Schedule",
+    path: "/learning/opening-schedule",
+    icon: CalendarDays,
     roles: [ROLES.TRAINEE],
   },
   {
