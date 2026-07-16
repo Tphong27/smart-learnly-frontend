@@ -1,12 +1,8 @@
-import {
-  RotateCcw,
-  Search,
-} from "lucide-react";
+import { RotateCcw, Search } from "lucide-react";
 
 export function OpeningScheduleFilters({
   filters,
   onChange,
-  onSubmit,
   onReset,
 }) {
   function handleChange(event) {
@@ -18,24 +14,25 @@ export function OpeningScheduleFilters({
     });
   }
 
-  function handleSubmit(event) {
+  function preventSubmit(event) {
     event.preventDefault();
-    onSubmit();
   }
 
   return (
     <form
       className="opening-filters"
-      onSubmit={handleSubmit}
+      onSubmit={preventSubmit}
+      aria-label="Opening schedule filters"
     >
       <div className="opening-filters__search">
-        <Search size={18} />
+        <Search size={18} aria-hidden="true" />
 
         <input
           type="search"
           name="keyword"
           value={filters.keyword}
           placeholder="Search course or class..."
+          aria-label="Search course or class"
           onChange={handleChange}
         />
       </div>
@@ -92,19 +89,11 @@ export function OpeningScheduleFilters({
 
       <div className="opening-filters__actions">
         <button
-          type="submit"
-          className="opening-button opening-button--primary"
-        >
-          <Search size={17} />
-          Search
-        </button>
-
-        <button
           type="button"
           className="opening-button opening-button--secondary"
           onClick={onReset}
         >
-          <RotateCcw size={17} />
+          <RotateCcw size={17} aria-hidden="true" />
           Reset
         </button>
       </div>

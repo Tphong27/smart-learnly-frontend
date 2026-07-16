@@ -59,6 +59,7 @@ function formatStatus(status) {
 
 export function OpeningScheduleCard({
   classItem,
+  detailState,
 }) {
   const availableSlots = Number(
     classItem?.availableSlots ?? 0,
@@ -158,6 +159,7 @@ export function OpeningScheduleCard({
 
           <Link
             to={`/opening-schedule/${classItem.classId}`}
+            state={detailState}
             className="opening-card__button"
           >
             View class

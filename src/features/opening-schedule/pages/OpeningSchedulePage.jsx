@@ -14,22 +14,36 @@ const DEFAULT_FILTERS = {
   maxPrice: "",
 };
 
-export function OpeningSchedulePage() {
+export function OpeningSchedulePage({
+  embedded = false,
+  showHero = true,
+  showFilters = true,
+  showPagination = true,
+  pageSize = 12,
+  detailState,
+}) {
   const [searchParams, setSearchParams] = useSearchParams();
+  const syncWithUrl = !embedded;
 
   const [filters, setFilters] = useState({
-    keyword: searchParams.get("keyword") || "",
-    startFrom: searchParams.get("startFrom") || "",
-    startTo: searchParams.get("startTo") || "",
-    minPrice: searchParams.get("minPrice") || "",
-    maxPrice: searchParams.get("maxPrice") || "",
+    keyword: syncWithUrl ? searchParams.get("keyword") || "" : "",
+    startFrom: syncWithUrl ? searchParams.get("startFrom") || "" : "",
+    startTo: syncWithUrl ? searchParams.get("startTo") || "" : "",
+    minPrice: syncWithUrl ? searchParams.get("minPrice") || "" : "",
+    maxPrice: syncWithUrl ? searchParams.get("maxPrice") || "" : "",
   });
 
   const [appliedFilters, setAppliedFilters] = useState(filters);
 
   const [classes, setClasses] = useState([]);
 
-  const [page, setPage] = useState(Number(searchParams.get("page") || 0));
+  const requestedPage = syncWithUrl
+    ? Number(searchParams.get("page") || 0)
+    : 0;
+
+  const [page, setPage] = useState(
+    Number.isInteger(requestedPage) && requestedPage >= 0 ? requestedPage : 0,
+  );
 
   const [pageInfo, setPageInfo] = useState({
     totalPages: 1,
@@ -50,7 +64,7 @@ export function OpeningSchedulePage() {
         const result = await openingScheduleService.list({
           ...appliedFilters,
           page,
-          size: 12,
+          size: pageSize,
         });
 
         if (cancelled) {
@@ -90,9 +104,13 @@ export function OpeningSchedulePage() {
     return () => {
       cancelled = true;
     };
-  }, [appliedFilters, page, refreshKey]);
+  }, [appliedFilters, page, pageSize, refreshKey]);
 
   function updateUrl(nextFilters, nextPage) {
+    if (!syncWithUrl) {
+      return;
+    }
+
     const params = new URLSearchParams();
 
     Object.entries(nextFilters).forEach(([key, value]) => {
@@ -111,7 +129,6 @@ export function OpeningSchedulePage() {
   }
 
   function handleSearch() {
-
     setLoading(true);
     setError("");
     setPage(0);
@@ -132,12 +149,14 @@ export function OpeningSchedulePage() {
     });
     setPage(0);
 
-    setSearchParams(
-      {},
-      {
-        replace: true,
-      },
-    );
+    if (syncWithUrl) {
+      setSearchParams(
+        {},
+        {
+          replace: true,
+        },
+      );
+    }
   }
 
   function handlePageChange(nextPage) {
@@ -164,29 +183,33 @@ export function OpeningSchedulePage() {
     setRefreshKey((current) => current + 1);
   }
 
-  return (
-    <main className="opening-page">
-      <section className="opening-page__hero">
-        <div>
-          <span className="opening-page__eyebrow">Offline learning</span>
+  const content = (
+    <>
+      {showHero && (
+        <section className="opening-page__hero">
+          <div>
+            <span className="opening-page__eyebrow">Offline learning</span>
 
-          <h1>Opening Schedule</h1>
+            <h1>Opening Schedule</h1>
 
-          <p>
-            Browse upcoming offline classes, compare schedules and trainers,
-            then register for the class that matches your plan.
-          </p>
-        </div>
+            <p>
+              Browse upcoming offline classes, compare schedules and trainers,
+              then register for the class that matches your plan.
+            </p>
+          </div>
 
-        <CalendarDays size={72} />
-      </section>
+          <CalendarDays size={72} />
+        </section>
+      )}
 
-      <OpeningScheduleFilters
-        filters={filters}
-        onChange={setFilters}
-        onSubmit={handleSearch}
-        onReset={handleReset}
-      />
+      {showFilters && (
+        <OpeningScheduleFilters
+          filters={filters}
+          onChange={setFilters}
+          onSubmit={handleSearch}
+          onReset={handleReset}
+        />
+      )}
 
       {!loading && !error && (
         <div className="opening-page__result">
@@ -237,11 +260,12 @@ export function OpeningSchedulePage() {
               <OpeningScheduleCard
                 key={classItem.classId}
                 classItem={classItem}
+                detailState={detailState}
               />
             ))}
           </section>
 
-          {pageInfo.totalPages > 1 && (
+          {showPagination && pageInfo.totalPages > 1 && (
             <nav
               className="opening-pagination"
               aria-label="Opening schedule pages"
@@ -281,6 +305,12 @@ export function OpeningSchedulePage() {
           )}
         </>
       )}
-    </main>
+    </>
   );
+
+  if (embedded) {
+    return <div className="opening-catalog-embedded">{content}</div>;
+  }
+
+  return <main className="opening-page">{content}</main>;
 }

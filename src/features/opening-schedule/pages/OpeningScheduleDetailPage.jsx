@@ -272,17 +272,22 @@ export function OpeningScheduleDetailPage() {
     classItem.price !== null &&
     classItem.price !== undefined;
 
+  const backTarget =
+    location.state?.from ||
+    "/opening-schedule";
+
+  const backLabel =
+    location.state?.backLabel ||
+    "Back to Opening Schedule";
+
   return (
     <main className="opening-detail">
       <Link
-        to={
-          location.state?.from ||
-          "/opening-schedule"
-        }
+        to={backTarget}
         className="opening-detail__back"
       >
         <ArrowLeft size={17} />
-        Back to Opening Schedule
+        {backLabel}
       </Link>
 
       <section className="opening-detail__layout">
