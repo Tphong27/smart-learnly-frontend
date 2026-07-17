@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { UploadCloud, X } from "lucide-react";
 import { courseService } from "@/services";
 import { useToast } from "@/shared/components/ui";
 import "./ThumbnailUploader.css";
@@ -74,6 +75,14 @@ export default function ThumbnailUploader({ value, onUploadSuccess }) {
     <div className="thumbnail-uploader-container">
       <div
         className={`dropzone-box ${isDragging ? "dragging" : ""} ${effectivePreviewUrl ? "has-preview" : ""}`}
+        role="button"
+        tabIndex={isUploading ? -1 : 0}
+        aria-label={
+          effectivePreviewUrl
+            ? "Change course thumbnail"
+            : "Upload course thumbnail"
+        }
+        aria-disabled={isUploading || undefined}
         onDragOver={(event) => {
           event.preventDefault();
           setIsDragging(true);
@@ -90,6 +99,13 @@ export default function ThumbnailUploader({ value, onUploadSuccess }) {
           }
         }}
         onClick={() => !isUploading && fileInputRef.current?.click()}
+        onKeyDown={(event) => {
+          if (event.target !== event.currentTarget || isUploading) return;
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            fileInputRef.current?.click();
+          }
+        }}
       >
         <input
           type="file"
@@ -117,15 +133,17 @@ export default function ThumbnailUploader({ value, onUploadSuccess }) {
             <button
               type="button"
               className="btn-clear-image"
-              title="Remove image"
+              aria-label="Remove course thumbnail"
               onClick={handleClearFile}
             >
-              ×
+              <X size={18} aria-hidden="true" />
             </button>
           </div>
         ) : (
           <div className="upload-empty-state">
-            <div className="icon-cloud-wrapper">↑</div>
+            <div className="icon-cloud-wrapper" aria-hidden="true">
+              <UploadCloud size={22} />
+            </div>
             <div className="upload-text-instruction">
               <p className="main-text">
                 Drag and drop your image here, or <span className="highlight-text">browse device</span>
