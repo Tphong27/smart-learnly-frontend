@@ -7,68 +7,27 @@ import {
   Users,
 } from "lucide-react";
 import { Link } from "react-router-dom";
+import { ScheduleCalendar } from "@/shared/components/scheduleCalendar";
+import {
+  formatDate,
+  formatPrice,
+  formatStatusLabel,
+  toNumber,
+} from "@/shared/utils/formatters";
 
-function formatMoney(
-  value,
-  currency = "VND",
-) {
-  const amount = Number(value || 0);
+const CARD_DATE_OPTIONS = {
+  day: "2-digit",
+  month: "2-digit",
+  year: "numeric",
+};
 
-  if (amount <= 0) {
-    return "Free";
-  }
+export function OpeningScheduleCard({ classItem, detailState }) {
+  const availableSlots = toNumber(classItem?.availableSlots, 0);
 
-  return new Intl.NumberFormat("vi-VN", {
-    style: "currency",
-    currency,
-    maximumFractionDigits: 0,
-  }).format(amount);
-}
-
-function formatDate(value) {
-  if (!value) {
-    return "Not scheduled";
-  }
-
-  const date = new Date(value);
-
-  if (Number.isNaN(date.getTime())) {
-    return value;
-  }
-
-  return date.toLocaleDateString("vi-VN", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  });
-}
-
-function formatStatus(status) {
-  if (!status) {
-    return "Unknown";
-  }
-
-  return String(status)
-    .replace(/_/g, " ")
-    .toLowerCase()
-    .replace(
-      /\b\w/g,
-      (character) => character.toUpperCase(),
-    );
-}
-
-export function OpeningScheduleCard({
-  classItem,
-  detailState,
-}) {
-  const availableSlots = Number(
-    classItem?.availableSlots ?? 0,
-  );
+  const price = toNumber(classItem?.price, 0);
 
   const isAvailable =
-    String(
-      classItem?.status || "",
-    ).toUpperCase() === "UPCOMING" &&
+    String(classItem?.status || "").toUpperCase() === "UPCOMING" &&
     availableSlots > 0;
 
   return (
@@ -95,54 +54,48 @@ export function OpeningScheduleCard({
         >
           {isAvailable
             ? "Open for registration"
-            : formatStatus(classItem.status)}
+            : classItem.status
+              ? formatStatusLabel(classItem.status)
+              : "Unknown"}
         </span>
       </div>
 
       <div className="opening-card__body">
-        <p className="opening-card__course">
-          {classItem.courseTitle}
-        </p>
+        <p className="opening-card__course">{classItem.courseTitle}</p>
 
-        <h2 className="opening-card__title">
-          {classItem.className}
-        </h2>
+        <h2 className="opening-card__title">{classItem.className}</h2>
 
         <div className="opening-card__information">
           <div className="opening-card__information-row">
             <UserRound size={17} />
 
-            <span>
-              {classItem.trainerName ||
-                "Trainer not assigned"}
-            </span>
+            <span>{classItem.trainerName || "Trainer not assigned"}</span>
           </div>
 
           <div className="opening-card__information-row">
             <CalendarDays size={17} />
 
             <span>
-              {formatDate(classItem.startDate)}
+              {formatDate(classItem.startDate, "vi-VN", CARD_DATE_OPTIONS)}
               {" – "}
-              {formatDate(classItem.endDate)}
+              {formatDate(classItem.endDate, "vi-VN", CARD_DATE_OPTIONS)}
             </span>
           </div>
 
-          <div className="opening-card__information-row">
+          <div className="opening-card__information-row opening-card__information-row--schedule">
             <Clock3 size={17} />
 
-            <span>
-              {classItem.scheduleDescription ||
-                "Schedule not available"}
-            </span>
+            <ScheduleCalendar
+              variant="compact"
+              scheduleDescription={classItem.scheduleDescription}
+              emptyText="Schedule not available"
+            />
           </div>
 
           <div className="opening-card__information-row">
             <Users size={17} />
 
-            <span>
-              {availableSlots} places remaining
-            </span>
+            <span>{availableSlots} places remaining</span>
           </div>
 
           <div className="opening-card__information-row">
@@ -154,7 +107,7 @@ export function OpeningScheduleCard({
 
         <div className="opening-card__footer">
           <strong className="opening-card__price">
-            {formatMoney(classItem.price)}
+            {formatPrice(classItem.price, price <= 0)}
           </strong>
 
           <Link

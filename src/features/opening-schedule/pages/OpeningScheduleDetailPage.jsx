@@ -8,67 +8,23 @@ import {
   UserRound,
   Users,
 } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import {
-  useEffect,
-  useState,
-} from "react";
-import {
-  Link,
-  useLocation,
-  useNavigate,
-  useParams,
-} from "react-router-dom";
-import {
+  getAccessToken,
   openingScheduleService,
   orderService,
 } from "@/services";
-import {
-  useToast,
-} from "@/shared/components/ui";
+import { useToast } from "@/shared/components/ui";
+import { ScheduleCalendar } from "@/shared/components/scheduleCalendar";
+import { formatDate, formatPrice, toNumber } from "@/shared/utils/formatters";
 import "../opening-schedule.css";
 
-function formatMoney(value) {
-  const amount = Number(value || 0);
-
-  if (amount <= 0) {
-    return "Free";
-  }
-
-  return new Intl.NumberFormat("vi-VN", {
-    style: "currency",
-    currency: "VND",
-    maximumFractionDigits: 0,
-  }).format(amount);
-}
-
-function formatDate(value) {
-  if (!value) {
-    return "Not scheduled";
-  }
-
-  const date = new Date(value);
-
-  if (Number.isNaN(date.getTime())) {
-    return value;
-  }
-
-  return date.toLocaleDateString("vi-VN", {
-    day: "2-digit",
-    month: "long",
-    year: "numeric",
-  });
-}
-
-function hasAccessToken() {
-  const token =
-    localStorage.getItem("accessToken");
-
-  return Boolean(
-    token &&
-      token !== "undefined" &&
-      token !== "null",
-  );
-}
+const DETAIL_DATE_OPTIONS = {
+  day: "2-digit",
+  month: "long",
+  year: "numeric",
+};
 
 export function OpeningScheduleDetailPage() {
   const { classId } = useParams();
@@ -76,12 +32,9 @@ export function OpeningScheduleDetailPage() {
   const location = useLocation();
   const toast = useToast();
 
-  const [classItem, setClassItem] =
-    useState(null);
-  const [loading, setLoading] =
-    useState(true);
-  const [submitting, setSubmitting] =
-    useState(false);
+  const [classItem, setClassItem] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -92,19 +45,14 @@ export function OpeningScheduleDetailPage() {
       setError("");
 
       try {
-        const result =
-          await openingScheduleService
-            .getDetail(classId);
+        const result = await openingScheduleService.getDetail(classId);
 
         if (!cancelled) {
           setClassItem(result);
         }
       } catch (requestError) {
         if (!cancelled) {
-          setError(
-            requestError?.message ||
-              "Could not load class detail.",
-          );
+          setError(requestError?.message || "Could not load class detail.");
         }
       } finally {
         if (!cancelled) {
@@ -123,11 +71,10 @@ export function OpeningScheduleDetailPage() {
   }, [classId]);
 
   async function handleRegister() {
-    if (!hasAccessToken()) {
+    if (!getAccessToken()) {
       navigate("/login", {
         state: {
-          from:
-            `/opening-schedule/${classId}`,
+          from: `/opening-schedule/${classId}`,
         },
       });
 
@@ -135,89 +82,55 @@ export function OpeningScheduleDetailPage() {
     }
 
     if (!classItem?.courseId) {
-      toast.error(
-        "Course information is missing.",
-      );
+      toast.error("Course information is missing.");
       return;
     }
 
     if (!classItem?.classId) {
-      toast.error(
-        "Class information is missing.",
-      );
+      toast.error("Class information is missing.");
       return;
     }
 
-    if (
-      String(
-        classItem.status || "",
-      ).toUpperCase() !== "UPCOMING"
-    ) {
-      toast.error(
-        "This class is not open for registration.",
-      );
+    if (String(classItem.status || "").toUpperCase() !== "UPCOMING") {
+      toast.error("This class is not open for registration.");
       return;
     }
 
-    if (
-      Number(
-        classItem.availableSlots || 0,
-      ) <= 0
-    ) {
-      toast.error(
-        "This class is already full.",
-      );
+    if (Number(classItem.availableSlots || 0) <= 0) {
+      toast.error("This class is already full.");
       return;
     }
 
     setSubmitting(true);
 
     try {
-      const checkout =
-        await orderService.checkoutClass(
-          classItem.courseId,
-          classItem.classId,
-        );
-
-      toast.success(
-        "Class checkout created.",
+      const checkout = await orderService.checkoutClass(
+        classItem.courseId,
+        classItem.classId,
       );
 
-      navigate(
-        `/checkout/${checkout.orderId}`,
-        {
-          state: {
-            checkout,
-            expectedCourse: {
-              itemType: "CLASS",
-              courseId:
-                classItem.courseId,
-              classId:
-                classItem.classId,
-              title:
-                classItem.courseTitle,
-              className:
-                classItem.className,
-              trainerName:
-                classItem.trainerName,
-              scheduleDescription:
-                classItem.scheduleDescription,
-              startDate:
-                classItem.startDate,
-              endDate:
-                classItem.endDate,
-              displayPrice:
-                classItem.price,
-              currency: "VND",
-            },
+      toast.success("Class checkout created.");
+
+      navigate(`/checkout/${checkout.orderId}`, {
+        state: {
+          checkout,
+          expectedCourse: {
+            itemType: "CLASS",
+            courseId: classItem.courseId,
+            classId: classItem.classId,
+            title: classItem.courseTitle,
+            className: classItem.className,
+            trainerName: classItem.trainerName,
+            scheduleDescription: classItem.scheduleDescription,
+            startDate: classItem.startDate,
+            endDate: classItem.endDate,
+            displayPrice: classItem.price,
+            currency: "VND",
           },
         },
-      );
+      });
     } catch (requestError) {
-      toast.error(
-        requestError?.message ||
-          "Could not start class checkout.",
-      );
+      toast.error(requestError?.message || "Could not start class checkout.");
     } finally {
       setSubmitting(false);
     }
@@ -227,10 +140,7 @@ export function OpeningScheduleDetailPage() {
     return (
       <main className="opening-detail">
         <div className="opening-state">
-          <LoaderCircle
-            className="opening-spinner"
-            size={38}
-          />
+          <LoaderCircle className="opening-spinner" size={38} />
 
           <p>Loading class detail...</p>
         </div>
@@ -244,10 +154,7 @@ export function OpeningScheduleDetailPage() {
         <div className="opening-state opening-state--error">
           <AlertCircle size={42} />
 
-          <p>
-            {error ||
-              "Opening class was not found."}
-          </p>
+          <p>{error || "Opening class was not found."}</p>
 
           <Link
             to="/opening-schedule"
@@ -260,32 +167,18 @@ export function OpeningScheduleDetailPage() {
     );
   }
 
-  const availableSlots = Number(
-    classItem.availableSlots || 0,
-  );
-
+  const availableSlots = toNumber(classItem.availableSlots, 0);
   const canRegister =
-    String(
-      classItem.status || "",
-    ).toUpperCase() === "UPCOMING" &&
+    String(classItem.status || "").toUpperCase() === "UPCOMING" &&
     availableSlots > 0 &&
     classItem.price !== null &&
     classItem.price !== undefined;
-
-  const backTarget =
-    location.state?.from ||
-    "/opening-schedule";
-
-  const backLabel =
-    location.state?.backLabel ||
-    "Back to Opening Schedule";
+  const backTarget = location.state?.from || "/opening-schedule";
+  const backLabel = location.state?.backLabel || "Back to Opening Schedule";
 
   return (
     <main className="opening-detail">
-      <Link
-        to={backTarget}
-        className="opening-detail__back"
-      >
+      <Link to={backTarget} className="opening-detail__back">
         <ArrowLeft size={17} />
         {backLabel}
       </Link>
@@ -295,9 +188,7 @@ export function OpeningScheduleDetailPage() {
           <div className="opening-detail__hero">
             {classItem.courseThumbnailUrl ? (
               <img
-                src={
-                  classItem.courseThumbnailUrl
-                }
+                src={classItem.courseThumbnailUrl}
                 alt={classItem.courseTitle}
               />
             ) : (
@@ -307,17 +198,11 @@ export function OpeningScheduleDetailPage() {
             )}
 
             <div>
-              <span className="opening-page__eyebrow">
-                Offline class
-              </span>
+              <span className="opening-page__eyebrow">Offline class</span>
 
-              <p className="opening-detail__course">
-                {classItem.courseTitle}
-              </p>
+              <p className="opening-detail__course">{classItem.courseTitle}</p>
 
-              <h1>
-                {classItem.className}
-              </h1>
+              <h1>{classItem.className}</h1>
             </div>
           </div>
 
@@ -330,10 +215,7 @@ export function OpeningScheduleDetailPage() {
 
                 <span>
                   <small>Trainer</small>
-                  <strong>
-                    {classItem.trainerName ||
-                      "Not assigned"}
-                  </strong>
+                  <strong>{classItem.trainerName || "Not assigned"}</strong>
                 </span>
               </div>
 
@@ -345,24 +227,26 @@ export function OpeningScheduleDetailPage() {
                   <strong>
                     {formatDate(
                       classItem.startDate,
+                      "vi-VN",
+                      DETAIL_DATE_OPTIONS,
                     )}
                     {" – "}
                     {formatDate(
                       classItem.endDate,
+                      "vi-VN",
+                      DETAIL_DATE_OPTIONS,
                     )}
                   </strong>
                 </span>
               </div>
 
-              <div>
+              <div className="opening-detail__information-item opening-detail__information-item--schedule">
                 <Clock3 size={20} />
-
-                <span>
+                <span className="opening-detail__schedule-content">
                   <small>Schedule</small>
-                  <strong>
-                    {classItem.scheduleDescription ||
-                      "Not scheduled"}
-                  </strong>
+                  <ScheduleCalendar
+                    scheduleDescription={classItem.scheduleDescription}
+                  />
                 </span>
               </div>
 
@@ -372,9 +256,7 @@ export function OpeningScheduleDetailPage() {
                 <span>
                   <small>Availability</small>
                   <strong>
-                    {availableSlots} of{" "}
-                    {classItem.maxStudents}{" "}
-                    places remaining
+                    {availableSlots} of {classItem.maxStudents} places remaining
                   </strong>
                 </span>
               </div>
@@ -386,25 +268,18 @@ export function OpeningScheduleDetailPage() {
           <span>Class tuition</span>
 
           <strong className="opening-detail__price">
-            {formatMoney(
-              classItem.price,
-            )}
+            {formatPrice(classItem.price, toNumber(classItem.price, 0) <= 0)}
           </strong>
 
           <p>
-            This payment registers you for
-            the selected offline class and
-            grants access to its course
-            learning content.
+            This payment registers you for the selected offline class and grants
+            access to its course learning content.
           </p>
 
           <button
             type="button"
             className="opening-button opening-button--primary opening-detail__register"
-            disabled={
-              !canRegister ||
-              submitting
-            }
+            disabled={!canRegister || submitting}
             onClick={handleRegister}
           >
             {submitting

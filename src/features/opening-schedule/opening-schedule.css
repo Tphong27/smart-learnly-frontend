@@ -596,3 +596,55 @@
     transform: none;
   }
 }
+
+.opening-filters__error {
+  margin: -12px 0 20px;
+  color: #9c2e18;
+  font-size: 0.875rem;
+  font-weight: 700;
+}
+
+.layout-background--public > .opening-detail {
+  padding-top: 110px;
+}
+
+@media (max-width: 900px) {
+  .layout-background--public > .opening-detail {
+    padding-top: 150px;
+  }
+}
+
+@media (max-width: 640px) {
+  .layout-background--public > .opening-detail {
+    padding-top: 160px;
+  }
+}
+
+.opening-card__information-row--schedule {
+  align-items: flex-start;
+}
+
+.opening-card__information-row--schedule > svg {
+  flex: 0 0 auto;
+  margin-top: 9px;
+}
+
+.opening-card__information-row--schedule
+  > .shared-schedule-calendar {
+  min-width: 0;
+  flex: 1;
+}
+
+.opening-detail__information-item--schedule {
+  grid-column: 1 / -1;
+}
+
+.opening-detail__schedule-content {
+  width: 100%;
+  min-width: 0;
+}
+
+.opening-detail__schedule-content
+  > .shared-schedule-calendar {
+  margin-top: 8px;
+}

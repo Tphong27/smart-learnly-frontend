@@ -1,9 +1,10 @@
 import { AlertCircle, CalendarDays, LoaderCircle } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { openingScheduleService } from "@/services";
 import { OpeningScheduleCard } from "../components/OpeningScheduleCard";
 import { OpeningScheduleFilters } from "../components/OpeningScheduleFilters";
+import { toNumber } from "@/shared/utils/formatters";
 import "../opening-schedule.css";
 
 const DEFAULT_FILTERS = {
@@ -13,6 +14,36 @@ const DEFAULT_FILTERS = {
   minPrice: "",
   maxPrice: "",
 };
+
+function validateFilters(filters) {
+  if (
+    filters.startFrom &&
+    filters.startTo &&
+    filters.startFrom > filters.startTo
+  ) {
+    return "Opening-from date cannot be after opening-to date.";
+  }
+
+  const hasMinPrice = filters.minPrice !== "";
+  const hasMaxPrice = filters.maxPrice !== "";
+
+  const minPrice = hasMinPrice ? Number(filters.minPrice) : null;
+
+  const maxPrice = hasMaxPrice ? Number(filters.maxPrice) : null;
+
+  if (
+    (hasMinPrice && (!Number.isFinite(minPrice) || minPrice < 0)) ||
+    (hasMaxPrice && (!Number.isFinite(maxPrice) || maxPrice < 0))
+  ) {
+    return "Price must be a non-negative number.";
+  }
+
+  if (minPrice !== null && maxPrice !== null && minPrice > maxPrice) {
+    return "Minimum price cannot exceed maximum price.";
+  }
+
+  return "";
+}
 
 export function OpeningSchedulePage({
   embedded = false,
@@ -24,7 +55,6 @@ export function OpeningSchedulePage({
 }) {
   const [searchParams, setSearchParams] = useSearchParams();
   const syncWithUrl = !embedded;
-
   const [filters, setFilters] = useState({
     keyword: syncWithUrl ? searchParams.get("keyword") || "" : "",
     startFrom: syncWithUrl ? searchParams.get("startFrom") || "" : "",
@@ -32,29 +62,68 @@ export function OpeningSchedulePage({
     minPrice: syncWithUrl ? searchParams.get("minPrice") || "" : "",
     maxPrice: syncWithUrl ? searchParams.get("maxPrice") || "" : "",
   });
-
   const [appliedFilters, setAppliedFilters] = useState(filters);
-
   const [classes, setClasses] = useState([]);
-
-  const requestedPage = syncWithUrl
-    ? Number(searchParams.get("page") || 0)
-    : 0;
-
+  const requestedPage = syncWithUrl ? toNumber(searchParams.get("page"), 0) : 0;
   const [page, setPage] = useState(
     Number.isInteger(requestedPage) && requestedPage >= 0 ? requestedPage : 0,
   );
-
-  const [pageInfo, setPageInfo] = useState({
-    totalPages: 1,
-    totalElements: 0,
-  });
-
+  const [pageInfo, setPageInfo] = useState({ totalPages: 1, totalElements: 0 });
   const [loading, setLoading] = useState(true);
-
   const [error, setError] = useState("");
-
+  const [filterError, setFilterError] = useState("");
   const [refreshKey, setRefreshKey] = useState(0);
+  const isInitialFilterRender = useRef(true);
+
+  useEffect(() => {
+    if (isInitialFilterRender.current) {
+      isInitialFilterRender.current = false;
+      return undefined;
+    }
+
+    const timer = window.setTimeout(() => {
+      const nextFilters = {
+        ...filters,
+        keyword: filters.keyword.trim(),
+      };
+
+      const validationMessage = validateFilters(nextFilters);
+
+      if (validationMessage) {
+        setFilterError(validationMessage);
+        return;
+      }
+
+      setFilterError("");
+      setLoading(true);
+      setError("");
+
+      // Khi thay đổi filter phải quay về trang đầu tiên.
+      setPage(0);
+
+      // appliedFilters thay đổi làm effect gọi API chạy lại.
+      setAppliedFilters(nextFilters);
+
+      // Embedded catalog trên Home Page không thay đổi URL.
+      if (syncWithUrl) {
+        const params = new URLSearchParams();
+
+        Object.entries(nextFilters).forEach(([key, value]) => {
+          if (value !== "") {
+            params.set(key, value);
+          }
+        });
+
+        setSearchParams(params, {
+          replace: true,
+        });
+      }
+    }, 350);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [filters, setSearchParams, syncWithUrl]);
 
   useEffect(() => {
     let cancelled = false;
@@ -74,8 +143,8 @@ export function OpeningSchedulePage({
         setClasses(Array.isArray(result?.content) ? result.content : []);
 
         setPageInfo({
-          totalPages: Number(result?.totalPages ?? 1),
-          totalElements: Number(result?.totalElements ?? 0),
+          totalPages: toNumber(result?.totalPages, 1),
+          totalElements: toNumber(result?.totalElements, 0),
         });
 
         setError("");
@@ -128,35 +197,13 @@ export function OpeningSchedulePage({
     });
   }
 
-  function handleSearch() {
-    setLoading(true);
-    setError("");
-    setPage(0);
-    setAppliedFilters({
-      ...filters,
-    });
-    updateUrl(filters, 0);
-  }
-
   function handleReset() {
-    setLoading(true);
     setError("");
+    setFilterError("");
+
     setFilters({
       ...DEFAULT_FILTERS,
     });
-    setAppliedFilters({
-      ...DEFAULT_FILTERS,
-    });
-    setPage(0);
-
-    if (syncWithUrl) {
-      setSearchParams(
-        {},
-        {
-          replace: true,
-        },
-      );
-    }
   }
 
   function handlePageChange(nextPage) {
@@ -203,12 +250,19 @@ export function OpeningSchedulePage({
       )}
 
       {showFilters && (
-        <OpeningScheduleFilters
-          filters={filters}
-          onChange={setFilters}
-          onSubmit={handleSearch}
-          onReset={handleReset}
-        />
+        <>
+          <OpeningScheduleFilters
+            filters={filters}
+            onChange={setFilters}
+            onReset={handleReset}
+          />
+
+          {filterError && (
+            <p className="opening-filters__error" role="alert">
+              {filterError}
+            </p>
+          )}
+        </>
       )}
 
       {!loading && !error && (
