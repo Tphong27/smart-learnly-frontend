@@ -14,14 +14,10 @@ export function OpeningScheduleFilters({
     });
   }
 
-  function preventSubmit(event) {
-    event.preventDefault();
-  }
-
   return (
-    <form
+    <div
       className="opening-filters"
-      onSubmit={preventSubmit}
+      role="search"
       aria-label="Opening schedule filters"
     >
       <div className="opening-filters__search">
@@ -44,6 +40,7 @@ export function OpeningScheduleFilters({
           type="date"
           name="startFrom"
           value={filters.startFrom}
+          max={filters.startTo || undefined}
           onChange={handleChange}
         />
       </label>
@@ -55,6 +52,7 @@ export function OpeningScheduleFilters({
           type="date"
           name="startTo"
           value={filters.startTo}
+          min={filters.startFrom || undefined}
           onChange={handleChange}
         />
       </label>
@@ -66,6 +64,7 @@ export function OpeningScheduleFilters({
           type="number"
           name="minPrice"
           min="0"
+          max={filters.maxPrice || undefined}
           step="1000"
           value={filters.minPrice}
           placeholder="0"
@@ -79,7 +78,7 @@ export function OpeningScheduleFilters({
         <input
           type="number"
           name="maxPrice"
-          min="0"
+          min={filters.minPrice || "0"}
           step="1000"
           value={filters.maxPrice}
           placeholder="No limit"
@@ -97,6 +96,6 @@ export function OpeningScheduleFilters({
           Reset
         </button>
       </div>
-    </form>
+    </div>
   );
 }

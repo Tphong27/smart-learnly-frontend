@@ -59,7 +59,7 @@ export function formatAmount(value, currency = DEFAULT_CURRENCY) {
   return formatCurrency(value, currency);
 }
 
-export function formatDate(value, locale = DEFAULT_LOCALE) {
+export function formatDate(value, locale = DEFAULT_LOCALE, options) {
   if (!value) return "--";
 
   const date = new Date(value);
@@ -68,7 +68,7 @@ export function formatDate(value, locale = DEFAULT_LOCALE) {
     return "--";
   }
 
-  return date.toLocaleDateString(locale);
+  return date.toLocaleDateString(locale, options);
 }
 
 export function formatDateTime(value, locale = DEFAULT_LOCALE) {

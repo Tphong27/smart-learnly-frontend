@@ -44,8 +44,55 @@ function getSlotsByDay(scheduleDescription) {
   }, {});
 }
 
-export function ScheduleCalendar({ scheduleDescription }) {
+export function ScheduleCalendar({
+  scheduleDescription,
+  variant = "table",
+  emptyText = "Schedule not available",
+}) {
   const slotsByDay = getSlotsByDay(scheduleDescription);
+
+  const scheduledDays = WEEK_DAYS
+    .map((day) => ({
+      ...day,
+      slots: slotsByDay[day.key] || [],
+    }))
+    .filter((day) => day.slots.length > 0);
+
+  if (variant === "compact") {
+    if (scheduledDays.length === 0) {
+      return (
+        <span className="shared-schedule-calendar__compact-empty">
+          {emptyText}
+        </span>
+      );
+    }
+
+    return (
+      <div className="shared-schedule-calendar shared-schedule-calendar--compact">
+        {scheduledDays.map((day) => (
+          <div
+            className="shared-schedule-calendar__compact-day"
+            key={day.key}
+          >
+            <strong className="shared-schedule-calendar__compact-day-name">
+              {day.fullLabel}
+            </strong>
+
+            <div className="shared-schedule-calendar__compact-slots">
+              {day.slots.map((slot, index) => (
+                <span
+                  className="shared-schedule-calendar__compact-slot"
+                  key={`${day.key}-${slot.startTime}-${slot.endTime}-${index}`}
+                >
+                  {slot.startTime} – {slot.endTime}
+                </span>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
 
   return (
     <div className="shared-schedule-calendar">
@@ -58,6 +105,7 @@ export function ScheduleCalendar({ scheduleDescription }) {
                   <span className="shared-schedule-calendar__day-short">
                     {day.shortLabel}
                   </span>
+
                   <span className="shared-schedule-calendar__day-name">
                     {day.fullLabel}
                   </span>
@@ -81,13 +129,15 @@ export function ScheduleCalendar({ scheduleDescription }) {
                             key={`${day.key}-${slot.startTime}-${slot.endTime}-${index}`}
                           >
                             <strong>
-                              {slot.startTime} - {slot.endTime}
+                              {slot.startTime} – {slot.endTime}
                             </strong>
                           </div>
                         ))}
                       </div>
                     ) : (
-                      <span className="shared-schedule-calendar__empty">-</span>
+                      <span className="shared-schedule-calendar__empty">
+                        -
+                      </span>
                     )}
                   </td>
                 );
