@@ -138,8 +138,6 @@ export function HomePage() {
                         <OpeningSchedulePage
                             embedded
                             showHero={false}
-                            showFilters={true}
-                            showPagination={true}
                             pageSize={3}
                             detailState={{
                                 from: "/#opening-schedule",

@@ -1,10 +1,10 @@
 import { AlertCircle, CalendarDays, LoaderCircle } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { openingScheduleService } from "@/services";
+import { toNumber } from "@/shared/utils/formatters";
 import { OpeningScheduleCard } from "../components/OpeningScheduleCard";
 import { OpeningScheduleFilters } from "../components/OpeningScheduleFilters";
-import { toNumber } from "@/shared/utils/formatters";
 import "../opening-schedule.css";
 
 const DEFAULT_FILTERS = {
@@ -14,6 +14,24 @@ const DEFAULT_FILTERS = {
   minPrice: "",
   maxPrice: "",
 };
+
+function readFiltersFromSearchParams(searchParams) {
+  return {
+    keyword: searchParams.get("keyword") || "",
+    startFrom: searchParams.get("startFrom") || "",
+    startTo: searchParams.get("startTo") || "",
+    minPrice: searchParams.get("minPrice") || "",
+    maxPrice: searchParams.get("maxPrice") || "",
+  };
+}
+
+function normalizePage(value) {
+  const requestedPage = toNumber(value, 0);
+
+  return Number.isInteger(requestedPage) && requestedPage >= 0
+    ? requestedPage
+    : 0;
+}
 
 function validateFilters(filters) {
   if (
@@ -26,9 +44,7 @@ function validateFilters(filters) {
 
   const hasMinPrice = filters.minPrice !== "";
   const hasMaxPrice = filters.maxPrice !== "";
-
   const minPrice = hasMinPrice ? Number(filters.minPrice) : null;
-
   const maxPrice = hasMaxPrice ? Number(filters.maxPrice) : null;
 
   if (
@@ -48,38 +64,66 @@ function validateFilters(filters) {
 export function OpeningSchedulePage({
   embedded = false,
   showHero = true,
-  showFilters = true,
-  showPagination = true,
   pageSize = 12,
   detailState,
 }) {
   const [searchParams, setSearchParams] = useSearchParams();
   const syncWithUrl = !embedded;
-  const [filters, setFilters] = useState({
-    keyword: syncWithUrl ? searchParams.get("keyword") || "" : "",
-    startFrom: syncWithUrl ? searchParams.get("startFrom") || "" : "",
-    startTo: syncWithUrl ? searchParams.get("startTo") || "" : "",
-    minPrice: syncWithUrl ? searchParams.get("minPrice") || "" : "",
-    maxPrice: syncWithUrl ? searchParams.get("maxPrice") || "" : "",
+  const initialFilters = syncWithUrl
+    ? readFiltersFromSearchParams(searchParams)
+    : { ...DEFAULT_FILTERS };
+  const [filters, setFilters] = useState(initialFilters);
+  const [appliedFilters, setAppliedFilters] = useState(initialFilters);
+
+  const [page, setPage] = useState(() => {
+    if (!syncWithUrl) {
+      return 0;
+    }
+
+    return normalizePage(searchParams.get("page"));
   });
-  const [appliedFilters, setAppliedFilters] = useState(filters);
+
   const [classes, setClasses] = useState([]);
-  const requestedPage = syncWithUrl ? toNumber(searchParams.get("page"), 0) : 0;
-  const [page, setPage] = useState(
-    Number.isInteger(requestedPage) && requestedPage >= 0 ? requestedPage : 0,
-  );
-  const [pageInfo, setPageInfo] = useState({ totalPages: 1, totalElements: 0 });
+  const [pageInfo, setPageInfo] = useState({
+    totalPages: 1,
+    totalElements: 0,
+  });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [filterError, setFilterError] = useState("");
   const [refreshKey, setRefreshKey] = useState(0);
-  const isInitialFilterRender = useRef(true);
+  const previousFiltersRef = useRef(filters);
+
+  const updateUrl = useCallback(
+    (nextFilters, nextPage) => {
+      if (!syncWithUrl) {
+        return;
+      }
+
+      const params = new URLSearchParams();
+
+      Object.entries(nextFilters).forEach(([key, value]) => {
+        if (value !== "") {
+          params.set(key, value);
+        }
+      });
+
+      if (nextPage > 0) {
+        params.set("page", String(nextPage));
+      }
+
+      setSearchParams(params, {
+        replace: true,
+      });
+    },
+    [setSearchParams, syncWithUrl],
+  );
 
   useEffect(() => {
-    if (isInitialFilterRender.current) {
-      isInitialFilterRender.current = false;
+    if (previousFiltersRef.current === filters) {
       return undefined;
     }
+    previousFiltersRef.current = filters;
 
     const timer = window.setTimeout(() => {
       const nextFilters = {
@@ -91,44 +135,51 @@ export function OpeningSchedulePage({
 
       if (validationMessage) {
         setFilterError(validationMessage);
+
         return;
       }
 
       setFilterError("");
-      setLoading(true);
       setError("");
-
-      // Khi thay đổi filter phải quay về trang đầu tiên.
+      setLoading(true);
       setPage(0);
-
-      // appliedFilters thay đổi làm effect gọi API chạy lại.
       setAppliedFilters(nextFilters);
 
-      // Embedded catalog trên Home Page không thay đổi URL.
       if (syncWithUrl) {
-        const params = new URLSearchParams();
-
-        Object.entries(nextFilters).forEach(([key, value]) => {
-          if (value !== "") {
-            params.set(key, value);
-          }
-        });
-
-        setSearchParams(params, {
-          replace: true,
-        });
+        updateUrl(nextFilters, 0);
       }
     }, 350);
 
     return () => {
       window.clearTimeout(timer);
     };
-  }, [filters, setSearchParams, syncWithUrl]);
+  }, [filters, syncWithUrl, updateUrl]);
+
+  useEffect(() => {
+    if (!syncWithUrl) {
+      return undefined;
+    }
+    function handlePopState() {
+      const params = new URLSearchParams(window.location.search);
+      const nextPage = normalizePage(params.get("page"));
+      setPage((currentPage) =>
+        currentPage === nextPage ? currentPage : nextPage,
+      );
+    }
+
+    window.addEventListener("popstate", handlePopState);
+    return () => {
+      window.removeEventListener("popstate", handlePopState);
+    };
+  }, [syncWithUrl]);
 
   useEffect(() => {
     let cancelled = false;
 
     async function fetchSchedules() {
+      setLoading(true);
+      setError("");
+
       try {
         const result = await openingScheduleService.list({
           ...appliedFilters,
@@ -140,11 +191,27 @@ export function OpeningSchedulePage({
           return;
         }
 
-        setClasses(Array.isArray(result?.content) ? result.content : []);
+        const nextClasses = Array.isArray(result?.content)
+          ? result.content
+          : [];
 
+        const totalElements = Math.max(0, toNumber(result?.totalElements, 0));
+
+        const totalPages = Math.max(1, toNumber(result?.totalPages, 1));
+
+        if (page >= totalPages && totalElements > 0) {
+          const lastPage = totalPages - 1;
+          setPage(lastPage);
+          if (syncWithUrl) {
+            updateUrl(appliedFilters, lastPage);
+          }
+          return;
+        }
+
+        setClasses(nextClasses);
         setPageInfo({
-          totalPages: toNumber(result?.totalPages, 1),
-          totalElements: toNumber(result?.totalElements, 0),
+          totalPages,
+          totalElements,
         });
 
         setError("");
@@ -154,7 +221,6 @@ export function OpeningSchedulePage({
         }
 
         setClasses([]);
-
         setPageInfo({
           totalPages: 1,
           totalElements: 0,
@@ -173,41 +239,24 @@ export function OpeningSchedulePage({
     return () => {
       cancelled = true;
     };
-  }, [appliedFilters, page, pageSize, refreshKey]);
-
-  function updateUrl(nextFilters, nextPage) {
-    if (!syncWithUrl) {
-      return;
-    }
-
-    const params = new URLSearchParams();
-
-    Object.entries(nextFilters).forEach(([key, value]) => {
-      if (value !== "") {
-        params.set(key, value);
-      }
-    });
-
-    if (nextPage > 0) {
-      params.set("page", String(nextPage));
-    }
-
-    setSearchParams(params, {
-      replace: true,
-    });
-  }
+  }, [appliedFilters, page, pageSize, refreshKey, syncWithUrl, updateUrl]);
 
   function handleReset() {
     setError("");
     setFilterError("");
-
     setFilters({
       ...DEFAULT_FILTERS,
     });
   }
 
   function handlePageChange(nextPage) {
-    if (nextPage < 0 || nextPage >= pageInfo.totalPages || nextPage === page) {
+    const isInvalidPage =
+      !Number.isInteger(nextPage) ||
+      nextPage < 0 ||
+      nextPage >= pageInfo.totalPages ||
+      nextPage === page;
+
+    if (isInvalidPage) {
       return;
     }
 
@@ -215,7 +264,9 @@ export function OpeningSchedulePage({
     setError("");
     setPage(nextPage);
 
-    updateUrl(appliedFilters, nextPage);
+    if (syncWithUrl) {
+      updateUrl(appliedFilters, nextPage);
+    }
 
     window.scrollTo({
       top: 0,
@@ -249,20 +300,16 @@ export function OpeningSchedulePage({
         </section>
       )}
 
-      {showFilters && (
-        <>
-          <OpeningScheduleFilters
-            filters={filters}
-            onChange={setFilters}
-            onReset={handleReset}
-          />
+      <OpeningScheduleFilters
+        filters={filters}
+        onChange={setFilters}
+        onReset={handleReset}
+      />
 
-          {filterError && (
-            <p className="opening-filters__error" role="alert">
-              {filterError}
-            </p>
-          )}
-        </>
+      {filterError && (
+        <p className="opening-filters__error" role="alert">
+          {filterError}
+        </p>
       )}
 
       {!loading && !error && (
@@ -274,7 +321,7 @@ export function OpeningSchedulePage({
       )}
 
       {loading && (
-        <div className="opening-state">
+        <div className="opening-state" role="status" aria-live="polite">
           <LoaderCircle className="opening-spinner" size={38} />
 
           <p>Loading opening schedule...</p>
@@ -282,7 +329,7 @@ export function OpeningSchedulePage({
       )}
 
       {!loading && error && (
-        <div className="opening-state opening-state--error">
+        <div className="opening-state opening-state--error" role="alert">
           <AlertCircle size={38} />
 
           <p>{error}</p>
@@ -319,7 +366,7 @@ export function OpeningSchedulePage({
             ))}
           </section>
 
-          {showPagination && pageInfo.totalPages > 1 && (
+          {pageInfo.totalPages > 1 && (
             <nav
               className="opening-pagination"
               aria-label="Opening schedule pages"
@@ -341,6 +388,8 @@ export function OpeningSchedulePage({
                     type="button"
                     key={index}
                     className={index === page ? "is-active" : ""}
+                    aria-current={index === page ? "page" : undefined}
+                    aria-label={`Go to page ${index + 1}`}
                     onClick={() => handlePageChange(index)}
                   >
                     {index + 1}
