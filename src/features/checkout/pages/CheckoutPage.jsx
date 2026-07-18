@@ -121,19 +121,28 @@ export function CheckoutPage() {
   }
 
   if (loading) {
-    return <div className="admin-loading">Loading checkout...</div>;
+    return (
+      <section className="checkout-page">
+        <div className="checkout-page__state" role="status" aria-live="polite">
+          Loading checkout...
+        </div>
+      </section>
+    );
   }
 
   if (error || !payment) {
     return (
       <section className="checkout-page">
-        <div className="admin-error">
+        <div
+          className="checkout-page__state checkout-page__state--error"
+          role="alert"
+        >
           {error || "Checkout order not found."}
         </div>
 
-        <Button to="/learning/courses">
-          Back to Course Catalog
-        </Button>
+        <div>
+          <Button to="/learning/courses">Back to Course Catalog</Button>
+        </div>
       </section>
     );
   }

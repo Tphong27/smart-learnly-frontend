@@ -11,6 +11,7 @@ import {
 import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import {
+  enrollmentService,
   getAccessToken,
   openingScheduleService,
   orderService,
@@ -101,9 +102,48 @@ export function OpeningScheduleDetailPage() {
       return;
     }
 
+    if (
+      classItem.price === null ||
+      classItem.price === undefined ||
+      classItem.price === ""
+    ) {
+      toast.error("Class price is not configured.");
+      return;
+    }
+
+    const classPrice = Number(classItem.price);
+
+    if (!Number.isFinite(classPrice) || classPrice < 0) {
+      toast.error("Class price is invalid.");
+      return;
+    }
+
     setSubmitting(true);
 
     try {
+      //OFFLINE CLASS MIỄN PHÍ
+      if (classPrice === 0) {
+        const enrollment = await enrollmentService.enrollFreeClass(
+          classItem.classId,
+        );
+
+        if (enrollment?.alreadyEnrolled) {
+          toast.success("You are already enrolled in this class.");
+        } else if (enrollment?.reactivated) {
+          toast.success("Your class enrollment has been reactivated.");
+        } else {
+          toast.success("Class enrollment completed.");
+        }
+
+        navigate(
+          `/learning/courses/${classItem.courseId}` +
+            `?classId=${classItem.classId}`,
+        );
+
+        return;
+      }
+
+      //OFFLINE CLASS CÓ PHÍ
       const checkout = await orderService.checkoutClass(
         classItem.courseId,
         classItem.classId,
@@ -130,7 +170,9 @@ export function OpeningScheduleDetailPage() {
         },
       });
     } catch (requestError) {
-      toast.error(requestError?.message || "Could not start class checkout.");
+      toast.error(
+        requestError?.message || "Could not register for this class.",
+      );
     } finally {
       setSubmitting(false);
     }
@@ -168,11 +210,19 @@ export function OpeningScheduleDetailPage() {
   }
 
   const availableSlots = toNumber(classItem.availableSlots, 0);
+  const normalizedClassPrice =
+    classItem.price === null ||
+    classItem.price === undefined ||
+    classItem.price === ""
+      ? Number.NaN
+      : Number(classItem.price);
+  const hasValidClassPrice =
+    Number.isFinite(normalizedClassPrice) && normalizedClassPrice >= 0;
+  const isFreeClass = hasValidClassPrice && normalizedClassPrice === 0;
   const canRegister =
     String(classItem.status || "").toUpperCase() === "UPCOMING" &&
     availableSlots > 0 &&
-    classItem.price !== null &&
-    classItem.price !== undefined;
+    hasValidClassPrice;
   const backTarget = location.state?.from || "/opening-schedule";
   const backLabel = location.state?.backLabel || "Back to Opening Schedule";
 
@@ -268,12 +318,13 @@ export function OpeningScheduleDetailPage() {
           <span>Class tuition</span>
 
           <strong className="opening-detail__price">
-            {formatPrice(classItem.price, toNumber(classItem.price, 0) <= 0)}
+            {formatPrice(classItem.price, isFreeClass)}
           </strong>
 
           <p>
-            This payment registers you for the selected offline class and grants
-            access to its course learning content.
+            {isFreeClass
+              ? "Registration is free and grants access to this class's course content."
+              : "This payment registers you for the selected offline class and grants access to its course learning content."}
           </p>
 
           <button
@@ -283,9 +334,13 @@ export function OpeningScheduleDetailPage() {
             onClick={handleRegister}
           >
             {submitting
-              ? "Creating checkout..."
+              ? isFreeClass
+                ? "Registering..."
+                : "Creating checkout..."
               : canRegister
-                ? "Register this class"
+                ? isFreeClass
+                  ? "Register for free"
+                  : "Register and pay"
                 : "Registration unavailable"}
           </button>
         </aside>

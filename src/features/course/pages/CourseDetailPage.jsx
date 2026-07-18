@@ -163,7 +163,11 @@ export function CourseDetailPage() {
   }
 
   function isFreeCourse(courseData) {
-    return courseData?.isFree === true || Number(courseData?.price || 0) <= 0;
+    const effectivePrice =
+      courseData?.discountedPrice === null ||
+      courseData?.discountedPrice === undefined ? courseData?.price : courseData.discountedPrice;
+
+    return courseData?.isFree === true || Number(effectivePrice || 0) <= 0;
   }
 
   function getCourseId() {

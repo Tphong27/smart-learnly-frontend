@@ -42,4 +42,16 @@ export const enrollmentService = {
     );
     return unwrap(response) || [];
   },
+
+  async enrollFreeClass(classId) {
+    if (!classId) {
+      throw new Error("Class ID is required");
+    }
+
+    const response = await apiClient.post("/enrollments/free-class", {
+      classId,
+    });
+
+    return unwrap(response);
+  },
 };

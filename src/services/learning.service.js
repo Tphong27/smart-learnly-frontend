@@ -27,12 +27,15 @@ export const learningService = {
     return unwrap(response);
   },
 
-  async updateLessonProgress(lessonId, completed, classId) {
+  async updateLessonProgress(lessonId, completed, classId, courseId) {
     const response = await apiClient.patch(
       `/learning/progress/lessons/${lessonId}`,
       { completed },
       {
-        params: classId ? { classId } : {},
+        params: {
+          ...(courseId ? { courseId } : {}),
+          ...(classId ? { classId } : {}),
+        },
       },
     );
     return unwrap(response);
