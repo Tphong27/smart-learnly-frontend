@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useCallback, useMemo, useState } from "react";
 import {
   HelpCircle,
   ListChecks,
@@ -525,8 +525,19 @@ function QuizResultsScreen({ quizData, answers, onTryAgain }) {
 
 // ─── Main QuizPlayer Component ────────────────────────────────────────────────
 
-export function LearningQuizPlayer({ content, durationSeconds, onCompleted }) {
-  const quizData = parseQuizContent(content);
+export function LearningQuizPlayer({
+  content,
+  lessonTitle,
+  durationSeconds,
+  onCompleted,
+}) {
+  const quizData = useMemo(() => {
+    const parsedQuiz = parseQuizContent(content);
+    return {
+      ...parsedQuiz,
+      title: String(lessonTitle || "").trim() || parsedQuiz.title,
+    };
+  }, [content, lessonTitle]);
 
   const [phase, setPhase] = useState("start");
   const [answers, setAnswers] = useState({});

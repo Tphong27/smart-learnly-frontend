@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useRef, useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
 import { Modal, Button } from "@/shared/components/ui";
 import { courseService } from "@/services/course.service";
@@ -69,7 +69,14 @@ function buildMediaFromUpload(uploaded, type) {
   });
 }
 
-function MediaUploader({ label, media, onChange, onError }) {
+function MediaUploader({
+  label,
+  media,
+  disabled,
+  onChange,
+  onError,
+  onUploadingChange,
+}) {
   const [uploading, setUploading] = useState(false);
 
   const handleFileChange = async (event) => {
@@ -86,6 +93,7 @@ function MediaUploader({ label, media, onChange, onError }) {
     }
 
     setUploading(true);
+    onUploadingChange?.(true);
     try {
       const uploaded = isVideo
         ? await courseService.uploadLessonMaterial(file)
@@ -98,6 +106,7 @@ function MediaUploader({ label, media, onChange, onError }) {
       onError(message);
     } finally {
       setUploading(false);
+      onUploadingChange?.(false);
     }
   };
 
@@ -114,6 +123,8 @@ function MediaUploader({ label, media, onChange, onError }) {
             className="quiz-question-edit-form__icon-btn quiz-question-edit-form__icon-btn--danger"
             onClick={() => onChange(null)}
             title="Remove media"
+            aria-label={`Remove ${label.toLowerCase()}`}
+            disabled={disabled || uploading}
           >
             <Trash2 size={16} />
           </button>
@@ -125,7 +136,7 @@ function MediaUploader({ label, media, onChange, onError }) {
         type="file"
         accept="image/*,audio/*,video/mp4,video/webm,video/quicktime"
         onChange={handleFileChange}
-        disabled={uploading}
+        disabled={disabled || uploading}
       />
       {uploading && <p className="quiz-question-edit-form__hint">Uploading media...</p>}
     </div>
@@ -146,6 +157,22 @@ function serializeOption(option) {
 export function QuizQuestionEditModal({ open, question, onClose, onSubmit }) {
   const [form, setForm] = useState(() => buildInitialState(question));
   const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [activeUploads, setActiveUploads] = useState(0);
+  const submittingRef = useRef(false);
+  const activeUploadsRef = useRef(0);
+
+  const uploadBusy = activeUploads > 0;
+  const formBusy = submitting || uploadBusy;
+
+  const handleUploadingChange = (isUploading) => {
+    const nextCount = Math.max(
+      0,
+      activeUploadsRef.current + (isUploading ? 1 : -1),
+    );
+    activeUploadsRef.current = nextCount;
+    setActiveUploads(nextCount);
+  };
 
   const isChoice =
     form.type === QUESTION_TYPES.SINGLE ||
@@ -271,29 +298,53 @@ export function QuizQuestionEditModal({ open, question, onClose, onSubmit }) {
     };
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
+    if (submittingRef.current) return;
+    if (activeUploadsRef.current > 0) {
+      setError("Wait for all media uploads to finish before saving.");
+      return;
+    }
+
     const candidate = buildQuestion();
     const { valid, errors } = validateQuizQuestions([candidate]);
     if (!valid) {
-      setError(errors.map((e) => e.message).join(" "));
+      setError(errors.map((item) => item.message).join(" "));
       return;
     }
-    onSubmit(candidate);
+
+    submittingRef.current = true;
+    setError("");
+    setSubmitting(true);
+    try {
+      const saved = await onSubmit(candidate);
+      if (!saved) {
+        setError("Question could not be saved. Please try again.");
+        return;
+      }
+      onClose();
+    } catch (submitError) {
+      console.error("Save question error:", submitError);
+      setError("Question could not be saved. Please try again.");
+    } finally {
+      submittingRef.current = false;
+      setSubmitting(false);
+    }
   };
 
-  const footer = useMemo(
-    () => (
-      <>
-        <Button variant="ghost" onClick={onClose}>
-          Cancel
-        </Button>
-        <Button variant="primary" onClick={handleSubmit}>
-          Save question
-        </Button>
-      </>
-    ),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [form],
+  const footer = (
+    <>
+      <Button variant="ghost" onClick={onClose} disabled={formBusy}>
+        Cancel
+      </Button>
+      <Button
+        variant="primary"
+        onClick={handleSubmit}
+        loading={submitting}
+        disabled={uploadBusy}
+      >
+        Save question
+      </Button>
+    </>
   );
 
   return (
@@ -302,6 +353,7 @@ export function QuizQuestionEditModal({ open, question, onClose, onSubmit }) {
       title={question ? "Edit question" : "Add question"}
       size="lg"
       onClose={onClose}
+      closeDisabled={formBusy}
       footer={footer}
     >
       <div className="quiz-question-edit-form">
@@ -316,13 +368,16 @@ export function QuizQuestionEditModal({ open, question, onClose, onSubmit }) {
             setForm((prev) => ({ ...prev, title: e.target.value }))
           }
           placeholder="Supports <b>, <i>, <u> tags"
+          disabled={formBusy}
         />
 
         <MediaUploader
           label="Question media"
           media={form.media}
+          disabled={formBusy}
           onChange={(media) => setForm((prev) => ({ ...prev, media }))}
           onError={setError}
+          onUploadingChange={handleUploadingChange}
         />
 
         <label className="quiz-question-edit-form__label">Explanation</label>
@@ -334,6 +389,7 @@ export function QuizQuestionEditModal({ open, question, onClose, onSubmit }) {
             setForm((prev) => ({ ...prev, explain_question: e.target.value }))
           }
           placeholder="Optional"
+          disabled={formBusy}
         />
 
         <label className="quiz-question-edit-form__label">Question type</label>
@@ -341,6 +397,7 @@ export function QuizQuestionEditModal({ open, question, onClose, onSubmit }) {
           className="quiz-question-edit-form__select"
           value={form.type}
           onChange={(e) => handleTypeChange(e.target.value)}
+          disabled={formBusy}
         >
           {TYPE_OPTIONS.map((type) => (
             <option key={type} value={type}>
@@ -372,6 +429,7 @@ export function QuizQuestionEditModal({ open, question, onClose, onSubmit }) {
                     checked={checked}
                     onChange={() => toggleCorrect(optionNumber)}
                     name="quiz-edit-correct"
+                    disabled={formBusy}
                   />
                   <div style={{ flex: 1 }}>
                     <input
@@ -380,12 +438,15 @@ export function QuizQuestionEditModal({ open, question, onClose, onSubmit }) {
                       value={opt.text}
                       onChange={(e) => updateOptionText(idx, e.target.value)}
                       placeholder={`Option ${optionNumber} text (optional if media exists)`}
+                      disabled={formBusy}
                     />
                     <MediaUploader
                       label={`Option ${optionNumber} media`}
                       media={opt.media}
+                      disabled={formBusy}
                       onChange={(media) => updateOptionMedia(idx, media)}
                       onError={setError}
+                      onUploadingChange={handleUploadingChange}
                     />
                   </div>
                   {form.options.length > 2 && (
@@ -394,6 +455,8 @@ export function QuizQuestionEditModal({ open, question, onClose, onSubmit }) {
                       className="quiz-question-edit-form__icon-btn"
                       onClick={() => removeOption(idx)}
                       title="Remove option"
+                      aria-label={`Remove option ${optionNumber}`}
+                      disabled={formBusy}
                     >
                       <Trash2 size={16} />
                     </button>
@@ -406,6 +469,7 @@ export function QuizQuestionEditModal({ open, question, onClose, onSubmit }) {
                 type="button"
                 className="quiz-question-edit-form__add-btn"
                 onClick={addOption}
+                disabled={formBusy}
               >
                 <Plus size={15} /> Add option
               </button>
@@ -429,6 +493,7 @@ export function QuizQuestionEditModal({ open, question, onClose, onSubmit }) {
                   value={ans}
                   onChange={(e) => updateFillAnswer(idx, e.target.value)}
                   placeholder={`Answer ${idx + 1}`}
+                  disabled={formBusy}
                 />
                 {form.correct_answers.length > 1 && (
                   <button
@@ -436,6 +501,8 @@ export function QuizQuestionEditModal({ open, question, onClose, onSubmit }) {
                     className="quiz-question-edit-form__icon-btn"
                     onClick={() => removeFillAnswer(idx)}
                     title="Remove answer"
+                    aria-label={`Remove answer ${idx + 1}`}
+                    disabled={formBusy}
                   >
                     <Trash2 size={16} />
                   </button>
@@ -446,13 +513,22 @@ export function QuizQuestionEditModal({ open, question, onClose, onSubmit }) {
               type="button"
               className="quiz-question-edit-form__add-btn"
               onClick={addFillAnswer}
+              disabled={formBusy}
             >
               <Plus size={15} /> Add answer
             </button>
           </div>
         )}
 
-        {error && <p className="quiz-question-edit-form__error">{error}</p>}
+        {error && (
+          <p
+            className="quiz-question-edit-form__error"
+            role="alert"
+            aria-live="assertive"
+          >
+            {error}
+          </p>
+        )}
       </div>
     </Modal>
   );

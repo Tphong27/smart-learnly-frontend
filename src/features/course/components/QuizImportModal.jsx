@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Modal, Button } from "@/shared/components/ui";
 import {
   SAMPLE_QUIZ_JSON,
@@ -9,6 +9,8 @@ import {
 } from "../utils/quiz-question-schema";
 import "@/features/admin/admin-shared.css";
 import "./quiz-question-manager.css";
+
+const IMPORT_ERROR = "Questions could not be imported. Please try again.";
 
 /**
  * Modal import câu hỏi từ JSON hoặc Excel/CSV.
@@ -30,6 +32,8 @@ export function QuizImportModal({ open, onClose, onImport }) {
   const [parsedQuestions, setParsedQuestions] = useState([]);
   const [fileName, setFileName] = useState("");
   const [parsingFile, setParsingFile] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const importingRef = useRef(false);
 
   const validRows = useMemo(
     () => parsedRows.filter((row) => row.errors.length === 0),
@@ -64,7 +68,30 @@ export function QuizImportModal({ open, onClose, onImport }) {
     }
   };
 
-  const handleImportJson = () => {
+  const saveImportedQuestions = async (questions, resetImport, source) => {
+    if (importingRef.current) return;
+
+    importingRef.current = true;
+    setErrors([]);
+    setImporting(true);
+    try {
+      const saved = await onImport(questions);
+      if (!saved) {
+        setErrors([{ message: IMPORT_ERROR }]);
+        return;
+      }
+      resetImport();
+      onClose();
+    } catch (error) {
+      console.error(`Import quiz ${source} error:`, error);
+      setErrors([{ message: IMPORT_ERROR }]);
+    } finally {
+      importingRef.current = false;
+      setImporting(false);
+    }
+  };
+
+  const handleImportJson = async () => {
     setValidMessage("");
     const { data, parseError } = parseJson();
     if (parseError) {
@@ -78,10 +105,9 @@ export function QuizImportModal({ open, onClose, onImport }) {
         return;
       }
     }
+
     const normalized = normalizeImportedQuestions(data);
-    setErrors([]);
-    setJsonText("");
-    onImport(normalized);
+    await saveImportedQuestions(normalized, () => setJsonText(""), "JSON");
   };
 
   const handleFileChange = async (event) => {
@@ -119,7 +145,7 @@ export function QuizImportModal({ open, onClose, onImport }) {
     }
   };
 
-  const handleImportFile = () => {
+  const handleImportFile = async () => {
     if (!parsedRows.length) {
       setErrors([{ message: "Please choose an Excel or CSV file first." }]);
       return;
@@ -128,36 +154,50 @@ export function QuizImportModal({ open, onClose, onImport }) {
       setErrors([{ message: "Please fix all row errors before importing." }]);
       return;
     }
-    onImport(parsedQuestions);
-    setParsedRows([]);
-    setParsedQuestions([]);
-    setFileName("");
-    setLegacyMediaWarning("");
+
+    await saveImportedQuestions(
+      parsedQuestions,
+      () => {
+        setParsedRows([]);
+        setParsedQuestions([]);
+        setFileName("");
+        setLegacyMediaWarning("");
+      },
+      "file",
+    );
   };
 
-  const handleImport = () => {
-    if (mode === "json") {
-      handleImportJson();
-      return;
-    }
-    handleImportFile();
-  };
+  const handleImport = () =>
+    mode === "json" ? handleImportJson() : handleImportFile();
 
   const footer = (
     <>
-      <Button variant="ghost" onClick={onClose}>
+      <Button variant="ghost" onClick={onClose} disabled={importing}>
         Cancel
       </Button>
       {mode === "json" ? (
-        <Button variant="secondary" onClick={handleValidateJson}>
+        <Button
+          variant="secondary"
+          onClick={handleValidateJson}
+          disabled={importing}
+        >
           Validate JSON
         </Button>
       ) : (
-        <Button variant="secondary" onClick={downloadQuizImportTemplate}>
+        <Button
+          variant="secondary"
+          onClick={downloadQuizImportTemplate}
+          disabled={importing}
+        >
           Download template
         </Button>
       )}
-      <Button variant="primary" onClick={handleImport} disabled={parsingFile}>
+      <Button
+        variant="primary"
+        onClick={handleImport}
+        disabled={parsingFile || importing}
+        loading={importing}
+      >
         Import Questions
       </Button>
     </>
@@ -169,6 +209,7 @@ export function QuizImportModal({ open, onClose, onImport }) {
       title="Import questions"
       size="lg"
       onClose={onClose}
+      closeDisabled={parsingFile || importing}
       footer={footer}
     >
       <div className="quiz-question-import">
@@ -176,6 +217,8 @@ export function QuizImportModal({ open, onClose, onImport }) {
           <button
             type="button"
             className={`quiz-question-import__mode-btn${mode === "json" ? " quiz-question-import__mode-btn--active" : ""}`}
+            disabled={importing}
+            aria-pressed={mode === "json"}
             onClick={() => {
               setMode("json");
               resetMessages();
@@ -186,6 +229,8 @@ export function QuizImportModal({ open, onClose, onImport }) {
           <button
             type="button"
             className={`quiz-question-import__mode-btn${mode === "file" ? " quiz-question-import__mode-btn--active" : ""}`}
+            disabled={importing}
+            aria-pressed={mode === "file"}
             onClick={() => {
               setMode("file");
               resetMessages();
@@ -209,6 +254,7 @@ export function QuizImportModal({ open, onClose, onImport }) {
               value={jsonText}
               onChange={(e) => setJsonText(e.target.value)}
               placeholder="Paste your questions JSON here"
+              disabled={importing}
             />
 
             <label className="quiz-question-import__checkbox">
@@ -216,6 +262,7 @@ export function QuizImportModal({ open, onClose, onImport }) {
                 type="checkbox"
                 checked={validateBeforeImport}
                 onChange={(e) => setValidateBeforeImport(e.target.checked)}
+                disabled={importing}
               />
               Validate JSON before import
             </label>
@@ -230,7 +277,7 @@ export function QuizImportModal({ open, onClose, onImport }) {
               type="file"
               accept=".xlsx,.xls,.csv"
               onChange={handleFileChange}
-              disabled={parsingFile}
+              disabled={parsingFile || importing}
             />
             {fileName && <p className="quiz-question-import__valid">Selected: {fileName}</p>}
             {parsingFile && <p className="quiz-question-import__valid">Parsing file...</p>}
@@ -278,7 +325,11 @@ export function QuizImportModal({ open, onClose, onImport }) {
         {validMessage && <p className="quiz-question-import__valid">{validMessage}</p>}
 
         {errors.length > 0 && (
-          <ul className="quiz-question-import__errors">
+          <ul
+            className="quiz-question-import__errors"
+            role="alert"
+            aria-live="assertive"
+          >
             {errors.map((err, i) => (
               <li key={i}>{err.message}</li>
             ))}
