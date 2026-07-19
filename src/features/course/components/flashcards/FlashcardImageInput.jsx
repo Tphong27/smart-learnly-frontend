@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from "react";
-import { Image as ImageIcon, ImagePlus, Loader2, Trash2, Upload } from "lucide-react";
+import { useRef, useState } from "react";
+import { Image as ImageIcon, Loader2, RefreshCw, Trash2 } from "lucide-react";
 import {
   FLASHCARD_IMAGE_ACCEPT,
   FLASHCARD_IMAGE_MAX_SIZE_LABEL,
@@ -21,16 +21,6 @@ function imageSelection(files) {
   };
 }
 
-function clipboardFiles(event) {
-  const dataTransferFiles = fileListToArray(event.clipboardData?.files);
-  if (dataTransferFiles.length > 0) return dataTransferFiles;
-
-  return Array.from(event.clipboardData?.items || [])
-    .filter((item) => item.kind === "file")
-    .map((item) => item.getAsFile())
-    .filter(Boolean);
-}
-
 export function FlashcardImageInput({
   id,
   label,
@@ -40,11 +30,9 @@ export function FlashcardImageInput({
   onUploadImage,
   onError,
   onUploadingChange,
-  autoOpenPicker = false,
-  onAutoOpenHandled,
+  onUploadStateChange,
 }) {
   const fileInputRef = useRef(null);
-  const dropzoneRef = useRef(null);
   const [dragging, setDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [message, setMessage] = useState("");
@@ -63,11 +51,13 @@ export function FlashcardImageInput({
     setMessage(nextMessage);
     setMessageType("error");
     onError?.(nextMessage);
+    onUploadStateChange?.({ uploading: false, error: nextMessage });
   }
 
   function showInfo(nextMessage) {
     setMessage(nextMessage || "");
     setMessageType("info");
+    onUploadStateChange?.({ uploading: false, error: "" });
   }
 
   async function uploadFile(file, successMessage = "") {
@@ -85,6 +75,7 @@ export function FlashcardImageInput({
 
     setUploadState(true);
     setMessage("");
+    onUploadStateChange?.({ uploading: true, error: "" });
 
     try {
       const uploaded = await onUploadImage(file);
@@ -129,21 +120,6 @@ export function FlashcardImageInput({
     );
   }
 
-  function handlePaste(event) {
-    if (controlsDisabled) return;
-
-    const selected = imageSelection(clipboardFiles(event));
-    if (!selected.file) return;
-
-    event.preventDefault();
-    uploadFile(
-      selected.file,
-      selected.fileCount > 1 || selected.imageCount > 1
-        ? "Only the first pasted image was uploaded."
-        : "",
-    );
-  }
-
   function openFilePicker() {
     if (controlsDisabled || !onUploadImage) return;
     fileInputRef.current?.click();
@@ -152,20 +128,40 @@ export function FlashcardImageInput({
   function handleRemove() {
     if (controlsDisabled) return;
     setMessage("");
+    onUploadStateChange?.({ uploading: false, error: "" });
     onChange?.("");
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
   }
 
-  useEffect(() => {
-    if (!autoOpenPicker) return;
+  const dropzoneClassName = [
+    "flashcard-image-input__dropzone",
+    dragging ? "is-dragging" : "",
+    hasImage ? "has-image" : "",
+    uploading ? "is-uploading" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
 
-    if (!controlsDisabled && onUploadImage) {
-      window.setTimeout(() => fileInputRef.current?.click(), 0);
-    }
-    onAutoOpenHandled?.();
-  }, [autoOpenPicker, controlsDisabled, onAutoOpenHandled, onUploadImage]);
+  const dragDropProps = {
+    onDragEnter: (event) => {
+      event.preventDefault();
+      if (!controlsDisabled) setDragging(true);
+    },
+    onDragOver: (event) => {
+      event.preventDefault();
+      if (!controlsDisabled) {
+        event.dataTransfer.dropEffect = "copy";
+        setDragging(true);
+      }
+    },
+    onDragLeave: (event) => {
+      event.preventDefault();
+      setDragging(false);
+    },
+    onDrop: handleDrop,
+  };
 
   return (
     <div className="flashcard-image-input">
@@ -178,82 +174,74 @@ export function FlashcardImageInput({
         disabled={controlsDisabled || !onUploadImage}
         onChange={handleSelectedFile}
       />
-      <div
-        ref={dropzoneRef}
-        className={[
-          "flashcard-image-input__dropzone",
-          dragging ? "is-dragging" : "",
-          hasImage ? "has-image" : "",
-          uploading ? "is-uploading" : "",
-        ]
-          .filter(Boolean)
-          .join(" ")}
-        tabIndex={controlsDisabled ? -1 : 0}
-        aria-disabled={controlsDisabled || !onUploadImage}
-        aria-controls={inputId}
-        aria-label={`${label}: Drop, or paste image`}
-        onClick={() => {
-          if (!controlsDisabled) dropzoneRef.current?.focus();
-        }}
-        onPaste={handlePaste}
-        onDragEnter={(event) => {
-          event.preventDefault();
-          if (!controlsDisabled) setDragging(true);
-        }}
-        onDragOver={(event) => {
-          event.preventDefault();
-          if (!controlsDisabled) {
-            event.dataTransfer.dropEffect = "copy";
-            setDragging(true);
-          }
-        }}
-        onDragLeave={(event) => {
-          event.preventDefault();
-          setDragging(false);
-        }}
-        onDrop={handleDrop}
-      >
-        {uploading ? (
-          <div className="flashcard-image-input__state">
-            <Loader2 size={22} className="flashcard-spin-icon" />
-            <span>Uploading image...</span>
-          </div>
-        ) : hasImage ? (
-          <img
-            src={value}
-            alt={`${label} preview`}
-            className="flashcard-image-input__preview"
-            loading="lazy"
-          />
-        ) : (
-          <div className="flashcard-image-input__state">
-            <ImageIcon size={22} />
-            <span>Drop, or paste image</span>
-          </div>
-        )}
-      </div>
-      <div className="flashcard-image-input__actions">
+      {hasImage ? (
+        <div
+          className={dropzoneClassName}
+          aria-label={`${label} preview. Drop another image to replace it.`}
+          {...dragDropProps}
+        >
+          {uploading ? (
+            <div className="flashcard-image-input__state">
+              <Loader2 size={22} className="flashcard-spin-icon" />
+              <span>Uploading image...</span>
+            </div>
+          ) : (
+            <img
+              src={value}
+              alt={`${label} preview`}
+              className="flashcard-image-input__preview"
+              loading="lazy"
+            />
+          )}
+        </div>
+      ) : (
         <button
           type="button"
-          className="flashcard-btn"
-          onClick={openFilePicker}
+          className={dropzoneClassName}
           disabled={controlsDisabled || !onUploadImage}
+          aria-controls={inputId}
+          aria-label={`${label}: Drag an image here or click to upload`}
+          onClick={openFilePicker}
+          {...dragDropProps}
         >
-          {hasImage ? <ImagePlus size={16} /> : <Upload size={16} />}
-          {uploading ? "Uploading" : hasImage ? "Replace image" : "Upload image"}
+          <div className="flashcard-image-input__state">
+            {uploading ? (
+              <Loader2 size={22} className="flashcard-spin-icon" />
+            ) : (
+              <ImageIcon size={22} />
+            )}
+            <span>
+              {uploading
+                ? "Uploading image..."
+                : "Drag an image here or click to upload."}
+            </span>
+          </div>
         </button>
-        {hasImage && (
+      )}
+      {hasImage && (
+        <div className="flashcard-image-input__actions">
           <button
             type="button"
-            className="flashcard-btn flashcard-btn--danger"
+            className="flashcard-btn flashcard-btn--icon flashcard-image-input__action-button"
+            onClick={openFilePicker}
+            disabled={controlsDisabled || !onUploadImage}
+            aria-label="Replace image"
+            title="Replace image"
+          >
+            <RefreshCw size={16} className={uploading ? "flashcard-spin-icon" : ""} />
+          </button>
+          <button
+            type="button"
+            className="flashcard-btn flashcard-btn--icon flashcard-btn--danger flashcard-image-input__action-button"
             onClick={handleRemove}
             disabled={controlsDisabled}
+            aria-label="Remove image"
+            title="Remove image"
           >
             <Trash2 size={16} />
-            Remove
           </button>
-        )}
-      </div>
+        </div>
+      )}
       <p className="flashcard-image-input__hint">
         JPEG, PNG, or WebP. Max {FLASHCARD_IMAGE_MAX_SIZE_LABEL}.
       </p>

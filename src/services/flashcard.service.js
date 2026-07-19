@@ -173,6 +173,14 @@ export const flashcardService = {
     return unwrap(response);
   },
 
+  async rejectStagingCards(setId, stagingCardIds) {
+    const response = await apiClient.post(
+      `/admin/flashcard-sets/${setId}/staging/reject`,
+      { stagingCardIds },
+    );
+    return unwrap(response);
+  },
+
   async approveStagingCards(setId, stagingCardIds) {
     const response = await apiClient.post(
       `/admin/flashcard-sets/${setId}/staging/approve`,

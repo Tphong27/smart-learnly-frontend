@@ -25,7 +25,68 @@ function cardKey(id) {
   return id == null ? "" : String(id);
 }
 
-function CardFace({ label, text, imageUrl, hint, explanation }) {
+function isStructuredPreviewText(value) {
+  const lines = String(value || "")
+    .replace(/\r\n/g, "\n")
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  return lines.some((line) =>
+    /^(options?|choices?|answer choices?)\s*:$/i.test(line) ||
+      /^([A-Z]|\d+)[.)]\s+\S/.test(line) ||
+      /^[-*]\s+\S/.test(line),
+  );
+}
+
+function ManagementPreviewText({ text }) {
+  const source = String(text || "");
+  const structured = isStructuredPreviewText(source);
+  const longProse = !structured && source.trim().length > 280;
+
+  if (!longProse) {
+    return (
+      <div
+        className={[
+          "flashcard-preview__text",
+          structured ? "flashcard-preview__text--structured" : "",
+        ]
+          .filter(Boolean)
+          .join(" ")}
+      >
+        {source}
+      </div>
+    );
+  }
+
+  return (
+    <div className="flashcard-preview__text flashcard-preview__text--prose">
+      {source
+        .replace(/\r\n/g, "\n")
+        .split(/(\n{2,})/)
+        .map((block, index) =>
+          /^\n{2,}$/.test(block) ? (
+            <span
+              key={`space-${index}-${block.length}`}
+              className="flashcard-preview__text-break"
+              aria-hidden="true"
+            >
+              {block}
+            </span>
+          ) : (
+            <p
+              key={`block-${index}-${block.slice(0, 16)}`}
+              className="flashcard-preview__text-block"
+            >
+              {block}
+            </p>
+          ),
+        )}
+    </div>
+  );
+}
+
+function CardFace({ label, text, imageUrl, hint, explanation, contentLayout }) {
   const visibleExplanation = isGenericGeneratedExplanation(explanation)
     ? ""
     : explanation;
@@ -38,6 +99,9 @@ function CardFace({ label, text, imageUrl, hint, explanation }) {
   const isLongText = textLength > 280;
   const isVeryLongText = textLength > 700;
   const isImageLongText = hasImage && textLength > 180;
+  const isImageShortText =
+    hasImage && hasText && !hasSupportingContent && textLength <= 180;
+  const isManagement = contentLayout === "management";
 
   return (
     <div
@@ -50,6 +114,8 @@ function CardFace({ label, text, imageUrl, hint, explanation }) {
         isLongText ? "flashcard-preview__face--long-text" : "",
         isVeryLongText ? "flashcard-preview__face--very-long-text" : "",
         isImageLongText ? "flashcard-preview__face--image-long-text" : "",
+        isImageShortText ? "flashcard-preview__face--image-short-text" : "",
+        isManagement ? "flashcard-preview__face--management" : "",
       ]
         .filter(Boolean)
         .join(" ")}
@@ -65,7 +131,11 @@ function CardFace({ label, text, imageUrl, hint, explanation }) {
           />
         )}
         {text ? (
-          <div className="flashcard-preview__text">{text}</div>
+          isManagement ? (
+            <ManagementPreviewText text={text} />
+          ) : (
+            <div className="flashcard-preview__text">{text}</div>
+          )
         ) : (
           !imageUrl && <div className="flashcard-preview__text is-muted">...</div>
         )}
@@ -93,6 +163,7 @@ export function FlashcardPreview({
   className = "",
   renderControls,
   renderActions,
+  contentLayout = "default",
 }) {
   const normalizedCards = useMemo(() => normalizeCards(cards), [cards]);
   const [internalActiveCardId, setInternalActiveCardId] = useState(null);
@@ -208,12 +279,14 @@ export function FlashcardPreview({
             text={currentCard.frontText}
             imageUrl={currentCard.frontImageUrl}
             hint={currentCard.hint}
+            contentLayout={contentLayout}
           />
           <CardFace
             label="Back"
             text={currentCard.backText}
             imageUrl={currentCard.backImageUrl}
             explanation={currentCard.explanation}
+            contentLayout={contentLayout}
           />
         </button>
       </div>

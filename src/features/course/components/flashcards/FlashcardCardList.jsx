@@ -1,7 +1,6 @@
 import {
   Edit3,
   GripVertical,
-  Image,
   ListOrdered,
   Trash2,
 } from "lucide-react";
@@ -44,15 +43,7 @@ function CardSidePreview({ label, content }) {
 
   return (
     <div className="flashcard-list-item__side">
-      <div className="flashcard-list-item__side-label">
-        <span>{label}</span>
-        {hasImage && (
-          <span className="flashcard-list-item__image-pill">
-            <Image size={12} />
-            Image
-          </span>
-        )}
-      </div>
+      <span className="flashcard-sr-only">{label}</span>
       <div className="flashcard-list-item__side-content">
         {hasImage && (
           <img
@@ -82,6 +73,7 @@ export function FlashcardCardList({
   onEdit,
   onDelete,
   onMove,
+  emptyAction,
   renderCardBody,
   dragDisabled = disabled,
 }) {
@@ -93,6 +85,9 @@ export function FlashcardCardList({
       <div className="flashcard-empty">
         <ListOrdered size={28} />
         <p>No cards yet.</p>
+        {emptyAction && (
+          <div className="flashcard-empty__actions">{emptyAction}</div>
+        )}
       </div>
     );
   }
@@ -126,6 +121,15 @@ export function FlashcardCardList({
               >
                 {(dragProvided, dragSnapshot) => {
                   const customBody = renderCardBody?.(card);
+                  const rowIndex = pageStartIndex + index + 1;
+                  const activateCard = () => {
+                    if (disabled) return;
+                    if (selectionMode) {
+                      onToggleSelect?.(card);
+                    } else {
+                      onSelect?.(card);
+                    }
+                  };
                   return (
                     <div
                       className={[
@@ -140,14 +144,32 @@ export function FlashcardCardList({
                       ref={dragProvided.innerRef}
                       {...dragProvided.draggableProps}
                       {...(!customBody ? {} : { "data-inline-editing": "true" })}
+                      {...(!customBody
+                        ? {
+                            role: "button",
+                            tabIndex: disabled ? -1 : 0,
+                            "aria-label": selectionMode
+                              ? `Select flashcard ${rowIndex}`
+                              : `Preview flashcard ${rowIndex}`,
+                            "aria-pressed": selectionMode
+                              ? selectedSet.has(card.id)
+                              : undefined,
+                            "aria-current":
+                              !selectionMode && activeCardId === card.id
+                                ? "true"
+                                : undefined,
+                          }
+                        : {})}
                       onClick={(event) => {
                         if (disabled) return;
                         if (isInteractiveTarget(event.target)) return;
-                        if (selectionMode) {
-                          onToggleSelect?.(card);
-                        } else {
-                          onSelect?.(card);
-                        }
+                        activateCard();
+                      }}
+                      onKeyDown={(event) => {
+                        if (customBody || disabled) return;
+                        if (event.key !== "Enter" && event.key !== " ") return;
+                        event.preventDefault();
+                        activateCard();
                       }}
                       onDoubleClick={(event) => {
                         if (isInteractiveTarget(event.target)) return;
@@ -173,7 +195,7 @@ export function FlashcardCardList({
                             onDoubleClick={(event) => event.stopPropagation()}
                             onChange={() => onToggleSelect?.(card)}
                             disabled={disabled}
-                            aria-label="Select card"
+                            aria-label={`Select flashcard ${rowIndex}`}
                           />
                         )}
                       </span>
@@ -213,6 +235,7 @@ export function FlashcardCardList({
                           type="button"
                           className="flashcard-btn flashcard-btn--icon"
                           title="Edit card"
+                          aria-label={`Edit flashcard ${rowIndex}`}
                           onClick={(event) => {
                             event.stopPropagation();
                             onEdit?.(card);
@@ -225,6 +248,7 @@ export function FlashcardCardList({
                           type="button"
                           className="flashcard-btn flashcard-btn--icon flashcard-btn--danger"
                           title="Delete card"
+                          aria-label={`Delete flashcard ${rowIndex}`}
                           onClick={(event) => {
                             event.stopPropagation();
                             onDelete?.(card);

@@ -6,7 +6,6 @@ import {
   Save,
   Trash2,
   Upload,
-  X,
 } from "lucide-react";
 import { getCurrentUser } from "@/services";
 import {
@@ -442,7 +441,7 @@ export function FlashcardLessonEditor({
         setQuickEditSavingId(null);
       }
     },
-    [handleCardPersisted, handleQuickEditCancel, quickEditSavingId],
+    [flashcardService, handleCardPersisted, handleQuickEditCancel, quickEditSavingId],
   );
 
   const handleCardsEdited = useCallback(
@@ -540,7 +539,7 @@ export function FlashcardLessonEditor({
 
   if (loading) {
     return (
-      <div className="flashcard-practice__loading">
+      <div className="flashcard-practice__loading" role="status" aria-live="polite">
         <span className="flashcard-spinner" />
         Loading flashcards...
       </div>
@@ -550,8 +549,13 @@ export function FlashcardLessonEditor({
   if (error) {
     return (
       <div className="flashcard-shell">
-        <div className="flashcard-practice__error">{error}</div>
-        <button type="button" className="flashcard-btn" onClick={loadSet}>
+        <div className="flashcard-practice__error" role="alert">{error}</div>
+        <button
+          type="button"
+          className="flashcard-btn"
+          onClick={loadSet}
+          aria-label="Retry loading flashcards"
+        >
           <RefreshCw size={16} />
           Retry
         </button>
@@ -615,7 +619,12 @@ export function FlashcardLessonEditor({
       )}
 
       {activeSection === "current" && (
-        <div className="flashcard-current-workspace">
+        <div
+          id="flashcard-current-panel"
+          className="flashcard-current-workspace"
+          role="tabpanel"
+          aria-labelledby="flashcard-current-tab"
+        >
           {currentView === "edit" ? (
             <FlashcardCardsEditScreen
               setId={flashcardSet?.id}
@@ -629,7 +638,10 @@ export function FlashcardLessonEditor({
           ) : (
             <div className="flashcard-current-workspace__inner">
               <div className="flashcard-current-workspace__main">
-                <div className="flashcard-panel flashcard-current-list-panel">
+                <div
+                  className="flashcard-panel flashcard-current-list-panel"
+                  aria-busy={reordering || bulkDeleting}
+                >
                   <div className="flashcard-panel__header">
                     <div>
                       <h3 className="flashcard-panel__title">Current Flashcards</h3>
@@ -642,46 +654,50 @@ export function FlashcardLessonEditor({
                         </div>
                       )}
                     </div>
-                    <div className="flashcard-actions">
-
-      
-                      <button
-                        type="button"
-                        className="flashcard-btn flashcard-btn--primary"
-                        onClick={handleAddCard}
-                        disabled={reordering || bulkDeleting || Boolean(editingCurrentCardId)}
-                      >
-                        <Plus size={16} />
-                        Add card
-                      </button>
-                      {canUseStaging && (
+                    <div className="flashcard-actions flashcard-current-selection-actions">
+                      {!selectionMode && (
                         <button
                           type="button"
                           className="flashcard-btn flashcard-btn--primary"
+                          onClick={handleAddCard}
+                          disabled={reordering || bulkDeleting || Boolean(editingCurrentCardId)}
+                        >
+                          <Plus size={16} />
+                          Add card
+                        </button>
+                      )}
+                      {!selectionMode && canUseStaging && (
+                        <button
+                          type="button"
+                          className="flashcard-btn"
                           onClick={openImportModal}
                           disabled={reordering || bulkDeleting || Boolean(editingCurrentCardId)}
+                          aria-label="Import flashcards"
                         >
                           <Upload size={16} />
                           Import
                         </button>
                       )}
-                      {selectionMode && visibleCards.length > 0 && (
+                      {selectionMode ? (
                         <>
                           <button
                             type="button"
-                            className="flashcard-btn"
+                            className="flashcard-btn flashcard-btn--compact"
                             onClick={selectCurrentPage}
                             disabled={
                               reordering ||
                               bulkDeleting ||
+                              visibleCards.length === 0 ||
                               selectedVisibleRenderedCardIds.length === visibleCardIds.length
                             }
+                            aria-label="Select all visible flashcards"
+                            title="Select all visible flashcards"
                           >
-                            Select all
+                            All
                           </button>
                           <button
                             type="button"
-                            className="flashcard-btn"
+                            className="flashcard-btn flashcard-btn--compact"
                             onClick={clearCurrentPageSelection}
                             disabled={
                               reordering ||
@@ -691,28 +707,42 @@ export function FlashcardLessonEditor({
                           >
                             Clear
                           </button>
+                          <button
+                            type="button"
+                            className="flashcard-btn flashcard-btn--danger flashcard-btn--compact"
+                            onClick={openBulkDeleteConfirm}
+                            disabled={
+                              reordering ||
+                              bulkDeleting ||
+                              selectedVisibleCardIds.length === 0
+                            }
+                            aria-label={`Delete ${selectedVisibleCardIds.length} selected flashcards`}
+                          >
+                            <Trash2 size={16} />
+                            ({selectedVisibleCardIds.length})
+                          </button>
+                          <button
+                            type="button"
+                            className="flashcard-btn flashcard-btn--compact"
+                            onClick={toggleSelectionMode}
+                            disabled={reordering || bulkDeleting || Boolean(editingCurrentCardId)}
+                            aria-pressed={selectionMode}
+                          >
+                            Cancel
+                          </button>
                         </>
-                      )}
-                      {selectionMode && selectedVisibleCardIds.length > 0 && (
+                      ) : (
                         <button
                           type="button"
-                          className="flashcard-btn flashcard-btn--danger"
-                          onClick={openBulkDeleteConfirm}
-                          disabled={reordering || bulkDeleting}
+                          className="flashcard-btn"
+                          onClick={toggleSelectionMode}
+                          disabled={reordering || bulkDeleting || Boolean(editingCurrentCardId)}
+                          aria-pressed={selectionMode}
                         >
-                          <Trash2 size={16} />
-                          Delete ({selectedVisibleCardIds.length})
+                          <CheckSquare size={16} />
+                          Select
                         </button>
                       )}
-                      <button
-                        type="button"
-                        className="flashcard-btn"
-                        onClick={toggleSelectionMode}
-                        disabled={reordering || bulkDeleting || Boolean(editingCurrentCardId)}
-                      >
-                        {selectionMode ? <X size={16} /> : <CheckSquare size={16} />}
-                        {selectionMode ? "Cancel" : "Select"}
-                      </button>
                     </div>
                   </div>
                   <div className="flashcard-panel__body">
@@ -738,6 +768,30 @@ export function FlashcardLessonEditor({
                       onEdit={handleEditCard}
                       onDelete={handleDeleteCard}
                       onMove={handleMoveCard}
+                      emptyAction={
+                        <>
+                          <button
+                            type="button"
+                            className="flashcard-btn flashcard-btn--primary"
+                            onClick={handleAddCard}
+                            disabled={reordering || bulkDeleting}
+                          >
+                            <Plus size={16} />
+                            Add card
+                          </button>
+                          {canUseStaging && (
+                            <button
+                              type="button"
+                              className="flashcard-btn"
+                              onClick={openImportModal}
+                              disabled={reordering || bulkDeleting}
+                            >
+                              <Upload size={16} />
+                              Import
+                            </button>
+                          )}
+                        </>
+                      }
                       renderCardBody={(card) =>
                         editingCurrentCardId === card.id ? (
                           <FlashcardQuickEditRow
@@ -753,7 +807,7 @@ export function FlashcardLessonEditor({
                     />
                     {remainingCount > 0 && (
                       <div className="flashcard-current-pagination">
-                        <span>
+                        <span className="flashcard-current-pagination__status">
                           Showing {visibleCards.length} of {orderedCards.length}
                         </span>
                         <div className="flashcard-current-pagination__controls">
@@ -765,6 +819,10 @@ export function FlashcardLessonEditor({
                             Show more ({Math.min(remainingCount, CURRENT_FLASHCARD_PAGE_SIZE)} of {remainingCount})
                           </button>
                         </div>
+                        <span
+                          className="flashcard-current-pagination__spacer"
+                          aria-hidden="true"
+                        />
                       </div>
                     )}
                   </div>
@@ -783,6 +841,7 @@ export function FlashcardLessonEditor({
                       setActivePreviewCardId(cardId)
                     }
                     emptyMessage="Add a card to preview this flashcard set."
+                    contentLayout="management"
                   />
                 </div>
               </aside>
@@ -791,17 +850,23 @@ export function FlashcardLessonEditor({
         </div>
       )}
       {activeSection === "review" && canUseStaging && (
-        <FlashcardStagingWorkspace
-          setId={flashcardSet?.id}
-          existingCards={orderedCards}
-          notify={notify}
-          onUploadImage={handleUploadImage}
-          onApproved={refreshCurrentFlashcards}
-          refreshKey={stagingRefreshKey}
-          onImport={openImportModal}
-          onModalOpen={clearFlashcardToasts}
-          importDisabled={reordering || bulkDeleting}
-        />
+        <div
+          id="flashcard-review-panel"
+          role="tabpanel"
+          aria-labelledby="flashcard-review-tab"
+        >
+          <FlashcardStagingWorkspace
+            setId={flashcardSet?.id}
+            existingCards={orderedCards}
+            notify={notify}
+            onUploadImage={handleUploadImage}
+            onApproved={refreshCurrentFlashcards}
+            refreshKey={stagingRefreshKey}
+            onImport={openImportModal}
+            onModalOpen={clearFlashcardToasts}
+            importDisabled={reordering || bulkDeleting}
+          />
+        </div>
       )}
       {importModalOpen && flashcardSet?.id && (
         <ImportFlashcardsModal
