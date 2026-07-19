@@ -1578,6 +1578,42 @@
   max-width: min(100%, 260px);
   object-fit: contain;
 }
+
+.ft-option__body {
+  display: grid;
+  flex: 1;
+  gap: 8px;
+  min-width: 0;
+}
+
+.ft-answer-media {
+  display: grid;
+  gap: 8px;
+}
+
+.ft-answer-media__image {
+  border: 1px solid #dbe3ef;
+  border-radius: 8px;
+  display: block;
+  max-height: 180px;
+  max-width: min(100%, 320px);
+  object-fit: contain;
+  background: #f8fafc;
+}
+
+.ft-answer-media__audio {
+  width: 100%;
+  max-width: 360px;
+}
+
+.ft-answer-media__video {
+  background: #0f172a;
+  border: 1px solid #dbe3ef;
+  border-radius: 8px;
+  max-height: 240px;
+  max-width: 100%;
+  width: min(100%, 480px);
+}
 .ft-option:hover {
   background: #f8fafc;
 }

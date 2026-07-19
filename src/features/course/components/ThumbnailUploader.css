@@ -25,6 +25,11 @@
   background-color: #f1f5f9;
 }
 
+.dropzone-box:focus-visible {
+  outline: 2px solid #6d28d2;
+  outline-offset: 2px;
+}
+
 /* Hiệu ứng khi đang kéo file đè lên */
 .dropzone-box.dragging {
   border-color: #2563eb;

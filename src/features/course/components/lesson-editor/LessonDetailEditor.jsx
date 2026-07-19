@@ -169,6 +169,7 @@ export function LessonDetailEditor({ context }) {
     const [titleError, setTitleError] = useState("");
     const [summaryError, setSummaryError] = useState("");
     const [activeTab, setActiveTab] = useState("edit");
+    const [flashcardSection, setFlashcardSection] = useState("current");
     const [title, setTitle] = useState("");
     const [loading, setLoading] = useState(false);
     const [pageLoading, setPageLoading] = useState(true);
@@ -976,18 +977,48 @@ export function LessonDetailEditor({ context }) {
                                 expanded={expandedSection === "material"}
                                 onToggle={() => setExpandedSection((current) => current === "material" ? "" : "material")}
                             >
-                                <FlashcardLessonEditor
-                                    lessonId={lessonId}
-                                    initialSetId={initialFlashcardSetId}
-                                    defaultTitle={title}
-                                    showToast={showToast}
-                                    onTitleSaved={(nextTitle) => {
-                                        setTitle(nextTitle);
-                                        setHasChanges(false);
-                                    }}
-                                    flashcardService={services.flashcardService}
-                                    stagingEnabled={features.flashcardStaging !== false}
-                                />
+                                <div className="flashcard-actions" style={{ marginBottom: "16px" }}>
+    <button
+        type="button"
+        className={`flashcard-btn ${
+            flashcardSection === "current"
+                ? "flashcard-btn--primary"
+                : ""
+        }`}
+        onClick={() => setFlashcardSection("current")}
+    >
+        Current Flashcards
+    </button>
+
+    {features.flashcardStaging !== false && (
+        <button
+            type="button"
+            className={`flashcard-btn ${
+                flashcardSection === "review"
+                    ? "flashcard-btn--primary"
+                    : ""
+            }`}
+            onClick={() => setFlashcardSection("review")}
+        >
+            Staging Review
+        </button>
+    )}
+</div>
+
+<FlashcardLessonEditor
+    lessonId={lessonId}
+    initialSetId={initialFlashcardSetId}
+    defaultTitle={title}
+    activeSection={flashcardSection}
+    showToast={showToast}
+    onTitleSaved={(nextTitle) => {
+        setTitle(nextTitle);
+        setHasChanges(false);
+    }}
+    onNavigateToCurrent={() => setFlashcardSection("current")}
+    flashcardService={services.flashcardService}
+    stagingEnabled={features.flashcardStaging !== false}
+/>
                             </LessonEditorSection>
                         </div>
                     </div>

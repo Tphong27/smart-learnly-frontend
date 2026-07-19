@@ -3,7 +3,7 @@ import { Edit3, Save, X } from "lucide-react";
 import { Button } from "@/shared/components/ui";
 import { classService } from "@/services";
 import { useActiveTrainers } from "../hooks/useActiveTrainers";
-import { formatCapacity, formatDate } from "../utils/classFormatter";
+import { formatCapacity, formatDate, formatVnd } from "../utils/classFormatter";
 import { ScheduleCalendar } from "@/shared/components/scheduleCalendar";
 import { WeeklyScheduleEditor } from "./WeeklySchedulePicker";
 
@@ -20,6 +20,10 @@ function toEditForm(classData) {
     startDate: toInputDate(classData?.startDate),
     endDate: toInputDate(classData?.endDate),
     maxStudents: Number(classData?.maxStudents || 30),
+    price:
+      classData?.price === null || classData?.price === undefined
+        ? ""
+        : Number(classData.price),
     status: String(classData?.status || "upcoming").toLowerCase(),
   };
 }
@@ -89,6 +93,12 @@ function toUpdatePayload(form, originalClassData) {
     maxStudents !== Number(originalClassData.maxStudents)
   ) {
     payload.maxStudents = maxStudents;
+  }
+
+  const price = numberOrUndefined(form.price);
+  const originalPrice = numberOrUndefined(originalClassData.price);
+  if (price !== undefined && price !== originalPrice) {
+    payload.price = price;
   }
 
   const status = emptyToUndefined(form.status);
@@ -306,6 +316,13 @@ export function ClassOverviewTab({
               </p>
 
               <p>
+                <strong>Price:</strong>{" "}
+                {classData.price === null || classData.price === undefined
+                  ? "Not configured"
+                  : formatVnd(classData.price)}
+              </p>
+
+              <p>
                 <strong>Capacity:</strong>{" "}
                 {formatCapacity(
                   classData.activeEnrollmentCount,
@@ -391,6 +408,19 @@ export function ClassOverviewTab({
                   }
                 />
               </div>
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="overviewPrice">Class price (VND)</label>
+
+              <input
+                id="overviewPrice"
+                type="number"
+                min="0"
+                step="1000"
+                value={editForm.price}
+                onChange={(event) => updateField("price", event.target.value)}
+              />
             </div>
 
             <div className="form-group">

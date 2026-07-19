@@ -128,13 +128,19 @@ export function LearningWorkspacePage({
         return String(currentCourseId) === String(courseId);
       });
 
-      const enrolledClass =
-        matchedCourse?.enrolledClass || matchedCourse?.myCourseClass || null;
-
-      if (!enrolledClass?.id) {
-        throw new Error("You are not enrolled in any class for this course.");
+      if (!matchedCourse) {
+        throw new Error("You are not enrolled in this course.");
       }
 
+      const enrolledClass =
+        matchedCourse.enrolledClass || matchedCourse.myCourseClass || null;
+
+      // Online course:
+      if (!enrolledClass?.id) {
+        return null;
+      }
+
+      //Offline course
       const params = new URLSearchParams();
       params.set("classId", enrolledClass.id);
 
@@ -221,14 +227,17 @@ export function LearningWorkspacePage({
 
   const [activeLessonId, setActiveLessonId] = useState(requestedLessonId);
 
-  const handleSelectLesson = useCallback((lesson) => {
-    setActiveLessonId(getLessonId(lesson));
-    setActiveLessonTab("overview");
+  const handleSelectLesson = useCallback(
+    (lesson) => {
+      setActiveLessonId(getLessonId(lesson));
+      setActiveLessonTab("overview");
 
-    if (window.matchMedia("(max-width: 1024px)").matches) {
-      setSidebarOpen(false);
-    }
-  }, [setActiveLessonId, setActiveLessonTab, setSidebarOpen]);
+      if (window.matchMedia("(max-width: 1024px)").matches) {
+        setSidebarOpen(false);
+      }
+    },
+    [setActiveLessonId, setActiveLessonTab, setSidebarOpen],
+  );
 
   const activeLesson = useMemo(() => {
     if (allLessons.length === 0) return null;
@@ -285,6 +294,7 @@ export function LearningWorkspacePage({
           lessonId,
           nextCompleted,
           resolvedClassId,
+          courseId,
         );
       } catch (err) {
         setCompletedLessonIds((currentIds) => {
@@ -308,7 +318,7 @@ export function LearningWorkspacePage({
         });
       }
     },
-    [completedLessonIds, mode, resolvedClassId, updatingLessonIds],
+    [completedLessonIds, courseId, mode, resolvedClassId, updatingLessonIds],
   );
 
   const activeLessonIdForNote = getLessonId(activeLesson);
@@ -343,6 +353,7 @@ export function LearningWorkspacePage({
           lessonId,
           true,
           resolvedClassId,
+          courseId,
         );
       } catch (err) {
         setCompletedLessonIds((currentIds) => {
@@ -354,7 +365,7 @@ export function LearningWorkspacePage({
         setError(err?.message || "Failed to update lesson progress");
       }
     },
-    [completedLessonIds, mode, resolvedClassId],
+    [completedLessonIds, courseId, mode, resolvedClassId],
   );
 
   const handleGoToNextLesson = useCallback(async () => {
@@ -507,7 +518,10 @@ export function LearningWorkspacePage({
           <span>Smart Learnly</span>
         </button>
 
-        <span className="learning-workspace__topbar-divider" aria-hidden="true" />
+        <span
+          className="learning-workspace__topbar-divider"
+          aria-hidden="true"
+        />
 
         <h1 className="learning-workspace__course-title" title={courseTitle}>
           {courseTitle}

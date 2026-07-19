@@ -55,18 +55,28 @@ function CardFace({ label, text, imageUrl, hint, explanation }) {
         .join(" ")}
     >
       <span className="flashcard-preview__label">{label}</span>
-      {imageUrl && (
-        <img
-          src={imageUrl}
-          alt=""
-          className="flashcard-preview__image"
-          loading="lazy"
-        />
-      )}
-      {text && <div className="flashcard-preview__text">{text}</div>}
-      {hint && <div className="flashcard-preview__hint">{hint}</div>}
-      {visibleExplanation && (
-        <div className="flashcard-preview__explanation">{visibleExplanation}</div>
+      <div className="flashcard-preview__main-content">
+        {imageUrl && (
+          <img
+            src={imageUrl}
+            alt=""
+            className="flashcard-preview__image"
+            loading="lazy"
+          />
+        )}
+        {text ? (
+          <div className="flashcard-preview__text">{text}</div>
+        ) : (
+          !imageUrl && <div className="flashcard-preview__text is-muted">...</div>
+        )}
+      </div>
+      {(hint || visibleExplanation) && (
+        <div className="flashcard-preview__support">
+          {hint && <div className="flashcard-preview__hint">{hint}</div>}
+          {visibleExplanation && (
+            <div className="flashcard-preview__explanation">{visibleExplanation}</div>
+          )}
+        </div>
       )}
     </div>
   );

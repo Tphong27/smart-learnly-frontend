@@ -19,6 +19,7 @@ function toFormValues(initialData) {
       startDate: "",
       endDate: "",
       maxStudents: 30,
+      price: "",
     };
   }
 
@@ -30,6 +31,10 @@ function toFormValues(initialData) {
     startDate: toInputDate(initialData.startDate),
     endDate: toInputDate(initialData.endDate),
     maxStudents: Number(initialData.maxStudents ?? 30),
+    price:
+      initialData.price === null || initialData.price === undefined
+        ? ""
+        : Number(initialData.price),
   };
 }
 
@@ -66,6 +71,7 @@ export function useClassForm(initialData = null, onSuccess = null) {
           startDate: formData.startDate || null,
           endDate: formData.endDate || null,
           maxStudents: Number(formData.maxStudents),
+          price: Number(formData.price),
         };
 
         if (initialData?.id) {
@@ -81,7 +87,7 @@ export function useClassForm(initialData = null, onSuccess = null) {
         setIsSubmitting(false);
       }
     },
-    [initialData, onSuccess]
+    [initialData, onSuccess],
   );
 
   return {

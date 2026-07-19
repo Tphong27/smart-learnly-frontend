@@ -60,7 +60,7 @@ export function InvoiceDetailModal({ open, transactionId, onClose }) {
   }, [open, transactionId, toast]);
 
   return (
-    <Modal open={open} title="Invoice details" size="md" onClose={onClose}>
+    <Modal open={open} title="Invoice details" size="lg" onClose={onClose}>
       {loading ? (
         <div className="history-loading">Loading invoice...</div>
       ) : error ? (

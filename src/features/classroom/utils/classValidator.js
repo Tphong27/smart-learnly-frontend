@@ -66,6 +66,13 @@ export const classFormSchema = z
       .min(1, "Maximum students must be at least 1")
       .max(500, "Maximum students must not exceed 500")
       .int("Maximum students must be an integer"),
+
+    price: z
+      .number({
+        required_error: "Class price is required",
+        invalid_type_error: "Class price must be a valid number",
+      })
+      .min(0, "Class price must be greater than or equal to 0"),
   })
   .refine(
     (data) => {

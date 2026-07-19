@@ -7,6 +7,7 @@ import { useDocumentTitle } from "../../shared/hooks/useDocumentTitle";
 import { Button } from "../../shared/components/ui";
 import { CourseListPage } from "../course/pages/CourseListPage";
 import { CourseCard } from "../course/components/CourseCard";
+import { OpeningSchedulePage } from "../opening-schedule";
 
 const HERO_POPULAR_COURSE = {
     id: "react-nang-cao-kien-truc-frontend",
@@ -113,6 +114,33 @@ export function HomePage() {
                             detailState={{
                                 from: "/",
                                 fromHash: "#courses",
+                                backLabel: "Back to homepage",
+                            }}
+                        />
+                    </div>
+                </section>
+
+                <section
+                    className="opening-home-section"
+                    id="opening-schedule"
+                >
+                    <div className="container">
+                        <div className="courses-heading">
+                            <div>
+                                <h2>Upcoming Classes</h2>
+                                <p>
+                                    Compare upcoming class schedules, trainers,
+                                    available places and tuition.
+                                </p>
+                            </div>
+                        </div>
+
+                        <OpeningSchedulePage
+                            embedded
+                            showHero={false}
+                            pageSize={3}
+                            detailState={{
+                                from: "/#opening-schedule",
                                 backLabel: "Back to homepage",
                             }}
                         />

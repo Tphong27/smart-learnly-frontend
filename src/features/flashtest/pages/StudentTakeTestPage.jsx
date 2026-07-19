@@ -96,6 +96,57 @@ function submitWarningMessage(warning) {
   return warning?.message || "";
 }
 
+function mediaItemUrl(item) {
+  if (!item) return null;
+  return item.mediaUrl || item.url || null;
+}
+
+function findMediaByType(answer, mediaType) {
+  const items = Array.isArray(answer?.media) ? answer.media : [];
+  return items.find((item) => item.mediaType === mediaType) || null;
+}
+
+function renderAnswerMedia(answer) {
+  if (!answer || !Array.isArray(answer.media) || answer.media.length === 0) {
+    return null;
+  }
+  const image = findMediaByType(answer, "image");
+  const audio = findMediaByType(answer, "audio");
+  const video = findMediaByType(answer, "video");
+  if (!image && !audio && !video) return null;
+  return (
+    <div className="ft-answer-media">
+      {image && mediaItemUrl(image) ? (
+        <img
+          src={mediaItemUrl(image)}
+          alt={image.fileName || "Answer image"}
+          className="ft-answer-media__image"
+        />
+      ) : null}
+      {audio && mediaItemUrl(audio) ? (
+        <audio
+          controls
+          preload="metadata"
+          src={mediaItemUrl(audio)}
+          className="ft-answer-media__audio"
+        >
+          <track kind="captions" />
+        </audio>
+      ) : null}
+      {video && mediaItemUrl(video) ? (
+        <video
+          controls
+          preload="metadata"
+          src={mediaItemUrl(video)}
+          className="ft-answer-media__video"
+        >
+          <track kind="captions" />
+        </video>
+      ) : null}
+    </div>
+  );
+}
+
 export function StudentTakeTestPage({
   listPath = "/learning/flashtests",
   accessStoragePrefix = "flashAccess",
@@ -617,12 +668,15 @@ export function StudentTakeTestPage({
                         )
                       }
                     />
-                    <span
-                      className="ft-answer-rich-text"
-                      dangerouslySetInnerHTML={{
-                        __html: sanitizeAnswerHtml(answer.answerText || answer.content),
-                      }}
-                    />
+                    <div className="ft-option__body">
+                      <span
+                        className="ft-answer-rich-text"
+                        dangerouslySetInnerHTML={{
+                          __html: sanitizeAnswerHtml(answer.answerText || answer.content),
+                        }}
+                      />
+                      {renderAnswerMedia(answer)}
+                    </div>
                   </label>
                 ))}
               </div>
