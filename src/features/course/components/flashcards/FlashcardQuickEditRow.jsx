@@ -31,8 +31,10 @@ export function FlashcardQuickEditRow({
 
   useEffect(() => {
     const firstField = formRef.current?.querySelector("textarea");
-    firstField?.focus?.();
-    firstField?.select?.();
+    if (!firstField) return;
+    firstField.focus({ preventScroll: true });
+    const caretPosition = firstField.value.length;
+    firstField.setSelectionRange?.(caretPosition, caretPosition);
   }, []);
 
   useEffect(() => {

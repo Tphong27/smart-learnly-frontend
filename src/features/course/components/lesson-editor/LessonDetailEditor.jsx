@@ -995,33 +995,53 @@ export function LessonDetailEditor({ context }) {
                                 expanded={expandedSection === "material"}
                                 onToggle={() => setExpandedSection((current) => current === "material" ? "" : "material")}
                             >
-                                <div className="flashcard-actions" style={{ marginBottom: "16px" }}>
-    <button
-        type="button"
-        className={`flashcard-btn ${
-            flashcardSection === "current"
-                ? "flashcard-btn--primary"
-                : ""
-        }`}
-        onClick={() => setFlashcardSection("current")}
-    >
-        Current Flashcards
-    </button>
+                                <div
+                                    className="flashcard-section-tabs"
+                                    role="tablist"
+                                    aria-label="Flashcard sections"
+                                >
+                                    <button
+                                        id="flashcard-current-tab"
+                                        type="button"
+                                        role="tab"
+                                        aria-selected={
+                                            flashcardSection === "current"
+                                        }
+                                        aria-controls="flashcard-current-panel"
+                                        className={`flashcard-section-tabs__tab ${
+                                            flashcardSection === "current"
+                                                ? "is-active"
+                                                : ""
+                                        }`}
+                                        onClick={() =>
+                                            setFlashcardSection("current")
+                                        }
+                                    >
+                                        Current Flashcards
+                                    </button>
 
-    {features.flashcardStaging !== false && (
-        <button
-            type="button"
-            className={`flashcard-btn ${
-                flashcardSection === "review"
-                    ? "flashcard-btn--primary"
-                    : ""
-            }`}
-            onClick={() => setFlashcardSection("review")}
-        >
-            Staging Review
-        </button>
-    )}
-</div>
+                                    {features.flashcardStaging !== false && (
+                                        <button
+                                            id="flashcard-review-tab"
+                                            type="button"
+                                            role="tab"
+                                            aria-selected={
+                                                flashcardSection === "review"
+                                            }
+                                            aria-controls="flashcard-review-panel"
+                                            className={`flashcard-section-tabs__tab ${
+                                                flashcardSection === "review"
+                                                    ? "is-active"
+                                                    : ""
+                                            }`}
+                                            onClick={() =>
+                                                setFlashcardSection("review")
+                                            }
+                                        >
+                                            Staging Review
+                                        </button>
+                                    )}
+                                </div>
 
 <FlashcardLessonEditor
     lessonId={lessonId}
