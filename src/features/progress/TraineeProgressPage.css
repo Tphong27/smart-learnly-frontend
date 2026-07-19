@@ -479,6 +479,136 @@ a.course-metric:hover {
   background: #fff3f3;
 }
 
+/* Loading skeleton */
+.progress-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+.progress-skeleton__stack {
+  min-width: 0;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.progress-skeleton__page-title {
+  width: 260px;
+  max-width: 72vw;
+  height: 36px;
+}
+
+.progress-skeleton__page-copy {
+  width: 370px;
+  max-width: 82vw;
+  height: 14px;
+}
+
+.progress-skeleton__enrollment-count,
+.progress-skeleton__result-count {
+  width: 124px;
+  height: 14px;
+}
+
+.progress-skeleton__overview-label {
+  width: 116px;
+  height: 14px;
+}
+
+.progress-skeleton__overview-value {
+  width: 54px;
+  height: 29px;
+}
+
+.progress-skeleton__progress-bar {
+  width: 100%;
+  height: 8px;
+  border-radius: 999px;
+}
+
+.progress-skeleton__stats > div {
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.progress-skeleton__stat-label {
+  width: 72px;
+  max-width: 100%;
+  height: 11px;
+}
+
+.progress-skeleton__stat-value {
+  width: 28px;
+  height: 24px;
+}
+
+.progress-skeleton__tabs {
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  gap: 28px;
+}
+
+.progress-skeleton__tab {
+  width: 104px;
+  height: 16px;
+}
+
+.progress-skeleton__control {
+  width: 100%;
+  height: 44px;
+}
+
+.progress-skeleton .course-progress-card:hover {
+  border-color: var(--line, #d1d7dc);
+}
+
+.progress-skeleton .course-progress-card__thumbnail {
+  border: 0;
+}
+
+.progress-skeleton__course-meta {
+  width: min(180px, 52%);
+  height: 12px;
+}
+
+.progress-skeleton__course-title {
+  width: min(420px, 78%);
+  height: 20px;
+}
+
+.progress-skeleton__status {
+  flex: 0 0 auto;
+  width: 82px;
+  height: 24px;
+  border-radius: 999px;
+}
+
+.progress-skeleton__progress-copy {
+  width: 96px;
+  height: 11px;
+}
+
+.progress-skeleton__progress-value {
+  width: 34px;
+  height: 12px;
+}
+
+.progress-skeleton__metrics {
+  width: min(390px, 82%);
+  height: 11px;
+  margin-top: 12px;
+}
+
+.progress-skeleton__button {
+  width: 128px;
+  height: 40px;
+}
+
 .progress-tab:focus-visible,
 .course-metric:focus-visible {
   outline: 3px solid rgba(86, 36, 208, 0.25);
@@ -545,6 +675,18 @@ a.course-metric:hover {
   .course-progress-card__metrics {
     grid-template-columns: 1fr;
   }
+
+  .progress-skeleton {
+    gap: 24px;
+  }
+
+  .progress-skeleton .progress-tabs-panel__top {
+    gap: 0;
+  }
+
+  .progress-skeleton__result-count {
+    margin: 10px 0;
+  }
 }
 
 @media (max-width: 560px) {
@@ -580,6 +722,10 @@ a.course-metric:hover {
   }
 
   .course-progress-card__actions .button {
+    width: 100%;
+  }
+
+  .progress-skeleton__button {
     width: 100%;
   }
 }

@@ -5,8 +5,15 @@ function unwrap(response) {
 }
 
 export const transactionService = {
-  async list({ page = 0, size = 20 } = {}) {
-    const response = await apiClient.get('/transactions', { params: { page, size } })
+  async list({ page = 0, size = 20, keyword, status } = {}) {
+    const response = await apiClient.get('/transactions', {
+      params: {
+        page,
+        size,
+        keyword: keyword || undefined,
+        status: status || undefined,
+      },
+    })
     return unwrap(response) || { items: [], page: 0, size, totalItems: 0, totalPages: 0 }
   },
 

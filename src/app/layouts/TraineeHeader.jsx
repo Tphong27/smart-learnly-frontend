@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from "react";
-import { Bell, ChevronDown, LogOut, User } from "lucide-react";
+import { Bell, ChevronDown, LogOut, ReceiptText, User } from "lucide-react";
 import { Link } from "react-router-dom";
 import { SmartLearnlyMark } from "@/shared/components/SmartLearnlyMark";
 import { HeaderCourseSearch } from "@/shared/components/HeaderCourseSearch";
+import { ROLES } from "@/shared/constants/roles";
 import { courseService } from "@/services";
 
 function getDisplayName(user) {
@@ -240,6 +241,13 @@ export function TraineeHeader({ user, onLogout, roleLabel }) {
                 </div>
                 <Link to="/profile" role="menuitem" onClick={() => setProfileOpen(false)}>
                   <User size={17} /> Profile
+                </Link>
+                <Link
+                  to="/learning/transactions"
+                  role="menuitem"
+                  onClick={() => setProfileOpen(false)}
+                >
+                  <ReceiptText size={17} /> Transaction history
                 </Link>
                 <button type="button" role="menuitem" onClick={onLogout}>
                   <LogOut size={17} /> Log out

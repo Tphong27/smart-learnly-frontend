@@ -3,6 +3,7 @@ import { Search } from "lucide-react";
 import { traineeProgressService } from "@/services";
 import { ProgressBar } from "../components/ProgressBar";
 import { CourseProgressCard } from "../components/CourseProgressCard";
+import { TraineeProgressSkeleton } from "../components/TraineeProgressSkeleton";
 import "../TraineeProgressPage.css";
 
 const TAB_CONFIG = {
@@ -106,7 +107,7 @@ export function TraineeProgressPage() {
 
   return (
     <main className="trainee-progress-page">
-      {loading && <div className="progress-state">Loading progress...</div>}
+      {loading && <TraineeProgressSkeleton />}
 
       {!loading && error && (
         <div className="progress-state progress-state--error">{error}</div>
