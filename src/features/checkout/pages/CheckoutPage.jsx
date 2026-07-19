@@ -151,7 +151,6 @@ export function CheckoutPage() {
     <section className="checkout-page">
       <header className="checkout-page__header">
         <div>
-          <span className="checkout-page__eyebrow">Payment</span>
           <h1>Complete your checkout</h1>
           <p>Order {payment.orderCode || payment.orderId}</p>
         </div>

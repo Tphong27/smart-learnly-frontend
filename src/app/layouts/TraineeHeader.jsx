@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from "react";
-import { Bell, ChevronDown, LogOut, User } from "lucide-react";
+import { Bell, ChevronDown, LogOut, Receipt, User } from "lucide-react";
 import { Link } from "react-router-dom";
 import { SmartLearnlyMark } from "@/shared/components/SmartLearnlyMark";
 import { HeaderCourseSearch } from "@/shared/components/HeaderCourseSearch";
 import { courseService } from "@/services";
+import { ROLES } from "@/shared/constants/roles";
 
 function getDisplayName(user) {
   return (
@@ -152,7 +153,10 @@ export function TraineeHeader({ user, onLogout, roleLabel }) {
                 All categories
               </Link>
               {categoriesLoading ? (
-                <span className="trainee-header__categories-status" role="status">
+                <span
+                  className="trainee-header__categories-status"
+                  role="status"
+                >
                   Loading categories…
                 </span>
               ) : categories.length > 0 ? (
@@ -238,11 +242,33 @@ export function TraineeHeader({ user, onLogout, roleLabel }) {
                   <strong>{displayName}</strong>
                   <span>{user?.email || `${roleText} account`}</span>
                 </div>
-                <Link to="/profile" role="menuitem" onClick={() => setProfileOpen(false)}>
+                <Link
+                  to="/profile"
+                  role="menuitem"
+                  onClick={() => setProfileOpen(false)}
+                >
                   <User size={17} /> Profile
                 </Link>
-                <button type="button" role="menuitem" onClick={onLogout}>
-                  <LogOut size={17} /> Log out
+
+                <Link
+                  to="/learning/transactions"
+                  role="menuitem"
+                  onClick={() => setProfileOpen(false)}
+                >
+                  <Receipt size={17} />
+                  My Transactions
+                </Link>
+
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    setProfileOpen(false);
+                    onLogout?.();
+                  }}
+                >
+                  <LogOut size={17} />
+                  Log out
                 </button>
               </div>
             )}

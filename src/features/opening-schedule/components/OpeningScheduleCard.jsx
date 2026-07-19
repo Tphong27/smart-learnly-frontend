@@ -1,13 +1,11 @@
 import {
+  ArrowRight,
   BookOpen,
   CalendarDays,
-  Clock3,
-  MapPin,
   UserRound,
   Users,
 } from "lucide-react";
 import { Link } from "react-router-dom";
-import { ScheduleCalendar } from "@/shared/components/scheduleCalendar";
 import {
   formatDate,
   formatPrice,
@@ -23,25 +21,31 @@ const CARD_DATE_OPTIONS = {
 
 export function OpeningScheduleCard({ classItem, detailState }) {
   const availableSlots = toNumber(classItem?.availableSlots, 0);
-
   const price = toNumber(classItem?.price, 0);
 
   const isAvailable =
     String(classItem?.status || "").toUpperCase() === "UPCOMING" &&
     availableSlots > 0;
 
+  const detailPath = `/opening-schedule/${classItem.classId}`;
+
   return (
     <article className="opening-card">
-      <div className="opening-card__image-wrapper">
+      <Link
+        to={detailPath}
+        state={detailState}
+        className="opening-card__media"
+        aria-label={`View ${classItem.className}`}
+      >
         {classItem.courseThumbnailUrl ? (
           <img
             src={classItem.courseThumbnailUrl}
             alt={classItem.courseTitle}
-            className="opening-card__image"
+            loading="lazy"
           />
         ) : (
           <div className="opening-card__image-fallback">
-            <BookOpen size={38} />
+            <BookOpen size={36} aria-hidden="true" />
           </div>
         )}
 
@@ -56,52 +60,45 @@ export function OpeningScheduleCard({ classItem, detailState }) {
             ? "Open for registration"
             : classItem.status
               ? formatStatusLabel(classItem.status)
-              : "Unknown"}
+              : "Unavailable"}
         </span>
-      </div>
+      </Link>
 
       <div className="opening-card__body">
-        <p className="opening-card__course">{classItem.courseTitle}</p>
+        <div className="opening-card__top">
+          <span className="opening-card__course">{classItem.courseTitle}</span>
 
-        <h2 className="opening-card__title">{classItem.className}</h2>
+          <h3 className="opening-card__title">
+            <Link
+              to={detailPath}
+              state={detailState}
+              className="opening-card__title-link"
+            >
+              {classItem.className}
+            </Link>
+          </h3>
 
-        <div className="opening-card__information">
-          <div className="opening-card__information-row">
-            <UserRound size={17} />
+          <div className="opening-card__information">
+            <div className="opening-card__information-row">
+              <UserRound size={16} aria-hidden="true" />
+              <span>{classItem.trainerName || "Trainer not assigned"}</span>
+            </div>
 
-            <span>{classItem.trainerName || "Trainer not assigned"}</span>
-          </div>
+            <div className="opening-card__information-row">
+              <CalendarDays size={16} aria-hidden="true" />
+              <span>
+                {formatDate(classItem.startDate, "vi-VN", CARD_DATE_OPTIONS)}
+                {" – "}
+                {formatDate(classItem.endDate, "vi-VN", CARD_DATE_OPTIONS)}
+              </span>
+            </div>
 
-          <div className="opening-card__information-row">
-            <CalendarDays size={17} />
-
-            <span>
-              {formatDate(classItem.startDate, "vi-VN", CARD_DATE_OPTIONS)}
-              {" – "}
-              {formatDate(classItem.endDate, "vi-VN", CARD_DATE_OPTIONS)}
-            </span>
-          </div>
-
-          <div className="opening-card__information-row opening-card__information-row--schedule">
-            <Clock3 size={17} />
-
-            <ScheduleCalendar
-              variant="compact"
-              scheduleDescription={classItem.scheduleDescription}
-              emptyText="Schedule not available"
-            />
-          </div>
-
-          <div className="opening-card__information-row">
-            <Users size={17} />
-
-            <span>{availableSlots} places remaining</span>
-          </div>
-
-          <div className="opening-card__information-row">
-            <MapPin size={17} />
-
-            <span>Offline class</span>
+            <div className="opening-card__information-row">
+              <Users size={16} aria-hidden="true" />
+              <span>
+                {availableSlots} of {classItem.maxStudents} places remaining
+              </span>
+            </div>
           </div>
         </div>
 
@@ -111,11 +108,12 @@ export function OpeningScheduleCard({ classItem, detailState }) {
           </strong>
 
           <Link
-            to={`/opening-schedule/${classItem.classId}`}
+            to={detailPath}
             state={detailState}
-            className="opening-card__button"
+            className="opening-card__link"
           >
             View class
+            <ArrowRight size={15} aria-hidden="true" />
           </Link>
         </div>
       </div>

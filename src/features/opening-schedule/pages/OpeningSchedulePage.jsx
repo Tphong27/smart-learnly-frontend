@@ -5,23 +5,29 @@ import { openingScheduleService } from "@/services";
 import { toNumber } from "@/shared/utils/formatters";
 import { OpeningScheduleCard } from "../components/OpeningScheduleCard";
 import { OpeningScheduleFilters } from "../components/OpeningScheduleFilters";
+import { Pagination } from "@/shared/components/Pagination";
+import {
+  addOneMonthToDateValue,
+  createDefaultOpeningScheduleFilters,
+  getPriceRangeParams,
+  isValidPriceRange,
+} from "../utils/opening-schedule-filters";
 import "../opening-schedule.css";
 
-const DEFAULT_FILTERS = {
-  keyword: "",
-  startFrom: "",
-  startTo: "",
-  minPrice: "",
-  maxPrice: "",
-};
-
 function readFiltersFromSearchParams(searchParams) {
+  const defaults = createDefaultOpeningScheduleFilters();
+  const startFrom = searchParams.get("startFrom") || defaults.startFrom;
+  const startTo =
+    searchParams.get("startTo") || addOneMonthToDateValue(startFrom);
+  const requestedPriceRange = searchParams.get("priceRange") || "";
+
   return {
     keyword: searchParams.get("keyword") || "",
-    startFrom: searchParams.get("startFrom") || "",
-    startTo: searchParams.get("startTo") || "",
-    minPrice: searchParams.get("minPrice") || "",
-    maxPrice: searchParams.get("maxPrice") || "",
+    startFrom,
+    startTo,
+    priceRange: isValidPriceRange(requestedPriceRange)
+      ? requestedPriceRange
+      : "",
   };
 }
 
@@ -34,31 +40,47 @@ function normalizePage(value) {
 }
 
 function validateFilters(filters) {
-  if (
-    filters.startFrom &&
-    filters.startTo &&
-    filters.startFrom > filters.startTo
-  ) {
+  if (!filters.startFrom) {
+    return "Opening-from date is required.";
+  }
+
+  if (!filters.startTo) {
+    return "Opening-to date is required.";
+  }
+
+  if (filters.startFrom > filters.startTo) {
     return "Opening-from date cannot be after opening-to date.";
   }
 
-  const hasMinPrice = filters.minPrice !== "";
-  const hasMaxPrice = filters.maxPrice !== "";
-  const minPrice = hasMinPrice ? Number(filters.minPrice) : null;
-  const maxPrice = hasMaxPrice ? Number(filters.maxPrice) : null;
-
-  if (
-    (hasMinPrice && (!Number.isFinite(minPrice) || minPrice < 0)) ||
-    (hasMaxPrice && (!Number.isFinite(maxPrice) || maxPrice < 0))
-  ) {
-    return "Price must be a non-negative number.";
-  }
-
-  if (minPrice !== null && maxPrice !== null && minPrice > maxPrice) {
-    return "Minimum price cannot exceed maximum price.";
+  if (!isValidPriceRange(filters.priceRange)) {
+    return "Selected price range is invalid.";
   }
 
   return "";
+}
+
+function OpeningScheduleSkeleton({ count = 6 }) {
+  return (
+    <div className="opening-catalog-skeleton" role="status" aria-live="polite">
+      <span className="sr-only">Loading opening schedule...</span>
+
+      {Array.from({ length: count }, (_, index) => (
+        <article
+          className="opening-catalog-skeleton__card"
+          key={index}
+          aria-hidden="true"
+        >
+          <span className="opening-catalog-skeleton__image" />
+          <div className="opening-catalog-skeleton__body">
+            <span className="opening-catalog-skeleton__line opening-catalog-skeleton__line--short" />
+            <span className="opening-catalog-skeleton__line" />
+            <span className="opening-catalog-skeleton__line" />
+            <span className="opening-catalog-skeleton__line opening-catalog-skeleton__line--price" />
+          </div>
+        </article>
+      ))}
+    </div>
+  );
 }
 
 export function OpeningSchedulePage({
@@ -71,18 +93,15 @@ export function OpeningSchedulePage({
   const syncWithUrl = !embedded;
   const initialFilters = syncWithUrl
     ? readFiltersFromSearchParams(searchParams)
-    : { ...DEFAULT_FILTERS };
+    : createDefaultOpeningScheduleFilters();
   const [filters, setFilters] = useState(initialFilters);
   const [appliedFilters, setAppliedFilters] = useState(initialFilters);
-
   const [page, setPage] = useState(() => {
     if (!syncWithUrl) {
       return 0;
     }
-
     return normalizePage(searchParams.get("page"));
   });
-
   const [classes, setClasses] = useState([]);
   const [pageInfo, setPageInfo] = useState({
     totalPages: 1,
@@ -181,8 +200,14 @@ export function OpeningSchedulePage({
       setError("");
 
       try {
+        const priceRange = getPriceRangeParams(appliedFilters.priceRange);
+
         const result = await openingScheduleService.list({
-          ...appliedFilters,
+          keyword: appliedFilters.keyword,
+          startFrom: appliedFilters.startFrom,
+          startTo: appliedFilters.startTo,
+          minPrice: priceRange.minPrice,
+          maxPrice: priceRange.maxPrice,
           page,
           size: pageSize,
         });
@@ -241,38 +266,33 @@ export function OpeningSchedulePage({
     };
   }, [appliedFilters, page, pageSize, refreshKey, syncWithUrl, updateUrl]);
 
-  function handleReset() {
-    setError("");
-    setFilterError("");
-    setFilters({
-      ...DEFAULT_FILTERS,
-    });
+function handlePageChange(nextPage) {
+  const isInvalidPage =
+    !Number.isInteger(nextPage) ||
+    nextPage < 0 ||
+    nextPage >= pageInfo.totalPages ||
+    nextPage === page;
+
+  if (isInvalidPage) {
+    return;
   }
 
-  function handlePageChange(nextPage) {
-    const isInvalidPage =
-      !Number.isInteger(nextPage) ||
-      nextPage < 0 ||
-      nextPage >= pageInfo.totalPages ||
-      nextPage === page;
+  setLoading(true);
+  setError("");
+  setPage(nextPage);
 
-    if (isInvalidPage) {
-      return;
-    }
+  if (syncWithUrl) {
+    updateUrl(appliedFilters, nextPage);
+  }
 
-    setLoading(true);
-    setError("");
-    setPage(nextPage);
-
-    if (syncWithUrl) {
-      updateUrl(appliedFilters, nextPage);
-    }
-
+  //Chỉ cuộn lên đầu khi Opening Schedule là một trang độc lập.
+  if (!embedded) {
     window.scrollTo({
       top: 0,
       behavior: "smooth",
     });
   }
+}
 
   function handleRetry() {
     setLoading(true);
@@ -285,129 +305,104 @@ export function OpeningSchedulePage({
     <>
       {showHero && (
         <section className="opening-page__hero">
-          <div>
-            <span className="opening-page__eyebrow">Offline learning</span>
-
-            <h1>Opening Schedule</h1>
-
-            <p>
-              Browse upcoming offline classes, compare schedules and trainers,
-              then register for the class that matches your plan.
-            </p>
-          </div>
-
-          <CalendarDays size={72} />
+          <h1>Opening Schedule</h1>
         </section>
       )}
 
-      <OpeningScheduleFilters
-        filters={filters}
-        onChange={setFilters}
-        onReset={handleReset}
-      />
+      <section
+        className={
+          embedded
+            ? "opening-panel opening-panel--embedded"
+            : "opening-panel opening-panel--discovery"
+        }
+      >
+        <OpeningScheduleFilters
+          filters={filters}
+          onChange={setFilters}
+          showKeywordSearch={!embedded}
+        />
 
-      {filterError && (
-        <p className="opening-filters__error" role="alert">
-          {filterError}
-        </p>
-      )}
+        {filterError && (
+          <p className="opening-filters__error" role="alert">
+            {filterError}
+          </p>
+        )}
 
-      {!loading && !error && (
-        <div className="opening-page__result">
-          <strong>{pageInfo.totalElements}</strong>
+        {loading && !embedded && (
+          <OpeningScheduleSkeleton count={Math.min(pageSize, 6)} />
+        )}
 
-          {" upcoming classes"}
-        </div>
-      )}
+        {loading && embedded && (
+          <div className="opening-state" role="status" aria-live="polite">
+            <LoaderCircle className="opening-spinner" size={32} />
+            <p>Loading opening schedule...</p>
+          </div>
+        )}
 
-      {loading && (
-        <div className="opening-state" role="status" aria-live="polite">
-          <LoaderCircle className="opening-spinner" size={38} />
+        {!loading && error && (
+          <div className="opening-state opening-state--error" role="alert">
+            <AlertCircle size={36} />
 
-          <p>Loading opening schedule...</p>
-        </div>
-      )}
+            <h2>Opening schedule is unavailable</h2>
 
-      {!loading && error && (
-        <div className="opening-state opening-state--error" role="alert">
-          <AlertCircle size={38} />
+            <p>{error}</p>
 
-          <p>{error}</p>
-
-          <button
-            type="button"
-            className="opening-button opening-button--primary"
-            onClick={handleRetry}
-          >
-            Try again
-          </button>
-        </div>
-      )}
-
-      {!loading && !error && classes.length === 0 && (
-        <div className="opening-state">
-          <CalendarDays size={42} />
-
-          <h2>No upcoming classes found</h2>
-
-          <p>Change the filters or return later for new opening classes.</p>
-        </div>
-      )}
-
-      {!loading && !error && classes.length > 0 && (
-        <>
-          <section className="opening-grid">
-            {classes.map((classItem) => (
-              <OpeningScheduleCard
-                key={classItem.classId}
-                classItem={classItem}
-                detailState={detailState}
-              />
-            ))}
-          </section>
-
-          {pageInfo.totalPages > 1 && (
-            <nav
-              className="opening-pagination"
-              aria-label="Opening schedule pages"
+            <button
+              type="button"
+              className="opening-button opening-button--primary"
+              onClick={handleRetry}
             >
-              <button
-                type="button"
-                disabled={page <= 0}
-                onClick={() => handlePageChange(page - 1)}
-              >
-                Previous
-              </button>
+              Try again
+            </button>
+          </div>
+        )}
 
-              {Array.from(
-                {
-                  length: pageInfo.totalPages,
-                },
-                (_, index) => (
-                  <button
-                    type="button"
-                    key={index}
-                    className={index === page ? "is-active" : ""}
-                    aria-current={index === page ? "page" : undefined}
-                    aria-label={`Go to page ${index + 1}`}
-                    onClick={() => handlePageChange(index)}
-                  >
-                    {index + 1}
-                  </button>
-                ),
-              )}
+        {!loading && !error && classes.length === 0 && (
+          <div className="opening-state">
+            <CalendarDays size={40} />
 
-              <button
-                type="button"
-                disabled={page >= pageInfo.totalPages - 1}
-                onClick={() => handlePageChange(page + 1)}
-              >
-                Next
-              </button>
-            </nav>
-          )}
-        </>
-      )}
+            <h2>No upcoming classes found</h2>
+
+            <p>Try changing the filters or return later for new classes.</p>
+
+            <button
+              type="button"
+              className="opening-button opening-button--secondary"
+            >
+              Clear filters
+            </button>
+          </div>
+        )}
+
+        {!loading && !error && classes.length > 0 && (
+          <>
+            <section
+              className="opening-grid"
+              aria-label="Upcoming offline classes"
+            >
+              {classes.map((classItem) => (
+                <OpeningScheduleCard
+                  key={classItem.classId}
+                  classItem={classItem}
+                  detailState={detailState}
+                />
+              ))}
+            </section>
+
+            <Pagination
+              page={page + 1}
+              totalPages={pageInfo.totalPages}
+              totalItems={pageInfo.totalElements}
+              size={pageSize}
+              pageSizeOptions={[pageSize]}
+              onPageChange={(nextPage) => handlePageChange(nextPage - 1)}
+              disabled={loading}
+              ariaLabel="Opening schedule pagination"
+              className="opening-pagination"
+            />
+          </>
+        )}
+      </section>
     </>
   );
 

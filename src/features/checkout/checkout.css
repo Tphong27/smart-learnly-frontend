@@ -15,14 +15,6 @@
   gap: 16px;
 }
 
-.checkout-page__eyebrow {
-  color: var(--primary, #5624d0);
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
 .checkout-page__header h1 {
   margin: 4px 0 6px;
   color: var(--ink, #2d2f31);
@@ -103,30 +95,34 @@
 
 .payment-instruction-card__body {
   display: grid;
-  grid-template-columns: 220px minmax(0, 1fr);
-  align-items: start;
-  gap: 24px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: stretch;
+  gap: 32px;
 }
 
 .vietqr-box {
   width: 100%;
-  min-height: 220px;
+  min-width: 0;
+  min-height: 360px;
 
   display: flex;
   align-items: center;
   justify-content: center;
 
-  padding: 12px;
+  padding: 20px;
   border: 1px dashed var(--line, #d1d7dc);
   border-radius: 8px;
 
   background: var(--surface, #f7f9fa);
+  box-sizing: border-box;
 }
 
 .vietqr-box img {
   display: block;
-  width: min(100%, 210px);
+  width: 100%;
+  max-width: 340px;
   height: auto;
+  object-fit: contain;
 }
 
 .vietqr-box__empty {
@@ -136,20 +132,23 @@
 }
 
 .payment-instruction-card__info {
-  display: grid;
-  gap: 4px;
+  min-width: 0;
   margin: 0;
+
+  display: grid;
+  align-content: start;
+  gap: 4px;
 }
 
 .payment-info-row {
-  min-height: 52px;
+  min-height: 56px;
 
   display: grid;
   grid-template-columns: 132px minmax(0, 1fr);
   align-items: center;
-  gap: 12px;
+  gap: 16px;
 
-  padding: 4px 0;
+  padding: 6px 0;
   border-bottom: 1px solid var(--sl-line-soft, #e8eaed);
 }
 
@@ -458,21 +457,27 @@
     font-size: 21px;
   }
 
-  .payment-instruction-card__body {
-    grid-template-columns: 1fr;
-    gap: 20px;
-  }
-
-  .vietqr-box {
-    min-height: 220px;
-  }
-
   .checkout-summary__row > span {
     flex-basis: 38%;
   }
 
   .checkout-summary__row > strong {
     max-width: 62%;
+  }
+}
+
+@media (max-width: 760px) {
+  .payment-instruction-card__body {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+
+  .vietqr-box {
+    min-height: 320px;
+  }
+
+  .vietqr-box img {
+    max-width: 320px;
   }
 }
 

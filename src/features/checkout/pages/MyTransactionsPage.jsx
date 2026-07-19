@@ -117,10 +117,6 @@ export function MyTransactionsPage() {
     <div className="history-page checkout-history-page">
       <header className="history-page__header">
         <h1>Transaction history</h1>
-        <p>
-          Review your payments and download invoices for successful
-          transactions.
-        </p>
       </header>
       <section className="history-card">
         <div className="history-toolbar">

@@ -16,24 +16,20 @@ const TRAINEE_TABS = [
     to: "/learning/progress",
   },
   {
-    label: "Course Catalog",
-    to: "/learning/courses",
-  },
-  {
-    label: "Opening Schedule",
-    to: "/learning/opening-schedule",
-  },
-  {
-    label: "My Transactions",
-    to: "/learning/transactions",
-  },
-  {
     label: "My Tests",
     to: "/learning/tests",
   },
   {
-    label: "Flashcards",
+    label: "My Flashcards",
     to: "/learning/flashcards",
+  },
+    {
+    label: "Course Catalog",
+    to: "/learning/courses",
+  },
+  {
+    label: "Opening Class",
+    to: "/learning/opening-schedule",
   },
 ];
 

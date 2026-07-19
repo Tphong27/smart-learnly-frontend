@@ -259,7 +259,7 @@
     text-align: left;
 }
 
-.trainee-header__profile-menu button {
+.trainee-header__profile-menu > [role="menuitem"] + [role="menuitem"] {
     border-top: 1px solid var(--line, #d1d7dc);
 }
 
