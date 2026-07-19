@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Pencil, Trash2, Plus, Upload, CheckCircle2 } from "lucide-react";
-import { Button, useToast } from "@/shared/components/ui";
+import { Button, Modal, useToast } from "@/shared/components/ui";
 import { courseService } from "@/services/course.service";
 import { normalizeLessonStatus } from "@/features/course/utils/lesson-status";
 import {
@@ -47,7 +47,7 @@ function optionLetter(index) {
   return String.fromCharCode(65 + index);
 }
 
-function QuizQuestionCard({ question, index, onEdit, onDelete }) {
+function QuizQuestionCard({ question, index, onEdit, onDelete, disabled }) {
   const type = question.type;
   const isChoice = type === QUESTION_TYPES.SINGLE || type === QUESTION_TYPES.MULTIPLE;
   const isFill = type === QUESTION_TYPES.FILL;
@@ -95,6 +95,8 @@ function QuizQuestionCard({ question, index, onEdit, onDelete }) {
             className="admin-table__icon-btn"
             onClick={() => onEdit(index)}
             title="Edit question"
+            aria-label={`Edit question ${index + 1}`}
+            disabled={disabled}
           >
             <Pencil size={15} />
           </button>
@@ -103,6 +105,8 @@ function QuizQuestionCard({ question, index, onEdit, onDelete }) {
             className="admin-table__icon-btn admin-table__icon-btn--danger"
             onClick={() => onDelete(index)}
             title="Delete question"
+            aria-label={`Delete question ${index + 1}`}
+            disabled={disabled}
           >
             <Trash2 size={15} />
           </button>
@@ -171,28 +175,43 @@ function QuizQuestionCard({ question, index, onEdit, onDelete }) {
 }
 
 /**
- * Panel quản lý câu hỏi quiz - render inline trong tab lesson editor.
- * Không còn Modal wrapper. Nhận `service` qua prop để dùng chung
- * cho admin (courseService) và trainer (trainerLessonService).
- * Props: { lessonId, lessonTitle, onSaved, service }
+ * Panel quản lý câu hỏi quiz - render inline trong lesson editor.
+ * Mỗi thao tác thay đổi câu hỏi được lưu ngay để tránh content local cũ
+ * bị nút Save changes của lesson ghi đè.
  */
 export function QuizQuestionsPanel({
   lessonId,
   lessonTitle,
   onSaved,
+  onBusyChange,
+  disabled = false,
   service = courseService,
 }) {
   const toast = useToast();
 
-  const [quizTitle, setQuizTitle] = useState("");
   const [questions, setQuestions] = useState([]);
   const [errors, setErrors] = useState([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const savingRef = useRef(false);
 
   const [editIndex, setEditIndex] = useState(null); // null = đóng, -1 = thêm mới
-  const [editOpen, setEditOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
+  const [deleteIndex, setDeleteIndex] = useState(null);
+
+  const busy = loading || saving;
+  const mutationDisabled = disabled || busy;
+
+  useEffect(() => {
+    onBusyChange?.(busy);
+  }, [busy, onBusyChange]);
+
+  useEffect(
+    () => () => {
+      onBusyChange?.(false);
+    },
+    [onBusyChange],
+  );
 
   // Load câu hỏi hiện có khi lessonId đổi.
   useEffect(() => {
@@ -206,7 +225,6 @@ export function QuizQuestionsPanel({
         const data = response?.data || response;
         const parsed = parseQuizContent(data?.content || "");
         if (!cancelled) {
-          setQuizTitle(parsed.title || data?.title || "");
           setQuestions(parsed.questions || []);
         }
       } catch (error) {
@@ -223,63 +241,61 @@ export function QuizQuestionsPanel({
     };
   }, [lessonId, toast, service]);
 
-  const handleImported = (importedQuestions) => {
-    setQuestions((prev) => [...prev, ...importedQuestions]);
-    setImportOpen(false);
-    toast.success(`Added ${importedQuestions.length} question(s) to current list.`);
-  };
+  const persistQuestions = async (nextQuestions, successMessage) => {
+    if (!lessonId || savingRef.current) return false;
 
-  const handleDelete = (idx) => {
-    setQuestions((prev) => prev.filter((_, i) => i !== idx));
-    toast.success("Question deleted.");
-  };
-
-  const openEdit = (idx) => {
-    setEditIndex(idx);
-    setEditOpen(true);
-  };
-
-  const handleEditSubmit = (question) => {
-    setQuestions((prev) => {
-      if (editIndex === -1) return [...prev, question];
-      return prev.map((q, i) => (i === editIndex ? question : q));
-    });
-    setEditOpen(false);
-    setEditIndex(null);
-    toast.success(editIndex === -1 ? "Question added." : "Question updated.");
-  };
-
-  const handleSave = async () => {
-    if (!lessonId) return;
-    const { valid, errors: validationErrors } = validateQuizQuestions(questions);
+    const { valid, errors: validationErrors } =
+      validateQuizQuestions(nextQuestions);
     if (!valid) {
       setErrors(validationErrors);
       toast.error("Cannot save: some questions are invalid.");
-      return;
+      return false;
     }
+
+    savingRef.current = true;
     setSaving(true);
     try {
       const detail = await service.getLessonDetail(lessonId);
-      const lessonData = detail?.data || detail;
-      const content = serializeQuizContent(quizTitle, questions);
+      const latestLesson = detail?.data || detail;
+      const persistedTitle = String(latestLesson?.title || lessonTitle || "").trim();
+      const content = serializeQuizContent(persistedTitle, nextQuestions);
       const payload = {
-        title: lessonData.title,
-        lessonType: lessonData.lessonType || lessonData.type || "QUIZ",
+        title: persistedTitle,
+        lessonType: latestLesson.lessonType || latestLesson.type || "QUIZ",
         content,
-        videoUrl: lessonData.videoUrl ?? null,
-        attachmentUrl: lessonData.attachmentUrl ?? null,
-        durationSeconds: Number(lessonData.durationSeconds || 0),
-        isPreview: Boolean(lessonData.isPreview ?? lessonData.isPreviewable),
-        status: normalizeLessonStatus(lessonData.status),
-        resources: Array.isArray(lessonData.resources)
-          ? lessonData.resources
+        videoUrl: latestLesson.videoUrl ?? null,
+        attachmentUrl: latestLesson.attachmentUrl ?? null,
+        durationSeconds: Number(latestLesson.durationSeconds || 0),
+        isPreview: Boolean(
+          latestLesson.isPreview ?? latestLesson.isPreviewable,
+        ),
+        status: normalizeLessonStatus(latestLesson.status),
+        resources: Array.isArray(latestLesson.resources)
+          ? latestLesson.resources
           : [],
-        sortOrder: lessonData.sortOrder ?? 0,
+        sortOrder: latestLesson.sortOrder ?? 0,
       };
-      await service.updateLesson(lessonId, payload);
-      toast.success("Quiz questions saved.");
+
+      const response = await service.updateLesson(lessonId, payload);
+      const responseLesson = response?.data || response;
+      const savedLesson = {
+        ...latestLesson,
+        ...payload,
+        ...(responseLesson && typeof responseLesson === "object"
+          ? responseLesson
+          : {}),
+        content,
+      };
+
+      setQuestions(nextQuestions);
       setErrors([]);
-      onSaved?.();
+      try {
+        await onSaved?.(content, savedLesson);
+      } catch (callbackError) {
+        console.error("Sync saved quiz state error:", callbackError);
+      }
+      toast.success(successMessage);
+      return true;
     } catch (error) {
       const responseData = error?.response?.data;
       let message = "Failed to save quiz questions.";
@@ -291,9 +307,41 @@ export function QuizQuestionsPanel({
       }
       toast.error(message);
       console.error("Save quiz error:", error);
+      return false;
     } finally {
+      savingRef.current = false;
       setSaving(false);
     }
+  };
+
+  const handleImported = (importedQuestions) =>
+    persistQuestions(
+      [...questions, ...importedQuestions],
+      `Imported ${importedQuestions.length} question(s).`,
+    );
+
+  const openEdit = (index) => {
+    if (!mutationDisabled) setEditIndex(index);
+  };
+
+  const handleEditSubmit = (question) => {
+    const nextQuestions =
+      editIndex === -1
+        ? [...questions, question]
+        : questions.map((current, index) =>
+            index === editIndex ? question : current,
+          );
+    return persistQuestions(
+      nextQuestions,
+      editIndex === -1 ? "Question added." : "Question updated.",
+    );
+  };
+
+  const handleConfirmDelete = async () => {
+    if (deleteIndex == null) return;
+    const nextQuestions = questions.filter((_, index) => index !== deleteIndex);
+    const saved = await persistQuestions(nextQuestions, "Question deleted.");
+    if (saved) setDeleteIndex(null);
   };
 
   return (
@@ -301,17 +349,6 @@ export function QuizQuestionsPanel({
       <section className="admin-card admin-card--flush">
         <div className="admin-toolbar">
           <div className="admin-toolbar__filters">
-            <label className="quiz-question-panel__title-label" htmlFor="quiz-question-panel-title">
-              Quiz title
-            </label>
-            <input
-              id="quiz-question-panel-title"
-              type="text"
-              className="quiz-question-panel__title-input"
-              value={quizTitle}
-              onChange={(e) => setQuizTitle(e.target.value)}
-              placeholder={lessonTitle || "Quiz title"}
-            />
             <span className="quiz-question-panel__count">
               {questions.length} question(s)
             </span>
@@ -321,7 +358,7 @@ export function QuizQuestionsPanel({
               variant="secondary"
               leftIcon={<Upload size={15} />}
               onClick={() => setImportOpen(true)}
-              disabled={saving}
+              disabled={mutationDisabled}
             >
               Import questions
             </Button>
@@ -329,16 +366,9 @@ export function QuizQuestionsPanel({
               variant="secondary"
               leftIcon={<Plus size={15} />}
               onClick={() => openEdit(-1)}
-              disabled={saving}
+              disabled={mutationDisabled}
             >
               Add question
-            </Button>
-            <Button
-              variant="primary"
-              onClick={handleSave}
-              loading={saving}
-            >
-              Save questions
             </Button>
           </div>
         </div>
@@ -367,7 +397,8 @@ export function QuizQuestionsPanel({
                     question={question}
                     index={idx}
                     onEdit={openEdit}
-                    onDelete={handleDelete}
+                    onDelete={setDeleteIndex}
+                    disabled={mutationDisabled}
                   />
                 ))}
               </div>
@@ -377,13 +408,10 @@ export function QuizQuestionsPanel({
       </section>
 
       <QuizQuestionEditModal
-        key={editOpen ? `edit-${editIndex}` : "closed"}
-        open={editOpen}
+        key={editIndex == null ? "closed" : `edit-${editIndex}`}
+        open={editIndex != null}
         question={editIndex != null && editIndex >= 0 ? questions[editIndex] : null}
-        onClose={() => {
-          setEditOpen(false);
-          setEditIndex(null);
-        }}
+        onClose={() => setEditIndex(null)}
         onSubmit={handleEditSubmit}
       />
 
@@ -393,6 +421,38 @@ export function QuizQuestionsPanel({
         onClose={() => setImportOpen(false)}
         onImport={handleImported}
       />
+
+      <Modal
+        open={deleteIndex != null}
+        title="Delete question"
+        description={
+          deleteIndex == null
+            ? ""
+            : `Question ${deleteIndex + 1} will be permanently removed from this quiz.`
+        }
+        onClose={() => setDeleteIndex(null)}
+        closeDisabled={saving}
+        footer={
+          <>
+            <Button
+              variant="ghost"
+              onClick={() => setDeleteIndex(null)}
+              disabled={saving}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="danger"
+              onClick={handleConfirmDelete}
+              loading={saving}
+            >
+              Delete question
+            </Button>
+          </>
+        }
+      >
+        <p>This action cannot be undone.</p>
+      </Modal>
     </div>
   );
 }

@@ -534,6 +534,112 @@ export async function parseQuizImportFile(file) {
   };
 }
 
+function escapeExcelXml(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function templateColumnWidth(column, rows, index) {
+  const maxLength = rows.reduce((max, row) => Math.max(max, String(row[index] ?? "").length), column.length);
+  const isLongTextColumn = [
+    "title",
+    "option_a_text",
+    "option_b_text",
+    "option_c_text",
+    "option_d_text",
+    "explain_question",
+  ].includes(column);
+  const minWidth = isLongTextColumn ? 140 : 90;
+  const maxWidth = isLongTextColumn ? 320 : 180;
+  return Math.min(Math.max(maxLength * 7, minWidth), maxWidth);
+}
+
+function styledCell(value, styleId) {
+  return `<Cell ss:StyleID="${styleId}"><Data ss:Type="String">${escapeExcelXml(value)}</Data></Cell>`;
+}
+
+function buildStyledTemplateWorkbook(dataMatrix) {
+  const centeredColumns = new Set(["type", "correct_answers"]);
+  const wrapColumns = new Set([
+    "title",
+    "option_a_text",
+    "option_b_text",
+    "option_c_text",
+    "option_d_text",
+    "explain_question",
+  ]);
+  const columnXml = QUIZ_IMPORT_COLUMNS.map((column, index) => (
+    `<Column ss:AutoFitWidth="0" ss:Width="${templateColumnWidth(column, dataMatrix, index)}"/>`
+  )).join("");
+  const rowXml = dataMatrix.map((row, rowIndex) => {
+    const isHeader = rowIndex === 0;
+    const cells = row.map((value, columnIndex) => {
+      if (isHeader) return styledCell(value, "Header");
+      const column = QUIZ_IMPORT_COLUMNS[columnIndex];
+      const isAlt = rowIndex % 2 === 0;
+      if (centeredColumns.has(column)) return styledCell(value, isAlt ? "DataCenterAlt" : "DataCenter");
+      if (wrapColumns.has(column)) return styledCell(value, isAlt ? "DataWrapAlt" : "DataWrap");
+      return styledCell(value, isAlt ? "DataAlt" : "Data");
+    }).join("");
+    return `<Row ss:Height="${isHeader ? 28 : 36}">${cells}</Row>`;
+  }).join("");
+  const filterRange = `R1C1:R${dataMatrix.length}C${QUIZ_IMPORT_COLUMNS.length}`;
+
+  return `<?xml version="1.0"?>
+<?mso-application progid="Excel.Sheet"?>
+<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"
+  xmlns:o="urn:schemas-microsoft-com:office:office"
+  xmlns:x="urn:schemas-microsoft-com:office:excel"
+  xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"
+  xmlns:html="http://www.w3.org/TR/REC-html40">
+  <Styles>
+    <Style ss:ID="Header">
+      <Font ss:FontName="Calibri" ss:Size="12" ss:Bold="1" ss:Color="#FFFFFF"/>
+      <Interior ss:Color="#1F4E78" ss:Pattern="Solid"/>
+      <Alignment ss:Horizontal="Center" ss:Vertical="Center" ss:WrapText="1"/>
+      <Borders>
+        <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#D9E2F3"/>
+        <Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#D9E2F3"/>
+        <Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#D9E2F3"/>
+        <Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#D9E2F3"/>
+      </Borders>
+    </Style>
+    <Style ss:ID="Data"><Alignment ss:Vertical="Center"/><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E5E7EB"/><Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E5E7EB"/><Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E5E7EB"/><Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E5E7EB"/></Borders></Style>
+    <Style ss:ID="DataAlt"><Interior ss:Color="#F8FAFC" ss:Pattern="Solid"/><Alignment ss:Vertical="Center"/><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E5E7EB"/><Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E5E7EB"/><Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E5E7EB"/><Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E5E7EB"/></Borders></Style>
+    <Style ss:ID="DataWrap"><Alignment ss:Vertical="Center" ss:WrapText="1"/><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E5E7EB"/><Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E5E7EB"/><Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E5E7EB"/><Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E5E7EB"/></Borders></Style>
+    <Style ss:ID="DataWrapAlt"><Interior ss:Color="#F8FAFC" ss:Pattern="Solid"/><Alignment ss:Vertical="Center" ss:WrapText="1"/><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E5E7EB"/><Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E5E7EB"/><Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E5E7EB"/><Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E5E7EB"/></Borders></Style>
+    <Style ss:ID="DataCenter"><Alignment ss:Horizontal="Center" ss:Vertical="Center"/><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E5E7EB"/><Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E5E7EB"/><Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E5E7EB"/><Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E5E7EB"/></Borders></Style>
+    <Style ss:ID="DataCenterAlt"><Interior ss:Color="#F8FAFC" ss:Pattern="Solid"/><Alignment ss:Horizontal="Center" ss:Vertical="Center"/><Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E5E7EB"/><Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E5E7EB"/><Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E5E7EB"/><Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E5E7EB"/></Borders></Style>
+  </Styles>
+  <Worksheet ss:Name="Lesson Quiz">
+    <Table>${columnXml}${rowXml}</Table>
+    <AutoFilter x:Range="${filterRange}" xmlns="urn:schemas-microsoft-com:office:excel"/>
+    <WorksheetOptions xmlns="urn:schemas-microsoft-com:office:excel">
+      <FreezePanes/>
+      <FrozenNoSplit/>
+      <SplitHorizontal>1</SplitHorizontal>
+      <TopRowBottomPane>1</TopRowBottomPane>
+      <ActivePane>2</ActivePane>
+    </WorksheetOptions>
+  </Worksheet>
+</Workbook>`;
+}
+
+function downloadWorkbookXml(xml, fileName) {
+  const blob = new Blob([xml], { type: "application/vnd.ms-excel;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = fileName;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
 export function downloadQuizImportTemplate() {
   const sampleRows = [
     {
@@ -569,11 +675,8 @@ export function downloadQuizImportTemplate() {
   ];
 
   const dataMatrix = [QUIZ_IMPORT_COLUMNS, ...sampleRows.map((row) => QUIZ_IMPORT_COLUMNS.map((column) => row[column] ?? ""))];
-  const worksheet = XLSX.utils.aoa_to_sheet(dataMatrix);
-  worksheet["!cols"] = QUIZ_IMPORT_COLUMNS.map(() => ({ wch: 24 }));
-  const workbook = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(workbook, worksheet, "Lesson Quiz");
-  XLSX.writeFile(workbook, "lesson-quiz-template.xlsx");
+  const workbookXml = buildStyledTemplateWorkbook(dataMatrix);
+  downloadWorkbookXml(workbookXml, "lesson-quiz-template.xls");
 }
 
 // ─── Legacy compatibility ──────────────────────────────────────────────────────
