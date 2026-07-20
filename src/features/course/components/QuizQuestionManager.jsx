@@ -419,6 +419,7 @@ export function QuizQuestionsPanel({
         key={importOpen ? "import-open" : "import-closed"}
         open={importOpen}
         onClose={() => setImportOpen(false)}
+        existingQuestions={questions}
         onImport={handleImported}
       />
 
