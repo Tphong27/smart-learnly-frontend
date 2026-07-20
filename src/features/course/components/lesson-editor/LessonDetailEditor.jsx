@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { courseService } from "@/services/course.service";
 import { assignmentService } from "@/services/flashtest.service";
@@ -172,6 +172,7 @@ export function LessonDetailEditor({ context }) {
     const [flashcardSection, setFlashcardSection] = useState("current");
     const [title, setTitle] = useState("");
     const [loading, setLoading] = useState(false);
+    const saveInProgressRef = useRef(false);
     const [pageLoading, setPageLoading] = useState(true);
     const [textContent, setTextContent] = useState("");
     const [lessonType, setLessonType] = useState("VIDEO");
@@ -183,6 +184,7 @@ export function LessonDetailEditor({ context }) {
     const [uploadingPdf, setUploadingPdf] = useState(false);
     const [uploadingResources, setUploadingResources] = useState(false);
     const [videoUploaderBusy, setVideoUploaderBusy] = useState(false);
+    const [quizQuestionsBusy, setQuizQuestionsBusy] = useState(false);
 
     const [editHistory, setEditHistory] = useState([]);
     const [historyLoading, setHistoryLoading] = useState(false);
@@ -530,6 +532,8 @@ export function LessonDetailEditor({ context }) {
 
     const handleSave = async (e) => {
         e.preventDefault();
+        if (saveInProgressRef.current || quizQuestionsBusy) return;
+
         setSaveNotice(null);
 
         if (!title.trim()) {
@@ -551,17 +555,6 @@ export function LessonDetailEditor({ context }) {
         const usesLessonResources = !isQuiz && lessonType !== "ESSAY";
         const cleanSummary = sanitizeLessonHtml(summary);
 
-        if (isQuiz && !parseQuizContent(textContent).title?.trim()) {
-            setSummaryError("Quiz title cannot be empty.");
-            showSaveNotice({
-                type: "error",
-                title: "Lesson could not be saved",
-                message: "Add a quiz title in step 1, then try again.",
-            });
-            openSection("basic");
-            return;
-        }
-
         if (!isQuiz && isEmptyLessonHtml(cleanSummary)) {
             setSummaryError("Lesson summary cannot be empty.");
             showSaveNotice({
@@ -574,7 +567,7 @@ export function LessonDetailEditor({ context }) {
         }
         setSummaryError("");
 
-        if (!materialComplete) {
+        if (!isQuiz && !materialComplete) {
             const materialMessage =
                 lessonType === "VIDEO"
                     ? "Upload a lesson video in step 2, then try again."
@@ -590,6 +583,7 @@ export function LessonDetailEditor({ context }) {
             return;
         }
 
+        saveInProgressRef.current = true;
         showSaveNotice({
             type: "saving",
             title: "Saving lesson changes",
@@ -598,6 +592,28 @@ export function LessonDetailEditor({ context }) {
         setLoading(true);
 
         try {
+            let latestQuizLesson = null;
+            let latestQuizQuestions = [];
+            if (isQuiz) {
+                const latestResponse =
+                    await services.getLessonDetail(lessonId);
+                latestQuizLesson = latestResponse?.data || latestResponse;
+                latestQuizQuestions = parseQuizContent(
+                    latestQuizLesson?.content || "",
+                ).questions;
+
+                if (latestQuizQuestions.length === 0) {
+                    showSaveNotice({
+                        type: "error",
+                        title: "Lesson could not be saved",
+                        message:
+                            "Add at least one quiz question in step 2, then try again.",
+                    });
+                    openSection("material");
+                    return;
+                }
+            }
+
             let resolvedVideoUrl = (videoUrl || "").trim();
             if (lessonType === "VIDEO" && !resolvedVideoUrl) {
                 const latest = await syncLatestLessonVideoUrl();
@@ -613,9 +629,8 @@ export function LessonDetailEditor({ context }) {
                       .slice(0, 10)
                 : [];
 
-            const parsedQuiz = isQuiz ? parseQuizContent(textContent) : null;
             const content = isQuiz
-                ? serializeQuizContent(parsedQuiz.title, parsedQuiz.questions)
+                ? serializeQuizContent(title.trim(), latestQuizQuestions)
                 : cleanSummary;
 
             const payload = {
@@ -628,7 +643,10 @@ export function LessonDetailEditor({ context }) {
                 isPreview,
                 status: normalizeLessonStatus(status),
                 resources: normalizedResources,
-                sortOrder: existingLessonData?.sortOrder ?? 0,
+                sortOrder:
+                    latestQuizLesson?.sortOrder ??
+                    existingLessonData?.sortOrder ??
+                    0,
             };
 
             await services.updateLesson(lessonId, payload);
@@ -681,6 +699,7 @@ export function LessonDetailEditor({ context }) {
                 message: errorText,
             });
         } finally {
+            saveInProgressRef.current = false;
             setLoading(false);
         }
     };
@@ -736,11 +755,9 @@ export function LessonDetailEditor({ context }) {
     const sanitizedSummary = sanitizeLessonHtml(summary);
     const basicComplete = Boolean(title.trim());
     const descriptionComplete =
-        lessonType === "QUIZ"
-            ? Boolean(parsedQuizContent.title?.trim())
-            : lessonType === "FLASHCARD"
-              ? true
-              : !isEmptyLessonHtml(sanitizedSummary);
+        lessonType === "QUIZ" ||
+        lessonType === "FLASHCARD" ||
+        !isEmptyLessonHtml(sanitizedSummary);
     const materialComplete = (() => {
         if (lessonType === "VIDEO") return Boolean(videoUrl);
         if (lessonType === "PDF") return Boolean(uploadedFileUrl);
@@ -767,7 +784,8 @@ export function LessonDetailEditor({ context }) {
         uploadingPdf ||
         uploadingResources ||
         videoUploaderBusy ||
-        assignmentSaving;
+        assignmentSaving ||
+        quizQuestionsBusy;
     const typeLabel = LESSON_TYPE_LABELS[lessonType] || lessonType;
     const statusMeta = getLessonStatusMeta(status);
     const statusLabel = statusMeta?.label || status;
@@ -977,33 +995,53 @@ export function LessonDetailEditor({ context }) {
                                 expanded={expandedSection === "material"}
                                 onToggle={() => setExpandedSection((current) => current === "material" ? "" : "material")}
                             >
-                                <div className="flashcard-actions" style={{ marginBottom: "16px" }}>
-    <button
-        type="button"
-        className={`flashcard-btn ${
-            flashcardSection === "current"
-                ? "flashcard-btn--primary"
-                : ""
-        }`}
-        onClick={() => setFlashcardSection("current")}
-    >
-        Current Flashcards
-    </button>
+                                <div
+                                    className="flashcard-section-tabs"
+                                    role="tablist"
+                                    aria-label="Flashcard sections"
+                                >
+                                    <button
+                                        id="flashcard-current-tab"
+                                        type="button"
+                                        role="tab"
+                                        aria-selected={
+                                            flashcardSection === "current"
+                                        }
+                                        aria-controls="flashcard-current-panel"
+                                        className={`flashcard-section-tabs__tab ${
+                                            flashcardSection === "current"
+                                                ? "is-active"
+                                                : ""
+                                        }`}
+                                        onClick={() =>
+                                            setFlashcardSection("current")
+                                        }
+                                    >
+                                        Current Flashcards
+                                    </button>
 
-    {features.flashcardStaging !== false && (
-        <button
-            type="button"
-            className={`flashcard-btn ${
-                flashcardSection === "review"
-                    ? "flashcard-btn--primary"
-                    : ""
-            }`}
-            onClick={() => setFlashcardSection("review")}
-        >
-            Staging Review
-        </button>
-    )}
-</div>
+                                    {features.flashcardStaging !== false && (
+                                        <button
+                                            id="flashcard-review-tab"
+                                            type="button"
+                                            role="tab"
+                                            aria-selected={
+                                                flashcardSection === "review"
+                                            }
+                                            aria-controls="flashcard-review-panel"
+                                            className={`flashcard-section-tabs__tab ${
+                                                flashcardSection === "review"
+                                                    ? "is-active"
+                                                    : ""
+                                            }`}
+                                            onClick={() =>
+                                                setFlashcardSection("review")
+                                            }
+                                        >
+                                            Staging Review
+                                        </button>
+                                    )}
+                                </div>
 
 <FlashcardLessonEditor
     lessonId={lessonId}
@@ -1032,13 +1070,23 @@ export function LessonDetailEditor({ context }) {
                             <LessonEditorSection
                                 id="lesson-step-basic"
                                 step="1"
-                                title="Title and description"
-                                description="Add the lesson title and explain what learners will study."
+                                title={
+                                    lessonType === "QUIZ"
+                                        ? "Title"
+                                        : "Title and description"
+                                }
+                                description={
+                                    lessonType === "QUIZ"
+                                        ? "Add the title learners will see for this quiz."
+                                        : "Add the lesson title and explain what learners will study."
+                                }
                                 summary={
-                                    detailsComplete
-                                        ? "Title and description added"
-                                        : lessonType === "QUIZ"
-                                          ? "Title and quiz title are required"
+                                    lessonType === "QUIZ"
+                                        ? detailsComplete
+                                            ? "Lesson title added"
+                                            : "Lesson title is required"
+                                        : detailsComplete
+                                          ? "Title and description added"
                                           : "Title and description are required"
                                 }
                                 state={
@@ -1105,59 +1153,8 @@ export function LessonDetailEditor({ context }) {
                                             </p>
                                         ) : null}
                                     </div>
-                                    <div className="sl-cm-lesson-editor__description-field">
-                                        {lessonType === "QUIZ" ? (
-                                            <div>
-                                                <label
-                                                    className="sl-cm-lesson-editor__field-label"
-                                                    htmlFor="lesson-quiz-title"
-                                                >
-                                                    Quiz title{" "}
-                                                    <span className="required">
-                                                        *
-                                                    </span>
-                                                </label>
-                                                <input
-                                                    id="lesson-quiz-title"
-                                                    type="text"
-                                                    value={
-                                                        parseQuizContent(
-                                                            textContent,
-                                                        ).title
-                                                    }
-                                                    onChange={(event) => {
-                                                        const parsed =
-                                                            parseQuizContent(
-                                                                textContent,
-                                                            );
-                                                        setTextContent(
-                                                            serializeQuizContent(
-                                                                event.target
-                                                                    .value,
-                                                                parsed.questions,
-                                                            ),
-                                                        );
-                                                        setSummaryError("");
-                                                        markChanged();
-                                                    }}
-                                                    placeholder="Enter quiz title"
-                                                    className="sl-cm-lesson-editor__field-control"
-                                                    aria-invalid={
-                                                        summaryError
-                                                            ? "true"
-                                                            : undefined
-                                                    }
-                                                />
-                                                {summaryError ? (
-                                                    <p
-                                                        className="sl-cm-lesson-editor__field-help sl-cm-lesson-editor__field-help--error"
-                                                        role="alert"
-                                                    >
-                                                        {summaryError}
-                                                    </p>
-                                                ) : null}
-                                            </div>
-                                        ) : (
+                                    {lessonType !== "QUIZ" && (
+                                        <div className="sl-cm-lesson-editor__description-field">
                                             <div>
                                                 <label className="sl-cm-lesson-editor__field-label">
                                                     Description{" "}
@@ -1190,8 +1187,8 @@ export function LessonDetailEditor({ context }) {
                                                     </p>
                                                 ) : null}
                                             </div>
-                                        )}
-                                    </div>
+                                        </div>
+                                    )}
                                 </div>
 
                                 <div className="sl-lesson-step__footer">
@@ -1296,22 +1293,23 @@ export function LessonDetailEditor({ context }) {
                                                     lessonId={lessonId}
                                                     lessonTitle={title}
                                                     service={services}
-                                                    onSaved={async () => {
-                                                        const response =
-                                                            await services.getLessonDetail(
-                                                                lessonId,
-                                                            );
-                                                        const nextLesson =
-                                                            response?.data ||
-                                                            response;
+                                                    disabled={loading}
+                                                    onBusyChange={
+                                                        setQuizQuestionsBusy
+                                                    }
+                                                    onSaved={(
+                                                        nextContent,
+                                                        savedLesson,
+                                                    ) => {
                                                         setTextContent(
-                                                            nextLesson?.content ||
-                                                                "",
+                                                            nextContent,
                                                         );
                                                         setExistingLessonData(
                                                             (current) => ({
                                                                 ...current,
-                                                                ...nextLesson,
+                                                                ...savedLesson,
+                                                                content:
+                                                                    nextContent,
                                                             }),
                                                         );
                                                     }}

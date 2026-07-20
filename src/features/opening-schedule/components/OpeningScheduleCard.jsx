@@ -1,88 +1,51 @@
 import {
+  ArrowRight,
   BookOpen,
   CalendarDays,
-  Clock3,
-  MapPin,
   UserRound,
   Users,
 } from "lucide-react";
 import { Link } from "react-router-dom";
+import {
+  formatDate,
+  formatPrice,
+  formatStatusLabel,
+  toNumber,
+} from "@/shared/utils/formatters";
 
-function formatMoney(
-  value,
-  currency = "VND",
-) {
-  const amount = Number(value || 0);
+const CARD_DATE_OPTIONS = {
+  day: "2-digit",
+  month: "2-digit",
+  year: "numeric",
+};
 
-  if (amount <= 0) {
-    return "Free";
-  }
-
-  return new Intl.NumberFormat("vi-VN", {
-    style: "currency",
-    currency,
-    maximumFractionDigits: 0,
-  }).format(amount);
-}
-
-function formatDate(value) {
-  if (!value) {
-    return "Not scheduled";
-  }
-
-  const date = new Date(value);
-
-  if (Number.isNaN(date.getTime())) {
-    return value;
-  }
-
-  return date.toLocaleDateString("vi-VN", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  });
-}
-
-function formatStatus(status) {
-  if (!status) {
-    return "Unknown";
-  }
-
-  return String(status)
-    .replace(/_/g, " ")
-    .toLowerCase()
-    .replace(
-      /\b\w/g,
-      (character) => character.toUpperCase(),
-    );
-}
-
-export function OpeningScheduleCard({
-  classItem,
-  detailState,
-}) {
-  const availableSlots = Number(
-    classItem?.availableSlots ?? 0,
-  );
+export function OpeningScheduleCard({ classItem, detailState }) {
+  const availableSlots = toNumber(classItem?.availableSlots, 0);
+  const price = toNumber(classItem?.price, 0);
 
   const isAvailable =
-    String(
-      classItem?.status || "",
-    ).toUpperCase() === "UPCOMING" &&
+    String(classItem?.status || "").toUpperCase() === "UPCOMING" &&
     availableSlots > 0;
+
+  const detailPath = `/opening-schedule/${classItem.classId}`;
 
   return (
     <article className="opening-card">
-      <div className="opening-card__image-wrapper">
+      <Link
+        to={detailPath}
+        state={detailState}
+        className="opening-card__media"
+        aria-label={`View ${classItem.className}`}
+      >
         {classItem.courseThumbnailUrl ? (
           <img
             src={classItem.courseThumbnailUrl}
             alt={classItem.courseTitle}
-            className="opening-card__image"
+            loading="lazy"
           />
         ) : (
           <div className="opening-card__image-fallback">
-            <BookOpen size={38} />
+            <BookOpen size={36} aria-hidden="true" />
           </div>
         )}
 
@@ -95,76 +58,64 @@ export function OpeningScheduleCard({
         >
           {isAvailable
             ? "Open for registration"
-            : formatStatus(classItem.status)}
+            : classItem.status
+              ? formatStatusLabel(classItem.status)
+              : "Unavailable"}
         </span>
-      </div>
+      </Link>
 
       <div className="opening-card__body">
-        <p className="opening-card__course">
-          {classItem.courseTitle}
-        </p>
+        <div className="opening-card__top">
+          <span className="opening-card__course">{classItem.courseTitle}</span>
 
-        <h2 className="opening-card__title">
-          {classItem.className}
-        </h2>
+          <h3 className="opening-card__title">
+            <Link
+              to={detailPath}
+              state={detailState}
+              className="opening-card__title-link"
+            >
+              {classItem.className}
+            </Link>
+          </h3>
 
-        <div className="opening-card__information">
-          <div className="opening-card__information-row">
-            <UserRound size={17} />
+          <div className="opening-card__information">
+            <div className="opening-card__information-row">
+              <UserRound size={16} aria-hidden="true" />
+              <span>{classItem.trainerName || "Trainer not assigned"}</span>
+            </div>
 
-            <span>
-              {classItem.trainerName ||
-                "Trainer not assigned"}
-            </span>
-          </div>
+            <div className="opening-card__information-row">
+              <CalendarDays size={16} aria-hidden="true" />
+              <span>
+                {formatDate(classItem.startDate, "vi-VN", CARD_DATE_OPTIONS)}
+                {" – "}
+                {formatDate(classItem.endDate, "vi-VN", CARD_DATE_OPTIONS)}
+              </span>
+            </div>
 
-          <div className="opening-card__information-row">
-            <CalendarDays size={17} />
-
-            <span>
-              {formatDate(classItem.startDate)}
-              {" – "}
-              {formatDate(classItem.endDate)}
-            </span>
-          </div>
-
-          <div className="opening-card__information-row">
-            <Clock3 size={17} />
-
-            <span>
-              {classItem.scheduleDescription ||
-                "Schedule not available"}
-            </span>
-          </div>
-
-          <div className="opening-card__information-row">
-            <Users size={17} />
-
-            <span>
-              {availableSlots} places remaining
-            </span>
-          </div>
-
-          <div className="opening-card__information-row">
-            <MapPin size={17} />
-
-            <span>Offline class</span>
+            <div className="opening-card__information-row">
+              <Users size={16} aria-hidden="true" />
+              <span>
+                {availableSlots} of {classItem.maxStudents} places remaining
+              </span>
+            </div>
           </div>
         </div>
+      </div>
 
-        <div className="opening-card__footer">
-          <strong className="opening-card__price">
-            {formatMoney(classItem.price)}
-          </strong>
+      <div className="opening-card__footer">
+        <strong className="opening-card__price">
+          {formatPrice(classItem.price, price <= 0)}
+        </strong>
 
-          <Link
-            to={`/opening-schedule/${classItem.classId}`}
-            state={detailState}
-            className="opening-card__button"
-          >
-            View class
-          </Link>
-        </div>
+        <Link
+          to={detailPath}
+          state={detailState}
+          className="opening-card__link"
+        >
+          View class
+          <ArrowRight size={15} aria-hidden="true" />
+        </Link>
       </div>
     </article>
   );

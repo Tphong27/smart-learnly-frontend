@@ -254,7 +254,7 @@ export function ClassOverviewTab({
 
   return (
     <div className="class-overview-tab">
-      <section className="class-detail-card class-overview-tab__section">
+      <section className="class-overview-tab__section">
         <div className="class-overview-card-header">
           <h3>Class Information</h3>
 
@@ -295,9 +295,7 @@ export function ClassOverviewTab({
               </div>
             ))}
         </div>
-
         {error && <p className="form-error-text">{error}</p>}
-
         {!isEditing || readOnly ? (
           <>
             <div className="class-detail-list class-overview-info">

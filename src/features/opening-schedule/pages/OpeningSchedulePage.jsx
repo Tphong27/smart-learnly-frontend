@@ -1,68 +1,217 @@
 import { AlertCircle, CalendarDays, LoaderCircle } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { openingScheduleService } from "@/services";
+import { toNumber } from "@/shared/utils/formatters";
 import { OpeningScheduleCard } from "../components/OpeningScheduleCard";
 import { OpeningScheduleFilters } from "../components/OpeningScheduleFilters";
+import { Pagination } from "@/shared/components/Pagination";
+import {
+  addOneMonthToDateValue,
+  createDefaultOpeningScheduleFilters,
+  getPriceRangeParams,
+  isValidPriceRange,
+} from "../utils/opening-schedule-filters";
 import "../opening-schedule.css";
 
-const DEFAULT_FILTERS = {
-  keyword: "",
-  startFrom: "",
-  startTo: "",
-  minPrice: "",
-  maxPrice: "",
-};
+function readFiltersFromSearchParams(searchParams) {
+  const defaults = createDefaultOpeningScheduleFilters();
+  const startFrom = searchParams.get("startFrom") || defaults.startFrom;
+  const startTo =
+    searchParams.get("startTo") || addOneMonthToDateValue(startFrom);
+  const requestedPriceRange = searchParams.get("priceRange") || "";
 
-export function OpeningSchedulePage({
+  return {
+    keyword: searchParams.get("keyword") || "",
+    startFrom,
+    startTo,
+    priceRange: isValidPriceRange(requestedPriceRange)
+      ? requestedPriceRange
+      : "",
+  };
+}
+
+function normalizePage(value) {
+  const requestedPage = toNumber(value, 0);
+
+  return Number.isInteger(requestedPage) && requestedPage >= 0
+    ? requestedPage
+    : 0;
+}
+
+function validateFilters(filters) {
+  if (!filters.startFrom) {
+    return "Opening-from date is required.";
+  }
+
+  if (!filters.startTo) {
+    return "Opening-to date is required.";
+  }
+
+  if (filters.startFrom > filters.startTo) {
+    return "Opening-from date cannot be after opening-to date.";
+  }
+
+  if (!isValidPriceRange(filters.priceRange)) {
+    return "Selected price range is invalid.";
+  }
+
+  return "";
+}
+
+function OpeningScheduleSkeleton({ count = 6 }) {
+  return (
+    <div className="opening-catalog-skeleton" role="status" aria-live="polite">
+      <span className="sr-only">Loading opening schedule...</span>
+
+      {Array.from({ length: count }, (_, index) => (
+        <article
+          className="opening-catalog-skeleton__card"
+          key={index}
+          aria-hidden="true"
+        >
+          <span className="opening-catalog-skeleton__image" />
+          <div className="opening-catalog-skeleton__body">
+            <span className="opening-catalog-skeleton__line opening-catalog-skeleton__line--short" />
+            <span className="opening-catalog-skeleton__line" />
+            <span className="opening-catalog-skeleton__line" />
+            <span className="opening-catalog-skeleton__line opening-catalog-skeleton__line--price" />
+          </div>
+        </article>
+      ))}
+    </div>
+  );
+}
+
+function OpeningSchedulePageContent({
   embedded = false,
   showHero = true,
-  showFilters = true,
-  showPagination = true,
   pageSize = 12,
   detailState,
+  sharedKeyword = "",
 }) {
   const [searchParams, setSearchParams] = useSearchParams();
   const syncWithUrl = !embedded;
-
-  const [filters, setFilters] = useState({
-    keyword: syncWithUrl ? searchParams.get("keyword") || "" : "",
-    startFrom: syncWithUrl ? searchParams.get("startFrom") || "" : "",
-    startTo: syncWithUrl ? searchParams.get("startTo") || "" : "",
-    minPrice: syncWithUrl ? searchParams.get("minPrice") || "" : "",
-    maxPrice: syncWithUrl ? searchParams.get("maxPrice") || "" : "",
+  const initialFilters = syncWithUrl
+    ? readFiltersFromSearchParams(searchParams)
+    : {
+        ...createDefaultOpeningScheduleFilters(),
+        keyword: sharedKeyword,
+      };
+  const [filters, setFilters] = useState(initialFilters);
+  const [appliedFilters, setAppliedFilters] = useState(initialFilters);
+  const [page, setPage] = useState(() => {
+    if (!syncWithUrl) {
+      return 0;
+    }
+    return normalizePage(searchParams.get("page"));
   });
-
-  const [appliedFilters, setAppliedFilters] = useState(filters);
-
   const [classes, setClasses] = useState([]);
-
-  const requestedPage = syncWithUrl
-    ? Number(searchParams.get("page") || 0)
-    : 0;
-
-  const [page, setPage] = useState(
-    Number.isInteger(requestedPage) && requestedPage >= 0 ? requestedPage : 0,
-  );
-
   const [pageInfo, setPageInfo] = useState({
     totalPages: 1,
     totalElements: 0,
   });
-
   const [loading, setLoading] = useState(true);
-
   const [error, setError] = useState("");
-
+  const [filterError, setFilterError] = useState("");
   const [refreshKey, setRefreshKey] = useState(0);
+  const previousFiltersRef = useRef(filters);
+
+  const updateUrl = useCallback(
+    (nextFilters, nextPage) => {
+      if (!syncWithUrl) {
+        return;
+      }
+
+      const params = new URLSearchParams();
+
+      Object.entries(nextFilters).forEach(([key, value]) => {
+        if (value !== "") {
+          params.set(key, value);
+        }
+      });
+
+      if (nextPage > 0) {
+        params.set("page", String(nextPage));
+      }
+
+      setSearchParams(params, {
+        replace: true,
+      });
+    },
+    [setSearchParams, syncWithUrl],
+  );
+
+  useEffect(() => {
+    if (previousFiltersRef.current === filters) {
+      return undefined;
+    }
+    previousFiltersRef.current = filters;
+
+    const timer = window.setTimeout(() => {
+      const nextFilters = {
+        ...filters,
+        keyword: filters.keyword.trim(),
+      };
+
+      const validationMessage = validateFilters(nextFilters);
+
+      if (validationMessage) {
+        setFilterError(validationMessage);
+
+        return;
+      }
+
+      setFilterError("");
+      setError("");
+      setLoading(true);
+      setPage(0);
+      setAppliedFilters(nextFilters);
+
+      if (syncWithUrl) {
+        updateUrl(nextFilters, 0);
+      }
+    }, 350);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [filters, syncWithUrl, updateUrl]);
+
+  useEffect(() => {
+    if (!syncWithUrl) {
+      return undefined;
+    }
+    function handlePopState() {
+      const params = new URLSearchParams(window.location.search);
+      const nextPage = normalizePage(params.get("page"));
+      setPage((currentPage) =>
+        currentPage === nextPage ? currentPage : nextPage,
+      );
+    }
+
+    window.addEventListener("popstate", handlePopState);
+    return () => {
+      window.removeEventListener("popstate", handlePopState);
+    };
+  }, [syncWithUrl]);
 
   useEffect(() => {
     let cancelled = false;
 
     async function fetchSchedules() {
+      setLoading(true);
+      setError("");
+
       try {
+        const priceRange = getPriceRangeParams(appliedFilters.priceRange);
+
         const result = await openingScheduleService.list({
-          ...appliedFilters,
+          keyword: appliedFilters.keyword,
+          startFrom: appliedFilters.startFrom,
+          startTo: appliedFilters.startTo,
+          minPrice: priceRange.minPrice,
+          maxPrice: priceRange.maxPrice,
           page,
           size: pageSize,
         });
@@ -71,11 +220,27 @@ export function OpeningSchedulePage({
           return;
         }
 
-        setClasses(Array.isArray(result?.content) ? result.content : []);
+        const nextClasses = Array.isArray(result?.content)
+          ? result.content
+          : [];
 
+        const totalElements = Math.max(0, toNumber(result?.totalElements, 0));
+
+        const totalPages = Math.max(1, toNumber(result?.totalPages, 1));
+
+        if (page >= totalPages && totalElements > 0) {
+          const lastPage = totalPages - 1;
+          setPage(lastPage);
+          if (syncWithUrl) {
+            updateUrl(appliedFilters, lastPage);
+          }
+          return;
+        }
+
+        setClasses(nextClasses);
         setPageInfo({
-          totalPages: Number(result?.totalPages ?? 1),
-          totalElements: Number(result?.totalElements ?? 0),
+          totalPages,
+          totalElements,
         });
 
         setError("");
@@ -85,7 +250,6 @@ export function OpeningSchedulePage({
         }
 
         setClasses([]);
-
         setPageInfo({
           totalPages: 1,
           totalElements: 0,
@@ -104,63 +268,16 @@ export function OpeningSchedulePage({
     return () => {
       cancelled = true;
     };
-  }, [appliedFilters, page, pageSize, refreshKey]);
-
-  function updateUrl(nextFilters, nextPage) {
-    if (!syncWithUrl) {
-      return;
-    }
-
-    const params = new URLSearchParams();
-
-    Object.entries(nextFilters).forEach(([key, value]) => {
-      if (value !== "") {
-        params.set(key, value);
-      }
-    });
-
-    if (nextPage > 0) {
-      params.set("page", String(nextPage));
-    }
-
-    setSearchParams(params, {
-      replace: true,
-    });
-  }
-
-  function handleSearch() {
-    setLoading(true);
-    setError("");
-    setPage(0);
-    setAppliedFilters({
-      ...filters,
-    });
-    updateUrl(filters, 0);
-  }
-
-  function handleReset() {
-    setLoading(true);
-    setError("");
-    setFilters({
-      ...DEFAULT_FILTERS,
-    });
-    setAppliedFilters({
-      ...DEFAULT_FILTERS,
-    });
-    setPage(0);
-
-    if (syncWithUrl) {
-      setSearchParams(
-        {},
-        {
-          replace: true,
-        },
-      );
-    }
-  }
+  }, [appliedFilters, page, pageSize, refreshKey, syncWithUrl, updateUrl]);
 
   function handlePageChange(nextPage) {
-    if (nextPage < 0 || nextPage >= pageInfo.totalPages || nextPage === page) {
+    const isInvalidPage =
+      !Number.isInteger(nextPage) ||
+      nextPage < 0 ||
+      nextPage >= pageInfo.totalPages ||
+      nextPage === page;
+
+    if (isInvalidPage) {
       return;
     }
 
@@ -168,12 +285,17 @@ export function OpeningSchedulePage({
     setError("");
     setPage(nextPage);
 
-    updateUrl(appliedFilters, nextPage);
+    if (syncWithUrl) {
+      updateUrl(appliedFilters, nextPage);
+    }
 
-    window.scrollTo({
-      top: 0,
-      behavior: "smooth",
-    });
+    //Chỉ cuộn lên đầu khi Opening Schedule là một trang độc lập.
+    if (!embedded) {
+      window.scrollTo({
+        top: 0,
+        behavior: "smooth",
+      });
+    }
   }
 
   function handleRetry() {
@@ -187,124 +309,104 @@ export function OpeningSchedulePage({
     <>
       {showHero && (
         <section className="opening-page__hero">
-          <div>
-            <span className="opening-page__eyebrow">Offline learning</span>
-
-            <h1>Opening Schedule</h1>
-
-            <p>
-              Browse upcoming offline classes, compare schedules and trainers,
-              then register for the class that matches your plan.
-            </p>
-          </div>
-
-          <CalendarDays size={72} />
+          <h1>Opening Schedule</h1>
         </section>
       )}
 
-      {showFilters && (
+      <section
+        className={
+          embedded
+            ? "opening-panel opening-panel--embedded"
+            : "opening-panel opening-panel--discovery"
+        }
+      >
         <OpeningScheduleFilters
           filters={filters}
           onChange={setFilters}
-          onSubmit={handleSearch}
-          onReset={handleReset}
+          showKeywordSearch={!embedded}
         />
-      )}
 
-      {!loading && !error && (
-        <div className="opening-page__result">
-          <strong>{pageInfo.totalElements}</strong>
+        {filterError && (
+          <p className="opening-filters__error" role="alert">
+            {filterError}
+          </p>
+        )}
 
-          {" upcoming classes"}
-        </div>
-      )}
+        {loading && !embedded && (
+          <OpeningScheduleSkeleton count={Math.min(pageSize, 6)} />
+        )}
 
-      {loading && (
-        <div className="opening-state">
-          <LoaderCircle className="opening-spinner" size={38} />
+        {loading && embedded && (
+          <div className="opening-state" role="status" aria-live="polite">
+            <LoaderCircle className="opening-spinner" size={32} />
+            <p>Loading opening schedule...</p>
+          </div>
+        )}
 
-          <p>Loading opening schedule...</p>
-        </div>
-      )}
+        {!loading && error && (
+          <div className="opening-state opening-state--error" role="alert">
+            <AlertCircle size={36} />
 
-      {!loading && error && (
-        <div className="opening-state opening-state--error">
-          <AlertCircle size={38} />
+            <h2>Opening schedule is unavailable</h2>
 
-          <p>{error}</p>
+            <p>{error}</p>
 
-          <button
-            type="button"
-            className="opening-button opening-button--primary"
-            onClick={handleRetry}
-          >
-            Try again
-          </button>
-        </div>
-      )}
-
-      {!loading && !error && classes.length === 0 && (
-        <div className="opening-state">
-          <CalendarDays size={42} />
-
-          <h2>No upcoming classes found</h2>
-
-          <p>Change the filters or return later for new opening classes.</p>
-        </div>
-      )}
-
-      {!loading && !error && classes.length > 0 && (
-        <>
-          <section className="opening-grid">
-            {classes.map((classItem) => (
-              <OpeningScheduleCard
-                key={classItem.classId}
-                classItem={classItem}
-                detailState={detailState}
-              />
-            ))}
-          </section>
-
-          {showPagination && pageInfo.totalPages > 1 && (
-            <nav
-              className="opening-pagination"
-              aria-label="Opening schedule pages"
+            <button
+              type="button"
+              className="opening-button opening-button--primary"
+              onClick={handleRetry}
             >
-              <button
-                type="button"
-                disabled={page <= 0}
-                onClick={() => handlePageChange(page - 1)}
-              >
-                Previous
-              </button>
+              Try again
+            </button>
+          </div>
+        )}
 
-              {Array.from(
-                {
-                  length: pageInfo.totalPages,
-                },
-                (_, index) => (
-                  <button
-                    type="button"
-                    key={index}
-                    className={index === page ? "is-active" : ""}
-                    onClick={() => handlePageChange(index)}
-                  >
-                    {index + 1}
-                  </button>
-                ),
-              )}
+        {!loading && !error && classes.length === 0 && (
+          <div className="opening-state">
+            <CalendarDays size={40} />
 
-              <button
-                type="button"
-                disabled={page >= pageInfo.totalPages - 1}
-                onClick={() => handlePageChange(page + 1)}
-              >
-                Next
-              </button>
-            </nav>
-          )}
-        </>
-      )}
+            <h2>No upcoming classes found</h2>
+
+            <p>Try changing the filters or return later for new classes.</p>
+
+            <button
+              type="button"
+              className="opening-button opening-button--secondary"
+            >
+              Clear filters
+            </button>
+          </div>
+        )}
+
+        {!loading && !error && classes.length > 0 && (
+          <>
+            <section
+              className="opening-grid"
+              aria-label="Upcoming offline classes"
+            >
+              {classes.map((classItem) => (
+                <OpeningScheduleCard
+                  key={classItem.classId}
+                  classItem={classItem}
+                  detailState={detailState}
+                />
+              ))}
+            </section>
+
+            <Pagination
+              page={page + 1}
+              totalPages={pageInfo.totalPages}
+              totalItems={pageInfo.totalElements}
+              size={pageSize}
+              pageSizeOptions={[pageSize]}
+              onPageChange={(nextPage) => handlePageChange(nextPage - 1)}
+              disabled={loading}
+              ariaLabel="Opening schedule pagination"
+              className="opening-pagination"
+            />
+          </>
+        )}
+      </section>
     </>
   );
 
@@ -313,4 +415,19 @@ export function OpeningSchedulePage({
   }
 
   return <main className="opening-page">{content}</main>;
+}
+
+export function OpeningSchedulePage(props) {
+  const [searchParams] = useSearchParams();
+  const sharedKeyword = props.embedded
+    ? (searchParams.get("keyword") || "").trim()
+    : "";
+
+  return (
+    <OpeningSchedulePageContent
+      key={`opening-schedule-${sharedKeyword}`}
+      {...props}
+      sharedKeyword={sharedKeyword}
+    />
+  );
 }

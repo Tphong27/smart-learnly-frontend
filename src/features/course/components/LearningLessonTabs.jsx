@@ -167,6 +167,7 @@ function OverviewContent({
     return (
       <LearningQuizPlayer
         content={lesson.content}
+        lessonTitle={lesson.title}
         durationSeconds={lesson.durationSeconds}
         onCompleted={() => onQuizCompleted?.(getLessonId(lesson))}
       />

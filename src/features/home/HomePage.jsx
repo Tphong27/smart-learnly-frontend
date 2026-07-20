@@ -98,10 +98,6 @@ export function HomePage() {
                     <div className="container">
                         <div className="courses-heading">
                             <h2>Popular Courses</h2>
-                            <p>
-                                Start with practical programs designed to build confidence and
-                                capability.
-                            </p>
                         </div>
 
                         <CourseListPage
@@ -128,18 +124,12 @@ export function HomePage() {
                         <div className="courses-heading">
                             <div>
                                 <h2>Upcoming Classes</h2>
-                                <p>
-                                    Compare upcoming class schedules, trainers,
-                                    available places and tuition.
-                                </p>
                             </div>
                         </div>
 
                         <OpeningSchedulePage
                             embedded
                             showHero={false}
-                            showFilters={true}
-                            showPagination={true}
                             pageSize={3}
                             detailState={{
                                 from: "/#opening-schedule",

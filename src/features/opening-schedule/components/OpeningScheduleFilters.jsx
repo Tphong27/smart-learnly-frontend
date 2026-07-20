@@ -1,12 +1,27 @@
-import { RotateCcw, Search } from "lucide-react";
+import { Search } from "lucide-react";
+import {
+  addOneMonthToDateValue,
+  getTodayDateValue,
+  PRICE_RANGE_OPTIONS,
+} from "../utils/opening-schedule-filters";
 
 export function OpeningScheduleFilters({
   filters,
   onChange,
-  onReset,
+  showKeywordSearch = true,
 }) {
   function handleChange(event) {
     const { name, value } = event.target;
+
+    if (name === "startFrom") {
+      onChange({
+        ...filters,
+        startFrom: value,
+        startTo: value ? addOneMonthToDateValue(value) : "",
+      });
+
+      return;
+    }
 
     onChange({
       ...filters,
@@ -14,28 +29,30 @@ export function OpeningScheduleFilters({
     });
   }
 
-  function preventSubmit(event) {
-    event.preventDefault();
-  }
-
   return (
-    <form
-      className="opening-filters"
-      onSubmit={preventSubmit}
+    <div
+      className={
+        showKeywordSearch
+          ? "opening-filters"
+          : "opening-filters opening-filters--without-search"
+      }
+      role="search"
       aria-label="Opening schedule filters"
     >
-      <div className="opening-filters__search">
-        <Search size={18} aria-hidden="true" />
+      {showKeywordSearch && (
+        <div className="opening-filters__search">
+          <Search size={18} aria-hidden="true" />
 
-        <input
-          type="search"
-          name="keyword"
-          value={filters.keyword}
-          placeholder="Search course or class..."
-          aria-label="Search course or class"
-          onChange={handleChange}
-        />
-      </div>
+          <input
+            type="search"
+            name="keyword"
+            value={filters.keyword}
+            placeholder="Search course or class..."
+            aria-label="Search course or class"
+            onChange={handleChange}
+          />
+        </div>
+      )}
 
       <label className="opening-filters__field">
         <span>Opening from</span>
@@ -44,6 +61,8 @@ export function OpeningScheduleFilters({
           type="date"
           name="startFrom"
           value={filters.startFrom}
+          min={getTodayDateValue()}
+          max={filters.startTo || undefined}
           onChange={handleChange}
         />
       </label>
@@ -55,48 +74,27 @@ export function OpeningScheduleFilters({
           type="date"
           name="startTo"
           value={filters.startTo}
+          min={filters.startFrom || getTodayDateValue()}
           onChange={handleChange}
         />
       </label>
 
-      <label className="opening-filters__field">
-        <span>Minimum price</span>
+      <label className="opening-filters__field opening-filters__field--price">
+        <span>Price</span>
 
-        <input
-          type="number"
-          name="minPrice"
-          min="0"
-          step="1000"
-          value={filters.minPrice}
-          placeholder="0"
+        <select
+          name="priceRange"
+          value={filters.priceRange}
+          aria-label="Filter classes by price"
           onChange={handleChange}
-        />
-      </label>
-
-      <label className="opening-filters__field">
-        <span>Maximum price</span>
-
-        <input
-          type="number"
-          name="maxPrice"
-          min="0"
-          step="1000"
-          value={filters.maxPrice}
-          placeholder="No limit"
-          onChange={handleChange}
-        />
-      </label>
-
-      <div className="opening-filters__actions">
-        <button
-          type="button"
-          className="opening-button opening-button--secondary"
-          onClick={onReset}
         >
-          <RotateCcw size={17} aria-hidden="true" />
-          Reset
-        </button>
-      </div>
-    </form>
+          {PRICE_RANGE_OPTIONS.map((option) => (
+            <option key={option.value || "ALL"} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+      </label>
+    </div>
   );
 }

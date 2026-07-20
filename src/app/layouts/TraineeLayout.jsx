@@ -6,12 +6,31 @@ import { SiteFooter } from "@/shared/components";
 import "./TraineeLayout.css";
 
 const TRAINEE_TABS = [
-  { label: "Dashboard", to: "/dashboard", end: true },
-  { label: "Progress", to: "/learning/progress" },
-  { label: "Course Catalog", to: "/learning/courses" },
-  { label: "Opening Schedule", to: "/learning/opening-schedule" },
-  { label: "My Tests", to: "/learning/tests" },
-  { label: "Flashcards", to: "/learning/flashcards" },
+  {
+    label: "Dashboard",
+    to: "/dashboard",
+    end: true,
+  },
+  {
+    label: "Progress",
+    to: "/learning/progress",
+  },
+  {
+    label: "My Tests",
+    to: "/learning/tests",
+  },
+  {
+    label: "My Flashcards",
+    to: "/learning/flashcards",
+  },
+    {
+    label: "Course Catalog",
+    to: "/learning/courses",
+  },
+  {
+    label: "Opening Class",
+    to: "/learning/opening-schedule",
+  },
 ];
 
 function getDisplayName(user) {
