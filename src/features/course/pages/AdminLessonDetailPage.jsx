@@ -23,6 +23,7 @@ export default function AdminLessonDetailPage() {
     () => ({
       mode: isTrainer ? "trainer" : "admin",
       lessonId,
+      courseId,
       backPath,
       services: {
         getLessonDetail: (id) =>
@@ -47,7 +48,8 @@ export default function AdminLessonDetailPage() {
         flashcardStaging: true,
       },
     }),
-    [backPath, isTrainer, lessonId,]);
+    [backPath, courseId, isTrainer, lessonId],
+  );
 
   return (
     <LessonDetailEditor context={context} />

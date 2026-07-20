@@ -14,14 +14,19 @@ export default function AdminOrdersPage() {
             try {
                 setLoading(true);
                 const data = await adminMonitoringService.getOrders();
-                // 🟩 ĐÃ SỬA: Kiểm tra ép buộc phải là mảng (Array) mới được set, nếu không gán []
-                if (data?.content && Array.isArray(data.content)) {
-                    setOrders(data.content);
-                } else if (Array.isArray(data)) {
-                    setOrders(data);
-                } else {
-                    setOrders([]);
-                }
+                const rawOrders = Array.isArray(data?.items)
+                    ? data.items
+                    : Array.isArray(data?.content)
+                      ? data.content
+                      : Array.isArray(data)
+                        ? data
+                        : [];
+                setOrders(
+                    rawOrders.map((order) => ({
+                        ...order,
+                        amount: order?.amount ?? order?.totalAmount,
+                    })),
+                );
             } catch (error) {
                 console.error("Error fetching orders list:", error);
                 setOrders([]); // 🟩 ĐÃ SỬA: Lỗi phát là gán mảng rỗng luôn cho an toàn

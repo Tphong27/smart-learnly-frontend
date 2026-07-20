@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import { Check, RefreshCw, Search, Shuffle, X } from "lucide-react";
+import { Check, Search, Shuffle, X } from "lucide-react";
 import Pagination from "@/shared/components/Pagination";
 import { Button } from "@/shared/components/ui";
-import { courseService } from "@/services/course.service";
 import { questionBankService } from "@/services/question-bank.service";
 import {
   sanitizeAnswerHtml,
@@ -20,23 +19,10 @@ const DEFAULT_PAGE_SIZE = 10;
 const DEFAULT_FILTERS = {
   search: "",
   type: "all",
+  // Match admin bank detail default: show all non-filtered statuses so draft banks still list questions.
   status: "all",
   difficulty: "all",
-  moduleId: "all",
 };
-
-function normalizeModules(payload) {
-  const root = payload?.data ?? payload;
-  const items = Array.isArray(root)
-    ? root
-    : root?.items ?? root?.content ?? root?.sections ?? [];
-  return items
-    .map((item, index) => ({
-      id: item.sectionId || item.id,
-      title: item.title || item.name || `Module ${index + 1}`,
-    }))
-    .filter((item) => item.id);
-}
 
 function getQuestionId(question) {
   return question?.questionId || question?.id || "";
@@ -53,9 +39,9 @@ function questionTypeLabel(question) {
   if (type === "multiple_choice") return "Multiple choice";
   if (type === "true_false") return "True / False";
   if (type === "fill_in_the_blank") return "Fill in the blank";
+  if (type === "single_choice") return "Single choice";
   return type || "Unknown";
 }
-
 
 function buildFilterParams(filters) {
   return {
@@ -63,7 +49,6 @@ function buildFilterParams(filters) {
     type: filters.type === "all" ? undefined : filters.type,
     status: filters.status === "all" ? undefined : filters.status,
     difficulty: filters.difficulty === "all" ? undefined : filters.difficulty,
-    moduleId: filters.moduleId === "all" ? undefined : filters.moduleId,
   };
 }
 
@@ -77,19 +62,22 @@ function buildDuplicateQuestionIds(prepared, selectedQuestions) {
   return ids;
 }
 
+/**
+ * Full-width bank import panel (not modal).
+ * Banks are scoped to courseId. Filters stay compact: bank + search + type.
+ */
 export function QuestionBankImportPanel({
+  courseId,
   existingQuestions = [],
   onImport,
-  onClose,
   onBusyChange,
 }) {
   const [banks, setBanks] = useState([]);
   const [banksLoading, setBanksLoading] = useState(false);
   const [banksError, setBanksError] = useState("");
-  const [bankSearch, setBankSearch] = useState("");
   const [selectedBankId, setSelectedBankId] = useState("");
+  const [showMoreFilters, setShowMoreFilters] = useState(false);
 
-  const [modules, setModules] = useState([]);
   const [filters, setFilters] = useState(DEFAULT_FILTERS);
   const [items, setItems] = useState([]);
   const [pageInfo, setPageInfo] = useState({
@@ -107,26 +95,6 @@ export function QuestionBankImportPanel({
   const [importing, setImporting] = useState(false);
   const [randomLoading, setRandomLoading] = useState(false);
 
-  const selectedBank = useMemo(
-    () => banks.find((bank) => String(bank.bankId || bank.id) === selectedBankId),
-    [banks, selectedBankId],
-  );
-
-  const visibleBanks = useMemo(() => {
-    const query = bankSearch.trim().toLowerCase();
-    if (!query) return banks;
-    return banks.filter((bank) => {
-      const title = String(bank.name || "").toLowerCase();
-      const description = String(bank.description || "").toLowerCase();
-      const courseId = String(bank.courseId || "").toLowerCase();
-      return (
-        title.includes(query) ||
-        description.includes(query) ||
-        courseId.includes(query)
-      );
-    });
-  }, [bankSearch, banks]);
-
   const selectedIds = useMemo(
     () => new Set(selectedQuestions.map((question) => getQuestionId(question))),
     [selectedQuestions],
@@ -142,7 +110,8 @@ export function QuestionBankImportPanel({
     [preparedSelection, selectedQuestions],
   );
 
-  const bankBusy = banksLoading || loadingQuestions || importing || randomLoading;
+  const bankBusy =
+    banksLoading || loadingQuestions || importing || randomLoading;
   const canImportSelected =
     selectedQuestions.length > 0 &&
     preparedSelection.valid &&
@@ -161,13 +130,22 @@ export function QuestionBankImportPanel({
   );
 
   useEffect(() => {
+    if (!courseId) return undefined;
+
     let cancelled = false;
     (async () => {
       setBanksLoading(true);
       setBanksError("");
       try {
-        const data = await questionBankService.listBanks();
-        if (!cancelled) setBanks(Array.isArray(data) ? data : []);
+        const data = await questionBankService.listBanks({ courseId });
+        if (!cancelled) {
+          setBanks(Array.isArray(data) ? data : []);
+          setSelectedBankId("");
+          setItems([]);
+          setSelectedQuestions([]);
+          setFilters(DEFAULT_FILTERS);
+          setPageInfo({ page: 0, totalPages: 1, totalItems: 0 });
+        }
       } catch (error) {
         if (!cancelled) {
           setBanksError(error?.message || "Could not load question banks.");
@@ -180,30 +158,10 @@ export function QuestionBankImportPanel({
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [courseId]);
 
   useEffect(() => {
-    if (!selectedBankId) return;
-
-    const bank = banks.find((item) => String(item.bankId || item.id) === selectedBankId);
-    if (!bank?.courseId) return;
-
-    let cancelled = false;
-    (async () => {
-      try {
-        const moduleData = await courseService.getCourseContent(bank.courseId);
-        if (!cancelled) setModules(normalizeModules(moduleData));
-      } catch {
-        if (!cancelled) setModules([]);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [banks, selectedBankId]);
-
-  useEffect(() => {
-    if (!selectedBankId) return undefined;
+    if (!courseId || !selectedBankId) return undefined;
 
     let cancelled = false;
     (async () => {
@@ -236,11 +194,10 @@ export function QuestionBankImportPanel({
     return () => {
       cancelled = true;
     };
-  }, [filters, pageInfo.page, selectedBankId]);
+  }, [courseId, filters, pageInfo.page, selectedBankId]);
 
   const handleBankChange = (nextBankId) => {
     setSelectedBankId(nextBankId);
-    setModules([]);
     setItems([]);
     setPageInfo({ page: 0, totalPages: 1, totalItems: 0 });
     setSelectedQuestions([]);
@@ -253,14 +210,13 @@ export function QuestionBankImportPanel({
 
   const updateFilter = (name, value) => {
     setFilters((current) => ({ ...current, [name]: value }));
-    setPageInfo((current) => ({ ...current, page: 0, totalPages: current.totalPages }));
+    setPageInfo((current) => ({
+      ...current,
+      page: 0,
+      totalPages: current.totalPages,
+    }));
     setRandomError("");
     setImportError("");
-  };
-
-  const resetFilters = () => {
-    setFilters(DEFAULT_FILTERS);
-    setPageInfo((current) => ({ ...current, page: 0, totalPages: current.totalPages }));
   };
 
   const toggleQuestion = (question) => {
@@ -283,9 +239,13 @@ export function QuestionBankImportPanel({
     const allSelected = visibleIds.every((id) => selectedIds.has(id));
     setSelectedQuestions((current) => {
       if (allSelected) {
-        return current.filter((question) => !visibleIds.includes(getQuestionId(question)));
+        return current.filter(
+          (question) => !visibleIds.includes(getQuestionId(question)),
+        );
       }
-      const currentIds = new Set(current.map((question) => getQuestionId(question)));
+      const currentIds = new Set(
+        current.map((question) => getQuestionId(question)),
+      );
       const next = [...current];
       items.forEach((question) => {
         const id = getQuestionId(question);
@@ -323,11 +283,15 @@ export function QuestionBankImportPanel({
     if (prepared.duplicates.length > 0) {
       const message = prepared.duplicates
         .map((duplicate) => {
-          const label = questionLabel(rawQuestions[duplicate.index]) || `Question ${duplicate.index + 1}`;
+          const label =
+            questionLabel(rawQuestions[duplicate.index]) ||
+            `Question ${duplicate.index + 1}`;
           return `${label}: ${duplicate.reasons.join(", ")}`;
         })
         .join(" ");
-      setImportError(message || "Some selected questions already exist in this quiz.");
+      setImportError(
+        message || "Some selected questions already exist in this quiz.",
+      );
       return false;
     }
     if (!prepared.valid) {
@@ -349,7 +313,6 @@ export function QuestionBankImportPanel({
       setSelectedQuestions([]);
       setImportError("");
       setRandomCount("");
-      onClose();
       return true;
     } catch (error) {
       console.error(`Question bank import ${sourceLabel} error:`, error);
@@ -375,7 +338,9 @@ export function QuestionBankImportPanel({
       return;
     }
     if (pageInfo.totalItems > 0 && count > pageInfo.totalItems) {
-      setRandomError(`Only ${pageInfo.totalItems} questions are available in this filter.`);
+      setRandomError(
+        `Only ${pageInfo.totalItems} questions are available in this filter.`,
+      );
       return;
     }
 
@@ -388,7 +353,9 @@ export function QuestionBankImportPanel({
         filters: buildFilterParams(filters),
       });
       if (count > pool.length) {
-        setRandomError(`Only ${pool.length} questions are available in this filter.`);
+        setRandomError(
+          `Only ${pool.length} questions are available in this filter.`,
+        );
         return;
       }
       const picked = pickRandomQuestions(pool, count);
@@ -406,241 +373,166 @@ export function QuestionBankImportPanel({
     selectedIds.has(getQuestionId(question)),
   ).length;
 
+  if (!courseId) {
+    return (
+      <div className="quiz-question-bank-import">
+        <div className="admin-empty">
+          Course context is required to import from question banks of this course.
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="quiz-question-bank-import">
-      <section className="quiz-question-bank-import__section">
-        <div className="quiz-question-bank-import__section-header">
-          <div>
-            <h3 className="quiz-question-bank-import__title">Question Bank</h3>
-            <p className="quiz-question-bank-import__subtitle">
-              Choose one bank first, then select questions manually or import a random set from the filtered pool.
-            </p>
-          </div>
-          <Button
-            type="button"
-            variant="secondary"
-            leftIcon={<RefreshCw size={15} />}
-            onClick={() => {
-              setBanksLoading(true);
-              setBanksError("");
-              questionBankService
-                .listBanks()
-                .then((data) => {
-                  setBanks(Array.isArray(data) ? data : []);
-                })
-                .catch((error) => {
-                  setBanksError(error?.message || "Could not load question banks.");
-                })
-                .finally(() => setBanksLoading(false));
-            }}
-            disabled={bankBusy}
+      <div className="quiz-question-bank-import__toolbar">
+        <label className="quiz-question-import__field quiz-question-bank-import__field--bank">
+          <span className="quiz-question-import__field-label">Bank</span>
+          <select
+            className="quiz-question-import__select"
+            value={selectedBankId}
+            onChange={(event) => handleBankChange(event.target.value)}
+            disabled={bankBusy || banksLoading}
           >
-            Refresh banks
-          </Button>
-        </div>
+            <option value="">
+              {banksLoading ? "Loading banks..." : "Choose a bank"}
+            </option>
+            {banks.map((bank) => (
+              <option key={bank.bankId || bank.id} value={bank.bankId || bank.id}>
+                {bank.name}
+                {bank.questionCount != null ? ` (${bank.questionCount})` : ""}
+              </option>
+            ))}
+          </select>
+        </label>
 
-        {banksError && (
-          <p className="quiz-question-import__warning" role="alert" aria-live="assertive">
-            {banksError}
-          </p>
-        )}
-
-        <div className="quiz-question-import__bank-picker">
-          <label className="quiz-question-import__field">
-            <span className="quiz-question-import__field-label">Search bank</span>
+        <label className="quiz-question-import__field">
+          <span className="quiz-question-import__field-label">Search</span>
+          <div className="quiz-question-import__input-group">
+            <Search size={15} />
             <input
               className="quiz-question-import__input"
               type="search"
-              placeholder="Search by bank name or course"
-              value={bankSearch}
-              onChange={(event) => setBankSearch(event.target.value)}
-              disabled={bankBusy}
+              value={filters.search}
+              placeholder="Search question text"
+              onChange={(event) => updateFilter("search", event.target.value)}
+              disabled={!selectedBankId || bankBusy}
             />
-          </label>
-
-          <label className="quiz-question-import__field">
-            <span className="quiz-question-import__field-label">Question bank</span>
-            <select
-              className="quiz-question-import__select"
-              value={selectedBankId}
-              onChange={(event) => handleBankChange(event.target.value)}
-              disabled={bankBusy || banksLoading}
-            >
-              <option value="">Choose a bank</option>
-              {visibleBanks.map((bank) => (
-                <option key={bank.bankId || bank.id} value={bank.bankId || bank.id}>
-                  {bank.name}{bank.courseId ? ` · ${bank.courseId}` : ""}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
-
-        {selectedBank && (
-          <div className="quiz-question-bank-import__bank-summary">
-            <span className="admin-status admin-status--approved">
-              {selectedBank.status || "active"}
-            </span>
-            <span>{selectedBank.name}</span>
-            {selectedBank.courseId && <span>Course: {selectedBank.courseId}</span>}
-            {selectedBank.questionCount != null && (
-              <span>{selectedBank.questionCount} question(s)</span>
-            )}
           </div>
-        )}
-      </section>
+        </label>
 
-      <section className="quiz-question-bank-import__section">
-        <div className="quiz-question-bank-import__section-header">
-          <div>
-            <h4 className="quiz-question-bank-import__heading">Filters</h4>
-            <p className="quiz-question-bank-import__subtitle">
-              Search and narrow the question bank before selecting questions.
-            </p>
-          </div>
-          <Button type="button" variant="ghost" onClick={resetFilters} disabled={!selectedBankId || bankBusy}>
-            Reset filters
-          </Button>
-        </div>
+        <label className="quiz-question-import__field quiz-question-bank-import__field--type">
+          <span className="quiz-question-import__field-label">Type</span>
+          <select
+            className="quiz-question-import__select"
+            value={filters.type}
+            onChange={(event) => updateFilter("type", event.target.value)}
+            disabled={!selectedBankId || bankBusy}
+          >
+            <option value="all">All types</option>
+            <option value="single_choice">Single choice</option>
+            <option value="multiple_choice">Multiple choice</option>
+            <option value="fill_in_the_blank">Fill in the blank</option>
+            <option value="true_false">True / False</option>
+          </select>
+        </label>
 
-        <div className="quiz-question-bank-import__filters">
-          <label className="quiz-question-import__field">
-            <span className="quiz-question-import__field-label">Search</span>
-            <div className="quiz-question-import__input-group">
-              <Search size={15} />
-              <input
-                className="quiz-question-import__input"
-                type="search"
-                value={filters.search}
-                placeholder="Search question text"
-                onChange={(event) => updateFilter("search", event.target.value)}
+        <button
+          type="button"
+          className="quiz-question-bank-import__more-toggle"
+          onClick={() => setShowMoreFilters((open) => !open)}
+          disabled={!selectedBankId || bankBusy}
+        >
+          {showMoreFilters ? "Less" : "More"}
+        </button>
+
+        {showMoreFilters && (
+          <>
+            <label className="quiz-question-import__field quiz-question-bank-import__field--type">
+              <span className="quiz-question-import__field-label">Status</span>
+              <select
+                className="quiz-question-import__select"
+                value={filters.status}
+                onChange={(event) => updateFilter("status", event.target.value)}
                 disabled={!selectedBankId || bankBusy}
-              />
-            </div>
-          </label>
-
-          <label className="quiz-question-import__field">
-            <span className="quiz-question-import__field-label">Type</span>
-            <select
-              className="quiz-question-import__select"
-              value={filters.type}
-              onChange={(event) => updateFilter("type", event.target.value)}
-              disabled={!selectedBankId || bankBusy}
-            >
-              <option value="all">All types</option>
-              <option value="single_choice">Single choice</option>
-              <option value="multiple_choice">Multiple choice</option>
-              <option value="fill_in_the_blank">Fill in the blank</option>
-              <option value="true_false">True / False</option>
-            </select>
-          </label>
-
-          <label className="quiz-question-import__field">
-            <span className="quiz-question-import__field-label">Status</span>
-            <select
-              className="quiz-question-import__select"
-              value={filters.status}
-              onChange={(event) => updateFilter("status", event.target.value)}
-              disabled={!selectedBankId || bankBusy}
-            >
-              <option value="all">All statuses</option>
-              <option value="draft">Draft</option>
-              <option value="approved">Approved</option>
-              <option value="rejected">Rejected</option>
-            </select>
-          </label>
-
-          <label className="quiz-question-import__field">
-            <span className="quiz-question-import__field-label">Difficulty</span>
-            <select
-              className="quiz-question-import__select"
-              value={filters.difficulty}
-              onChange={(event) => updateFilter("difficulty", event.target.value)}
-              disabled={!selectedBankId || bankBusy}
-            >
-              <option value="all">All difficulties</option>
-              <option value="easy">Easy</option>
-              <option value="medium">Medium</option>
-              <option value="hard">Hard</option>
-            </select>
-          </label>
-
-          <label className="quiz-question-import__field">
-            <span className="quiz-question-import__field-label">Module</span>
-            <select
-              className="quiz-question-import__select"
-              value={filters.moduleId}
-              onChange={(event) => updateFilter("moduleId", event.target.value)}
-              disabled={!selectedBankId || bankBusy || modules.length === 0}
-            >
-              <option value="all">All modules</option>
-              {modules.map((module) => (
-                <option key={module.id} value={module.id}>
-                  {module.title}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
-      </section>
-
-      {selectedBankId && (
-        <section className="quiz-question-bank-import__section">
-          <div className="quiz-question-bank-import__section-header">
-            <div>
-              <h4 className="quiz-question-bank-import__heading">Random import</h4>
-              <p className="quiz-question-bank-import__subtitle">
-                Pick a random sample from the currently filtered bank result.
-              </p>
-            </div>
-            <div className="quiz-question-bank-import__random-actions">
-              <input
-                className="quiz-question-import__input quiz-question-bank-import__random-input"
-                type="number"
-                min="1"
-                max={questionPoolCount}
-                placeholder="Count"
-                value={randomCount}
-                onChange={(event) => {
-                  setRandomCount(event.target.value);
-                  setRandomError("");
-                }}
-                disabled={bankBusy || questionPoolCount === 0}
-              />
-              <Button
-                type="button"
-                variant="secondary"
-                leftIcon={<Shuffle size={15} />}
-                onClick={handleRandomImport}
-                loading={randomLoading}
-                disabled={bankBusy || questionPoolCount === 0}
               >
-                Random import
-              </Button>
-            </div>
-          </div>
-          {randomError && (
-            <p className="quiz-question-import__warning" role="alert" aria-live="assertive">
-              {randomError}
-            </p>
-          )}
-          <p className="quiz-question-bank-import__subtitle">
-            Available in current filter: {questionPoolCount}
-          </p>
-        </section>
+                <option value="all">All statuses</option>
+                <option value="approved">Approved</option>
+                <option value="draft">Draft</option>
+                <option value="rejected">Rejected</option>
+              </select>
+            </label>
+            <label className="quiz-question-import__field quiz-question-bank-import__field--type">
+              <span className="quiz-question-import__field-label">Difficulty</span>
+              <select
+                className="quiz-question-import__select"
+                value={filters.difficulty}
+                onChange={(event) =>
+                  updateFilter("difficulty", event.target.value)
+                }
+                disabled={!selectedBankId || bankBusy}
+              >
+                <option value="all">All</option>
+                <option value="easy">Easy</option>
+                <option value="medium">Medium</option>
+                <option value="hard">Hard</option>
+              </select>
+            </label>
+          </>
+        )}
+      </div>
+
+      {banksError && (
+        <p className="quiz-question-import__warning" role="alert">
+          {banksError}
+        </p>
       )}
 
-      <section className="quiz-question-bank-import__section">
-        <div className="quiz-question-bank-import__section-header">
-          <div>
-            <h4 className="quiz-question-bank-import__heading">Selected questions</h4>
-            <p className="quiz-question-bank-import__subtitle">
-              {selectedQuestions.length} selected question(s).
-            </p>
+      {!banksLoading && !banksError && banks.length === 0 && (
+        <div className="admin-empty">No question banks for this course.</div>
+      )}
+
+      {selectedBankId && (
+        <div className="quiz-question-bank-import__actions-bar">
+          <div className="quiz-question-bank-import__random-actions">
+            <input
+              className="quiz-question-import__input quiz-question-bank-import__random-input"
+              type="number"
+              min="1"
+              max={questionPoolCount || undefined}
+              placeholder="Count"
+              value={randomCount}
+              onChange={(event) => {
+                setRandomCount(event.target.value);
+                setRandomError("");
+              }}
+              disabled={bankBusy || questionPoolCount === 0}
+            />
+            <Button
+              type="button"
+              variant="secondary"
+              leftIcon={<Shuffle size={15} />}
+              onClick={handleRandomImport}
+              loading={randomLoading}
+              disabled={bankBusy || questionPoolCount === 0}
+            >
+              Random import
+            </Button>
+            <span className="quiz-question-bank-import__pool-meta">
+              {questionPoolCount} in filter
+            </span>
           </div>
           <div className="quiz-question-bank-import__selection-actions">
-            <Button type="button" variant="ghost" onClick={clearSelection} disabled={selectedQuestions.length === 0 || bankBusy}>
-              Clear selection
+            <span className="quiz-question-bank-import__pool-meta">
+              Selected: {selectedQuestions.length}
+            </span>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={clearSelection}
+              disabled={selectedQuestions.length === 0 || bankBusy}
+            >
+              Clear
             </Button>
             <Button
               type="button"
@@ -648,7 +540,9 @@ export function QuestionBankImportPanel({
               onClick={toggleVisibleSelection}
               disabled={!selectedBankId || items.length === 0 || bankBusy}
             >
-              {visibleSelectedCount === items.length && items.length > 0 ? "Unselect visible" : "Select visible"}
+              {visibleSelectedCount === items.length && items.length > 0
+                ? "Unselect page"
+                : "Select page"}
             </Button>
             <Button
               type="button"
@@ -661,193 +555,212 @@ export function QuestionBankImportPanel({
             </Button>
           </div>
         </div>
+      )}
 
-        {preparedSelection.duplicates.length > 0 && (
-          <p className="quiz-question-import__warning" role="alert" aria-live="assertive">
-            {preparedSelection.duplicates.length} selected question(s) already exist in this quiz or are duplicated in the selection.
-          </p>
-        )}
+      {randomError && (
+        <p className="quiz-question-import__warning" role="alert">
+          {randomError}
+        </p>
+      )}
+      {importError && (
+        <p className="quiz-question-import__warning" role="alert">
+          {importError}
+        </p>
+      )}
+      {preparedSelection.duplicates.length > 0 && (
+        <p className="quiz-question-import__warning" role="alert">
+          {preparedSelection.duplicates.length} selected question(s) already
+          exist in this quiz or are duplicated in the selection.
+        </p>
+      )}
+      {preparedSelection.errors.length > 0 && (
+        <ul className="quiz-question-import__errors" role="alert">
+          {preparedSelection.errors.map((error, index) => (
+            <li key={`${error.message}-${index}`}>{error.message}</li>
+          ))}
+        </ul>
+      )}
 
-        {preparedSelection.errors.length > 0 && (
-          <ul className="quiz-question-import__errors" role="alert" aria-live="assertive">
-            {preparedSelection.errors.map((error, index) => (
-              <li key={`${error.message}-${index}`}>{error.message}</li>
-            ))}
-          </ul>
-        )}
-        {importError && (
-          <p className="quiz-question-import__warning" role="alert" aria-live="assertive">
-            {importError}
-          </p>
-        )}
+      {selectedBankId && (
+        <div className="quiz-question-bank-import__split">
+          <section className="quiz-question-bank-import__column">
+            <div className="quiz-question-bank-import__column-header">
+              <h4 className="quiz-question-bank-import__heading">
+                Bank questions
+              </h4>
+              <span className="quiz-question-bank-import__pool-meta">
+                {pageInfo.totalItems} total
+              </span>
+            </div>
 
-        {duplicateQuestionIds.size > 0 && (
-          <p className="quiz-question-bank-import__subtitle">
-            Duplicate rows are blocked and marked in the list below.
-          </p>
-        )}
-
-        <div className="quiz-question-bank-import__selected-list">
-          {selectedQuestions.length === 0 ? (
-            <p className="admin-empty">No questions selected yet.</p>
-          ) : (
-            selectedQuestions.map((question) => {
-              const id = getQuestionId(question);
-              return (
-                <div className="quiz-question-bank-import__selected-item" key={id || questionLabel(question)}>
-                  <div>
-                    <div
-                      className="quiz-question-bank-import__selected-title"
-                      dangerouslySetInnerHTML={{
-                        __html: sanitizeQuestionHtml(
-                          questionLabel(question) || "Untitled question",
-                        ),
-                      }}
-                    />
-                    <div className="quiz-question-bank-import__selected-meta">
-                      <span>{questionTypeLabel(question)}</span>
-                      {question.difficulty && <span>{question.difficulty}</span>}
-                      {question.status && <span>{question.status}</span>}
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    className="quiz-question-edit-form__icon-btn"
-                    onClick={() => removeSelectedQuestion(id)}
-                    disabled={bankBusy}
-                    aria-label={`Remove selected question ${questionLabel(question) || id || "item"}`}
-                  >
-                    <X size={15} />
-                  </button>
-                </div>
-              );
-            })
-          )}
-        </div>
-      </section>
-
-      <section className="quiz-question-bank-import__section">
-        <div className="quiz-question-bank-import__section-header">
-          <div>
-            <h4 className="quiz-question-bank-import__heading">Bank questions</h4>
-            <p className="quiz-question-bank-import__subtitle">
-              Browse the filtered bank result and add questions into the selection.
-            </p>
-          </div>
-          <div className="quiz-question-bank-import__pool-meta">
-            <span>{pageInfo.totalItems} total</span>
-            <span>{pageInfo.totalPages} page(s)</span>
-          </div>
-        </div>
-
-        {!selectedBankId ? (
-          <div className="admin-empty">Choose a question bank to load its questions.</div>
-        ) : banksLoading || loadingQuestions ? (
-          <div className="admin-loading">Loading question bank...</div>
-        ) : questionsError ? (
-          <p className="quiz-question-import__warning" role="alert" aria-live="assertive">
-            {questionsError}
-          </p>
-        ) : items.length === 0 ? (
-          <div className="admin-empty">No questions match the current filters.</div>
-        ) : (
-          <div className="quiz-question-bank-import__list">
-            {items.map((question) => {
-              const id = getQuestionId(question);
-              const selected = selectedIds.has(id);
-              const duplicate = duplicateQuestionIds.has(id);
-              const answers = Array.isArray(question.answers)
-                ? question.answers
-                : Array.isArray(question.options)
-                  ? question.options
-                  : [];
-              return (
-                <article
-                  key={id || questionLabel(question)}
-                  className={`quiz-question-bank-import__item${selected ? " is-selected" : ""}${duplicate ? " is-duplicate" : ""}`}
-                >
-                  <label className="quiz-question-bank-import__item-main">
-                    <input
-                      type="checkbox"
-                      checked={selected}
-                      onChange={() => toggleQuestion(question)}
-                      disabled={bankBusy}
-                    />
-                    <div className="quiz-question-bank-import__item-body">
-                      <div className="quiz-question-bank-import__item-title">
-                        <span
-                          dangerouslySetInnerHTML={{
-                            __html: sanitizeQuestionHtml(questionLabel(question) || "Untitled question"),
-                          }}
-                        />
-                      </div>
-                      <div className="quiz-question-bank-import__item-meta">
-                        <span className="admin-status admin-status--approved">
-                          {questionTypeLabel(question)}
-                        </span>
-                        {question.status && (
-                          <span className={`admin-status admin-status--${question.status}`}>
-                            {question.status}
-                          </span>
-                        )}
-                        {question.difficulty && (
-                          <span className="admin-status admin-status--draft">
-                            {question.difficulty}
-                          </span>
-                        )}
-                        <span>{answers.length} answer(s)</span>
-                      </div>
-                    </div>
-                  </label>
-                  <div className="quiz-question-bank-import__item-actions">
-                    {duplicate && (
-                      <span className="quiz-question-import__warning">Already in this quiz</span>
-                    )}
-                    <button
-                      type="button"
-                      className="quiz-question-edit-form__icon-btn"
-                      onClick={() => toggleQuestion(question)}
-                      disabled={bankBusy}
-                      aria-label={selected ? `Remove question ${questionLabel(question)}` : `Add question ${questionLabel(question)}`}
+            {loadingQuestions ? (
+              <div className="admin-loading">Loading questions...</div>
+            ) : questionsError ? (
+              <p className="quiz-question-import__warning" role="alert">
+                {questionsError}
+              </p>
+            ) : items.length === 0 ? (
+              <div className="admin-empty">
+                No questions match the current filters.
+              </div>
+            ) : (
+              <div className="quiz-question-bank-import__list">
+                {items.map((question) => {
+                  const id = getQuestionId(question);
+                  const selected = selectedIds.has(id);
+                  const duplicate = duplicateQuestionIds.has(id);
+                  const answers = Array.isArray(question.answers)
+                    ? question.answers
+                    : Array.isArray(question.options)
+                      ? question.options
+                      : [];
+                  return (
+                    <article
+                      key={id || questionLabel(question)}
+                      className={`quiz-question-bank-import__item${selected ? " is-selected" : ""}${duplicate ? " is-duplicate" : ""}`}
                     >
-                      {selected ? <X size={15} /> : <Check size={15} />}
-                    </button>
-                  </div>
-                  {answers.length > 0 && (
-                    <div className="quiz-question-bank-import__item-answers">
-                      {answers.slice(0, 4).map((answer, index) => (
-                        <div
-                          className={`quiz-question-bank-import__answer${(answer.correct || answer.isCorrect) ? " is-correct" : ""}`}
-                          key={answer.answerId || answer.id || index}
-                        >
-                          <span
-                            dangerouslySetInnerHTML={{
-                              __html: sanitizeAnswerHtml(answer.answerText || answer.content || answer.text || ""),
-                            }}
-                          />
-                          {(answer.correct || answer.isCorrect) && <strong>Correct</strong>}
+                      <label className="quiz-question-bank-import__item-main">
+                        <input
+                          type="checkbox"
+                          checked={selected}
+                          onChange={() => toggleQuestion(question)}
+                          disabled={bankBusy}
+                        />
+                        <div className="quiz-question-bank-import__item-body">
+                          <div className="quiz-question-bank-import__item-title">
+                            <span
+                              dangerouslySetInnerHTML={{
+                                __html: sanitizeQuestionHtml(
+                                  questionLabel(question) ||
+                                    "Untitled question",
+                                ),
+                              }}
+                            />
+                          </div>
+                          <div className="quiz-question-bank-import__item-meta">
+                            <span className="admin-status admin-status--approved">
+                              {questionTypeLabel(question)}
+                            </span>
+                            {question.difficulty && (
+                              <span className="admin-status admin-status--draft">
+                                {question.difficulty}
+                              </span>
+                            )}
+                            <span>{answers.length} answer(s)</span>
+                            {duplicate && (
+                              <span className="quiz-question-import__warning">
+                                Already in quiz
+                              </span>
+                            )}
+                          </div>
                         </div>
-                      ))}
-                    </div>
-                  )}
-                </article>
-              );
-            })}
-          </div>
-        )}
+                      </label>
+                      {answers.length > 0 && (
+                        <div className="quiz-question-bank-import__item-answers">
+                          {answers.slice(0, 3).map((answer, index) => (
+                            <div
+                              className={`quiz-question-bank-import__answer${answer.correct || answer.isCorrect ? " is-correct" : ""}`}
+                              key={answer.answerId || answer.id || index}
+                            >
+                              <span
+                                dangerouslySetInnerHTML={{
+                                  __html: sanitizeAnswerHtml(
+                                    answer.answerText ||
+                                      answer.content ||
+                                      answer.text ||
+                                      "",
+                                  ),
+                                }}
+                              />
+                              {(answer.correct || answer.isCorrect) && (
+                                <strong>Correct</strong>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </article>
+                  );
+                })}
+              </div>
+            )}
 
-        <Pagination
-          page={pageInfo.page + 1}
-          totalPages={pageInfo.totalPages}
-          totalItems={pageInfo.totalItems}
-          size={DEFAULT_PAGE_SIZE}
-          disabled={bankBusy}
-          ariaLabel="Question bank pagination"
-          onPageChange={(nextPage) => {
-            setPageInfo((current) => ({ ...current, page: nextPage - 1 }));
-          }}
-        />
-      </section>
+            <Pagination
+              page={pageInfo.page + 1}
+              totalPages={pageInfo.totalPages}
+              totalItems={pageInfo.totalItems}
+              size={DEFAULT_PAGE_SIZE}
+              disabled={bankBusy}
+              ariaLabel="Question bank pagination"
+              onPageChange={(nextPage) => {
+                setPageInfo((current) => ({
+                  ...current,
+                  page: nextPage - 1,
+                }));
+              }}
+            />
+          </section>
+
+          <aside className="quiz-question-bank-import__column quiz-question-bank-import__column--selected">
+            <div className="quiz-question-bank-import__column-header">
+              <h4 className="quiz-question-bank-import__heading">Selected</h4>
+              <span className="quiz-question-bank-import__pool-meta">
+                {selectedQuestions.length}
+              </span>
+            </div>
+            <div className="quiz-question-bank-import__selected-list">
+              {selectedQuestions.length === 0 ? (
+                <p className="admin-empty">No questions selected yet.</p>
+              ) : (
+                selectedQuestions.map((question) => {
+                  const id = getQuestionId(question);
+                  return (
+                    <div
+                      className="quiz-question-bank-import__selected-item"
+                      key={id || questionLabel(question)}
+                    >
+                      <div
+                        className="quiz-question-bank-import__selected-title"
+                        dangerouslySetInnerHTML={{
+                          __html: sanitizeQuestionHtml(
+                            questionLabel(question) || "Untitled question",
+                          ),
+                        }}
+                      />
+                      <button
+                        type="button"
+                        className="quiz-question-edit-form__icon-btn"
+                        onClick={() => removeSelectedQuestion(id)}
+                        disabled={bankBusy}
+                        aria-label={`Remove ${questionLabel(question) || id}`}
+                      >
+                        <X size={15} />
+                      </button>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+            <div className="quiz-question-bank-import__selected-footer">
+              <Button
+                type="button"
+                variant="primary"
+                onClick={handleImportSelected}
+                loading={importing}
+                disabled={!canImportSelected}
+              >
+                <Check size={15} /> Import {selectedQuestions.length}
+              </Button>
+            </div>
+          </aside>
+        </div>
+      )}
+
+      {!selectedBankId && banks.length > 0 && (
+        <div className="admin-empty">
+          Choose a question bank to browse and import questions.
+        </div>
+      )}
     </div>
   );
 }

@@ -149,6 +149,7 @@ function LessonEditorSection({
 export function LessonDetailEditor({ context }) {
     const {
         lessonId,
+        courseId,
         backPath,
         services,
         features = { audit: true, quizManager: true, flashcard: true },
@@ -1271,6 +1272,7 @@ export function LessonDetailEditor({ context }) {
                                             features.quizManager && (
                                                 <QuizQuestionsPanel
                                                     lessonId={lessonId}
+                                                    courseId={courseId}
                                                     lessonTitle={title}
                                                     service={services}
                                                     disabled={loading}
