@@ -220,23 +220,8 @@ export function MyTransactionsPage() {
                 Next
               </button>
             </div>
-          )}
-
-          <Pagination
-            page={page + 1}
-            totalPages={totalPages}
-            totalItems={totalItems}
-            size={pageSize}
-            disabled={loading}
-            ariaLabel="Transaction history pagination"
-            className="my-transactions-page__pagination"
-            onPageChange={(nextPage) => setPageRequest(nextPage - 1)}
-            onSizeChange={(nextSize) => {
-              setPageSize(nextSize);
-              setPageRequest(0);
-            }}
-          />
-        </div>
+          </div>
+        )}
       </section>
       <InvoiceDetailModal
         open={Boolean(invoiceTarget)}
