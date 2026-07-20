@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Modal, Button, useToast } from "@/shared/components/ui";
 import { transactionService, orderService } from "@/services";
 import { StatusBadge } from "@/shared/components/status";
+import Pagination from "@/shared/components/Pagination";
 import { InvoiceDetailModal } from "../components/InvoiceDetailModal";
 import {
   formatAmount,
@@ -197,46 +198,20 @@ export function MyTransactionsPage() {
           </div>
         )}
 
-        {totalPages > 1 && (
-          <div className="history-pagination">
-            <span style={{ color: "#64748b", fontSize: 13 }}>
-              Page {page + 1} / {totalPages}
-            </span>
-            <div style={{ display: "flex", gap: 8 }}>
-              <button
-                type="button"
-                className="history-pagination__btn"
-                onClick={() => setPageRequest(page - 1)}
-                disabled={page === 0}
-              >
-                Previous
-              </button>
-              <button
-                type="button"
-                className="history-pagination__btn"
-                onClick={() => setPageRequest(page + 1)}
-                disabled={page + 1 >= totalPages}
-              >
-                Next
-              </button>
-            </div>
-          )}
-
-          <Pagination
-            page={page + 1}
-            totalPages={totalPages}
-            totalItems={totalItems}
-            size={pageSize}
-            disabled={loading}
-            ariaLabel="Transaction history pagination"
-            className="my-transactions-page__pagination"
-            onPageChange={(nextPage) => setPageRequest(nextPage - 1)}
-            onSizeChange={(nextSize) => {
-              setPageSize(nextSize);
-              setPageRequest(0);
-            }}
-          />
-        </div>
+        <Pagination
+          page={page + 1}
+          totalPages={totalPages}
+          totalItems={totalItems}
+          size={pageSize}
+          disabled={loading}
+          ariaLabel="Transaction history pagination"
+          className="my-transactions-page__pagination"
+          onPageChange={(nextPage) => setPageRequest(nextPage - 1)}
+          onSizeChange={(nextSize) => {
+            setPageSize(nextSize);
+            setPageRequest(0);
+          }}
+        />
       </section>
       <InvoiceDetailModal
         open={Boolean(invoiceTarget)}

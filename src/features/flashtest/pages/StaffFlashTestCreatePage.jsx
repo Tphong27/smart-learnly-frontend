@@ -18,6 +18,7 @@ import {
 } from "@/services/flashtest.service.js";
 import { useToast } from "@/shared/components/ui";
 import RichTextEditor from "@/shared/components/rich-text/RichTextEditor";
+import { AssignmentAiDraftPanel } from "@/features/assignment/components/AssignmentAiDraftPanel";
 import { QuestionSelector } from "../components/QuestionSelector";
 import "../flashtest.css";
 
@@ -803,6 +804,12 @@ export function StaffFlashTestCreatePage({ variant = "flash" }) {
                                     </label>
                                 )}
                             </div>
+
+                            <AssignmentAiDraftPanel
+                                mode="assignment"
+                                currentTitle={formData.title}
+                                currentDescription={formData.description}
+                            />
                         </>
                     ) : (
                         <>

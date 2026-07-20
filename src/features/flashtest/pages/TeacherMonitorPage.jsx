@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import { Client } from "@stomp/stompjs";
 import { useNavigate, useParams } from "react-router-dom";
 import {
@@ -12,7 +12,6 @@ import {
   RefreshCw,
   RotateCcw,
   Users,
-  X,
   XCircle,
 } from "lucide-react";
 import {
@@ -20,7 +19,6 @@ import {
   attemptService,
   testService,
 } from "@/services/flashtest.service.js";
-import { sanitizeQuestionHtml } from "@/shared/utils/htmlSanitizer";
 import "../flashtest.css";
 
 const API_BASE_URL =
@@ -92,27 +90,6 @@ function getQuestionTotal(...sources) {
   return null;
 }
 
-function questionId(question) {
-  return question?.questionId || question?.id || "";
-}
-
-function answerId(answer) {
-  return answer?.answerId || answer?.id || "";
-}
-
-function questionText(question) {
-  return (
-    question?.questionText ||
-    question?.content ||
-    question?.title ||
-    "Untitled question"
-  );
-}
-
-function answerText(answer) {
-  return answer?.answerText || answer?.content || "Untitled answer";
-}
-
 function formatScoreValue(value) {
   if (!Number.isFinite(value)) return "--";
   const score = Math.max(0, Math.min(10, value));
@@ -163,23 +140,13 @@ export function TeacherMonitorPage() {
   const [reopeningId, setReopeningId] = useState(null);
   const [gradingId, setGradingId] = useState(null);
   const [gradeForms, setGradeForms] = useState({});
-  const [detailState, setDetailState] = useState({
-    row: null,
-    answers: [],
-    loading: false,
-    error: "",
-  });
   const [connected, setConnected] = useState(false);
   const [clockTick, setClockTick] = useState(0);
   const [questionTotal, setQuestionTotal] = useState(null);
-  const [testQuestions, setTestQuestions] = useState([]);
   const [accessInfo, setAccessInfo] = useState(null);
   const [activeTab, setActiveTab] = useState("live");
   const [attemptHistory, setAttemptHistory] = useState([]);
-  const [historyDetailRow, setHistoryDetailRow] = useState(null);
-  const [historyAnswerDetails, setHistoryAnswerDetails] = useState({});
-  const [expandedHistoryAttemptId, setExpandedHistoryAttemptId] =
-    useState(null);
+  const [expandedStudentId, setExpandedStudentId] = useState(null);
 
   const rowList = useMemo(
     () =>
@@ -354,7 +321,6 @@ export function TeacherMonitorPage() {
           expiresAt: test.accessCodeExpiresAt,
         });
         setQuestionTotal(getQuestionTotal({ questions: questionMappings }));
-        setTestQuestions(questionMappings || []);
         setAttemptHistory([]);
         attempts.forEach((item) => {
           const normalizedAttempt = {
@@ -406,140 +372,62 @@ export function TeacherMonitorPage() {
     }
   };
 
-  const handleViewMcqDetail = async (row) => {
-    if (!row.attemptId) return;
-    setDetailState({ row, answers: [], loading: true, error: "" });
-    try {
-      const answers = await attemptService.getStudentAnswers(row.attemptId);
-      setDetailState({ row, answers, loading: false, error: "" });
-    } catch (error) {
-      console.error("Failed to load MCQ attempt detail", error);
-      setDetailState({
-        row,
-        answers: [],
-        loading: false,
-        error: error.message || "Could not load this attempt detail.",
-      });
-    }
+  const toggleStudentAttempts = (studentId) => {
+    setExpandedStudentId((current) =>
+      current === studentId ? null : studentId,
+    );
   };
 
-  const closeDetail = () =>
-    setDetailState({ row: null, answers: [], loading: false, error: "" });
-
-  const handleToggleHistoryAttemptDetail = async (attempt) => {
+  const openAttemptDetail = (attempt, studentName) => {
     const attemptId = attempt?.id || attempt?.attemptId;
-    if (!attemptId) return;
-
-    if (expandedHistoryAttemptId === attemptId) {
-      setExpandedHistoryAttemptId(null);
-      return;
-    }
-
-    setExpandedHistoryAttemptId(attemptId);
-    const cached = historyAnswerDetails[attemptId];
-    if (cached?.answers?.length || cached?.loading) return;
-
-    setHistoryAnswerDetails((current) => ({
-      ...current,
-      [attemptId]: { answers: [], loading: true, error: "" },
-    }));
-
-    try {
-      const answers = await attemptService.getStudentAnswers(attemptId);
-      setHistoryAnswerDetails((current) => ({
-        ...current,
-        [attemptId]: { answers, loading: false, error: "" },
-      }));
-    } catch (error) {
-      console.error("Failed to load history attempt detail", error);
-      setHistoryAnswerDetails((current) => ({
-        ...current,
-        [attemptId]: {
-          answers: [],
-          loading: false,
-          error: error.message || "Could not load this attempt detail.",
-        },
-      }));
-    }
+    const testId = attempt?.testId || id;
+    if (!attemptId || !testId) return;
+    navigate(`/staff/tests/attempts/${testId}/${attemptId}`, {
+      state: { attempt, studentName },
+    });
   };
 
-  const closeHistoryDetail = () => {
-    setHistoryDetailRow(null);
-    setExpandedHistoryAttemptId(null);
-  };
-
-  const renderMcqAttemptAnswers = (answers) => (
-    <>
-      {testQuestions.map((question, index) => {
-        const currentQuestionId = questionId(question);
-        const studentAnswer = answers.find(
-          (item) => questionId(item) === currentQuestionId,
-        );
-        const selectedAnswerId = studentAnswer?.selectedAnswerId;
-        const answerOptions = question.answers || question.options || [];
-        const correctAnswer = answerOptions.find(
-          (answer) => answer.correct || answer.isCorrect,
-        );
-        const isCorrect =
-          selectedAnswerId &&
-          correctAnswer &&
-          String(selectedAnswerId) === String(answerId(correctAnswer));
-        const resultLabel = selectedAnswerId
-          ? isCorrect
-            ? "Correct"
-            : "Incorrect"
-          : "No answer";
-
-        return (
-          <div className="ft-attempt-question" key={currentQuestionId || index}>
-            <div className="ft-attempt-question__title">
-              <div className="ft-attempt-question__heading">
-                <span className="ft-attempt-question__eyebrow">
-                  Question {index + 1}
+  const renderAttemptList = (attempts, studentName) => (
+    <div className="ft-inline-attempts">
+      <div className="ft-inline-attempts__header">
+        <strong>{attempts.length} attempts</strong>
+      </div>
+      <div className="ft-attempt-detail-list">
+        {attempts.map((attempt, index) => {
+          const attemptId = attempt.id || attempt.attemptId;
+          const score = formatMcqScore(
+            attempt,
+            getQuestionTotal(attempt) || questionTotal,
+          );
+          return (
+            <div className="ft-history-attempt" key={attemptId || index}>
+              <div className="ft-history-attempt__summary">
+                <div className="ft-history-attempt__meta">
+                  <strong>Attempt {index + 1}</strong>
+                  <span>{studentName}</span>
+                </div>
+                <strong>{score.score}/10</strong>
+                <span className="ft-muted">
+                  {attempt.startTime
+                    ? new Date(attempt.startTime).toLocaleString()
+                    : "--"}
                 </span>
-                <div
-                  className="ft-attempt-question__text"
-                  dangerouslySetInnerHTML={{
-                    __html: sanitizeQuestionHtml(questionText(question)),
-                  }}
-                />
+                <button
+                  className="ft-history-attempt__toggle"
+                  type="button"
+                  title="View answer detail"
+                  aria-label="View answer detail"
+                  disabled={!attemptId}
+                  onClick={() => openAttemptDetail(attempt, studentName)}
+                >
+                  <Eye size={18} />
+                </button>
               </div>
-              <span
-                className={`ft-badge ${
-                  isCorrect ? "ft-status--submitted" : "ft-status--expired"
-                }`}
-              >
-                {resultLabel}
-              </span>
             </div>
-            <div className="ft-attempt-answers">
-              {answerOptions.map((answer, answerIndex) => {
-                const id = answerId(answer);
-                const selected = String(selectedAnswerId || "") === String(id);
-                const correct = answer.correct || answer.isCorrect;
-                return (
-                  <div
-                    className={`ft-attempt-answer ${
-                      correct ? "is-correct" : ""
-                    } ${selected ? "is-selected" : ""}`}
-                    key={id || answerIndex}
-                  >
-                    <span>{answerText(answer)}</span>
-                    <div className="ft-attempt-answer__tags">
-                      {selected && <strong>Selected</strong>}
-                      {correct && <strong>Answer</strong>}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        );
-      })}
-      {testQuestions.length === 0 && (
-        <p className="ft-muted">No questions found for this test.</p>
-      )}
-    </>
+          );
+        })}
+      </div>
+    </div>
   );
 
   const updateGradeForm = (submissionId, patch) => {
@@ -784,6 +672,11 @@ export function TeacherMonitorPage() {
                   row,
                   getQuestionTotal(row) || questionTotal,
                 );
+                const historyRow = historyRows.find(
+                  (item) => item.studentId === row.studentId,
+                );
+                const attempts = historyRow?.attempts || [];
+                const isExpanded = expandedStudentId === row.studentId;
                 const remaining = row.endTime
                   ? Math.max(
                       0,
@@ -793,127 +686,144 @@ export function TeacherMonitorPage() {
                     )
                   : (row.remainingSeconds ?? null);
                 return (
-                  <tr key={row.studentId}>
-                    <td>{row.studentName}</td>
-                    <td>
-                      <span className={`ft-badge ${info.className}`}>
-                        {info.className === "ft-status--expired" ? (
-                          <XCircle size={14} />
-                        ) : info.done ? (
-                          <CheckCircle size={14} />
-                        ) : (
-                          <Clock size={14} />
-                        )}
-                        {info.label}
-                      </span>
-                    </td>
-                    <td>
-                      {row.startTime
-                        ? new Date(row.startTime).toLocaleString()
-                        : "--"}
-                    </td>
-                    <td>{remainingText(remaining)}</td>
-                    <td>
-                      {normalizedType === "essay" ? (
-                        info.done ? (
-                          <div className="ft-grade-cell">
-                            {row.fileUrl ? (
-                              <button
-                                className="ft-button ft-button--secondary"
-                                type="button"
-                                disabled={
-                                  downloadingId ===
-                                  (row.submissionId || row.studentId)
-                                }
-                                onClick={() => handleDownload(row)}
-                              >
-                                <Download size={16} />
-                                {downloadingId ===
-                                (row.submissionId || row.studentId)
-                                  ? "Downloading..."
-                                  : "Download file"}
-                              </button>
-                            ) : (
-                              <span className="ft-muted">No file</span>
-                            )}
-                            {row.score != null ? (
-                              <strong>{row.score}/10</strong>
-                            ) : (
-                              <>
-                                <input
-                                  className="ft-input"
-                                  type="number"
-                                  min="0"
-                                  max="10"
-                                  step="0.1"
-                                  placeholder="Score"
-                                  value={
-                                    gradeForms[row.submissionId]?.score || ""
-                                  }
-                                  onChange={(event) => {
-                                    const value = event.target.value;
-                                    if (value === "") {
-                                      updateGradeForm(row.submissionId, {
-                                        score: "",
-                                      });
-                                      return;
-                                    }
-                                    const nextScore = Number(value);
-                                    if (
-                                      !Number.isFinite(nextScore) ||
-                                      nextScore < 0 ||
-                                      nextScore > 10
-                                    ) {
-                                      return;
-                                    }
-                                    updateGradeForm(row.submissionId, {
-                                      score: value,
-                                    });
-                                  }}
-                                />
-                                <button
-                                  className="ft-button ft-button--primary"
-                                  type="button"
-                                  disabled={gradingId === row.submissionId}
-                                  onClick={() => handleGradeSubmission(row)}
-                                >
-                                  {gradingId === row.submissionId
-                                    ? "Saving..."
-                                    : "Grade"}
-                                </button>
-                              </>
-                            )}
-                          </div>
-                        ) : (
-                          <span className="ft-muted">
-                            Waiting for submission
-                          </span>
-                        )
-                      ) : row.score != null || row.percentage != null ? (
-                        <strong>
-                          {mcqScore.score}/10
-                          {mcqScore.percentage != null
-                            ? ` (${mcqScore.percentage}%)`
-                            : ""}
-                        </strong>
-                      ) : (
-                        <span className="ft-muted">Waiting for auto grade</span>
-                      )}
-                    </td>
-                    {normalizedType === "mcq" && (
+                  <Fragment key={row.studentId}>
+                    <tr>
+                      <td>{row.studentName}</td>
                       <td>
-                        <div className="ft-table-actions">
-                          {info.done ? (
-                            <>
+                        <span className={`ft-badge ${info.className}`}>
+                          {info.className === "ft-status--expired" ? (
+                            <XCircle size={14} />
+                          ) : info.done ? (
+                            <CheckCircle size={14} />
+                          ) : (
+                            <Clock size={14} />
+                          )}
+                          {info.label}
+                        </span>
+                      </td>
+                      <td>
+                        {row.startTime
+                          ? new Date(row.startTime).toLocaleString()
+                          : "--"}
+                      </td>
+                      <td>{remainingText(remaining)}</td>
+                      <td>
+                        {normalizedType === "essay" ? (
+                          info.done ? (
+                            <div className="ft-grade-cell">
+                              {row.fileUrl ? (
+                                <button
+                                  className="ft-button ft-button--secondary"
+                                  type="button"
+                                  disabled={
+                                    downloadingId ===
+                                    (row.submissionId || row.studentId)
+                                  }
+                                  onClick={() => handleDownload(row)}
+                                >
+                                  <Download size={16} />
+                                  {downloadingId ===
+                                  (row.submissionId || row.studentId)
+                                    ? "Downloading..."
+                                    : "Download file"}
+                                </button>
+                              ) : (
+                                <span className="ft-muted">No file</span>
+                              )}
+                              {row.score != null ? (
+                                <strong>{row.score}/10</strong>
+                              ) : (
+                                <>
+                                  <input
+                                    className="ft-input"
+                                    type="number"
+                                    min="0"
+                                    max="10"
+                                    step="0.1"
+                                    placeholder="Score"
+                                    value={
+                                      gradeForms[row.submissionId]?.score || ""
+                                    }
+                                    onChange={(event) => {
+                                      const value = event.target.value;
+                                      if (value === "") {
+                                        updateGradeForm(row.submissionId, {
+                                          score: "",
+                                        });
+                                        return;
+                                      }
+                                      const nextScore = Number(value);
+                                      if (
+                                        !Number.isFinite(nextScore) ||
+                                        nextScore < 0 ||
+                                        nextScore > 10
+                                      ) {
+                                        return;
+                                      }
+                                      updateGradeForm(row.submissionId, {
+                                        score: value,
+                                      });
+                                    }}
+                                  />
+                                  <button
+                                    className="ft-button ft-button--primary"
+                                    type="button"
+                                    disabled={gradingId === row.submissionId}
+                                    onClick={() => handleGradeSubmission(row)}
+                                  >
+                                    {gradingId === row.submissionId
+                                      ? "Saving..."
+                                      : "Grade"}
+                                  </button>
+                                </>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="ft-muted">
+                              Waiting for submission
+                            </span>
+                          )
+                        ) : row.score != null || row.percentage != null ? (
+                          <strong>
+                            {mcqScore.score}/10
+                            {mcqScore.percentage != null
+                              ? ` (${mcqScore.percentage}%)`
+                              : ""}
+                          </strong>
+                        ) : (
+                          <span className="ft-muted">Waiting for auto grade</span>
+                        )}
+                      </td>
+                      {normalizedType === "mcq" && (
+                        <td>
+                          <div className="ft-table-actions">
+                            {attempts.length > 0 ? (
                               <button
-                                className="ft-icon-button"
+                                className={`ft-history-attempt__toggle ft-history-attempt__toggle--chevron ${
+                                  isExpanded ? "is-expanded" : ""
+                                }`}
                                 type="button"
-                                title="View MCQ attempt detail"
-                                disabled={!row.attemptId}
-                                onClick={() => handleViewMcqDetail(row)}
+                                title={
+                                  isExpanded
+                                    ? "Hide attempts"
+                                    : "Show attempts"
+                                }
+                                aria-label={
+                                  isExpanded
+                                    ? "Hide attempts"
+                                    : "Show attempts"
+                                }
+                                aria-expanded={isExpanded}
+                                onClick={() =>
+                                  toggleStudentAttempts(row.studentId)
+                                }
                               >
-                                <Eye size={16} />
+                                <ChevronUp size={18} />
                               </button>
+                            ) : (
+                              <span className="ft-muted">--</span>
+                            )}
+                            {info.done && (
                               <button
                                 className="ft-button ft-button--secondary"
                                 type="button"
@@ -925,14 +835,19 @@ export function TeacherMonitorPage() {
                                   ? "Opening..."
                                   : "Reopen"}
                               </button>
-                            </>
-                          ) : (
-                            <span className="ft-muted">--</span>
-                          )}
-                        </div>
-                      </td>
+                            )}
+                          </div>
+                        </td>
+                      )}
+                    </tr>
+                    {normalizedType === "mcq" && isExpanded && (
+                      <tr className="ft-expanded-row">
+                        <td colSpan={6}>
+                          {renderAttemptList(attempts, row.studentName)}
+                        </td>
+                      </tr>
                     )}
-                  </tr>
+                  </Fragment>
                 );
               })}
               {!loading && rowList.length === 0 && (
@@ -979,36 +894,54 @@ export function TeacherMonitorPage() {
                   bestAttempt,
                   getQuestionTotal(bestAttempt) || questionTotal,
                 );
+                const isExpanded = expandedStudentId === row.studentId;
                 return (
-                  <tr key={row.studentId}>
-                    <td>{row.studentName}</td>
-                    <td>{row.attempts.length}</td>
-                    <td>
-                      {latestAttempt?.startTime
-                        ? new Date(latestAttempt.startTime).toLocaleString()
-                        : "--"}
-                    </td>
-                    <td>
-                      <strong>
-                        {bestScore.score}/10
-                        {bestScore.percentage != null
-                          ? ` (${bestScore.percentage}%)`
-                          : ""}
-                      </strong>
-                    </td>
-                    <td>
-                      <div className="ft-table-actions">
-                        <button
-                          className="ft-button ft-button--secondary"
-                          type="button"
-                          onClick={() => setHistoryDetailRow(row)}
-                        >
-                          <Eye size={16} />
-                          Detail
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
+                  <Fragment key={row.studentId}>
+                    <tr>
+                      <td>{row.studentName}</td>
+                      <td>{row.attempts.length}</td>
+                      <td>
+                        {latestAttempt?.startTime
+                          ? new Date(latestAttempt.startTime).toLocaleString()
+                          : "--"}
+                      </td>
+                      <td>
+                        <strong>
+                          {bestScore.score}/10
+                          {bestScore.percentage != null
+                            ? ` (${bestScore.percentage}%)`
+                            : ""}
+                        </strong>
+                      </td>
+                      <td>
+                        <div className="ft-table-actions">
+                          <button
+                            className={`ft-history-attempt__toggle ft-history-attempt__toggle--chevron ${
+                              isExpanded ? "is-expanded" : ""
+                            }`}
+                            type="button"
+                            title={
+                              isExpanded ? "Hide attempts" : "Show attempts"
+                            }
+                            aria-label={
+                              isExpanded ? "Hide attempts" : "Show attempts"
+                            }
+                            aria-expanded={isExpanded}
+                            onClick={() => toggleStudentAttempts(row.studentId)}
+                          >
+                            <ChevronUp size={18} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                    {isExpanded && (
+                      <tr className="ft-expanded-row">
+                        <td colSpan={5}>
+                          {renderAttemptList(row.attempts, row.studentName)}
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
                 );
               })}
               {!loading && historyRows.length === 0 && (
@@ -1021,134 +954,6 @@ export function TeacherMonitorPage() {
         </div>
       )}
 
-      {historyDetailRow && (
-        <div className="ft-modal-overlay" role="dialog" aria-modal="true">
-          <div className="ft-detail-dialog ft-detail-dialog--history">
-            <div className="ft-detail-dialog__header">
-              <div>
-                <span className="ft-page-kicker">Attempt history</span>
-                <h2>{historyDetailRow.studentName}</h2>
-              </div>
-              <button
-                className="ft-icon-button"
-                type="button"
-                title="Close"
-                onClick={closeHistoryDetail}
-              >
-                <X size={18} />
-              </button>
-            </div>
-            <div className="ft-attempt-detail-list">
-              {historyDetailRow.attempts.map((attempt, index) => {
-                const info = statusInfo(attempt.status);
-                const score = formatMcqScore(
-                  attempt,
-                  getQuestionTotal(attempt) || questionTotal,
-                );
-                const attemptId = attempt.id || attempt.attemptId;
-                const isExpanded = expandedHistoryAttemptId === attemptId;
-                return (
-                  <div
-                    className={`ft-history-attempt ${
-                      isExpanded ? "is-expanded" : ""
-                    }`}
-                    key={attemptId || index}
-                  >
-                    <div className="ft-history-attempt__summary">
-                      <div className="ft-history-attempt__meta">
-                        <strong>Attempt {index + 1}</strong>
-                        <span>
-                          {attempt.startTime
-                            ? new Date(attempt.startTime).toLocaleString()
-                            : "--"}
-                        </span>
-                      </div>
-                      <span className={`ft-badge ${info.className}`}>
-                        {info.label}
-                      </span>
-                      <strong>
-                        {score.score}/10
-                        {score.percentage != null
-                          ? ` (${score.percentage}%)`
-                          : ""}
-                      </strong>
-                      <button
-                        className={`ft-history-attempt__toggle ${
-                          isExpanded ? "is-expanded" : ""
-                        }`}
-                        type="button"
-                        title={
-                          isExpanded
-                            ? "Hide attempt answers"
-                            : "Show attempt answers"
-                        }
-                        aria-label={
-                          isExpanded
-                            ? "Hide attempt answers"
-                            : "Show attempt answers"
-                        }
-                        aria-expanded={isExpanded}
-                        disabled={!attempt.id && !attempt.attemptId}
-                        onClick={() =>
-                          handleToggleHistoryAttemptDetail(attempt)
-                        }
-                      >
-                        <ChevronUp size={18} />
-                      </button>
-                    </div>
-                    {isExpanded && (
-                      <div className="ft-history-answer-panel">
-                        {historyAnswerDetails[attemptId]?.loading ? (
-                          <p className="ft-muted">Loading answers...</p>
-                        ) : historyAnswerDetails[attemptId]?.error ? (
-                          <div className="ft-alert">
-                            {historyAnswerDetails[attemptId].error}
-                          </div>
-                        ) : (
-                          renderMcqAttemptAnswers(
-                            historyAnswerDetails[attemptId]?.answers || [],
-                          )
-                        )}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {detailState.row && (
-        <div className="ft-modal-overlay" role="dialog" aria-modal="true">
-          <div className="ft-detail-dialog">
-            <div className="ft-detail-dialog__header">
-              <div>
-                <span className="ft-page-kicker">MCQ attempt detail</span>
-                <h2>{detailState.row.studentName}</h2>
-              </div>
-              <button
-                className="ft-icon-button"
-                type="button"
-                title="Close"
-                onClick={closeDetail}
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            {detailState.loading ? (
-              <p className="ft-muted">Loading answers...</p>
-            ) : detailState.error ? (
-              <div className="ft-alert">{detailState.error}</div>
-            ) : (
-              <div className="ft-attempt-detail-list">
-                {renderMcqAttemptAnswers(detailState.answers)}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
     </section>
   );
 }

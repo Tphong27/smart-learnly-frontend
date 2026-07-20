@@ -5,7 +5,6 @@ import { SmartLearnlyMark } from "@/shared/components/SmartLearnlyMark";
 import { HeaderCourseSearch } from "@/shared/components/HeaderCourseSearch";
 import { ROLES } from "@/shared/constants/roles";
 import { courseService } from "@/services";
-import { ROLES } from "@/shared/constants/roles";
 
 function getDisplayName(user) {
     return (

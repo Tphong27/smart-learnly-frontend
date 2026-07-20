@@ -10,6 +10,7 @@ import {
   TraineeAssignmentTakePage,
   TraineeTestListPage,
   TraineeTestTakePage,
+  TestAttemptDetailPage,
 } from "@/features/flashtest";
 import {
   CourseListPage,
@@ -99,6 +100,10 @@ function getTraineeRoutes() {
             {
               path: "tests",
               element: <TraineeTestListPage />,
+            },
+            {
+              path: "tests/attempts/:testId/:attemptId",
+              element: <TestAttemptDetailPage />,
             },
             {
               path: "flashcards",

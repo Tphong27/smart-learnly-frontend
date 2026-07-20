@@ -2110,6 +2110,28 @@
   padding-top: 12px;
 }
 
+.ft-expanded-row > td {
+  background: #f8fafc;
+  padding: 0;
+}
+
+.ft-inline-attempts {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+}
+
+.ft-inline-attempts__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: #0f172a;
+}
+
+.ft-attempt-detail-page {
+  max-width: 1120px;
+}
+
 .ft-confirm-dialog h2 {
   margin: 0;
   color: #0f172a;

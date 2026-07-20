@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   ArrowRight,
   BookOpen,
   CheckSquare,
+  Eye,
   FileText,
   KeyRound,
   RefreshCw,
@@ -171,6 +172,7 @@ export function TraineeFlashTestListPage({ variant = "flash" }) {
   const [accessError, setAccessError] = useState("");
   const [verifyingAccess, setVerifyingAccess] = useState(false);
   const [filterTab, setFilterTab] = useState("all");
+  const [expandedResultKey, setExpandedResultKey] = useState("");
   const pageTitle = isAssignmentMode
     ? "My Assignments"
     : isFlashMode ? "My Flash Tests" : "My Tests";
@@ -241,6 +243,8 @@ export function TraineeFlashTestListPage({ variant = "flash" }) {
                 : "--",
               status: latestAttempt?.status,
               retakeAllowed: Boolean(latestAttempt?.retakeAllowed),
+              attempts: completedAttempts,
+              questionTotal,
             },
           ];
         }),
@@ -382,6 +386,70 @@ export function TraineeFlashTestListPage({ variant = "flash" }) {
     setAccessModal({ open: false, item: null, isEssay: false });
     setAccessCode("");
     setAccessError("");
+  };
+
+  const toggleAttemptHistory = (key) => {
+    setExpandedResultKey((current) => (current === key ? "" : key));
+  };
+
+  const openAttemptDetail = (item, attempt) => {
+    const attemptId = attempt?.id || attempt?.attemptId;
+    const testId = attempt?.testId || item?.id;
+    if (!attemptId || !testId) return;
+    navigate(`/learning/tests/attempts/${testId}/${attemptId}`, {
+      state: {
+        attempt,
+        studentName: currentUser?.name || currentUser?.fullName || "Trainee",
+      },
+    });
+  };
+
+  const renderAttemptList = (item, result) => {
+    const attempts = Array.isArray(result?.attempts) ? result.attempts : [];
+    return (
+      <div className="ft-inline-attempts">
+        <div className="ft-inline-attempts__header">
+          <strong>{attempts.length} attempts</strong>
+        </div>
+        <div className="ft-attempt-detail-list">
+          {attempts.map((attempt, index) => {
+            const attemptId = attempt.id || attempt.attemptId;
+            const score = formatMcqScore(
+              attempt,
+              getQuestionTotal(attempt) || result?.questionTotal,
+            );
+            return (
+              <div className="ft-history-attempt" key={attemptId || index}>
+                <div className="ft-history-attempt__summary">
+                  <div className="ft-history-attempt__meta">
+                    <strong>Attempt {index + 1}</strong>
+                    <span>
+                      {attempt.startTime
+                        ? new Date(attempt.startTime).toLocaleString()
+                        : "--"}
+                    </span>
+                  </div>
+                  <strong>{score}/10</strong>
+                  <span className="ft-muted">
+                    {attempt.status || "Submitted"}
+                  </span>
+                  <button
+                    className="ft-history-attempt__toggle"
+                    type="button"
+                    title="View answer detail"
+                    aria-label="View answer detail"
+                    disabled={!attemptId}
+                    onClick={() => openAttemptDetail(item, attempt)}
+                  >
+                    <Eye size={18} />
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
   };
 
   const handleVerifyAccessCode = async () => {
@@ -555,6 +623,8 @@ export function TraineeFlashTestListPage({ variant = "flash" }) {
                   const result = resultMap[key];
                   const isEssay = item.flashType === "essay";
                   const taken = Boolean(result?.taken);
+                  const hasAttemptHistory = !isEssay && Array.isArray(result?.attempts) && result.attempts.length > 0;
+                  const expanded = expandedResultKey === key;
                   const dueDate = item.dueDate || item.due_date;
                   const expired = isEssay && dueDate && new Date(dueDate).getTime() <= nowMs;
                   const statusLabel = taken ? "Completed" : expired ? "Expired" : "Ready";
@@ -563,44 +633,62 @@ export function TraineeFlashTestListPage({ variant = "flash" }) {
                   const duration = item.durationMinutes ?? item.duration_minutes ?? item.duration ?? "--";
                   const displayDate = dueDate || item.createdAt || item.created_at;
                   const score = result?.score;
-                  const displayScore = score != null ? (Number.isFinite(score) ? score : "--") : "--";
+                  const displayScore = score != null ? score : "--";
 
                   return (
-                    <tr key={key} className={expired ? "ft-row--expired" : taken ? "ft-row--completed" : ""}>
-                      <td>
-                        <span className={`ft-badge ft-badge--${isEssay ? "essay" : "mcq"}`}>
-                          <TypeIcon size={12} />
-                          {typeLabel}
-                        </span>
-                      </td>
-                      <td className="ft-cell--title">
-                        <span className="ft-title">{item.title || item.name}</span>
-                        {item.description && <span className="ft-desc">{item.description}</span>}
-                      </td>
-                      <td>{duration} mins</td>
-                      <td>{displayDate ? new Date(displayDate).toLocaleDateString() : "--"}</td>
-                      <td>{displayScore}</td>
-                      <td>
-                        <span className={`ft-status ft-status--${statusLabel.toLowerCase()}`}>
-                          {statusLabel}
-                        </span>
-                      </td>
-                      <td>
-                        {taken ? (
-                          <span className="ft-button ft-button--disabled">Completed</span>
-                        ) : expired ? (
-                          <span className="ft-button ft-button--disabled">Expired</span>
-                        ) : (
-                          <button
-                            type="button"
-                            className="ft-button ft-button--primary"
-                            onClick={() => openAccessModal(item, isEssay)}
-                          >
-                            Start <ArrowRight size={15} />
-                          </button>
-                        )}
-                      </td>
-                    </tr>
+                    <Fragment key={key}>
+                      <tr className={expired ? "ft-row--expired" : taken ? "ft-row--completed" : ""}>
+                        <td>
+                          <span className={`ft-badge ft-badge--${isEssay ? "essay" : "mcq"}`}>
+                            <TypeIcon size={12} />
+                            {typeLabel}
+                          </span>
+                        </td>
+                        <td className="ft-cell--title">
+                          <span className="ft-title">{item.title || item.name}</span>
+                          {item.description && <span className="ft-desc">{item.description}</span>}
+                        </td>
+                        <td>{duration} mins</td>
+                        <td>{displayDate ? new Date(displayDate).toLocaleDateString() : "--"}</td>
+                        <td>{displayScore}</td>
+                        <td>
+                          <span className={`ft-status ft-status--${statusLabel.toLowerCase()}`}>
+                            {statusLabel}
+                          </span>
+                        </td>
+                        <td>
+                          <div className="ft-table-actions">
+                            {hasAttemptHistory && (
+                              <button
+                                type="button"
+                                className="ft-button ft-button--secondary"
+                                onClick={() => toggleAttemptHistory(key)}
+                              >
+                                {expanded ? "Hide" : "Details"}
+                              </button>
+                            )}
+                            {taken ? (
+                              !hasAttemptHistory && <span className="ft-button ft-button--disabled">Completed</span>
+                            ) : expired ? (
+                              <span className="ft-button ft-button--disabled">Expired</span>
+                            ) : (
+                              <button
+                                type="button"
+                                className="ft-button ft-button--primary"
+                                onClick={() => openAccessModal(item, isEssay)}
+                              >
+                                Start <ArrowRight size={15} />
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                      {hasAttemptHistory && expanded && (
+                        <tr className="ft-expanded-row">
+                          <td colSpan={7}>{renderAttemptList(item, result)}</td>
+                        </tr>
+                      )}
+                    </Fragment>
                   );
                 })}
               </tbody>
