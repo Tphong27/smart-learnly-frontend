@@ -1,4 +1,5 @@
 import apiClient from "./api-client";
+import { flashcardService as sharedFlashcardService } from "./flashcard.service";
 
 function unwrap(response) {
   return response?.data ?? response;
@@ -52,6 +53,18 @@ export function createTrainerFlashcardService(classId, lessonId) {
   }
 
   return {
+    // Staging endpoints are shared with the admin editor. The backend resolves
+    // the set's curriculum scope and re-authorizes trainer ownership.
+    listSourceQuestions: (...args) => sharedFlashcardService.listSourceQuestions(...args),
+    importQuestionBankToStaging: (...args) => sharedFlashcardService.importQuestionBankToStaging(...args),
+    generateStagingFromText: (...args) => sharedFlashcardService.generateStagingFromText(...args),
+    generateStagingFromFile: (...args) => sharedFlashcardService.generateStagingFromFile(...args),
+    generateStagingFromTranscript: (...args) => sharedFlashcardService.generateStagingFromTranscript(...args),
+    generateStagingFromTranscriptFile: (...args) => sharedFlashcardService.generateStagingFromTranscriptFile(...args),
+    listStaging: (...args) => sharedFlashcardService.listStaging(...args),
+    updateStagingCard: (...args) => sharedFlashcardService.updateStagingCard(...args),
+    rejectStagingCard: (...args) => sharedFlashcardService.rejectStagingCard(...args),
+    approveStagingCards: (...args) => sharedFlashcardService.approveStagingCards(...args),
     async createLesson(payload) {
       const response = await apiClient.post(basePath, payload);
       const data = unwrapData(response);

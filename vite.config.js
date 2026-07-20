@@ -26,4 +26,9 @@ export default defineConfig({
       include: [/pdfjs-dist/, /node_modules/],
     },
   },
+  test: {
+    environment: "jsdom",
+    setupFiles: "./src/test/setup.js",
+    globals: true,
+  },
 });

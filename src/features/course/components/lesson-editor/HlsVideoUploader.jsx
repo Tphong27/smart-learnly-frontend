@@ -9,6 +9,30 @@ import {
 import { courseService } from "@/services/course.service";
 import "./lesson-material-uploader.css";
 
+function requestStatus(error) {
+  return error?.response?.status || error?.originalError?.response?.status;
+}
+
+function videoStatusErrorMessage(error) {
+  const status = requestStatus(error);
+  if (status === 401) return "Your session has expired. Sign in again to continue.";
+  if (status === 403) return "You do not have permission to manage this video.";
+  if (status === 404) return "This lesson is no longer available. Refresh the page and try again.";
+  return "We could not check the video right now. Refresh the page or try again in a moment.";
+}
+
+function videoUploadErrorMessage(error) {
+  const status = requestStatus(error);
+  const detail = String(error?.message || "").toLowerCase();
+  if (detail.includes("requires a video lesson")) {
+    return "Save this lesson as a video lesson before uploading a file.";
+  }
+  if (status === 401) return "Your session has expired. Sign in again to continue.";
+  if (status === 403) return "You do not have permission to upload this video.";
+  if (status === 413) return "This video is too large. Choose a file smaller than 500 MB.";
+  return "We could not upload this video. Check your connection and try again.";
+}
+
 /**
  * HLS video uploader shared between admin lesson detail page and trainer
  * class curriculum lesson editor modal.
@@ -16,7 +40,17 @@ import "./lesson-material-uploader.css";
  * Wraps the upload -> HLS-processing polling flow. Backend endpoints under
  * /hls/... are not admin-scoped, so both roles reuse them directly.
  */
-export function HlsVideoUploader({
+export function HlsVideoUploader({ lessonId, ...props }) {
+  return (
+    <HlsVideoUploaderForLesson
+      key={lessonId || "lesson-without-id"}
+      lessonId={lessonId}
+      {...props}
+    />
+  );
+}
+
+function HlsVideoUploaderForLesson({
   lessonId,
   videoUrl,
   onVideoUrlChange,
@@ -24,6 +58,7 @@ export function HlsVideoUploader({
   getLatestVideoUrl,
   disabled = false,
   onBusyChange,
+  onStatusChange,
 }) {
   const fileInputRef = useRef(null);
   const [uploading, setUploading] = useState(false);
@@ -41,13 +76,6 @@ export function HlsVideoUploader({
     [showToast],
   );
 
-  const getErrorMessage = (error, fallbackMessage) => {
-    const validationDetails = error?.errors
-      ?.map(({ field, message }) => `${field}: ${message}`)
-      .join(", ");
-    return validationDetails || error?.message || fallbackMessage;
-  };
-
   const refreshStatus = useCallback(async () => {
     if (!lessonId) return null;
     try {
@@ -59,9 +87,7 @@ export function HlsVideoUploader({
       );
       return next;
     } catch (error) {
-      setStatusError(
-        error?.message || "Unable to check HLS processing status.",
-      );
+      setStatusError(videoStatusErrorMessage(error));
       return null;
     } finally {
       setStatusLoading(false);
@@ -83,9 +109,7 @@ export function HlsVideoUploader({
         );
       } catch (error) {
         if (!cancelled) {
-          setStatusError(
-            error?.message || "Unable to check HLS processing status.",
-          );
+          setStatusError(videoStatusErrorMessage(error));
         }
       } finally {
         if (!cancelled) setStatusLoading(false);
@@ -139,7 +163,7 @@ export function HlsVideoUploader({
           }
           if (!completionNotifiedRef.current) {
             completionNotifiedRef.current = true;
-            emitToast("Video processing completed. HLS is ready.", "success");
+            emitToast("Your video is ready for learners.", "success");
           }
           return;
         }
@@ -147,7 +171,7 @@ export function HlsVideoUploader({
         if (normalized === "failed") {
           setStatusPolling(false);
           emitToast(
-            next?.message || "Video processing failed. Please try again.",
+            "We could not prepare this video. Upload it again to try once more.",
             "error",
           );
           return;
@@ -157,7 +181,7 @@ export function HlsVideoUploader({
         if (attempts >= maxAttempts) {
           setStatusPolling(false);
           emitToast(
-            "Video processing is taking longer than expected. It will continue on the backend; refresh the status later.",
+            "This video is taking longer than expected. You can leave this page and check again later.",
             "error",
           );
           return;
@@ -172,7 +196,7 @@ export function HlsVideoUploader({
         if (attempts >= maxAttempts) {
           setStatusPolling(false);
           setStatusError(
-            "Unable to refresh HLS status. Processing may still be running on the backend.",
+            "We could not refresh the progress. Your video may still be preparing; check again later.",
           );
           return;
         }
@@ -199,6 +223,12 @@ export function HlsVideoUploader({
   useEffect(() => {
     if (typeof onBusyChange === "function") onBusyChange(isBusy || uploading);
   }, [isBusy, uploading, onBusyChange]);
+
+  useEffect(() => () => onBusyChange?.(false), [onBusyChange]);
+
+  useEffect(() => {
+    onStatusChange?.(processingStatus);
+  }, [onStatusChange, processingStatus]);
 
   const doUpload = async (file) => {
     const MAX_VIDEO_SIZE = 500 * 1024 * 1024; // 500MB
@@ -235,7 +265,7 @@ export function HlsVideoUploader({
         String(health?.status || "").toLowerCase() !== "healthy"
       ) {
         emitToast(
-          "The backend HLS processing provider is not available",
+          "Video uploads are temporarily unavailable. Please try again later.",
           "error",
         );
         setProcessingStatus(previousStatus);
@@ -264,7 +294,7 @@ export function HlsVideoUploader({
         },
       );
       emitToast(
-        uploadResult?.message || "Video uploaded. HLS processing started.",
+        "Video uploaded. We are preparing it for learners.",
         "success",
       );
       completionNotifiedRef.current = false;
@@ -272,8 +302,7 @@ export function HlsVideoUploader({
         ...uploadResult,
         hlsStatus: uploadResult?.status || "processing",
         progressPercent: 0,
-        currentStep:
-          uploadResult?.message || "Starting HLS processing...",
+        currentStep: "Preparing video...",
       });
       setStatusPolling(
         String(uploadResult?.status || "processing").toLowerCase() ===
@@ -282,10 +311,7 @@ export function HlsVideoUploader({
       await refreshStatus();
     } catch (error) {
       console.error("HLS upload error:", error);
-      emitToast(
-        getErrorMessage(error, "Error uploading video for HLS processing"),
-        "error",
-      );
+      emitToast(videoUploadErrorMessage(error), "error");
       setProcessingStatus(previousStatus);
     } finally {
       setUploading(false);
@@ -317,15 +343,32 @@ export function HlsVideoUploader({
     videoUrl || processingStatus?.hlsStatus === "ready";
 
   const progressPercent = processingStatus?.progressPercent || 0;
-  const statusLabel = isBusy
-    ? processingStatus?.hlsStatus === "uploading"
+  const normalizedStatus = String(
+    processingStatus?.hlsStatus || "",
+  ).toLowerCase();
+  const statusLabel = statusLoading
+    ? "Checking"
+    : uploading || normalizedStatus === "uploading"
       ? "Uploading"
-      : "Processing"
+      : statusPolling
+        ? "Preparing"
     : readyState
       ? "Ready"
-      : processingStatus?.hlsStatus === "failed"
-        ? "Failed"
-        : "Required";
+      : normalizedStatus === "failed"
+        ? "Needs attention"
+        : "Not uploaded";
+  const progressTitle = statusLoading
+    ? "Checking video"
+    : normalizedStatus === "uploading"
+      ? "Uploading video"
+      : "Preparing video";
+  const progressMessage = statusLoading
+    ? "Checking the latest progress..."
+    : normalizedStatus === "uploading"
+      ? "Keep this page open until the upload finishes."
+      : progressPercent >= 80
+        ? "Finishing your video..."
+        : "Making your video ready for smooth playback.";
 
   return (
     <section
@@ -352,14 +395,14 @@ export function HlsVideoUploader({
       {isProviderUnavailable && (
         <div className="sl-material-alert sl-material-alert--error" role="alert">
           <AlertCircle size={18} aria-hidden="true" />
-          <span>The backend HLS processing provider is currently unavailable.</span>
+          <span>Video uploads are temporarily unavailable. Please try again later.</span>
         </div>
       )}
 
       {statusError && (
         <div className="sl-material-alert sl-material-alert--error" role="alert">
           <AlertCircle size={18} aria-hidden="true" />
-          <span>Could not load HLS status: {statusError}</span>
+          <span>{statusError}</span>
         </div>
       )}
 
@@ -367,12 +410,8 @@ export function HlsVideoUploader({
         <div className="sl-material-alert sl-material-alert--error" role="alert">
           <AlertCircle size={18} aria-hidden="true" />
           <div>
-            <strong>Video processing failed</strong>
-            <p>
-              {processingStatus.currentStep ||
-                processingStatus.message ||
-                "Please try uploading the video again."}
-            </p>
+            <strong>Video needs attention</strong>
+            <p>We could not prepare this video. Upload it again to try once more.</p>
           </div>
         </div>
       )}
@@ -389,8 +428,12 @@ export function HlsVideoUploader({
         aria-label={
           readyState
             ? "Replace lesson video"
-            : isBusy
-              ? "Video is being processed"
+            : statusLoading
+              ? "Checking video status"
+              : normalizedStatus === "uploading"
+                ? "Video is uploading"
+                : statusPolling
+                  ? "Video is being prepared"
               : "Upload lesson video"
         }
       >
@@ -401,17 +444,8 @@ export function HlsVideoUploader({
                 <Loader2 className="animate-spin" size={22} aria-hidden="true" />
               </span>
               <div className="sl-video-uploader__state-copy">
-                <strong>
-                  {processingStatus?.hlsStatus === "uploading"
-                    ? "Uploading video"
-                    : "Processing video"}
-                </strong>
-                <span>
-                  {processingStatus?.currentStep ||
-                    (statusLoading
-                      ? "Loading the latest processing state..."
-                      : "Processing...")}
-                </span>
+                <strong>{progressTitle}</strong>
+                <span>{progressMessage}</span>
               </div>
               <strong className="sl-video-uploader__percentage">
                 {progressPercent}%
@@ -431,8 +465,10 @@ export function HlsVideoUploader({
             </div>
             <p className="sl-video-uploader__footnote">
               {statusLoading
-                ? "Please wait while the latest status is loaded."
-                : "You can safely leave this page while processing continues."}
+                ? "This should only take a moment."
+                : normalizedStatus === "uploading"
+                  ? "Do not close this page until the upload is complete."
+                  : "You can leave this page. We will continue preparing the video."}
             </p>
           </>
         ) : readyState ? (
@@ -448,8 +484,8 @@ export function HlsVideoUploader({
               </strong>
               <span>
                 {processingStatus?.qualities
-                  ? `Available qualities: ${processingStatus.qualities}`
-                  : "The lesson video is ready to use."}
+                  ? `Ready in ${processingStatus.qualities}`
+                  : "Learners can now watch this video."}
               </span>
             </div>
             <span className="sl-video-uploader__replace-action">

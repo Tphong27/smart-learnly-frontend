@@ -39,7 +39,7 @@ function sortByOrder(items) {
 const LESSON_TYPE_META = {
   video: {
     label: "Video lecture",
-    description: "Upload an HLS video lesson for streaming.",
+    description: "Upload a video for learners to watch in this lesson.",
     Icon: Video,
   },
   document: {

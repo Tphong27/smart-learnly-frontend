@@ -4,6 +4,7 @@ import { courseService } from "@/services/course.service";
 import { flashcardService } from "@/services/flashcard.service";
 import { getCurrentUser } from "@/services/api-client";
 import { LessonDetailEditor } from "@/features/course/components/lesson-editor/LessonDetailEditor";
+import { createAdminVideoAiService } from "@/services/video-ai.service";
 
 export default function AdminLessonDetailPage() {
   const { courseId, lessonId } = useParams();
@@ -22,8 +23,13 @@ export default function AdminLessonDetailPage() {
   const context = useMemo(
     () => ({
       mode: isTrainer ? "trainer" : "admin",
+      courseId,
       lessonId,
       backPath,
+      videoAi: {
+        service: createAdminVideoAiService(courseId, lessonId),
+        reviewPath: `${location.pathname}/video-ai`,
+      },
       services: {
         getLessonDetail: (id) =>
           courseService.getLessonDetail(id),
@@ -47,7 +53,7 @@ export default function AdminLessonDetailPage() {
         flashcardStaging: true,
       },
     }),
-    [backPath, isTrainer, lessonId,]);
+    [backPath, courseId, isTrainer, lessonId, location.pathname]);
 
   return (
     <LessonDetailEditor context={context} />

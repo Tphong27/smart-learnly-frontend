@@ -284,6 +284,124 @@
   color: var(--sl-muted);
 }
 
+.sl-cm-lesson-editor__type-field {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.sl-cm-lesson-editor__type-help {
+  margin-top: 0;
+  line-height: 1.5;
+}
+
+.sl-cm-lesson-editor__type-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.sl-cm-lesson-editor__type-option {
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 10px;
+  min-height: 88px;
+  padding: 14px;
+  border: 1px solid var(--sl-line);
+  border-radius: var(--sl-radius-md);
+  background: #ffffff;
+  color: var(--sl-ink);
+  cursor: pointer;
+  transition:
+    border-color 160ms ease,
+    background 160ms ease;
+}
+
+.sl-cm-lesson-editor__type-option:hover {
+  border-color: var(--sl-purple-border);
+}
+
+.sl-cm-lesson-editor__type-option:focus-within {
+  outline: 2px solid var(--sl-purple);
+  outline-offset: 2px;
+}
+
+.sl-cm-lesson-editor__type-option.is-selected {
+  border-color: var(--sl-purple);
+  background: var(--sl-purple-soft);
+}
+
+.sl-cm-lesson-editor__type-option > input {
+  width: 17px;
+  height: 17px;
+  margin: 2px 0 0;
+  accent-color: var(--sl-purple);
+}
+
+.sl-cm-lesson-editor__type-icon {
+  display: inline-flex;
+  margin-top: 1px;
+  color: var(--sl-muted);
+}
+
+.sl-cm-lesson-editor__type-option.is-selected .sl-cm-lesson-editor__type-icon {
+  color: var(--sl-purple);
+}
+
+.sl-cm-lesson-editor__type-copy {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.sl-cm-lesson-editor__type-copy strong {
+  font-size: 14px;
+  line-height: 1.35;
+}
+
+.sl-cm-lesson-editor__type-copy > span {
+  color: var(--sl-muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.sl-cm-lesson-editor__type-check {
+  margin-top: 1px;
+  color: var(--sl-purple);
+  opacity: 0;
+}
+
+.sl-cm-lesson-editor__type-option.is-selected .sl-cm-lesson-editor__type-check {
+  opacity: 1;
+}
+
+.sl-cm-lesson-editor__type-field:disabled .sl-cm-lesson-editor__type-option {
+  cursor: not-allowed;
+  opacity: 0.68;
+}
+
+.sl-cm-lesson-editor__type-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  margin-top: 12px;
+  padding: 12px 14px;
+  border-left: 3px solid var(--sl-warning);
+  background: var(--sl-warning-soft);
+  color: var(--sl-ink);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.sl-cm-lesson-editor__type-notice > svg {
+  flex: 0 0 auto;
+  margin-top: 1px;
+  color: var(--sl-warning);
+}
+
 .sl-cm-lesson-editor__sticky {
   position: sticky;
   bottom: 0;
@@ -801,6 +919,10 @@
 
   .sl-cm-lesson-editor__sticky-state {
     display: none;
+  }
+
+  .sl-cm-lesson-editor__type-grid {
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .sl-cm-lesson-editor__settings-field {

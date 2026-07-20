@@ -35,7 +35,7 @@ function flashcardCacheKey(lessonId) {
   return `flashcard-set:${lessonId}`;
 }
 
-const STAGING_ROLES = [ROLES.ADMIN, ROLES.SME, ROLES.TRAINER];
+const STAGING_ROLES = [ROLES.ADMIN, ROLES.TMO, ROLES.SME, ROLES.TRAINER];
 const CURRENT_FLASHCARD_PAGE_SIZE = 40;
 const QUICK_EDIT_FIELDS = ["frontText", "backText", "hint", "explanation"];
 
@@ -442,7 +442,7 @@ export function FlashcardLessonEditor({
         setQuickEditSavingId(null);
       }
     },
-    [handleCardPersisted, handleQuickEditCancel, quickEditSavingId],
+    [flashcardService, handleCardPersisted, handleQuickEditCancel, quickEditSavingId],
   );
 
   const handleCardsEdited = useCallback(

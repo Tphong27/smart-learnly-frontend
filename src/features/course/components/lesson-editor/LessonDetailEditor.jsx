@@ -22,6 +22,7 @@ import {
     getLessonStatusMeta,
     normalizeLessonStatus,
 } from "@/features/course/utils/lesson-status";
+import { normalizeEditorLessonType } from "@/features/course/utils/lesson-type";
 import {
     ArrowLeft,
     Save,
@@ -35,9 +36,13 @@ import {
     AlertCircle,
     Paperclip,
     X,
+    Video,
+    BookOpen,
+    FileText,
 } from "lucide-react";
 import { QuizQuestionsPanel } from "../QuizQuestionManager";
 import { HlsVideoUploader } from "./HlsVideoUploader";
+import { VideoAiStatusPanel } from "../video-ai/VideoAiStatusPanel";
 import { PdfMaterialUploader } from "./PdfMaterialUploader";
 import { LessonResourceUploader } from "./LessonResourceUploader";
 import "../../course-admin.css";
@@ -47,10 +52,36 @@ import "@/features/course/course-lesson-editor.css";
 const LESSON_TYPE_LABELS = {
     VIDEO: "Video lecture",
     PDF: "Document / Reading",
+    RICH_TEXT: "Reading lesson",
     QUIZ: "Quiz",
     ESSAY: "Essay assignment",
     FLASHCARD: "Flashcard",
 };
+
+const EDITABLE_LESSON_TYPE_OPTIONS = [
+    {
+        value: "VIDEO",
+        label: "Video lecture",
+        description: "Upload a video for learners to watch in this lesson.",
+        Icon: Video,
+    },
+    {
+        value: "RICH_TEXT",
+        label: "Reading lesson",
+        description: "Teach with formatted text and supporting resources.",
+        Icon: BookOpen,
+    },
+    {
+        value: "PDF",
+        label: "PDF / document",
+        description: "Attach a primary document for learners to read.",
+        Icon: FileText,
+    },
+];
+
+const EDITABLE_LESSON_TYPES = new Set(
+    EDITABLE_LESSON_TYPE_OPTIONS.map((option) => option.value),
+);
 
 function LessonEditorSection({
     id,
@@ -151,6 +182,7 @@ export function LessonDetailEditor({ context }) {
         lessonId,
         backPath,
         services,
+        videoAi,
         features = { audit: true, quizManager: true, flashcard: true },
     } = context || {};
 
@@ -165,16 +197,23 @@ export function LessonDetailEditor({ context }) {
     const initialFlashcardSetId =
         location.state?.flashcardSetId ||
         new URLSearchParams(location.search).get("flashcardSetId");
+    const initialFlashcardSection =
+        location.state?.flashcardSection ||
+        new URLSearchParams(location.search).get("flashcardSection");
 
     const [titleError, setTitleError] = useState("");
     const [summaryError, setSummaryError] = useState("");
     const [activeTab, setActiveTab] = useState("edit");
-    const [flashcardSection, setFlashcardSection] = useState("current");
+    const [flashcardSection, setFlashcardSection] = useState(
+        initialFlashcardSection === "review" ? "review" : "current",
+    );
     const [title, setTitle] = useState("");
     const [loading, setLoading] = useState(false);
     const [pageLoading, setPageLoading] = useState(true);
     const [textContent, setTextContent] = useState("");
-    const [lessonType, setLessonType] = useState("VIDEO");
+    const [lessonType, setLessonType] = useState("RICH_TEXT");
+    const [selectedLessonType, setSelectedLessonType] =
+        useState("RICH_TEXT");
     const [existingLessonData, setExistingLessonData] = useState(null);
 
     const [videoUrl, setVideoUrl] = useState("");
@@ -183,6 +222,7 @@ export function LessonDetailEditor({ context }) {
     const [uploadingPdf, setUploadingPdf] = useState(false);
     const [uploadingResources, setUploadingResources] = useState(false);
     const [videoUploaderBusy, setVideoUploaderBusy] = useState(false);
+    const [hlsProcessingStatus, setHlsProcessingStatus] = useState(null);
 
     const [editHistory, setEditHistory] = useState([]);
     const [historyLoading, setHistoryLoading] = useState(false);
@@ -200,7 +240,9 @@ export function LessonDetailEditor({ context }) {
     const [assignmentSaving, setAssignmentSaving] = useState(false);
     const [assignmentFile, setAssignmentFile] = useState(null);
     const [existingAssignmentFile, setExistingAssignmentFile] = useState(null);
-    const [expandedSection, setExpandedSection] = useState("basic");
+    const [expandedSection, setExpandedSection] = useState(
+        initialFlashcardSection === "review" ? "material" : "basic",
+    );
     const [hasChanges, setHasChanges] = useState(false);
     const [saveNotice, setSaveNotice] = useState(null);
 
@@ -299,27 +341,11 @@ export function LessonDetailEditor({ context }) {
                     setStatus(normalizeLessonStatus(lessonData.status));
                     setDurationSeconds(Number(lessonData.durationSeconds || 0));
 
-                    const typeFromServer = String(
-                        lessonData.lessonType || lessonData.type || "VIDEO",
-                    ).toUpperCase();
-
-                    if (
-                        typeFromServer === "PDF" ||
-                        typeFromServer === "DOCUMENT"
-                    ) {
-                        setLessonType("PDF");
-                    } else if (typeFromServer === "QUIZ") {
-                        setLessonType("QUIZ");
-                    } else if (typeFromServer === "FLASHCARD") {
-                        setLessonType("FLASHCARD");
-                    } else if (
-                        typeFromServer === "ESSAY" ||
-                        typeFromServer === "ASSIGNMENT"
-                    ) {
-                        setLessonType("ESSAY");
-                    } else {
-                        setLessonType("VIDEO");
-                    }
+                    const loadedLessonType = normalizeEditorLessonType(
+                        lessonData.lessonType || lessonData.type,
+                    );
+                    setLessonType(loadedLessonType);
+                    setSelectedLessonType(loadedLessonType);
 
                     const loadedResources =
                         lessonData.resources || lessonData.attachments || [];
@@ -532,6 +558,9 @@ export function LessonDetailEditor({ context }) {
         e.preventDefault();
         setSaveNotice(null);
 
+        const nextLessonType = selectedLessonType;
+        const lessonTypeChanged = nextLessonType !== lessonType;
+
         if (!title.trim()) {
             setTitleError("Lesson title is required.");
             showSaveNotice({
@@ -547,8 +576,8 @@ export function LessonDetailEditor({ context }) {
         }
         setTitleError("");
 
-        const isQuiz = lessonType === "QUIZ";
-        const usesLessonResources = !isQuiz && lessonType !== "ESSAY";
+        const isQuiz = nextLessonType === "QUIZ";
+        const usesLessonResources = !isQuiz && nextLessonType !== "ESSAY";
         const cleanSummary = sanitizeLessonHtml(summary);
 
         if (isQuiz && !parseQuizContent(textContent).title?.trim()) {
@@ -574,11 +603,11 @@ export function LessonDetailEditor({ context }) {
         }
         setSummaryError("");
 
-        if (!materialComplete) {
+        if (!lessonTypeChanged && !materialComplete) {
             const materialMessage =
-                lessonType === "VIDEO"
+                nextLessonType === "VIDEO"
                     ? "Upload a lesson video in step 2, then try again."
-                    : lessonType === "PDF"
+                    : nextLessonType === "PDF"
                       ? "Upload the reading material in step 2, then try again."
                       : "Add at least one quiz question in step 2, then try again.";
             showSaveNotice({
@@ -599,7 +628,11 @@ export function LessonDetailEditor({ context }) {
 
         try {
             let resolvedVideoUrl = (videoUrl || "").trim();
-            if (lessonType === "VIDEO" && !resolvedVideoUrl) {
+            if (
+                nextLessonType === "VIDEO" &&
+                !lessonTypeChanged &&
+                !resolvedVideoUrl
+            ) {
                 const latest = await syncLatestLessonVideoUrl();
                 if (latest) resolvedVideoUrl = latest;
             }
@@ -620,10 +653,16 @@ export function LessonDetailEditor({ context }) {
 
             const payload = {
                 title: title.trim(),
-                lessonType,
+                lessonType: nextLessonType,
                 content,
-                videoUrl: lessonType === "VIDEO" ? resolvedVideoUrl : null,
-                attachmentUrl: lessonType === "PDF" ? uploadedFileUrl : null,
+                videoUrl:
+                    nextLessonType === "VIDEO" && !lessonTypeChanged
+                        ? resolvedVideoUrl
+                        : null,
+                attachmentUrl:
+                    nextLessonType === "PDF" && !lessonTypeChanged
+                        ? uploadedFileUrl
+                        : null,
                 durationSeconds: Number(durationSeconds || 0),
                 isPreview,
                 status: normalizeLessonStatus(status),
@@ -631,9 +670,26 @@ export function LessonDetailEditor({ context }) {
                 sortOrder: existingLessonData?.sortOrder ?? 0,
             };
 
-            await services.updateLesson(lessonId, payload);
+            const response = await services.updateLesson(lessonId, payload);
+            const savedLesson = response?.data || response || {};
+            const savedLessonType = normalizeEditorLessonType(
+                savedLesson.lessonType ||
+                    savedLesson.type ||
+                    nextLessonType,
+            );
 
-            if (lessonType === "ESSAY") {
+            setExistingLessonData((current) => ({
+                ...current,
+                ...savedLesson,
+            }));
+            setLessonType(savedLessonType);
+            setSelectedLessonType(savedLessonType);
+            setVideoUrl(savedLesson.videoUrl || "");
+            setUploadedFileUrl(
+                savedLesson.attachmentUrl || savedLesson.fileUrl || "",
+            );
+
+            if (nextLessonType === "ESSAY") {
                 const assignmentSaved = await saveLessonAssignment({
                     title: title.trim(),
                     description: cleanSummary,
@@ -650,6 +706,24 @@ export function LessonDetailEditor({ context }) {
             }
 
             setHasChanges(false);
+
+            if (lessonTypeChanged) {
+                const nextMaterialAction =
+                    savedLessonType === "VIDEO"
+                        ? "Upload the lesson video in step 2."
+                        : savedLessonType === "PDF"
+                          ? "Upload the primary document in step 2."
+                          : "Review the supporting resources in step 2.";
+                setSaveNotice({
+                    type: "success",
+                    title: "Lesson type updated",
+                    message: nextMaterialAction,
+                });
+                showToast("Lesson type updated successfully!", "success");
+                openSection("material");
+                return;
+            }
+
             setSaveNotice({
                 type: "success",
                 title: "Lesson saved",
@@ -768,12 +842,16 @@ export function LessonDetailEditor({ context }) {
         uploadingResources ||
         videoUploaderBusy ||
         assignmentSaving;
+    const canChangeLessonType = EDITABLE_LESSON_TYPES.has(lessonType);
+    const hasPendingLessonTypeChange = selectedLessonType !== lessonType;
+    const selectedTypeLabel =
+        LESSON_TYPE_LABELS[selectedLessonType] || selectedLessonType;
     const typeLabel = LESSON_TYPE_LABELS[lessonType] || lessonType;
     const statusMeta = getLessonStatusMeta(status);
     const statusLabel = statusMeta?.label || status;
     const materialSummary = (() => {
         if (videoUploaderBusy)
-            return "Video upload or HLS processing in progress";
+            return "Video upload or preparation in progress";
         if (lessonType === "VIDEO") {
             return videoUrl
                 ? `${resources.length} supporting resource${resources.length === 1 ? "" : "s"}`
@@ -792,6 +870,9 @@ export function LessonDetailEditor({ context }) {
             return assignmentFile || existingAssignmentFile
                 ? "Assignment file added"
                 : "Assignment file is optional";
+        }
+        if (lessonType === "RICH_TEXT") {
+            return `${resources.length} supporting resource${resources.length === 1 ? "" : "s"}`;
         }
         return "Manage the flashcard set and cards";
     })();
@@ -1105,6 +1186,114 @@ export function LessonDetailEditor({ context }) {
                                             </p>
                                         ) : null}
                                     </div>
+                                    {canChangeLessonType && (
+                                        <fieldset
+                                            className="sl-cm-lesson-editor__type-field"
+                                            disabled={editorBusy}
+                                            aria-describedby={
+                                                hasPendingLessonTypeChange
+                                                    ? "lesson-type-help lesson-type-change-notice"
+                                                    : "lesson-type-help"
+                                            }
+                                        >
+                                            <legend className="sl-cm-lesson-editor__field-label">
+                                                Lesson type
+                                            </legend>
+                                            <p
+                                                id="lesson-type-help"
+                                                className="sl-cm-lesson-editor__field-help sl-cm-lesson-editor__type-help"
+                                            >
+                                                Choose the primary format for
+                                                this lesson. Save the change
+                                                before uploading its material.
+                                            </p>
+                                            <div className="sl-cm-lesson-editor__type-grid">
+                                                {EDITABLE_LESSON_TYPE_OPTIONS.map(
+                                                    ({
+                                                        value,
+                                                        label,
+                                                        description,
+                                                        Icon,
+                                                    }) => {
+                                                        const isSelected =
+                                                            selectedLessonType ===
+                                                            value;
+
+                                                        return (
+                                                            <label
+                                                                key={value}
+                                                                className={`sl-cm-lesson-editor__type-option${isSelected ? " is-selected" : ""}`}
+                                                            >
+                                                                <input
+                                                                    type="radio"
+                                                                    name="lesson-type"
+                                                                    value={
+                                                                        value
+                                                                    }
+                                                                    checked={
+                                                                        isSelected
+                                                                    }
+                                                                    onChange={() => {
+                                                                        setSelectedLessonType(
+                                                                            value,
+                                                                        );
+                                                                        markChanged();
+                                                                    }}
+                                                                />
+                                                                <span
+                                                                    className="sl-cm-lesson-editor__type-icon"
+                                                                    aria-hidden="true"
+                                                                >
+                                                                    <Icon
+                                                                        size={
+                                                                            20
+                                                                        }
+                                                                    />
+                                                                </span>
+                                                                <span className="sl-cm-lesson-editor__type-copy">
+                                                                    <strong>
+                                                                        {label}
+                                                                    </strong>
+                                                                    <span>
+                                                                        {
+                                                                            description
+                                                                        }
+                                                                    </span>
+                                                                </span>
+                                                                <CheckCircle2
+                                                                    size={18}
+                                                                    className="sl-cm-lesson-editor__type-check"
+                                                                    aria-hidden="true"
+                                                                />
+                                                            </label>
+                                                        );
+                                                    },
+                                                )}
+                                            </div>
+                                            {hasPendingLessonTypeChange && (
+                                                <div
+                                                    id="lesson-type-change-notice"
+                                                    className="sl-cm-lesson-editor__type-notice"
+                                                    role="status"
+                                                    aria-live="polite"
+                                                >
+                                                    <AlertCircle
+                                                        size={18}
+                                                        aria-hidden="true"
+                                                    />
+                                                    <span>
+                                                        <strong>
+                                                            Save to switch to {" "}
+                                                            {selectedTypeLabel}.
+                                                        </strong>{" "}
+                                                        Step 2 will update after
+                                                        the backend confirms the
+                                                        new lesson type.
+                                                    </span>
+                                                </div>
+                                            )}
+                                        </fieldset>
+                                    )}
                                     <div className="sl-cm-lesson-editor__description-field">
                                         {lessonType === "QUIZ" ? (
                                             <div>
@@ -1196,11 +1385,31 @@ export function LessonDetailEditor({ context }) {
 
                                 <div className="sl-lesson-step__footer">
                                     <Button
-                                        type="button"
-                                        variant="outline"
-                                        onClick={() => openSection("material")}
+                                        type={
+                                            hasPendingLessonTypeChange
+                                                ? "submit"
+                                                : "button"
+                                        }
+                                        variant={
+                                            hasPendingLessonTypeChange
+                                                ? "primary"
+                                                : "outline"
+                                        }
+                                        loading={
+                                            hasPendingLessonTypeChange &&
+                                            loading
+                                        }
+                                        disabled={editorBusy}
+                                        onClick={
+                                            hasPendingLessonTypeChange
+                                                ? undefined
+                                                : () =>
+                                                      openSection("material")
+                                        }
                                     >
-                                        Next: Material & resources
+                                        {hasPendingLessonTypeChange
+                                            ? "Save type & continue"
+                                            : "Next: Material & resources"}
                                     </Button>
                                 </div>
                             </LessonEditorSection>
@@ -1274,6 +1483,18 @@ export function LessonDetailEditor({ context }) {
                                                 onBusyChange={
                                                     setVideoUploaderBusy
                                                 }
+                                                onStatusChange={
+                                                    setHlsProcessingStatus
+                                                }
+                                            />
+                                        )}
+
+                                        {lessonType === "VIDEO" && videoAi?.service && (
+                                            <VideoAiStatusPanel
+                                                service={videoAi.service}
+                                                reviewPath={videoAi.reviewPath}
+                                                hlsStatus={hlsProcessingStatus}
+                                                showToast={showToast}
                                             />
                                         )}
 

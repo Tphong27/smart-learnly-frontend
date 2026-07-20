@@ -93,9 +93,9 @@ function playbackErrorMessage(error) {
     return "You do not have access to this lesson.";
   }
   if (error?.details === "manifestLoadError") {
-    return "The video playlist could not be loaded.";
+    return "We could not start this video. Please try again.";
   }
-  return error?.message || "The video could not be loaded.";
+  return "We could not play this video. Check your connection and try again.";
 }
 
 export function HlsVideoPlayer({
@@ -103,6 +103,8 @@ export function HlsVideoPlayer({
   onError,
   className = "",
   captions = [],
+  seekRequest,
+  onTimeChange,
 }) {
   const playerRef = useRef(null);
   const videoRef = useRef(null);
@@ -258,7 +260,7 @@ export function HlsVideoPlayer({
           return;
         }
 
-        throw new Error("This browser does not support HLS video.");
+        throw new Error("This video cannot play in this browser.");
       } catch (initializationError) {
         if (cancelled) return;
         setError(playbackErrorMessage(initializationError));
@@ -291,7 +293,9 @@ export function HlsVideoPlayer({
     if (!video) return undefined;
 
     const syncTime = () => {
-      setCurrentTime(video.currentTime || 0);
+      const nextTime = video.currentTime || 0;
+      setCurrentTime(nextTime);
+      onTimeChange?.(nextTime);
       setDuration(Number.isFinite(video.duration) ? video.duration : 0);
     };
     const syncPlayback = () => {
@@ -334,7 +338,19 @@ export function HlsVideoPlayer({
       video.removeEventListener("volumechange", syncVolume);
       video.removeEventListener("progress", syncBuffered);
     };
-  }, [volume]);
+  }, [onTimeChange, volume]);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    const seconds = Number(seekRequest?.seconds);
+    if (!video || !Number.isFinite(seconds)) return;
+    const max = Number.isFinite(video.duration) ? video.duration : seconds;
+    video.currentTime = clamp(seconds, 0, max);
+    setCurrentTime(video.currentTime);
+    onTimeChange?.(video.currentTime);
+    clearControlsTimer();
+    setControlsVisible(true);
+  }, [clearControlsTimer, onTimeChange, seekRequest]);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -351,6 +367,15 @@ export function HlsVideoPlayer({
       track.mode = index === activeCaptionIndex ? "showing" : "disabled";
     });
   }, [activeCaptionIndex, captionTracks.length, reloadKey]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const defaultIndex = captionTracks.findIndex((track) => track.default);
+    queueMicrotask(() => {
+      if (!cancelled) setActiveCaptionIndex(defaultIndex >= 0 ? defaultIndex : -1);
+    });
+    return () => { cancelled = true; };
+  }, [captionTracks]);
 
   useEffect(() => {
     const handleFullscreenChange = () => {

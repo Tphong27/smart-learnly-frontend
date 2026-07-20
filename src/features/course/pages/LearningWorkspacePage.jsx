@@ -20,7 +20,7 @@ import {
 } from "lucide-react";
 import { LearningLessonMedia } from "@/features/course/components/LearningLessonMedia";
 import { LearningLessonTabs } from "@/features/course/components/LearningLessonTabs";
-import { learningService, enrollmentService } from "@/services";
+import { learningService, enrollmentService, learnerVideoAiService } from "@/services";
 import { filterPublishedSections } from "@/features/course/utils/lesson-status";
 import "./LearningWorkspacePage.css";
 
@@ -79,6 +79,13 @@ export function LearningWorkspacePage({
   const [updatingLessonIds, setUpdatingLessonIds] = useState(() => new Set());
   const [lessonNotesById, setLessonNotesById] = useState({});
   const [resolvedClassId, setResolvedClassId] = useState(requestedClassId);
+  const [videoAiContent, setVideoAiContent] = useState(null);
+  const [videoAiContentLessonId, setVideoAiContentLessonId] = useState(null);
+  const [videoAiLoading, setVideoAiLoading] = useState(false);
+  const [videoAiError, setVideoAiError] = useState("");
+  const [videoSeekRequest, setVideoSeekRequest] = useState(null);
+  const [videoCurrentTime, setVideoCurrentTime] = useState(0);
+  const [videoAiReloadKey, setVideoAiReloadKey] = useState(0);
 
   useEffect(() => {
     const narrowLayout = window.matchMedia("(max-width: 1024px)");
@@ -231,12 +238,26 @@ export function LearningWorkspacePage({
     (lesson) => {
       setActiveLessonId(getLessonId(lesson));
       setActiveLessonTab("overview");
+      setVideoAiContent(null);
+      setVideoAiContentLessonId(null);
+      setVideoAiError("");
+      setVideoSeekRequest(null);
+      setVideoCurrentTime(0);
 
       if (window.matchMedia("(max-width: 1024px)").matches) {
         setSidebarOpen(false);
       }
     },
-    [setActiveLessonId, setActiveLessonTab, setSidebarOpen],
+    [
+      setActiveLessonId,
+      setActiveLessonTab,
+      setSidebarOpen,
+      setVideoAiContent,
+      setVideoAiContentLessonId,
+      setVideoAiError,
+      setVideoCurrentTime,
+      setVideoSeekRequest,
+    ],
   );
 
   const activeLesson = useMemo(() => {
@@ -246,6 +267,53 @@ export function LearningWorkspacePage({
       allLessons[0]
     );
   }, [allLessons, activeLessonId]);
+
+  useEffect(() => {
+    const lessonId = getLessonId(activeLesson);
+    const isVideo = String(activeLesson?.lessonType || "").toUpperCase() === "VIDEO";
+    if (mode !== "student" || !lessonId || !isVideo) {
+      return undefined;
+    }
+
+    let cancelled = false;
+    async function loadVideoAi() {
+      setVideoAiLoading(true);
+      setVideoAiError("");
+      setVideoAiContent(null);
+      setVideoAiContentLessonId(null);
+      setVideoSeekRequest(null);
+      setVideoCurrentTime(0);
+      try {
+        const result = await learnerVideoAiService.getContent(
+          courseId,
+          lessonId,
+          resolvedClassId,
+        );
+        if (!cancelled) {
+          setVideoAiContent(result?.available === false ? null : result);
+          setVideoAiContentLessonId(result?.available === false ? null : lessonId);
+        }
+      } catch (loadError) {
+        if (cancelled) return;
+        const status = loadError?.originalError?.response?.status;
+        if (status === 404) setVideoAiContent(null);
+        else setVideoAiError("We could not load the study guide. Please try again.");
+      } finally {
+        if (!cancelled) setVideoAiLoading(false);
+      }
+    }
+    loadVideoAi();
+
+    return () => { cancelled = true; };
+  }, [activeLesson, courseId, mode, resolvedClassId, videoAiReloadKey]);
+
+  const seekVideo = useCallback((seconds) => {
+    setVideoSeekRequest({ seconds, requestId: Date.now() });
+  }, []);
+
+  const activeVideoAiContent = videoAiContentLessonId === getLessonId(activeLesson)
+    ? videoAiContent
+    : null;
 
   const currentIndex = useMemo(
     () =>
@@ -619,6 +687,10 @@ export function LearningWorkspacePage({
                 <LearningLessonMedia
                   key={`media-${getLessonId(activeLesson)}`}
                   lesson={activeLesson}
+                  transcriptSegments={activeVideoAiContent?.transcriptSegments}
+                  transcriptLanguage={activeVideoAiContent?.language}
+                  seekRequest={videoSeekRequest}
+                  onTimeChange={setVideoCurrentTime}
                 />
 
                 <LearningLessonTabs
@@ -637,6 +709,14 @@ export function LearningWorkspacePage({
                   onQuizCompleted={markLessonCompleted}
                   onFlashcardCompleted={markLessonCompleted}
                   onEssayCompleted={markLessonCompleted}
+                  videoAi={{
+                    loading: videoAiLoading,
+                    error: videoAiError,
+                    content: activeVideoAiContent,
+                    currentTime: videoCurrentTime,
+                    onSeek: seekVideo,
+                    onRetry: () => setVideoAiReloadKey((value) => value + 1),
+                  }}
                 />
               </div>
             ) : (

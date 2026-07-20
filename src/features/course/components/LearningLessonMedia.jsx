@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
     ChevronLeft,
     ChevronRight,
@@ -275,7 +275,67 @@ function DocumentFallback({ lesson }) {
     );
 }
 
-export function LearningLessonMedia({ lesson }) {
+function vttTimestamp(milliseconds) {
+    const total = Math.max(0, Number(milliseconds || 0));
+    const hours = Math.floor(total / 3600000);
+    const minutes = Math.floor((total % 3600000) / 60000);
+    const seconds = Math.floor((total % 60000) / 1000);
+    const millis = Math.floor(total % 1000);
+    return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}.${String(millis).padStart(3, "0")}`;
+}
+
+function useTranscriptCaptions(segments, language) {
+    const [captions, setCaptions] = useState([]);
+    const vttBody = useMemo(() => {
+        if (!Array.isArray(segments) || segments.length === 0) return "";
+        return segments.map((segment, index) => {
+            const startMs = Number(segment.startMs || 0);
+            const endMs = Math.max(startMs + 250, Number(segment.endMs || startMs + 1000));
+            const cueText = String(segment.text || "")
+                .replace(/-->/g, "→")
+                .replace(/[\r\n]+/g, " ")
+                .trim();
+            return `${index + 1}\n${vttTimestamp(startMs)} --> ${vttTimestamp(endMs)}\n${cueText}\n`;
+        }).join("\n");
+    }, [segments]);
+
+    useEffect(() => {
+        let url;
+        const timerId = window.setTimeout(() => {
+            if (!vttBody) {
+                setCaptions([]);
+                return;
+            }
+            url = URL.createObjectURL(new Blob([`WEBVTT\n\n${vttBody}`], { type: "text/vtt" }));
+            setCaptions([{ src: url, srcLang: language || "vi", label: "AI captions", default: true }]);
+        }, 0);
+        return () => {
+            window.clearTimeout(timerId);
+            if (url) URL.revokeObjectURL(url);
+        };
+    }, [language, vttBody]);
+
+    return captions;
+}
+
+export function LearningLessonMedia({
+    lesson,
+    transcriptSegments = [],
+    transcriptLanguage = "vi",
+    seekRequest,
+    onTimeChange,
+}) {
+    const nativeVideoRef = useRef(null);
+    const captions = useTranscriptCaptions(transcriptSegments, transcriptLanguage);
+
+    useEffect(() => {
+        const video = nativeVideoRef.current;
+        const seconds = Number(seekRequest?.seconds);
+        if (!video || !Number.isFinite(seconds)) return;
+        video.currentTime = Math.max(0, Math.min(seconds, Number.isFinite(video.duration) ? video.duration : seconds));
+        onTimeChange?.(video.currentTime);
+    }, [onTimeChange, seekRequest]);
+
     if (!lesson) return null;
 
     const type = (lesson.lessonType || "").toUpperCase();
@@ -287,6 +347,9 @@ export function LearningLessonMedia({ lesson }) {
                     <HlsVideoPlayer
                         lessonId={lesson.lessonId ?? lesson.id}
                         className="learning-lesson-media__hls-player"
+                        captions={captions}
+                        seekRequest={seekRequest}
+                        onTimeChange={onTimeChange}
                     />
                 </div>
             );
@@ -295,7 +358,9 @@ export function LearningLessonMedia({ lesson }) {
         if (lesson.videoUrl) {
             return (
                 <div className="learning-lesson-media learning-lesson-media--video">
-                    <video controls playsInline preload="metadata" src={lesson.videoUrl} />
+                    <video ref={nativeVideoRef} controls playsInline preload="metadata" src={lesson.videoUrl} onTimeUpdate={(event) => onTimeChange?.(event.currentTarget.currentTime)}>
+                        {captions.map((track) => <track key={track.src} kind="captions" src={track.src} srcLang={track.srcLang} label={track.label} default={track.default} />)}
+                    </video>
                 </div>
             );
         }

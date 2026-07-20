@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertCircle,
   ArrowRight,
@@ -14,6 +14,8 @@ import {
   Loader2,
   MessageSquare,
   RefreshCw,
+  Search,
+  Sparkles,
   StickyNote,
   UploadCloud,
   X,
@@ -31,6 +33,45 @@ const TABS = [
   { key: "qa", label: "Q&A", icon: MessageSquare },
   { key: "notes", label: "Notes", icon: StickyNote },
 ];
+
+function formatVideoTime(secondsValue) {
+  const seconds = Math.max(0, Math.floor(Number(secondsValue || 0)));
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  const remainder = seconds % 60;
+  return hours
+    ? `${hours}:${String(minutes).padStart(2, "0")}:${String(remainder).padStart(2, "0")}`
+    : `${minutes}:${String(remainder).padStart(2, "0")}`;
+}
+
+function AiStudyGuide({ state }) {
+  const [query, setQuery] = useState("");
+  const deferredQuery = useDeferredValue(query.trim().toLowerCase());
+  const content = state?.content;
+  const filteredSegments = useMemo(
+    () => {
+      const segments = content?.transcriptSegments || [];
+      return deferredQuery
+        ? segments.filter((segment) => segment.text.toLowerCase().includes(deferredQuery))
+        : segments;
+    },
+    [content?.transcriptSegments, deferredQuery],
+  );
+
+  if (state?.loading) return <div className="ai-study-guide__state" role="status"><Loader2 className="animate-spin" size={22} />Loading study guide...</div>;
+  if (state?.error) return <div className="ai-study-guide__state ai-study-guide__state--error" role="alert"><AlertCircle size={22} /><p>We could not load the study guide. Please try again.</p><button type="button" onClick={state.onRetry}><RefreshCw size={16} />Try again</button></div>;
+  if (!content) return <div className="ai-study-guide__state"><Sparkles size={28} /><p>A study guide is not available for this video yet.</p></div>;
+
+  const currentMs = Number(state.currentTime || 0) * 1000;
+  return (
+    <div className="ai-study-guide">
+      <div className="ai-study-guide__notice"><Sparkles size={17} /><span>Created automatically and reviewed by the instructor</span></div>
+      <section aria-labelledby="ai-guide-summary"><h3 id="ai-guide-summary">Summary</h3><p>{content.summary}</p>{content.keyPoints.length > 0 && <ul>{content.keyPoints.map((point, index) => <li key={`${index}-${point}`}>{point}</li>)}</ul>}</section>
+      {content.chapters.length > 0 && <section aria-labelledby="ai-guide-chapters"><h3 id="ai-guide-chapters">Chapters</h3><div className="ai-study-guide__chapters">{content.chapters.map((chapter) => <button key={chapter.id} type="button" onClick={() => state.onSeek?.(chapter.startMs / 1000)}><span>{formatVideoTime(chapter.startMs / 1000)}</span><strong>{chapter.title}</strong>{chapter.summary && <small>{chapter.summary}</small>}</button>)}</div></section>}
+      <section aria-labelledby="ai-guide-transcript"><div className="ai-study-guide__section-heading"><h3 id="ai-guide-transcript">Transcript</h3><label><span className="video-ai-sr-only">Search transcript</span><Search size={17} aria-hidden="true" /><input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search transcript" /></label></div>{filteredSegments.length ? <div className="ai-study-guide__transcript">{filteredSegments.map((segment) => { const active = currentMs >= segment.startMs && currentMs < segment.endMs; return <button key={segment.id} type="button" aria-current={active ? "true" : undefined} className={active ? "is-active" : ""} onClick={() => state.onSeek?.(segment.startMs / 1000)}><span>{formatVideoTime(segment.startMs / 1000)}</span><p>{segment.text}</p></button>; })}</div> : <p className="ai-study-guide__empty">No transcript lines match your search.</p>}</section>
+    </div>
+  );
+}
 
 function getLessonId(lesson) {
   return lesson?.lessonId ?? lesson?.id ?? null;
@@ -842,20 +883,49 @@ export function LearningLessonTabs({
   onQuizCompleted,
   onFlashcardCompleted,
   onEssayCompleted,
+  videoAi,
 }) {
   const resources = Array.isArray(lesson?.resources) ? lesson.resources : [];
   const totalResources = resources.length + (lesson?.attachmentUrl ? 1 : 0);
+  const tabRefs = useRef([]);
+  const tabs = useMemo(() => {
+    const isVideo = String(lesson?.lessonType || "").toUpperCase() === "VIDEO";
+    if (!isVideo || (!videoAi?.loading && !videoAi?.error && !videoAi?.content)) return TABS;
+    return [TABS[0], { key: "ai-study-guide", label: "Study Guide", icon: Sparkles }, ...TABS.slice(1)];
+  }, [lesson?.lessonType, videoAi?.content, videoAi?.error, videoAi?.loading]);
+
+  useEffect(() => {
+    if (!tabs.some((tab) => tab.key === activeTab)) {
+      onTabChange("overview");
+    }
+  }, [activeTab, onTabChange, tabs]);
+
+  function handleTabKey(event, index) {
+    if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+    event.preventDefault();
+    const nextIndex = event.key === "Home" ? 0 : event.key === "End" ? tabs.length - 1 : (index + (event.key === "ArrowRight" ? 1 : -1) + tabs.length) % tabs.length;
+    onTabChange(tabs[nextIndex].key);
+    tabRefs.current[nextIndex]?.focus();
+  }
 
   return (
     <div className="lesson-tabs">
-      <div className="lesson-tabs__bar">
-        {TABS.map(({ key, label, icon: Icon }) => (
+      <div className="lesson-tabs__bar" role="tablist" aria-label="Lesson sections">
+        {tabs.map(({ key, label, icon: Icon }, index) => (
           <button
             key={key}
+            ref={(node) => { tabRefs.current[index] = node; }}
+            type="button"
+            role="tab"
+            id={`lesson-tab-${key}`}
+            aria-selected={activeTab === key}
+            aria-controls={`lesson-panel-${key}`}
+            tabIndex={activeTab === key ? 0 : -1}
             className={`lesson-tabs__tab ${
               activeTab === key ? "lesson-tabs__tab--active" : ""
             }`}
             onClick={() => onTabChange(key)}
+            onKeyDown={(event) => handleTabKey(event, index)}
           >
             <Icon size={15} />
             {label}
@@ -866,7 +936,7 @@ export function LearningLessonTabs({
         ))}
       </div>
 
-      <div className="lesson-tabs__content">
+      <div className="lesson-tabs__content" id={`lesson-panel-${activeTab}`} role="tabpanel" aria-labelledby={`lesson-tab-${activeTab}`}>
         {activeTab === "overview" && (
           <div className="tab-overview">
             <OverviewContent
@@ -885,6 +955,8 @@ export function LearningLessonTabs({
             <ResourcesContent lesson={lesson} />
           </div>
         )}
+
+        {activeTab === "ai-study-guide" && <AiStudyGuide state={videoAi} />}
 
         {activeTab === "qa" && (
           <div className="tab-qa">
