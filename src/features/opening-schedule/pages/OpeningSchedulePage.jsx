@@ -83,17 +83,21 @@ function OpeningScheduleSkeleton({ count = 6 }) {
   );
 }
 
-export function OpeningSchedulePage({
+function OpeningSchedulePageContent({
   embedded = false,
   showHero = true,
   pageSize = 12,
   detailState,
+  sharedKeyword = "",
 }) {
   const [searchParams, setSearchParams] = useSearchParams();
   const syncWithUrl = !embedded;
   const initialFilters = syncWithUrl
     ? readFiltersFromSearchParams(searchParams)
-    : createDefaultOpeningScheduleFilters();
+    : {
+        ...createDefaultOpeningScheduleFilters(),
+        keyword: sharedKeyword,
+      };
   const [filters, setFilters] = useState(initialFilters);
   const [appliedFilters, setAppliedFilters] = useState(initialFilters);
   const [page, setPage] = useState(() => {
@@ -266,33 +270,33 @@ export function OpeningSchedulePage({
     };
   }, [appliedFilters, page, pageSize, refreshKey, syncWithUrl, updateUrl]);
 
-function handlePageChange(nextPage) {
-  const isInvalidPage =
-    !Number.isInteger(nextPage) ||
-    nextPage < 0 ||
-    nextPage >= pageInfo.totalPages ||
-    nextPage === page;
+  function handlePageChange(nextPage) {
+    const isInvalidPage =
+      !Number.isInteger(nextPage) ||
+      nextPage < 0 ||
+      nextPage >= pageInfo.totalPages ||
+      nextPage === page;
 
-  if (isInvalidPage) {
-    return;
+    if (isInvalidPage) {
+      return;
+    }
+
+    setLoading(true);
+    setError("");
+    setPage(nextPage);
+
+    if (syncWithUrl) {
+      updateUrl(appliedFilters, nextPage);
+    }
+
+    //Chỉ cuộn lên đầu khi Opening Schedule là một trang độc lập.
+    if (!embedded) {
+      window.scrollTo({
+        top: 0,
+        behavior: "smooth",
+      });
+    }
   }
-
-  setLoading(true);
-  setError("");
-  setPage(nextPage);
-
-  if (syncWithUrl) {
-    updateUrl(appliedFilters, nextPage);
-  }
-
-  //Chỉ cuộn lên đầu khi Opening Schedule là một trang độc lập.
-  if (!embedded) {
-    window.scrollTo({
-      top: 0,
-      behavior: "smooth",
-    });
-  }
-}
 
   function handleRetry() {
     setLoading(true);
@@ -411,4 +415,19 @@ function handlePageChange(nextPage) {
   }
 
   return <main className="opening-page">{content}</main>;
+}
+
+export function OpeningSchedulePage(props) {
+  const [searchParams] = useSearchParams();
+  const sharedKeyword = props.embedded
+    ? (searchParams.get("keyword") || "").trim()
+    : "";
+
+  return (
+    <OpeningSchedulePageContent
+      key={`opening-schedule-${sharedKeyword}`}
+      {...props}
+      sharedKeyword={sharedKeyword}
+    />
+  );
 }

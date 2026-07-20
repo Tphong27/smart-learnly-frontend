@@ -101,21 +101,21 @@ export function OpeningScheduleCard({ classItem, detailState }) {
             </div>
           </div>
         </div>
+      </div>
 
-        <div className="opening-card__footer">
-          <strong className="opening-card__price">
-            {formatPrice(classItem.price, price <= 0)}
-          </strong>
+      <div className="opening-card__footer">
+        <strong className="opening-card__price">
+          {formatPrice(classItem.price, price <= 0)}
+        </strong>
 
-          <Link
-            to={detailPath}
-            state={detailState}
-            className="opening-card__link"
-          >
-            View class
-            <ArrowRight size={15} aria-hidden="true" />
-          </Link>
-        </div>
+        <Link
+          to={detailPath}
+          state={detailState}
+          className="opening-card__link"
+        >
+          View class
+          <ArrowRight size={15} aria-hidden="true" />
+        </Link>
       </div>
     </article>
   );
