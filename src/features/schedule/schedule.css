@@ -1,0 +1,424 @@
+.trainee-schedule-page {
+  width: 100%;
+  max-width: 1180px;
+  min-width: 0;
+  margin: 0 auto;
+  padding: 32px 24px 56px;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  color: var(--ink, #2d2f31);
+  box-sizing: border-box;
+}
+
+/* ==========================================================================
+   Page heading
+   ========================================================================== */
+
+.schedule-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.schedule-heading > div {
+  min-width: 0;
+}
+
+.schedule-heading h2 {
+  margin: 0;
+  color: var(--ink, #2d2f31);
+  font-size: clamp(1.75rem, 3vw, 2.25rem);
+  line-height: 1.15;
+  letter-spacing: -0.03em;
+}
+
+.schedule-heading p {
+  margin: 8px 0 0;
+  color: var(--muted, #6a6f73);
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.schedule-heading__count {
+  flex: 0 0 auto;
+  color: var(--muted, #6a6f73);
+  font-size: 14px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.schedule-heading__count strong {
+  margin-right: 5px;
+  color: var(--ink, #2d2f31);
+  font-size: 1.35rem;
+  line-height: 1;
+}
+
+/* ==========================================================================
+   Week controls
+   ========================================================================== */
+
+.schedule-controls {
+  display: flex;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.schedule-controls button {
+  min-height: 44px;
+  padding: 0 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 1px solid var(--line, #d1d7dc);
+  border-radius: 4px;
+  color: var(--ink, #2d2f31);
+  background: #ffffff;
+  cursor: pointer;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  transition:
+    border-color 180ms ease,
+    background-color 180ms ease,
+    color 180ms ease;
+}
+
+.schedule-controls button:hover {
+  border-color: #8a8397;
+  background: var(--surface, #f7f9fa);
+}
+
+.schedule-controls .schedule-controls__current {
+  border-color: var(--primary, #5624d0);
+  color: #ffffff;
+  background: var(--primary, #5624d0);
+}
+
+.schedule-controls .schedule-controls__current:hover {
+  border-color: var(--primary-dark, #401b9c);
+  color: #ffffff;
+  background: var(--primary-dark, #401b9c);
+}
+
+.schedule-controls label {
+  min-width: 190px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.schedule-controls label span {
+  color: var(--muted, #6a6f73);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.schedule-controls input {
+  width: 100%;
+  min-height: 44px;
+  padding: 0 11px;
+  border: 1px solid var(--line, #d1d7dc);
+  border-radius: 4px;
+  outline: 0;
+  color: var(--ink, #2d2f31);
+  background: #ffffff;
+  font: inherit;
+  font-size: 14px;
+  box-sizing: border-box;
+  transition:
+    border-color 180ms ease,
+    box-shadow 180ms ease;
+}
+
+.schedule-controls input:hover {
+  border-color: #8a8397;
+}
+
+.schedule-controls input:focus {
+  border-color: var(--primary, #5624d0);
+  box-shadow: 0 0 0 3px rgba(86, 36, 208, 0.14);
+}
+
+.schedule-controls button:focus-visible,
+.schedule-session__button:focus-visible {
+  outline: 3px solid rgba(86, 36, 208, 0.25);
+  outline-offset: 2px;
+}
+
+/* ==========================================================================
+   Loading and error states
+   ========================================================================== */
+
+.schedule-state {
+  min-height: 180px;
+  padding: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 9px;
+  border: 1px solid var(--line, #d1d7dc);
+  border-radius: 8px;
+  color: var(--muted, #6a6f73);
+  background: var(--surface, #f7f9fa);
+  text-align: center;
+}
+
+.schedule-state--error {
+  border-color: #f3b4b4;
+  color: #9f1d1d;
+  background: #fff3f3;
+}
+
+.schedule-spinner {
+  color: var(--primary, #5624d0);
+  animation: schedule-spin 0.8s linear infinite;
+}
+
+/* ==========================================================================
+   Schedule table
+   ========================================================================== */
+
+.schedule-table-scroll {
+  width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+  border: 1px solid var(--line, #d1d7dc);
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.schedule-table {
+  width: 100%;
+  min-width: 1080px;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.schedule-table th,
+.schedule-table td {
+  border-right: 1px solid var(--line, #d1d7dc);
+  border-bottom: 1px solid var(--line, #d1d7dc);
+}
+
+.schedule-table th:last-child,
+.schedule-table td:last-child {
+  border-right: 0;
+}
+
+.schedule-table tr:last-child th,
+.schedule-table tr:last-child td {
+  border-bottom: 0;
+}
+
+.schedule-table thead th {
+  padding: 14px 12px;
+  color: var(--ink, #2d2f31);
+  background: var(--surface, #f7f9fa);
+  text-align: left;
+}
+
+.schedule-table thead span,
+.schedule-table thead strong {
+  display: block;
+}
+
+.schedule-table thead span {
+  color: var(--primary-dark, #401b9c);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.schedule-table thead strong {
+  margin-top: 4px;
+  color: var(--muted, #6a6f73);
+  font-size: 13px;
+}
+
+.schedule-table__time {
+  width: 112px;
+}
+
+.schedule-table tbody th {
+  width: 112px;
+  padding: 12px;
+  color: var(--ink, #2d2f31);
+  background: var(--surface, #f7f9fa);
+  text-align: left;
+  vertical-align: top;
+}
+
+.schedule-table tbody th span,
+.schedule-table tbody th strong {
+  display: block;
+}
+
+.schedule-table tbody th span {
+  color: var(--muted, #6a6f73);
+  font-size: 12px;
+}
+
+.schedule-table tbody th strong {
+  margin-top: 5px;
+  color: var(--ink, #2d2f31);
+  font-size: 12px;
+}
+
+.schedule-table td {
+  min-width: 138px;
+  padding: 9px;
+  background: #ffffff;
+  vertical-align: top;
+}
+
+.schedule-table .is-today {
+  background: #f2effd;
+}
+
+.schedule-table__empty {
+  height: 150px;
+  padding: 36px 20px !important;
+  color: var(--muted, #6a6f73);
+  background: #ffffff;
+  text-align: center;
+}
+
+.schedule-table__dash {
+  color: #a9adb1;
+}
+
+.schedule-table__items {
+  display: grid;
+  gap: 8px;
+}
+
+/* ==========================================================================
+   Session card
+   ========================================================================== */
+
+.schedule-session {
+  min-width: 0;
+  padding: 10px;
+  display: grid;
+  gap: 5px;
+  border: 1px solid #d9d2ef;
+  border-left: 4px solid var(--primary, #5624d0);
+  border-radius: 4px;
+  background: #faf9fd;
+}
+
+.schedule-session__course {
+  overflow-wrap: anywhere;
+  color: var(--ink, #2d2f31);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.schedule-session__class,
+.schedule-session__trainer {
+  overflow-wrap: anywhere;
+  color: var(--muted, #6a6f73);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.schedule-session__actions {
+  margin-top: 4px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.schedule-session__button {
+  min-height: 28px;
+  padding: 4px 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  border: 1px solid var(--primary, #5624d0);
+  border-radius: 4px;
+  color: #ffffff;
+  background: var(--primary, #5624d0);
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.2;
+  text-decoration: none;
+}
+
+.schedule-session__button:hover {
+  border-color: var(--primary-dark, #401b9c);
+  background: var(--primary-dark, #401b9c);
+}
+
+.schedule-session__button--meet {
+  border-color: var(--line, #d1d7dc);
+  color: var(--ink, #2d2f31);
+  background: #ffffff;
+}
+
+.schedule-session__button--meet:hover {
+  border-color: #8a8397;
+  color: var(--ink, #2d2f31);
+  background: var(--surface, #f7f9fa);
+}
+
+@keyframes schedule-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ==========================================================================
+   Responsive
+   ========================================================================== */
+
+@media (max-width: 720px) {
+  .trainee-schedule-page {
+    padding: 24px 16px 44px;
+    gap: 24px;
+  }
+
+  .schedule-heading {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .schedule-controls {
+    align-items: stretch;
+  }
+}
+
+@media (max-width: 520px) {
+  .schedule-controls label {
+    width: 100%;
+    min-width: 0;
+    order: -1;
+  }
+
+  .schedule-controls button {
+    flex: 1 1 auto;
+  }
+
+  .schedule-controls .schedule-controls__current {
+    flex-basis: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .schedule-controls button,
+  .schedule-controls input {
+    transition: none;
+  }
+
+  .schedule-spinner {
+    animation-duration: 1.6s;
+  }
+}

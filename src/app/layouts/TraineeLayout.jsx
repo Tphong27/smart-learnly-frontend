@@ -16,6 +16,10 @@ const TRAINEE_TABS = [
     to: "/learning/progress",
   },
   {
+    label: "Schedule",
+    to: "/learning/schedule",
+  },
+  {
     label: "My Tests",
     to: "/learning/tests",
   },
@@ -23,7 +27,7 @@ const TRAINEE_TABS = [
     label: "My Flashcards",
     to: "/learning/flashcards",
   },
-    {
+  {
     label: "Course Catalog",
     to: "/learning/courses",
   },

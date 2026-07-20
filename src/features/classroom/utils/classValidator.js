@@ -43,9 +43,8 @@ export const classFormSchema = z
 
     scheduleDescription: z
       .string()
-      .max(2000, "Schedule description must not exceed 2000 characters")
-      .optional()
-      .or(z.literal("")),
+      .min(1, "Please select at least one class schedule")
+      .max(2000, "Schedule description must not exceed 2000 characters"),
 
     startDate: z
       .string()

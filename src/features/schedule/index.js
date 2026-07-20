@@ -1,0 +1,1 @@
+export { TraineeSchedulePage } from "./pages/TraineeSchedulePage";
