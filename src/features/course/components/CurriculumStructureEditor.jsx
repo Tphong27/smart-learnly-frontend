@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import {
   ChevronDown,
   Edit3,
@@ -253,6 +254,7 @@ function SectionRow({
   onMoveLesson,
   isFirstSection,
   isLastSection,
+  dragHandleProps,
 }) {
   const [isExpanded, setIsExpanded] = useState(true);
   const sortedLessons = useMemo(() => sortByOrder(lessons), [lessons]);
@@ -278,9 +280,9 @@ function SectionRow({
       <header className="sl-cm-section__header">
         {!readOnly && (
           <span
+            {...dragHandleProps}
             className="sl-cm-section__handle"
-            aria-hidden="true"
-            title="Use the actions menu to reorder this section."
+            title="Drag to reorder this section."
           >
             <GripVertical size={18} aria-hidden="true" />
           </span>
@@ -297,19 +299,19 @@ function SectionRow({
           <ChevronDown size={18} aria-hidden="true" />
         </button>
 
-        <button
-          type="button"
-          id={sectionTitleId}
-          className="sl-cm-section__title"
-          aria-expanded={isExpanded}
-          aria-controls={lessonsListId}
-          onClick={() => setIsExpanded((v) => !v)}
-        >
-          <span className="sl-cm-section__index">Section {index + 1}</span>
-          <span className="sl-cm-section__name">{section?.title}</span>
-        </button>
+          <button
+            type="button"
+            id={sectionTitleId}
+            className="sl-cm-section__title"
+            aria-expanded={isExpanded}
+            aria-controls={lessonsListId}
+            onClick={() => setIsExpanded((v) => !v)}
+          >
+            <span className="sl-cm-section__index">Module {index + 1}</span>
+            <span className="sl-cm-section__name">{section?.title}</span>
+          </button>
 
-        <span className="sl-cm-section__meta" aria-label="Section summary">
+        <span className="sl-cm-section__meta" aria-label="Module summary">
           <span>
             <strong>{sortedLessons.length}</strong> lessons
           </span>
@@ -346,31 +348,31 @@ function SectionRow({
               <Plus size={14} aria-hidden="true" /> Add lesson
             </button>
             <KebabMenu
-              label={`Section ${index + 1} actions`}
+              label={`Module ${index + 1} actions`}
               items={[
                 {
                   id: "edit",
-                  label: "Edit section",
+                  label: "Edit module",
                   icon: Edit3,
                   onSelect: () => onEditSection?.(section),
                 },
                 {
                   id: "move-up",
-                  label: "Move section up",
+                  label: "Move module up",
                   icon: ArrowUp,
                   onSelect: onMoveSectionUp,
                   disabled: isFirstSection,
                 },
                 {
                   id: "move-down",
-                  label: "Move section down",
+                  label: "Move module down",
                   icon: ArrowDown,
                   onSelect: onMoveSectionDown,
                   disabled: isLastSection,
                 },
                 {
                   id: "delete",
-                  label: "Delete section",
+                  label: "Delete module",
                   icon: Trash2,
                   variant: "danger",
                   onSelect: () => onDeleteSection?.(section.id, section.title),
@@ -383,38 +385,61 @@ function SectionRow({
 
       {isExpanded && (
         <div id={lessonsListId} className="sl-cm-section__body">
-          <div className="sl-cm-lessons">
-            {loadingLessons ? (
-              <div className="sl-cm-section__loading" role="status">
-                Loading lessons…
-              </div>
-            ) : sortedLessons.length > 0 ? (
-              sortedLessons.map((lesson, lIndex) => (
-                <LessonRow
-                  key={lesson?.id || lIndex}
-                  lesson={lesson}
-                  sectionIndex={index}
-                  lessonIndex={lIndex}
-                  readOnly={readOnly}
-                  onEditLesson={onEditLesson}
-                  onDeleteLesson={onDeleteLesson}
-                  onManageQuestions={onManageQuestions}
-                  showManageQuestions={showManageQuestions}
-                  lessonEditLabel={lessonEditLabel}
-                  isFirstLesson={lIndex === 0}
-                  isLastLesson={lIndex === sortedLessons.length - 1}
-                  onMoveLessonUp={() => onMoveLesson?.(section, lesson, "up")}
-                  onMoveLessonDown={() =>
-                    onMoveLesson?.(section, lesson, "down")
-                  }
-                />
-              ))
-            ) : (
-              <div className="sl-cm-section__empty">
-                This section has no lessons yet.
+          <Droppable droppableId={`lessons-${section.id}`}>
+            {(provided) => (
+              <div
+                ref={provided.innerRef}
+                {...provided.droppableProps}
+                className="sl-cm-lessons"
+              >
+                {loadingLessons ? (
+                  <div className="sl-cm-section__loading" role="status">
+                    Loading lessons…
+                  </div>
+                ) : sortedLessons.length > 0 ? (
+                  sortedLessons.map((lesson, lIndex) => (
+                    <Draggable
+                      key={lesson?.id || lIndex}
+                      draggableId={`lesson-${lesson?.id || lIndex}`}
+                      index={lIndex}
+                    >
+                      {(provided, snapshot) => (
+                        <div
+                          ref={provided.innerRef}
+                          {...provided.draggableProps}
+                          className={`sl-cm-lesson-wrap${snapshot.isDragging ? " sl-cm-lesson-wrap--dragging" : ""}`}
+                        >
+                          <LessonRow
+                            lesson={lesson}
+                            sectionIndex={index}
+                            lessonIndex={lIndex}
+                            readOnly={readOnly}
+                            onEditLesson={onEditLesson}
+                            onDeleteLesson={onDeleteLesson}
+                            onManageQuestions={onManageQuestions}
+                            showManageQuestions={showManageQuestions}
+                            lessonEditLabel={lessonEditLabel || "Edit lesson"}
+                            isFirstLesson={lIndex === 0}
+                            isLastLesson={lIndex === sortedLessons.length - 1}
+                            onMoveLessonUp={() => onMoveLesson?.(section, lesson, "up")}
+                            onMoveLessonDown={() =>
+                              onMoveLesson?.(section, lesson, "down")
+                            }
+                            dragHandleProps={provided.dragHandleProps}
+                          />
+                        </div>
+                      )}
+                    </Draggable>
+                  ))
+                ) : (
+                  <div className="sl-cm-section__empty">
+                    This module has no lessons yet.
+                  </div>
+                )}
+                {provided.placeholder}
               </div>
             )}
-          </div>
+          </Droppable>
         </div>
       )}
     </article>
@@ -435,6 +460,7 @@ function LessonRow({
   isLastLesson,
   onMoveLessonUp,
   onMoveLessonDown,
+  dragHandleProps,
 }) {
   const durationText = lesson?.durationSeconds
     ? `${Math.floor(lesson.durationSeconds / 60)} mins`
@@ -447,9 +473,9 @@ function LessonRow({
     <div className="sl-cm-lesson">
       {!readOnly && (
         <span
+          {...dragHandleProps}
           className="sl-cm-lesson__handle"
-          aria-hidden="true"
-          title="Use Move up / Move down in the actions menu to reorder."
+          title="Drag to reorder this lesson."
         >
           <GripVertical size={16} aria-hidden="true" />
         </span>
@@ -484,7 +510,7 @@ function LessonRow({
           className="sl-cm-btn sl-cm-btn--secondary sl-cm-btn--sm"
           onClick={() => onEditLesson?.(lesson)}
         >
-          {lessonEditLabel || "Open lesson"}
+          {lessonEditLabel || "Edit lesson"}
         </button>
         {!readOnly && (
           <KebabMenu
@@ -541,16 +567,46 @@ function SectionFormModal({
   submitLabel,
   onSubmit,
   onClose,
+  courseTopic,
 }) {
   const [value, setValue] = useState(initialValue || "");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
+  const aiSuggestions = useMemo(() => {
+    if (!value.trim()) return [];
+    const lower = value.toLowerCase();
+    const suggestions = [
+      { label: "Getting Started", match: 95 },
+      { label: "Fundamentals", match: 88 },
+      { label: "Basic Concepts", match: 82 },
+      { label: "Advanced Topics", match: 76 },
+      { label: "Best Practices", match: 71 },
+      { label: "Quick Start", match: 68 },
+    ];
+    if (courseTopic) {
+      suggestions.unshift(
+        { label: `Introduction to ${courseTopic}`, match: 97 },
+        { label: `${courseTopic} Basics`, match: 94 },
+      );
+    }
+    return suggestions.filter(
+      (s) =>
+        s.label.toLowerCase().includes(lower) ||
+        lower.includes(s.label.toLowerCase().split(" ")[0]),
+    );
+  }, [value, courseTopic]);
+
+  const handleSuggestionClick = (suggestion) => {
+    setValue(suggestion.label);
+    setError("");
+  };
+
   const handleSubmit = async (event) => {
     event.preventDefault();
     const trimmed = value.trim();
     if (!trimmed) {
-      setError("Section name is required.");
+      setError("Module name is required.");
       return;
     }
     setSubmitting(true);
@@ -588,7 +644,7 @@ function SectionFormModal({
       <form id="sl-cm-section-form" onSubmit={handleSubmit}>
         <div className="sl-cm-field">
           <label className="sl-cm-field__label" htmlFor="sl-cm-section-name">
-            Section name <span className="required">*</span>
+            Module name <span className="required">*</span>
           </label>
           <input
             id="sl-cm-section-name"
@@ -599,7 +655,7 @@ function SectionFormModal({
               setValue(event.target.value);
               if (event.target.value.trim()) setError("");
             }}
-            placeholder="e.g. Section 1: Environment setup"
+            placeholder="e.g. Module 1: Introduction"
             autoFocus
             aria-invalid={Boolean(error) || undefined}
             aria-describedby={error ? "sl-cm-section-name-error" : undefined}
@@ -618,6 +674,28 @@ function SectionFormModal({
             </p>
           )}
         </div>
+
+        {aiSuggestions.length > 0 && (
+          <div className="sl-cm-ai-suggestions">
+            <div className="sl-cm-ai-suggestions__header">
+              <Sparkles size={14} className="sl-cm-ai-suggestions__icon" />
+              <span>AI Suggestions</span>
+            </div>
+            <div className="sl-cm-ai-suggestions__chips">
+              {aiSuggestions.slice(0, 6).map((suggestion) => (
+                <button
+                  key={suggestion.label}
+                  type="button"
+                  className="sl-cm-ai-chip"
+                  onClick={() => handleSuggestionClick(suggestion)}
+                >
+                  <span className="sl-cm-ai-chip__label">{suggestion.label}</span>
+                  <span className="sl-cm-ai-chip__match">{suggestion.match}%</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </form>
     </Modal>
   );
@@ -875,8 +953,8 @@ export function CurriculumStructureEditor({
     setConfirm({
       title: `Delete “${title}”?`,
       description:
-        "All lessons inside this section will be deleted. This cannot be undone.",
-      confirmLabel: "Delete section",
+        "All lessons inside this module will be deleted. This cannot be undone.",
+      confirmLabel: "Delete module",
       onConfirm: async () => {
         setConfirm(null);
         await onDeleteSection?.(sectionId, title);
@@ -923,6 +1001,31 @@ export function CurriculumStructureEditor({
     );
   };
 
+  const handleDragEnd = useCallback((result) => {
+    if (!result.destination) return;
+
+    const { source, destination, type } = result;
+
+    // Section drag
+    if (type === "SECTION") {
+      if (source.index === destination.index) return;
+      const reordered = reorderArray(sortedSections, source.index, destination.index);
+      onReorderSections?.(reordered.map((item) => item.id));
+      return;
+    }
+
+    // Lesson drag within same section
+    if (source.droppableId === destination.droppableId) {
+      if (source.index === destination.index) return;
+      const sectionId = source.droppableId.replace("lessons-", "");
+      const section = sortedSections.find((s) => String(s.id) === String(sectionId));
+      if (!section) return;
+      const lessons = sortByOrder(getLessons?.(section) || []);
+      const reordered = reorderArray(lessons, source.index, destination.index);
+      onReorderLessons?.(sectionId, reordered.map((item) => item.id));
+    }
+  }, [sortedSections, getLessons, onReorderSections, onReorderLessons]);
+
   return (
     <div>
       {(draftCount > 0 || inactiveCount > 0 || emptySectionCount > 0) && (
@@ -940,7 +1043,7 @@ export function CurriculumStructureEditor({
                 ? `${draftCount} lesson${draftCount === 1 ? "" : "s"} still in draft`
                 : inactiveCount > 0
                   ? `${inactiveCount} inactive lesson${inactiveCount === 1 ? "" : "s"}`
-                  : `${emptySectionCount} section${emptySectionCount === 1 ? "" : "s"} still need${emptySectionCount === 1 ? "s" : ""} lessons`}
+                  : `${emptySectionCount} module${emptySectionCount === 1 ? "" : "s"} still need${emptySectionCount === 1 ? "s" : ""} lessons`}
             </p>
             <div className="sl-cm-attention__links">
               <span>
@@ -951,87 +1054,106 @@ export function CurriculumStructureEditor({
         </div>
       )}
 
-      <div className="sl-cm-workspace">
-        {stats ? (
-          <p className="sl-cm-summary" aria-label="Curriculum summary">
-            <strong>{stats.totalSections ?? sortedSections.length}</strong> sections ·
-            <strong>{stats.totalLessons ?? 0}</strong> lessons ·
-            <strong>{stats.totalVideos ?? 0}</strong> videos ·
-            <strong>{stats.totalQuizzes ?? 0}</strong> quizzes
-          </p>
-        ) : null}
-        <div className="sl-cm-tree">
-          {sortedSections.length > 0 ? (
-            sortedSections.map((section, index) => (
-              <div
-                key={section.id}
-                className="sl-cm-section-wrap"
-              >
-                <SectionRow
-                  section={section}
-                  index={index}
-                  readOnly={readOnly}
-                  lessons={getLessons?.(section) || []}
-                  loadingLessons={
-                    isSectionLessonsLoading?.(section.id) || false
-                  }
-                  onOpenCreateLesson={(s) => setLessonModalSection(s)}
-                  onEditSection={(s) => setEditingSection(s)}
-                  onDeleteSection={requestDeleteSection}
-                  onEditLesson={(lesson) =>
-                    onEditLesson?.(lesson, section)
-                  }
-                  onDeleteLesson={requestDeleteLesson}
-                  onManageQuestions={onManageQuestions}
-                  showManageQuestions={showManageQuestions}
-                  lessonEditLabel={lessonEditLabel}
-                  isFirstSection={index === 0}
-                  isLastSection={index === sortedSections.length - 1}
-                  onMoveSectionUp={() => moveSection(section, "up")}
-                  onMoveSectionDown={() => moveSection(section, "down")}
-                  onMoveLesson={moveLesson}
-                />
-              </div>
-            ))
-          ) : (
-            <div className="sl-cm-empty">
-              <span className="sl-cm-empty__icon" aria-hidden="true">
-                <Sparkles size={26} />
-              </span>
-              <h3 className="sl-cm-empty__title">{emptyAddTitle}</h3>
-              <p className="sl-cm-empty__desc">{emptyMessage}</p>
-              {!readOnly && (
-                <Button
-                  leftIcon={<Plus size={16} />}
-                  onClick={() => setIsSectionModalOpen(true)}
-                >
-                  Add first section
-                </Button>
+      {stats ? (
+        <p className="sl-cm-summary" aria-label="Curriculum summary">
+          <strong>{stats.totalSections ?? sortedSections.length}</strong> modules ·
+          <strong>{stats.totalLessons ?? 0}</strong> lessons ·
+          <strong>{stats.totalVideos ?? 0}</strong> videos ·
+          <strong>{stats.totalQuizzes ?? 0}</strong> quizzes
+        </p>
+      ) : null}
+
+      <DragDropContext onDragEnd={handleDragEnd}>
+        <Droppable droppableId="sections" type="SECTION">
+          {(provided) => (
+            <div
+              ref={provided.innerRef}
+              {...provided.droppableProps}
+              className="sl-cm-tree"
+            >
+              {sortedSections.length > 0 ? (
+                sortedSections.map((section, index) => (
+                  <Draggable
+                    key={section.id}
+                    draggableId={`section-${section.id}`}
+                    index={index}
+                  >
+                    {(provided, snapshot) => (
+                      <div
+                        ref={provided.innerRef}
+                        {...provided.draggableProps}
+                        className={`sl-cm-section-wrap${snapshot.isDragging ? " sl-cm-section-wrap--dragging" : ""}`}
+                      >
+                        <SectionRow
+                          section={section}
+                          index={index}
+                          readOnly={readOnly}
+                          lessons={getLessons?.(section) || []}
+                          loadingLessons={
+                            isSectionLessonsLoading?.(section.id) || false
+                          }
+                          onOpenCreateLesson={(s) => setLessonModalSection(s)}
+                          onEditSection={(s) => setEditingSection(s)}
+                          onDeleteSection={requestDeleteSection}
+                          onEditLesson={(lesson) =>
+                            onEditLesson?.(lesson, section)
+                          }
+                          onDeleteLesson={requestDeleteLesson}
+                          onManageQuestions={onManageQuestions}
+                          showManageQuestions={showManageQuestions}
+                          lessonEditLabel={lessonEditLabel}
+                          isFirstSection={index === 0}
+                          isLastSection={index === sortedSections.length - 1}
+                          onMoveSectionUp={() => moveSection(section, "up")}
+                          onMoveSectionDown={() => moveSection(section, "down")}
+                          onMoveLesson={moveLesson}
+                          dragHandleProps={provided.dragHandleProps}
+                        />
+                      </div>
+                    )}
+                  </Draggable>
+                ))
+              ) : (
+                <div className="sl-cm-empty">
+                  <span className="sl-cm-empty__icon" aria-hidden="true">
+                    <Sparkles size={26} />
+                  </span>
+                  <h3 className="sl-cm-empty__title">{emptyAddTitle}</h3>
+                  <p className="sl-cm-empty__desc">
+                    {readOnly ? emptyMessage : emptyAddSubtitle || emptyMessage}
+                  </p>
+                  {!readOnly && (
+                    <Button
+                      leftIcon={<Plus size={16} />}
+                      onClick={() => setIsSectionModalOpen(true)}
+                    >
+                      Add first section
+                    </Button>
+                  )}
+                </div>
               )}
+              {provided.placeholder}
             </div>
           )}
-        </div>
+        </Droppable>
+      </DragDropContext>
 
-        {!readOnly && sortedSections.length > 0 && (
-          <button
-            type="button"
-            className="sl-cm-empty sl-cm-empty--cta"
-            onClick={() => setIsSectionModalOpen(true)}
-          >
-            <span className="sl-cm-empty__icon" aria-hidden="true">
-              <Plus size={22} />
-            </span>
-            <h3 className="sl-cm-empty__title">{emptyAddTitle}</h3>
-            <p className="sl-cm-empty__desc">{emptyAddSubtitle}</p>
-          </button>
-        )}
-      </div>
+      {!readOnly && sortedSections.length > 0 && (
+        <button
+          type="button"
+          className="sl-cm-add-section"
+          onClick={() => setIsSectionModalOpen(true)}
+        >
+          <Plus size={18} aria-hidden="true" />
+          <span>Add new section</span>
+        </button>
+      )}
 
       {isSectionModalOpen ? (
         <SectionFormModal
           open
-          title="Add new section"
-          submitLabel="Save section"
+          title="Add new module"
+          submitLabel="Save module"
           initialValue=""
           onSubmit={handleCreateSection}
           onClose={() => setIsSectionModalOpen(false)}
@@ -1041,8 +1163,8 @@ export function CurriculumStructureEditor({
       {editingSection ? (
         <SectionFormModal
           open
-          title="Edit section"
-          submitLabel="Update section"
+          title="Edit module"
+          submitLabel="Update module"
           initialValue={editingSection.title || ""}
           onSubmit={handleUpdateSection}
           onClose={() => setEditingSection(null)}

@@ -1,4 +1,3 @@
-/* eslint-disable react-refresh/only-export-components */
 import { Navigate } from "react-router-dom";
 import { RoleGuard } from "./RoleGuard";
 import { ROLES } from "@/shared/constants/roles";
@@ -19,6 +18,7 @@ import {
 } from "@/features/course";
 import { TraineeDashboardPage } from "@/features/dashboard";
 import { TraineeProgressPage } from "@/features/progress";
+import { OpeningSchedulePage } from "@/features/opening-schedule";
 
 function PlaceholderPage({ title }) {
   return (
@@ -73,6 +73,18 @@ function getTraineeRoutes() {
                   detailState={{
                     from: "/learning/courses",
                     backLabel: "Back to Course Catalog",
+                  }}
+                />
+              ),
+            },
+            {
+              path: "opening-schedule",
+              element: (
+                <OpeningSchedulePage
+                  pageSize={6}
+                  detailState={{
+                    from: "/learning/opening-schedule",
+                    backLabel: "Back to Opening Schedule",
                   }}
                 />
               ),

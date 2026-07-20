@@ -7,6 +7,8 @@ import {
   CheckCircle2,
   XCircle,
   RotateCcw,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import {
   QUESTION_TYPES,
@@ -121,10 +123,12 @@ function isAnswered(question, answer) {
 function QuizStartScreen({ title, questionCount, duration, onStart }) {
   return (
     <div className="quiz-start">
-      <div className="quiz-start__icon">
-        <HelpCircle size={48} strokeWidth={1.5} />
-      </div>
+      <span className="quiz-start__eyebrow">Knowledge check</span>
       <h2 className="quiz-start__title">{title || "Quiz"}</h2>
+
+      <p className="quiz-start__summary">
+        Check your understanding of this lesson before continuing.
+      </p>
 
       <div className="quiz-start__meta">
         <span className="quiz-start__meta-item">
@@ -139,14 +143,17 @@ function QuizStartScreen({ title, questionCount, duration, onStart }) {
         )}
       </div>
 
-      <ul className="quiz-start__instructions">
-        <li>Read each question carefully before selecting your answer.</li>
-        <li>
-          Once you submit, you will see your score and which answers were
-          correct or incorrect.
-        </li>
-        <li>You can retake the quiz as many times as you like.</li>
-      </ul>
+      <div className="quiz-start__instructions">
+        <h3>Before you begin</h3>
+        <ul>
+          <li>Read each question carefully before selecting your answer.</li>
+          <li>
+            Once you submit, you will see your score and which answers were
+            correct or incorrect.
+          </li>
+          <li>You can retake the quiz as many times as you like.</li>
+        </ul>
+      </div>
 
       <button type="button" className="quiz-start__btn" onClick={onStart}>
         Start quiz
@@ -212,10 +219,26 @@ function FillInput({ qIdx, answer, onSelect }) {
 
 // ─── Quiz-Taking Screen ───────────────────────────────────────────────────────
 
+function questionTypeLabel(type) {
+  if (type === QUESTION_TYPES.MULTIPLE) return "Multiple choice";
+  if (type === QUESTION_TYPES.FILL) return "Fill in the blank";
+  return "Single choice";
+}
+
 function QuizTakingScreen({ quizData, answers, onSelectAnswer, onSubmit }) {
+  const [activeQuestionIndex, setActiveQuestionIndex] = useState(0);
   const total = quizData.questions.length;
   const answered = quizData.questions.filter((q, i) => isAnswered(q, answers[i])).length;
   const allAnswered = answered === total;
+  const activeQuestion = quizData.questions[activeQuestionIndex];
+  const activeAnswer = answers[activeQuestionIndex];
+  const activeAnswered = isAnswered(activeQuestion, activeAnswer);
+  const isFirstQuestion = activeQuestionIndex === 0;
+  const isLastQuestion = activeQuestionIndex === total - 1;
+
+  const goToQuestion = (index) => {
+    setActiveQuestionIndex(Math.max(0, Math.min(index, total - 1)));
+  };
 
   const handleSubmit = () => {
     if (!allAnswered) {
@@ -230,46 +253,133 @@ function QuizTakingScreen({ quizData, answers, onSelectAnswer, onSubmit }) {
   return (
     <div className="quiz-taking">
       <div className="quiz-taking__header">
+        <div className="quiz-taking__heading">
+          <span className="quiz-taking__eyebrow">Quiz</span>
+          <h2 className="quiz-taking__title">{quizData.title || "Knowledge check"}</h2>
+        </div>
         <div className="quiz-progress">
-          <span className="quiz-progress__count">{answered} / {total} answered</span>
-          <span className="quiz-progress__fraction">{Math.round((answered / total) * 100)}%</span>
+          <span className="quiz-progress__count">
+            Question {activeQuestionIndex + 1} of {total}
+          </span>
+          <span className="quiz-progress__fraction">
+            {answered} {answered === 1 ? "answer" : "answers"} completed
+          </span>
         </div>
-        <div className="quiz-progress__bar-track">
-          <div className="quiz-progress__bar-fill" style={{ width: `${(answered / total) * 100}%` }} />
+        <div
+          className="quiz-progress__bar-track"
+          role="progressbar"
+          aria-label="Quiz progress"
+          aria-valuemin="0"
+          aria-valuemax={total}
+          aria-valuenow={answered}
+        >
+          <div
+            className="quiz-progress__bar-fill"
+            style={{ width: `${(answered / total) * 100}%` }}
+          />
         </div>
       </div>
 
-      <div className="quiz-questions">
-        {quizData.questions.map((question, qIdx) => (
-          <fieldset key={qIdx} className="quiz-question">
-            <legend className="quiz-question__legend">
-              <QuestionPrompt question={question} number={qIdx + 1} />
-            </legend>
+      <div className="quiz-question-view">
+        <span className="quiz-question-view__announcement" aria-live="polite">
+          Now viewing question {activeQuestionIndex + 1} of {total}
+        </span>
+        <div className="quiz-question-view__meta">
+          <span className="quiz-question-view__type">
+            {questionTypeLabel(activeQuestion.type)}
+          </span>
+          <span
+            className={`quiz-question-view__status${activeAnswered ? " is-answered" : ""}`}
+          >
+            {activeAnswered && <CheckCircle2 size={15} aria-hidden="true" />}
+            {activeAnswered ? "Answered" : "Not answered"}
+          </span>
+        </div>
 
-            {question.type === QUESTION_TYPES.FILL ? (
-              <FillInput qIdx={qIdx} answer={answers[qIdx]} onSelect={onSelectAnswer} />
-            ) : (
-              <ChoiceOptions question={question} qIdx={qIdx} answer={answers[qIdx]} onSelect={onSelectAnswer} />
-            )}
-          </fieldset>
-        ))}
+        {activeQuestion.type === QUESTION_TYPES.MULTIPLE && (
+          <p className="quiz-question-view__hint">Select all answers that apply.</p>
+        )}
+
+        <fieldset key={activeQuestionIndex} className="quiz-question quiz-question--focused">
+          <legend className="quiz-question__legend">
+            <QuestionPrompt question={activeQuestion} />
+          </legend>
+
+          {activeQuestion.type === QUESTION_TYPES.FILL ? (
+            <FillInput
+              qIdx={activeQuestionIndex}
+              answer={activeAnswer}
+              onSelect={onSelectAnswer}
+            />
+          ) : (
+            <ChoiceOptions
+              question={activeQuestion}
+              qIdx={activeQuestionIndex}
+              answer={activeAnswer}
+              onSelect={onSelectAnswer}
+            />
+          )}
+        </fieldset>
       </div>
 
-      {!allAnswered && (
+      {isLastQuestion && !allAnswered && (
         <div className="quiz-taking__warning">
-          <AlertCircle size={15} />
+          <AlertCircle size={16} aria-hidden="true" />
           <span>
             {answered === 0
               ? "Please answer at least one question before submitting."
-              : `${total - answered} question${total - answered > 1 ? "s" : ""} unanswered. Submit anyway?`}
+              : `${total - answered} question${total - answered > 1 ? "s are" : " is"} still unanswered.`}
           </span>
         </div>
       )}
 
-      <div className="quiz-taking__actions">
-        <button type="button" className="quiz-taking__submit" onClick={handleSubmit}>
-          Submit quiz
-        </button>
+      <div className="quiz-taking__footer">
+        <nav className="quiz-question-nav" aria-label="Quiz questions">
+          {quizData.questions.map((question, index) => {
+            const questionAnswered = isAnswered(question, answers[index]);
+            const isCurrent = index === activeQuestionIndex;
+
+            return (
+              <button
+                key={index}
+                type="button"
+                className={`quiz-question-nav__item${isCurrent ? " is-current" : ""}${questionAnswered ? " is-answered" : ""}`}
+                aria-label={`Question ${index + 1}, ${questionAnswered ? "answered" : "not answered"}`}
+                aria-current={isCurrent ? "step" : undefined}
+                onClick={() => goToQuestion(index)}
+              >
+                {index + 1}
+              </button>
+            );
+          })}
+        </nav>
+
+        <div className="quiz-taking__actions">
+          <button
+            type="button"
+            className="quiz-taking__previous"
+            disabled={isFirstQuestion}
+            onClick={() => goToQuestion(activeQuestionIndex - 1)}
+          >
+            <ChevronLeft size={17} aria-hidden="true" />
+            Previous
+          </button>
+
+          {isLastQuestion ? (
+            <button type="button" className="quiz-taking__submit" onClick={handleSubmit}>
+              Submit quiz
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="quiz-taking__next"
+              onClick={() => goToQuestion(activeQuestionIndex + 1)}
+            >
+              Next question
+              <ChevronRight size={17} aria-hidden="true" />
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -325,12 +435,19 @@ function QuizResultsScreen({ quizData, answers, onTryAgain }) {
   return (
     <div className="quiz-results">
       <div className="quiz-results__score-card">
-        <div className={`quiz-results__status-badge ${passed ? "quiz-results__status-badge--pass" : "quiz-results__status-badge--fail"}`}>
-          {passed ? "Passed" : "Not Passed"}
+        <div className="quiz-results__summary">
+          <span className="quiz-results__eyebrow">Quiz result</span>
+          <h2 className="quiz-results__title">{quizData.title || "Knowledge check"}</h2>
         </div>
-        <div className="quiz-results__percentage">{percentage}%</div>
-        <div className="quiz-results__fraction">{correctCount} out of {total} correct</div>
-        <div className="quiz-results__pass-threshold">Passing threshold: 80%</div>
+
+        <div className="quiz-results__metrics">
+          <div className={`quiz-results__status-badge ${passed ? "quiz-results__status-badge--pass" : "quiz-results__status-badge--fail"}`}>
+            {passed ? "Passed" : "Not Passed"}
+          </div>
+          <div className="quiz-results__percentage">{percentage}%</div>
+          <div className="quiz-results__fraction">{correctCount} out of {total} correct</div>
+          <div className="quiz-results__pass-threshold">Passing threshold: 80%</div>
+        </div>
       </div>
 
       <h3 className="quiz-results__review-title">Review your answers</h3>

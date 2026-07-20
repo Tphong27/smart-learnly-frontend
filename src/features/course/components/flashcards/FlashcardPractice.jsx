@@ -7,14 +7,15 @@ import {
   Clock3,
   FlipHorizontal2,
   Maximize2,
+  Minimize2,
   RefreshCw,
   Shuffle,
-  X,
 } from "lucide-react";
 import { flashcardService } from "@/services/flashcard.service";
 import { useToast } from "@/shared/components/ui";
 import { FlashcardPreview, shuffleCards } from "./FlashcardPreview";
 import { getErrorMessage, normalizeSet } from "./flashcard-utils";
+import { useProgressiveVisibleItems } from "./useProgressiveVisibleItems";
 import "./Flashcards.css";
 
 const FILTERS = [
@@ -365,11 +366,12 @@ function FlashcardPracticeControls({
       {showFocusButton && (
         <button
           type="button"
-          className="flashcard-btn flashcard-btn--primary"
+          className="flashcard-btn flashcard-btn--icon flashcard-focus-toggle"
           onClick={onOpenFocusMode}
+          aria-label="Open focus mode"
+          title="Open focus mode"
         >
           <Maximize2 size={16} />
-          Focus mode
         </button>
       )}
     </div>
@@ -534,8 +536,8 @@ function FlashcardFocusControls({
         Shuffle
       </button>
       <button type="button" className="flashcard-btn" onClick={onClose}>
-        <X size={16} />
-        Exit focus mode
+        <Minimize2 size={16} />
+        Exit
       </button>
     </div>
   );
@@ -583,8 +585,9 @@ function FlashcardFocusMode({
             className="flashcard-btn flashcard-btn--icon flashcard-focus-mode__close"
             onClick={onClose}
             aria-label="Exit focus mode"
+            title="Exit focus mode"
           >
-            <X size={18} />
+            <Minimize2 size={18} />
           </button>
         </header>
 
@@ -650,6 +653,11 @@ function CardSideSummary({ label, text, imageUrl }) {
 }
 
 function FlashcardCompactList({ cards, activeCardId, onSelect }) {
+  const {
+    visibleItems,
+    remainingCount,
+    showMore,
+  } = useProgressiveVisibleItems(cards, `practice:${cards.map((card) => cardKey(card.id)).join("|")}`, 40);
   if (!cards.length) return null;
 
   const activeKey = cardKey(activeCardId);
@@ -663,7 +671,7 @@ function FlashcardCompactList({ cards, activeCardId, onSelect }) {
         </span>
       </div>
       <div className="flashcard-compact-list">
-        {cards.map((card, index) => {
+        {visibleItems.map((card, index) => {
           const status = progressStatus(card);
           const isActive = cardKey(card.id) === activeKey;
 
@@ -703,6 +711,13 @@ function FlashcardCompactList({ cards, activeCardId, onSelect }) {
           );
         })}
       </div>
+      {remainingCount > 0 && (
+        <div className="flashcard-compact__more">
+          <button type="button" className="flashcard-btn" onClick={showMore}>
+            Show more ({Math.min(remainingCount, 40)} of {remainingCount})
+          </button>
+        </div>
+      )}
     </div>
   );
 }

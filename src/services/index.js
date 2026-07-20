@@ -28,3 +28,4 @@ export * from "./flashtest.service";
 export { questionBankService } from "./question-bank.service";
 export { traineeProgressService } from "./trainee-progress.service";
 export { classAnalyticsService } from "./class-analytics.service";
+export { openingScheduleService } from "./opening-schedule.service";

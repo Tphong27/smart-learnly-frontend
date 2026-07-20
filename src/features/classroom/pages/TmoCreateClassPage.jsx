@@ -203,22 +203,46 @@ export function TmoCreateClassPage() {
               />
             </div>
 
-              <div className="form-group">
-                <label htmlFor="maxStudents">Capacity *</label>
-                <input
-                  id="maxStudents"
-                  type="number"
-                  min="1"
-                  max="500"
-                  {...form.register("maxStudents", { valueAsNumber: true })}
-                  className={form.errors.maxStudents ? "input-error" : ""}
-                />
-                {form.errors.maxStudents && (
-                  <span className="form-error-text">
-                    {form.errors.maxStudents.message}
-                  </span>
-                )}
-              </div>
+            <div className="form-group">
+              <label htmlFor="price">Class price (VND) *</label>
+
+              <input
+                id="price"
+                type="number"
+                min="0"
+                step="1000"
+                placeholder="Example: 2500000"
+                {...form.register("price", {
+                  valueAsNumber: true,
+                })}
+                className={form.errors.price ? "input-error" : ""}
+              />
+
+              {form.errors.price && (
+                <span className="form-error-text">
+                  {form.errors.price.message}
+                </span>
+              )}
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="maxStudents">Capacity *</label>
+              <input
+                id="maxStudents"
+                type="number"
+                min="1"
+                max="500"
+                {...form.register("maxStudents", {
+                  valueAsNumber: true,
+                })}
+                className={form.errors.maxStudents ? "input-error" : ""}
+              />
+              {form.errors.maxStudents && (
+                <span className="form-error-text">
+                  {form.errors.maxStudents.message}
+                </span>
+              )}
+            </div>
           </div>
 
           <div className="form-actions">

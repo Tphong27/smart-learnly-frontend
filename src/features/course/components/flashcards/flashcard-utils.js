@@ -9,17 +9,16 @@ export function trimField(value) {
   return String(value).trim();
 }
 
-export const FLASHCARD_IMAGE_ACCEPT = "image/jpeg,image/png,image/webp,image/gif";
-export const FLASHCARD_IMAGE_MAX_SIZE_BYTES = 20 * 1024 * 1024;
-export const FLASHCARD_IMAGE_MAX_SIZE_LABEL = "20 MB";
+export const FLASHCARD_IMAGE_ACCEPT = "image/jpeg,image/png,image/webp";
+export const FLASHCARD_IMAGE_MAX_SIZE_BYTES = 5 * 1024 * 1024;
+export const FLASHCARD_IMAGE_MAX_SIZE_LABEL = "5 MB";
 
 const FLASHCARD_IMAGE_TYPES = [
   "image/jpeg",
   "image/png",
   "image/webp",
-  "image/gif",
 ];
-const FLASHCARD_IMAGE_EXTENSIONS = ["jpg", "jpeg", "png", "webp", "gif"];
+const FLASHCARD_IMAGE_EXTENSIONS = ["jpg", "jpeg", "png", "webp"];
 
 function fileExtension(fileName = "") {
   const dotIndex = fileName.lastIndexOf(".");
@@ -47,7 +46,7 @@ export function validateFlashcardImageFile(file) {
   }
 
   if (!isFlashcardImageFile(file)) {
-    return "Only JPEG, PNG, WebP, or GIF images are accepted.";
+    return "Only JPEG, PNG, or WebP images are accepted.";
   }
 
   if (file.size > FLASHCARD_IMAGE_MAX_SIZE_BYTES) {
@@ -108,18 +107,29 @@ export function toCardPayload(card) {
 }
 
 export function validateCardDraft(card) {
+  return validateCurrentCardDraft(card);
+}
+
+export function validateCurrentCardDraft(card) {
   const payload = toCardPayload(card);
   const hasFront = Boolean(payload.frontText || payload.frontImageUrl);
   const hasBack = Boolean(payload.backText || payload.backImageUrl);
 
-  if (!hasFront) {
-    return "Front side requires text or image.";
+  if (!hasFront && !hasBack) {
+    return "At least one side needs text or an image. Changes not saved.";
   }
 
-  if (!hasBack) {
-    return "Back side requires text or image.";
-  }
+  return null;
+}
 
+export function validateStagingCardDraft(card) {
+  const payload = toCardPayload(card);
+  if (!payload.frontText) {
+    return "Staging flashcards require front text.";
+  }
+  if (!payload.backText) {
+    return "Staging flashcards require back text.";
+  }
   return null;
 }
 

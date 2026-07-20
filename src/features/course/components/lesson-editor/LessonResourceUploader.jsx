@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
-import { CloudUpload, X } from "lucide-react";
+import { CloudUpload, FileText, Loader2, Trash2 } from "lucide-react";
 import { courseService } from "@/services/course.service";
+import "./lesson-material-uploader.css";
 
 const MAX_RESOURCES = 10;
 
@@ -112,92 +113,102 @@ export function LessonResourceUploader({
   };
 
   return (
-    <div>
-      <label
-        style={{
-          display: "block",
-          marginBottom: "10px",
-          fontWeight: "600",
-          color: "#1e293b",
-          fontSize: "14px",
-        }}
-      >
-        Resources ({resources.length}/{maxResources})
-      </label>
-      <div
+    <section
+      className="sl-material-card sl-resource-uploader"
+      aria-labelledby="lesson-resources-heading"
+    >
+      <div className="sl-material-card__header">
+        <div>
+          <h3 id="lesson-resources-heading" className="sl-material-card__title">
+            <FileText size={20} aria-hidden="true" />
+            Resources
+          </h3>
+          <p className="sl-material-card__description">
+            Add documents, source files, or other supporting materials.
+          </p>
+        </div>
+        <span className="sl-resource-uploader__count">
+          {resources.length} / {maxResources}
+        </span>
+      </div>
+
+      <button
+        type="button"
         onDragOver={handleDragOver}
         onDrop={handleDrop}
         onClick={() => !uploading && !disabled && inputRef.current?.click()}
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          justifyContent: "center",
-          alignItems: "center",
-          gap: "12px",
-          height: "120px",
-          borderRadius: "12px",
-          border: "2px dashed #cbd5e1",
-          backgroundColor: "#f8fafc",
-          cursor: uploading || disabled ? "wait" : "pointer",
-          color: "#64748b",
-        }}
+        disabled={uploading || disabled || resources.length >= maxResources}
+        className="sl-resource-uploader__dropzone"
       >
-        <CloudUpload size={24} color="#64748b" />
-        <p style={{ margin: 0, fontSize: "14px", color: "#475569" }}>
+        <span className="sl-resource-uploader__upload-icon">
           {uploading ? (
-            "Uploading resource files..."
+            <Loader2 className="animate-spin" size={22} aria-hidden="true" />
           ) : (
-            <span style={{ color: "#2563eb", fontWeight: 600 }}>
-              Choose files or drop here
-            </span>
+            <CloudUpload size={22} aria-hidden="true" />
           )}
-        </p>
-        <input
-          type="file"
-          multiple
-          ref={inputRef}
-          onChange={handleSelect}
-          disabled={uploading || disabled}
-          style={{ display: "none" }}
-        />
-      </div>
+        </span>
+        <span className="sl-resource-uploader__dropzone-copy">
+          <strong>
+            {uploading
+              ? "Uploading resource files"
+              : resources.length >= maxResources
+                ? "Resource limit reached"
+                : "Upload resources"}
+          </strong>
+          <span>
+            {uploading
+              ? "Please wait while your files are uploaded."
+              : resources.length >= maxResources
+                ? `Remove a file before adding another. Maximum ${maxResources} files.`
+                : "Drag files here or browse your device"}
+          </span>
+        </span>
+      </button>
+      <input
+        type="file"
+        multiple
+        ref={inputRef}
+        onChange={handleSelect}
+        disabled={uploading || disabled || resources.length >= maxResources}
+        className="sl-material-visually-hidden"
+        tabIndex={-1}
+      />
 
       {resources.length > 0 && (
-        <div
-          style={{
-            marginTop: "12px",
-            display: "flex",
-            flexDirection: "column",
-            gap: "8px",
-          }}
-        >
+        <ul className="sl-resource-uploader__list" aria-label="Uploaded resources">
           {resources.map((resource, index) => (
-            <div
+            <li
               key={resource?.id || resource?.url || `resource-${index}`}
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                padding: "8px 12px",
-                backgroundColor: "#f1f5f9",
-                borderRadius: "6px",
-                fontSize: "13px",
-              }}
             >
-              <span style={{ color: "#334155", fontWeight: "500" }}>
-                {displayResourceName(resource)}
+              <span className="sl-resource-uploader__file-icon">
+                <FileText size={18} aria-hidden="true" />
               </span>
-              <X
-                size={14}
-                color="#ef4444"
-                style={{ cursor: "pointer" }}
+              <span className="sl-resource-uploader__file-copy">
+                <strong title={displayResourceName(resource)}>
+                  {displayResourceName(resource)}
+                </strong>
+                <small>Supporting resource</small>
+              </span>
+              <button
+                type="button"
+                className="sl-resource-uploader__remove"
+                aria-label={`Remove ${displayResourceName(resource)}`}
                 onClick={() => removeResource(index)}
-              />
-            </div>
+                disabled={uploading || disabled}
+              >
+                <Trash2 size={17} aria-hidden="true" />
+              </button>
+            </li>
           ))}
-        </div>
+        </ul>
       )}
-    </div>
+
+      {resources.length === 0 && !uploading && (
+        <p className="sl-resource-uploader__empty">
+          Uploaded resources will appear here.
+        </p>
+      )}
+    </section>
   );
 }
 

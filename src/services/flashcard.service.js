@@ -89,6 +89,16 @@ export const flashcardService = {
     return unwrap(response);
   },
 
+  async uploadImage(setId, file) {
+    const formData = new FormData();
+    formData.append("file", file);
+    const response = await apiClient.post(
+      `/admin/flashcard-sets/${setId}/images`,
+      formData,
+    );
+    return unwrap(response);
+  },
+
   async listSourceQuestions(setId, params = {}) {
     const response = await apiClient.get(
       `/admin/flashcard-sets/${setId}/staging/source-questions`,

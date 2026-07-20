@@ -1,6 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { FileText, Loader2, Video } from "lucide-react";
+import {
+  AlertCircle,
+  CheckCircle2,
+  Loader2,
+  UploadCloud,
+  Video,
+} from "lucide-react";
 import { courseService } from "@/services/course.service";
+import "./lesson-material-uploader.css";
 
 /**
  * HLS video uploader shared between admin lesson detail page and trainer
@@ -309,332 +316,188 @@ export function HlsVideoUploader({
   const readyState =
     videoUrl || processingStatus?.hlsStatus === "ready";
 
+  const progressPercent = processingStatus?.progressPercent || 0;
+  const statusLabel = isBusy
+    ? processingStatus?.hlsStatus === "uploading"
+      ? "Uploading"
+      : "Processing"
+    : readyState
+      ? "Ready"
+      : processingStatus?.hlsStatus === "failed"
+        ? "Failed"
+        : "Required";
+
   return (
-    <div
-      style={{
-        backgroundColor: "#fff",
-        padding: "24px",
-        borderRadius: "12px",
-        border: "1px solid #cbd5e1",
-      }}
+    <section
+      className="sl-material-card sl-video-uploader"
+      aria-labelledby="lesson-video-heading"
     >
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: "16px",
-          marginBottom: "16px",
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "8px",
-            color: "#2563eb",
-            fontWeight: "600",
-          }}
-        >
-          <Video size={24} />
-          Upload Video
+      <div className="sl-material-card__header">
+        <div>
+          <h3 id="lesson-video-heading" className="sl-material-card__title">
+            <Video size={20} aria-hidden="true" />
+            Lesson video
+          </h3>
+          <p className="sl-material-card__description">
+            Upload the primary video learners will watch in this lesson.
+          </p>
         </div>
+        <span
+          className={`sl-material-status sl-material-status--${isBusy ? "processing" : readyState ? "ready" : processingStatus?.hlsStatus === "failed" ? "failed" : "neutral"}`}
+        >
+          {statusLabel}
+        </span>
       </div>
 
       {isProviderUnavailable && (
-        <div
-          role="alert"
-          style={{
-            padding: "12px 14px",
-            borderRadius: "10px",
-            marginBottom: "16px",
-            color: "#991b1b",
-            background: "#fff1f2",
-            border: "1px solid #fecaca",
-            fontSize: "13px",
-          }}
-        >
-          The backend HLS processing provider is currently unavailable.
+        <div className="sl-material-alert sl-material-alert--error" role="alert">
+          <AlertCircle size={18} aria-hidden="true" />
+          <span>The backend HLS processing provider is currently unavailable.</span>
         </div>
       )}
 
       {statusError && (
-        <div
-          role="alert"
-          style={{
-            padding: "12px 14px",
-            borderRadius: "10px",
-            marginBottom: "16px",
-            color: "#991b1b",
-            background: "#fff1f2",
-            border: "1px solid #fecaca",
-            fontSize: "13px",
-          }}
-        >
-          Could not load HLS status: {statusError}
+        <div className="sl-material-alert sl-material-alert--error" role="alert">
+          <AlertCircle size={18} aria-hidden="true" />
+          <span>Could not load HLS status: {statusError}</span>
         </div>
       )}
 
       {processingStatus?.hlsStatus === "failed" && (
-        <div
-          style={{
-            padding: "14px 16px",
-            borderRadius: "10px",
-            marginBottom: "16px",
-            backgroundColor: "#fee2e2",
-            border: "1px solid #fca5a5",
-          }}
-        >
-          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-            <span style={{ fontSize: "20px", color: "#dc2626" }}>x</span>
-            <div>
-              <p
-                style={{
-                  margin: 0,
-                  fontWeight: "600",
-                  fontSize: "14px",
-                  color: "#dc2626",
-                }}
-              >
-                Processing Failed
-              </p>
-              <p
-                style={{
-                  margin: "2px 0 0 0",
-                  fontSize: "12px",
-                  color: "#991b1b",
-                }}
-              >
-                {processingStatus.currentStep ||
-                  processingStatus.message ||
-                  "Please try uploading again"}
-              </p>
-            </div>
+        <div className="sl-material-alert sl-material-alert--error" role="alert">
+          <AlertCircle size={18} aria-hidden="true" />
+          <div>
+            <strong>Video processing failed</strong>
+            <p>
+              {processingStatus.currentStep ||
+                processingStatus.message ||
+                "Please try uploading the video again."}
+            </p>
           </div>
         </div>
       )}
 
-      <div
+      <button
+        type="button"
         onDragOver={handleDragOver}
         onDrop={handleDrop}
         onClick={() =>
           !disabledInteraction && fileInputRef.current?.click()
         }
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          justifyContent: "center",
-          alignItems: "center",
-          gap: "16px",
-          height: "280px",
-          borderRadius: "12px",
-          border: readyState
-            ? "2px solid #10b981"
+        disabled={disabledInteraction}
+        className={`sl-video-uploader__dropzone ${isBusy ? "is-processing" : readyState ? "is-ready" : "is-empty"}`}
+        aria-label={
+          readyState
+            ? "Replace lesson video"
             : isBusy
-              ? "2px solid #2563eb"
-              : "2px dashed #cbd5e1",
-          backgroundColor: readyState
-            ? "#f0fdf4"
-            : isBusy
-              ? "#eff6ff"
-              : "#fff",
-          cursor: disabledInteraction ? "default" : "pointer",
-          textAlign: "center",
-          padding: "24px",
-        }}
+              ? "Video is being processed"
+              : "Upload lesson video"
+        }
       >
         {isBusy ? (
           <>
-            <Loader2
-              className="animate-spin"
-              size={48}
-              style={{ color: "#2563eb" }}
-            />
-            <p
-              style={{
-                margin: 0,
-                color: "#1e40af",
-                fontWeight: "600",
-                fontSize: "15px",
-              }}
-            >
-              {processingStatus?.hlsStatus === "uploading"
-                ? "Uploading Video..."
-                : "Processing Video..."}
-            </p>
-
-            <div
-              style={{
-                width: "100%",
-                maxWidth: "280px",
-                marginTop: "8px",
-              }}
-            >
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  marginBottom: "6px",
-                  fontSize: "13px",
-                }}
-              >
-                <span style={{ color: "#64748b" }}>
+            <div className="sl-video-uploader__state-row">
+              <span className="sl-video-uploader__state-icon">
+                <Loader2 className="animate-spin" size={22} aria-hidden="true" />
+              </span>
+              <div className="sl-video-uploader__state-copy">
+                <strong>
+                  {processingStatus?.hlsStatus === "uploading"
+                    ? "Uploading video"
+                    : "Processing video"}
+                </strong>
+                <span>
                   {processingStatus?.currentStep ||
                     (statusLoading
                       ? "Loading the latest processing state..."
                       : "Processing...")}
                 </span>
-                <span style={{ color: "#2563eb", fontWeight: "600" }}>
-                  {processingStatus?.progressPercent || 0}%
-                </span>
               </div>
-              <div
-                style={{
-                  width: "100%",
-                  height: "8px",
-                  backgroundColor: "#e2e8f0",
-                  borderRadius: "4px",
-                  overflow: "hidden",
-                }}
-              >
-                <div
-                  style={{
-                    width: `${processingStatus?.progressPercent || 0}%`,
-                    height: "100%",
-                    backgroundColor: "#2563eb",
-                    borderRadius: "4px",
-                    transition: "width 0.3s ease",
-                  }}
-                />
-              </div>
+              <strong className="sl-video-uploader__percentage">
+                {progressPercent}%
+              </strong>
             </div>
-
-            <p
-              style={{
-                margin: "12px 0 0 0",
-                color: "#64748b",
-                fontSize: "12px",
-              }}
+            <div
+              className="sl-video-uploader__progress"
+              role="progressbar"
+              aria-label="Video processing progress"
+              aria-valuemin="0"
+              aria-valuemax="100"
+              aria-valuenow={progressPercent}
             >
+              <span
+                style={{ width: `${progressPercent}%` }}
+              />
+            </div>
+            <p className="sl-video-uploader__footnote">
               {statusLoading
                 ? "Please wait while the latest status is loaded."
-                : "You may leave this page. Video is processing"}
+                : "You can safely leave this page while processing continues."}
             </p>
           </>
         ) : readyState ? (
-          <>
-            <Video size={48} color="#10b981" />
-            <p
-              style={{
-                margin: 0,
-                fontSize: "15px",
-                fontWeight: "600",
-                color: "#065f46",
-              }}
-            >
-              {processingStatus?.hlsStatus === "ready"
-                ? "Video Ready"
-                : "Video Uploaded"}
-            </p>
-            {processingStatus?.qualities && (
-              <p
-                style={{
-                  margin: "4px 0 0 0",
-                  fontSize: "12px",
-                  color: "#059669",
-                }}
-              >
-                Qualities: {processingStatus.qualities}
-              </p>
-            )}
-            <p
-              style={{
-                margin: "8px 0 0 0",
-                fontSize: "12px",
-                color: "#64748b",
-              }}
-            >
-              Click to replace with new video
-            </p>
-          </>
-        ) : (
-          <>
-            <div
-              style={{
-                width: "56px",
-                height: "56px",
-                backgroundColor: "#e2e8f0",
-                borderRadius: "14px",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <FileText size={28} color="#64748b" />
+          <div className="sl-video-uploader__state-row">
+            <span className="sl-video-uploader__state-icon sl-video-uploader__state-icon--ready">
+              <CheckCircle2 size={22} aria-hidden="true" />
+            </span>
+            <div className="sl-video-uploader__state-copy">
+              <strong>
+                {processingStatus?.hlsStatus === "ready"
+                  ? "Video ready"
+                  : "Video uploaded"}
+              </strong>
+              <span>
+                {processingStatus?.qualities
+                  ? `Available qualities: ${processingStatus.qualities}`
+                  : "The lesson video is ready to use."}
+              </span>
             </div>
-            <p
-              style={{
-                margin: 0,
-                fontSize: "15px",
-                fontWeight: "600",
-                color: "#1e293b",
-              }}
-            >
-              Drag and drop or{" "}
-              <span style={{ color: "#2563eb", fontWeight: 700 }}>Browse</span>
-            </p>
-            <p
-              style={{
-                margin: "4px 0 0 0",
-                fontSize: "12px",
-                color: "#64748b",
-              }}
-            >
-              Supports MP4, MOV, AVI, MKV (max 500MB)
-            </p>
-          </>
+            <span className="sl-video-uploader__replace-action">
+              Replace video
+            </span>
+          </div>
+        ) : (
+          <div className="sl-video-uploader__empty-state">
+            <span className="sl-video-uploader__upload-icon">
+              <UploadCloud size={24} aria-hidden="true" />
+            </span>
+            <div>
+              <strong>Upload lesson video</strong>
+              <p>
+                Drag and drop a file here or <span>browse your device</span>
+              </p>
+              <small>MP4, MOV, AVI or MKV · Maximum 500 MB</small>
+            </div>
+          </div>
         )}
-        <input
-          type="file"
-          ref={fileInputRef}
-          onChange={handleFileSelect}
-          disabled={disabledInteraction}
-          style={{ display: "none" }}
-          accept=".mp4,.webm,.mov,.avi,.mkv,.m4v,.mpg,.mpeg"
-        />
-      </div>
+      </button>
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleFileSelect}
+        disabled={disabledInteraction}
+        className="sl-material-visually-hidden"
+        accept=".mp4,.webm,.mov,.avi,.mkv,.m4v,.mpg,.mpeg"
+        tabIndex={-1}
+      />
 
       {!videoUrl &&
         (!processingStatus?.hlsStatus ||
           processingStatus.hlsStatus === "not_found") && (
-          <div style={{ marginTop: 12 }}>
-            <label
-              style={{
-                fontSize: 12,
-                color: "#64748b",
-                display: "block",
-                marginBottom: 4,
-              }}
-            >
-              Or paste video URL (for external videos)
+          <div className="sl-video-uploader__external-url">
+            <label htmlFor="lesson-external-video-url">
+              Or use an external video URL
             </label>
             <input
+              id="lesson-external-video-url"
               type="url"
               value={videoUrl || ""}
               onChange={(e) => onVideoUrlChange?.(e.target.value)}
               placeholder="https://..."
-              style={{
-                width: "100%",
-                padding: "8px 12px",
-                borderRadius: "6px",
-                border: "1px solid #cbd5e1",
-                fontSize: "13px",
-                boxSizing: "border-box",
-              }}
             />
           </div>
         )}
-    </div>
+    </section>
   );
 }
 

@@ -1,7 +1,17 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useForm } from 'react-hook-form'
+import { useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Eye, EyeOff, Image as ImageIcon, Lock, Phone, User } from 'lucide-react'
+import {
+  AlertCircle,
+  Eye,
+  EyeOff,
+  Image as ImageIcon,
+  Lock,
+  Phone,
+  ShieldCheck,
+  User,
+  UserRound,
+} from 'lucide-react'
 import { Form, FormField, Button, useToast } from '@/shared/components/ui'
 import { authService } from '@/services'
 import { setAuthSession, getCurrentUser } from '@/services/api-client'
@@ -30,6 +40,7 @@ function ProfileInfoForm({ profile, onSaved }) {
     register,
     handleSubmit,
     reset,
+    control,
     formState: { errors, isSubmitting, isDirty },
   } = useForm({
     resolver: zodResolver(profileSchema),
@@ -50,6 +61,8 @@ function ProfileInfoForm({ profile, onSaved }) {
       bio: profile?.bio ?? '',
     })
   }, [profile, reset])
+
+  const bioValue = useWatch({ control, name: 'bio' }) ?? ''
 
   async function onSubmit(values) {
     setServerError(null)
@@ -74,64 +87,108 @@ function ProfileInfoForm({ profile, onSaved }) {
   }
 
   return (
-    <div className="profile-card">
-      <h2 className="profile-card__title">Personal information</h2>
-      <p className="profile-card__subtitle">Update your display name, avatar and contact details.</p>
+    <section className="profile-panel" aria-labelledby="profile-info-heading">
+      <header className="profile-panel__header">
+        <div>
+          <h2 id="profile-info-heading">Personal information</h2>
+          <p>Update your display name, avatar and contact details.</p>
+        </div>
+      </header>
 
       {serverError && (
-        <div className="auth-card__alert" style={{ marginBottom: 16 }}>{serverError}</div>
+        <div className="profile-alert" role="alert">
+          <AlertCircle size={19} aria-hidden="true" />
+          <div>
+            <strong>Profile could not be updated</strong>
+            <p>{serverError}</p>
+          </div>
+        </div>
       )}
 
-      <Form onSubmit={handleSubmit(onSubmit)}>
-        <FormField
-          label="Full name"
-          required
-          registration={register('fullName')}
-          error={errors.fullName?.message}
-          leftIcon={<User size={16} />}
-          autoComplete="name"
-        />
-
-        <FormField
-          label="Avatar URL"
-          placeholder="https://..."
-          registration={register('avatarUrl')}
-          error={errors.avatarUrl?.message}
-          leftIcon={<ImageIcon size={16} />}
-          helperText="Paste a public image URL. File upload support will be added later."
-        />
-
-        <FormField
-          label="Phone number"
-          placeholder="+1..."
-          registration={register('phoneNumber')}
-          error={errors.phoneNumber?.message}
-          leftIcon={<Phone size={16} />}
-          autoComplete="tel"
-        />
-
-        <div className="input-field">
-          <label className="input-field__label" htmlFor="profile-bio">Bio</label>
-          <textarea
-            id="profile-bio"
-            className={['profile-textarea', errors.bio ? 'profile-textarea--error' : ''].filter(Boolean).join(' ')}
-            maxLength={1000}
-            rows={4}
-            {...register('bio')}
+      <Form className="profile-form" onSubmit={handleSubmit(onSubmit)}>
+        <div className="profile-form__grid">
+          <FormField
+            id="profile-full-name"
+            label="Full name"
+            required
+            registration={register('fullName')}
+            error={errors.fullName?.message}
+            leftIcon={<User size={16} aria-hidden="true" />}
+            autoComplete="name"
           />
-          {errors.bio && <p className="input-field__error">{errors.bio.message}</p>}
+
+          <FormField
+            id="profile-phone"
+            label="Phone number"
+            placeholder="e.g. +84901234567"
+            registration={register('phoneNumber')}
+            error={errors.phoneNumber?.message}
+            leftIcon={<Phone size={16} aria-hidden="true" />}
+            autoComplete="tel"
+            inputMode="tel"
+          />
+
+          <FormField
+            id="profile-avatar-url"
+            className="profile-form__full"
+            label="Avatar URL"
+            placeholder="https://example.com/avatar.jpg"
+            registration={register('avatarUrl')}
+            error={errors.avatarUrl?.message}
+            leftIcon={<ImageIcon size={16} aria-hidden="true" />}
+            helperText="Use a public JPEG, PNG, or WebP image URL."
+            type="url"
+          />
+
+          <div className="input-field profile-form__full">
+            <div className="profile-form__label-row">
+              <label className="input-field__label" htmlFor="profile-bio">
+                Bio
+              </label>
+              <span>{bioValue.length} / 1000</span>
+            </div>
+            <textarea
+              id="profile-bio"
+              className={[
+                'profile-textarea',
+                errors.bio ? 'profile-textarea--error' : '',
+              ]
+                .filter(Boolean)
+                .join(' ')}
+              maxLength={1000}
+              rows={6}
+              placeholder="Tell learners and colleagues a little about yourself"
+              aria-invalid={Boolean(errors.bio) || undefined}
+              aria-describedby={errors.bio ? 'profile-bio-error' : undefined}
+              {...register('bio')}
+            />
+            {errors.bio && (
+              <p id="profile-bio-error" className="input-field__error" role="alert">
+                {errors.bio.message}
+              </p>
+            )}
+          </div>
         </div>
 
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
-          <Button type="button" variant="ghost" onClick={() => reset()}>
+        <div className="profile-form__actions">
+          <p aria-live="polite">
+            {isSubmitting
+              ? 'Saving profile...'
+              : isDirty
+                ? 'Unsaved changes'
+                : 'Your profile is up to date'}
+          </p>
+          <div>
+            <Button type="button" variant="outline" onClick={() => reset()} disabled={!isDirty || isSubmitting}>
             Reset
-          </Button>
-          <Button type="submit" loading={isSubmitting} disabled={!isDirty}>
-            Save changes
-          </Button>
+            </Button>
+            <Button type="submit" loading={isSubmitting} disabled={!isDirty}>
+              Save changes
+            </Button>
+          </div>
         </div>
       </Form>
-    </div>
+    </section>
   )
 }
 
@@ -143,7 +200,7 @@ function ChangePasswordForm() {
   const {
     register,
     handleSubmit,
-    watch,
+    control,
     reset,
     formState: { errors, isSubmitting },
   } = useForm({
@@ -152,7 +209,7 @@ function ChangePasswordForm() {
     mode: 'onBlur',
   })
 
-  const newPasswordValue = watch('newPassword') ?? ''
+  const newPasswordValue = useWatch({ control, name: 'newPassword' }) ?? ''
 
   async function onSubmit(values) {
     setServerError(null)
@@ -165,75 +222,104 @@ function ChangePasswordForm() {
     }
   }
 
-  const togglerStyle = {
-    background: 'transparent', border: 0, cursor: 'pointer', color: 'inherit', display: 'inline-flex',
-  }
-
   return (
-    <div className="profile-card">
-      <h2 className="profile-card__title">Change password</h2>
-      <p className="profile-card__subtitle">For security, choose a strong password and never share it.</p>
+    <section className="profile-panel" aria-labelledby="profile-password-heading">
+      <header className="profile-panel__header">
+        <div>
+          <h2 id="profile-password-heading">Password &amp; security</h2>
+          <p>Choose a strong, unique password to protect your account.</p>
+        </div>
+      </header>
 
       {serverError && (
-        <div className="auth-card__alert" style={{ marginBottom: 16 }}>{serverError}</div>
+        <div className="profile-alert" role="alert">
+          <AlertCircle size={19} aria-hidden="true" />
+          <div>
+            <strong>Password could not be changed</strong>
+            <p>{serverError}</p>
+          </div>
+        </div>
       )}
 
-      <Form onSubmit={handleSubmit(onSubmit)}>
+      <Form className="profile-form profile-form--password" onSubmit={handleSubmit(onSubmit)}>
         <FormField
+          id="profile-current-password"
           label="Current password"
           type={show.cur ? 'text' : 'password'}
           required
           registration={register('currentPassword')}
           error={errors.currentPassword?.message}
-          leftIcon={<Lock size={16} />}
+          leftIcon={<Lock size={16} aria-hidden="true" />}
           rightIcon={
-            <button type="button" style={togglerStyle} onClick={() => setShow((s) => ({ ...s, cur: !s.cur }))} aria-label="Toggle">
-              {show.cur ? <EyeOff size={16} /> : <Eye size={16} />}
+            <button
+              type="button"
+              className="profile-password-toggle"
+              onClick={() => setShow((state) => ({ ...state, cur: !state.cur }))}
+              aria-label={show.cur ? 'Hide current password' : 'Show current password'}
+              aria-pressed={show.cur}
+            >
+              {show.cur ? <EyeOff size={17} /> : <Eye size={17} />}
             </button>
           }
           autoComplete="current-password"
         />
 
-        <div>
+        <div className="profile-password-group">
           <FormField
+            id="profile-new-password"
             label="New password"
             type={show.next ? 'text' : 'password'}
             required
             registration={register('newPassword')}
             error={errors.newPassword?.message}
-            leftIcon={<Lock size={16} />}
+            leftIcon={<Lock size={16} aria-hidden="true" />}
             rightIcon={
-              <button type="button" style={togglerStyle} onClick={() => setShow((s) => ({ ...s, next: !s.next }))} aria-label="Toggle">
-                {show.next ? <EyeOff size={16} /> : <Eye size={16} />}
+              <button
+                type="button"
+                className="profile-password-toggle"
+                onClick={() => setShow((state) => ({ ...state, next: !state.next }))}
+                aria-label={show.next ? 'Hide new password' : 'Show new password'}
+                aria-pressed={show.next}
+              >
+                {show.next ? <EyeOff size={17} /> : <Eye size={17} />}
               </button>
             }
             autoComplete="new-password"
           />
-          <div style={{ marginTop: 10 }}>
+          <div className="profile-password-requirements">
+            <strong>Password requirements</strong>
             <PasswordStrengthChecklist value={newPasswordValue} />
           </div>
         </div>
 
         <FormField
+          id="profile-confirm-password"
           label="Confirm new password"
           type={show.conf ? 'text' : 'password'}
           required
           registration={register('confirmPassword')}
           error={errors.confirmPassword?.message}
-          leftIcon={<Lock size={16} />}
+          leftIcon={<Lock size={16} aria-hidden="true" />}
           rightIcon={
-            <button type="button" style={togglerStyle} onClick={() => setShow((s) => ({ ...s, conf: !s.conf }))} aria-label="Toggle">
-              {show.conf ? <EyeOff size={16} /> : <Eye size={16} />}
+            <button
+              type="button"
+              className="profile-password-toggle"
+              onClick={() => setShow((state) => ({ ...state, conf: !state.conf }))}
+              aria-label={show.conf ? 'Hide password confirmation' : 'Show password confirmation'}
+              aria-pressed={show.conf}
+            >
+              {show.conf ? <EyeOff size={17} /> : <Eye size={17} />}
             </button>
           }
           autoComplete="new-password"
         />
 
-        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+        <div className="profile-form__actions profile-form__actions--password">
+          <p>Your password is encrypted and never displayed.</p>
           <Button type="submit" loading={isSubmitting}>Update password</Button>
         </div>
       </Form>
-    </div>
+    </section>
   )
 }
 
@@ -270,66 +356,155 @@ export function ProfilePage() {
 
   const initials = useMemo(() => getInitials(profile?.fullName), [profile?.fullName])
 
+  function handleTabKeyDown(event) {
+    if (
+      event.key !== 'ArrowUp' &&
+      event.key !== 'ArrowDown' &&
+      event.key !== 'ArrowLeft' &&
+      event.key !== 'ArrowRight'
+    ) {
+      return
+    }
+    event.preventDefault()
+    const nextTab = activeTab === TABS.INFO ? TABS.PASSWORD : TABS.INFO
+    setActiveTab(nextTab)
+    window.requestAnimationFrame(() => {
+      document.getElementById(`profile-tab-${nextTab}`)?.focus()
+    })
+  }
+
   if (loading) {
-    return <div className="profile-loading">Loading your profile...</div>
+    return (
+      <div
+        className="profile-page profile-page--loading"
+        role="status"
+        aria-label="Loading your profile"
+      >
+        <div className="profile-skeleton profile-skeleton--heading" />
+        <div className="profile-layout">
+          <div className="profile-skeleton profile-skeleton--sidebar" />
+          <div className="profile-skeleton profile-skeleton--panel" />
+        </div>
+      </div>
+    )
   }
 
   if (error && !profile) {
     return (
-      <div className="profile-card">
-        <h2 className="profile-card__title">Could not load profile</h2>
-        <p className="profile-card__subtitle">{error}</p>
+      <div className="profile-page">
+        <div className="profile-error-state" role="alert">
+          <AlertCircle size={28} aria-hidden="true" />
+          <h1>Could not load profile</h1>
+          <p>{error}</p>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => window.location.reload()}
+          >
+            Try again
+          </Button>
+        </div>
       </div>
     )
   }
 
   return (
     <div className="profile-page">
-      <header className="profile-page__header">
-        {profile?.avatarUrl ? (
-          <img className="profile-page__avatar" src={profile.avatarUrl} alt="avatar" />
-        ) : (
-          <div className="profile-page__avatar-fallback">{initials}</div>
-        )}
+      <header className="profile-page__heading">
         <div>
-          <h1 className="profile-page__name">{profile?.fullName || 'User'}</h1>
-          <p className="profile-page__email">{profile?.email}</p>
-          {profile?.role && <span className="profile-page__role-badge">{profile.role}</span>}
+          <h1>Profile &amp; security</h1>
+          <p>Manage your personal information and account security.</p>
         </div>
       </header>
 
-      <div className="profile-tabs" role="tablist">
-        <button
-          type="button"
-          role="tab"
-          aria-selected={activeTab === TABS.INFO}
-          className={[
-            'profile-tabs__btn',
-            activeTab === TABS.INFO ? 'profile-tabs__btn--active' : '',
-          ].filter(Boolean).join(' ')}
-          onClick={() => setActiveTab(TABS.INFO)}
-        >
-          Personal information
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={activeTab === TABS.PASSWORD}
-          className={[
-            'profile-tabs__btn',
-            activeTab === TABS.PASSWORD ? 'profile-tabs__btn--active' : '',
-          ].filter(Boolean).join(' ')}
-          onClick={() => setActiveTab(TABS.PASSWORD)}
-        >
-          Change password
-        </button>
-      </div>
+      <div className="profile-layout">
+        <aside className="profile-sidebar">
+          <div className="profile-identity">
+            {profile?.avatarUrl ? (
+              <img
+                className="profile-page__avatar"
+                src={profile.avatarUrl}
+                alt={`${profile?.fullName || 'User'} profile`}
+              />
+            ) : (
+              <div className="profile-page__avatar-fallback" aria-hidden="true">
+                {initials}
+              </div>
+            )}
+            <div className="profile-identity__copy">
+              <h2>{profile?.fullName || 'User'}</h2>
+              <p>{profile?.email}</p>
+              {profile?.role && (
+                <span className="profile-page__role-badge">{profile.role}</span>
+              )}
+            </div>
+          </div>
 
-      {activeTab === TABS.INFO ? (
-        <ProfileInfoForm profile={profile} onSaved={(updated) => setProfile((p) => ({ ...p, ...updated }))} />
-      ) : (
-        <ChangePasswordForm />
-      )}
+          <nav
+            className="profile-tabs"
+            role="tablist"
+            aria-label="Profile settings"
+          >
+            <button
+              id="profile-tab-info"
+              type="button"
+              role="tab"
+              aria-selected={activeTab === TABS.INFO}
+              aria-controls="profile-panel-info"
+              tabIndex={activeTab === TABS.INFO ? 0 : -1}
+              className={[
+                'profile-tabs__btn',
+                activeTab === TABS.INFO ? 'profile-tabs__btn--active' : '',
+              ]
+                .filter(Boolean)
+                .join(' ')}
+              onClick={() => setActiveTab(TABS.INFO)}
+              onKeyDown={handleTabKeyDown}
+            >
+              <UserRound size={18} aria-hidden="true" />
+              <span>Personal information</span>
+            </button>
+            <button
+              id="profile-tab-password"
+              type="button"
+              role="tab"
+              aria-selected={activeTab === TABS.PASSWORD}
+              aria-controls="profile-panel-password"
+              tabIndex={activeTab === TABS.PASSWORD ? 0 : -1}
+              className={[
+                'profile-tabs__btn',
+                activeTab === TABS.PASSWORD ? 'profile-tabs__btn--active' : '',
+              ]
+                .filter(Boolean)
+                .join(' ')}
+              onClick={() => setActiveTab(TABS.PASSWORD)}
+              onKeyDown={handleTabKeyDown}
+            >
+              <ShieldCheck size={18} aria-hidden="true" />
+              <span>Password &amp; security</span>
+            </button>
+          </nav>
+        </aside>
+
+        <main className="profile-content">
+          <div
+            id={`profile-panel-${activeTab}`}
+            role="tabpanel"
+            aria-labelledby={`profile-tab-${activeTab}`}
+          >
+            {activeTab === TABS.INFO ? (
+              <ProfileInfoForm
+                profile={profile}
+                onSaved={(updated) =>
+                  setProfile((current) => ({ ...current, ...updated }))
+                }
+              />
+            ) : (
+              <ChangePasswordForm />
+            )}
+          </div>
+        </main>
+      </div>
     </div>
   )
 }

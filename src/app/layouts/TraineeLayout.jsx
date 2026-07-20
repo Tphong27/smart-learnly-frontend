@@ -2,12 +2,14 @@ import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { LayoutBackground } from "./LayoutBackground";
 import { TraineeHeader } from "./TraineeHeader";
 import { authService, getCurrentUser } from "@/services";
+import { SiteFooter } from "@/shared/components";
 import "./TraineeLayout.css";
 
 const TRAINEE_TABS = [
   { label: "Dashboard", to: "/dashboard", end: true },
   { label: "Progress", to: "/learning/progress" },
   { label: "Course Catalog", to: "/learning/courses" },
+  { label: "Opening Schedule", to: "/learning/opening-schedule" },
   { label: "My Tests", to: "/learning/tests" },
   { label: "Flashcards", to: "/learning/flashcards" },
 ];
@@ -58,7 +60,7 @@ export function TraineeLayout({ children }) {
         Skip to main content
       </a>
 
-      <TraineeHeader user={user} onLogout={handleLogout} />
+      <TraineeHeader user={user} onLogout={handleLogout} roleLabel="Learner" />
 
       {showLearningNavigation && (
         <section className="trainee-shell-intro" aria-label="Learning overview">
@@ -96,6 +98,8 @@ export function TraineeLayout({ children }) {
       >
         {children || <Outlet />}
       </main>
+
+      <SiteFooter />
     </LayoutBackground>
   );
 }

@@ -2,7 +2,7 @@
 import { Navigate } from "react-router-dom";
 import { RoleGuard } from "./RoleGuard";
 import { ROLES } from "@/shared/constants/roles";
-import { AppLayout } from "../layouts/AppLayout";
+import { TrainerLayout } from "../layouts/TrainerLayout";
 // ĐÃ SỬA: Import đầy đủ các trang quản lý bài test từ feature flashtest
 import {
   StaffFlashTestListPage,
@@ -40,9 +40,8 @@ function PlaceholderPage({ title }) {
 function getStaffRoutes() {
   return [
     {
-      // 🟩 ĐƯA THẲNG APPLAYOUT LÊN ĐÂY: Để Sidebar/Topbar ôm trọn cụm /staff
       path: "/staff",
-      element: <AppLayout />,
+      element: <TrainerLayout />,
       children: [
         // NHÓM CHUNG: Cả 3 quyền Trainer, TMO, SME đều xem được danh sách khoá học, bài test, flashcard
         {
@@ -166,7 +165,7 @@ function getStaffRoutes() {
     // class draft curriculum. Audit history is hidden here.
     {
       path: "/trainer",
-      element: <AppLayout />,
+      element: <TrainerLayout />,
       children: [
         {
           element: (

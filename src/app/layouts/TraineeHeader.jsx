@@ -24,7 +24,19 @@ function getInitials(name) {
     .toUpperCase();
 }
 
-export function TraineeHeader({ user, onLogout }) {
+function getRoleLabel(role) {
+  const labels = {
+    [ROLES.TRAINEE]: "Learner",
+    [ROLES.TRAINER]: "Trainer",
+    [ROLES.SME]: "SME",
+    [ROLES.TMO]: "TMO",
+    [ROLES.ADMIN]: "Admin",
+    [ROLES.GUEST]: "Guest",
+  };
+  return labels[role?.toLowerCase()] || labels[role] || "User";
+}
+
+export function TraineeHeader({ user, onLogout, roleLabel }) {
   const actionsRef = useRef(null);
   const categoriesRef = useRef(null);
   const [categories, setCategories] = useState([]);
@@ -35,6 +47,7 @@ export function TraineeHeader({ user, onLogout }) {
 
   const displayName = getDisplayName(user);
   const initials = getInitials(displayName);
+  const roleText = roleLabel || getRoleLabel(user?.role);
 
   useEffect(() => {
     if (!categoriesOpen && !notificationOpen && !profileOpen) return undefined;
@@ -211,7 +224,7 @@ export function TraineeHeader({ user, onLogout }) {
               )}
               <span className="trainee-header__profile-copy">
                 <strong>{displayName}</strong>
-                <small>Learner</small>
+                <small>{roleText}</small>
               </span>
               <ChevronDown size={15} aria-hidden="true" />
             </button>
@@ -223,7 +236,7 @@ export function TraineeHeader({ user, onLogout }) {
               >
                 <div className="trainee-header__profile-summary">
                   <strong>{displayName}</strong>
-                  <span>{user?.email || "Learner account"}</span>
+                  <span>{user?.email || `${roleText} account`}</span>
                 </div>
                 <Link to="/profile" role="menuitem" onClick={() => setProfileOpen(false)}>
                   <User size={17} /> Profile
