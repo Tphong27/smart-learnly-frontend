@@ -13,6 +13,7 @@ import {
     courseService,
     traineeProgressService,
 } from "@/services";
+import { TraineeDashboardSkeleton } from "../components/TraineeDashboardSkeleton";
 import "./TraineeDashboardPage.css";
 
 const EMPTY_METRIC = { completed: 0, total: 0, percent: 0 };
@@ -258,15 +259,7 @@ export function TraineeDashboardPage() {
 
     return (
         <main className="trainee-dashboard-page">
-            {loading && (
-                <div
-                    className="trainee-dashboard-state"
-                    role="status"
-                    aria-live="polite"
-                >
-                    Loading your learning space...
-                </div>
-            )}
+            {loading && <TraineeDashboardSkeleton />}
 
             {!loading && error && (
                 <div
