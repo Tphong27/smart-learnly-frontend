@@ -85,6 +85,28 @@ export const assignmentService = {
   async remove(id) {
     return apiClient.delete(`/assignments/${id}`);
   },
+  async generateAiDraft({
+    message,
+    mode,
+    currentTitle,
+    currentDescription,
+    file,
+    sourceCacheKey,
+  }) {
+    const formData = new FormData();
+    formData.append("message", message);
+    if (mode) formData.append("mode", mode);
+    if (currentTitle) formData.append("currentTitle", currentTitle);
+    if (currentDescription) {
+      formData.append("currentDescription", currentDescription);
+    }
+    if (sourceCacheKey) formData.append("sourceCacheKey", sourceCacheKey);
+    if (file) formData.append("file", file);
+    const response = await apiClient.post("/assignments/ai-draft", formData, {
+      timeout: 90000,
+    });
+    return unwrap(response);
+  },
 
   // Submissions
   async start(data) {

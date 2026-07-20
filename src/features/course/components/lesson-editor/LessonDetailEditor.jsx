@@ -5,6 +5,7 @@ import { assignmentService } from "@/services/flashtest.service";
 import { Button, useToast } from "@/shared/components/ui";
 import RichTextEditor from "@/shared/components/rich-text/RichTextEditor";
 import { FlashcardLessonEditor } from "@/features/course/components/flashcards/FlashcardLessonEditor";
+import { AssignmentAiDraftPanel } from "@/features/assignment/components/AssignmentAiDraftPanel";
 import {
     sanitizeLessonHtml,
     isEmptyLessonHtml,
@@ -1509,6 +1510,12 @@ export function LessonDetailEditor({ context }) {
                                                                 </label>
                                                             )}
                                                         </div>
+                                                        <AssignmentAiDraftPanel
+                                                            mode="essay"
+                                                            currentTitle={title}
+                                                            currentDescription={summary}
+                                                            compact
+                                                        />
                                                     </>
                                                 )}
                                             </div>

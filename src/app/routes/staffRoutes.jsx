@@ -11,6 +11,7 @@ import {
   StaffTestListPage,
   StaffTestCreatePage,
   StaffTestMonitorPage,
+  TestAttemptDetailPage,
 } from "@/features/flashtest";
 // import { StaffLayout } from "@/app/layouts/StaffLayout";
 import { AdminCoursesPage, AdminCourseFormPage } from "@/features/admin";
@@ -81,6 +82,10 @@ function getStaffRoutes() {
             {
               path: "tests/monitor/:id/:type",
               element: <StaffTestMonitorPage />,
+            },
+            {
+              path: "tests/attempts/:testId/:attemptId",
+              element: <TestAttemptDetailPage />,
             },
             {
               path: "flashcards",
