@@ -38,17 +38,11 @@ function MetricItem({ icon, label, value, helper }) {
 
 export function ClassAnalyticsPage() {
   const { classId } = useParams();
-
   const navigate = useNavigate();
-
   const role = getCurrentRole();
-
   const [inactiveDays, setInactiveDays] = useState(7);
-
   const [analytics, setAnalytics] = useState(null);
-
   const [loading, setLoading] = useState(true);
-
   const [error, setError] = useState("");
 
   useEffect(() => {
