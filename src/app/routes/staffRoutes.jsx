@@ -58,13 +58,20 @@ function getStaffRoutes() {
               path: "courses/:courseId/edit",
               element: <AdminCourseFormPage />,
             },
+            // Master curriculum authoring: chỉ SME/TMO (và admin routes riêng).
+            // Trainer customize theo class tại /staff/classrooms/:classId/workspace?tab=curriculum.
             {
-              path: "courses/:courseId/content",
-              element: <AdminCourseContentPage />,
-            },
-            {
-              path: "courses/:courseId/lessons/:lessonId",
-              element: <AdminLessonDetailPage />,
+              element: <RoleGuard allowedRoles={[ROLES.TMO, ROLES.SME]} />,
+              children: [
+                {
+                  path: "courses/:courseId/content",
+                  element: <AdminCourseContentPage />,
+                },
+                {
+                  path: "courses/:courseId/lessons/:lessonId",
+                  element: <AdminLessonDetailPage />,
+                },
+              ],
             },
             {
               path: "tests",

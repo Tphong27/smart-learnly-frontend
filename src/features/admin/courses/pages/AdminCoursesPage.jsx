@@ -137,6 +137,7 @@ function RowActionsMenu({
     course,
     basePath,
     canViewClasses,
+    canOpenMasterCurriculum = true,
     canDelete,
     previewReturnPath,
     onRequestDelete,
@@ -204,6 +205,7 @@ function RowActionsMenu({
     }, [open, updateMenuPosition]);
 
     const contentPath = `${basePath}/${course.id}/content`;
+    const classesPath = `/staff/classrooms?courseId=${encodeURIComponent(course.id)}`;
     const previewPath = `${basePath}/${course.id}/preview?returnTo=${encodeURIComponent(previewReturnPath)}`;
     const editPath = basePath.startsWith("/staff")
         ? `${basePath}/${course.id}/edit`
@@ -216,25 +218,28 @@ function RowActionsMenu({
             className="course-management__menu-list course-management__menu-list--portal"
             style={menuPosition}
         >
-            <li role="none">
-                <Link
-                    role="menuitem"
-                    to={contentPath}
-                    className="course-management__menu-item"
-                    onClick={() => setOpen(false)}
-                >
-                    <BookOpen size={14} aria-hidden="true" /> Open curriculum
-                </Link>
-            </li>
+            {canOpenMasterCurriculum ? (
+                <li role="none">
+                    <Link
+                        role="menuitem"
+                        to={contentPath}
+                        className="course-management__menu-item"
+                        onClick={() => setOpen(false)}
+                    >
+                        <BookOpen size={14} aria-hidden="true" /> Open master curriculum
+                    </Link>
+                </li>
+            ) : null}
             {canViewClasses ? (
                 <li role="none">
                     <Link
                         role="menuitem"
-                        to={`/staff/classrooms?courseId=${encodeURIComponent(course.id)}`}
+                        to={classesPath}
                         className="course-management__menu-item"
                         onClick={() => setOpen(false)}
                     >
-                        <Users size={14} aria-hidden="true" /> View classes
+                        <Users size={14} aria-hidden="true" />
+                        {canOpenMasterCurriculum ? "View classes" : "Open class curriculum"}
                     </Link>
                 </li>
             ) : null}
@@ -309,8 +314,14 @@ export function AdminCoursesPage() {
     const previewReturnPath = isStaffRoute
         ? "/staff/courses"
         : "/admin/courses";
-    const canViewClasses = currentRole === "tmo";
+    // Trainer chỉ được customize curriculum theo class, không sửa master course structure.
+    const canViewClasses = currentRole === "tmo" || isTrainer;
+    const canOpenMasterCurriculum = !isTrainer;
     const canDelete = !isTrainer;
+    const openCoursePath = (courseId) =>
+        isTrainer
+            ? `/staff/classrooms?courseId=${encodeURIComponent(courseId)}`
+            : `${courseBasePath}/${courseId}/content`;
 
     const [page, setPage] = useState(0);
     const [totalPages, setTotalPages] = useState(0);
@@ -652,11 +663,7 @@ export function AdminCoursesPage() {
                                         <tr key={course.id}>
                                             <td data-label="Course">
                                                 <Link
-                                                    to={
-                                                        isTrainer
-                                                            ? `${courseBasePath}/${course.id}/edit`
-                                                            : `${courseBasePath}/${course.id}/content`
-                                                    }
+                                                    to={openCoursePath(course.id)}
                                                     className="course-management__course-cell"
                                                 >
                                                     <CourseThumbnail
@@ -724,13 +731,13 @@ export function AdminCoursesPage() {
                                             <td data-label="Actions">
                                                 <div className="course-management__actions">
                                                     <Link
-                                                        to={
-                                                            isTrainer
-                                                                ? `${courseBasePath}/${course.id}/edit`
-                                                                : `${courseBasePath}/${course.id}/content`
-                                                        }
+                                                        to={openCoursePath(course.id)}
                                                         className="course-management__action course-management__action--primary"
-                                                        title="Open"
+                                                        title={
+                                                            isTrainer
+                                                                ? "Open class curriculum"
+                                                                : "Open master curriculum"
+                                                        }
                                                         aria-label={`Open ${course.title}`}
                                                     >
                                                         Open
@@ -742,6 +749,9 @@ export function AdminCoursesPage() {
                                                         }
                                                         canViewClasses={
                                                             canViewClasses
+                                                        }
+                                                        canOpenMasterCurriculum={
+                                                            canOpenMasterCurriculum
                                                         }
                                                         canDelete={canDelete}
                                                         previewReturnPath={
@@ -830,11 +840,7 @@ export function AdminCoursesPage() {
                                             <Button
                                                 size="sm"
                                                 onClick={() =>
-                                                    navigate(
-                                                        isTrainer
-                                                            ? `${courseBasePath}/${course.id}/edit`
-                                                            : `${courseBasePath}/${course.id}/content`,
-                                                    )
+                                                    navigate(openCoursePath(course.id))
                                                 }
                                             >
                                                 Open
@@ -843,6 +849,9 @@ export function AdminCoursesPage() {
                                                 course={course}
                                                 basePath={courseBasePath}
                                                 canViewClasses={canViewClasses}
+                                                canOpenMasterCurriculum={
+                                                    canOpenMasterCurriculum
+                                                }
                                                 canDelete={canDelete}
                                                 previewReturnPath={
                                                     previewReturnPath

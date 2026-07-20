@@ -28,9 +28,17 @@ export function ClassDetailPage() {
     const [classData, setClassData] = useState(null);
     // Cho phép deep-link đến 1 tab qua query string ?tab=curriculum (ví dụ khi
     // trang trainer lesson detail navigate về đây sau khi save).
+    // Trainer mặc định mở tab Curriculum vì đây là workspace customize class.
     const [searchParams] = useSearchParams();
+    const tabParam = searchParams.get("tab");
     const initialTab =
-        searchParams.get("tab") === "curriculum" ? "curriculum" : "overview";
+        tabParam === "curriculum"
+            ? "curriculum"
+            : tabParam === "overview"
+              ? "overview"
+              : isTrainer
+                ? "curriculum"
+                : "overview";
     const [activeTab, setActiveTab] = useState(initialTab);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
