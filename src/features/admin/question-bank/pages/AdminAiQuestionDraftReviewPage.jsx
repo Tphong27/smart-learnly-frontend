@@ -3,6 +3,7 @@ import { useParams } from "react-router-dom"
 import {
   ArrowLeft,
   CheckCircle2,
+  Download,
   Edit2,
   Eye,
   RefreshCw,
@@ -45,6 +46,30 @@ function normalizeModules(payload) {
       title: item.title || item.name || `Module ${index + 1}`,
     }))
     .filter((item) => item.id)
+}
+
+function sourceKindLabel(kind) {
+  if (kind === "transcript") return "Transcript"
+  if (kind === "temporary_file") return "Document"
+  if (kind === "pasted_text") return "Pasted text"
+  return "Material"
+}
+
+function formatBytes(value) {
+  const bytes = Number(value || 0)
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+}
+
+function formatEvidenceTime(startMs, endMs) {
+  if (startMs == null && endMs == null) return null
+  return `${formatMillis(startMs)}-${formatMillis(endMs)}`
+}
+
+function formatMillis(value) {
+  const seconds = Math.floor(Math.max(0, Number(value || 0)) / 1000)
+  return `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`
 }
 
 function sortedAnswers(draft) {
@@ -106,6 +131,7 @@ export function AdminAiQuestionDraftReviewPage() {
   const [rejectDraft, setRejectDraft] = useState(null)
   const [detailDraft, setDetailDraft] = useState(null)
   const [mutating, setMutating] = useState(false)
+  const [downloadingSourceId, setDownloadingSourceId] = useState(null)
 
   async function loadBatch({ silent = false } = {}) {
     if (silent) {
@@ -215,7 +241,13 @@ export function AdminAiQuestionDraftReviewPage() {
     setActionError(null)
     setAddResult(null)
     try {
-      const result = await questionBankService.addSelectedAiDrafts(bankId, batchId, selectedDraftIds)
+      const result = await questionBankService.addSelectedAiDrafts(
+        bankId,
+        batchId,
+        selectedDraftIds
+          .map((draftId) => batch?.drafts?.find((draft) => draft.id === draftId))
+          .filter(Boolean),
+      )
       setAddResult(result)
       toast.success("Selected drafts processed")
       setSelectedDraftIds([])
@@ -228,13 +260,31 @@ export function AdminAiQuestionDraftReviewPage() {
     }
   }
 
+  async function handleSourceDownload(source) {
+    const sourceId = source.sourceId || source.generationSourceId || source.id
+    if (!sourceId) return
+    setDownloadingSourceId(sourceId)
+    setActionError(null)
+    try {
+      const response = await questionBankService.createAiDraftSourceDownloadUrl(bankId, batchId, sourceId)
+      if (response?.url) {
+        window.open(response.url, "_blank", "noopener,noreferrer")
+      }
+    } catch (err) {
+      setActionError(err?.message || "Could not create source download URL.")
+      toast.error(err?.message || "Could not create source download URL.")
+    } finally {
+      setDownloadingSourceId(null)
+    }
+  }
+
   async function handleEvidenceConfirmation(draft, suitable) {
     setMutating(true)
     setActionError(null)
     try {
       await questionBankService.confirmAiDraftEvidence(bankId, batchId, draft.id, {
         version: draft.version,
-        evidenceSuitable: suitable,
+        evidenceStillFits: suitable,
       })
       toast.success(suitable ? "Evidence confirmed" : "Evidence marked unsuitable")
       await loadBatch({ silent: true })
@@ -274,7 +324,7 @@ export function AdminAiQuestionDraftReviewPage() {
     try {
       await questionBankService.rejectAiDraft(bankId, batchId, rejectDraft.id, {
         version: rejectDraft.version,
-        reason: payload.reason || null,
+        reasonCode: payload.reason || null,
         note: payload.note?.trim() || null,
       })
       toast.success("Draft rejected")
@@ -378,6 +428,46 @@ export function AdminAiQuestionDraftReviewPage() {
       {sourceChanged && (
         <section className="ai-drafts-alert ai-drafts-alert--warning" role="alert">
           Source material has been updated after this batch was created. Evidence still uses the original snapshot for audit.
+        </section>
+      )}
+
+      {batch?.sources?.length > 0 && (
+        <section className="admin-card ai-source-review-card">
+          <div className="ai-drafts-section-header">
+            <div>
+              <h2>Generation sources</h2>
+              <p>These source snapshots were used for this batch and retry.</p>
+            </div>
+          </div>
+          <div className="ai-source-list">
+            {batch.sources.map((source) => {
+              const sourceId = source.sourceId || source.generationSourceId || source.id
+              return (
+                <div className="ai-file-row" key={sourceId}>
+                  <span>{sourceKindLabel(source.kind || source.sourceKind)}</span>
+                  <span>{source.title || source.sourceName}</span>
+                  <strong>
+                    {source.normalizedCharCount
+                      ? `${source.normalizedCharCount.toLocaleString()} chars`
+                      : source.fileSizeBytes
+                        ? formatBytes(source.fileSizeBytes)
+                        : source.version || "--"}
+                  </strong>
+                  {source.downloadable && (
+                    <button
+                      type="button"
+                      className="admin-table__icon-btn"
+                      onClick={() => handleSourceDownload(source)}
+                      disabled={downloadingSourceId === sourceId}
+                      aria-label={`Download ${source.title || source.sourceName}`}
+                    >
+                      <Download size={15} />
+                    </button>
+                  )}
+                </div>
+              )
+            })}
+          </div>
         </section>
       )}
 
@@ -652,12 +742,20 @@ function DraftReviewRow({
 }
 
 function AddResultNotice({ result }) {
-  const addedCount = Number(result?.addedCount ?? result?.createdCount ?? result?.acceptedCount ?? 0)
+  const addedCount = Number(
+    result?.addedCount
+    ?? result?.createdCount
+    ?? result?.acceptedCount
+    ?? result?.created?.length
+    ?? 0,
+  )
   const skipped = Array.isArray(result?.skipped)
     ? result.skipped
     : Array.isArray(result?.skippedDrafts)
       ? result.skippedDrafts
-      : []
+      : Array.isArray(result?.skippedItems)
+        ? result.skippedItems
+        : []
 
   return (
     <section className="ai-drafts-alert ai-drafts-alert--success" role="status">
@@ -916,6 +1014,9 @@ function DraftDetailModal({ draft, onClose }) {
               <div className="ai-draft-row__meta">
                 <span>{evidence.sourceName || evidence.materialName || `Evidence ${index + 1}`}</span>
                 <span>{evidence.chunkReference || evidence.chunkId || evidence.sourceId || "--"}</span>
+                {formatEvidenceTime(evidence.startMs, evidence.endMs) && (
+                  <span>{formatEvidenceTime(evidence.startMs, evidence.endMs)}</span>
+                )}
               </div>
               <blockquote>{evidence.excerpt || evidence.sourceExcerpt || "--"}</blockquote>
             </section>
