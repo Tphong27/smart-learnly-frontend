@@ -13,6 +13,8 @@ import {
   AdminQuestionBanksPage,
   AdminQuestionBankDetailPage,
   AdminQuestionFormPage,
+  AdminAiQuestionDraftCreatePage,
+  AdminAiQuestionDraftReviewPage,
 } from "@/features/admin";
 import AdminOrdersPage from "@/features/checkout/pages/AdminOrdersPage";
 import AdminTransactionsPage from "@/features/checkout/pages/AdminTransactionsPage";
@@ -84,6 +86,21 @@ function getAdminRoutes() {
               element: <AdminQuestionFormPage />,
             },
             { path: "questions/:questionId/edit", element: <AdminQuestionFormPage /> },
+          ],
+        },
+        {
+          element: (
+            <RoleGuard allowedRoles={[ROLES.ADMIN, ROLES.SME]} />
+          ),
+          children: [
+            {
+              path: "question-banks/:bankId/ai-drafts/new",
+              element: <AdminAiQuestionDraftCreatePage />,
+            },
+            {
+              path: "question-banks/:bankId/ai-drafts/:batchId",
+              element: <AdminAiQuestionDraftReviewPage />,
+            },
           ],
         },
         {

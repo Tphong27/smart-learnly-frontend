@@ -8,6 +8,7 @@ import {
     Plus,
     RotateCcw,
     Search,
+    Sparkles,
     Upload,
 } from "lucide-react";
 import { Button, FormField, Modal, useToast } from "@/shared/components/ui";
@@ -295,6 +296,13 @@ export function AdminQuestionBankDetailPage() {
                 </div>
                 {writable && !isBankArchived && (
                     <div style={{ display: "inline-flex", gap: 10 }}>
+                        <Button
+                            to={`/admin/question-banks/${bankId}/ai-drafts/new`}
+                            variant="secondary"
+                            leftIcon={<Sparkles size={16} />}
+                        >
+                            Generate AI drafts
+                        </Button>
                         <Button
                             variant="secondary"
                             leftIcon={<Upload size={16} />}
