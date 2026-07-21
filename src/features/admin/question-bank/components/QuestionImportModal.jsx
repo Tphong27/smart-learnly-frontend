@@ -20,6 +20,7 @@ const IMPORT_MODES = {
   IMAGE: 'image',
 }
 
+const IMAGE_IMPORT_ENABLED = false
 const IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/webp']
 const MAX_IMAGE_SIZE = 10 * 1024 * 1024
 const MAX_ATTACH_IMAGE_SIZE = 5 * 1024 * 1024
@@ -921,16 +922,18 @@ export function QuestionImportModal({ open, bank, existingQuestions = [], onClos
             >
               JSON
             </button>
-            <button
-              type="button"
-              className={`question-import__mode-btn ${importMode === IMPORT_MODES.IMAGE ? 'question-import__mode-btn--active' : ''}`}
-              onClick={() => handleModeChange(IMPORT_MODES.IMAGE)}
-              disabled={parsing || submitting}
-              role="tab"
-              aria-selected={importMode === IMPORT_MODES.IMAGE}
-            >
-              Image/OCR
-            </button>
+            {IMAGE_IMPORT_ENABLED && (
+              <button
+                type="button"
+                className={`question-import__mode-btn ${importMode === IMPORT_MODES.IMAGE ? 'question-import__mode-btn--active' : ''}`}
+                onClick={() => handleModeChange(IMPORT_MODES.IMAGE)}
+                disabled={parsing || submitting}
+                role="tab"
+                aria-selected={importMode === IMPORT_MODES.IMAGE}
+              >
+                Image/OCR
+              </button>
+            )}
           </div>
 
           {importMode === IMPORT_MODES.FILE ? (
@@ -992,7 +995,7 @@ export function QuestionImportModal({ open, bank, existingQuestions = [], onClos
                 placeholder="Paste question bank JSON here"
               />
             </>
-          ) : (
+          ) : IMAGE_IMPORT_ENABLED && importMode === IMPORT_MODES.IMAGE ? (
             <>
               <p className="question-import__intro">
                 Upload up to 5 images. The system will OCR and parse questions into a preview batch; review and edit every question before confirming.
@@ -1015,9 +1018,9 @@ export function QuestionImportModal({ open, bank, existingQuestions = [], onClos
                 </ul>
               )}
             </>
-          )}
+          ) : null}
 
-          {parsing && <div className="admin-loading">{importMode === IMPORT_MODES.IMAGE ? 'Generating image preview...' : 'Parsing file...'}</div>}
+          {parsing && <div className="admin-loading">{IMAGE_IMPORT_ENABLED && importMode === IMPORT_MODES.IMAGE ? 'Generating image preview...' : 'Parsing file...'}</div>}
           {parseError && <div className="auth-card__alert" style={{ marginTop: 12 }}>{parseError}</div>}
           {parseSuccess && <div className="question-import__valid">{parseSuccess}</div>}
           {!parsing && fileName && !parseError && importMode === IMPORT_MODES.FILE && (
@@ -1028,7 +1031,7 @@ export function QuestionImportModal({ open, bank, existingQuestions = [], onClos
         </div>
       )}
 
-      {step === 'preview' && importMode === IMPORT_MODES.IMAGE && renderImagePreview()}
+      {IMAGE_IMPORT_ENABLED && step === 'preview' && importMode === IMPORT_MODES.IMAGE && renderImagePreview()}
 
       {step === 'preview' && importMode !== IMPORT_MODES.IMAGE && (
         <div className="question-import">
@@ -1255,10 +1258,10 @@ export function QuestionImportModal({ open, bank, existingQuestions = [], onClos
               type="button"
               onClick={handleCommit}
               loading={submitting}
-              disabled={importMode === IMPORT_MODES.IMAGE ? (!validImageRows.length || validImageRows.length !== imageRows.length || isArchived) : (!validRows.length || isArchived)}
+              disabled={IMAGE_IMPORT_ENABLED && importMode === IMPORT_MODES.IMAGE ? (!validImageRows.length || validImageRows.length !== imageRows.length || isArchived) : (!validRows.length || isArchived)}
               leftIcon={<Upload size={16} />}
             >
-              Import {importMode === IMPORT_MODES.IMAGE ? validImageRows.length : validRows.length} question{(importMode === IMPORT_MODES.IMAGE ? validImageRows.length : validRows.length) === 1 ? '' : 's'}
+              Import {IMAGE_IMPORT_ENABLED && importMode === IMPORT_MODES.IMAGE ? validImageRows.length : validRows.length} question{(IMAGE_IMPORT_ENABLED && importMode === IMPORT_MODES.IMAGE ? validImageRows.length : validRows.length) === 1 ? '' : 's'}
             </Button>
           </>
         ) : (
@@ -1269,13 +1272,13 @@ export function QuestionImportModal({ open, bank, existingQuestions = [], onClos
                 Validate and preview JSON
               </Button>
             )}
-            {importMode === IMPORT_MODES.IMAGE && (
+            {IMAGE_IMPORT_ENABLED && importMode === IMPORT_MODES.IMAGE && (
               <Button type="button" onClick={handleImagePreview} disabled={isArchived || parsing || !imageFiles.length} leftIcon={<FileImage size={16} />}>
                 Generate preview
               </Button>
             )}
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: '#64748b', fontSize: 13 }}>
-              {importMode === IMPORT_MODES.IMAGE ? <FileImage size={14} /> : <FileSpreadsheet size={14} />} {sourceLabel}
+              {IMAGE_IMPORT_ENABLED && importMode === IMPORT_MODES.IMAGE ? <FileImage size={14} /> : <FileSpreadsheet size={14} />} {sourceLabel}
             </span>
           </>
         )}
