@@ -22,6 +22,17 @@ function normalizePage(response) {
   }
 }
 
+function normalizeAiDraftSources(response) {
+  const data = unwrap(response)
+  const items = data?.items ?? data?.sources ?? data?.content ?? data?.data ?? data
+  return Array.isArray(items) ? items : []
+}
+
+function normalizeAiDraftBatch(response) {
+  const data = unwrap(response)
+  return data?.batch ?? data
+}
+
 export const questionBankService = {
   async listBanks(params = {}) {
     const response = await apiClient.get('/admin/question-banks', { params })
@@ -149,6 +160,63 @@ export const questionBankService = {
       rows,
       importSource,
     })
+    return unwrap(response)
+  },
+
+  async listAiDraftSources(bankId) {
+    const response = await apiClient.get(`/admin/question-banks/${bankId}/ai-drafts/sources`)
+    return normalizeAiDraftSources(response)
+  },
+
+  async createAiDraftBatch(bankId, payload) {
+    const response = await apiClient.post(`/admin/question-banks/${bankId}/ai-drafts`, payload, {
+      timeout: 90000,
+    })
+    return normalizeAiDraftBatch(response)
+  },
+
+  async getAiDraftBatch(bankId, batchId) {
+    const response = await apiClient.get(`/admin/question-banks/${bankId}/ai-drafts/${batchId}`)
+    return normalizeAiDraftBatch(response)
+  },
+
+  async retryAiDraftBatch(bankId, batchId) {
+    const response = await apiClient.post(`/admin/question-banks/${bankId}/ai-drafts/${batchId}/retry`, null, {
+      timeout: 90000,
+    })
+    return normalizeAiDraftBatch(response)
+  },
+
+  async updateAiDraft(bankId, batchId, draftId, payload) {
+    const response = await apiClient.put(
+      `/admin/question-banks/${bankId}/ai-drafts/${batchId}/drafts/${draftId}`,
+      payload,
+    )
+    return unwrap(response)
+  },
+
+  async rejectAiDraft(bankId, batchId, draftId, payload = {}) {
+    const response = await apiClient.post(
+      `/admin/question-banks/${bankId}/ai-drafts/${batchId}/drafts/${draftId}/reject`,
+      payload,
+    )
+    return unwrap(response)
+  },
+
+  async confirmAiDraftEvidence(bankId, batchId, draftId, payload) {
+    const response = await apiClient.post(
+      `/admin/question-banks/${bankId}/ai-drafts/${batchId}/drafts/${draftId}/evidence-confirmation`,
+      payload,
+    )
+    return unwrap(response)
+  },
+
+  async addSelectedAiDrafts(bankId, batchId, draftIds) {
+    const response = await apiClient.post(
+      `/admin/question-banks/${bankId}/ai-drafts/${batchId}/add-selected`,
+      { draftIds },
+      { timeout: 90000 },
+    )
     return unwrap(response)
   },
   async previewImageImport(bankId, files, language = 'vi') {
