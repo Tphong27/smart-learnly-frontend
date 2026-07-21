@@ -17,7 +17,6 @@ import {
   testService,
 } from "@/services/flashtest.service.js";
 import { getCurrentUser } from "@/services/api-client";
-import { TestCard } from "../components/TestCard";
 import "../flashtest.css";
 
 function isFlashTest(item) {
@@ -28,32 +27,6 @@ function isFlashTest(item) {
 
 function isRegularTest(item) {
   return !isFlashTest(item);
-}
-
-function getDuration(item) {
-  if (item.durationMinutes ?? item.duration_minutes ?? item.duration) {
-    return item.durationMinutes ?? item.duration_minutes ?? item.duration;
-  }
-  const dueDate = item.dueDate || item.due_date;
-  const baseTime =
-    item.updatedAt || item.updated_at || item.createdAt || item.created_at;
-  if (!dueDate || !baseTime) return "--";
-  const diff = new Date(dueDate).getTime() - new Date(baseTime).getTime();
-  return Number.isFinite(diff) ? Math.max(0, Math.round(diff / 60000)) : "--";
-}
-
-function formatDate(value) {
-  if (!value) return "--";
-  return new Date(value).toLocaleString();
-}
-
-function formatShortDate(value) {
-  if (!value) return "--";
-  return new Date(value).toLocaleDateString(undefined, {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
 }
 
 function isCompletedStatus(status) {
@@ -151,12 +124,17 @@ export function TraineeFlashTestListPage({ variant = "flash" }) {
     ? "/learning/flashtests/take"
     : "/learning/tests/take";
   const accessStoragePrefix = isFlashMode ? "flashAccess" : "testAccess";
-  const itemFilter = isAssignmentMode
-    ? isRegularTest
-    : isFlashMode ? isFlashTest : isRegularTest;
-  const currentUser = getCurrentUser();
-  const studentId =
-    currentUser?.id || currentUser?.userId || currentUser?.accountId || "";
+  const itemFilter = useMemo(
+    () => (isAssignmentMode
+      ? isRegularTest
+      : isFlashMode ? isFlashTest : isRegularTest),
+    [isAssignmentMode, isFlashMode],
+  );
+  const currentUser = useMemo(() => getCurrentUser(), []);
+  const studentId = useMemo(
+    () => currentUser?.id || currentUser?.userId || currentUser?.accountId || "",
+    [currentUser],
+  );
   const [tests, setTests] = useState([]);
   const [assignments, setAssignments] = useState([]);
   const [resultMap, setResultMap] = useState({});
@@ -189,7 +167,7 @@ export function TraineeFlashTestListPage({ variant = "flash" }) {
         isAssignmentMode ? Promise.resolve([]) : testService.getAll(),
       ];
       if (isFlashMode) {
-        requests.push(assignmentService.getAll());
+        requests.push(assignmentService.getAvailable({ isFlashtest: true }));
       } else if (isAssignmentMode) {
         requests.push(
           assignmentService.getAvailable({

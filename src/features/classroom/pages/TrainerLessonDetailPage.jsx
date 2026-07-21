@@ -4,6 +4,7 @@ import {
   createTrainerLessonService,
   createTrainerQuizService,
   createTrainerFlashcardService,
+  createTrainerVideoAiService,
 } from "@/services";
 import { LessonDetailEditor } from "@/features/course/components/lesson-editor/LessonDetailEditor";
 
@@ -28,6 +29,10 @@ export default function TrainerLessonDetailPage() {
       classId,
       // Về thẳng tab Curriculum của lớp sau khi save/back để tránh trainer phải bấm lại tab.
       backPath: `/staff/classrooms/${classId}/workspace?tab=curriculum`,
+      videoAi: {
+        service: createTrainerVideoAiService(classId, lessonId),
+        reviewPath: `/trainer/classes/${classId}/curriculum/lessons/${lessonId}/video-ai`,
+      },
       services: {
         getLessonDetail: lessonService.getLessonDetail,
         updateLesson: lessonService.updateLesson,

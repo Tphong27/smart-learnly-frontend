@@ -76,6 +76,7 @@ export function MyTransactionsPage() {
   const toast = useToast();
   const [items, setItems] = useState([]);
   const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [totalPages, setTotalPages] = useState(0);
   const [totalItems, setTotalItems] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -93,7 +94,7 @@ export function MyTransactionsPage() {
       try {
         const data = await transactionService.list({
           page: pageRequest,
-          size: DEFAULT_PAGE_SIZE,
+          size: pageSize,
         });
         if (cancelled) return;
         setItems(data.items || []);
@@ -112,7 +113,7 @@ export function MyTransactionsPage() {
     return () => {
       cancelled = true;
     };
-  }, [pageRequest, toast, refreshKey]);
+  }, [pageRequest, pageSize, toast, refreshKey]);
 
   return (
     <div className="history-page checkout-history-page">

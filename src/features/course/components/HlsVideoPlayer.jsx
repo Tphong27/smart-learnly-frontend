@@ -93,9 +93,12 @@ function playbackErrorMessage(error) {
     return "You do not have access to this lesson.";
   }
   if (error?.details === "manifestLoadError") {
-    return "The video playlist could not be loaded.";
+    return "The video could not be loaded. Try again.";
   }
-  return error?.message || "The video could not be loaded.";
+  if (error?.message === "This browser cannot play this video.") {
+    return error.message;
+  }
+  return "The video could not be loaded. Try again.";
 }
 
 export function HlsVideoPlayer({
@@ -258,7 +261,7 @@ export function HlsVideoPlayer({
           return;
         }
 
-        throw new Error("This browser does not support HLS video.");
+        throw new Error("This browser cannot play this video.");
       } catch (initializationError) {
         if (cancelled) return;
         setError(playbackErrorMessage(initializationError));
@@ -342,6 +345,25 @@ export function HlsVideoPlayer({
       video.playbackRate = playbackRate;
     }
   }, [playbackRate]);
+
+  useEffect(() => {
+    const handleExternalSeek = (event) => {
+      if (String(event?.detail?.lessonId) !== String(lessonId)) return;
+      const video = videoRef.current;
+      if (!video) return;
+
+      const target = Number(event?.detail?.seconds);
+      if (!Number.isFinite(target)) return;
+      video.currentTime = clamp(target, 0, Number.isFinite(video.duration) ? video.duration : target);
+      setCurrentTime(video.currentTime);
+      playerRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      playerRef.current?.focus({ preventScroll: true });
+      showControls(true);
+    };
+
+    window.addEventListener("smartlearnly:seek-video", handleExternalSeek);
+    return () => window.removeEventListener("smartlearnly:seek-video", handleExternalSeek);
+  }, [lessonId, showControls]);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -592,7 +614,7 @@ export function HlsVideoPlayer({
       ref={playerRef}
       className={playerClassName}
       role="region"
-      aria-label="Secure video player"
+      aria-label="Video player"
       tabIndex={0}
       onKeyDownCapture={handleKeyboard}
       onKeyUpCapture={handleShortcutKeyUp}
