@@ -38,4 +38,17 @@ export const courseSchema = z.object({
   ),
   isFree: z.boolean().optional(),
   status: z.enum(['draft', 'published', 'inactive']).optional(),
+}).superRefine((course, context) => {
+  if (
+    !course.isFree
+    && course.price != null
+    && course.discountedPrice != null
+    && course.discountedPrice > course.price
+  ) {
+    context.addIssue({
+      code: 'custom',
+      path: ['discountedPrice'],
+      message: 'Discounted price must not exceed the course price',
+    })
+  }
 })

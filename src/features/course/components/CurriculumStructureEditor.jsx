@@ -39,7 +39,7 @@ function sortByOrder(items) {
 const LESSON_TYPE_META = {
   video: {
     label: "Video lecture",
-    description: "Upload an HLS video lesson for streaming.",
+    description: "Upload a video learners can watch in this lesson.",
     Icon: Video,
   },
   document: {
@@ -50,6 +50,11 @@ const LESSON_TYPE_META = {
   pdf: {
     label: "Reading material",
     description: "PDF or Word document the learner can download or preview.",
+    Icon: FileText,
+  },
+  rich_text: {
+    label: "Text lesson",
+    description: "Write formatted lesson content learners can read online.",
     Icon: FileText,
   },
   quiz: {
@@ -72,13 +77,16 @@ const LESSON_TYPE_META = {
 const DEFAULT_LESSON_TYPES = [
   { value: "video", label: "Video lecture" },
   { value: "document", label: "Reading material" },
+  { value: "rich_text", label: "Text lesson" },
   { value: "quiz", label: "Quiz" },
   { value: "flashcard", label: "Flashcard" },
+  { value: "essay", label: "Assignment" },
 ];
 
 function lessonTypeKey(type) {
   const t = String(type || "").toLowerCase();
-  if (t === "rich_text" || t === "text") return "document";
+  if (t === "text") return "rich_text";
+  if (t === "assignment") return "essay";
   return LESSON_TYPE_META[t] ? t : "video";
 }
 

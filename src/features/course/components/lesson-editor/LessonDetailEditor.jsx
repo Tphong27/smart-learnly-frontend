@@ -48,6 +48,7 @@ import "@/features/course/course-lesson-editor.css";
 const LESSON_TYPE_LABELS = {
     VIDEO: "Video lecture",
     PDF: "Document / Reading",
+    RICH_TEXT: "Text lesson",
     QUIZ: "Quiz",
     ESSAY: "Essay assignment",
     FLASHCARD: "Flashcard",
@@ -152,6 +153,7 @@ export function LessonDetailEditor({ context }) {
         lessonId,
         backPath,
         services,
+        videoAi,
         features = { audit: true, quizManager: true, flashcard: true },
     } = context || {};
 
@@ -197,7 +199,7 @@ export function LessonDetailEditor({ context }) {
     const [summary, setSummary] = useState("");
     const [isPreview, setIsPreview] = useState(false);
     const [status, setStatus] = useState("draft");
-    const [durationSeconds, setDurationSeconds] = useState(0);
+    const [durationMinutes, setDurationMinutes] = useState(0);
     const [assignment, setAssignment] = useState(null);
     const [assignmentLoading, setAssignmentLoading] = useState(false);
     const [assignmentSaving, setAssignmentSaving] = useState(false);
@@ -210,6 +212,22 @@ export function LessonDetailEditor({ context }) {
     const markChanged = () => {
         setHasChanges(true);
         setSaveNotice(null);
+    };
+
+    const applyAiSuggestions = ({ title: nextTitle, description, durationMinutes: nextDuration }) => {
+        if (nextTitle?.trim()) {
+            setTitle(nextTitle.trim());
+            setTitleError("");
+        }
+        if (description?.trim()) {
+            setSummary(sanitizeLessonHtml(description.trim()));
+            setSummaryError("");
+        }
+        if (Number(nextDuration) > 0) {
+            setDurationMinutes(Math.ceil(Number(nextDuration)));
+        }
+        setExpandedSection("basic");
+        markChanged();
     };
 
     const showSaveNotice = (notice) => {
@@ -300,7 +318,16 @@ export function LessonDetailEditor({ context }) {
                         ),
                     );
                     setStatus(normalizeLessonStatus(lessonData.status));
-                    setDurationSeconds(Number(lessonData.durationSeconds || 0));
+                    setDurationMinutes(
+                        lessonData.durationSeconds
+                            ? Math.max(
+                                  1,
+                                  Math.ceil(
+                                      Number(lessonData.durationSeconds) / 60,
+                                  ),
+                              )
+                            : 0,
+                    );
 
                     const typeFromServer = String(
                         lessonData.lessonType || lessonData.type || "VIDEO",
@@ -315,6 +342,11 @@ export function LessonDetailEditor({ context }) {
                         setLessonType("QUIZ");
                     } else if (typeFromServer === "FLASHCARD") {
                         setLessonType("FLASHCARD");
+                    } else if (
+                        typeFromServer === "RICH_TEXT" ||
+                        typeFromServer === "TEXT"
+                    ) {
+                        setLessonType("RICH_TEXT");
                     } else if (
                         typeFromServer === "ESSAY" ||
                         typeFromServer === "ASSIGNMENT"
@@ -640,7 +672,7 @@ export function LessonDetailEditor({ context }) {
                 content,
                 videoUrl: lessonType === "VIDEO" ? resolvedVideoUrl : null,
                 attachmentUrl: lessonType === "PDF" ? uploadedFileUrl : null,
-                durationSeconds: Number(durationSeconds || 0),
+                durationSeconds: Math.round(Number(durationMinutes || 0) * 60),
                 isPreview,
                 status: normalizeLessonStatus(status),
                 resources: normalizedResources,
@@ -769,7 +801,7 @@ export function LessonDetailEditor({ context }) {
     })();
     const detailsComplete = basicComplete && descriptionComplete;
     const settingsComplete =
-        Boolean(status) && Number(durationSeconds || 0) >= 0;
+        Boolean(status) && Number(durationMinutes || 0) >= 0;
     const totalSections = lessonType === "FLASHCARD" ? 2 : 3;
     const completedSections =
         lessonType === "FLASHCARD"
@@ -792,7 +824,7 @@ export function LessonDetailEditor({ context }) {
     const statusLabel = statusMeta?.label || status;
     const materialSummary = (() => {
         if (videoUploaderBusy)
-            return "Video upload or HLS processing in progress";
+            return "The lesson video is still being prepared";
         if (lessonType === "VIDEO") {
             return videoUrl
                 ? `${resources.length} supporting resource${resources.length === 1 ? "" : "s"}`
@@ -812,7 +844,10 @@ export function LessonDetailEditor({ context }) {
                 ? "Assignment file added"
                 : "Assignment file is optional";
         }
-        return "Manage the flashcard set and cards";
+        if (lessonType === "FLASHCARD") {
+            return "Manage the flashcard set and cards";
+        }
+        return `${resources.length} supporting resource${resources.length === 1 ? "" : "s"}`;
     })();
 
     if (pageLoading)
@@ -1272,6 +1307,10 @@ export function LessonDetailEditor({ context }) {
                                                 onBusyChange={
                                                     setVideoUploaderBusy
                                                 }
+                                                videoAi={videoAi}
+                                                onApplyAiSuggestions={
+                                                    applyAiSuggestions
+                                                }
                                             />
                                         )}
 
@@ -1538,7 +1577,7 @@ export function LessonDetailEditor({ context }) {
                                 step="3"
                                 title="Lesson settings"
                                 description="Configure status, duration, and preview access."
-                                summary={`${statusLabel} · ${durationSeconds ? `${durationSeconds} seconds` : "No duration"} · Preview ${isPreview ? "enabled" : "disabled"}`}
+                                summary={`${statusLabel} · ${durationMinutes ? `${durationMinutes} min` : "No duration"} · Preview ${isPreview ? "enabled" : "disabled"}`}
                                 state={
                                     settingsComplete
                                         ? "complete"
@@ -1610,9 +1649,9 @@ export function LessonDetailEditor({ context }) {
                                                 type="number"
                                                 min="0"
                                                 inputMode="numeric"
-                                                value={durationSeconds}
+                                                value={durationMinutes}
                                                 onChange={(event) => {
-                                                    setDurationSeconds(
+                                                    setDurationMinutes(
                                                         Math.max(
                                                             0,
                                                             Number(
@@ -1626,7 +1665,7 @@ export function LessonDetailEditor({ context }) {
                                                 className="sl-cm-lesson-editor__field-control"
                                             />
                                             <span aria-hidden="true">
-                                                seconds
+                                                minutes
                                             </span>
                                         </div>
                                     </div>

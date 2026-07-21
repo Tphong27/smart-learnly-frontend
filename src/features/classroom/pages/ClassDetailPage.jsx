@@ -7,6 +7,7 @@ import {
   ClipboardList,
   Info,
   Loader,
+  Eye,
   Trash2,
 } from "lucide-react";
 import { Button } from "@/shared/components/ui";
@@ -44,6 +45,22 @@ export function ClassDetailPage() {
 
   function openAnalytics() {
     navigate(`/staff/classrooms/${classId}/analytics`);
+  }
+
+  function openTraineePreview() {
+    if (!classData?.courseId || !classId) return;
+
+    const params = new URLSearchParams();
+    params.set("classId", classId);
+    params.set(
+      "returnTo",
+      isTrainer
+        ? `/staff/classrooms/${classId}/workspace?tab=curriculum`
+        : `/staff/classrooms/${classId}/workspace`,
+    );
+    navigate(
+      `/staff/courses/${classData.courseId}/preview?${params.toString()}`,
+    );
   }
 
   useEffect(() => {
@@ -157,6 +174,15 @@ export function ClassDetailPage() {
 
         {(isTrainer || isTmo) && (
           <div className="workspace-header__actions">
+            <button
+              className="class-assignment-button"
+              type="button"
+              onClick={openTraineePreview}
+            >
+              <Eye size={16} strokeWidth={2.2} />
+              View as trainee
+            </button>
+
             <button
               className="class-analytics-button"
               type="button"

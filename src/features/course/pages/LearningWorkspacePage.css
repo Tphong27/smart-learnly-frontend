@@ -828,12 +828,18 @@
     font-size: 15px;
     font-weight: 500;
     cursor: pointer;
+    min-height: 44px;
     border-bottom: 2px solid transparent;
     margin-bottom: -1px;
     white-space: nowrap;
     transition:
         color 0.15s,
         border-color 0.15s;
+}
+
+.lesson-tabs__tab:focus-visible {
+    outline: 3px solid color-mix(in srgb, var(--lw-accent) 35%, transparent);
+    outline-offset: -3px;
 }
 
 .lesson-tabs__tab:hover {

@@ -22,6 +22,7 @@ import AdminTransactionsPage from "@/features/checkout/pages/AdminTransactionsPa
 import AdminCourseContentPage from "@/features/course/pages/AdminCourseContentPage";
 
 import AdminLessonDetailPage from "@/features/course/pages/AdminLessonDetailPage";
+import VideoAiReviewPage from "@/features/course/pages/VideoAiReviewPage";
 
 function PlaceholderPage({ title }) {
   return (
@@ -66,6 +67,10 @@ function getAdminRoutes() {
             {
               path: "courses/:courseId/lessons/:lessonId",
               element: <AdminLessonDetailPage />,
+            },
+            {
+              path: "courses/:courseId/lessons/:lessonId/video-ai",
+              element: <VideoAiReviewPage />,
             },
           ],
         },

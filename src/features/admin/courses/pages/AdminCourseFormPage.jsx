@@ -49,12 +49,14 @@ function buildPayload(values, mode) {
         thumbnailUrl:
             mode === "edit" ? thumbnailUrl : thumbnailUrl || undefined,
         price:
+            values.isFree ||
             values.price === "" ||
             values.price == null ||
             Number.isNaN(values.price)
                 ? 0
                 : Number(values.price),
         discountedPrice:
+            values.isFree ||
             values.discountedPrice === "" ||
             values.discountedPrice == null ||
             Number.isNaN(values.discountedPrice)
@@ -187,7 +189,10 @@ export function AdminCourseFormPage() {
     }, [courseId, isEdit, reset, toast]);
 
     useEffect(() => {
-        if (isFree) setValue("price", 0);
+        if (isFree) {
+            setValue("price", 0);
+            setValue("discountedPrice", "");
+        }
     }, [isFree, setValue]);
 
     async function onSubmit(values) {
