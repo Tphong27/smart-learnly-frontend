@@ -33,6 +33,14 @@ function normalizeAiDraftBatch(response) {
   return data?.batch ?? data
 }
 
+function hasMixedAiDraftSources(payload = {}) {
+  return (
+    (Array.isArray(payload.files) && payload.files.length > 0)
+    || (Array.isArray(payload.pastedTextSources) && payload.pastedTextSources.length > 0)
+    || (Array.isArray(payload.transcriptContentIds) && payload.transcriptContentIds.length > 0)
+  )
+}
+
 export const questionBankService = {
   async listBanks(params = {}) {
     const response = await apiClient.get('/admin/question-banks', { params })
@@ -168,7 +176,23 @@ export const questionBankService = {
     return normalizeAiDraftSources(response)
   },
 
+  async getAiDraftSourceCapabilities(bankId) {
+    const response = await apiClient.get(`/admin/question-banks/${bankId}/ai-drafts/source-capabilities`)
+    return unwrap(response)
+  },
+
   async createAiDraftBatch(bankId, payload) {
+    if (hasMixedAiDraftSources(payload)) {
+      const { files = [], ...request } = payload
+      const formData = new FormData()
+      formData.append('request', new Blob([JSON.stringify(request)], { type: 'application/json' }))
+      files.forEach((file) => formData.append('files', file))
+      const response = await apiClient.post(`/admin/question-banks/${bankId}/ai-drafts`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        timeout: 90000,
+      })
+      return normalizeAiDraftBatch(response)
+    }
     const response = await apiClient.post(`/admin/question-banks/${bankId}/ai-drafts`, payload, {
       timeout: 90000,
     })
@@ -212,10 +236,25 @@ export const questionBankService = {
   },
 
   async addSelectedAiDrafts(bankId, batchId, draftIds) {
+    const drafts = draftIds.map((item) => (
+      typeof item === 'object'
+        ? { draftId: item.draftId || item.id, version: item.version }
+        : { draftId: item, version: 0 }
+    ))
     const response = await apiClient.post(
       `/admin/question-banks/${bankId}/ai-drafts/${batchId}/add-selected`,
-      { draftIds },
+      {
+        drafts,
+        idempotencyKey: `ai-add-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      },
       { timeout: 90000 },
+    )
+    return unwrap(response)
+  },
+
+  async createAiDraftSourceDownloadUrl(bankId, batchId, sourceId) {
+    const response = await apiClient.post(
+      `/admin/question-banks/${bankId}/ai-drafts/${batchId}/sources/${sourceId}/download-url`,
     )
     return unwrap(response)
   },

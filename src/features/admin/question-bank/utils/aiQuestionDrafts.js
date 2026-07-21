@@ -29,6 +29,7 @@ export function normalizeAiSource(source, index = 0) {
     source?.generationSourceId ||
     source?.sourceId ||
     source?.id ||
+    source?.transcriptContentId ||
     source?.materialSnapshotId ||
     source?.materialId
   const kind = normalizeStatus(source?.sourceKind || source?.kind || "material")
@@ -56,6 +57,11 @@ export function normalizeAiSource(source, index = 0) {
     checksum: source?.sourceChecksum || source?.checksum || source?.snapshotChecksum || "",
     version: source?.sourceVersion || source?.snapshotVersion || source?.version || "",
     chunkCount: Number(source?.chunkCount ?? source?.chunksCount ?? source?.chunks?.length ?? 0),
+    transcriptContentId: source?.transcriptContentId || null,
+    mimeType: source?.mimeType || "",
+    fileSizeBytes: Number(source?.fileSizeBytes ?? source?.sizeBytes ?? 0),
+    normalizedCharCount: Number(source?.normalizedCharCount ?? source?.characterCount ?? 0),
+    downloadable: Boolean(source?.downloadable),
     ready:
       ["rag_ready", "ready", "completed", "success"].includes(ragStatus) ||
       source?.ragReady === true,
@@ -101,6 +107,8 @@ export function normalizeAiDraft(draft, index = 0) {
               sourceId: draft?.sourceReferenceId || draft?.sourceId,
               excerpt: draft?.sourceExcerpt,
               chunkReference: draft?.chunkReference || draft?.chunkId,
+              startMs: draft?.startMs,
+              endMs: draft?.endMs,
             },
           ]
         : []
