@@ -123,15 +123,21 @@ export function TmoCreateClassPage() {
           </div>
 
           <div className="form-group">
-            <label htmlFor="trainerId">Trainer</label>
+            <label htmlFor="trainerId">Trainer *</label>
 
             <select
               id="trainerId"
               {...form.register("trainerId")}
               disabled={loadingTrainers}
               className={form.errors.trainerId ? "input-error" : ""}
+              aria-invalid={Boolean(form.errors.trainerId)}
+              aria-describedby={
+                form.errors.trainerId ? "trainerId-error" : undefined
+              }
             >
-              <option value="">Select Trainer</option>
+              <option value="" disabled>
+                Select Trainer
+              </option>
 
               {!loadingTrainers && trainers.length === 0 && (
                 <option value="" disabled>
@@ -147,7 +153,7 @@ export function TmoCreateClassPage() {
             </select>
 
             {form.errors.trainerId && (
-              <span className="form-error-text">
+              <span id="trainerId-error" className="form-error-text">
                 {form.errors.trainerId.message}
               </span>
             )}

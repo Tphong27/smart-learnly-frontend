@@ -1,19 +1,5 @@
 import { z } from "zod";
 
-function optionalUuid(message) {
-  return z
-    .string()
-    .optional()
-    .or(z.literal(""))
-    .refine(
-      (value) => {
-        if (!value) return true;
-        return z.string().uuid().safeParse(value).success;
-      },
-      { message },
-    );
-}
-
 export function todayString() {
   const now = new Date();
   const timezoneOffset = now.getTimezoneOffset() * 60000;
@@ -39,8 +25,12 @@ export const classFormSchema = z
       .max(255, "Class name must not exceed 255 characters")
       .trim(),
 
-    trainerId: optionalUuid("Invalid trainer ID"),
-
+    trainerId: z
+      .string()
+      .trim()
+      .min(1, "Please select a trainer")
+      .uuid("Invalid trainer ID"),
+    
     scheduleDescription: z
       .string()
       .min(1, "Please select at least one class schedule")

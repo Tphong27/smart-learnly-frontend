@@ -228,6 +228,11 @@ export function ClassOverviewTab({
       return;
     }
 
+    if (!editForm.trainerId) {
+      setError("Please select a trainer");
+      return;
+    }
+
     try {
       setSaving(true);
       setError("");
@@ -354,7 +359,7 @@ export function ClassOverviewTab({
             </div>
 
             <div className="form-group">
-              <label htmlFor="overviewTrainerId">Trainer</label>
+              <label htmlFor="overviewTrainerId">Trainer *</label>
 
               <select
                 id="overviewTrainerId"
@@ -364,8 +369,9 @@ export function ClassOverviewTab({
                   updateField("trainerId", event.target.value)
                 }
               >
-                <option value="">Select Trainer</option>
-
+                <option value="" disabled>
+                  Select Trainer
+                </option>
                 {!loadingTrainers && trainerOptions.length === 0 && (
                   <option value="" disabled>
                     No active trainers available
