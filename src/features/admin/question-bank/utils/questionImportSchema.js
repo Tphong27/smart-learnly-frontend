@@ -600,7 +600,7 @@ export function downloadTemplate() {
   const worksheet = XLSX.utils.aoa_to_sheet(dataMatrix)
   worksheet['!cols'] = IMPORT_COLUMNS.map(() => ({ wch: 22 }))
   const rules = [
-    ['Question Bank Import Rules'],
+    ['Question Import Rules'],
     ['Required columns', 'question_text, question_type, option_a, option_b, correct_answer'],
     ['Question types', 'multiple_choice or true_false'],
     ['Correct answer', 'Multiple choice uses A-F; true_false uses True or False'],

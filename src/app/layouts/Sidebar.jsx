@@ -46,12 +46,6 @@ const navItems = [
     roles: [ROLES.ADMIN, ROLES.TMO, ROLES.SME],
   },
   {
-    label: "Question Bank",
-    path: "/admin/question-banks",
-    icon: FileQuestion,
-    roles: [ROLES.ADMIN, ROLES.TMO, ROLES.SME, ROLES.TRAINER],
-  },
-  {
     label: "Categories",
     path: "/admin/categories",
     icon: Receipt,

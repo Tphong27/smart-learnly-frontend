@@ -83,7 +83,7 @@ function normalizeModules(payload) {
     : (root?.items ?? root?.content ?? root?.sections ?? []);
   return items
     .map((item, index) => ({
-      id: item.sectionId || item.id,
+      id: item.moduleId || item.sectionId || item.id,
       title: item.title || item.name || `Module ${index + 1}`,
     }))
     .filter((item) => item.id);
@@ -176,6 +176,7 @@ function normalizeAnswerMediaFromResponse(answer) {
 }
 function validate(values) {
   if (isEmptyQuestionHtml(values.questionText)) return "Question text is required.";
+  if (!values.moduleId) return "Module is required.";
   if (!values.questionType) return "Question type is required.";
   const answers = normalizeAnswers(values.questionType, values.answers);
   if (answers.length < 2) return "At least two answers are required.";
@@ -197,6 +198,7 @@ function validate(values) {
 
 export function AdminQuestionForm({
   bankId: bankIdProp,
+  courseId: courseIdProp,
   questionId: questionIdProp,
   onCancel,
   onSaved,
@@ -204,6 +206,7 @@ export function AdminQuestionForm({
 }) {
   const params = useParams();
   const bankId = bankIdProp ?? params.bankId;
+  const courseId = courseIdProp ?? params.courseId;
   const questionId = questionIdProp ?? params.questionId;
   const navigate = useNavigate();
   const toast = useToast();
@@ -239,7 +242,9 @@ export function AdminQuestionForm({
       setError(null);
       try {
         if (editing) {
-          const question = await questionBankService.getQuestion(questionId);
+          const question = courseId
+            ? await questionBankService.getCourseQuestion(courseId, questionId)
+            : await questionBankService.getQuestion(questionId);
           if (cancelled) return;
           const normalizedMedia = normalizeQuestionMedia(question);
           setImageMedia(normalizedMedia.images);
@@ -263,24 +268,51 @@ export function AdminQuestionForm({
               })),
             ),
           });
-          const resolvedBankId = question.bankId || question.questionBankId;
-          if (resolvedBankId) {
-            const bankData = await questionBankService.getBank(resolvedBankId);
+          if (courseId) {
+            const [courseData, moduleData] = await Promise.all([
+              courseService.getAdmin(courseId),
+              courseService.getCourseContent(courseId),
+            ]);
             if (!cancelled) {
+              setBank({
+                id: null,
+                courseId,
+                name: `${courseData?.title || "Course"} Questions`,
+              });
+              setModules(normalizeModules(moduleData));
+            }
+          } else {
+            const resolvedBankId = question.bankId || question.questionBankId;
+            if (resolvedBankId) {
+              const bankData = await questionBankService.getBank(resolvedBankId);
+              if (!cancelled) {
+                setBank(bankData);
+                if (bankData?.courseId) {
+                  const moduleData = await courseService.getCourseContent(bankData.courseId);
+                  if (!cancelled) setModules(normalizeModules(moduleData));
+                }
+              }
+            }
+          }
+        } else {
+          const bankData = courseId
+            ? await courseService.getAdmin(courseId)
+            : await questionBankService.getBank(bankId);
+          if (!cancelled) {
+            if (courseId) {
+              setBank({
+                id: null,
+                courseId,
+                name: `${bankData?.title || "Course"} Questions`,
+              });
+              const moduleData = await courseService.getCourseContent(courseId);
+              if (!cancelled) setModules(normalizeModules(moduleData));
+            } else {
               setBank(bankData);
               if (bankData?.courseId) {
                 const moduleData = await courseService.getCourseContent(bankData.courseId);
                 if (!cancelled) setModules(normalizeModules(moduleData));
               }
-            }
-          }
-        } else {
-          const bankData = await questionBankService.getBank(bankId);
-          if (!cancelled) {
-            setBank(bankData);
-            if (bankData?.courseId) {
-              const moduleData = await courseService.getCourseContent(bankData.courseId);
-              if (!cancelled) setModules(normalizeModules(moduleData));
             }
           }
         }
@@ -294,12 +326,15 @@ export function AdminQuestionForm({
     return () => {
       cancelled = true;
     };
-  }, [bankId, editing, questionId]);
+  }, [bankId, courseId, editing, questionId]);
 
   const returnBankId = useMemo(
     () => bank?.bankId || bank?.id || bankId,
     [bank, bankId],
   );
+  const returnPath = courseId
+    ? `/admin/courses/${courseId}/questions`
+    : `/admin/question-banks/${returnBankId}`;
 
   const renderFrame = (content) =>
     framed ? <div className="admin-page">{content}</div> : content;
@@ -309,7 +344,7 @@ export function AdminQuestionForm({
       onCancel();
       return;
     }
-    navigate(`/admin/question-banks/${returnBankId}`);
+    navigate(returnPath);
   }
 
   function setType(nextType) {
@@ -603,7 +638,8 @@ export function AdminQuestionForm({
     setSubmitting(true);
     setError(null);
     const payload = {
-      bankId: returnBankId,
+      bankId: courseId ? undefined : returnBankId,
+      courseId,
       questionText: sanitizeQuestionHtml(values.questionText).trim(),
       questionType: values.questionType,
       difficulty: values.difficulty ? Number(values.difficulty) : null,
@@ -621,12 +657,16 @@ export function AdminQuestionForm({
     try {
       let savedQuestion;
       if (editing) {
-        savedQuestion = await questionBankService.updateQuestion(
-          questionId,
-          payload,
-        );
+        savedQuestion = courseId
+          ? await questionBankService.updateCourseQuestion(courseId, questionId, payload)
+          : await questionBankService.updateQuestion(
+              questionId,
+              payload,
+            );
       } else {
-        savedQuestion = await questionBankService.createQuestion(payload);
+        savedQuestion = courseId
+          ? await questionBankService.createCourseQuestion(courseId, payload)
+          : await questionBankService.createQuestion(payload);
       }
       const savedQuestionId =
         savedQuestion?.questionId || savedQuestion?.id || questionId;
@@ -639,7 +679,7 @@ export function AdminQuestionForm({
         if (onSaved) {
           onSaved({ question: savedQuestion, bankId: returnBankId });
         } else {
-          navigate(`/admin/question-banks/${returnBankId}`);
+          navigate(returnPath);
         }
         return;
       }
@@ -657,15 +697,15 @@ export function AdminQuestionForm({
         if (onSaved) {
           onSaved({ question: savedQuestion, bankId: returnBankId });
         } else {
-          navigate(`/admin/question-banks/${returnBankId}`);
+          navigate(returnPath);
         }
         return;
       }
       toast.success(editing ? "Question updated" : "Question created");
       if (onSaved) {
-        onSaved({ question: savedQuestion, bankId: returnBankId });
+        onSaved({ question: savedQuestion, bankId: returnBankId, courseId });
       } else {
-        navigate(`/admin/question-banks/${returnBankId}`);
+        navigate(returnPath);
       }
     } catch (err) {
       setError(err?.message || "Could not save question.");
@@ -679,8 +719,8 @@ export function AdminQuestionForm({
       <div className="admin-page">
         <section className="admin-card">
           <h1 className="admin-page__title">Unauthorized</h1>
-          <Button to="/admin/question-banks" variant="secondary">
-            Back to Question Bank
+          <Button to={returnPath || "/admin/courses"} variant="secondary">
+            Back to questions
           </Button>
         </section>
       </div>
@@ -704,9 +744,7 @@ export function AdminQuestionForm({
             <div>
               <Button
                 to={
-                  returnBankId
-                    ? `/admin/question-banks/${returnBankId}`
-                    : "/admin/question-banks"
+                  returnPath
                 }
                 variant="ghost"
                 size="sm"
@@ -731,21 +769,19 @@ export function AdminQuestionForm({
             <AlertTriangle size={20} style={{ color: "#b45309", flexShrink: 0, marginTop: 2 }} />
             <div>
               <strong style={{ color: "#92400e" }}>
-                The question bank "{bank?.name || ""}" is archived.
+                The question collection "{bank?.name || ""}" is archived.
               </strong>
               <p style={{ margin: "4px 0 8px", color: "#78350f", fontSize: 14 }}>
-                Restore the bank before editing any of its questions.
+                Restore it before editing any of its questions.
               </p>
               <Button
                 to={
-                  returnBankId
-                    ? `/admin/question-banks/${returnBankId}`
-                    : "/admin/question-banks"
+                  returnPath
                 }
                 variant="secondary"
                 size="sm"
               >
-                Back to question bank
+                Back to questions
               </Button>
             </div>
           </div>
@@ -761,9 +797,7 @@ export function AdminQuestionForm({
         <div>
           <Button
             to={
-              returnBankId
-                ? `/admin/question-banks/${returnBankId}`
-                : "/admin/question-banks"
+              returnPath
             }
             variant="ghost"
             size="sm"
@@ -804,7 +838,7 @@ export function AdminQuestionForm({
                     }))
                   }
                 >
-                  <option value="">No module</option>
+                  <option value="">Unassigned - select a module</option>
                   {modules.map((module) => (
                     <option key={module.id} value={module.id}>
                       {module.title}
@@ -1087,6 +1121,7 @@ export function AdminQuestionForm({
 export function AdminQuestionFormModal({
   open,
   bankId,
+  courseId,
   questionId,
   onClose,
   onSaved,
@@ -1103,6 +1138,7 @@ export function AdminQuestionFormModal({
     >
       <AdminQuestionForm
         bankId={bankId}
+        courseId={courseId}
         questionId={questionId}
         framed={false}
         onCancel={onClose}

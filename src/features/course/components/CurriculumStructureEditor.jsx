@@ -291,7 +291,7 @@ function SectionRow({
           <span
             {...dragHandleProps}
             className="sl-cm-section__handle"
-            title="Drag to reorder this section."
+            title="Drag to reorder this module."
           >
             <GripVertical size={18} aria-hidden="true" />
           </span>
@@ -302,7 +302,7 @@ function SectionRow({
           className="sl-cm-section__toggle"
           aria-expanded={isExpanded}
           aria-controls={lessonsListId}
-          aria-label={isExpanded ? "Collapse section" : "Expand section"}
+          aria-label={isExpanded ? "Collapse module" : "Expand module"}
           onClick={() => setIsExpanded((v) => !v)}
         >
           <ChevronDown size={18} aria-hidden="true" />
@@ -984,7 +984,7 @@ const CurriculumTree = memo(function CurriculumTree({
                       leftIcon={<Plus size={16} />}
                       onClick={onOpenCreateSection}
                     >
-                      Add first section
+                      Add first module
                     </Button>
                   )}
                 </div>
@@ -1002,7 +1002,7 @@ const CurriculumTree = memo(function CurriculumTree({
           onClick={onOpenCreateSection}
         >
           <Plus size={18} aria-hidden="true" />
-          <span>Add new section</span>
+          <span>Add new module</span>
         </button>
       )}
     </>
@@ -1021,7 +1021,7 @@ export function CurriculumStructureEditor({
   readOnly = false,
   lessonTypeOptions = DEFAULT_LESSON_TYPES,
   emptyMessage = "The course has no content structure yet.",
-  emptyAddTitle = "Add a new section",
+  emptyAddTitle = "Add a new module",
   emptyAddSubtitle = "Build a logical structure so learners can follow along easily.",
   showManageQuestions = false,
   lessonEditLabel = "Open lesson",
