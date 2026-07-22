@@ -24,7 +24,7 @@ import {
 import { TraineeDashboardPage } from "@/features/dashboard";
 import { TraineeProgressPage } from "@/features/progress";
 import { OpeningSchedulePage } from "@/features/opening-schedule";
-import { TraineeSchedulePage } from "@/features/schedule";
+import { SchedulePage } from "@/features/schedule";
 
 function PlaceholderPage({ title }) {
   return (
@@ -100,7 +100,7 @@ function getTraineeRoutes() {
             { path: "progress", element: <TraineeProgressPage /> },
             {
               path: "schedule",
-              element: <TraineeSchedulePage />,
+              element: <SchedulePage />,
             },
             {
               path: "classrooms",

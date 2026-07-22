@@ -6,7 +6,9 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { scheduleService } from "@/services";
+import { getCurrentUser, scheduleService, userService } from "@/services";
+import { normalizeRole, ROLES } from "@/shared/constants/roles";
+import { formatDate, formatTime } from "@/shared/utils/formatters";
 import {
   addDays,
   formatWeekInput,
@@ -14,7 +16,6 @@ import {
   startOfWeek,
   toDateKey,
 } from "../utils/weekUtils";
-import { formatDate, formatTime } from "@/shared/utils/formatters";
 import "../schedule.css";
 
 const DAY_FORMAT_OPTIONS = {
@@ -35,7 +36,9 @@ const WEEK_DAYS = [
 const EMPTY_SESSIONS = [];
 
 function getSafeMeetingUrl(value) {
-  if (!value) return null;
+  if (!value) {
+    return null;
+  }
 
   try {
     const url = new URL(value);
@@ -46,8 +49,22 @@ function getSafeMeetingUrl(value) {
   }
 }
 
-function ScheduleItem({ session }) {
+function getErrorMessage(error, fallbackMessage) {
+  return error?.response?.data?.message || error?.message || fallbackMessage;
+}
+
+function getTrainerLabel(trainer) {
+  return (
+    trainer?.fullName?.trim() || trainer?.email?.trim() || "Unnamed trainer"
+  );
+}
+
+function ScheduleItem({ session, isStaff }) {
   const meetingUrl = getSafeMeetingUrl(session.meetingUrl);
+
+  const detailPath = isStaff
+    ? `/staff/classrooms/${session.classId}/workspace`
+    : `/learning/courses/${session.courseId}?classId=${session.classId}`;
 
   return (
     <article className="schedule-session">
@@ -64,11 +81,8 @@ function ScheduleItem({ session }) {
       )}
 
       <div className="schedule-session__actions">
-        <Link
-          to={`/learning/courses/${session.courseId}?classId=${session.classId}`}
-          className="schedule-session__button"
-        >
-          View materials
+        <Link to={detailPath} className="schedule-session__button">
+          {isStaff ? "View class" : "View materials"}
         </Link>
 
         {meetingUrl && (
@@ -76,7 +90,10 @@ function ScheduleItem({ session }) {
             href={meetingUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="schedule-session__button schedule-session__button--meet"
+            className={[
+              "schedule-session__button",
+              "schedule-session__button--meet",
+            ].join(" ")}
           >
             Meet URL
             <ExternalLink size={13} />
@@ -87,49 +104,128 @@ function ScheduleItem({ session }) {
   );
 }
 
-export function TraineeSchedulePage() {
+export function SchedulePage() {
+  const currentUser = getCurrentUser();
+  const role = normalizeRole(currentUser?.role);
+
+  const isTmo = role === ROLES.TMO;
+  const isStaff = role === ROLES.TRAINER || role === ROLES.TMO;
+
   const [weekStart, setWeekStart] = useState(() =>
     toDateKey(startOfWeek(new Date())),
   );
 
+  const [selectedTrainerId, setSelectedTrainerId] = useState("");
+
+  const [trainerState, setTrainerState] = useState({
+    trainers: [],
+    loading: isTmo,
+    error: "",
+  });
+
+  const requestKey = [
+    isStaff ? "staff" : "trainee",
+    weekStart,
+    isTmo ? selectedTrainerId : "",
+  ].join("|");
+
   const [scheduleState, setScheduleState] = useState({
-    resolvedWeekStart: null,
+    resolvedRequestKey: null,
     sessions: [],
     error: "",
   });
 
-  const loading = scheduleState.resolvedWeekStart !== weekStart;
+  const loading = scheduleState.resolvedRequestKey !== requestKey;
   const sessions = loading ? EMPTY_SESSIONS : scheduleState.sessions;
   const error = loading ? "" : scheduleState.error;
 
   useEffect(() => {
+    if (!isTmo) {
+      return undefined;
+    }
+
     let active = true;
 
-    scheduleService
-      .getMyWeek(weekStart)
+    userService
+      .listActiveTrainers({
+        page: 0,
+        size: 100,
+      })
       .then((data) => {
-        if (!active) return;
+        if (!active) {
+          return;
+        }
 
-        setScheduleState({
-          resolvedWeekStart: weekStart,
-          sessions: Array.isArray(data?.sessions) ? data.sessions : [],
+        const trainers = Array.isArray(data?.content)
+          ? [...data.content].sort((left, right) =>
+              getTrainerLabel(left).localeCompare(
+                getTrainerLabel(right),
+                "vi-VN",
+              ),
+            )
+          : [];
+
+        setTrainerState({
+          trainers,
+          loading: false,
           error: "",
         });
       })
       .catch((requestError) => {
-        if (!active) return;
+        if (!active) {
+          return;
+        }
 
-        setScheduleState({
-          resolvedWeekStart: weekStart,
-          sessions: [],
-          error: requestError?.message || "Could not load your schedule.",
+        setTrainerState({
+          trainers: [],
+          loading: false,
+          error: getErrorMessage(
+            requestError,
+            "Could not load the trainer list.",
+          ),
         });
       });
 
     return () => {
       active = false;
     };
-  }, [weekStart]);
+  }, [isTmo]);
+
+  useEffect(() => {
+    let active = true;
+
+    const request = isStaff
+      ? scheduleService.getStaffWeek(weekStart, isTmo ? selectedTrainerId : "")
+      : scheduleService.getMyWeek(weekStart);
+
+    request
+      .then((data) => {
+        if (!active) {
+          return;
+        }
+
+        setScheduleState({
+          resolvedRequestKey: requestKey,
+          sessions: Array.isArray(data?.sessions) ? data.sessions : [],
+          error: "",
+        });
+      })
+      .catch((requestError) => {
+        if (!active) {
+          return;
+        }
+
+        setScheduleState({
+          resolvedRequestKey: requestKey,
+          sessions: [],
+          error: getErrorMessage(requestError, "Could not load the schedule."),
+        });
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [isStaff, isTmo, requestKey, selectedTrainerId, weekStart]);
 
   const days = useMemo(
     () =>
@@ -173,16 +269,22 @@ export function TraineeSchedulePage() {
   function handleWeekChange(event) {
     const match = /^(\d{4})-W(\d{2})$/.exec(event.target.value);
 
-    if (!match) return;
+    if (!match) {
+      return;
+    }
 
     setWeekStart(toDateKey(fromIsoWeek(Number(match[1]), Number(match[2]))));
   }
 
   return (
-    <section className="trainee-schedule-page">
+    <section className="schedule-page">
       <header className="schedule-heading">
         <div>
-          <h2>My Schedule</h2>
+          <h2>{isTmo ? "Staff Schedule" : "My Schedule"}</h2>
+
+          {isTmo && (
+            <p>View all teaching sessions or filter the schedule by trainer.</p>
+          )}
         </div>
       </header>
 
@@ -194,12 +296,35 @@ export function TraineeSchedulePage() {
 
         <label>
           <span>Year / week</span>
+
           <input
             type="week"
             value={formatWeekInput(weekStart)}
             onChange={handleWeekChange}
           />
         </label>
+
+        {isTmo && (
+          <label className="schedule-controls__trainer">
+            <span>Trainer</span>
+
+            <select
+              value={selectedTrainerId}
+              disabled={trainerState.loading}
+              onChange={(event) => setSelectedTrainerId(event.target.value)}
+            >
+              <option value="">
+                {trainerState.loading ? "Loading trainers..." : "All trainers"}
+              </option>
+
+              {trainerState.trainers.map((trainer) => (
+                <option key={trainer.id} value={trainer.id}>
+                  {getTrainerLabel(trainer)}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
 
         <button
           type="button"
@@ -213,6 +338,12 @@ export function TraineeSchedulePage() {
           Next
           <ChevronRight size={17} />
         </button>
+
+        {trainerState.error && (
+          <span className="schedule-controls__error" role="alert">
+            {trainerState.error}
+          </span>
+        )}
       </div>
 
       {loading && (
@@ -239,6 +370,7 @@ export function TraineeSchedulePage() {
                     className={day.date === todayKey ? "is-today" : ""}
                   >
                     <span>{day.short}</span>
+
                     <strong>
                       {formatDate(day.date, "vi-VN", DAY_FORMAT_OPTIONS)}
                     </strong>
@@ -259,6 +391,7 @@ export function TraineeSchedulePage() {
                   <tr key={range.key}>
                     <th scope="row">
                       <span>Slot {index + 1}</span>
+
                       <strong>
                         {formatTime(range.startTime)}
                         {" – "}
@@ -287,6 +420,7 @@ export function TraineeSchedulePage() {
                                 <ScheduleItem
                                   key={session.sessionId}
                                   session={session}
+                                  isStaff={isStaff}
                                 />
                               ))}
                             </div>

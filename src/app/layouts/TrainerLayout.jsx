@@ -3,14 +3,36 @@ import { LayoutBackground } from "./LayoutBackground";
 import { TraineeHeader } from "./TraineeHeader";
 import { authService, getCurrentUser } from "@/services";
 import { SiteFooter } from "@/shared/components";
-import { ROLES } from "@/shared/constants/roles";
+import { isRoleAllowed, normalizeRole, ROLES } from "@/shared/constants/roles";
 import "./TrainerLayout.css";
 
-const TRAINER_TABS = [
-  { label: "Course Content", to: "/staff/courses", end: true },
-  { label: "Tests Management", to: "/staff/tests" },
-  { label: "Flashcards Management", to: "/staff/flashcards" },
-  { label: "Classrooms", to: "/staff/classrooms" },
+const STAFF_TABS = [
+  {
+    label: "Course Content",
+    to: "/staff/courses",
+    end: true,
+    roles: [ROLES.TRAINER, ROLES.TMO, ROLES.SME],
+  },
+  {
+    label: "Tests Management",
+    to: "/staff/tests",
+    roles: [ROLES.TRAINER, ROLES.TMO, ROLES.SME],
+  },
+  {
+    label: "Flashcards Management",
+    to: "/staff/flashcards",
+    roles: [ROLES.TRAINER, ROLES.TMO, ROLES.SME],
+  },
+  {
+    label: "Classrooms",
+    to: "/staff/classrooms",
+    roles: [ROLES.TRAINER, ROLES.TMO],
+  },
+  {
+    label: "Schedule",
+    to: "/staff/schedule",
+    roles: [ROLES.TRAINER, ROLES.TMO],
+  },
 ];
 
 function getDisplayName(user) {
@@ -71,6 +93,12 @@ export function TrainerLayout({ children }) {
   const displayName = getDisplayName(user);
   const showStaffNavigation = isStaffPage(location.pathname);
 
+  const normalizedRole = normalizeRole(user.role);
+
+  const visibleTabs = STAFF_TABS.filter((tab) =>
+    isRoleAllowed(normalizedRole, tab.roles),
+  );
+
   async function handleLogout() {
     try {
       await authService.logout();
@@ -85,7 +113,11 @@ export function TrainerLayout({ children }) {
         Skip to main content
       </a>
 
-      <TraineeHeader user={user} onLogout={handleLogout} roleLabel={getRoleLabel(user.role)} />
+      <TraineeHeader
+        user={user}
+        onLogout={handleLogout}
+        roleLabel={getRoleLabel(user.role)}
+      />
 
       {showStaffNavigation && (
         <section className="trainer-shell-intro" aria-label="Staff overview">
@@ -100,7 +132,7 @@ export function TrainerLayout({ children }) {
           </div>
 
           <nav className="trainer-nav" aria-label="Staff navigation">
-            {TRAINER_TABS.map((tab) => (
+            {visibleTabs.map((tab) => (
               <NavLink
                 key={tab.to}
                 to={tab.to}
