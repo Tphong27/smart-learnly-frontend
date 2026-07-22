@@ -164,6 +164,7 @@ export function FlashcardPreview({
   renderControls,
   renderActions,
   contentLayout = "default",
+  showNavigation = true,
 }) {
   const normalizedCards = useMemo(() => normalizeCards(cards), [cards]);
   const [internalActiveCardId, setInternalActiveCardId] = useState(null);
@@ -266,7 +267,15 @@ export function FlashcardPreview({
   }
 
   return (
-    <div className={["flashcard-preview", className].filter(Boolean).join(" ")}>
+    <div
+      className={[
+        "flashcard-preview",
+        contentLayout === "management" ? "flashcard-preview--management" : "",
+        className,
+      ]
+        .filter(Boolean)
+        .join(" ")}
+    >
       <div className="flashcard-preview__stage">
         <button
           type="button"
@@ -291,7 +300,7 @@ export function FlashcardPreview({
         </button>
       </div>
 
-      {renderControls ? (
+      {!showNavigation ? null : renderControls ? (
         renderControls(controlState)
       ) : (
         <div className="flashcard-preview__controls">

@@ -1916,6 +1916,14 @@ function StagingReviewPanel({
     setEditingCard(card);
   }
 
+  function changePage(event, updater) {
+    const trigger = event.currentTarget;
+    setPage(updater);
+    window.requestAnimationFrame(() => {
+      trigger.focus?.({ preventScroll: true });
+    });
+  }
+
   async function handleApprove() {
     if (bulkActionInProgress) return;
     if (!selectedEligibleDraftIds.length) {
@@ -2020,10 +2028,10 @@ function StagingReviewPanel({
 
   return (
     <div className="flashcard-staging__review">
-      <section className="flashcard-panel">
-        <div className="flashcard-panel__header">
+      <section className="flashcard-staging-review">
+        <div className="flashcard-section-heading flashcard-staging-review__header">
           <div>
-            <h3 className="flashcard-panel__title">Staging Review</h3>
+            <h3 className="flashcard-section-heading__title">Staging Review</h3>
             <div className="flashcard-toolbar__meta">
               {draftCount} draft card{draftCount === 1 ? "" : "s"}
             </div>
@@ -2074,7 +2082,7 @@ function StagingReviewPanel({
             </button>
           </div>
         </div>
-        <div className="flashcard-panel__body flashcard-staging__section">
+        <div className="flashcard-staging__section">
           <InlineAlert>{error}</InlineAlert>
           {loading ? (
             <div className="flashcard-practice__loading">
@@ -2131,7 +2139,11 @@ function StagingReviewPanel({
                     <button
                       type="button"
                       className="flashcard-btn"
-                      onClick={() => setPage((current) => Math.max(0, current - 1))}
+                      onClick={(event) =>
+                        changePage(event, (current) =>
+                          Math.max(0, current - 1),
+                        )
+                      }
                       disabled={safePage === 0}
                     >
                       Previous
@@ -2142,8 +2154,10 @@ function StagingReviewPanel({
                     <button
                       type="button"
                       className="flashcard-btn"
-                      onClick={() =>
-                        setPage((current) => Math.min(totalPages - 1, current + 1))
+                      onClick={(event) =>
+                        changePage(event, (current) =>
+                          Math.min(totalPages - 1, current + 1),
+                        )
                       }
                       disabled={safePage + 1 >= totalPages}
                     >
@@ -2456,10 +2470,10 @@ function ImportedBatchReviewPanel({
   return (
     <>
       <section
-        className="flashcard-panel flashcard-imported-review"
+        className="flashcard-imported-review"
         aria-label="Imported flashcard review"
       >
-        <div className="flashcard-panel__header flashcard-imported-review__header">
+        <div className="flashcard-section-heading flashcard-imported-review__header">
           <div>
             <p className="flashcard-imported-review__summary">
               {formatLabel(batch?.sourceType, "Imported Batch")}
@@ -2507,7 +2521,7 @@ function ImportedBatchReviewPanel({
           </div>
         </div>
 
-        <div className="flashcard-panel__body flashcard-staging__section">
+        <div className="flashcard-staging__section">
           <InlineNotice>{reviewNotice}</InlineNotice>
           <InlineAlert>{error}</InlineAlert>
           {loading ? (

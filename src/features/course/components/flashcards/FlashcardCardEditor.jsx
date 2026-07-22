@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ImagePlus, Save, X } from "lucide-react";
 import { FlashcardImageInput } from "./FlashcardImageInput";
 import { validateCardDraft } from "./flashcard-utils";
@@ -47,6 +47,13 @@ export function FlashcardCardEditor({
   onUploadImage,
   onError,
   titleId,
+  formId,
+  className = "",
+  frontTextRef,
+  hideTitle = false,
+  hideDefaultActions = false,
+  onDraftChange,
+  onUploadingChange,
   validate = validateCardDraft,
 }) {
   const [draft, setDraft] = useState(() => toDraft(value));
@@ -54,6 +61,14 @@ export function FlashcardCardEditor({
     getOpenSections(toDraft(value)),
   );
   const [uploadingField, setUploadingField] = useState(null);
+
+  useEffect(() => {
+    onDraftChange?.(draft);
+  }, [draft, onDraftChange]);
+
+  useEffect(() => {
+    onUploadingChange?.(Boolean(uploadingField));
+  }, [onUploadingChange, uploadingField]);
 
   const updateDraft = (field, nextValue) => {
     setDraft((current) => ({
@@ -87,7 +102,11 @@ export function FlashcardCardEditor({
   };
 
   const imageInputDisabled = (field) => {
-    return !onUploadImage || Boolean(uploadingField && uploadingField !== field);
+    return (
+      saving ||
+      !onUploadImage ||
+      Boolean(uploadingField && uploadingField !== field)
+    );
   };
 
   const title = titleOverride || (mode === "edit" ? "Edit Card" : "Add Card");
@@ -98,172 +117,183 @@ export function FlashcardCardEditor({
   const backExplanationId = `${idPrefix}-back-explanation`;
 
   return (
-    <form className="flashcard-form flashcard-card-editor" onSubmit={handleSubmit}>
-      <div className="flashcard-panel">
-        <div className="flashcard-panel__header">
-          <h3 id={titleId} className="flashcard-panel__title">{title}</h3>
+    <form
+      id={formId}
+      className={["flashcard-form", "flashcard-card-editor", className]
+        .filter(Boolean)
+        .join(" ")}
+      onSubmit={handleSubmit}
+    >
+      {!hideTitle && (
+        <div className="flashcard-card-editor__header">
+          <h3 id={titleId} className="flashcard-card-editor__title">{title}</h3>
         </div>
-        <div className="flashcard-panel__body">
-          <div className="flashcard-card-editor__grid">
-            <section className="flashcard-card-editor__side">
-              <div className="flashcard-field">
-                <label htmlFor={frontTextId} className="flashcard-sr-only">
-                  Front text
-                </label>
-                <textarea
-                  id={frontTextId}
-                  value={draft.frontText}
-                  onChange={(event) =>
-                    updateDraft("frontText", event.target.value)
-                  }
-                  placeholder="Term, prompt, or question"
-                />
-              </div>
+      )}
 
-              <div className="flashcard-card-editor__accessory-row">
-                <div className="flashcard-card-editor__media-slot">
-                  {!openSections.frontImage && (
-                    <button
-                      type="button"
-                      className="flashcard-card-editor__optional-trigger flashcard-card-editor__optional-trigger--media"
-                      onClick={() => toggleSection("frontImage")}
-                      disabled={saving}
-                      aria-label="Add front image"
-                    >
-                      <ImagePlus size={14} />
-                      + Image
-                    </button>
-                  )}
-                  {openSections.frontImage && (
-                    <div className="flashcard-card-editor__optional-field flashcard-card-editor__optional-field--image">
-                      <FlashcardImageInput
-                        id={`${idPrefix}-front-image`}
-                        label="Front image"
-                        value={draft.frontImageUrl}
-                        disabled={imageInputDisabled("frontImageUrl")}
-                        onChange={(nextValue) => updateDraft("frontImageUrl", nextValue)}
-                        onUploadImage={onUploadImage}
-                        onError={onError}
-                        onUploadingChange={(uploading) =>
-                          handleImageUploadingChange("frontImageUrl", uploading)
-                        }
-                      />
-                    </div>
-                  )}
-                </div>
-                <div className="flashcard-card-editor__detail-slot">
-                  {!openSections.frontHint && (
-                    <button
-                      type="button"
-                      className="flashcard-card-editor__optional-trigger"
-                      onClick={() => toggleSection("frontHint")}
-                      disabled={saving}
-                      aria-label="Add hint"
-                    >
-                      + Hint
-                    </button>
-                  )}
-                  {openSections.frontHint && (
-                    <label
-                      htmlFor={frontHintId}
-                      className="flashcard-field flashcard-card-editor__optional-field"
-                    >
-                      <textarea
-                        id={frontHintId}
-                        value={draft.hint}
-                        onChange={(event) => updateDraft("hint", event.target.value)}
-                        placeholder="Optional hint for the front side"
-                        disabled={saving}
-                      />
-                      <span>Hint</span>
-                    </label>
-                  )}
-                </div>
-              </div>
-            </section>
+      <div className="flashcard-card-editor__body">
+        <div className="flashcard-card-editor__grid">
+          <section className="flashcard-card-editor__side">
+            <div className="flashcard-field">
+              <label htmlFor={frontTextId} className="flashcard-sr-only">
+                Front text
+              </label>
+              <textarea
+                id={frontTextId}
+                ref={frontTextRef}
+                value={draft.frontText}
+                onChange={(event) =>
+                  updateDraft("frontText", event.target.value)
+                }
+                placeholder="Term, prompt, or question"
+                disabled={saving}
+              />
+            </div>
 
-            <section className="flashcard-card-editor__side">
-              <div className="flashcard-field">
-                <label htmlFor={backTextId} className="flashcard-sr-only">
-                  Back text
-                </label>
-                <textarea
-                  id={backTextId}
-                  value={draft.backText}
-                  onChange={(event) =>
-                    updateDraft("backText", event.target.value)
-                  }
-                  placeholder="Definition, answer, or explanation"
-                />
+            <div className="flashcard-card-editor__accessory-row">
+              <div className="flashcard-card-editor__media-slot">
+                {!openSections.frontImage && (
+                  <button
+                    type="button"
+                    className="flashcard-card-editor__optional-trigger flashcard-card-editor__optional-trigger--media"
+                    onClick={() => toggleSection("frontImage")}
+                    disabled={saving}
+                    aria-label="Add front image"
+                  >
+                    <ImagePlus size={14} />
+                    + Image
+                  </button>
+                )}
+                {openSections.frontImage && (
+                  <div className="flashcard-card-editor__optional-field flashcard-card-editor__optional-field--image">
+                    <FlashcardImageInput
+                      id={`${idPrefix}-front-image`}
+                      label="Front image"
+                      value={draft.frontImageUrl}
+                      disabled={imageInputDisabled("frontImageUrl")}
+                      onChange={(nextValue) => updateDraft("frontImageUrl", nextValue)}
+                      onUploadImage={onUploadImage}
+                      onError={onError}
+                      onUploadingChange={(uploading) =>
+                        handleImageUploadingChange("frontImageUrl", uploading)
+                      }
+                    />
+                  </div>
+                )}
               </div>
+              <div className="flashcard-card-editor__detail-slot">
+                {!openSections.frontHint && (
+                  <button
+                    type="button"
+                    className="flashcard-card-editor__optional-trigger"
+                    onClick={() => toggleSection("frontHint")}
+                    disabled={saving}
+                    aria-label="Add hint"
+                  >
+                    + Hint
+                  </button>
+                )}
+                {openSections.frontHint && (
+                  <label
+                    htmlFor={frontHintId}
+                    className="flashcard-field flashcard-card-editor__optional-field"
+                  >
+                    <textarea
+                      id={frontHintId}
+                      value={draft.hint}
+                      onChange={(event) => updateDraft("hint", event.target.value)}
+                      placeholder="Optional hint for the front side"
+                      disabled={saving}
+                    />
+                    <span>Hint</span>
+                  </label>
+                )}
+              </div>
+            </div>
+          </section>
 
-              <div className="flashcard-card-editor__accessory-row">
-                <div className="flashcard-card-editor__media-slot">
-                  {!openSections.backImage && (
-                    <button
-                      type="button"
-                      className="flashcard-card-editor__optional-trigger flashcard-card-editor__optional-trigger--media"
-                      onClick={() => toggleSection("backImage")}
-                      disabled={saving}
-                      aria-label="Add back image"
-                    >
-                      <ImagePlus size={14} />
-                      + Image
-                    </button>
-                  )}
-                  {openSections.backImage && (
-                    <div className="flashcard-card-editor__optional-field flashcard-card-editor__optional-field--image">
-                      <FlashcardImageInput
-                        id={`${idPrefix}-back-image`}
-                        label="Back image"
-                        value={draft.backImageUrl}
-                        disabled={imageInputDisabled("backImageUrl")}
-                        onChange={(nextValue) => updateDraft("backImageUrl", nextValue)}
-                        onUploadImage={onUploadImage}
-                        onError={onError}
-                        onUploadingChange={(uploading) =>
-                          handleImageUploadingChange("backImageUrl", uploading)
-                        }
-                      />
-                    </div>
-                  )}
-                </div>
-                <div className="flashcard-card-editor__detail-slot">
-                  {!openSections.backExplanation && (
-                    <button
-                      type="button"
-                      className="flashcard-card-editor__optional-trigger"
-                      onClick={() => toggleSection("backExplanation")}
-                      disabled={saving}
-                      aria-label="Add explanation"
-                    >
-                      + Explanation
-                    </button>
-                  )}
-                  {openSections.backExplanation && (
-                    <label
-                      htmlFor={backExplanationId}
-                      className="flashcard-field flashcard-card-editor__optional-field"
-                    >
-                      <textarea
-                        id={backExplanationId}
-                        value={draft.explanation}
-                        onChange={(event) =>
-                          updateDraft("explanation", event.target.value)
-                        }
-                        placeholder="Optional explanation after reveal"
-                        disabled={saving}
-                      />
-                      <span>Explanation</span>
-                    </label>
-                  )}
-                </div>
+          <section className="flashcard-card-editor__side">
+            <div className="flashcard-field">
+              <label htmlFor={backTextId} className="flashcard-sr-only">
+                Back text
+              </label>
+              <textarea
+                id={backTextId}
+                value={draft.backText}
+                onChange={(event) =>
+                  updateDraft("backText", event.target.value)
+                }
+                placeholder="Definition, answer, or explanation"
+                disabled={saving}
+              />
+            </div>
+
+            <div className="flashcard-card-editor__accessory-row">
+              <div className="flashcard-card-editor__media-slot">
+                {!openSections.backImage && (
+                  <button
+                    type="button"
+                    className="flashcard-card-editor__optional-trigger flashcard-card-editor__optional-trigger--media"
+                    onClick={() => toggleSection("backImage")}
+                    disabled={saving}
+                    aria-label="Add back image"
+                  >
+                    <ImagePlus size={14} />
+                    + Image
+                  </button>
+                )}
+                {openSections.backImage && (
+                  <div className="flashcard-card-editor__optional-field flashcard-card-editor__optional-field--image">
+                    <FlashcardImageInput
+                      id={`${idPrefix}-back-image`}
+                      label="Back image"
+                      value={draft.backImageUrl}
+                      disabled={imageInputDisabled("backImageUrl")}
+                      onChange={(nextValue) => updateDraft("backImageUrl", nextValue)}
+                      onUploadImage={onUploadImage}
+                      onError={onError}
+                      onUploadingChange={(uploading) =>
+                        handleImageUploadingChange("backImageUrl", uploading)
+                      }
+                    />
+                  </div>
+                )}
               </div>
-            </section>
-          </div>
+              <div className="flashcard-card-editor__detail-slot">
+                {!openSections.backExplanation && (
+                  <button
+                    type="button"
+                    className="flashcard-card-editor__optional-trigger"
+                    onClick={() => toggleSection("backExplanation")}
+                    disabled={saving}
+                    aria-label="Add explanation"
+                  >
+                    + Explanation
+                  </button>
+                )}
+                {openSections.backExplanation && (
+                  <label
+                    htmlFor={backExplanationId}
+                    className="flashcard-field flashcard-card-editor__optional-field"
+                  >
+                    <textarea
+                      id={backExplanationId}
+                      value={draft.explanation}
+                      onChange={(event) =>
+                        updateDraft("explanation", event.target.value)
+                      }
+                      placeholder="Optional explanation after reveal"
+                      disabled={saving}
+                    />
+                    <span>Explanation</span>
+                  </label>
+                )}
+              </div>
+            </div>
+          </section>
         </div>
       </div>
 
+      {!hideDefaultActions && (
       <div className="flashcard-actions">
         <button
           type="submit"
@@ -285,6 +315,7 @@ export function FlashcardCardEditor({
           </button>
         )}
       </div>
+      )}
     </form>
   );
 }
