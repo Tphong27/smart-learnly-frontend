@@ -20,6 +20,7 @@ export function AssignmentAiDraftPanel({
   currentTitle = "",
   currentDescription = "",
   compact = false,
+  onDraftGenerated,
 }) {
   const location = useLocation();
   const [open, setOpen] = useState(false);
@@ -46,7 +47,11 @@ export function AssignmentAiDraftPanel({
   }
 
   useEffect(() => {
-    resetDraftState({ keepOpen: false });
+    const timer = window.setTimeout(
+      () => resetDraftState({ keepOpen: false }),
+      0,
+    );
+    return () => window.clearTimeout(timer);
   }, [location.key]);
 
   async function handleGenerate() {
@@ -71,6 +76,10 @@ export function AssignmentAiDraftPanel({
         sourceCacheKey,
       });
       setReply(response?.content || "");
+      onDraftGenerated?.({
+        content: response?.content || "",
+        rubric: response?.rubric || "",
+      });
       if (response?.sourceCacheKey) {
         setSourceCacheKey(response.sourceCacheKey);
         setCachedSourceName(response?.sourceName || file?.name || cachedSourceName);

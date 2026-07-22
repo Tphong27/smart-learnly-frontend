@@ -56,6 +56,7 @@ function getAttemptTime(attempt) {
 }
 
 function numberOrNull(value) {
+  if (value == null || value === "") return null;
   const number = Number(value);
   return Number.isFinite(number) ? number : null;
 }
@@ -216,7 +217,9 @@ export function TraineeFlashTestListPage({ variant = "flash" }) {
                 : "--",
               status: latestAttempt?.status,
               retakeAllowed: Boolean(latestAttempt?.retakeAllowed),
-              attempts: completedAttempts,
+              attempts: [...completedAttempts].sort(
+                (a, b) => getAttemptTime(a) - getAttemptTime(b),
+              ),
               questionTotal,
             },
           ];

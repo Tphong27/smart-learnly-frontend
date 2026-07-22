@@ -12,6 +12,7 @@ import {
 import "../flashtest.css";
 
 function numberOrNull(value) {
+  if (value == null || value === "") return null;
   const number = Number(value);
   return Number.isFinite(number) ? number : null;
 }
@@ -58,6 +59,33 @@ function formatMcqScore(attempt, questionTotal) {
   return { score: "--", percentage: null };
 }
 
+function booleanOrNull(value) {
+  if (value === true || value === "true" || value === 1 || value === "1") return true;
+  if (value === false || value === "false" || value === 0 || value === "0") return false;
+  return null;
+}
+
+function scoreFromGradedAnswers(answers, questions) {
+  if (!answers.some((answer) => answer?.isCorrect != null || answer?.is_correct != null)) {
+    return null;
+  }
+  const totalMarks = questions.reduce(
+    (sum, question) => sum + (numberOrNull(question?.marks) || 1),
+    0,
+  );
+  const earnedMarks = answers.reduce(
+    (sum, answer) =>
+      sum +
+      (numberOrNull(answer?.scoreAwarded ?? answer?.score_awarded) || 0),
+    0,
+  );
+  const percentage = totalMarks > 0 ? (earnedMarks / totalMarks) * 100 : 0;
+  return {
+    score: formatScoreValue(percentage / 10),
+    percentage: Math.round(percentage),
+  };
+}
+
 function questionId(question) {
   return question?.questionId || question?.id || "";
 }
@@ -98,10 +126,7 @@ export function TestAttemptDetailPage() {
   const [answers, setAnswers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const attempt = useMemo(
-    () => location.state?.attempt || {},
-    [location.state],
-  );
+  const [attempt, setAttempt] = useState(location.state?.attempt || {});
   const studentName = location.state?.studentName || attempt?.studentName || "";
 
   const questionTotal = useMemo(
@@ -109,8 +134,10 @@ export function TestAttemptDetailPage() {
     [attempt, questions],
   );
   const score = useMemo(
-    () => formatMcqScore(attempt, questionTotal),
-    [attempt, questionTotal],
+    () =>
+      scoreFromGradedAnswers(answers, questions) ||
+      formatMcqScore(attempt, questionTotal),
+    [answers, attempt, questionTotal, questions],
   );
 
   const loadDetail = useCallback(async () => {
@@ -118,12 +145,14 @@ export function TestAttemptDetailPage() {
     setLoading(true);
     setError("");
     try {
-      const [testData, questionMappings, answerData] = await Promise.all([
+      const [testData, attemptData, questionMappings, answerData] = await Promise.all([
         testService.getById(testId).catch(() => null),
+        attemptService.getById(attemptId),
         testService.getLearnerQuestions(testId),
         attemptService.getStudentAnswers(attemptId),
       ]);
       setTest(testData);
+      setAttempt(attemptData || {});
       setQuestions(questionMappings || []);
       setAnswers(answerData || []);
     } catch (detailError) {
@@ -194,14 +223,34 @@ export function TestAttemptDetailPage() {
               (item) => questionId(item) === currentQuestionId,
             );
             const selectedId = selectedAnswerId(studentAnswer);
+            const gradedCorrect = booleanOrNull(
+              studentAnswer?.isCorrect ??
+                studentAnswer?.is_correct ??
+                studentAnswer?.correct,
+            );
+            const awardedScore = numberOrNull(
+              studentAnswer?.scoreAwarded ?? studentAnswer?.score_awarded,
+            );
+            const gradedCorrectAnswerId =
+              studentAnswer?.correctAnswerId ||
+              studentAnswer?.correct_answer_id ||
+              "";
             const answerOptions = question.answers || question.options || [];
             const correctAnswer = answerOptions.find(
-              (answer) => answer.correct || answer.isCorrect,
+              (answer) =>
+                String(answerId(answer)) === String(gradedCorrectAnswerId) ||
+                answer.correct ||
+                answer.isCorrect,
             );
             const isCorrect =
-              selectedId &&
-              correctAnswer &&
-              String(selectedId) === String(answerId(correctAnswer));
+              gradedCorrect ??
+              (awardedScore != null
+                ? awardedScore > 0
+                : Boolean(
+                    selectedId &&
+                      correctAnswer &&
+                      String(selectedId) === String(answerId(correctAnswer)),
+                  ));
             const resultLabel = selectedId
               ? isCorrect
                 ? "Correct"
@@ -235,7 +284,11 @@ export function TestAttemptDetailPage() {
                   {answerOptions.map((answer, answerIndex) => {
                     const id = answerId(answer);
                     const selected = String(selectedId || "") === String(id);
-                    const correct = answer.correct || answer.isCorrect;
+                    const correct =
+                      String(id) === String(gradedCorrectAnswerId) ||
+                      answer.correct ||
+                      answer.isCorrect ||
+                      (isCorrect && selected);
                     return (
                       <div
                         className={`ft-attempt-answer ${

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Eye, Plus, Shuffle, Trash2, X } from "lucide-react";
+import { Eye, Shuffle, Trash2, X } from "lucide-react";
 import { questionService } from "@/services/flashtest.service.js";
 import { sanitizeAnswerHtml, sanitizeQuestionHtml } from "@/shared/utils/htmlSanitizer";
 import "../flashtest.css";
@@ -27,11 +27,11 @@ export function QuestionSelector({
     () => new Set(selectedQuestions.map((question) => questionId(question))),
     [selectedQuestions],
   );
-
   const availableQuestions = useMemo(
     () => questions.filter((question) => !selectedIds.has(questionId(question))),
     [questions, selectedIds],
   );
+
   const randomCountNumber = Number(randomCount || 0);
   const randomCountError =
     randomCount && (!Number.isInteger(randomCountNumber) || randomCountNumber < 1)
@@ -47,11 +47,17 @@ export function QuestionSelector({
     }
     setLoading(true);
     try {
-      setQuestions(
-        await questionService.getByCourse(courseId, {
-          size: 100,
-        }),
-      );
+      const pageSize = 100;
+      const loaded = [];
+      for (let page = 0; page < 20; page += 1) {
+        const batch = await questionService.getByCourse(courseId, {
+          size: pageSize,
+          page,
+        });
+        loaded.push(...batch);
+        if (batch.length < pageSize) break;
+      }
+      setQuestions(loaded);
     } catch (error) {
       console.error("Failed to load questions", error);
       setQuestions([]);
@@ -64,13 +70,6 @@ export function QuestionSelector({
     const timer = window.setTimeout(loadQuestions, 0);
     return () => window.clearTimeout(timer);
   }, [loadQuestions]);
-
-  const handleSelect = (question) => {
-    const id = questionId(question);
-    if (!selectedQuestions.some((item) => questionId(item) === id)) {
-      onQuestionsChange([...selectedQuestions, question]);
-    }
-  };
 
   const handleRemove = (id) => {
     onQuestionsChange(
@@ -169,7 +168,6 @@ export function QuestionSelector({
       </div>
 
       <div className="ft-question-bank-header">
-        <strong>Question Bank</strong>
         <button
           className="ft-button ft-button--secondary"
           type="button"
@@ -182,38 +180,10 @@ export function QuestionSelector({
           <Shuffle size={14} /> Random
         </button>
       </div>
-      <div className="ft-question-list" style={{ marginTop: 10 }}>
-        {!courseId ? (
-          <p className="ft-muted">Choose a course to load questions.</p>
-        ) : loading ? (
-          <p className="ft-muted">Loading questions...</p>
-        ) : questions.length === 0 ? (
-          <p className="ft-muted">No questions found for this course.</p>
-        ) : availableQuestions.length === 0 ? (
-          <p className="ft-muted">All questions in this course are selected.</p>
-        ) : (
-          availableQuestions.map((question) => {
-            const id = questionId(question);
-            return (
-              <div className="ft-question-row" key={id}>
-                <span
-                  className="ft-question-text ft-question-rich-text"
-                  dangerouslySetInnerHTML={{
-                    __html: sanitizeQuestionHtml(questionText(question)),
-                  }}
-                />
-                <button
-                  className="ft-button ft-button--secondary"
-                  type="button"
-                  onClick={() => handleSelect(question)}
-                >
-                  <Plus size={14} /> Add
-                </button>
-              </div>
-            );
-          })
-        )}
-      </div>
+      {loading && <p className="ft-muted">Loading available questions...</p>}
+      {!loading && courseId && questions.length === 0 && (
+        <p className="ft-muted">No questions found for this course.</p>
+      )}
 
       {randomModalOpen && (
         <div className="ft-modal-overlay" role="dialog" aria-modal="true">
