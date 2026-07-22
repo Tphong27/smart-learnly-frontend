@@ -65,6 +65,10 @@ function getAdminRoutes() {
               element: <AdminCourseContentPage />,
             },
             {
+              path: "courses/:courseId/questions",
+              element: <AdminQuestionBankDetailPage />,
+            },
+            {
               path: "courses/:courseId/lessons/:lessonId",
               element: <AdminLessonDetailPage />,
             },
@@ -98,6 +102,14 @@ function getAdminRoutes() {
             <RoleGuard allowedRoles={[ROLES.ADMIN, ROLES.SME]} />
           ),
           children: [
+            {
+              path: "courses/:courseId/questions/ai-drafts/new",
+              element: <AdminAiQuestionDraftCreatePage />,
+            },
+            {
+              path: "courses/:courseId/questions/ai-drafts/:batchId",
+              element: <AdminAiQuestionDraftReviewPage />,
+            },
             {
               path: "question-banks/:bankId/ai-drafts/new",
               element: <AdminAiQuestionDraftCreatePage />,

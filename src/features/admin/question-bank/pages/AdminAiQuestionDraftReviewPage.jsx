@@ -42,7 +42,7 @@ function normalizeModules(payload) {
     : (root?.items ?? root?.content ?? root?.sections ?? [])
   return items
     .map((item, index) => ({
-      id: item.sectionId || item.id,
+      id: item.moduleId || item.sectionId || item.id,
       title: item.title || item.name || `Module ${index + 1}`,
     }))
     .filter((item) => item.id)
@@ -52,7 +52,7 @@ function sourceKindLabel(kind) {
   if (kind === "transcript") return "Transcript"
   if (kind === "temporary_file") return "Document"
   if (kind === "pasted_text") return "Pasted text"
-  return "Material"
+  return "Source"
 }
 
 function formatBytes(value) {
@@ -81,6 +81,7 @@ function sortedAnswers(draft) {
 function draftValidationError(values) {
   const questionText = values.questionText.trim()
   if (!questionText) return "Question text is required."
+  if (!values.moduleId) return "Module is required."
   const answers = sortedAnswers(values)
   if (values.questionType === "multiple_choice") {
     if (answers.length < 2 || answers.length > 6) return "MCQ needs 2 to 6 answers."
@@ -115,9 +116,13 @@ function buildDraftPayload(values) {
 }
 
 export function AdminAiQuestionDraftReviewPage() {
-  const { bankId, batchId } = useParams()
+  const { bankId, courseId, batchId } = useParams()
   const toast = useToast()
   const writable = canWriteQuestionBank()
+  const isCourseQuestionsMode = Boolean(courseId)
+  const backPath = isCourseQuestionsMode
+    ? `/admin/courses/${courseId}/questions`
+    : `/admin/question-banks/${bankId}`
   const [bank, setBank] = useState(null)
   const [modules, setModules] = useState([])
   const [batch, setBatch] = useState(null)
@@ -142,19 +147,32 @@ export function AdminAiQuestionDraftReviewPage() {
     setError(null)
     try {
       const [bankData, batchData] = await Promise.all([
-        questionBankService.getBank(bankId),
-        questionBankService.getAiDraftBatch(bankId, batchId),
+        isCourseQuestionsMode
+          ? courseService.getAdmin(courseId)
+          : questionBankService.getBank(bankId),
+        isCourseQuestionsMode
+          ? questionBankService.getCourseAiDraftBatch(courseId, batchId)
+          : questionBankService.getAiDraftBatch(bankId, batchId),
       ])
       const normalizedBatch = normalizeAiBatch(batchData)
-      setBank(bankData)
+      const normalizedBank = isCourseQuestionsMode
+        ? {
+            id: null,
+            courseId,
+            name: `${bankData?.title || "Course"} Questions`,
+            status: bankData?.status,
+          }
+        : bankData
+      setBank(normalizedBank)
       setBatch(normalizedBatch)
       setSelectedDraftIds((current) =>
         current.filter((draftId) =>
           normalizedBatch.drafts.some((draft) => draft.id === draftId && canDraftBeSelected(draft)),
         ),
       )
-      if (bankData?.courseId) {
-        const moduleData = await courseService.getCourseContent(bankData.courseId)
+      const resolvedCourseId = isCourseQuestionsMode ? courseId : bankData?.courseId
+      if (resolvedCourseId) {
+        const moduleData = await courseService.getCourseContent(resolvedCourseId)
         setModules(normalizeModules(moduleData))
       }
     } catch (err) {
@@ -171,7 +189,7 @@ export function AdminAiQuestionDraftReviewPage() {
     })
     return () => window.cancelAnimationFrame(frameId)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [bankId, batchId])
+  }, [bankId, batchId, courseId, isCourseQuestionsMode])
 
   useEffect(() => {
     if (!batch || !AI_DRAFT_BATCH_PROCESSING_STATUSES.has(batch.status)) return undefined
@@ -180,7 +198,7 @@ export function AdminAiQuestionDraftReviewPage() {
     }, 5000)
     return () => window.clearInterval(timerId)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [batch?.status, bankId, batchId])
+  }, [batch?.status, bankId, batchId, courseId, isCourseQuestionsMode])
 
   const moduleNameById = useMemo(
     () => new Map(modules.map((module) => [module.id, module.title])),
@@ -224,7 +242,9 @@ export function AdminAiQuestionDraftReviewPage() {
     setMutating(true)
     setActionError(null)
     try {
-      const nextBatch = await questionBankService.retryAiDraftBatch(bankId, batchId)
+      const nextBatch = isCourseQuestionsMode
+        ? await questionBankService.retryCourseAiDraftBatch(courseId, batchId)
+        : await questionBankService.retryAiDraftBatch(bankId, batchId)
       setBatch(normalizeAiBatch(nextBatch))
       toast.success("Retry started")
     } catch (err) {
@@ -241,13 +261,12 @@ export function AdminAiQuestionDraftReviewPage() {
     setActionError(null)
     setAddResult(null)
     try {
-      const result = await questionBankService.addSelectedAiDrafts(
-        bankId,
-        batchId,
-        selectedDraftIds
-          .map((draftId) => batch?.drafts?.find((draft) => draft.id === draftId))
-          .filter(Boolean),
-      )
+      const drafts = selectedDraftIds
+        .map((draftId) => batch?.drafts?.find((draft) => draft.id === draftId))
+        .filter(Boolean)
+      const result = isCourseQuestionsMode
+        ? await questionBankService.addSelectedCourseAiDrafts(courseId, batchId, drafts)
+        : await questionBankService.addSelectedAiDrafts(bankId, batchId, drafts)
       setAddResult(result)
       toast.success("Selected drafts processed")
       setSelectedDraftIds([])
@@ -266,7 +285,9 @@ export function AdminAiQuestionDraftReviewPage() {
     setDownloadingSourceId(sourceId)
     setActionError(null)
     try {
-      const response = await questionBankService.createAiDraftSourceDownloadUrl(bankId, batchId, sourceId)
+      const response = isCourseQuestionsMode
+        ? await questionBankService.createCourseAiDraftSourceDownloadUrl(courseId, batchId, sourceId)
+        : await questionBankService.createAiDraftSourceDownloadUrl(bankId, batchId, sourceId)
       if (response?.url) {
         window.open(response.url, "_blank", "noopener,noreferrer")
       }
@@ -282,10 +303,15 @@ export function AdminAiQuestionDraftReviewPage() {
     setMutating(true)
     setActionError(null)
     try {
-      await questionBankService.confirmAiDraftEvidence(bankId, batchId, draft.id, {
+      const requestPayload = {
         version: draft.version,
         evidenceStillFits: suitable,
-      })
+      }
+      if (isCourseQuestionsMode) {
+        await questionBankService.confirmCourseAiDraftEvidence(courseId, batchId, draft.id, requestPayload)
+      } else {
+        await questionBankService.confirmAiDraftEvidence(bankId, batchId, draft.id, requestPayload)
+      }
       toast.success(suitable ? "Evidence confirmed" : "Evidence marked unsuitable")
       await loadBatch({ silent: true })
     } catch (err) {
@@ -305,7 +331,11 @@ export function AdminAiQuestionDraftReviewPage() {
     setMutating(true)
     setActionError(null)
     try {
-      await questionBankService.updateAiDraft(bankId, batchId, values.id, buildDraftPayload(values))
+      if (isCourseQuestionsMode) {
+        await questionBankService.updateCourseAiDraft(courseId, batchId, values.id, buildDraftPayload(values))
+      } else {
+        await questionBankService.updateAiDraft(bankId, batchId, values.id, buildDraftPayload(values))
+      }
       toast.success("Draft updated")
       setEditDraft(null)
       await loadBatch({ silent: true })
@@ -322,11 +352,16 @@ export function AdminAiQuestionDraftReviewPage() {
     setMutating(true)
     setActionError(null)
     try {
-      await questionBankService.rejectAiDraft(bankId, batchId, rejectDraft.id, {
+      const requestPayload = {
         version: rejectDraft.version,
         reasonCode: payload.reason || null,
         note: payload.note?.trim() || null,
-      })
+      }
+      if (isCourseQuestionsMode) {
+        await questionBankService.rejectCourseAiDraft(courseId, batchId, rejectDraft.id, requestPayload)
+      } else {
+        await questionBankService.rejectAiDraft(bankId, batchId, rejectDraft.id, requestPayload)
+      }
       toast.success("Draft rejected")
       setRejectDraft(null)
       await loadBatch({ silent: true })
@@ -346,8 +381,8 @@ export function AdminAiQuestionDraftReviewPage() {
           <p className="ai-drafts-muted">
             Only Admin and SME users can review AI question drafts.
           </p>
-          <Button to="/admin/question-banks" variant="secondary">
-            Back to Question Bank
+          <Button to={backPath} variant="secondary">
+            Back to questions
           </Button>
         </section>
       </div>
@@ -368,8 +403,8 @@ export function AdminAiQuestionDraftReviewPage() {
         <section className="admin-card">
           <h1 className="admin-page__title">AI draft batch unavailable</h1>
           <p className="admin-error">{error}</p>
-          <Button to={`/admin/question-banks/${bankId}`} variant="secondary">
-            Back to question bank
+          <Button to={backPath} variant="secondary">
+            Back to questions
           </Button>
         </section>
       </div>
@@ -386,7 +421,7 @@ export function AdminAiQuestionDraftReviewPage() {
       <header className="admin-page__header">
         <div>
           <Button
-            to={`/admin/question-banks/${bankId}`}
+            to={backPath}
             variant="ghost"
             size="sm"
             leftIcon={<ArrowLeft size={16} />}
@@ -397,7 +432,7 @@ export function AdminAiQuestionDraftReviewPage() {
             Review AI draft questions
           </h1>
           <p className="ai-drafts-muted">
-            {bank?.name || "Question bank"} · Batch {batch?.id || batchId}
+            {bank?.name || "Course questions"} · Batch {batch?.id || batchId}
           </p>
         </div>
         <div className="ai-drafts-header-actions">
@@ -639,7 +674,7 @@ function DraftReviewRow({
             {draft.status}
           </span>
           <span>{aiQuestionTypeLabel(draft.questionType)}</span>
-          <span>{moduleName || "No module"}</span>
+          <span>{moduleName || "Unassigned"}</span>
         </div>
         <div
           className="ai-draft-row__question question-rich-text-viewer"
@@ -759,7 +794,7 @@ function AddResultNotice({ result }) {
 
   return (
     <section className="ai-drafts-alert ai-drafts-alert--success" role="status">
-      <strong>Added {addedCount} questions to Question Bank.</strong>
+      <strong>Added {addedCount} questions.</strong>
       {skipped.length > 0 && (
         <>
           <p>{skipped.length} draft was skipped:</p>
@@ -863,7 +898,7 @@ function EditDraftModal({ draft, modules, mutating, onClose, onSave }) {
             }
             disabled={mutating}
           >
-            <option value="">No module</option>
+            <option value="">Select module</option>
             {modules.map((module) => (
               <option key={module.id} value={module.id}>
                 {module.title}

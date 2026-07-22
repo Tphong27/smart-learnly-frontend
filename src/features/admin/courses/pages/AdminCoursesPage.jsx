@@ -6,6 +6,7 @@ import {
     BookOpen,
     Edit2,
     Eye,
+    FileQuestion,
     MoreVertical,
     Plus,
     RotateCcw,
@@ -204,6 +205,7 @@ function RowActionsMenu({
     }, [open, updateMenuPosition]);
 
     const contentPath = `${basePath}/${course.id}/content`;
+    const questionsPath = `${basePath}/${course.id}/questions`;
     const previewPath = `${basePath}/${course.id}/preview?returnTo=${encodeURIComponent(previewReturnPath)}`;
     const editPath = basePath.startsWith("/staff")
         ? `${basePath}/${course.id}/edit`
@@ -224,6 +226,16 @@ function RowActionsMenu({
                     onClick={() => setOpen(false)}
                 >
                     <BookOpen size={14} aria-hidden="true" /> Open curriculum
+                </Link>
+            </li>
+            <li role="none">
+                <Link
+                    role="menuitem"
+                    to={questionsPath}
+                    className="course-management__menu-item"
+                    onClick={() => setOpen(false)}
+                >
+                    <FileQuestion size={14} aria-hidden="true" /> Manage questions
                 </Link>
             </li>
             {canViewClasses ? (

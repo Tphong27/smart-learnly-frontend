@@ -9,7 +9,7 @@ export function getDashboardPathByRole(role) {
     case ROLES.TMO:
       return "/admin/courses";
     case ROLES.SME:
-      return "/admin/question-banks";
+      return "/admin/courses";
     case ROLES.TRAINER:
       return "/staff/courses";
     case ROLES.TRAINEE:
@@ -52,6 +52,10 @@ export function isPathAllowedForRole(pathname, role) {
     {
       prefix: "/admin/question-banks",
       allow: [ROLES.ADMIN, ROLES.TMO, ROLES.SME, ROLES.TRAINER],
+    },
+    {
+      prefix: "/admin/courses",
+      allow: [ROLES.ADMIN, ROLES.TMO, ROLES.SME],
     },
     {
       prefix: "/admin/questions",

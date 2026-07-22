@@ -56,7 +56,7 @@ function normalizeModules(payload) {
     : (root?.items ?? root?.content ?? root?.sections ?? []);
   return items
     .map((item, index) => ({
-      id: item.sectionId || item.id,
+      id: item.moduleId || item.sectionId || item.id,
       title: item.title || item.name || `Module ${index + 1}`,
     }))
     .filter((item) => item.id);
@@ -73,7 +73,7 @@ function sourceKindLabel(kind) {
   if (kind === "transcript") return "Transcript";
   if (kind === "temporary_file") return "Document";
   if (kind === "pasted_text") return "Pasted text";
-  return "Material";
+  return "Source";
 }
 
 function fileExtension(fileName = "") {
@@ -97,10 +97,11 @@ function newPastedTextItem() {
 }
 
 export function AdminAiQuestionDraftCreatePage() {
-  const { bankId } = useParams();
+  const { bankId, courseId } = useParams();
   const navigate = useNavigate();
   const toast = useToast();
   const writable = canWriteQuestionBank();
+  const isCourseQuestionsMode = Boolean(courseId);
   const fileInputRef = useRef(null);
   const [bank, setBank] = useState(null);
   const [modules, setModules] = useState([]);
@@ -129,17 +130,33 @@ export function AdminAiQuestionDraftCreatePage() {
       setLoading(true);
       setError(null);
       try {
-        const bankData = await questionBankService.getBank(bankId);
+        const bankData = isCourseQuestionsMode
+          ? await courseService.getAdmin(courseId)
+          : await questionBankService.getBank(bankId);
         if (cancelled) return;
-        setBank(bankData);
-        setLanguage(getDefaultLanguage(bankData));
+        const normalizedBank = isCourseQuestionsMode
+          ? {
+              id: null,
+              courseId,
+              name: `${bankData?.title || "Course"} Questions`,
+              status: bankData?.status,
+              updatedAt: bankData?.updatedAt,
+            }
+          : bankData;
+        setBank(normalizedBank);
+        setLanguage(getDefaultLanguage(normalizedBank));
 
+        const resolvedCourseId = isCourseQuestionsMode ? courseId : bankData?.courseId;
         const [moduleData, sourceData, capabilityData] = await Promise.all([
-          bankData?.courseId
-            ? courseService.getCourseContent(bankData.courseId)
+          resolvedCourseId
+            ? courseService.getCourseContent(resolvedCourseId)
             : Promise.resolve([]),
-          questionBankService.listAiDraftSources(bankId),
-          questionBankService.getAiDraftSourceCapabilities(bankId).catch(() => DEFAULT_CAPABILITIES),
+          isCourseQuestionsMode
+            ? questionBankService.listCourseAiDraftSources(courseId).catch(() => [])
+            : questionBankService.listAiDraftSources(bankId),
+          isCourseQuestionsMode
+            ? questionBankService.getCourseAiDraftSourceCapabilities(courseId).catch(() => DEFAULT_CAPABILITIES)
+            : questionBankService.getAiDraftSourceCapabilities(bankId).catch(() => DEFAULT_CAPABILITIES),
         ]);
         if (cancelled) return;
         setModules(normalizeModules(moduleData));
@@ -159,7 +176,7 @@ export function AdminAiQuestionDraftCreatePage() {
     return () => {
       cancelled = true;
     };
-  }, [bankId]);
+  }, [bankId, courseId, isCourseQuestionsMode]);
 
   const transcriptSources = useMemo(
     () => sources.filter((source) => source.kind === "transcript" && source.ready),
@@ -207,6 +224,7 @@ export function AdminAiQuestionDraftCreatePage() {
     pastedTextErrors.size === 0 &&
     fileErrors.length === 0 &&
     questionTypes.length > 0 &&
+    Boolean(moduleId) &&
     QUANTITY_OPTIONS.includes(requestedCount) &&
     ["vi", "en"].includes(language) &&
     !instructionTooLong &&
@@ -283,25 +301,43 @@ export function AdminAiQuestionDraftCreatePage() {
     setSubmitting(true);
     setError(null);
     try {
-      const batch = await questionBankService.createAiDraftBatch(bankId, {
+      const createBatch = isCourseQuestionsMode
+        ? questionBankService.createCourseAiDraftBatch(courseId, {
+          generationSourceIds: [],
+          transcriptContentIds: selectedTranscriptIds,
+          pastedTextSources: trimmedPastedSources,
+          files,
+          questionTypes,
+          requestedCount,
+          moduleId,
+          language,
+          generationInstruction: trimmedInstruction || null,
+          idempotencyKey,
+        })
+        : questionBankService.createAiDraftBatch(bankId, {
         generationSourceIds: [],
         transcriptContentIds: selectedTranscriptIds,
         pastedTextSources: trimmedPastedSources,
         files,
         questionTypes,
         requestedCount,
-        moduleId: moduleId || null,
+        moduleId,
         language,
         generationInstruction: trimmedInstruction || null,
         idempotencyKey,
       });
+      const batch = await createBatch;
       const batchId = batch?.batchId || batch?.id;
       toast.success("AI draft batch created");
       setIdempotencyKey(createIdempotencyKey());
       navigate(
         batchId
-          ? `/admin/question-banks/${bankId}/ai-drafts/${batchId}`
-          : `/admin/question-banks/${bankId}`,
+          ? isCourseQuestionsMode
+            ? `/admin/courses/${courseId}/questions/ai-drafts/${batchId}`
+            : `/admin/question-banks/${bankId}/ai-drafts/${batchId}`
+          : isCourseQuestionsMode
+            ? `/admin/courses/${courseId}/questions`
+            : `/admin/question-banks/${bankId}`,
       );
     } catch (err) {
       setError(err?.message || "Could not create AI draft batch.");
@@ -319,8 +355,8 @@ export function AdminAiQuestionDraftCreatePage() {
           <p className="ai-drafts-muted">
             Only Admin and SME users can generate AI question drafts.
           </p>
-          <Button to="/admin/question-banks" variant="secondary">
-            Back to Question Bank
+          <Button to={isCourseQuestionsMode ? `/admin/courses/${courseId}/questions` : "/admin/question-banks"} variant="secondary">
+            Back to questions
           </Button>
         </section>
       </div>
@@ -335,14 +371,17 @@ export function AdminAiQuestionDraftCreatePage() {
     );
   }
 
-  const bankArchived = bank?.status === "archived";
+  const bankArchived = !isCourseQuestionsMode && bank?.status === "archived";
+  const backPath = isCourseQuestionsMode
+    ? `/admin/courses/${courseId}/questions`
+    : `/admin/question-banks/${bankId}`;
 
   return (
     <div className="admin-page ai-drafts-page">
       <header className="admin-page__header">
         <div>
           <Button
-            to={`/admin/question-banks/${bankId}`}
+            to={backPath}
             variant="ghost"
             size="sm"
             leftIcon={<ArrowLeft size={16} />}
@@ -354,7 +393,7 @@ export function AdminAiQuestionDraftCreatePage() {
           </h1>
           <p className="ai-drafts-muted">
             AI creates drafts only. Review every question and answer before
-            adding it to this bank.
+            adding it to this course.
           </p>
         </div>
       </header>
@@ -497,7 +536,7 @@ export function AdminAiQuestionDraftCreatePage() {
             icon={<Video size={18} />}
             title="Video transcripts"
             description="Published course-level transcripts from Smart Learnly video lessons."
-            emptyText="No published video transcripts are available for this question bank course."
+            emptyText="No published video transcripts are available for this course."
           >
             {transcriptSources.map((source) => (
               <SourceRow
@@ -515,7 +554,7 @@ export function AdminAiQuestionDraftCreatePage() {
           <div className="ai-drafts-section-header">
             <div>
               <h2>Generation setup</h2>
-              <p>{bank?.name || "Question bank"}</p>
+              <p>{bank?.name || "Course questions"}</p>
             </div>
           </div>
 
@@ -586,7 +625,7 @@ export function AdminAiQuestionDraftCreatePage() {
               onChange={(event) => setModuleId(event.target.value)}
               disabled={submitting}
             >
-              <option value="">No module</option>
+              <option value="">Select module</option>
               {modules.map((module) => (
                 <option key={module.id} value={module.id}>
                   {module.title}
@@ -635,7 +674,7 @@ export function AdminAiQuestionDraftCreatePage() {
             <Button
               type="button"
               variant="ghost"
-              to={`/admin/question-banks/${bankId}`}
+              to={backPath}
               disabled={submitting}
             >
               Cancel
@@ -657,7 +696,7 @@ export function AdminAiQuestionDraftCreatePage() {
           </div>
           {bank?.updatedAt && (
             <p className="ai-drafts-muted ai-drafts-muted--small">
-              Bank updated {formatDate(bank.updatedAt)}
+              Updated {formatDate(bank.updatedAt)}
             </p>
           )}
         </aside>

@@ -4,6 +4,7 @@ import {
     Archive,
     AlertTriangle,
     CheckCircle2,
+    Download,
     Edit2,
     Plus,
     RotateCcw,
@@ -43,7 +44,7 @@ function normalizeModules(payload) {
         : (root?.items ?? root?.content ?? root?.sections ?? []);
     return items
         .map((item, index) => ({
-            id: item.sectionId || item.id,
+            id: item.moduleId || item.sectionId || item.id,
             title: item.title || item.name || "Module " + (index + 1),
         }))
         .filter((item) => item.id);
@@ -86,10 +87,12 @@ function normalizeQuestionMedia(question) {
 }
 
 export function AdminQuestionBankDetailPage() {
-    const { bankId } = useParams();
+    const { bankId, courseId } = useParams();
     const toast = useToast();
     const writable = canWriteQuestionBank();
+    const isCourseQuestionsMode = Boolean(courseId);
     const [bank, setBank] = useState(null);
+    const [course, setCourse] = useState(null);
     const [modules, setModules] = useState([]);
     const [items, setItems] = useState([]);
     const [pageInfo, setPageInfo] = useState({
@@ -130,7 +133,7 @@ export function AdminQuestionBankDetailPage() {
     }
 
     useEffect(() => {
-        if (activeTab !== "activity" || !bankId) return;
+        if (isCourseQuestionsMode || activeTab !== "activity" || !bankId) return;
         let cancelled = false;
         (async () => {
             setActivityLoading(true);
@@ -158,7 +161,7 @@ export function AdminQuestionBankDetailPage() {
         return () => {
             cancelled = true;
         };
-    }, [activeTab, bankId, activityPage, refreshKey, toast]);
+    }, [activeTab, bankId, isCourseQuestionsMode, activityPage, refreshKey, toast]);
 
     useEffect(() => {
         let cancelled = false;
@@ -166,27 +169,62 @@ export function AdminQuestionBankDetailPage() {
             setLoading(true);
             setError(null);
             try {
-                const bankData = await questionBankService.getBank(bankId);
+                const [scopeData, moduleData, questionPage] =
+                    isCourseQuestionsMode
+                        ? await Promise.all([
+                              courseService.getAdmin(courseId),
+                              courseService.getCourseContent(courseId),
+                              questionBankService.listCourseQuestions(courseId, {
+                                  search: search.trim() || undefined,
+                                  type: type === "all" ? undefined : type,
+                                  status: status === "all" ? undefined : status,
+                                  difficulty:
+                                      difficulty === "all" ? undefined : difficulty,
+                                  moduleId: moduleId === "all" ? undefined : moduleId,
+                                  page,
+                                  size: pageSize,
+                              }),
+                          ])
+                        : await (async () => {
+                              const bankData = await questionBankService.getBank(bankId);
+                              const [legacyModules, legacyQuestions] =
+                                  await Promise.all([
+                                      bankData?.courseId
+                                          ? courseService.getCourseContent(bankData.courseId)
+                                          : Promise.resolve([]),
+                                      questionBankService.listQuestions({
+                                          bankId,
+                                          search: search.trim() || undefined,
+                                          type: type === "all" ? undefined : type,
+                                          status:
+                                              status === "all" ? undefined : status,
+                                          difficulty:
+                                              difficulty === "all"
+                                                  ? undefined
+                                                  : difficulty,
+                                          moduleId:
+                                              moduleId === "all"
+                                                  ? undefined
+                                                  : moduleId,
+                                          page,
+                                          size: pageSize,
+                                      }),
+                                  ]);
+                              return [bankData, legacyModules, legacyQuestions];
+                          })();
                 if (cancelled) return;
-                setBank(bankData);
-
-                const [moduleData, questionPage] = await Promise.all([
-                    bankData?.courseId
-                        ? courseService.getCourseContent(bankData.courseId)
-                        : Promise.resolve([]),
-                    questionBankService.listQuestions({
-                        bankId,
-                        search: search.trim() || undefined,
-                        type: type === "all" ? undefined : type,
-                        status: status === "all" ? undefined : status,
-                        difficulty:
-                            difficulty === "all" ? undefined : difficulty,
-                        moduleId: moduleId === "all" ? undefined : moduleId,
-                        page,
-                        size: pageSize,
-                    }),
-                ]);
-                if (cancelled) return;
+                if (isCourseQuestionsMode) {
+                    setCourse(scopeData);
+                    setBank({
+                        id: null,
+                        courseId,
+                        name: `${scopeData?.title || "Course"} Questions`,
+                        status: scopeData?.status,
+                    });
+                } else {
+                    setCourse(null);
+                    setBank(scopeData);
+                }
                 setModules(normalizeModules(moduleData));
                 setItems(questionPage.items || []);
                 setPageInfo({
@@ -197,7 +235,7 @@ export function AdminQuestionBankDetailPage() {
             } catch (err) {
                 if (!cancelled) {
                     const message =
-                        err?.message || "Could not load question bank.";
+                        err?.message || "Could not load questions.";
                     setError(message);
                     toast.error(message);
                 }
@@ -210,7 +248,9 @@ export function AdminQuestionBankDetailPage() {
         };
     }, [
         bankId,
+        courseId,
         difficulty,
+        isCourseQuestionsMode,
         moduleId,
         page,
         pageSize,
@@ -250,13 +290,45 @@ export function AdminQuestionBankDetailPage() {
         if (!confirmed) return;
         setArchivingId(question.questionId);
         try {
-            await questionBankService.archiveQuestion(question.questionId);
+            if (isCourseQuestionsMode) {
+                await questionBankService.archiveCourseQuestion(
+                    courseId,
+                    question.questionId,
+                );
+            } else {
+                await questionBankService.archiveQuestion(question.questionId);
+            }
             toast.success("Question archived");
             setRefreshKey((key) => key + 1);
         } catch (err) {
             toast.error(err?.message || "Could not archive question.");
         } finally {
             setArchivingId(null);
+        }
+    }
+
+    async function handleExport() {
+        if (!isCourseQuestionsMode || !courseId) return;
+        try {
+            const response = await questionBankService.exportCourseQuestions(courseId, {
+                search: search.trim() || undefined,
+                type: type === "all" ? undefined : type,
+                status: status === "all" ? undefined : status,
+                difficulty: difficulty === "all" ? undefined : difficulty,
+                moduleId: moduleId === "all" ? undefined : moduleId,
+            });
+            const blob = response instanceof Blob ? response : response?.data;
+            if (!blob) throw new Error("No export file returned.");
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = "course-questions.csv";
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            URL.revokeObjectURL(url);
+        } catch (err) {
+            toast.error(err?.message || "Could not export questions.");
         }
     }
 
@@ -276,33 +348,49 @@ export function AdminQuestionBankDetailPage() {
         }
     }
 
-    const isBankArchived = bank?.status === "archived";
+    const isBankArchived = !isCourseQuestionsMode && bank?.status === "archived";
     const canEditQuestion = writable && !isBankArchived;
+    const backPath = isCourseQuestionsMode ? "/admin/courses" : "/admin/question-banks";
+    const title = isCourseQuestionsMode
+        ? `${course?.title || "Course"} - Questions`
+        : bank?.name || "Question bank";
+    const aiDraftPath = isCourseQuestionsMode
+        ? `/admin/courses/${courseId}/questions/ai-drafts/new`
+        : `/admin/question-banks/${bankId}/ai-drafts/new`;
 
     return (
         <div className="admin-page">
             <header className="admin-page__header">
                 <div>
                     <Button
-                        to="/admin/question-banks"
+                        to={backPath}
                         variant="ghost"
                         size="sm"
                     >
-                        Back to banks
+                        {isCourseQuestionsMode ? "Back to courses" : "Back to banks"}
                     </Button>
                     <h1 className="admin-page__title" style={{ marginTop: 8 }}>
-                        {bank?.name || "Question bank"}
+                        {title}
                     </h1>
                 </div>
                 {writable && !isBankArchived && (
                     <div style={{ display: "inline-flex", gap: 10 }}>
                         <Button
-                            to={`/admin/question-banks/${bankId}/ai-drafts/new`}
+                            to={aiDraftPath}
                             variant="secondary"
                             leftIcon={<Sparkles size={16} />}
                         >
                             Generate AI drafts
                         </Button>
+                        {isCourseQuestionsMode && (
+                            <Button
+                                variant="secondary"
+                                leftIcon={<Download size={16} />}
+                                onClick={handleExport}
+                            >
+                                Export
+                            </Button>
+                        )}
                         <Button
                             variant="secondary"
                             leftIcon={<Upload size={16} />}
@@ -383,7 +471,7 @@ export function AdminQuestionBankDetailPage() {
                 </section>
             )}
 
-            {bank && (
+            {bank && !isCourseQuestionsMode && (
                 <section className="admin-card" style={{ marginBottom: 18 }}>
                     <div className="admin-toolbar" style={{ padding: 0 }}>
                         <span>
@@ -420,14 +508,16 @@ export function AdminQuestionBankDetailPage() {
                     >
                         Questions ({pageInfo.totalItems})
                     </button>
-                    <button
-                        type="button"
-                        className={`admin-tab ${activeTab === "activity" ? "is-active" : ""}`}
-                        onClick={() => setActiveTab("activity")}
-                        aria-pressed={activeTab === "activity"}
-                    >
-                        Activity
-                    </button>
+                    {!isCourseQuestionsMode && (
+                        <button
+                            type="button"
+                            className={`admin-tab ${activeTab === "activity" ? "is-active" : ""}`}
+                            onClick={() => setActiveTab("activity")}
+                            aria-pressed={activeTab === "activity"}
+                        >
+                            Activity
+                        </button>
+                    )}
                 </div>
             </nav>
 
@@ -545,6 +635,97 @@ export function AdminQuestionBankDetailPage() {
                         <div className="admin-empty">
                             No questions match the current filters.
                         </div>
+                    ) : isCourseQuestionsMode ? (
+                        <div className="admin-table-wrapper">
+                            <table className="admin-table">
+                                <thead>
+                                    <tr>
+                                        <th>Id</th>
+                                        <th>Question Title</th>
+                                        <th>Module</th>
+                                        <th>Type</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {items.map((question, index) => {
+                                        const questionNumber = page * pageSize + index + 1;
+                                        const questionId = question.questionId || question.id;
+                                        const moduleLabel =
+                                            moduleNameById.get(question.moduleId) ||
+                                            "Unassigned";
+                                        return (
+                                            <tr key={questionId}>
+                                                <td>{questionNumber}</td>
+                                                <td>
+                                                    <div
+                                                        className="question-rich-text-viewer"
+                                                        dangerouslySetInnerHTML={{
+                                                            __html: sanitizeQuestionHtml(
+                                                                question.questionText,
+                                                            ),
+                                                        }}
+                                                    />
+                                                </td>
+                                                <td>{moduleLabel}</td>
+                                                <td>
+                                                    {question.questionType === "true_false"
+                                                        ? "True/False"
+                                                        : "Multiple choice"}
+                                                </td>
+                                                <td>
+                                                    <span
+                                                        className={`admin-status admin-status--${question.status}`}
+                                                    >
+                                                        {question.status}
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    {canEditQuestion &&
+                                                        question.status !== "archived" && (
+                                                        <div className="admin-table__actions">
+                                                            <button
+                                                                type="button"
+                                                                className="admin-table__icon-btn"
+                                                                title="Edit"
+                                                                aria-label={`Edit question ${questionNumber}`}
+                                                                onClick={() =>
+                                                                    openEditQuestionModal(
+                                                                        questionId,
+                                                                    )
+                                                                }
+                                                            >
+                                                                <Edit2 size={15} />
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                className="admin-table__icon-btn admin-table__icon-btn--danger"
+                                                                title="Archive"
+                                                                aria-label={`Archive question ${questionNumber}`}
+                                                                disabled={
+                                                                    archivingId ===
+                                                                    questionId
+                                                                }
+                                                                onClick={() =>
+                                                                    handleArchive(
+                                                                        question,
+                                                                    )
+                                                                }
+                                                            >
+                                                                <Archive
+                                                                    size={15}
+                                                                />
+                                                            </button>
+                                                        </div>
+                                                    )}
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
                     ) : (
                         <div className="question-card-list">
                             {items.map((question, index) => {
@@ -565,7 +746,7 @@ export function AdminQuestionBankDetailPage() {
                                     question.questionId || question.id;
                                 const moduleLabel =
                                     moduleNameById.get(question.moduleId) ||
-                                    "No module";
+                                    "Unassigned";
                                 const { images, audios, videos } =
                                     normalizeQuestionMedia(question);
                                 const visibleImages = images.slice(0, 3);
@@ -936,6 +1117,7 @@ export function AdminQuestionBankDetailPage() {
             <AdminQuestionFormModal
                 open={Boolean(questionFormModal)}
                 bankId={bankId}
+                courseId={isCourseQuestionsMode ? courseId : undefined}
                 questionId={questionFormModal?.questionId}
                 onClose={closeQuestionFormModal}
                 onSaved={handleQuestionSaved}
@@ -943,6 +1125,7 @@ export function AdminQuestionBankDetailPage() {
             <QuestionImportModal
                 open={importOpen}
                 bank={bank}
+                courseId={isCourseQuestionsMode ? courseId : undefined}
                 existingQuestions={items}
                 onClose={() => setImportOpen(false)}
                 onImported={() => setRefreshKey((key) => key + 1)}
