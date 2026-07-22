@@ -1,4 +1,4 @@
-.trainee-schedule-page {
+.schedule-page {
   width: 100%;
   max-width: 1180px;
   min-width: 0;
@@ -374,13 +374,63 @@
     transform: rotate(360deg);
   }
 }
+/* ==========================================================================
+   Input 
+   ========================================================================== */
+
+.schedule-controls input,
+.schedule-controls select {
+  width: 100%;
+  min-height: 44px;
+  padding: 0 11px;
+  border: 1px solid var(--line, #d1d7dc);
+  border-radius: 4px;
+  outline: 0;
+  color: var(--ink, #2d2f31);
+  background: #ffffff;
+  font: inherit;
+  font-size: 14px;
+  box-sizing: border-box;
+  transition:
+    border-color 180ms ease,
+    box-shadow 180ms ease;
+}
+
+.schedule-controls input:hover,
+.schedule-controls select:hover {
+  border-color: #8a8397;
+}
+
+.schedule-controls input:focus,
+.schedule-controls select:focus {
+  border-color: var(--primary, #5624d0);
+  box-shadow: 0 0 0 3px rgba(86, 36, 208, 0.14);
+}
+
+.schedule-controls select:disabled {
+  color: var(--muted, #6a6f73);
+  background: var(--surface, #f7f9fa);
+  cursor: not-allowed;
+}
+
+.schedule-controls__trainer {
+  min-width: 240px !important;
+}
+
+.schedule-controls__error {
+  flex: 1 0 100%;
+  color: #9f1d1d;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
 
 /* ==========================================================================
    Responsive
    ========================================================================== */
 
 @media (max-width: 720px) {
-  .trainee-schedule-page {
+  .schedule-page {
     padding: 24px 16px 44px;
     gap: 24px;
   }
