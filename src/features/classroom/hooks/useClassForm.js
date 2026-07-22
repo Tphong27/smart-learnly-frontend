@@ -15,6 +15,7 @@ function toFormValues(initialData) {
       courseId: "",
       className: "",
       trainerId: "",
+      meetingUrl: "",
       scheduleDescription: "",
       startDate: "",
       endDate: "",
@@ -27,6 +28,7 @@ function toFormValues(initialData) {
     courseId: initialData.courseId || "",
     className: initialData.className || "",
     trainerId: initialData.trainerId || "",
+    meetingUrl: initialData.meetingUrl || "",
     scheduleDescription: initialData.scheduleDescription || "",
     startDate: toInputDate(initialData.startDate),
     endDate: toInputDate(initialData.endDate),
@@ -67,6 +69,7 @@ export function useClassForm(initialData = null, onSuccess = null) {
         const payload = {
           ...formData,
           trainerId: formData.trainerId || null,
+          meetingUrl: formData.meetingUrl.trim(),
           scheduleDescription: formData.scheduleDescription || null,
           startDate: formData.startDate || null,
           endDate: formData.endDate || null,

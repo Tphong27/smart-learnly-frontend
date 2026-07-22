@@ -9,6 +9,7 @@ import { Link } from "react-router-dom";
 import { getCurrentUser, scheduleService, userService } from "@/services";
 import { normalizeRole, ROLES } from "@/shared/constants/roles";
 import { formatDate, formatTime } from "@/shared/utils/formatters";
+import { getGoogleMeetUrl } from "@/shared/utils/googleMeetUrl";
 import {
   addDays,
   formatWeekInput,
@@ -35,20 +36,6 @@ const WEEK_DAYS = [
 
 const EMPTY_SESSIONS = [];
 
-function getSafeMeetingUrl(value) {
-  if (!value) {
-    return null;
-  }
-
-  try {
-    const url = new URL(value);
-
-    return ["https:", "http:"].includes(url.protocol) ? url.href : null;
-  } catch {
-    return null;
-  }
-}
-
 function getErrorMessage(error, fallbackMessage) {
   return error?.response?.data?.message || error?.message || fallbackMessage;
 }
@@ -60,8 +47,7 @@ function getTrainerLabel(trainer) {
 }
 
 function ScheduleItem({ session, isStaff }) {
-  const meetingUrl = getSafeMeetingUrl(session.meetingUrl);
-
+  const meetingUrl = getGoogleMeetUrl(session.meetingUrl);
   const detailPath = isStaff
     ? `/staff/classrooms/${session.classId}/workspace`
     : `/learning/courses/${session.courseId}?classId=${session.classId}`;
@@ -95,7 +81,7 @@ function ScheduleItem({ session, isStaff }) {
               "schedule-session__button--meet",
             ].join(" ")}
           >
-            Meet URL
+            Meet
             <ExternalLink size={13} />
           </a>
         )}

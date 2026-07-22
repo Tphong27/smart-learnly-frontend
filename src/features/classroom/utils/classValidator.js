@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { isGoogleMeetUrl } from "@/shared/utils/googleMeetUrl";
 
 export function todayString() {
   const now = new Date();
@@ -30,7 +31,17 @@ export const classFormSchema = z
       .trim()
       .min(1, "Please select a trainer")
       .uuid("Invalid trainer ID"),
-    
+
+    meetingUrl: z
+      .string()
+      .trim()
+      .min(1, "Google Meet URL is required")
+      .max(255, "Google Meet URL must not exceed 255 characters")
+      .refine(
+        (value) => isGoogleMeetUrl(value),
+        "Use the format https://meet.google.com/abc-defg-hij",
+      ),
+
     scheduleDescription: z
       .string()
       .min(1, "Please select at least one class schedule")

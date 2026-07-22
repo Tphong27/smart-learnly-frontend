@@ -1,6 +1,10 @@
 import { useEffect, useState } from "react";
-import { Edit3, Save, X } from "lucide-react";
+import { Edit3, ExternalLink, Save, X } from "lucide-react";
 import { Button } from "@/shared/components/ui";
+import {
+  getGoogleMeetUrl,
+  isGoogleMeetUrl,
+} from "@/shared/utils/googleMeetUrl";
 import { classService } from "@/services";
 import { useActiveTrainers } from "../hooks/useActiveTrainers";
 import { formatCapacity, formatDate, formatVnd } from "../utils/classFormatter";
@@ -16,6 +20,7 @@ function toEditForm(classData) {
   return {
     className: classData?.className || "",
     trainerId: classData?.trainerId || "",
+    meetingUrl: classData?.meetingUrl || "",
     scheduleDescription: classData?.scheduleDescription || "",
     startDate: toInputDate(classData?.startDate),
     endDate: toInputDate(classData?.endDate),
@@ -61,6 +66,13 @@ function toUpdatePayload(form, originalClassData) {
   const originalTrainerId = originalClassData.trainerId || undefined;
   if (trainerId !== originalTrainerId) {
     payload.trainerId = trainerId ?? null;
+  }
+
+  const meetingUrl = emptyToUndefined(form.meetingUrl);
+  const originalMeetingUrl = emptyToUndefined(originalClassData.meetingUrl);
+
+  if (meetingUrl && meetingUrl !== originalMeetingUrl) {
+    payload.meetingUrl = meetingUrl;
   }
 
   const scheduleDescription = emptyToUndefined(form.scheduleDescription);
@@ -158,6 +170,7 @@ export function ClassOverviewTab({
   });
 
   const trainerOptions = buildTrainerOptions(trainers, classData);
+  const meetingUrl = getGoogleMeetUrl(classData?.meetingUrl);
 
   useEffect(() => {
     if (!isEditing || readOnly) {
@@ -230,6 +243,16 @@ export function ClassOverviewTab({
 
     if (!editForm.trainerId) {
       setError("Please select a trainer");
+      return;
+    }
+
+    if (!editForm.meetingUrl?.trim()) {
+      setError("Google Meet URL is required");
+      return;
+    }
+
+    if (!isGoogleMeetUrl(editForm.meetingUrl)) {
+      setError("Use the format https://meet.google.com/abc-defg-hij");
       return;
     }
 
@@ -314,6 +337,21 @@ export function ClassOverviewTab({
               </p>
 
               <p>
+                <strong>Google Meet:</strong>{" "}
+                {meetingUrl ? (
+                  <a
+                    href={meetingUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    Open meeting <ExternalLink size={14} />
+                  </a>
+                ) : (
+                  "Not configured"
+                )}
+              </p>
+
+              <p>
                 <strong>Time:</strong> {formatDate(classData.startDate)} -{" "}
                 {formatDate(classData.endDate)}
               </p>
@@ -386,6 +424,22 @@ export function ClassOverviewTab({
                   </option>
                 ))}
               </select>
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="overviewMeetingUrl">Google Meet URL *</label>
+
+              <input
+                id="overviewMeetingUrl"
+                type="url"
+                placeholder="https://meet.google.com/abc-defg-hij"
+                value={editForm.meetingUrl}
+                onChange={(event) =>
+                  updateField("meetingUrl", event.target.value)
+                }
+              />
+
+              <small>Use the format https://meet.google.com/abc-defg-hij</small>
             </div>
 
             <div className="form-row">

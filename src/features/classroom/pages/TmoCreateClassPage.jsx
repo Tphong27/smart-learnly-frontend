@@ -158,6 +158,39 @@ export function TmoCreateClassPage() {
               </span>
             )}
           </div>
+          <div className="form-group">
+            <label htmlFor="meetingUrl">Google Meet URL *</label>
+
+            <input
+              id="meetingUrl"
+              type="url"
+              placeholder="https://meet.google.com/abc-defg-hij"
+              {...form.register("meetingUrl")}
+              className={form.errors.meetingUrl ? "input-error" : ""}
+              aria-invalid={Boolean(form.errors.meetingUrl)}
+              aria-describedby={
+                form.errors.meetingUrl ? "meetingUrl-error" : undefined
+              }
+            />
+
+            {form.errors.meetingUrl && (
+              <span id="meetingUrl-error" className="form-error-text">
+                {form.errors.meetingUrl.message}
+              </span>
+            )}
+
+            <small>
+              Create or copy a meeting link from{" "}
+              <a
+                href="https://meet.google.com/"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Google Meet
+              </a>
+              .
+            </small>
+          </div>
         </div>
         <div className="form-section">
           <h3>Schedule and Configuration</h3>

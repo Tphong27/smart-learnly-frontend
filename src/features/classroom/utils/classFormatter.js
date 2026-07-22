@@ -33,10 +33,18 @@ export function formatCapacity(activeEnrollmentCount, maxStudents) {
 }
 
 export function formatVnd(value) {
-  const amount = Number(value || 0);
-
-  if (amount <= 0) {
+  if (value === null || value === undefined || value === "") {
     return "--";
+  }
+
+  const amount = Number(value);
+
+  if (!Number.isFinite(amount) || amount < 0) {
+    return "--";
+  }
+
+  if (amount === 0) {
+    return "Free";
   }
 
   return new Intl.NumberFormat("vi-VN", {
