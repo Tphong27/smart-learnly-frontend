@@ -68,7 +68,13 @@ export function HlsVideoUploader({
   const [statusLoading, setStatusLoading] = useState(true);
   const [statusError, setStatusError] = useState("");
   const [hlsHealth, setHlsHealth] = useState(null);
+  const [videoAiState, setVideoAiState] = useState({
+    status: null,
+    loading: true,
+    error: "",
+  });
   const completionNotifiedRef = useRef(false);
+  const completionToastEnabledRef = useRef(false);
 
   const emitToast = useCallback(
     (message, type) => {
@@ -163,10 +169,6 @@ export function HlsVideoUploader({
           } catch (syncError) {
             console.error("Error syncing the ready video URL:", syncError);
           }
-          if (!completionNotifiedRef.current) {
-            completionNotifiedRef.current = true;
-            emitToast("Your lesson video is ready.", "success");
-          }
           return;
         }
 
@@ -217,7 +219,66 @@ export function HlsVideoUploader({
       (!hlsHealth.hlsEnabled ||
         String(hlsHealth.status || "").toLowerCase() !== "healthy"),
   );
-  const isBusy = statusLoading || uploading || statusPolling;
+  const normalizedHlsStatus = String(
+    processingStatus?.hlsStatus || "",
+  ).toLowerCase();
+  const hlsReadyState = Boolean(videoUrl || normalizedHlsStatus === "ready");
+  const requiresTranscript = Boolean(
+    videoAi?.service &&
+      normalizedHlsStatus === "ready" &&
+      processingStatus?.jobId,
+  );
+  const currentVideoAiStatus = videoAiState.status;
+  const currentVideoAiJob = currentVideoAiStatus?.activeJob;
+  const transcriptReady = Boolean(currentVideoAiStatus?.transcriptReady);
+  const transcriptFailed = Boolean(
+    requiresTranscript &&
+      currentVideoAiJob?.jobType === "VIDEO_TRANSCRIPT" &&
+      currentVideoAiJob?.status === "FAILED",
+  );
+  const transcriptUnavailable = Boolean(
+    requiresTranscript &&
+      !transcriptReady &&
+      [
+        "VIDEO_AI_DISABLED",
+        "TRANSCRIPTION_NOT_CONFIGURED",
+        "SOURCE_VERSION_MISSING",
+        "AI_AUDIO_NOT_READY",
+      ].includes(currentVideoAiStatus?.reason),
+  );
+  const transcriptStatusError = Boolean(
+    requiresTranscript && !transcriptReady && videoAiState.error,
+  );
+  const transcriptPreparing = Boolean(
+    requiresTranscript &&
+      !transcriptReady &&
+      !transcriptFailed &&
+      !transcriptUnavailable &&
+      !transcriptStatusError,
+  );
+  const readyState = Boolean(
+    hlsReadyState && (!requiresTranscript || transcriptReady),
+  );
+  const failedState = Boolean(
+    normalizedHlsStatus === "failed" ||
+      transcriptFailed ||
+      transcriptUnavailable ||
+      transcriptStatusError,
+  );
+  const isBusy =
+    statusLoading || uploading || statusPolling || transcriptPreparing;
+
+  useEffect(() => {
+    if (
+      readyState &&
+      completionToastEnabledRef.current &&
+      !completionNotifiedRef.current
+    ) {
+      completionNotifiedRef.current = true;
+      completionToastEnabledRef.current = false;
+      emitToast("Your lesson video and transcript are ready.", "success");
+    }
+  }, [emitToast, readyState]);
 
   useEffect(() => {
     if (typeof onBusyChange === "function") onBusyChange(isBusy || uploading);
@@ -244,6 +305,9 @@ export function HlsVideoUploader({
     const previousStatus = processingStatus;
     setUploading(true);
     setStatusError("");
+    setVideoAiState({ status: null, loading: true, error: "" });
+    completionNotifiedRef.current = false;
+    completionToastEnabledRef.current = false;
     setProcessingStatus({
       hlsStatus: "uploading",
       progressPercent: 0,
@@ -287,10 +351,10 @@ export function HlsVideoUploader({
         },
       );
       emitToast(
-        "Video uploaded. We are getting it ready for learners.",
+        "Video uploaded. We are preparing playback and its transcript.",
         "success",
       );
-      completionNotifiedRef.current = false;
+      completionToastEnabledRef.current = true;
       setProcessingStatus({
         ...uploadResult,
         hlsStatus: uploadResult?.status || "processing",
@@ -333,19 +397,18 @@ export function HlsVideoUploader({
     }
   };
 
-  const readyState =
-    videoUrl || processingStatus?.hlsStatus === "ready";
-
   const progressPercent = processingStatus?.progressPercent || 0;
   const statusLabel = isBusy
     ? statusLoading
       ? "Checking"
       : processingStatus?.hlsStatus === "uploading"
         ? "Uploading"
-        : "Getting ready"
+        : transcriptPreparing
+          ? "Creating transcript"
+          : "Getting ready"
     : readyState
       ? "Ready"
-      : processingStatus?.hlsStatus === "failed"
+      : failedState
         ? "Needs attention"
         : "Add video";
 
@@ -369,12 +432,13 @@ export function HlsVideoUploader({
             <VideoAiActionButton
               service={videoAi.service}
               onApplySuggestions={onApplyAiSuggestions}
-              videoReady={Boolean(readyState)}
+              videoReady={hlsReadyState}
               showToast={showToast}
+              onStatusChange={setVideoAiState}
             />
           )}
           <span
-            className={`sl-material-status sl-material-status--${isBusy ? "processing" : readyState ? "ready" : processingStatus?.hlsStatus === "failed" ? "failed" : "neutral"}`}
+            className={`sl-material-status sl-material-status--${isBusy ? "processing" : readyState ? "ready" : failedState ? "failed" : "neutral"}`}
           >
             {statusLabel}
           </span>
@@ -413,6 +477,20 @@ export function HlsVideoUploader({
         </div>
       )}
 
+      {(transcriptFailed || transcriptUnavailable) && (
+        <div className="sl-material-alert sl-material-alert--error" role="alert">
+          <AlertCircle size={18} aria-hidden="true" />
+          <div>
+            <strong>We could not prepare the video transcript</strong>
+            <p>
+              {transcriptUnavailable
+                ? "Transcript processing is temporarily unavailable. Check the server configuration, then try again."
+                : "Check that the video contains clear speech, then try the transcript again."}
+            </p>
+          </div>
+        </div>
+      )}
+
       <button
         type="button"
         onDragOver={handleDragOver}
@@ -442,19 +520,23 @@ export function HlsVideoUploader({
                     ? "Uploading video"
                     : statusLoading
                       ? "Checking video"
-                      : "Getting video ready"}
+                      : transcriptPreparing
+                        ? "Creating video transcript"
+                        : "Getting video ready"}
                 </strong>
                 <span>
-                  {processingDescription(progressPercent, statusLoading)}
+                  {transcriptPreparing
+                    ? "Listening to the video so AI suggestions will be ready when you need them."
+                    : processingDescription(progressPercent, statusLoading)}
                 </span>
               </div>
-              {!statusLoading && (
+              {!statusLoading && !transcriptPreparing && (
                 <strong className="sl-video-uploader__percentage">
                   {progressPercent}%
                 </strong>
               )}
             </div>
-            {!statusLoading && (
+            {!statusLoading && !transcriptPreparing && (
               <div
                 className="sl-video-uploader__progress"
                 role="progressbar"
@@ -469,7 +551,9 @@ export function HlsVideoUploader({
             <p className="sl-video-uploader__footnote">
               {statusLoading
                 ? "This usually takes only a moment."
-                : "You can leave this page while we finish preparing the video."}
+                : transcriptPreparing
+                  ? "This runs automatically. You can leave this page and return later."
+                  : "You can leave this page while we finish preparing the video."}
             </p>
           </>
         ) : readyState ? (

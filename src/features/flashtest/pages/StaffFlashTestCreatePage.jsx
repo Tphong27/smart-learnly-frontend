@@ -69,6 +69,20 @@ function onlyPositiveInteger(value) {
     return String(Math.max(1, Number(digits)));
 }
 
+function toDateTimeLocal(value) {
+    if (!value) return "";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "";
+    const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+    return local.toISOString().slice(0, 16);
+}
+
+function toIsoDateTime(value) {
+    if (!value) return null;
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? null : date.toISOString();
+}
+
 const DURATION_UNITS = {
     minutes: 1,
     hours: 60,
@@ -114,6 +128,9 @@ export function StaffFlashTestCreatePage({ variant = "flash" }) {
         description: "",
         courseId: routeCourseId,
         classId: routeClassId,
+        opensAt: "",
+        closesAt: "",
+        accessCode: "",
     });
     const [courses, setCourses] = useState([]);
     const [classes, setClasses] = useState([]);
@@ -143,6 +160,9 @@ export function StaffFlashTestCreatePage({ variant = "flash" }) {
             const next = { ...current };
             Object.keys(patch).forEach((key) => delete next[key]);
             if (patch.durationValue || patch.durationUnit) delete next.duration;
+            if (patch.opensAt !== undefined || patch.closesAt !== undefined) {
+                delete next.schedule;
+            }
             return next;
         });
     };
@@ -265,6 +285,9 @@ export function StaffFlashTestCreatePage({ variant = "flash" }) {
                         description: assignment.description || "",
                         courseId: assignment.courseId || routeCourseId || "",
                         classId: assignment.classId || routeClassId || "",
+                        opensAt: "",
+                        closesAt: "",
+                        accessCode: "",
                     });
                     setExistingInstructionFile(
                         assignment.instructionFileUrl
@@ -294,6 +317,9 @@ export function StaffFlashTestCreatePage({ variant = "flash" }) {
                         description: test.description || "",
                         courseId: test.courseId || test.course_id || "",
                         classId: routeClassId,
+                        opensAt: toDateTimeLocal(test.opensAt),
+                        closesAt: toDateTimeLocal(test.closesAt),
+                        accessCode: test.accessCode || "",
                     });
                     setSelectedQuestions(
                         (mappings || []).map((mapping) => ({
@@ -335,6 +361,15 @@ export function StaffFlashTestCreatePage({ variant = "flash" }) {
         }
         if (testType === "mcq" && selectedQuestions.length === 0) {
             nextErrors.questions = "Please select at least one MCQ question.";
+        }
+        if (
+            testType === "mcq" &&
+            formData.opensAt &&
+            formData.closesAt &&
+            new Date(formData.opensAt).getTime() >=
+                new Date(formData.closesAt).getTime()
+        ) {
+            nextErrors.schedule = "Closing time must be after opening time.";
         }
         setValidationErrors(nextErrors);
         if (Object.keys(nextErrors).length > 0) {
@@ -379,6 +414,8 @@ export function StaffFlashTestCreatePage({ variant = "flash" }) {
                     testType: "practice",
                     maxAttempts: 1,
                     showAnswersAfter: true,
+                    opensAt: toIsoDateTime(formData.opensAt),
+                    closesAt: toIsoDateTime(formData.closesAt),
                 };
                 if (isFlashMode) {
                     testPayload.isFlashtest = true;
@@ -564,7 +601,11 @@ export function StaffFlashTestCreatePage({ variant = "flash" }) {
                     </div>
                 </div>
 
-                <div className="ft-form">
+                <fieldset
+                    className="ft-form ft-form-fieldset"
+                    disabled={loadingExisting}
+                    aria-busy={loadingExisting}
+                >
                     <label className="ft-field">
                         <span className="ft-label">Title</span>
                         <input
@@ -681,6 +722,52 @@ export function StaffFlashTestCreatePage({ variant = "flash" }) {
                             )}
                         </div>
                     </label>
+
+                    {testType === "mcq" && (
+                        <div className="ft-schedule-grid" role="group" aria-label="Test availability">
+                            <label className="ft-field">
+                                <span className="ft-label">Opening date and time</span>
+                                <input
+                                    className="ft-input"
+                                    type="datetime-local"
+                                    value={formData.opensAt}
+                                    onChange={(event) =>
+                                        updateFormData({ opensAt: event.target.value })
+                                    }
+                                />
+                                <span className="ft-field-help">Leave empty to make the test available immediately.</span>
+                            </label>
+                            <label className="ft-field">
+                                <span className="ft-label">Closing date and time</span>
+                                <input
+                                    className="ft-input"
+                                    type="datetime-local"
+                                    value={formData.closesAt}
+                                    min={formData.opensAt || undefined}
+                                    onChange={(event) =>
+                                        updateFormData({ closesAt: event.target.value })
+                                    }
+                                />
+                                <span className="ft-field-help">Leave empty if the test should stay open.</span>
+                            </label>
+                            <label className="ft-field">
+                                <span className="ft-label">Access code</span>
+                                <input
+                                    className="ft-input ft-input--readonly"
+                                    type="text"
+                                    readOnly
+                                    value={formData.accessCode}
+                                    placeholder="Generated after saving"
+                                />
+                                <span className="ft-field-help">The active code is also available from Test Monitor.</span>
+                            </label>
+                            {validationErrors.schedule && (
+                                <span className="ft-field-error ft-schedule-grid__error" role="alert">
+                                    {validationErrors.schedule}
+                                </span>
+                            )}
+                        </div>
+                    )}
 
                     {isFlashMode && !isAssignmentMode && (
                         <div className="ft-field">
@@ -869,7 +956,7 @@ export function StaffFlashTestCreatePage({ variant = "flash" }) {
                             </div>
                         </>
                     )}
-                </div>
+                </fieldset>
             </div>
         </section>
     );

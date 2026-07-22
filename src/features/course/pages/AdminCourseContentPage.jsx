@@ -137,7 +137,6 @@ export default function AdminCourseContentPage() {
         try {
             await courseService.createSection(courseId, {
                 title,
-                isActive: true,
             });
             showToast({
                 type: "success",
@@ -161,7 +160,6 @@ export default function AdminCourseContentPage() {
         try {
             await courseService.updateSection(sectionId, {
                 title,
-                isActive: true,
             });
             showToast({
                 type: "success",
@@ -195,7 +193,6 @@ export default function AdminCourseContentPage() {
                         try {
                             await courseService.createSection(courseId, {
                                 title: target.title,
-                                isActive: target.isActive ?? true,
                                 sortOrder: target.sortOrder ?? 0,
                             });
                             showToast({

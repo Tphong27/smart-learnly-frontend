@@ -25,6 +25,10 @@ export function normalizeVideoAiStatus(value) {
     enabled: status.enabled ?? status.featureEnabled ?? true,
     eligible: status.eligible ?? status.canGenerate ?? false,
     videoReady: status.hlsReady ?? status.videoReady ?? false,
+    transcriptReady:
+      status.transcriptReady ?? status.hasTranscript ?? false,
+    suggestionsReady:
+      status.suggestionsReady ?? status.hasSuggestions ?? false,
     reason: status.reason ?? status.eligibilityReason ?? "",
     activeJob: activeJob ? normalizeJob(activeJob) : null,
     contentId:

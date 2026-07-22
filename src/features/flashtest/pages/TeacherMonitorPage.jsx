@@ -434,7 +434,6 @@ export function TeacherMonitorPage() {
     setGradeForms((current) => ({
       ...current,
       [submissionId]: {
-        score: "",
         ...(current[submissionId] || {}),
         ...patch,
       },
@@ -444,7 +443,9 @@ export function TeacherMonitorPage() {
   const handleGradeSubmission = async (row) => {
     if (!row.submissionId) return;
     const form = gradeForms[row.submissionId] || {};
-    const score = Number(form.score);
+    const scoreValue =
+      form.score === undefined || form.score === "" ? row.score : form.score;
+    const score = Number(scoreValue);
     if (!Number.isFinite(score) || score < 0 || score > 10) {
       alert("Please enter a score from 0 to 10.");
       return;
@@ -454,6 +455,8 @@ export function TeacherMonitorPage() {
     try {
       const graded = await assignmentService.gradeSubmission(row.submissionId, {
         score,
+        trainerFeedback:
+          form.trainerFeedback ?? row.trainerFeedback ?? "",
         status: "GRADED",
       });
       mergeEvent({
@@ -468,6 +471,7 @@ export function TeacherMonitorPage() {
         fileUrl: graded.fileUrl,
         fileName: graded.fileName,
         score: graded.score,
+        trainerFeedback: graded.trainerFeedback,
       });
       setGradeForms((current) => {
         const next = { ...current };
@@ -730,53 +734,76 @@ export function TeacherMonitorPage() {
                               ) : (
                                 <span className="ft-muted">No file</span>
                               )}
-                              {row.score != null ? (
-                                <strong>{row.score}/10</strong>
-                              ) : (
-                                <>
-                                  <input
-                                    className="ft-input"
-                                    type="number"
-                                    min="0"
-                                    max="10"
-                                    step="0.1"
-                                    placeholder="Score"
-                                    value={
-                                      gradeForms[row.submissionId]?.score || ""
-                                    }
-                                    onChange={(event) => {
-                                      const value = event.target.value;
-                                      if (value === "") {
-                                        updateGradeForm(row.submissionId, {
-                                          score: "",
-                                        });
-                                        return;
-                                      }
-                                      const nextScore = Number(value);
-                                      if (
-                                        !Number.isFinite(nextScore) ||
-                                        nextScore < 0 ||
-                                        nextScore > 10
-                                      ) {
-                                        return;
-                                      }
-                                      updateGradeForm(row.submissionId, {
-                                        score: value,
-                                      });
-                                    }}
-                                  />
-                                  <button
-                                    className="ft-button ft-button--primary"
-                                    type="button"
-                                    disabled={gradingId === row.submissionId}
-                                    onClick={() => handleGradeSubmission(row)}
-                                  >
-                                    {gradingId === row.submissionId
-                                      ? "Saving..."
-                                      : "Grade"}
-                                  </button>
-                                </>
+                              {row.score != null && (
+                                <strong aria-live="polite">{row.score}/10</strong>
                               )}
+                              <label className="ft-grade-field">
+                                <span>Score</span>
+                                <input
+                                  className="ft-input"
+                                  type="number"
+                                  min="0"
+                                  max="10"
+                                  step="0.1"
+                                  placeholder="Score"
+                                  value={
+                                    gradeForms[row.submissionId]?.score ??
+                                    row.score ??
+                                    ""
+                                  }
+                                  onChange={(event) => {
+                                    const value = event.target.value;
+                                    if (value === "") {
+                                      updateGradeForm(row.submissionId, {
+                                        score: "",
+                                      });
+                                      return;
+                                    }
+                                    const nextScore = Number(value);
+                                    if (
+                                      !Number.isFinite(nextScore) ||
+                                      nextScore < 0 ||
+                                      nextScore > 10
+                                    ) {
+                                      return;
+                                    }
+                                    updateGradeForm(row.submissionId, {
+                                      score: value,
+                                    });
+                                  }}
+                                />
+                              </label>
+                              <label className="ft-grade-field ft-grade-field--feedback">
+                                <span>Feedback</span>
+                                <textarea
+                                  className="ft-input"
+                                  rows={2}
+                                  placeholder="Feedback for the trainee"
+                                  value={
+                                    gradeForms[row.submissionId]
+                                      ?.trainerFeedback ??
+                                    row.trainerFeedback ??
+                                    ""
+                                  }
+                                  onChange={(event) =>
+                                    updateGradeForm(row.submissionId, {
+                                      trainerFeedback: event.target.value,
+                                    })
+                                  }
+                                />
+                              </label>
+                              <button
+                                className="ft-button ft-button--primary"
+                                type="button"
+                                disabled={gradingId === row.submissionId}
+                                onClick={() => handleGradeSubmission(row)}
+                              >
+                                {gradingId === row.submissionId
+                                  ? "Saving..."
+                                  : row.score != null
+                                    ? "Update grade"
+                                    : "Grade"}
+                              </button>
                             </div>
                           ) : (
                             <span className="ft-muted">

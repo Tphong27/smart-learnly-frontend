@@ -192,16 +192,11 @@ export function TraineeFlashTestListPage({ variant = "flash" }) {
 
       const checks = await Promise.allSettled([
         ...flashTests.map(async (test) => {
-          const [attempts, questionMappings] = await Promise.all([
-            attemptService.getHistory(test.id, studentId),
-            testService.getLearnerQuestions(test.id).catch((questionError) => {
-              console.warn("Could not load MCQ question total", questionError);
-              return [];
-            }),
-          ]);
-          const questionTotal = getQuestionTotal(test, {
-            questions: questionMappings,
-          });
+          // The list only needs attempt summaries. Fetching every question for
+          // every historical test created an N+1 burst that could exhaust the
+          // API connection pool and delay starting the selected assessment.
+          const attempts = await attemptService.getHistory(test.id, studentId);
+          const questionTotal = getQuestionTotal(test, ...(attempts || []));
           const sortedAttempts = attempts.sort(
             (a, b) => getAttemptTime(b) - getAttemptTime(a),
           );
@@ -238,6 +233,7 @@ export function TraineeFlashTestListPage({ variant = "flash" }) {
                 taken: isCompletedAssignmentStatus(submission?.status),
                 score: submission?.score ?? "--",
                 status: submission?.status,
+                trainerFeedback: submission?.trainerFeedback,
               },
             ];
           } catch (submissionError) {
@@ -351,7 +347,9 @@ export function TraineeFlashTestListPage({ variant = "flash" }) {
     if (isEssay && dueDate && new Date(dueDate).getTime() <= nowMs) {
       return;
     }
-    if (isAssignmentMode) {
+    // Assignments do not have an access-code contract. This also applies to
+    // essay items shown in the mixed Flash Test list.
+    if (isEssay) {
       navigate(`${takePath}/${item.id}/essay`);
       return;
     }
@@ -625,6 +623,12 @@ export function TraineeFlashTestListPage({ variant = "flash" }) {
                         <td className="ft-cell--title">
                           <span className="ft-title">{item.title || item.name}</span>
                           {item.description && <span className="ft-desc">{item.description}</span>}
+                          {isEssay && result?.trainerFeedback && (
+                            <span className="ft-assignment-feedback">
+                              <strong>Trainer feedback:</strong>{" "}
+                              {result.trainerFeedback}
+                            </span>
+                          )}
                         </td>
                         <td>{duration} mins</td>
                         <td>{displayDate ? new Date(displayDate).toLocaleDateString() : "--"}</td>

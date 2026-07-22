@@ -159,19 +159,11 @@ export function ClassCurriculumTab({ classId, readOnly = false }) {
       return trainerCurriculumService.getCurriculum(classId);
     }, "Section updated");
 
-  const handleDeleteSection = (sectionId, sectionTitle) => {
-    if (
-      !window.confirm(
-        `Delete "${sectionTitle}" and all lessons inside? This cannot be undone.`,
-      )
-    ) {
-      return;
-    }
+  const handleDeleteSection = (sectionId) =>
     runAction(async () => {
       await trainerCurriculumService.deleteSection(classId, sectionId);
       return trainerCurriculumService.getCurriculum(classId);
     }, "Section deleted");
-  };
 
   const handleReorderSections = (orderedIds) =>
     runAction(async () => {

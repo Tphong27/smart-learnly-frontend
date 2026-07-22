@@ -921,6 +921,37 @@
   gap: 18px;
 }
 
+.ft-schedule-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  padding: 16px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.ft-field-help {
+  color: #64748b;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.ft-input--readonly {
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.ft-schedule-grid__error {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 900px) {
+  .ft-schedule-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 .ft-field {
   display: grid;
   gap: 7px;
@@ -2010,9 +2041,37 @@
 
 .ft-grade-cell {
   display: grid;
-  grid-template-columns: max-content minmax(76px, 96px) max-content;
-  align-items: center;
+  grid-template-columns: max-content minmax(76px, 96px) minmax(180px, 1fr) max-content;
+  align-items: end;
   gap: 8px;
+}
+
+.ft-form-fieldset {
+  min-inline-size: 0;
+  margin: 0;
+  border: 0;
+  padding: 0;
+}
+
+.ft-grade-field {
+  display: grid;
+  gap: 4px;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.ft-grade-field--feedback textarea {
+  min-height: 64px;
+  resize: vertical;
+}
+
+.ft-assignment-feedback {
+  display: block;
+  margin-top: 6px;
+  color: #475569;
+  font-size: 13px;
+  line-height: 1.45;
 }
 
 .ft-grade-cell > strong {
@@ -2587,6 +2646,16 @@
 .ft-icon-button:hover:not(:disabled) {
   border-color: var(--ink, #2d2f31);
   background: var(--surface, #f7f9fa);
+}
+
+.ft-icon-button.ft-icon-button--danger {
+  color: #b42318;
+}
+
+.ft-icon-button.ft-icon-button--danger:hover:not(:disabled) {
+  border-color: #fda29b;
+  background: #fff1f0;
+  color: #912018;
 }
 
 .ft-button--ghost {
