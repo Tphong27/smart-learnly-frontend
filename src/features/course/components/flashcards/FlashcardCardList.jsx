@@ -1,7 +1,7 @@
 import {
-  Edit3,
   GripVertical,
   ListOrdered,
+  Pencil,
   Trash2,
 } from "lucide-react";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
@@ -74,7 +74,6 @@ export function FlashcardCardList({
   onDelete,
   onMove,
   emptyAction,
-  renderCardBody,
   dragDisabled = disabled,
 }) {
   const normalizedCards = normalizeCards(cards);
@@ -120,7 +119,6 @@ export function FlashcardCardList({
                 isDragDisabled={dragDisabled || !card.id}
               >
                 {(dragProvided, dragSnapshot) => {
-                  const customBody = renderCardBody?.(card);
                   const rowIndex = pageStartIndex + index + 1;
                   const activateCard = () => {
                     if (disabled) return;
@@ -143,30 +141,28 @@ export function FlashcardCardList({
                         .join(" ")}
                       ref={dragProvided.innerRef}
                       {...dragProvided.draggableProps}
-                      {...(!customBody ? {} : { "data-inline-editing": "true" })}
-                      {...(!customBody
-                        ? {
-                            role: "button",
-                            tabIndex: disabled ? -1 : 0,
-                            "aria-label": selectionMode
-                              ? `Select flashcard ${rowIndex}`
-                              : `Preview flashcard ${rowIndex}`,
-                            "aria-pressed": selectionMode
-                              ? selectedSet.has(card.id)
-                              : undefined,
-                            "aria-current":
-                              !selectionMode && activeCardId === card.id
-                                ? "true"
-                                : undefined,
-                          }
-                        : {})}
+                      role="button"
+                      tabIndex={disabled ? -1 : 0}
+                      aria-label={
+                        selectionMode
+                          ? `Select flashcard ${rowIndex}`
+                          : `Activate flashcard ${rowIndex}`
+                      }
+                      aria-pressed={
+                        selectionMode ? selectedSet.has(card.id) : undefined
+                      }
+                      aria-current={
+                        !selectionMode && activeCardId === card.id
+                          ? "true"
+                          : undefined
+                      }
                       onClick={(event) => {
                         if (disabled) return;
                         if (isInteractiveTarget(event.target)) return;
                         activateCard();
                       }}
                       onKeyDown={(event) => {
-                        if (customBody || disabled) return;
+                        if (disabled) return;
                         if (event.key !== "Enter" && event.key !== " ") return;
                         event.preventDefault();
                         activateCard();
@@ -200,50 +196,45 @@ export function FlashcardCardList({
                         )}
                       </span>
                       <div className="flashcard-list-item__body">
-                        {customBody ? (
-                          customBody
-                        ) : (
-                          <>
-                            <CardSidePreview
-                              label="Front"
-                              content={getSideContent(card, "front")}
-                            />
-                            <CardSidePreview
-                              label="Back"
-                              content={getSideContent(card, "back")}
-                            />
-                            {(card.hint || card.explanation) && (
-                              <div className="flashcard-list-item__meta">
-                                {card.hint && (
-                                  <p>
-                                    <strong>Hint:</strong> {card.hint}
-                                  </p>
-                                )}
-                                {card.explanation && (
-                                  <p>
-                                    <strong>Explanation:</strong> {card.explanation}
-                                  </p>
-                                )}
-                              </div>
+                        <CardSidePreview
+                          label="Front"
+                          content={getSideContent(card, "front")}
+                        />
+                        <CardSidePreview
+                          label="Back"
+                          content={getSideContent(card, "back")}
+                        />
+                        {(card.hint || card.explanation) && (
+                          <div className="flashcard-list-item__meta">
+                            {card.hint && (
+                              <p>
+                                <strong>Hint:</strong> {card.hint}
+                              </p>
                             )}
-                          </>
+                            {card.explanation && (
+                              <p>
+                                <strong>Explanation:</strong> {card.explanation}
+                              </p>
+                            )}
+                          </div>
                         )}
                       </div>
-                      {!customBody && (
-                        <div className="flashcard-list-item__actions">
-                        <button
-                          type="button"
-                          className="flashcard-btn flashcard-btn--icon"
-                          title="Edit card"
-                          aria-label={`Edit flashcard ${rowIndex}`}
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            onEdit?.(card);
-                          }}
-                          disabled={disabled}
-                        >
-                          <Edit3 size={15} />
-                        </button>
+                      <div className="flashcard-list-item__actions">
+                        {onEdit && (
+                          <button
+                            type="button"
+                            className="flashcard-btn flashcard-btn--icon"
+                            title="Edit flashcard"
+                            aria-label={`Edit flashcard ${rowIndex}`}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              onEdit(card);
+                            }}
+                            disabled={disabled}
+                          >
+                            <Pencil size={15} />
+                          </button>
+                        )}
                         <button
                           type="button"
                           className="flashcard-btn flashcard-btn--icon flashcard-btn--danger"
@@ -257,8 +248,7 @@ export function FlashcardCardList({
                         >
                           <Trash2 size={15} />
                         </button>
-                        </div>
-                      )}
+                      </div>
                     </div>
                   );
                 }}

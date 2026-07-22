@@ -64,6 +64,7 @@ function LessonEditorSection({
     stateLabel,
     expanded,
     onToggle,
+    className = "",
     children,
 }) {
     const StatusIcon =
@@ -79,7 +80,12 @@ function LessonEditorSection({
 
     return (
         <section
-            className={`sl-lesson-step sl-lesson-step--${state}${expanded ? " is-expanded" : ""}`}
+            className={[
+                "sl-lesson-step",
+                `sl-lesson-step--${state}`,
+                expanded ? "is-expanded" : "",
+                className,
+            ].filter(Boolean).join(" ")}
         >
             <h2 className="sl-lesson-step__heading" id={headingId}>
                 <button
