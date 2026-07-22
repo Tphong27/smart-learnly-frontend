@@ -126,7 +126,9 @@ export function StaffFlashTestListPage({ variant = "flash" }) {
         setLoading(true);
         try {
             const [testResult, assignmentResult] = await Promise.allSettled([
-                isAssignmentMode ? Promise.resolve([]) : testService.getMine(),
+                isAssignmentMode
+                    ? Promise.resolve([])
+                    : testService.getMine({ ...(courseId && { courseId }) }),
                 isFlashMode || isAssignmentMode
                     ? assignmentService.getMine({
                           ...(courseId && { courseId }),

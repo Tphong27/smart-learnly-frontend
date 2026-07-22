@@ -126,13 +126,17 @@ export function StaffFlashTestCreatePage({ variant = "flash" }) {
         durationValue: "15",
         durationUnit: "minutes",
         description: "",
+        rubric: "",
         courseId: routeCourseId,
+        moduleId: "",
+        isPublished: true,
         classId: routeClassId,
         opensAt: "",
         closesAt: "",
         accessCode: "",
     });
     const [courses, setCourses] = useState([]);
+    const [modules, setModules] = useState([]);
     const [classes, setClasses] = useState([]);
     const [selectedQuestions, setSelectedQuestions] = useState([]);
     const [instructionFile, setInstructionFile] = useState(null);
@@ -193,6 +197,21 @@ export function StaffFlashTestCreatePage({ variant = "flash" }) {
             cancelled = true;
         };
     }, []);
+
+    useEffect(() => {
+        if (testType !== "mcq" || !formData.courseId) {
+            return undefined;
+        }
+        let cancelled = false;
+        courseService.getCourseContent(formData.courseId)
+            .then((items) => {
+                if (!cancelled) setModules(Array.isArray(items) ? items : []);
+            })
+            .catch(() => {
+                if (!cancelled) setModules([]);
+            });
+        return () => { cancelled = true; };
+    }, [formData.courseId, testType]);
 
     useEffect(() => {
         if (!isAssignmentMode) {
@@ -283,6 +302,9 @@ export function StaffFlashTestCreatePage({ variant = "flash" }) {
                         durationValue: duration.value,
                         durationUnit: duration.unit,
                         description: assignment.description || "",
+                        rubric: assignment.rubric || "",
+                        moduleId: "",
+                        isPublished: true,
                         courseId: assignment.courseId || routeCourseId || "",
                         classId: assignment.classId || routeClassId || "",
                         opensAt: "",
@@ -315,6 +337,12 @@ export function StaffFlashTestCreatePage({ variant = "flash" }) {
                         durationValue: duration.value,
                         durationUnit: duration.unit,
                         description: test.description || "",
+                        rubric: "",
+                        moduleId:
+                            test.curriculumSectionId ||
+                            test.curriculum_section_id ||
+                            "",
+                        isPublished: test.isPublished !== false,
                         courseId: test.courseId || test.course_id || "",
                         classId: routeClassId,
                         opensAt: toDateTimeLocal(test.opensAt),
@@ -385,6 +413,7 @@ export function StaffFlashTestCreatePage({ variant = "flash" }) {
                 const payload = {
                     title: formData.title.trim(),
                     description: formData.description,
+                    rubric: formData.rubric,
                     dueDate: new Date(
                         Date.now() + duration * 60 * 1000,
                     ).toISOString(),
@@ -411,6 +440,8 @@ export function StaffFlashTestCreatePage({ variant = "flash" }) {
                     durationMinutes: duration,
                     description: formData.description,
                     courseId: formData.courseId,
+                    curriculumSectionId: formData.moduleId || undefined,
+                    isPublished: formData.isPublished,
                     testType: "practice",
                     maxAttempts: 1,
                     showAnswersAfter: true,
@@ -535,7 +566,7 @@ export function StaffFlashTestCreatePage({ variant = "flash" }) {
                     className="ft-ribbon"
                     aria-label={`${pageName} setup summary`}
                 >
-                    <div className="ft-ribbon__item is-active">
+                    <div className="ft-ribbon__item">
                         <FileText size={18} />
                         <div>
                             <strong>Content</strong>
@@ -723,52 +754,6 @@ export function StaffFlashTestCreatePage({ variant = "flash" }) {
                         </div>
                     </label>
 
-                    {testType === "mcq" && (
-                        <div className="ft-schedule-grid" role="group" aria-label="Test availability">
-                            <label className="ft-field">
-                                <span className="ft-label">Opening date and time</span>
-                                <input
-                                    className="ft-input"
-                                    type="datetime-local"
-                                    value={formData.opensAt}
-                                    onChange={(event) =>
-                                        updateFormData({ opensAt: event.target.value })
-                                    }
-                                />
-                                <span className="ft-field-help">Leave empty to make the test available immediately.</span>
-                            </label>
-                            <label className="ft-field">
-                                <span className="ft-label">Closing date and time</span>
-                                <input
-                                    className="ft-input"
-                                    type="datetime-local"
-                                    value={formData.closesAt}
-                                    min={formData.opensAt || undefined}
-                                    onChange={(event) =>
-                                        updateFormData({ closesAt: event.target.value })
-                                    }
-                                />
-                                <span className="ft-field-help">Leave empty if the test should stay open.</span>
-                            </label>
-                            <label className="ft-field">
-                                <span className="ft-label">Access code</span>
-                                <input
-                                    className="ft-input ft-input--readonly"
-                                    type="text"
-                                    readOnly
-                                    value={formData.accessCode}
-                                    placeholder="Generated after saving"
-                                />
-                                <span className="ft-field-help">The active code is also available from Test Monitor.</span>
-                            </label>
-                            {validationErrors.schedule && (
-                                <span className="ft-field-error ft-schedule-grid__error" role="alert">
-                                    {validationErrors.schedule}
-                                </span>
-                            )}
-                        </div>
-                    )}
-
                     {isFlashMode && !isAssignmentMode && (
                         <div className="ft-field">
                             <span className="ft-label">Assessment type</span>
@@ -842,6 +827,19 @@ export function StaffFlashTestCreatePage({ variant = "flash" }) {
                                 />
                             </label>
 
+                            <label className="ft-field">
+                                <span className="ft-label">Assignment rubric</span>
+                                <textarea
+                                    className="ft-textarea"
+                                    rows={6}
+                                    value={formData.rubric}
+                                    placeholder="Grading criteria generated by AI or entered by the trainer."
+                                    onChange={(event) =>
+                                        updateFormData({ rubric: event.target.value })
+                                    }
+                                />
+                            </label>
+
                             <div className="ft-field">
                                 <span className="ft-label">
                                     Instruction file
@@ -896,42 +894,39 @@ export function StaffFlashTestCreatePage({ variant = "flash" }) {
                                 mode="assignment"
                                 currentTitle={formData.title}
                                 currentDescription={formData.description}
+                                onDraftGenerated={({ rubric }) =>
+                                    updateFormData({ rubric })
+                                }
                             />
                         </>
                     ) : (
                         <>
                             <label className="ft-field">
-                                <span className="ft-label">Course</span>
-                                <select
-                                    className="ft-input"
-                                    value={formData.courseId}
-                                    onChange={(event) => {
-                                        updateFormData({
-                                            courseId: event.target.value,
-                                        });
-                                        setSelectedQuestions([]);
-                                        setValidationErrors((current) => {
-                                            const next = { ...current };
-                                            delete next.questions;
-                                            return next;
-                                        });
-                                    }}
-                                >
-                                    <option value="">Select a course</option>
-                                    {courses.map((course) => (
-                                        <option
-                                            key={getCourseId(course)}
-                                            value={getCourseId(course)}
-                                        >
-                                            {getCourseTitle(course)}
-                                        </option>
+                                <span className="ft-label">Module</span>
+                                <select className="ft-input" value={formData.moduleId} onChange={(event) => updateFormData({ moduleId: event.target.value })} disabled={!formData.courseId}>
+                                    <option value="">Select a module</option>
+                                    {modules.map((module) => (
+                                        <option key={module.id} value={module.id}>{module.title || module.name || "Untitled module"}</option>
                                     ))}
                                 </select>
-                                {validationErrors.courseId && (
-                                    <span className="ft-field-error">
-                                        {validationErrors.courseId}
-                                    </span>
-                                )}
+                            </label>
+
+                            <div className="ft-field">
+                                <span className="ft-label">Status</span>
+                                <div className="ft-tabs" role="group" aria-label="Test status">
+                                    <button className={`ft-tab ${formData.isPublished ? "is-active" : ""}`} type="button" onClick={() => updateFormData({ isPublished: true })}>Active</button>
+                                    <button className={`ft-tab ${!formData.isPublished ? "is-active" : ""}`} type="button" onClick={() => updateFormData({ isPublished: false })}>Inactive</button>
+                                </div>
+                            </div>
+
+                            <label className="ft-field">
+                                <span className="ft-label">Description</span>
+                                <textarea className="ft-textarea" rows={5} value={formData.description} onChange={(event) => updateFormData({ description: event.target.value })} placeholder="Describe this test." />
+                            </label>
+
+                            <label className="ft-field">
+                                <span className="ft-label">Number of questions</span>
+                                <input className="ft-input" value={selectedQuestions.length} readOnly />
                             </label>
 
                             <div className="ft-field">

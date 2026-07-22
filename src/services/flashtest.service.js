@@ -302,6 +302,10 @@ export const attemptService = {
     const response = await apiClient.get(`/test-attempts/test/${testId}`);
     return normalizeList(response);
   },
+  async getById(attemptId) {
+    const response = await apiClient.get(`/test-attempts/${attemptId}`);
+    return unwrap(response);
+  },
   async reopen(testId, studentId) {
     return apiClient.put(`/test-attempts/test/${testId}/student/${studentId}/reopen`);
   },

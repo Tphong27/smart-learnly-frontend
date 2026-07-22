@@ -219,6 +219,11 @@ export function StudentTakeTestPage({
       setLoading(true);
       try {
         if (normalizedType === "mcq") {
+          submittedRef.current = false;
+          setAnswers({});
+          setCompletedResult(null);
+          setSubmitWarning(null);
+          setActiveQuestionIndex(0);
           const test = await testService.getById(id);
           const started = await attemptService.start(
             id,

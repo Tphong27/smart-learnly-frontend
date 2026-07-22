@@ -72,6 +72,7 @@ function accessCodeSecondsLeft(expiresAt, clockTick) {
 }
 
 function numberOrNull(value) {
+  if (value == null || value === "") return null;
   const number = Number(value);
   return Number.isFinite(number) ? number : null;
 }
@@ -144,6 +145,7 @@ export function TeacherMonitorPage() {
   const [clockTick, setClockTick] = useState(0);
   const [questionTotal, setQuestionTotal] = useState(null);
   const [accessInfo, setAccessInfo] = useState(null);
+  const [assignmentRubric, setAssignmentRubric] = useState("");
   const [activeTab, setActiveTab] = useState("live");
   const [attemptHistory, setAttemptHistory] = useState([]);
   const [expandedStudentId, setExpandedStudentId] = useState(null);
@@ -291,6 +293,7 @@ export function TeacherMonitorPage() {
           code: assignment.accessCode,
           expiresAt: assignment.accessCodeExpiresAt,
         });
+        setAssignmentRubric(assignment.rubric || "");
         submissions.forEach((item) =>
           mergeEvent({
             targetId: item.assignmentId,
@@ -624,6 +627,21 @@ export function TeacherMonitorPage() {
           <strong>{monitorStats.expired}</strong>
         </div>
       </div>
+
+      {normalizedType === "essay" && (
+        <div className="ft-panel ft-monitor-rubric">
+          <label className="ft-field">
+            <span className="ft-label">Assignment rubric</span>
+            <textarea
+              className="ft-textarea"
+              rows={6}
+              value={assignmentRubric}
+              readOnly
+              placeholder="No rubric was saved for this assignment."
+            />
+          </label>
+        </div>
+      )}
 
       {normalizedType === "mcq" && (
         <div
