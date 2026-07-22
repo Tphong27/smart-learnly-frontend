@@ -11,6 +11,7 @@ import {
     Plus,
     RefreshCw,
     Search,
+    Trash2,
 } from "lucide-react";
 import {
     assignmentService,
@@ -103,6 +104,7 @@ export function StaffFlashTestListPage({ variant = "flash" }) {
     const [keyword, setKeyword] = useState("");
     const [assignmentView, setAssignmentView] = useState("daily");
     const [nowMs, setNowMs] = useState(0);
+    const [deletingId, setDeletingId] = useState(null);
     const showCurriculumEssays =
         isAssignmentMode && assignmentView === "curriculum";
     const emptyTitle = isAssignmentMode
@@ -245,6 +247,41 @@ export function StaffFlashTestListPage({ variant = "flash" }) {
             essay: rows.filter((item) => item.flashType === "essay").length,
         };
     }, [nowMs, rows]);
+
+    const handleDelete = useCallback(async (item) => {
+        if (isCurriculumEssay(item)) return;
+        const isEssay = item.flashType === "essay";
+        const itemLabel = isEssay
+            ? "assignment"
+            : isFlashTest(item)
+              ? "flash test"
+              : "test";
+        if (!window.confirm(`Delete this ${itemLabel}? This cannot be undone.`)) {
+            return;
+        }
+
+        setDeletingId(item.id);
+        try {
+            if (isEssay) {
+                await assignmentService.remove(item.id);
+                setAssignments((current) =>
+                    current.filter((entry) => entry.id !== item.id),
+                );
+            } else {
+                await testService.remove(item.id);
+                setTests((current) =>
+                    current.filter((entry) => entry.id !== item.id),
+                );
+            }
+        } catch (error) {
+            console.error(`Failed to delete ${itemLabel}`, error);
+            window.alert(
+                error.message || `Could not delete this ${itemLabel}.`,
+            );
+        } finally {
+            setDeletingId(null);
+        }
+    }, []);
 
     return (
         <section className="ft-page ft-page--staff-list">
@@ -503,6 +540,23 @@ export function StaffFlashTestListPage({ variant = "flash" }) {
                                                     >
                                                         <Eye size={16} />
                                                     </Link>
+                                                    {!showCurriculumEssays && (
+                                                        <button
+                                                            className="ft-icon-button ft-icon-button--danger"
+                                                            type="button"
+                                                            title={
+                                                                isEssay
+                                                                    ? "Delete assignment"
+                                                                    : isFlashMode
+                                                                      ? "Delete flash test"
+                                                                      : "Delete test"
+                                                            }
+                                                            disabled={deletingId === item.id}
+                                                            onClick={() => handleDelete(item)}
+                                                        >
+                                                            <Trash2 size={16} />
+                                                        </button>
+                                                    )}
                                                 </div>
                                             </td>
                                         </tr>

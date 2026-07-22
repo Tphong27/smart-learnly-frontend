@@ -189,12 +189,12 @@ export const questionBankService = {
       files.forEach((file) => formData.append('files', file))
       const response = await apiClient.post(`/admin/question-banks/${bankId}/ai-drafts`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
-        timeout: 90000,
+        timeout: 150000,
       })
       return normalizeAiDraftBatch(response)
     }
     const response = await apiClient.post(`/admin/question-banks/${bankId}/ai-drafts`, payload, {
-      timeout: 90000,
+      timeout: 150000,
     })
     return normalizeAiDraftBatch(response)
   },
@@ -206,7 +206,7 @@ export const questionBankService = {
 
   async retryAiDraftBatch(bankId, batchId) {
     const response = await apiClient.post(`/admin/question-banks/${bankId}/ai-drafts/${batchId}/retry`, null, {
-      timeout: 90000,
+      timeout: 150000,
     })
     return normalizeAiDraftBatch(response)
   },

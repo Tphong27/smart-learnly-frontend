@@ -129,6 +129,8 @@ export const flashcardService = {
     const response = await apiClient.post(
       `/admin/flashcard-sets/${setId}/staging/generate-from-file`,
       toGenerationFormData(payload),
+      // Scanned documents can require image reading followed by card generation.
+      { timeout: 390000 },
     );
     return unwrap(response);
   },
@@ -145,6 +147,7 @@ export const flashcardService = {
     const response = await apiClient.post(
       `/admin/flashcard-sets/${setId}/staging/generate-from-transcript-file`,
       toGenerationFormData(payload),
+      { timeout: 150000 },
     );
     return unwrap(response);
   },

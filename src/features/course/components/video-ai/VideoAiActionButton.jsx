@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Clock3, RefreshCw, Sparkles } from "lucide-react";
+import { Loader2, RefreshCw, Sparkles } from "lucide-react";
 import { Button } from "@/shared/components/ui";
 import "./video-ai.css";
 
@@ -12,7 +12,7 @@ const ACTIVE_JOB_STATUSES = new Set([
   "GENERATING",
 ]);
 const STATUS_REQUEST_TIMEOUT_MS = 10000;
-const MAX_AUTOMATIC_POLLS = 120;
+const MAX_AUTOMATIC_POLLS = 240;
 
 function availabilityMessage(reason, videoReady) {
   switch (reason) {
@@ -85,6 +85,7 @@ export function VideoAiActionButton({
   onApplySuggestions,
   videoReady = false,
   showToast,
+  onStatusChange,
 }) {
   const [status, setStatus] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -173,7 +174,14 @@ export function VideoAiActionButton({
 
   useEffect(() => {
     mountedRef.current = true;
-    const timerId = window.setTimeout(loadStatus, 0);
+    const timerId = window.setTimeout(() => {
+      setStatus(null);
+      setLoading(true);
+      setError("");
+      setAutomaticPollingPaused(false);
+      applyWhenReadyRef.current = false;
+      loadStatus();
+    }, 0);
 
     return () => {
       window.clearTimeout(timerId);
@@ -186,20 +194,51 @@ export function VideoAiActionButton({
 
   const activeJob = status?.activeJob;
   const jobStatus = activeJob?.status || "";
-  const hasContent = Boolean(status?.contentId);
-  const waitingForAutomaticPreparation = Boolean(
-    videoReady && status?.enabled && status?.eligible && !activeJob && !hasContent,
+  const jobType = activeJob?.jobType || "";
+  const transcriptReady = Boolean(status?.transcriptReady);
+  const suggestionsReady = Boolean(status?.suggestionsReady);
+  const transcriptJobFailed =
+    jobType === "VIDEO_TRANSCRIPT" && jobStatus === "FAILED";
+  const generationJobFailed =
+    jobType === "VIDEO_ARTIFACTS" && jobStatus === "FAILED";
+  const transcriptBlocked = [
+    "VIDEO_AI_DISABLED",
+    "TRANSCRIPTION_NOT_CONFIGURED",
+    "SOURCE_VERSION_MISSING",
+    "AI_AUDIO_NOT_READY",
+  ].includes(status?.reason);
+  const waitingForAutomaticTranscript = Boolean(
+    videoReady &&
+      status?.enabled &&
+      !transcriptReady &&
+      !transcriptJobFailed &&
+      !transcriptBlocked,
   );
   const polling =
-    ACTIVE_JOB_STATUSES.has(jobStatus) || waitingForAutomaticPreparation;
-  const contentReady =
-    hasContent &&
-    (jobStatus === "COMPLETED" ||
-      (!jobStatus && ["DRAFT", "PUBLISHED"].includes(status?.contentStatus)));
+    ACTIVE_JOB_STATUSES.has(jobStatus) || waitingForAutomaticTranscript;
+  const generatingSuggestions =
+    jobType === "VIDEO_ARTIFACTS" && ACTIVE_JOB_STATUSES.has(jobStatus);
   const progress = Math.min(
     100,
     Math.max(0, Number(activeJob?.progress || 0)),
   );
+
+  useEffect(() => {
+    onStatusChange?.({
+      status,
+      loading,
+      error,
+      polling,
+      pollingPaused: automaticPollingPaused,
+    });
+  }, [
+    automaticPollingPaused,
+    error,
+    loading,
+    onStatusChange,
+    polling,
+    status,
+  ]);
 
   const applySuggestions = useCallback(async () => {
     if (!service?.getCurrentContent || !onApplySuggestions) return;
@@ -254,16 +293,26 @@ export function VideoAiActionButton({
         return;
       }
 
-      const nextWaitingForAutomaticPreparation = Boolean(
+      const nextJobType = next?.activeJob?.jobType || "";
+      const nextJobStatus = next?.activeJob?.status || "";
+      const nextTranscriptFailed =
+        nextJobType === "VIDEO_TRANSCRIPT" && nextJobStatus === "FAILED";
+      const nextTranscriptBlocked = [
+        "VIDEO_AI_DISABLED",
+        "TRANSCRIPTION_NOT_CONFIGURED",
+        "SOURCE_VERSION_MISSING",
+        "AI_AUDIO_NOT_READY",
+      ].includes(next?.reason);
+      const nextWaitingForAutomaticTranscript = Boolean(
         videoReady &&
           next?.enabled &&
-          next?.eligible &&
-          !next?.activeJob &&
-          !next?.contentId,
+          !next?.transcriptReady &&
+          !nextTranscriptFailed &&
+          !nextTranscriptBlocked,
       );
       if (
-        ACTIVE_JOB_STATUSES.has(next?.activeJob?.status) ||
-        nextWaitingForAutomaticPreparation
+        ACTIVE_JOB_STATUSES.has(nextJobStatus) ||
+        nextWaitingForAutomaticTranscript
       ) {
         timerId = window.setTimeout(poll, 5000);
       } else {
@@ -279,10 +328,14 @@ export function VideoAiActionButton({
   }, [automaticPollingPaused, loadStatus, polling, videoReady]);
 
   useEffect(() => {
-    if (contentReady && applyWhenReadyRef.current && jobStatus !== "FAILED") {
+    if (
+      suggestionsReady &&
+      applyWhenReadyRef.current &&
+      jobStatus !== "FAILED"
+    ) {
       applySuggestions();
     }
-  }, [applySuggestions, contentReady, jobStatus]);
+  }, [applySuggestions, jobStatus, suggestionsReady]);
 
   useEffect(() => {
     if (videoReady && !previousVideoReadyRef.current) {
@@ -292,19 +345,47 @@ export function VideoAiActionButton({
     previousVideoReadyRef.current = videoReady;
   }, [loadStatus, videoReady]);
 
-  async function retryGeneration() {
-    if (!activeJob?.id) return;
+  async function startSuggestions() {
+    if (suggestionsReady) {
+      await applySuggestions();
+      return;
+    }
+    if (!service?.createJob) return;
 
     setActionLoading(true);
     try {
       applyWhenReadyRef.current = true;
+      const job = await service.createJob({ sourceLanguage: "auto" });
+      setStatus((current) => ({ ...current, activeJob: job }));
+      setAutomaticPollingPaused(false);
+      showToast?.("AI is creating suggestions from the transcript.", "success");
+    } catch (startError) {
+      applyWhenReadyRef.current = false;
+      console.error("Unable to start AI suggestions:", startError);
+      showToast?.("We could not start AI suggestions. Try again.", "error");
+    } finally {
+      if (mountedRef.current) setActionLoading(false);
+    }
+  }
+
+  async function retryJob() {
+    if (!activeJob?.id) return;
+
+    setActionLoading(true);
+    try {
+      applyWhenReadyRef.current = jobType === "VIDEO_ARTIFACTS";
       await service.retryJob(activeJob.id);
       setAutomaticPollingPaused(false);
-      showToast?.("AI analysis restarted.", "success");
+      showToast?.(
+        jobType === "VIDEO_TRANSCRIPT"
+          ? "Transcript preparation restarted."
+          : "AI suggestion creation restarted.",
+        "success",
+      );
       await loadStatus({ quiet: true });
     } catch (retryError) {
       applyWhenReadyRef.current = false;
-      console.error("Unable to retry AI analysis:", retryError);
+      console.error("Unable to retry video AI job:", retryError);
       showToast?.("We could not try again right now. Try again later.", "error");
     } finally {
       if (mountedRef.current) setActionLoading(false);
@@ -321,7 +402,47 @@ export function VideoAiActionButton({
     }
   }
 
-  if (contentReady && jobStatus !== "FAILED") {
+  if (!transcriptReady) {
+    if (loading && !status) return null;
+
+    if (transcriptJobFailed) {
+      return (
+        <Button
+          variant="secondary"
+          size="sm"
+          className="video-ai-action"
+          loading={actionLoading}
+          loadingLabel="Starting transcript..."
+          title={failedJobMessage(activeJob?.errorMessage)}
+          onClick={retryJob}
+          leftIcon={<RefreshCw size={17} aria-hidden="true" />}
+        >
+          Try transcript again
+        </Button>
+      );
+    }
+
+    if (error || (polling && automaticPollingPaused)) {
+      return (
+        <Button
+          variant="secondary"
+          size="sm"
+          className="video-ai-action"
+          loading={actionLoading}
+          loadingLabel="Checking..."
+          title={error || "Transcript preparation is continuing."}
+          onClick={checkProgress}
+          leftIcon={<RefreshCw size={17} aria-hidden="true" />}
+        >
+          Check transcript
+        </Button>
+      );
+    }
+
+    return null;
+  }
+
+  if (suggestionsReady && !generationJobFailed) {
     return (
       <Button
         variant="secondary"
@@ -329,25 +450,10 @@ export function VideoAiActionButton({
         className="video-ai-action"
         loading={actionLoading}
         loadingLabel="Adding suggestions..."
-        onClick={applySuggestions}
+        onClick={startSuggestions}
         leftIcon={<Sparkles size={17} aria-hidden="true" />}
       >
         Fill details with AI
-      </Button>
-    );
-  }
-
-  if (loading && !status) {
-    return (
-      <Button
-        variant="secondary"
-        size="sm"
-        className="video-ai-action"
-        disabled
-        aria-label="Checking AI suggestion availability"
-        leftIcon={<Sparkles size={17} aria-hidden="true" />}
-      >
-        AI suggestions
       </Button>
     );
   }
@@ -369,26 +475,30 @@ export function VideoAiActionButton({
     );
   }
 
-  if (polling) {
+  if (generatingSuggestions) {
     return (
       <Button
         variant="secondary"
         size="sm"
         className="video-ai-action video-ai-action--working"
         disabled
-        title="Creation continues in the background. You can leave this page."
-        leftIcon={<Clock3 size={17} aria-hidden="true" />}
+        title="AI is creating suggestions from the completed transcript."
+        leftIcon={
+          <Loader2
+            className="video-ai-spin"
+            size={17}
+            aria-hidden="true"
+          />
+        }
       >
-        {waitingForAutomaticPreparation
-          ? "Preparing AI suggestions..."
-          : progress > 0
-            ? `Analyzing video · ${progress}%`
-            : "Analyzing video..."}
+        {progress > 0
+          ? `Creating AI suggestions · ${progress}%`
+          : "Creating AI suggestions..."}
       </Button>
     );
   }
 
-  if (jobStatus === "FAILED") {
+  if (generationJobFailed) {
     return (
       <Button
         variant="secondary"
@@ -397,10 +507,26 @@ export function VideoAiActionButton({
         loading={actionLoading}
         loadingLabel="Starting again..."
         title={failedJobMessage(activeJob?.errorMessage)}
-        onClick={retryGeneration}
+        onClick={retryJob}
         leftIcon={<RefreshCw size={17} aria-hidden="true" />}
       >
-        Try AI analysis again
+        Try AI suggestions again
+      </Button>
+    );
+  }
+
+  if (status?.eligible) {
+    return (
+      <Button
+        variant="secondary"
+        size="sm"
+        className="video-ai-action"
+        loading={actionLoading}
+        loadingLabel="Starting AI..."
+        onClick={startSuggestions}
+        leftIcon={<Sparkles size={17} aria-hidden="true" />}
+      >
+        Fill details with AI
       </Button>
     );
   }
