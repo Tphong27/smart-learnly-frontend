@@ -38,7 +38,7 @@ export function AppLayout() {
         if (path.includes("/audit-log")) return "System Activity Log";
         if (path.includes("/settings")) return "System Settings";
         if (path.includes("/classrooms")) return "Classrooms";
-        if (path.includes("/tests")) return "Tests Management";
+        if (path.includes("/tests")) return "Manage test";
         if (path.includes("/flashcards")) return "Flashcards";
         if (path.includes("/dashboard")) return "Dashboard";
         return "Workspace";

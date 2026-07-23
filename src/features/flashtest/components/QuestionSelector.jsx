@@ -14,6 +14,7 @@ function questionId(question) {
 
 export function QuestionSelector({
   courseId,
+  moduleId,
   selectedQuestions = [],
   onQuestionsChange,
 }) {
@@ -53,6 +54,7 @@ export function QuestionSelector({
         const batch = await questionService.getByCourse(courseId, {
           size: pageSize,
           page,
+          ...(moduleId && moduleId !== "all" ? { moduleId } : {}),
         });
         loaded.push(...batch);
         if (batch.length < pageSize) break;
@@ -64,7 +66,7 @@ export function QuestionSelector({
     } finally {
       setLoading(false);
     }
-  }, [courseId]);
+  }, [courseId, moduleId]);
 
   useEffect(() => {
     const timer = window.setTimeout(loadQuestions, 0);
@@ -182,7 +184,9 @@ export function QuestionSelector({
       </div>
       {loading && <p className="ft-muted">Loading available questions...</p>}
       {!loading && courseId && questions.length === 0 && (
-        <p className="ft-muted">No questions found for this course.</p>
+        <p className="ft-muted">
+          No questions found for the selected {moduleId === "all" ? "course" : "module"}.
+        </p>
       )}
 
       {randomModalOpen && (

@@ -17,6 +17,7 @@ import {
   testService,
 } from "@/services/flashtest.service.js";
 import { getCurrentUser } from "@/services/api-client";
+import Pagination from "@/shared/components/Pagination";
 import "../flashtest.css";
 
 function isFlashTest(item) {
@@ -73,6 +74,27 @@ function getQuestionTotal(...sources) {
     if (total && total > 0) return total;
   }
   return null;
+}
+
+function getDurationMinutes(item) {
+  const explicitDuration =
+    numberOrNull(item?.durationMinutes) ??
+    numberOrNull(item?.duration_minutes) ??
+    numberOrNull(item?.duration);
+  if (explicitDuration != null) return Math.max(1, Math.round(explicitDuration));
+
+  const dueDate = item?.dueDate || item?.due_date;
+  const baseTime =
+    item?.updatedAt ||
+    item?.updated_at ||
+    item?.createdAt ||
+    item?.created_at;
+  if (!dueDate || !baseTime) return null;
+
+  const durationMs = new Date(dueDate).getTime() - new Date(baseTime).getTime();
+  return Number.isFinite(durationMs)
+    ? Math.max(1, Math.round(durationMs / 60000))
+    : null;
 }
 
 function formatScoreValue(value) {
@@ -141,6 +163,8 @@ export function TraineeFlashTestListPage({ variant = "flash" }) {
   const [resultMap, setResultMap] = useState({});
   const [loading, setLoading] = useState(false);
   const [keyword, setKeyword] = useState("");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
   const [nowMs, setNowMs] = useState(0);
   const [accessModal, setAccessModal] = useState({
     open: false,
@@ -178,7 +202,11 @@ export function TraineeFlashTestListPage({ variant = "flash" }) {
         );
       }
       const [testData, assignmentData] = await Promise.all(requests);
-      const flashTests = (testData || []).filter(itemFilter);
+      const flashTests = (testData || []).filter(
+        (item) =>
+          itemFilter(item) &&
+          (item?.isPublished ?? item?.is_published ?? item?.published ?? false) === true,
+      );
       const flashAssignments = isFlashMode || isAssignmentMode
         ? (assignmentData || []).filter(itemFilter)
         : [];
@@ -345,6 +373,13 @@ export function TraineeFlashTestListPage({ variant = "flash" }) {
     return items;
   }, [assessmentItems, keyword, filterTab, resultMap, nowMs]);
 
+  const totalPages = Math.max(1, Math.ceil(filteredRows.length / pageSize));
+  const currentPage = Math.min(page, totalPages);
+  const paginatedRows = useMemo(
+    () => filteredRows.slice((currentPage - 1) * pageSize, currentPage * pageSize),
+    [currentPage, filteredRows, pageSize],
+  );
+
   const openAccessModal = (item, isEssay) => {
     const dueDate = item?.dueDate || item?.due_date;
     if (isEssay && dueDate && new Date(dueDate).getTime() <= nowMs) {
@@ -487,7 +522,10 @@ export function TraineeFlashTestListPage({ variant = "flash" }) {
               <button
                 type="button"
                 className={`ft-tests-tab ${filterTab === "all" ? "ft-tests-tab--active" : ""}`}
-                onClick={() => setFilterTab("all")}
+                onClick={() => {
+                  setFilterTab("all");
+                  setPage(1);
+                }}
                 role="tab"
                 aria-selected={filterTab === "all"}
               >
@@ -496,7 +534,10 @@ export function TraineeFlashTestListPage({ variant = "flash" }) {
               <button
                 type="button"
                 className={`ft-tests-tab ${filterTab === "ready" ? "ft-tests-tab--active" : ""}`}
-                onClick={() => setFilterTab("ready")}
+                onClick={() => {
+                  setFilterTab("ready");
+                  setPage(1);
+                }}
                 role="tab"
                 aria-selected={filterTab === "ready"}
               >
@@ -505,7 +546,10 @@ export function TraineeFlashTestListPage({ variant = "flash" }) {
               <button
                 type="button"
                 className={`ft-tests-tab ${filterTab === "done" ? "ft-tests-tab--active" : ""}`}
-                onClick={() => setFilterTab("done")}
+                onClick={() => {
+                  setFilterTab("done");
+                  setPage(1);
+                }}
                 role="tab"
                 aria-selected={filterTab === "done"}
               >
@@ -514,7 +558,10 @@ export function TraineeFlashTestListPage({ variant = "flash" }) {
               <button
                 type="button"
                 className={`ft-tests-tab ${filterTab === "expired" ? "ft-tests-tab--active" : ""}`}
-                onClick={() => setFilterTab("expired")}
+                onClick={() => {
+                  setFilterTab("expired");
+                  setPage(1);
+                }}
                 role="tab"
                 aria-selected={filterTab === "expired"}
               >
@@ -527,7 +574,10 @@ export function TraineeFlashTestListPage({ variant = "flash" }) {
                 type="search"
                 placeholder="Search tests..."
                 value={keyword}
-                onChange={(event) => setKeyword(event.target.value)}
+                onChange={(event) => {
+                  setKeyword(event.target.value);
+                  setPage(1);
+                }}
               />
             </label>
           </div>
@@ -544,7 +594,7 @@ export function TraineeFlashTestListPage({ variant = "flash" }) {
                   <th>Due Date</th>
                   <th>Score</th>
                   <th>Status</th>
-                  <th>Action</th>
+                  <th className="ft-tests-action-column">Action</th>
                 </tr>
               </thead>
               <tbody>
@@ -593,11 +643,11 @@ export function TraineeFlashTestListPage({ variant = "flash" }) {
                   <th>Due Date</th>
                   <th>Score</th>
                   <th>Status</th>
-                  <th>Action</th>
+                  <th className="ft-tests-action-column">Action</th>
                 </tr>
               </thead>
               <tbody>
-                {filteredRows.map((item) => {
+                {paginatedRows.map((item) => {
                   const key = `${item.flashType}-${item.id}`;
                   const result = resultMap[key];
                   const isEssay = item.flashType === "essay";
@@ -609,14 +659,14 @@ export function TraineeFlashTestListPage({ variant = "flash" }) {
                   const statusLabel = taken ? "Completed" : expired ? "Expired" : "Ready";
                   const typeLabel = isEssay ? "Essay" : "MCQ";
                   const TypeIcon = isEssay ? FileText : CheckSquare;
-                  const duration = item.durationMinutes ?? item.duration_minutes ?? item.duration ?? "--";
+                  const duration = getDurationMinutes(item);
                   const displayDate = dueDate || item.createdAt || item.created_at;
                   const score = result?.score;
                   const displayScore = score != null ? score : "--";
 
                   return (
                     <Fragment key={key}>
-                      <tr className={expired ? "ft-row--expired" : taken ? "ft-row--completed" : ""}>
+                      <tr className={taken ? "ft-row--completed" : expired ? "ft-row--expired" : ""}>
                         <td>
                           <span className={`ft-badge ft-badge--${isEssay ? "essay" : "mcq"}`}>
                             <TypeIcon size={12} />
@@ -625,15 +675,8 @@ export function TraineeFlashTestListPage({ variant = "flash" }) {
                         </td>
                         <td className="ft-cell--title">
                           <span className="ft-title">{item.title || item.name}</span>
-                          {item.description && <span className="ft-desc">{item.description}</span>}
-                          {isEssay && result?.trainerFeedback && (
-                            <span className="ft-assignment-feedback">
-                              <strong>Trainer feedback:</strong>{" "}
-                              {result.trainerFeedback}
-                            </span>
-                          )}
                         </td>
-                        <td>{duration} mins</td>
+                        <td>{duration != null ? `${duration} mins` : "--"}</td>
                         <td>{displayDate ? new Date(displayDate).toLocaleDateString() : "--"}</td>
                         <td>{displayScore}</td>
                         <td>
@@ -641,7 +684,7 @@ export function TraineeFlashTestListPage({ variant = "flash" }) {
                             {statusLabel}
                           </span>
                         </td>
-                        <td>
+                        <td className="ft-tests-action-column">
                           <div className="ft-table-actions">
                             {hasAttemptHistory && (
                               <button
@@ -680,6 +723,19 @@ export function TraineeFlashTestListPage({ variant = "flash" }) {
             </table>
           </div>
         )}
+        <Pagination
+          page={currentPage}
+          totalPages={totalPages}
+          totalItems={filteredRows.length}
+          size={pageSize}
+          onPageChange={setPage}
+          onSizeChange={(nextSize) => {
+            setPageSize(nextSize);
+            setPage(1);
+          }}
+          disabled={loading}
+          ariaLabel={`${pageTitle} pagination`}
+        />
       </div>
 
       {loading && (

@@ -280,6 +280,12 @@
   border-radius: 16px;
 }
 
+.ft-ops-panel--flat {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
 .ft-table-wrap--ops {
   border: 0;
   border-radius: 14px;
@@ -1116,6 +1122,35 @@
   display: flex;
   gap: 10px;
   flex-wrap: wrap;
+}
+
+.ft-radio-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.ft-radio-option {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  gap: 8px;
+  color: var(--ink);
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.ft-radio-option input[type="radio"] {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: var(--primary);
+  cursor: pointer;
+}
+
+.ft-radio-option input[type="radio"]:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 3px;
 }
 
 .ft-monitor-tabs {
@@ -2944,6 +2979,39 @@
   gap: 20px;
 }
 
+.ft-ops-panel.ft-ops-panel--flat {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  padding: 0;
+}
+
+.ft-score-cell {
+  display: flex;
+  min-width: 120px;
+  align-items: center;
+  gap: 10px;
+}
+
+.ft-score-input {
+  width: 92px;
+}
+
+.ft-tests-table .ft-tests-action-column {
+  text-align: center;
+}
+
+.ft-tests-action-column .ft-table-actions {
+  justify-content: center;
+}
+
+.ft-badge--inactive {
+  border-color: var(--line, #d1d7dc);
+  background: var(--surface, #f7f9fa);
+  color: var(--muted, #6a6f73);
+}
+
 /* Tabs Panel */
 .ft-tests-tabs-panel {
   display: flex;
@@ -3105,11 +3173,11 @@
 }
 
 .ft-row--expired td {
-  opacity: 0.6;
+  color: var(--ink, #2d2f31);
 }
 
 .ft-row--completed td {
-  color: var(--muted, #6a6f73);
+  color: var(--ink, #2d2f31);
 }
 
 /* Table badges */
