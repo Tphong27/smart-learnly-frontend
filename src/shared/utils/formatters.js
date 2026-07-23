@@ -71,7 +71,7 @@ export function formatDate(value, locale = DEFAULT_LOCALE, options) {
   return date.toLocaleDateString(locale, options);
 }
 
-export function formatDateTime(value, locale = DEFAULT_LOCALE) {
+export function formatDateTime(value, locale = DEFAULT_LOCALE, options) {
   if (!value) return "--";
 
   const date = new Date(value);
@@ -80,7 +80,7 @@ export function formatDateTime(value, locale = DEFAULT_LOCALE) {
     return "--";
   }
 
-  return date.toLocaleString(locale);
+  return date.toLocaleString(locale, options);
 }
 
 export function formatTime(value, locale = DEFAULT_LOCALE) {

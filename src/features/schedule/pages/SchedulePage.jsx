@@ -10,29 +10,20 @@ import { getCurrentUser, scheduleService, userService } from "@/services";
 import { normalizeRole, ROLES } from "@/shared/constants/roles";
 import { formatDate, formatTime } from "@/shared/utils/formatters";
 import { getGoogleMeetUrl } from "@/shared/utils/googleMeetUrl";
+import { WEEK_DAY_OPTIONS } from "@/shared/constants/week-days";
 import {
   addDays,
   formatWeekInput,
   fromIsoWeek,
   startOfWeek,
   toDateKey,
-} from "../utils/weekUtils";
+} from "@/shared/utils/date";
 import "../schedule.css";
 
 const DAY_FORMAT_OPTIONS = {
   day: "2-digit",
   month: "2-digit",
 };
-
-const WEEK_DAYS = [
-  { short: "MON", full: "Monday" },
-  { short: "TUE", full: "Tuesday" },
-  { short: "WED", full: "Wednesday" },
-  { short: "THU", full: "Thursday" },
-  { short: "FRI", full: "Friday" },
-  { short: "SAT", full: "Saturday" },
-  { short: "SUN", full: "Sunday" },
-];
 
 const EMPTY_SESSIONS = [];
 
@@ -215,7 +206,7 @@ export function SchedulePage() {
 
   const days = useMemo(
     () =>
-      WEEK_DAYS.map((day, index) => ({
+      WEEK_DAY_OPTIONS.map((day, index) => ({
         ...day,
         date: toDateKey(addDays(weekStart, index)),
       })),

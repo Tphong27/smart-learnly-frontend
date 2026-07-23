@@ -675,17 +675,6 @@
   font-weight: 700;
 }
 
-.class-overview-edit-form {
-  display: grid;
-  gap: 16px;
-
-  margin-top: 20px;
-  padding: 0;
-
-  border: 0;
-  background: transparent;
-}
-
 .class-overview-schedule {
   width: 100%;
   margin-top: 28px;

@@ -1,35 +1,44 @@
-export function formatDate(dateString) {
-  if (!dateString) return "--";
+import {
+  formatDate as formatSharedDate,
+  formatDateTime as formatSharedDateTime,
+  formatPrice,
+  formatStatusLabel,
+} from "@/shared/utils/formatters";
 
-  try {
-    return new Date(dateString).toLocaleDateString("vi-VN", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-    });
-  } catch {
-    return "--";
-  }
+const CLASS_DATE_OPTIONS = {
+  day: "2-digit",
+  month: "2-digit",
+  year: "numeric",
+};
+
+const CLASS_DATE_TIME_OPTIONS = {
+  day: "2-digit",
+  month: "2-digit",
+  year: "numeric",
+  hour: "2-digit",
+  minute: "2-digit",
+};
+
+export function formatDate(dateString) {
+  return formatSharedDate(
+    dateString,
+    "vi-VN",
+    CLASS_DATE_OPTIONS,
+  );
 }
 
 export function formatDateTime(dateString) {
-  if (!dateString) return "--";
-
-  try {
-    return new Date(dateString).toLocaleDateString("vi-VN", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  } catch {
-    return "--";
-  }
+  return formatSharedDateTime(
+    dateString,
+    "vi-VN",
+    CLASS_DATE_TIME_OPTIONS,
+  );
 }
 
 export function formatCapacity(activeEnrollmentCount, maxStudents) {
-  return `${Number(activeEnrollmentCount || 0)}/${Number(maxStudents || 0)}`;
+  return `${Number(activeEnrollmentCount || 0)}/${Number(
+    maxStudents || 0,
+  )}`;
 }
 
 export function formatVnd(value) {
@@ -43,19 +52,11 @@ export function formatVnd(value) {
     return "--";
   }
 
-  if (amount === 0) {
-    return "Free";
-  }
-
-  return new Intl.NumberFormat("vi-VN", {
-    style: "currency",
-    currency: "VND",
-    maximumFractionDigits: 0,
-  }).format(amount);
+  return formatPrice(amount, amount === 0);
 }
 
 export function getStatusColorClass(status) {
-  const normalized = (status || "").toUpperCase();
+  const normalized = String(status || "").toUpperCase();
 
   const colorMap = {
     UPCOMING: "status-upcoming",
@@ -70,16 +71,9 @@ export function getStatusColorClass(status) {
 }
 
 export function getStatusLabel(status) {
-  const normalized = (status || "").toUpperCase();
+  if (!status) {
+    return "Unknown";
+  }
 
-  const labels = {
-    UPCOMING: "Upcoming",
-    ONGOING: "Ongoing",
-    ACTIVE: "Active",
-    COMPLETED: "Completed",
-    CANCELLED: "Cancelled",
-    DRAFT: "Draft",
-  };
-
-  return labels[normalized] || status || "Unknown";
+  return formatStatusLabel(status);
 }

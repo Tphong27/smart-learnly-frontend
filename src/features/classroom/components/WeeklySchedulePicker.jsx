@@ -1,18 +1,10 @@
 import { Controller } from "react-hook-form";
 import { Plus, Trash2 } from "lucide-react";
+import { WEEK_DAY_OPTIONS } from "@/shared/constants/week-days";
 
-const WEEK_DAYS = [
-  { value: "MONDAY", label: "Monday" },
-  { value: "TUESDAY", label: "Tuesday" },
-  { value: "WEDNESDAY", label: "Wednesday" },
-  { value: "THURSDAY", label: "Thursday" },
-  { value: "FRIDAY", label: "Friday" },
-  { value: "SATURDAY", label: "Saturday" },
-  { value: "SUNDAY", label: "Sunday" },
-];
 
 function createEmptySchedule() {
-  return WEEK_DAYS.map((day) => ({
+  return WEEK_DAY_OPTIONS.map((day) => ({
     dayOfWeek: day.value,
     enabled: false,
     slots: [],
@@ -31,7 +23,7 @@ function parseSchedule(value) {
       return createEmptySchedule();
     }
 
-    return WEEK_DAYS.map((day) => {
+    return WEEK_DAY_OPTIONS.map((day) => {
       const matchedDay = parsed.find((item) => item.dayOfWeek === day.value);
 
       return {
@@ -153,7 +145,7 @@ export function WeeklyScheduleEditor({
         <span>Time slots</span>
       </div>
 
-      {WEEK_DAYS.map((day, dayIndex) => {
+      {WEEK_DAY_OPTIONS.map((day, dayIndex) => {
         const daySchedule = schedule[dayIndex] || {
           dayOfWeek: day.value,
           enabled: false,

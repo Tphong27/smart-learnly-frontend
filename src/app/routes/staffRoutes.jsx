@@ -20,7 +20,7 @@ import AdminLessonDetailPage from "@/features/course/pages/AdminLessonDetailPage
 import VideoAiReviewPage from "@/features/course/pages/VideoAiReviewPage";
 import {
   StaffClassListPage,
-  TmoCreateClassPage,
+  EditionClassPage,
   ClassDetailPage,
   TrainerLessonDetailPage,
   ClassAnalyticsPage,
@@ -146,7 +146,22 @@ function getStaffRoutes() {
             {
               path: "classrooms/create",
               element: <RoleGuard allowedRoles={[ROLES.TMO]} />,
-              children: [{ index: true, element: <TmoCreateClassPage /> }],
+              children: [
+                {
+                  index: true,
+                  element: <EditionClassPage />,
+                },
+              ],
+            },
+            {
+              path: "classrooms/:classId/edit",
+              element: <RoleGuard allowedRoles={[ROLES.TMO]} />,
+              children: [
+                {
+                  index: true,
+                  element: <EditionClassPage />,
+                },
+              ],
             },
             {
               path: "classrooms/:classId/workspace",

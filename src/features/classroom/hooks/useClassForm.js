@@ -1,46 +1,21 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { classFormSchema } from "../utils/classValidator";
+import { classEditFormSchema, classFormSchema } from "../utils/classValidator";
+import {
+  toClassFormValues,
+  toCreateClassPayload,
+  toUpdateClassPayload,
+} from "../utils/classFormMapper";
 import { classService } from "@/services";
 
-function toInputDate(value) {
-  if (!value) return "";
-  return String(value).slice(0, 10);
-}
+export function useClassForm({
+  mode = "create",
+  initialData = null,
+  onSuccess = null,
+} = {}) {
+  const isEditMode = mode === "edit";
 
-function toFormValues(initialData) {
-  if (!initialData) {
-    return {
-      courseId: "",
-      className: "",
-      trainerId: "",
-      meetingUrl: "",
-      scheduleDescription: "",
-      startDate: "",
-      endDate: "",
-      maxStudents: 30,
-      price: "",
-    };
-  }
-
-  return {
-    courseId: initialData.courseId || "",
-    className: initialData.className || "",
-    trainerId: initialData.trainerId || "",
-    meetingUrl: initialData.meetingUrl || "",
-    scheduleDescription: initialData.scheduleDescription || "",
-    startDate: toInputDate(initialData.startDate),
-    endDate: toInputDate(initialData.endDate),
-    maxStudents: Number(initialData.maxStudents ?? 30),
-    price:
-      initialData.price === null || initialData.price === undefined
-        ? ""
-        : Number(initialData.price),
-  };
-}
-
-export function useClassForm(initialData = null, onSuccess = null) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState(null);
 
@@ -48,60 +23,60 @@ export function useClassForm(initialData = null, onSuccess = null) {
     register,
     handleSubmit,
     formState: { errors },
-    reset,
     watch,
     control,
   } = useForm({
-    resolver: zodResolver(classFormSchema),
-    defaultValues: toFormValues(initialData),
+    resolver: zodResolver(isEditMode ? classEditFormSchema : classFormSchema),
+    defaultValues: toClassFormValues(initialData),
   });
 
-  useEffect(() => {
-    reset(toFormValues(initialData));
-  }, [initialData, reset]);
-
-  const onSubmit = useCallback(
+  const submitForm = useCallback(
     async (formData) => {
       setIsSubmitting(true);
       setSubmitError(null);
 
+      let savedClass;
+
       try {
-        const payload = {
-          ...formData,
-          trainerId: formData.trainerId || null,
-          meetingUrl: formData.meetingUrl.trim(),
-          scheduleDescription: formData.scheduleDescription || null,
-          startDate: formData.startDate || null,
-          endDate: formData.endDate || null,
-          maxStudents: Number(formData.maxStudents),
-          price: Number(formData.price),
-        };
+        if (isEditMode) {
+          if (!initialData?.id) {
+            throw new Error("Class ID is required for editing");
+          }
 
-        if (initialData?.id) {
-          await classService.update(initialData.id, payload);
+          const updatePayload = toUpdateClassPayload(formData, initialData);
+
+          if (Object.keys(updatePayload).length === 0) {
+            savedClass = initialData;
+          } else {
+            savedClass = await classService.update(
+              initialData.id,
+              updatePayload,
+            );
+          }
         } else {
-          await classService.create(payload);
+          savedClass = await classService.create(
+            toCreateClassPayload(formData),
+          );
         }
-
-        onSuccess?.();
       } catch (error) {
-        setSubmitError(error.message || "An error occurred");
-      } finally {
+        setSubmitError(error?.message || "An error occurred");
         setIsSubmitting(false);
+        return;
       }
+      
+      setIsSubmitting(false);
+      onSuccess?.(savedClass);
     },
-    [initialData, onSuccess],
+    [initialData, isEditMode, onSuccess],
   );
 
   return {
     register,
-    handleSubmit,
     errors,
-    reset,
     watch,
     control,
     isSubmitting,
     submitError,
-    onSubmit: handleSubmit(onSubmit),
+    onSubmit: handleSubmit(submitForm),
   };
 }

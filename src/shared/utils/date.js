@@ -3,18 +3,45 @@ export function parseLocalDate(value) {
     return new Date(value.getFullYear(), value.getMonth(), value.getDate());
   }
 
-  const [year, month, day] = String(value).split("-").map(Number);
+  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(
+    String(value || "").trim(),
+  );
 
-  return new Date(year, month - 1, day);
+  if (!match) {
+    return new Date(Number.NaN);
+  }
+
+  return new Date(
+    Number(match[1]),
+    Number(match[2]) - 1,
+    Number(match[3]),
+  );
 }
 
 export function toDateKey(value) {
   const date = parseLocalDate(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return "";
+  }
+
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
 
   return `${year}-${month}-${day}`;
+}
+
+export function toDateInputValue(value) {
+  if (!value) {
+    return "";
+  }
+
+  return toDateKey(value);
+}
+
+export function getTodayDateKey() {
+  return toDateKey(new Date());
 }
 
 export function addDays(value, amount) {
@@ -44,14 +71,20 @@ export function getIsoWeekInfo(value) {
 
   const dayNumber = (target.getUTCDay() + 6) % 7;
   target.setUTCDate(target.getUTCDate() - dayNumber + 3);
+
   const year = target.getUTCFullYear();
   const firstThursday = new Date(Date.UTC(year, 0, 4));
   const firstDayNumber = (firstThursday.getUTCDay() + 6) % 7;
-  firstThursday.setUTCDate(firstThursday.getUTCDate() - firstDayNumber + 3);
+
+  firstThursday.setUTCDate(
+    firstThursday.getUTCDate() - firstDayNumber + 3,
+  );
+
   const week =
     1 +
     Math.round(
-      (target.getTime() - firstThursday.getTime()) / (7 * 24 * 60 * 60 * 1000),
+      (target.getTime() - firstThursday.getTime()) /
+        (7 * 24 * 60 * 60 * 1000),
     );
 
   return { year, week };

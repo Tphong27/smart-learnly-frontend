@@ -1,93 +1,115 @@
 import { z } from "zod";
+import { getTodayDateKey } from "@/shared/utils/date";
 import { isGoogleMeetUrl } from "@/shared/utils/googleMeetUrl";
 
-export function todayString() {
-  const now = new Date();
-  const timezoneOffset = now.getTimezoneOffset() * 60000;
-
-  return new Date(now.getTime() - timezoneOffset).toISOString().slice(0, 10);
-}
-
 function isNotPastDate(value) {
-  if (!value) return true;
-  return value >= todayString();
+  if (!value) {
+    return true;
+  }
+
+  return value >= getTodayDateKey();
 }
 
-export const classFormSchema = z
-  .object({
-    courseId: z
-      .string()
-      .uuid("Invalid course")
-      .min(1, "Please select a course"),
+function createRequiredDateSchema({ fieldLabel, allowPastDates }) {
+  return z
+    .string()
+    .min(1, `Please select ${fieldLabel}`)
+    .refine(
+      (value) => allowPastDates || isNotPastDate(value),
+      `${fieldLabel} must not be in the past`,
+    );
+}
 
-    className: z
-      .string()
-      .min(3, "Class name must be at least 3 characters")
-      .max(255, "Class name must not exceed 255 characters")
-      .trim(),
+function buildClassFormSchema({
+  allowPastDates = false,
+  requireStatus = false,
+} = {}) {
+  const statusSchema = requireStatus
+    ? z.string().trim().min(1, "Class status is required")
+    : z.string().trim().optional();
 
-    trainerId: z
-      .string()
-      .trim()
-      .min(1, "Please select a trainer")
-      .uuid("Invalid trainer ID"),
+  return z
+    .object({
+      courseId: z
+        .string()
+        .min(1, "Please select a course")
+        .uuid("Invalid course"),
 
-    meetingUrl: z
-      .string()
-      .trim()
-      .min(1, "Google Meet URL is required")
-      .max(255, "Google Meet URL must not exceed 255 characters")
-      .refine(
-        (value) => isGoogleMeetUrl(value),
-        "Use the format https://meet.google.com/abc-defg-hij",
-      ),
+      className: z
+        .string()
+        .trim()
+        .min(3, "Class name must be at least 3 characters")
+        .max(255, "Class name must not exceed 255 characters"),
 
-    scheduleDescription: z
-      .string()
-      .min(1, "Please select at least one class schedule")
-      .max(2000, "Schedule description must not exceed 2000 characters"),
+      trainerId: z
+        .string()
+        .trim()
+        .min(1, "Please select a trainer")
+        .uuid("Invalid trainer ID"),
 
-    startDate: z
-      .string()
-      .min(1, "Vui lòng chọn ngày bắt đầu")
-      .refine((value) => isNotPastDate(value), {
-        message: "Ngày bắt đầu không được là ngày trong quá khứ",
+      meetingUrl: z
+        .string()
+        .trim()
+        .min(1, "Google Meet URL is required")
+        .max(255, "Google Meet URL must not exceed 255 characters")
+        .refine(
+          (value) => isGoogleMeetUrl(value),
+          "Use the format https://meet.google.com/abc-defg-hij",
+        ),
+
+      scheduleDescription: z
+        .string()
+        .min(1, "Please select at least one class schedule")
+        .max(2000, "Schedule description must not exceed 2000 characters"),
+
+      startDate: createRequiredDateSchema({
+        fieldLabel: "start date",
+        allowPastDates,
       }),
 
-    endDate: z
-      .string()
-      .min(1, "Vui lòng chọn ngày kết thúc")
-      .refine((value) => isNotPastDate(value), {
-        message: "Ngày kết thúc không được là ngày trong quá khứ",
+      endDate: createRequiredDateSchema({
+        fieldLabel: "end date",
+        allowPastDates,
       }),
 
-    maxStudents: z
-      .number()
-      .min(1, "Maximum students must be at least 1")
-      .max(500, "Maximum students must not exceed 500")
-      .int("Maximum students must be an integer"),
+      maxStudents: z
+        .number({
+          invalid_type_error: "Capacity must be a valid number",
+        })
+        .int("Capacity must be an integer")
+        .min(1, "Capacity must be at least 1")
+        .max(500, "Capacity must not exceed 500"),
 
-    price: z
-      .number({
-        required_error: "Class price is required",
-        invalid_type_error: "Class price must be a valid number",
-      })
-      .min(0, "Class price must be greater than or equal to 0"),
-  })
-  .refine(
-    (data) => {
-      if (!data.startDate || !data.endDate) return true;
+      price: z
+        .number({
+          required_error: "Class price is required",
+          invalid_type_error: "Class price must be a valid number",
+        })
+        .min(0, "Class price must be greater than or equal to 0"),
 
-      const start = new Date(data.startDate);
-      const end = new Date(data.endDate);
+      status: statusSchema,
+    })
+    .refine(
+      (data) => {
+        if (!data.startDate || !data.endDate) {
+          return true;
+        }
 
-      return end >= start;
-    },
-    {
-      message: "End date cannot be before start date",
-      path: ["endDate"],
-    },
-  );
+        return new Date(data.endDate) >= new Date(data.startDate);
+      },
+      {
+        message: "End date cannot be before start date",
+        path: ["endDate"],
+      },
+    );
+}
+
+export const classFormSchema = buildClassFormSchema();
+
+export const classEditFormSchema = buildClassFormSchema({
+  allowPastDates: true,
+  requireStatus: true,
+});
 
 export function validateClassForm(data) {
   return classFormSchema.parse(data);

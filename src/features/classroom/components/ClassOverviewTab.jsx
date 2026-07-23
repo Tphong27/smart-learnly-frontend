@@ -1,284 +1,11 @@
-import { useEffect, useState } from "react";
-import { Edit3, ExternalLink, Save, X } from "lucide-react";
+import { Edit3, ExternalLink } from "lucide-react";
 import { Button } from "@/shared/components/ui";
-import {
-  getGoogleMeetUrl,
-  isGoogleMeetUrl,
-} from "@/shared/utils/googleMeetUrl";
-import { classService } from "@/services";
-import { useActiveTrainers } from "../hooks/useActiveTrainers";
+import { getGoogleMeetUrl } from "@/shared/utils/googleMeetUrl";
 import { formatCapacity, formatDate, formatVnd } from "../utils/classFormatter";
 import { ScheduleCalendar } from "@/shared/components/scheduleCalendar";
-import { WeeklyScheduleEditor } from "./WeeklySchedulePicker";
 
-function toInputDate(value) {
-  if (!value) return "";
-  return String(value).slice(0, 10);
-}
-
-function toEditForm(classData) {
-  return {
-    className: classData?.className || "",
-    trainerId: classData?.trainerId || "",
-    meetingUrl: classData?.meetingUrl || "",
-    scheduleDescription: classData?.scheduleDescription || "",
-    startDate: toInputDate(classData?.startDate),
-    endDate: toInputDate(classData?.endDate),
-    maxStudents: Number(classData?.maxStudents || 30),
-    price:
-      classData?.price === null || classData?.price === undefined
-        ? ""
-        : Number(classData.price),
-    status: String(classData?.status || "upcoming").toLowerCase(),
-  };
-}
-
-function emptyToUndefined(value) {
-  if (value === null || value === undefined) return undefined;
-
-  const normalized = String(value).trim();
-  return normalized === "" ? undefined : normalized;
-}
-
-function numberOrUndefined(value) {
-  if (value === "" || value === null || value === undefined) {
-    return undefined;
-  }
-
-  const numericValue = Number(value);
-
-  if (Number.isNaN(numericValue)) {
-    return undefined;
-  }
-
-  return numericValue;
-}
-
-function toUpdatePayload(form, originalClassData) {
-  const payload = {};
-
-  const className = emptyToUndefined(form.className);
-  if (className && className !== originalClassData.className) {
-    payload.className = className;
-  }
-
-  const trainerId = emptyToUndefined(form.trainerId);
-  const originalTrainerId = originalClassData.trainerId || undefined;
-  if (trainerId !== originalTrainerId) {
-    payload.trainerId = trainerId ?? null;
-  }
-
-  const meetingUrl = emptyToUndefined(form.meetingUrl);
-  const originalMeetingUrl = emptyToUndefined(originalClassData.meetingUrl);
-
-  if (meetingUrl && meetingUrl !== originalMeetingUrl) {
-    payload.meetingUrl = meetingUrl;
-  }
-
-  const scheduleDescription = emptyToUndefined(form.scheduleDescription);
-  const originalScheduleDescription = emptyToUndefined(
-    originalClassData.scheduleDescription,
-  );
-  if (scheduleDescription !== originalScheduleDescription) {
-    payload.scheduleDescription = scheduleDescription ?? null;
-  }
-
-  const startDate = emptyToUndefined(form.startDate);
-  const originalStartDate = emptyToUndefined(
-    toInputDate(originalClassData.startDate),
-  );
-  if (startDate !== originalStartDate) {
-    payload.startDate = startDate ?? null;
-  }
-
-  const endDate = emptyToUndefined(form.endDate);
-  const originalEndDate = emptyToUndefined(
-    toInputDate(originalClassData.endDate),
-  );
-  if (endDate !== originalEndDate) {
-    payload.endDate = endDate ?? null;
-  }
-
-  const maxStudents = numberOrUndefined(form.maxStudents);
-  if (
-    maxStudents !== undefined &&
-    maxStudents !== Number(originalClassData.maxStudents)
-  ) {
-    payload.maxStudents = maxStudents;
-  }
-
-  const price = numberOrUndefined(form.price);
-  const originalPrice = numberOrUndefined(originalClassData.price);
-  if (price !== undefined && price !== originalPrice) {
-    payload.price = price;
-  }
-
-  const status = emptyToUndefined(form.status);
-  const originalStatus = emptyToUndefined(
-    String(originalClassData.status || "").toLowerCase(),
-  );
-
-  if (status && status !== originalStatus) {
-    payload.status = status;
-  }
-
-  return payload;
-}
-
-function buildTrainerOptions(trainers, classData) {
-  const safeTrainers = Array.isArray(trainers) ? trainers : [];
-
-  if (!classData?.trainerId) {
-    return safeTrainers;
-  }
-
-  const hasCurrentTrainer = safeTrainers.some(
-    (trainer) => trainer.id === classData.trainerId,
-  );
-
-  if (hasCurrentTrainer) {
-    return safeTrainers;
-  }
-
-  return [
-    {
-      id: classData.trainerId,
-      fullName: classData.trainerName || "Current trainer",
-      email: "",
-      isCurrentTrainer: true,
-    },
-    ...safeTrainers,
-  ];
-}
-
-export function ClassOverviewTab({
-  classData,
-  classId,
-  onClassUpdated,
-  readOnly = false,
-}) {
-  const [isEditing, setIsEditing] = useState(false);
-  const [editForm, setEditForm] = useState(() => toEditForm(classData));
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
-  const [statusOptions, setStatusOptions] = useState([]);
-  const [loadingStatusOptions, setLoadingStatusOptions] = useState(false);
-  const [statusOptionsError, setStatusOptionsError] = useState("");
-
-  const { trainers, loadingTrainers, reloadTrainers } = useActiveTrainers({
-    autoLoad: false,
-  });
-
-  const trainerOptions = buildTrainerOptions(trainers, classData);
+export function ClassOverviewTab({ classData, onEdit, readOnly = false }) {
   const meetingUrl = getGoogleMeetUrl(classData?.meetingUrl);
-
-  useEffect(() => {
-    if (!isEditing || readOnly) {
-      return undefined;
-    }
-
-    let mounted = true;
-
-    async function fetchStatusOptions() {
-      try {
-        setLoadingStatusOptions(true);
-        setStatusOptionsError("");
-
-        const data = await classService.listStatusOptions();
-
-        if (!mounted) return;
-
-        setStatusOptions(Array.isArray(data) ? data : []);
-      } catch (err) {
-        if (!mounted) return;
-
-        console.error("Load class status options failed:", err);
-        setStatusOptions([]);
-        setStatusOptionsError(
-          err?.message || "Can not load class status options",
-        );
-      } finally {
-        if (mounted) {
-          setLoadingStatusOptions(false);
-        }
-      }
-    }
-
-    fetchStatusOptions();
-
-    return () => {
-      mounted = false;
-    };
-  }, [isEditing, readOnly]);
-
-  function updateField(key, value) {
-    setEditForm((current) => ({
-      ...current,
-      [key]: value,
-    }));
-  }
-
-  function startEdit() {
-    if (readOnly) {
-      return;
-    }
-
-    setEditForm(toEditForm(classData));
-    setError("");
-    setIsEditing(true);
-    reloadTrainers();
-  }
-
-  function cancelEdit() {
-    setEditForm(toEditForm(classData));
-    setError("");
-    setIsEditing(false);
-  }
-
-  async function saveChanges() {
-    if (readOnly) {
-      setIsEditing(false);
-      return;
-    }
-
-    if (!editForm.trainerId) {
-      setError("Please select a trainer");
-      return;
-    }
-
-    if (!editForm.meetingUrl?.trim()) {
-      setError("Google Meet URL is required");
-      return;
-    }
-
-    if (!isGoogleMeetUrl(editForm.meetingUrl)) {
-      setError("Use the format https://meet.google.com/abc-defg-hij");
-      return;
-    }
-
-    try {
-      setSaving(true);
-      setError("");
-
-      const payload = toUpdatePayload(editForm, classData);
-
-      if (Object.keys(payload).length === 0) {
-        setIsEditing(false);
-        return;
-      }
-
-      const updatedClass = await classService.update(classId, payload);
-
-      onClassUpdated?.(updatedClass);
-      setEditForm(toEditForm(updatedClass));
-      setIsEditing(false);
-    } catch (err) {
-      console.error("Update class failed:", err);
-      setError(err?.message || err?.error || "Can not save class changes");
-    } finally {
-      setSaving(false);
-    }
-  }
 
   return (
     <div className="class-overview-tab">
@@ -286,261 +13,74 @@ export function ClassOverviewTab({
         <div className="class-overview-card-header">
           <h3>Class Information</h3>
 
-          {!readOnly &&
-            (!isEditing ? (
-              <Button
-                type="button"
-                variant="edit"
-                size="sm"
-                leftIcon={<Edit3 size={16} strokeWidth={2.2} />}
-                onClick={startEdit}
-              >
-                Edit
-              </Button>
-            ) : (
-              <div className="class-overview-card-header__actions">
-                <Button
-                  type="button"
-                  variant="save"
-                  size="sm"
-                  loading={saving}
-                  loadingText="Saving..."
-                  leftIcon={<Save size={16} strokeWidth={2.2} />}
-                  onClick={saveChanges}
-                >
-                  Save
-                </Button>
-
-                <Button
-                  type="button"
-                  variant="cancel"
-                  size="sm"
-                  leftIcon={<X size={16} strokeWidth={2.2} />}
-                  onClick={cancelEdit}
-                >
-                  Cancel
-                </Button>
-              </div>
-            ))}
+          {!readOnly && (
+            <Button
+              type="button"
+              variant="edit"
+              size="sm"
+              leftIcon={<Edit3 size={16} strokeWidth={2.2} />}
+              onClick={onEdit}
+            >
+              Edit
+            </Button>
+          )}
         </div>
-        {error && <p className="form-error-text">{error}</p>}
-        {!isEditing || readOnly ? (
-          <>
-            <div className="class-detail-list class-overview-info">
-              <p>
-                <strong>Course:</strong> {classData.courseTitle}
-              </p>
 
-              <p>
-                <strong>Trainer:</strong>{" "}
-                {classData.trainerName || "Trainer not assigned"}
-              </p>
+        <div className="class-detail-list class-overview-info">
+          <p>
+            <strong>Course:</strong> {classData.courseTitle}
+          </p>
 
-              <p>
-                <strong>Google Meet:</strong>{" "}
-                {meetingUrl ? (
-                  <a
-                    href={meetingUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    Open meeting <ExternalLink size={14} />
-                  </a>
-                ) : (
-                  "Not configured"
-                )}
-              </p>
+          <p>
+            <strong>Trainer:</strong>{" "}
+            {classData.trainerName || "Trainer not assigned"}
+          </p>
 
-              <p>
-                <strong>Time:</strong> {formatDate(classData.startDate)} -{" "}
-                {formatDate(classData.endDate)}
-              </p>
+          <p>
+            <strong>Google Meet:</strong>{" "}
+            {meetingUrl ? (
+              <a href={meetingUrl} target="_blank" rel="noopener noreferrer">
+                Open meeting
+                <ExternalLink size={14} />
+              </a>
+            ) : (
+              "Not configured"
+            )}
+          </p>
 
-              <p>
-                <strong>Price:</strong>{" "}
-                {classData.price === null || classData.price === undefined
-                  ? "Not configured"
-                  : formatVnd(classData.price)}
-              </p>
+          <p>
+            <strong>Time:</strong> {formatDate(classData.startDate)}
+            {" - "}
+            {formatDate(classData.endDate)}
+          </p>
 
-              <p>
-                <strong>Capacity:</strong>{" "}
-                {formatCapacity(
-                  classData.activeEnrollmentCount,
-                  classData.maxStudents,
-                )}
-              </p>
+          <p>
+            <strong>Price:</strong>{" "}
+            {classData.price === null || classData.price === undefined
+              ? "Not configured"
+              : formatVnd(classData.price)}
+          </p>
 
-              <p>
-                <strong>Available Seats:</strong> {classData.availableSeats}
-              </p>
-            </div>
+          <p>
+            <strong>Capacity:</strong>{" "}
+            {formatCapacity(
+              classData.activeEnrollmentCount,
+              classData.maxStudents,
+            )}
+          </p>
 
-            <div className="class-overview-schedule">
-              <h3>Schedule</h3>
-              <ScheduleCalendar
-                scheduleDescription={classData.scheduleDescription}
-              />
-            </div>
-          </>
-        ) : (
-          <div className="class-form class-form--compact class-overview-edit-form">
-            <div className="form-group">
-              <label htmlFor="overviewClassName">Class Name</label>
-              <input
-                id="overviewClassName"
-                value={editForm.className}
-                onChange={(event) =>
-                  updateField("className", event.target.value)
-                }
-              />
-            </div>
+          <p>
+            <strong>Available Seats:</strong> {classData.availableSeats}
+          </p>
+        </div>
 
-            <div className="form-group">
-              <label htmlFor="overviewTrainerId">Trainer *</label>
+        <div className="class-overview-schedule">
+          <h3>Schedule</h3>
 
-              <select
-                id="overviewTrainerId"
-                value={editForm.trainerId}
-                disabled={loadingTrainers}
-                onChange={(event) =>
-                  updateField("trainerId", event.target.value)
-                }
-              >
-                <option value="" disabled>
-                  Select Trainer
-                </option>
-                {!loadingTrainers && trainerOptions.length === 0 && (
-                  <option value="" disabled>
-                    No active trainers available
-                  </option>
-                )}
-
-                {trainerOptions.map((trainer) => (
-                  <option key={trainer.id} value={trainer.id}>
-                    {trainer.fullName || trainer.email}
-                    {trainer.email ? ` (${trainer.email})` : ""}
-                    {trainer.isCurrentTrainer ? " - current" : ""}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="overviewMeetingUrl">Google Meet URL *</label>
-
-              <input
-                id="overviewMeetingUrl"
-                type="url"
-                placeholder="https://meet.google.com/abc-defg-hij"
-                value={editForm.meetingUrl}
-                onChange={(event) =>
-                  updateField("meetingUrl", event.target.value)
-                }
-              />
-
-              <small>Use the format https://meet.google.com/abc-defg-hij</small>
-            </div>
-
-            <div className="form-row">
-              <div className="form-group">
-                <label htmlFor="overviewStartDate">Start Date</label>
-                <input
-                  id="overviewStartDate"
-                  type="date"
-                  value={editForm.startDate}
-                  onChange={(event) =>
-                    updateField("startDate", event.target.value)
-                  }
-                />
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="overviewEndDate">End Date</label>
-                <input
-                  id="overviewEndDate"
-                  type="date"
-                  value={editForm.endDate}
-                  onChange={(event) =>
-                    updateField("endDate", event.target.value)
-                  }
-                />
-              </div>
-            </div>
-
-            <div className="form-row form-row--three-columns">
-              <div className="form-group">
-                <label htmlFor="overviewPrice">Class price (VND)</label>
-
-                <input
-                  id="overviewPrice"
-                  type="number"
-                  min="0"
-                  step="1000"
-                  value={editForm.price}
-                  onChange={(event) => updateField("price", event.target.value)}
-                />
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="overviewMaxStudents">Capacity</label>
-
-                <input
-                  id="overviewMaxStudents"
-                  type="number"
-                  min="1"
-                  max="500"
-                  value={editForm.maxStudents}
-                  onChange={(event) =>
-                    updateField("maxStudents", event.target.value)
-                  }
-                />
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="overviewStatus">Status</label>
-
-                <select
-                  id="overviewStatus"
-                  value={editForm.status}
-                  disabled={loadingStatusOptions}
-                  onChange={(event) =>
-                    updateField("status", event.target.value)
-                  }
-                >
-                  {loadingStatusOptions && (
-                    <option value={editForm.status}>Loading statuses...</option>
-                  )}
-
-                  {!loadingStatusOptions && statusOptions.length === 0 && (
-                    <option value={editForm.status}>
-                      {editForm.status || "No status available"}
-                    </option>
-                  )}
-
-                  {!loadingStatusOptions &&
-                    statusOptions.map((status) => (
-                      <option key={status.value} value={status.value}>
-                        {status.label}
-                      </option>
-                    ))}
-                </select>
-
-                {statusOptionsError && (
-                  <span className="form-error-text">{statusOptionsError}</span>
-                )}
-              </div>
-            </div>
-
-            <div className="form-group">
-              <label>Schedule</label>
-              <WeeklyScheduleEditor
-                value={editForm.scheduleDescription}
-                onChange={(value) => updateField("scheduleDescription", value)}
-              />
-            </div>
-          </div>
-        )}
+          <ScheduleCalendar
+            scheduleDescription={classData.scheduleDescription}
+          />
+        </div>
       </section>
     </div>
   );

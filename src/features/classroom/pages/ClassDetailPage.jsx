@@ -47,6 +47,11 @@ export function ClassDetailPage() {
     navigate(`/staff/classrooms/${classId}/analytics`);
   }
 
+  function openEditClass() {
+    if (!classId || !isTmo) return;
+    navigate(`/staff/classrooms/${classId}/edit`);
+  }
+
   function openTraineePreview() {
     if (!classData?.courseId || !classId) return;
 
@@ -111,10 +116,6 @@ export function ClassDetailPage() {
     } catch (err) {
       setError(err.message || "Can not delete class");
     }
-  }
-
-  function handleClassUpdated(updatedClass) {
-    setClassData(updatedClass);
   }
 
   function openAssignments() {
@@ -255,8 +256,7 @@ export function ClassDetailPage() {
         ) : (
           <ClassOverviewTab
             classData={classData}
-            classId={classId}
-            onClassUpdated={handleClassUpdated}
+            onEdit={openEditClass}
             readOnly={isTrainer}
           />
         )}
