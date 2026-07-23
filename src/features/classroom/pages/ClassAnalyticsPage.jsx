@@ -133,7 +133,7 @@ export function ClassAnalyticsPage() {
             onClick={() => navigate(`/staff/classrooms/${classId}/workspace`)}
           >
             <ArrowLeft size={16} />
-            Back to Workspace
+            Back
           </Button>
 
           <label className="analytics-inactive-filter">
@@ -152,21 +152,15 @@ export function ClassAnalyticsPage() {
           </label>
         </div>
 
-        <div>
+        <div className="class-analytics-header__content">
           <p className="class-analytics-header__eyebrow">Class Analytics</p>
 
           <h1>{analytics.className}</h1>
 
           <p className="class-analytics-header__meta">
             {analytics.courseTitle}
-
             {" • "}
-
             {analytics.trainerName || "No trainer"}
-
-            {" • "}
-
-            {analytics.status}
           </p>
         </div>
       </header>

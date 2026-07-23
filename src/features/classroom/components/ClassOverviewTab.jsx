@@ -468,62 +468,68 @@ export function ClassOverviewTab({
               </div>
             </div>
 
-            <div className="form-group">
-              <label htmlFor="overviewPrice">Class price (VND)</label>
+            <div className="form-row form-row--three-columns">
+              <div className="form-group">
+                <label htmlFor="overviewPrice">Class price (VND)</label>
 
-              <input
-                id="overviewPrice"
-                type="number"
-                min="0"
-                step="1000"
-                value={editForm.price}
-                onChange={(event) => updateField("price", event.target.value)}
-              />
-            </div>
+                <input
+                  id="overviewPrice"
+                  type="number"
+                  min="0"
+                  step="1000"
+                  value={editForm.price}
+                  onChange={(event) => updateField("price", event.target.value)}
+                />
+              </div>
 
-            <div className="form-group">
-              <label htmlFor="overviewMaxStudents">Capacity</label>
-              <input
-                id="overviewMaxStudents"
-                type="number"
-                min="1"
-                value={editForm.maxStudents}
-                onChange={(event) =>
-                  updateField("maxStudents", event.target.value)
-                }
-              />
-            </div>
+              <div className="form-group">
+                <label htmlFor="overviewMaxStudents">Capacity</label>
 
-            <div className="form-group">
-              <label htmlFor="overviewStatus">Status</label>
+                <input
+                  id="overviewMaxStudents"
+                  type="number"
+                  min="1"
+                  max="500"
+                  value={editForm.maxStudents}
+                  onChange={(event) =>
+                    updateField("maxStudents", event.target.value)
+                  }
+                />
+              </div>
 
-              <select
-                id="overviewStatus"
-                value={editForm.status}
-                disabled={loadingStatusOptions}
-                onChange={(event) => updateField("status", event.target.value)}
-              >
-                {loadingStatusOptions && (
-                  <option value={editForm.status}>Loading statuses...</option>
-                )}
+              <div className="form-group">
+                <label htmlFor="overviewStatus">Status</label>
 
-                {!loadingStatusOptions && statusOptions.length === 0 && (
-                  <option value={editForm.status}>
-                    {editForm.status || "No status available"}
-                  </option>
-                )}
+                <select
+                  id="overviewStatus"
+                  value={editForm.status}
+                  disabled={loadingStatusOptions}
+                  onChange={(event) =>
+                    updateField("status", event.target.value)
+                  }
+                >
+                  {loadingStatusOptions && (
+                    <option value={editForm.status}>Loading statuses...</option>
+                  )}
 
-                {!loadingStatusOptions &&
-                  statusOptions.map((status) => (
-                    <option key={status.value} value={status.value}>
-                      {status.label}
+                  {!loadingStatusOptions && statusOptions.length === 0 && (
+                    <option value={editForm.status}>
+                      {editForm.status || "No status available"}
                     </option>
-                  ))}
-              </select>
+                  )}
 
-              {statusOptionsError && (
-                <span className="form-error-text">{statusOptionsError}</span>
-              )}
+                  {!loadingStatusOptions &&
+                    statusOptions.map((status) => (
+                      <option key={status.value} value={status.value}>
+                        {status.label}
+                      </option>
+                    ))}
+                </select>
+
+                {statusOptionsError && (
+                  <span className="form-error-text">{statusOptionsError}</span>
+                )}
+              </div>
             </div>
 
             <div className="form-group">

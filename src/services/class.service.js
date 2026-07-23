@@ -11,15 +11,18 @@ function unwrapData(response) {
 
 function normalizePage(response) {
   const data = unwrapData(response);
-
   const content = data?.content ?? data?.items ?? data?.data ?? [];
+  const normalizedContent = Array.isArray(content) ? content : [];
 
   return {
-    content: Array.isArray(content) ? content : [],
+    content: normalizedContent,
     page: Number(data?.page ?? data?.number ?? 0),
-    size: Number(data?.size ?? 20),
+    size: Number(data?.size ?? normalizedContent.length ?? 20),
     totalElements: Number(
-      data?.totalElements ?? data?.total ?? content.length ?? 0,
+      data?.totalElements ??
+        data?.totalItems ??
+        data?.total ??
+        normalizedContent.length,
     ),
     totalPages: Number(data?.totalPages ?? 1),
   };

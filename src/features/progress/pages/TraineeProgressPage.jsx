@@ -4,14 +4,29 @@ import { traineeProgressService } from "@/services";
 import { ProgressBar } from "../components/ProgressBar";
 import { CourseProgressCard } from "../components/CourseProgressCard";
 import { TraineeProgressSkeleton } from "../components/TraineeProgressSkeleton";
+import { Pagination } from "@/shared/components/Pagination";
 import "../TraineeProgressPage.css";
 
 const TAB_CONFIG = {
   inProgress: {
-    emptyMessage: "No in-progress courses found.",
+    emptyMessage: "No in-progress learning items found.",
   },
   completed: {
-    emptyMessage: "No completed courses found.",
+    emptyMessage: "No completed learning items found.",
+  },
+};
+
+const PAGE_SIZE = 5;
+
+const LEARNING_TYPES = {
+  all: {
+    label: "All",
+  },
+  COURSE: {
+    label: "Courses",
+  },
+  CLASS: {
+    label: "Classes",
   },
 };
 
@@ -27,8 +42,10 @@ export function TraineeProgressPage() {
   const [error, setError] = useState("");
 
   const [activeTab, setActiveTab] = useState("inProgress");
+  const [learningType, setLearningType] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
+  const [page, setPage] = useState(1);
 
   useEffect(() => {
     let isActive = true;
@@ -85,21 +102,41 @@ export function TraineeProgressPage() {
       : progress.inProgressCourseItems || [];
   }, [activeTab, progress]);
 
+  const typeCounts = useMemo(() => {
+    return {
+      all: tabCourses.length,
+      COURSE: tabCourses.filter((course) => course.learningType === "COURSE")
+        .length,
+      CLASS: tabCourses.filter((course) => course.learningType === "CLASS")
+        .length,
+    };
+  }, [tabCourses]);
+
   const filteredCourses = useMemo(() => {
     const keyword = normalizeText(searchTerm);
 
     return tabCourses.filter((course) => {
+      const matchesType =
+        learningType === "all" || course.learningType === learningType;
+
       const matchesSearch =
         !keyword ||
         normalizeText(course.title).includes(keyword) ||
+        normalizeText(course.className).includes(keyword) ||
         normalizeText(course.categoryName).includes(keyword);
 
       const matchesCategory =
         selectedCategory === "all" || course.categoryName === selectedCategory;
 
-      return matchesSearch && matchesCategory;
+      return matchesType && matchesSearch && matchesCategory;
     });
-  }, [tabCourses, searchTerm, selectedCategory]);
+  }, [tabCourses, learningType, searchTerm, selectedCategory]);
+  const totalPages = Math.max(1, Math.ceil(filteredCourses.length / PAGE_SIZE));
+  const paginatedCourses = useMemo(() => {
+    const startIndex = (page - 1) * PAGE_SIZE;
+
+    return filteredCourses.slice(startIndex, startIndex + PAGE_SIZE);
+  }, [filteredCourses, page]);
 
   const currentTab = TAB_CONFIG[activeTab];
   const hasActiveFilters =
@@ -118,9 +155,8 @@ export function TraineeProgressPage() {
           <header className="progress-page-heading">
             <div>
               <h2>Learning progress</h2>
-              <p>Review your courses and continue where you left off.</p>
             </div>
-            <span>{progress.totalCourses} enrolled courses</span>
+            <span>{progress.totalCourses} learning items</span>
           </header>
 
           <section className="progress-overview" aria-label="Progress summary">
@@ -137,7 +173,7 @@ export function TraineeProgressPage() {
 
             <dl className="progress-overview__stats">
               <div>
-                <dt>Total courses</dt>
+                <dt>Total </dt>
                 <dd>{progress.totalCourses}</dd>
               </div>
               <div>
@@ -165,7 +201,10 @@ export function TraineeProgressPage() {
                       ? "progress-tab progress-tab--active"
                       : "progress-tab"
                   }
-                  onClick={() => setActiveTab("inProgress")}
+                  onClick={() => {
+                    setActiveTab("inProgress");
+                    setPage(1);
+                  }}
                 >
                   In progress
                   <span>{progress.inProgressCourses}</span>
@@ -182,7 +221,10 @@ export function TraineeProgressPage() {
                       ? "progress-tab progress-tab--active"
                       : "progress-tab"
                   }
-                  onClick={() => setActiveTab("completed")}
+                  onClick={() => {
+                    setActiveTab("completed");
+                    setPage(1);
+                  }}
                 >
                   Completed
                   <span>{progress.completedCourses}</span>
@@ -190,26 +232,58 @@ export function TraineeProgressPage() {
               </div>
 
               <span className="progress-tabs-panel__count">
-                {filteredCourses.length} courses
+                {filteredCourses.length} learning items
               </span>
+            </div>
+
+            <div
+              className="progress-type-filter"
+              role="group"
+              aria-label="Filter progress by learning type"
+            >
+              {Object.entries(LEARNING_TYPES).map(([value, config]) => (
+                <button
+                  key={value}
+                  type="button"
+                  className={
+                    learningType === value
+                      ? "progress-type-filter__button is-active"
+                      : "progress-type-filter__button"
+                  }
+                  aria-pressed={learningType === value}
+                  onClick={() => {
+                    setLearningType(value);
+                    setPage(1);
+                  }}
+                >
+                  {config.label}
+                  <span>{typeCounts[value]}</span>
+                </button>
+              ))}
             </div>
 
             <div className="progress-filter-bar">
               <label className="progress-search">
                 <Search size={18} aria-hidden="true" />
-                <span className="sr-only">Search courses</span>
+                <span className="sr-only">Search courses and class</span>
                 <input
                   type="search"
-                  placeholder="Search courses..."
+                  placeholder="Search course ang class..."
                   value={searchTerm}
-                  onChange={(event) => setSearchTerm(event.target.value)}
+                  onChange={(event) => {
+                    setSearchTerm(event.target.value);
+                    setPage(1);
+                  }}
                 />
               </label>
 
               <label className="progress-category-filter">
                 <select
                   value={selectedCategory}
-                  onChange={(event) => setSelectedCategory(event.target.value)}
+                  onChange={(event) => {
+                    setSelectedCategory(event.target.value);
+                    setPage(1);
+                  }}
                   aria-label="Filter courses by category"
                 >
                   <option value="all">All categories</option>
@@ -245,14 +319,31 @@ export function TraineeProgressPage() {
                   </span>
                 </div>
               ) : (
-                <div className="course-progress-list">
-                  {filteredCourses.map((course) => (
-                    <CourseProgressCard
-                      key={course.enrollmentId || course.courseId}
-                      course={course}
-                    />
-                  ))}
-                </div>
+                <>
+                  <div className="course-progress-list">
+                    {paginatedCourses.map((course) => (
+                      <CourseProgressCard
+                        key={
+                          course.classEnrollmentId ||
+                          course.enrollmentId ||
+                          `${course.courseId}:${course.classId || "online"}`
+                        }
+                        course={course}
+                      />
+                    ))}
+                  </div>
+
+                  <Pagination
+                    page={page}
+                    totalPages={totalPages}
+                    totalItems={filteredCourses.length}
+                    size={PAGE_SIZE}
+                    pageSizeOptions={[PAGE_SIZE]}
+                    onPageChange={setPage}
+                    ariaLabel="Learning progress pagination"
+                    className="progress-pagination"
+                  />
+                </>
               )}
             </div>
           </section>

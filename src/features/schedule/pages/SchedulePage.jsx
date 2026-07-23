@@ -266,11 +266,7 @@ export function SchedulePage() {
     <section className="schedule-page">
       <header className="schedule-heading">
         <div>
-          <h2>{isTmo ? "Staff Schedule" : "My Schedule"}</h2>
-
-          {isTmo && (
-            <p>View all teaching sessions or filter the schedule by trainer.</p>
-          )}
+          <h2>{isTmo ? "Trainer Schedule" : "My Schedule"}</h2>
         </div>
       </header>
 

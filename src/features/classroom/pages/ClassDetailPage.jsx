@@ -174,32 +174,20 @@ export function ClassDetailPage() {
 
         {(isTrainer || isTmo) && (
           <div className="workspace-header__actions">
-            <button
-              className="class-assignment-button"
-              type="button"
-              onClick={openTraineePreview}
-            >
-              <Eye size={16} strokeWidth={2.2} />
+            <Button leftIcon={<Eye size={17} />} onClick={openTraineePreview}>
               View as trainee
-            </button>
+            </Button>
 
-            <button
-              className="class-analytics-button"
-              type="button"
-              onClick={openAnalytics}
-            >
-              <BarChart3 size={16} strokeWidth={2.2} />
+            <Button leftIcon={<BarChart3 size={17} />} onClick={openAnalytics}>
               Analytics
-            </button>
+            </Button>
 
-            <button
-              className="class-assignment-button"
-              type="button"
+            <Button
+              leftIcon={<ClipboardList size={17} />}
               onClick={openAssignments}
             >
-              <ClipboardList size={16} strokeWidth={2.2} />
               Assignment
-            </button>
+            </Button>
 
             {isTmo && (
               <Button

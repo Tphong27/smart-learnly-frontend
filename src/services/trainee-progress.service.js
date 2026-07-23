@@ -19,17 +19,22 @@ function normalizeMetric(metric, label) {
 }
 
 function normalizeCourse(course) {
+  const classId = course.classId || course.enrolledClass?.id || null;
+  const className = course.className || course.enrolledClass?.className || "";
+
   return {
     id: course.id ?? course.courseId,
     courseId: course.courseId ?? course.id,
     enrollmentId: course.enrollmentId,
 
-    classId: course.classId || course.enrolledClass?.id || null,
+    classId,
     classEnrollmentId:
       course.classEnrollmentId ||
       course.enrolledClass?.classEnrollmentId ||
       null,
-    className: course.className || course.enrolledClass?.className || "",
+    className,
+
+    learningType: classId ? "CLASS" : "COURSE",
 
     title: course.title || "Untitled course",
     categoryName: course.categoryName || "Course",

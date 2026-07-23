@@ -20,9 +20,9 @@
 
 .shared-schedule-calendar__table th {
   padding: 12px 10px;
-  border-right: 1px solid #dbe6f7;
-  background: #dbeafe;
-  color: #0f172a;
+  border-right: 1px solid rgba(255, 255, 255, 0.22);
+  background: var(--sl-purple, #5624d0);
+  color: #ffffff;
   text-align: left;
   font-weight: 800;
 }
@@ -53,7 +53,7 @@
 .shared-schedule-calendar__day-name {
   display: block;
   margin-top: 2px;
-  color: #64748b;
+  color: rgba(255, 255, 255, 0.78);
   font-size: 12px;
   font-weight: 600;
 }

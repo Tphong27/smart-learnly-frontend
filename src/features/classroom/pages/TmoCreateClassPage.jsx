@@ -229,54 +229,71 @@ export function TmoCreateClassPage() {
             </div>
           </div>
 
+          <div className="form-row form-row--three-columns">
+            <div className="form-group">
+              <label htmlFor="price">Class price (VND) *</label>
+
+              <input
+                id="price"
+                type="number"
+                min="0"
+                step="1000"
+                placeholder="2500000"
+                {...form.register("price", {
+                  valueAsNumber: true,
+                })}
+                className={form.errors.price ? "input-error" : ""}
+              />
+
+              {form.errors.price && (
+                <span className="form-error-text">
+                  {form.errors.price.message}
+                </span>
+              )}
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="maxStudents">Capacity *</label>
+
+              <input
+                id="maxStudents"
+                type="number"
+                min="1"
+                max="500"
+                {...form.register("maxStudents", {
+                  valueAsNumber: true,
+                })}
+                className={form.errors.maxStudents ? "input-error" : ""}
+              />
+
+              {form.errors.maxStudents && (
+                <span className="form-error-text">
+                  {form.errors.maxStudents.message}
+                </span>
+              )}
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="createClassStatus">Status</label>
+              <select
+                id="createClassStatus"
+                value="upcoming"
+                disabled
+                aria-describedby="createClassStatusDescription"
+              >
+                <option value="upcoming">Upcoming</option>
+              </select>
+            </div>
+          </div>
+
           <div className="form-group">
             <label>Schedule</label>
+
             <WeeklySchedulePicker
               control={form.control}
               name="scheduleDescription"
               error={form.errors.scheduleDescription}
             />
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="price">Class price (VND) *</label>
-
-            <input
-              id="price"
-              type="number"
-              min="0"
-              step="1000"
-              placeholder="Example: 2500000"
-              {...form.register("price", {
-                valueAsNumber: true,
-              })}
-              className={form.errors.price ? "input-error" : ""}
-            />
-
-            {form.errors.price && (
-              <span className="form-error-text">
-                {form.errors.price.message}
-              </span>
-            )}
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="maxStudents">Capacity *</label>
-            <input
-              id="maxStudents"
-              type="number"
-              min="1"
-              max="500"
-              {...form.register("maxStudents", {
-                valueAsNumber: true,
-              })}
-              className={form.errors.maxStudents ? "input-error" : ""}
-            />
-            {form.errors.maxStudents && (
-              <span className="form-error-text">
-                {form.errors.maxStudents.message}
-              </span>
-            )}
           </div>
         </div>
         <div className="form-actions">
