@@ -458,8 +458,6 @@ export function TeacherMonitorPage() {
     try {
       const graded = await assignmentService.gradeSubmission(row.submissionId, {
         score,
-        trainerFeedback:
-          form.trainerFeedback ?? row.trainerFeedback ?? "",
         status: "GRADED",
       });
       mergeEvent({
@@ -679,9 +677,15 @@ export function TeacherMonitorPage() {
                 <th>Status</th>
                 <th>Started</th>
                 <th>Remaining</th>
-                <th>
-                  {normalizedType === "essay" ? "Submission / Grade" : "Score"}
-                </th>
+                {normalizedType === "essay" ? (
+                  <>
+                    <th>Submission</th>
+                    <th>Score</th>
+                    <th className="ft-table-action">Grade</th>
+                  </>
+                ) : (
+                  <th>Score</th>
+                )}
                 {normalizedType === "mcq" && (
                   <th className="ft-table-action">Action</th>
                 )}
@@ -729,87 +733,63 @@ export function TeacherMonitorPage() {
                           : "--"}
                       </td>
                       <td>{remainingText(remaining)}</td>
-                      <td>
-                        {normalizedType === "essay" ? (
-                          info.done ? (
-                            <div className="ft-grade-cell">
-                              {row.fileUrl ? (
+                      {normalizedType === "essay" ? (
+                        <>
+                          <td>
+                            {info.done ? (
+                              row.fileUrl ? (
                                 <button
                                   className="ft-button ft-button--secondary"
                                   type="button"
-                                  disabled={
-                                    downloadingId ===
-                                    (row.submissionId || row.studentId)
-                                  }
+                                  disabled={downloadingId === (row.submissionId || row.studentId)}
                                   onClick={() => handleDownload(row)}
                                 >
                                   <Download size={16} />
-                                  {downloadingId ===
-                                  (row.submissionId || row.studentId)
+                                  {downloadingId === (row.submissionId || row.studentId)
                                     ? "Downloading..."
                                     : "Download file"}
                                 </button>
                               ) : (
                                 <span className="ft-muted">No file</span>
-                              )}
-                              {row.score != null && (
-                                <strong aria-live="polite">{row.score}/10</strong>
-                              )}
-                              <label className="ft-grade-field">
-                                <span>Score</span>
+                              )
+                            ) : (
+                              <span className="ft-muted">Waiting for submission</span>
+                            )}
+                          </td>
+                          <td>
+                            {info.done ? (
+                              <div className="ft-score-cell">
+                                {row.score != null && (
+                                  <strong aria-live="polite">{row.score}/10</strong>
+                                )}
                                 <input
-                                  className="ft-input"
+                                  className="ft-input ft-score-input"
+                                  aria-label={`Score for ${row.studentName}`}
                                   type="number"
                                   min="0"
                                   max="10"
                                   step="0.1"
                                   placeholder="Score"
-                                  value={
-                                    gradeForms[row.submissionId]?.score ??
-                                    row.score ??
-                                    ""
-                                  }
+                                  value={gradeForms[row.submissionId]?.score ?? row.score ?? ""}
                                   onChange={(event) => {
                                     const value = event.target.value;
                                     if (value === "") {
-                                      updateGradeForm(row.submissionId, {
-                                        score: "",
-                                      });
+                                      updateGradeForm(row.submissionId, { score: "" });
                                       return;
                                     }
                                     const nextScore = Number(value);
-                                    if (
-                                      !Number.isFinite(nextScore) ||
-                                      nextScore < 0 ||
-                                      nextScore > 10
-                                    ) {
-                                      return;
+                                    if (Number.isFinite(nextScore) && nextScore >= 0 && nextScore <= 10) {
+                                      updateGradeForm(row.submissionId, { score: value });
                                     }
-                                    updateGradeForm(row.submissionId, {
-                                      score: value,
-                                    });
                                   }}
                                 />
-                              </label>
-                              <label className="ft-grade-field ft-grade-field--feedback">
-                                <span>Feedback</span>
-                                <textarea
-                                  className="ft-input"
-                                  rows={2}
-                                  placeholder="Feedback for the trainee"
-                                  value={
-                                    gradeForms[row.submissionId]
-                                      ?.trainerFeedback ??
-                                    row.trainerFeedback ??
-                                    ""
-                                  }
-                                  onChange={(event) =>
-                                    updateGradeForm(row.submissionId, {
-                                      trainerFeedback: event.target.value,
-                                    })
-                                  }
-                                />
-                              </label>
+                              </div>
+                            ) : (
+                              <span className="ft-muted">--</span>
+                            )}
+                          </td>
+                          <td className="ft-table-action">
+                            {info.done ? (
                               <button
                                 className="ft-button ft-button--primary"
                                 type="button"
@@ -822,23 +802,25 @@ export function TeacherMonitorPage() {
                                     ? "Update grade"
                                     : "Grade"}
                               </button>
-                            </div>
-                          ) : (
-                            <span className="ft-muted">
-                              Waiting for submission
-                            </span>
-                          )
-                        ) : row.score != null || row.percentage != null ? (
+                            ) : (
+                              <span className="ft-muted">--</span>
+                            )}
+                          </td>
+                        </>
+                      ) : (
+                        <td>
+                          {row.score != null || row.percentage != null ? (
                           <strong>
                             {mcqScore.score}/10
                             {mcqScore.percentage != null
                               ? ` (${mcqScore.percentage}%)`
                               : ""}
                           </strong>
-                        ) : (
-                          <span className="ft-muted">Waiting for auto grade</span>
-                        )}
-                      </td>
+                          ) : (
+                            <span className="ft-muted">Waiting for auto grade</span>
+                          )}
+                        </td>
+                      )}
                       {normalizedType === "mcq" && (
                         <td>
                           <div className="ft-table-actions">

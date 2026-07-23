@@ -14,11 +14,6 @@ const STAFF_TABS = [
     roles: [ROLES.TRAINER, ROLES.TMO, ROLES.SME],
   },
   {
-    label: "Tests Management",
-    to: "/staff/tests",
-    roles: [ROLES.TRAINER, ROLES.TMO, ROLES.SME],
-  },
-  {
     label: "Flashcards Management",
     to: "/staff/flashcards",
     roles: [ROLES.TRAINER, ROLES.TMO, ROLES.SME],

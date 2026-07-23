@@ -42,7 +42,7 @@ export function StaffTestListPage() {
       <header className="ft-staff-hero">
         <div className="ft-staff-hero__content">
           <span className="ft-page-kicker">Trainer workspace</span>
-          <h1 className="ft-page-title">Test Management</h1>
+          <h1 className="ft-page-title">Manage test</h1>
           <p className="ft-page-subtitle">Select a course to manage its tests.</p>
         </div>
       </header>

@@ -17,6 +17,7 @@ import {
     assignmentService,
     testService,
 } from "@/services/flashtest.service.js";
+import Pagination from "@/shared/components/Pagination";
 import "../flashtest.css";
 
 function isFlashTest(item) {
@@ -29,6 +30,15 @@ function isFlashTest(item) {
 
 function isRegularTest(item) {
     return !isFlashTest(item);
+}
+
+function isPublishedTest(item) {
+    return (
+        item?.isPublished ??
+        item?.is_published ??
+        item?.published ??
+        false
+    ) === true;
 }
 
 function isCurriculumEssay(item) {
@@ -87,7 +97,7 @@ export function StaffFlashTestListPage({ variant = "flash" }) {
         ? "Assignment Management"
         : isFlashMode
           ? "Flash Tests Management"
-          : "Tests Management";
+          : "Manage test";
     const createLabel = isAssignmentMode
         ? "Create Daily Assignment"
         : isFlashMode
@@ -102,6 +112,8 @@ export function StaffFlashTestListPage({ variant = "flash" }) {
     const [assignments, setAssignments] = useState([]);
     const [loading, setLoading] = useState(false);
     const [keyword, setKeyword] = useState("");
+    const [page, setPage] = useState(1);
+    const [pageSize, setPageSize] = useState(20);
     const [assignmentView, setAssignmentView] = useState("daily");
     const [nowMs, setNowMs] = useState(0);
     const [deletingId, setDeletingId] = useState(null);
@@ -235,6 +247,9 @@ export function StaffFlashTestListPage({ variant = "flash" }) {
 
     const summary = useMemo(() => {
         const activeCount = rows.filter((item) => {
+            if (item.flashType === "mcq" && !isPublishedTest(item)) {
+                return false;
+            }
             const dueDate = item.dueDate || item.due_date;
             return !(
                 item.flashType === "essay" &&
@@ -249,6 +264,13 @@ export function StaffFlashTestListPage({ variant = "flash" }) {
             essay: rows.filter((item) => item.flashType === "essay").length,
         };
     }, [nowMs, rows]);
+
+    const totalPages = Math.max(1, Math.ceil(rows.length / pageSize));
+    const currentPage = Math.min(page, totalPages);
+    const paginatedRows = useMemo(
+        () => rows.slice((currentPage - 1) * pageSize, currentPage * pageSize),
+        [currentPage, pageSize, rows],
+    );
 
     const handleDelete = useCallback(async (item) => {
         if (isCurriculumEssay(item)) return;
@@ -364,7 +386,7 @@ export function StaffFlashTestListPage({ variant = "flash" }) {
                 </div>
             </div>
 
-            <div className="ft-panel ft-ops-panel">
+            <div className="ft-ops-panel ft-ops-panel--flat">
                 <div className="ft-list-toolbar">
                     <label className="ft-search">
                         <Search size={16} />
@@ -372,16 +394,20 @@ export function StaffFlashTestListPage({ variant = "flash" }) {
                             type="search"
                             placeholder="Search by title, type, or description..."
                             value={keyword}
-                            onChange={(event) => setKeyword(event.target.value)}
+                            onChange={(event) => {
+                                setKeyword(event.target.value);
+                                setPage(1);
+                            }}
                         />
                     </label>
                     {isAssignmentMode && (
                         <label className="ft-filter-select">
                             <select
                                 value={assignmentView}
-                                onChange={(event) =>
-                                    setAssignmentView(event.target.value)
-                                }
+                                onChange={(event) => {
+                                    setAssignmentView(event.target.value);
+                                    setPage(1);
+                                }}
                                 aria-label="Assignment source"
                             >
                                 <option value="daily">Daily Assignment</option>
@@ -452,7 +478,7 @@ export function StaffFlashTestListPage({ variant = "flash" }) {
                                 </tr>
                             </thead>
                             <tbody>
-                                {rows.map((item) => {
+                                {paginatedRows.map((item) => {
                                     const type = item.flashType;
                                     const isEssay = type === "essay";
                                     const lessonId = getLessonId(item);
@@ -463,6 +489,8 @@ export function StaffFlashTestListPage({ variant = "flash" }) {
                                         isEssay &&
                                         dueDate &&
                                         new Date(dueDate).getTime() <= nowMs;
+                                    const inactive =
+                                        !isEssay && !isPublishedTest(item);
                                     return (
                                         <tr key={`${type}-${item.id}`}>
                                             <td>
@@ -504,12 +532,16 @@ export function StaffFlashTestListPage({ variant = "flash" }) {
                                             <td>
                                                 <span
                                                     className={`ft-badge ${
-                                                        expired
+                                                        inactive
+                                                            ? "ft-badge--inactive"
+                                                            : expired
                                                             ? "ft-badge--expired"
                                                             : "ft-status--submitted"
                                                     }`}
                                                 >
-                                                    {expired
+                                                    {inactive
+                                                        ? "Inactive"
+                                                        : expired
                                                         ? "Expired"
                                                         : "Active"}
                                                 </span>
@@ -542,7 +574,9 @@ export function StaffFlashTestListPage({ variant = "flash" }) {
                                                     >
                                                         <Eye size={16} />
                                                     </Link>
-                                                    {!showCurriculumEssays && (
+                                                    {(isAssignmentMode ||
+                                                        isFlashMode) &&
+                                                        !showCurriculumEssays && (
                                                         <button
                                                             className="ft-icon-button ft-icon-button--danger"
                                                             type="button"
@@ -568,6 +602,19 @@ export function StaffFlashTestListPage({ variant = "flash" }) {
                         </table>
                     </div>
                 )}
+                <Pagination
+                    page={currentPage}
+                    totalPages={totalPages}
+                    totalItems={rows.length}
+                    size={pageSize}
+                    onPageChange={setPage}
+                    onSizeChange={(nextSize) => {
+                        setPageSize(nextSize);
+                        setPage(1);
+                    }}
+                    disabled={loading}
+                    ariaLabel={`${pageTitle} pagination`}
+                />
             </div>
         </section>
     );

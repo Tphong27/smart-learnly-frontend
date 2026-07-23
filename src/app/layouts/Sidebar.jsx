@@ -4,7 +4,6 @@ import {
   BookOpen,
   ClipboardCheck,
   CreditCard,
-  FileQuestion,
   FolderTree,
   GraduationCap,
   Home,
@@ -75,12 +74,6 @@ const navItems = [
     label: "Course Content",
     path: "/staff/courses",
     icon: Layers3,
-    roles: [ROLES.TRAINER, ROLES.TMO, ROLES.SME],
-  },
-  {
-    label: "Tests Management",
-    path: "/staff/tests",
-    icon: FileQuestion,
     roles: [ROLES.TRAINER, ROLES.TMO, ROLES.SME],
   },
   {
