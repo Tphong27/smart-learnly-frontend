@@ -122,7 +122,9 @@ export function AdminAiQuestionDraftCreatePage() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
-  const [idempotencyKey, setIdempotencyKey] = useState(() => createIdempotencyKey());
+  const [idempotencyKey, setIdempotencyKey] = useState(() =>
+    createIdempotencyKey(),
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -146,17 +148,25 @@ export function AdminAiQuestionDraftCreatePage() {
         setBank(normalizedBank);
         setLanguage(getDefaultLanguage(normalizedBank));
 
-        const resolvedCourseId = isCourseQuestionsMode ? courseId : bankData?.courseId;
+        const resolvedCourseId = isCourseQuestionsMode
+          ? courseId
+          : bankData?.courseId;
         const [moduleData, sourceData, capabilityData] = await Promise.all([
           resolvedCourseId
             ? courseService.getCourseContent(resolvedCourseId)
             : Promise.resolve([]),
           isCourseQuestionsMode
-            ? questionBankService.listCourseAiDraftSources(courseId).catch(() => [])
+            ? questionBankService
+                .listCourseAiDraftSources(courseId)
+                .catch(() => [])
             : questionBankService.listAiDraftSources(bankId),
           isCourseQuestionsMode
-            ? questionBankService.getCourseAiDraftSourceCapabilities(courseId).catch(() => DEFAULT_CAPABILITIES)
-            : questionBankService.getAiDraftSourceCapabilities(bankId).catch(() => DEFAULT_CAPABILITIES),
+            ? questionBankService
+                .getCourseAiDraftSourceCapabilities(courseId)
+                .catch(() => DEFAULT_CAPABILITIES)
+            : questionBankService
+                .getAiDraftSourceCapabilities(bankId)
+                .catch(() => DEFAULT_CAPABILITIES),
         ]);
         if (cancelled) return;
         setModules(normalizeModules(moduleData));
@@ -179,7 +189,8 @@ export function AdminAiQuestionDraftCreatePage() {
   }, [bankId, courseId, isCourseQuestionsMode]);
 
   const transcriptSources = useMemo(
-    () => sources.filter((source) => source.kind === "transcript" && source.ready),
+    () =>
+      sources.filter((source) => source.kind === "transcript" && source.ready),
     [sources],
   );
 
@@ -193,25 +204,38 @@ export function AdminAiQuestionDraftCreatePage() {
     pastedTextSources.forEach((item) => {
       const length = item.text.trim().length;
       if (length > 0 && length < capabilities.minTextCharacters) {
-        errors.set(item.id, `At least ${capabilities.minTextCharacters} characters are required.`);
+        errors.set(
+          item.id,
+          `At least ${capabilities.minTextCharacters} characters are required.`,
+        );
       } else if (length > capabilities.maxPastedTextCharacters) {
-        errors.set(item.id, `Maximum ${capabilities.maxPastedTextCharacters.toLocaleString()} characters.`);
+        errors.set(
+          item.id,
+          `Maximum ${capabilities.maxPastedTextCharacters.toLocaleString()} characters.`,
+        );
       }
     });
     return errors;
   }, [capabilities, pastedTextSources]);
 
   const totalEstimatedCharacters = useMemo(() => {
-    const pasted = pastedTextSources.reduce((sum, item) => sum + item.text.trim().length, 0);
+    const pasted = pastedTextSources.reduce(
+      (sum, item) => sum + item.text.trim().length,
+      0,
+    );
     const transcripts = transcriptSources
       .filter((source) => selectedTranscriptIds.includes(source.id))
-      .reduce((sum, source) => sum + Number(source.normalizedCharCount || 0), 0);
+      .reduce(
+        (sum, source) => sum + Number(source.normalizedCharCount || 0),
+        0,
+      );
     return pasted + transcripts;
   }, [pastedTextSources, selectedTranscriptIds, transcriptSources]);
 
   const trimmedInstruction = generationInstruction.trim();
   const instructionTooLong = trimmedInstruction.length > 2000;
-  const sourceCountExceeded = selectedSourcesCount > capabilities.maxSourcesPerBatch;
+  const sourceCountExceeded =
+    selectedSourcesCount > capabilities.maxSourcesPerBatch;
   const contentBudgetExceeded =
     totalEstimatedCharacters > capabilities.maxNormalizedCharactersPerBatch;
   const canSubmit =
@@ -252,12 +276,16 @@ export function AdminAiQuestionDraftCreatePage() {
 
   function updatePastedText(itemId, patch) {
     setPastedTextSources((current) =>
-      current.map((item) => (item.id === itemId ? { ...item, ...patch } : item)),
+      current.map((item) =>
+        item.id === itemId ? { ...item, ...patch } : item,
+      ),
     );
   }
 
   function removePastedText(itemId) {
-    setPastedTextSources((current) => current.filter((item) => item.id !== itemId));
+    setPastedTextSources((current) =>
+      current.filter((item) => item.id !== itemId),
+    );
   }
 
   function addFiles(nextFiles) {
@@ -269,7 +297,9 @@ export function AdminAiQuestionDraftCreatePage() {
       if (!capabilities.acceptedDocumentExtensions.includes(extension)) {
         errors.push(`${file.name}: PDF, DOCX, or TXT only.`);
       } else if (file.size > capabilities.maxDocumentBytes) {
-        errors.push(`${file.name}: maximum ${formatBytes(capabilities.maxDocumentBytes)}.`);
+        errors.push(
+          `${file.name}: maximum ${formatBytes(capabilities.maxDocumentBytes)}.`,
+        );
       } else {
         accepted.push(file);
       }
@@ -280,14 +310,18 @@ export function AdminAiQuestionDraftCreatePage() {
   }
 
   function removeFile(index) {
-    setFiles((current) => current.filter((_, itemIndex) => itemIndex !== index));
+    setFiles((current) =>
+      current.filter((_, itemIndex) => itemIndex !== index),
+    );
     setFileErrors([]);
   }
 
   async function handleSubmit(event) {
     event.preventDefault();
     if (!canSubmit) {
-      setError("Select at least one valid source and complete the generation setup.");
+      setError(
+        "Select at least one valid source and complete the generation setup.",
+      );
       return;
     }
 
@@ -303,29 +337,29 @@ export function AdminAiQuestionDraftCreatePage() {
     try {
       const createBatch = isCourseQuestionsMode
         ? questionBankService.createCourseAiDraftBatch(courseId, {
-          generationSourceIds: [],
-          transcriptContentIds: selectedTranscriptIds,
-          pastedTextSources: trimmedPastedSources,
-          files,
-          questionTypes,
-          requestedCount,
-          moduleId,
-          language,
-          generationInstruction: trimmedInstruction || null,
-          idempotencyKey,
-        })
+            generationSourceIds: [],
+            transcriptContentIds: selectedTranscriptIds,
+            pastedTextSources: trimmedPastedSources,
+            files,
+            questionTypes,
+            requestedCount,
+            moduleId,
+            language,
+            generationInstruction: trimmedInstruction || null,
+            idempotencyKey,
+          })
         : questionBankService.createAiDraftBatch(bankId, {
-        generationSourceIds: [],
-        transcriptContentIds: selectedTranscriptIds,
-        pastedTextSources: trimmedPastedSources,
-        files,
-        questionTypes,
-        requestedCount,
-        moduleId,
-        language,
-        generationInstruction: trimmedInstruction || null,
-        idempotencyKey,
-      });
+            generationSourceIds: [],
+            transcriptContentIds: selectedTranscriptIds,
+            pastedTextSources: trimmedPastedSources,
+            files,
+            questionTypes,
+            requestedCount,
+            moduleId,
+            language,
+            generationInstruction: trimmedInstruction || null,
+            idempotencyKey,
+          });
       const batch = await createBatch;
       const batchId = batch?.batchId || batch?.id;
       toast.success("AI draft batch created");
@@ -355,7 +389,14 @@ export function AdminAiQuestionDraftCreatePage() {
           <p className="ai-drafts-muted">
             Only Admin and SME users can generate AI question drafts.
           </p>
-          <Button to={isCourseQuestionsMode ? `/admin/courses/${courseId}/questions` : "/admin/question-banks"} variant="secondary">
+          <Button
+            to={
+              isCourseQuestionsMode
+                ? `/admin/courses/${courseId}/questions`
+                : "/admin/question-banks"
+            }
+            variant="secondary"
+          >
             Back to questions
           </Button>
         </section>
@@ -399,14 +440,21 @@ export function AdminAiQuestionDraftCreatePage() {
       </header>
 
       {error && (
-        <section className="ai-drafts-alert ai-drafts-alert--danger" role="alert">
+        <section
+          className="ai-drafts-alert ai-drafts-alert--danger"
+          role="alert"
+        >
           {error}
         </section>
       )}
 
       {bankArchived && (
-        <section className="ai-drafts-alert ai-drafts-alert--warning" role="alert">
-          This question bank is archived. Restore it before generating AI drafts.
+        <section
+          className="ai-drafts-alert ai-drafts-alert--warning"
+          role="alert"
+        >
+          This question bank is archived. Restore it before generating AI
+          drafts.
         </section>
       )}
 
@@ -415,7 +463,10 @@ export function AdminAiQuestionDraftCreatePage() {
           <div className="ai-drafts-section-header">
             <div>
               <h2>Content sources</h2>
-              <p>Paste text, attach documents, or use published video transcripts.</p>
+              <p>
+                Paste text, attach documents, or use published video
+                transcripts.
+              </p>
             </div>
             <span className="admin-status admin-status--approved">
               {selectedSourcesCount}/{capabilities.maxSourcesPerBatch} selected
@@ -426,57 +477,85 @@ export function AdminAiQuestionDraftCreatePage() {
             icon={<Clipboard size={18} />}
             title="Pasted text"
             description={`Each item needs ${capabilities.minTextCharacters}-${capabilities.maxPastedTextCharacters.toLocaleString()} characters.`}
-            action={(
-              <Button type="button" variant="secondary" size="sm" leftIcon={<Plus size={15} />} onClick={addPastedText} disabled={submitting}>
+            action={
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                leftIcon={<Plus size={15} />}
+                onClick={addPastedText}
+                disabled={submitting}
+              >
                 Add text
               </Button>
-            )}
+            }
           >
             {pastedTextSources.length === 0 ? (
-              <div className="admin-empty ai-drafts-empty">No pasted text added.</div>
-            ) : pastedTextSources.map((item, index) => (
-              <div className="ai-pasted-source" key={item.id}>
-                <div className="ai-pasted-source__header">
-                  <label className="input-field__label" htmlFor={`ai-pasted-name-${item.id}`}>
-                    Source name
-                  </label>
-                  <button
-                    type="button"
-                    className="admin-table__icon-btn admin-table__icon-btn--danger"
-                    onClick={() => removePastedText(item.id)}
-                    aria-label={`Remove pasted text ${index + 1}`}
-                    disabled={submitting}
-                  >
-                    <Trash2 size={15} />
-                  </button>
-                </div>
-                <input
-                  id={`ai-pasted-name-${item.id}`}
-                  className="admin-toolbar__input"
-                  value={item.sourceName}
-                  onChange={(event) => updatePastedText(item.id, { sourceName: event.target.value })}
-                  disabled={submitting}
-                  placeholder={`Pasted text ${index + 1}`}
-                />
-                <label className="input-field__label" htmlFor={`ai-pasted-text-${item.id}`}>
-                  Source text
-                </label>
-                <textarea
-                  id={`ai-pasted-text-${item.id}`}
-                  className={`admin-textarea ${pastedTextErrors.has(item.id) ? "admin-textarea--error" : ""}`}
-                  rows={7}
-                  value={item.text}
-                  onChange={(event) => updatePastedText(item.id, { text: event.target.value })}
-                  disabled={submitting}
-                />
-                <div className="ai-drafts-counter">
-                  <span className={pastedTextErrors.has(item.id) ? "is-danger" : ""}>
-                    {pastedTextErrors.get(item.id) || "This text will be snapshotted for retry and audit."}
-                  </span>
-                  <strong>{item.text.trim().length.toLocaleString()}</strong>
-                </div>
+              <div className="admin-empty ai-drafts-empty">
+                No pasted text added.
               </div>
-            ))}
+            ) : (
+              pastedTextSources.map((item, index) => (
+                <div className="ai-pasted-source" key={item.id}>
+                  <div className="ai-pasted-source__header">
+                    <label
+                      className="input-field__label"
+                      htmlFor={`ai-pasted-name-${item.id}`}
+                    >
+                      Source name
+                    </label>
+                    <button
+                      type="button"
+                      className="admin-table__icon-btn admin-table__icon-btn--danger"
+                      onClick={() => removePastedText(item.id)}
+                      aria-label={`Remove pasted text ${index + 1}`}
+                      disabled={submitting}
+                    >
+                      <Trash2 size={15} />
+                    </button>
+                  </div>
+                  <input
+                    id={`ai-pasted-name-${item.id}`}
+                    className="admin-toolbar__input"
+                    value={item.sourceName}
+                    onChange={(event) =>
+                      updatePastedText(item.id, {
+                        sourceName: event.target.value,
+                      })
+                    }
+                    disabled={submitting}
+                    placeholder={`Pasted text ${index + 1}`}
+                  />
+                  <label
+                    className="input-field__label"
+                    htmlFor={`ai-pasted-text-${item.id}`}
+                  >
+                    Source text
+                  </label>
+                  <textarea
+                    id={`ai-pasted-text-${item.id}`}
+                    className={`admin-textarea ${pastedTextErrors.has(item.id) ? "admin-textarea--error" : ""}`}
+                    rows={7}
+                    value={item.text}
+                    onChange={(event) =>
+                      updatePastedText(item.id, { text: event.target.value })
+                    }
+                    disabled={submitting}
+                  />
+                  <div className="ai-drafts-counter">
+                    <span
+                      className={
+                        pastedTextErrors.has(item.id) ? "is-danger" : ""
+                      }
+                    >
+                      {pastedTextErrors.get(item.id) ||
+                        "This text will be snapshotted for retry and audit."}
+                    </span>
+                    <strong>{item.text.trim().length.toLocaleString()}</strong>
+                  </div>
+                </div>
+              ))
+            )}
           </SourceSection>
 
           <SourceSection
@@ -507,13 +586,18 @@ export function AdminAiQuestionDraftCreatePage() {
             </div>
             {fileErrors.length > 0 && (
               <ul className="ai-draft-row__notes" role="alert">
-                {fileErrors.map((item) => <li key={item}>{item}</li>)}
+                {fileErrors.map((item) => (
+                  <li key={item}>{item}</li>
+                ))}
               </ul>
             )}
             {files.length > 0 && (
               <div className="ai-source-list">
                 {files.map((file, index) => (
-                  <div className="ai-file-row" key={`${file.name}-${file.size}-${index}`}>
+                  <div
+                    className="ai-file-row"
+                    key={`${file.name}-${file.size}-${index}`}
+                  >
                     <FileText size={17} />
                     <span>{file.name}</span>
                     <strong>{formatBytes(file.size)}</strong>
@@ -575,14 +659,19 @@ export function AdminAiQuestionDraftCreatePage() {
             </div>
             {questionTypes.length > 1 && (
               <p className="ai-drafts-hint">
-                Backend will split the requested count nearly evenly between selected types.
+                Backend will split the requested count nearly evenly between
+                selected types.
               </p>
             )}
           </div>
 
           <div className="ai-drafts-fieldset">
             <span className="input-field__label">Number of questions</span>
-            <div className="ai-drafts-segmented" role="radiogroup" aria-label="Number of questions">
+            <div
+              className="ai-drafts-segmented"
+              role="radiogroup"
+              aria-label="Number of questions"
+            >
               {QUANTITY_OPTIONS.map((value) => (
                 <button
                   type="button"
@@ -635,7 +724,10 @@ export function AdminAiQuestionDraftCreatePage() {
           </div>
 
           <div className="ai-drafts-fieldset">
-            <label className="input-field__label" htmlFor="ai-draft-instruction">
+            <label
+              className="input-field__label"
+              htmlFor="ai-draft-instruction"
+            >
               Generation instruction
             </label>
             <textarea
@@ -649,7 +741,9 @@ export function AdminAiQuestionDraftCreatePage() {
               placeholder="Mention scope, topic, or learning goals to cover."
             />
             <div className="ai-drafts-counter">
-              <span>Optional. If blank, the backend uses the default instruction.</span>
+              <span>
+                Optional. If blank, the backend uses the default instruction.
+              </span>
               <strong className={instructionTooLong ? "is-danger" : ""}>
                 {trimmedInstruction.length}/2000
               </strong>
@@ -659,14 +753,26 @@ export function AdminAiQuestionDraftCreatePage() {
           <div className="ai-drafts-notice">
             <Info size={16} />
             <span>
-              Selected sources are snapshotted for retry. Document originals are stored for audit and can be downloaded after review authorization.
+              Selected sources are snapshotted for retry. Document originals are
+              stored for audit and can be downloaded after review authorization.
             </span>
           </div>
 
           {(sourceCountExceeded || contentBudgetExceeded) && (
-            <div className="ai-drafts-alert ai-drafts-alert--danger" role="alert">
-              {sourceCountExceeded && <p>Use at most {capabilities.maxSourcesPerBatch} sources.</p>}
-              {contentBudgetExceeded && <p>Selected text/transcripts exceed {capabilities.maxNormalizedCharactersPerBatch.toLocaleString()} characters.</p>}
+            <div
+              className="ai-drafts-alert ai-drafts-alert--danger"
+              role="alert"
+            >
+              {sourceCountExceeded && (
+                <p>Use at most {capabilities.maxSourcesPerBatch} sources.</p>
+              )}
+              {contentBudgetExceeded && (
+                <p>
+                  Selected text/transcripts exceed{" "}
+                  {capabilities.maxNormalizedCharactersPerBatch.toLocaleString()}{" "}
+                  characters.
+                </p>
+              )}
             </div>
           )}
 
@@ -692,7 +798,9 @@ export function AdminAiQuestionDraftCreatePage() {
 
           <div className="ai-drafts-footnote">
             <CheckCircle2 size={15} />
-            <span>Created questions will be saved as draft after human review.</span>
+            <span>
+              Created questions will be saved as draft after human review.
+            </span>
           </div>
           {bank?.updatedAt && (
             <p className="ai-drafts-muted ai-drafts-muted--small">
@@ -705,13 +813,22 @@ export function AdminAiQuestionDraftCreatePage() {
   );
 }
 
-function SourceSection({ icon, title, description, emptyText, action, children }) {
+function SourceSection({
+  icon,
+  title,
+  description,
+  emptyText,
+  action,
+  children,
+}) {
   const isEmpty = Array.isArray(children) ? children.length === 0 : !children;
   return (
     <section className="ai-source-section">
       <div className="ai-source-section__header">
         <div className="ai-source-section__title">
-          <span className="ai-source-row__icon" aria-hidden="true">{icon}</span>
+          <span className="ai-source-row__icon" aria-hidden="true">
+            {icon}
+          </span>
           <div>
             <h3>{title}</h3>
             <p>{description}</p>
@@ -721,7 +838,9 @@ function SourceSection({ icon, title, description, emptyText, action, children }
       </div>
       {isEmpty && emptyText ? (
         <div className="admin-empty ai-drafts-empty">{emptyText}</div>
-      ) : children}
+      ) : (
+        children
+      )}
     </section>
   );
 }
@@ -736,13 +855,20 @@ function SourceRow({ source, checked, disabled, onChange }) {
         disabled={disabled}
       />
       <span className="ai-source-row__icon" aria-hidden="true">
-        {source.kind === "transcript" ? <Video size={18} /> : <FileText size={18} />}
+        {source.kind === "transcript" ? (
+          <Video size={18} />
+        ) : (
+          <FileText size={18} />
+        )}
       </span>
       <span className="ai-source-row__body">
         <strong>{source.title}</strong>
         <span>
-          {source.lessonTitle || sourceKindLabel(source.kind)} · {source.chunkCount || "--"} chunks
-          {source.normalizedCharCount ? ` · ${source.normalizedCharCount.toLocaleString()} chars` : ""}
+          {source.lessonTitle || sourceKindLabel(source.kind)} ·{" "}
+          {source.chunkCount || "--"} chunks
+          {source.normalizedCharCount
+            ? ` · ${source.normalizedCharCount.toLocaleString()} chars`
+            : ""}
         </span>
         <span>
           Checksum: {source.checksum || "--"}

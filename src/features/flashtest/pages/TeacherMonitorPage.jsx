@@ -198,7 +198,9 @@ export function TeacherMonitorPage() {
   }, [attemptHistory]);
 
   const monitorStats = useMemo(() => {
-    const submitted = rowList.filter((row) => statusInfo(row.status).done).length;
+    const submitted = rowList.filter(
+      (row) => statusInfo(row.status).done,
+    ).length;
     const doing = rowList.filter((row) => {
       const info = statusInfo(row.status);
       return !info.done && info.className !== "ft-status--expired";
@@ -560,14 +562,12 @@ export function TeacherMonitorPage() {
     <section className="ft-page ft-page--monitor">
       <header className="ft-monitor-hero">
         <div className="ft-monitor-hero__content">
-          <span className="ft-page-kicker">Trainer monitor</span>
+          <span className="ft-page-kicker"></span>
           <h1 className="ft-page-title">
             {normalizedType === "essay" ? "Assignment Monitor" : "Test Monitor"}
           </h1>
           <p className="ft-page-subtitle">
-            {normalizedType === "essay"
-              ? "Review submissions, download files, and grade trainee work."
-              : "Watch live attempts, reopen access, and inspect completed answers."}
+            {normalizedType === "essay" ? "" : ""}
           </p>
           <div className="ft-monitor-hero__meta">
             <span>
@@ -611,7 +611,10 @@ export function TeacherMonitorPage() {
         </div>
       </header>
 
-      <div className="ft-ops-stats ft-monitor-stats" aria-label="Monitor summary">
+      <div
+        className="ft-ops-stats ft-monitor-stats"
+        aria-label="Monitor summary"
+      >
         <div className="ft-ops-stat ft-ops-stat--primary">
           <span>Submitted</span>
           <strong>{monitorStats.submitted}</strong>
@@ -741,11 +744,15 @@ export function TeacherMonitorPage() {
                                 <button
                                   className="ft-button ft-button--secondary"
                                   type="button"
-                                  disabled={downloadingId === (row.submissionId || row.studentId)}
+                                  disabled={
+                                    downloadingId ===
+                                    (row.submissionId || row.studentId)
+                                  }
                                   onClick={() => handleDownload(row)}
                                 >
                                   <Download size={16} />
-                                  {downloadingId === (row.submissionId || row.studentId)
+                                  {downloadingId ===
+                                  (row.submissionId || row.studentId)
                                     ? "Downloading..."
                                     : "Download file"}
                                 </button>
@@ -753,14 +760,18 @@ export function TeacherMonitorPage() {
                                 <span className="ft-muted">No file</span>
                               )
                             ) : (
-                              <span className="ft-muted">Waiting for submission</span>
+                              <span className="ft-muted">
+                                Waiting for submission
+                              </span>
                             )}
                           </td>
                           <td>
                             {info.done ? (
                               <div className="ft-score-cell">
                                 {row.score != null && (
-                                  <strong aria-live="polite">{row.score}/10</strong>
+                                  <strong aria-live="polite">
+                                    {row.score}/10
+                                  </strong>
                                 )}
                                 <input
                                   className="ft-input ft-score-input"
@@ -770,16 +781,28 @@ export function TeacherMonitorPage() {
                                   max="10"
                                   step="0.1"
                                   placeholder="Score"
-                                  value={gradeForms[row.submissionId]?.score ?? row.score ?? ""}
+                                  value={
+                                    gradeForms[row.submissionId]?.score ??
+                                    row.score ??
+                                    ""
+                                  }
                                   onChange={(event) => {
                                     const value = event.target.value;
                                     if (value === "") {
-                                      updateGradeForm(row.submissionId, { score: "" });
+                                      updateGradeForm(row.submissionId, {
+                                        score: "",
+                                      });
                                       return;
                                     }
                                     const nextScore = Number(value);
-                                    if (Number.isFinite(nextScore) && nextScore >= 0 && nextScore <= 10) {
-                                      updateGradeForm(row.submissionId, { score: value });
+                                    if (
+                                      Number.isFinite(nextScore) &&
+                                      nextScore >= 0 &&
+                                      nextScore <= 10
+                                    ) {
+                                      updateGradeForm(row.submissionId, {
+                                        score: value,
+                                      });
                                     }
                                   }}
                                 />
@@ -810,14 +833,16 @@ export function TeacherMonitorPage() {
                       ) : (
                         <td>
                           {row.score != null || row.percentage != null ? (
-                          <strong>
-                            {mcqScore.score}/10
-                            {mcqScore.percentage != null
-                              ? ` (${mcqScore.percentage}%)`
-                              : ""}
-                          </strong>
+                            <strong>
+                              {mcqScore.score}/10
+                              {mcqScore.percentage != null
+                                ? ` (${mcqScore.percentage}%)`
+                                : ""}
+                            </strong>
                           ) : (
-                            <span className="ft-muted">Waiting for auto grade</span>
+                            <span className="ft-muted">
+                              Waiting for auto grade
+                            </span>
                           )}
                         </td>
                       )}
@@ -831,14 +856,10 @@ export function TeacherMonitorPage() {
                                 }`}
                                 type="button"
                                 title={
-                                  isExpanded
-                                    ? "Hide attempts"
-                                    : "Show attempts"
+                                  isExpanded ? "Hide attempts" : "Show attempts"
                                 }
                                 aria-label={
-                                  isExpanded
-                                    ? "Hide attempts"
-                                    : "Show attempts"
+                                  isExpanded ? "Hide attempts" : "Show attempts"
                                 }
                                 aria-expanded={isExpanded}
                                 onClick={() =>
@@ -980,7 +1001,6 @@ export function TeacherMonitorPage() {
           </table>
         </div>
       )}
-
     </section>
   );
 }
