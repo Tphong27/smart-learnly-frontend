@@ -18,7 +18,7 @@ function statusLabel(value) {
     .join(" ");
 }
 
-function EditionClassForm({ mode, initialData, classId }) {
+function EditionClassForm({ mode, initialData, classId, routeBase }) {
   const navigate = useNavigate();
   const toast = useToast();
   const isEditMode = mode === "edit";
@@ -182,17 +182,17 @@ function EditionClassForm({ mode, initialData, classId }) {
   const handleSuccess = useCallback(
     (savedClass) => {
       if (isEditMode) {
-        navigate(`/staff/classrooms/${savedClass?.id || classId}/workspace`, {
+        navigate(`${routeBase}/${savedClass?.id || classId}/workspace`, {
           replace: true,
         });
         return;
       }
 
-      navigate("/staff/classrooms", {
+      navigate(routeBase, {
         replace: true,
       });
     },
-    [classId, isEditMode, navigate],
+    [classId, isEditMode, navigate, routeBase],
   );
 
   const form = useClassForm({
@@ -263,8 +263,8 @@ function EditionClassForm({ mode, initialData, classId }) {
     courseResource.error || trainerError || statusResource.error;
 
   const cancelPath = isEditMode
-    ? `/staff/classrooms/${classId}/workspace`
-    : "/staff/classrooms";
+    ? `${routeBase}/${classId}/workspace`
+    : routeBase;
 
   return (
     <section className="tmo-create-class">
@@ -556,7 +556,7 @@ function EditionClassForm({ mode, initialData, classId }) {
   );
 }
 
-export function EditionClassPage() {
+export function EditionClassPage({ routeBase = "/staff/classrooms" }) {
   const { classId } = useParams();
   const navigate = useNavigate();
   const isEditMode = Boolean(classId);
@@ -624,7 +624,7 @@ export function EditionClassPage() {
         <Button
           type="button"
           variant="secondary"
-          onClick={() => navigate(`/staff/classrooms/${classId}/workspace`)}
+          onClick={() => navigate(`${routeBase}/${classId}/workspace`)}
         >
           Back to class
         </Button>
@@ -638,6 +638,7 @@ export function EditionClassPage() {
       mode={isEditMode ? "edit" : "create"}
       initialData={isEditMode ? classResource.data : null}
       classId={classId}
+      routeBase={routeBase}
     />
   );
 }

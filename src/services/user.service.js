@@ -17,14 +17,18 @@ function normalizeUserPage(response) {
     content: Array.isArray(content) ? content : [],
     page: Number(data?.page ?? 0),
     size: Number(data?.size ?? 20),
-    totalElements: Number(data?.totalElements ?? data?.totalItems ?? content.length ?? 0),
+    totalElements: Number(
+      data?.totalElements ?? data?.totalItems ?? content.length ?? 0,
+    ),
     totalPages: Number(data?.totalPages ?? 1),
   };
 }
 
 function cleanParams(params = {}) {
   return Object.fromEntries(
-    Object.entries(params).filter(([, value]) => value !== "" && value !== null && value !== undefined),
+    Object.entries(params).filter(
+      ([, value]) => value !== "" && value !== null && value !== undefined,
+    ),
   );
 }
 
@@ -79,10 +83,23 @@ export const userService = {
     });
   },
 
-  async getPublicTrainerProfile(trainerId) {
-    const response = await apiClient.get(`/users/trainers/${trainerId}/profile`, {
-      skipAuthRedirect: true,
+  async listActiveSmes({ page = 0, size = 100, keyword = "" } = {}) {
+    return this.listAdmin({
+      role: "SME",
+      status: "active",
+      keyword,
+      page,
+      size,
     });
+  },
+
+  async getPublicTrainerProfile(trainerId) {
+    const response = await apiClient.get(
+      `/users/trainers/${trainerId}/profile`,
+      {
+        skipAuthRedirect: true,
+      },
+    );
 
     return unwrapData(response);
   },

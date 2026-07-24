@@ -12,20 +12,24 @@ import {
 } from "lucide-react";
 import { Button } from "@/shared/components/ui";
 import { classService } from "@/services";
-import { ROLES } from "@/shared/constants/roles";
+import { canManageClasses, ROLES } from "@/shared/constants/roles";
 import { ClassStatusBadge } from "../components/ClassStatusBadge";
 import { ClassOverviewTab } from "../components/ClassOverviewTab";
 import { ClassCurriculumTab } from "../components/ClassCurriculumTab";
 import { ClassAnalyticsTab } from "../components/ClassAnalyticsTab";
 import { getCurrentRole } from "@/shared/utils/auth";
 
-export function ClassDetailPage() {
+export function ClassDetailPage({
+  routeBase = "/staff/classrooms",
+  coursePreviewBase = "/staff/courses",
+}) {
   const { classId } = useParams();
   const navigate = useNavigate();
 
   const userRole = getCurrentRole();
   const isTrainer = userRole === ROLES.TRAINER;
   const isTmo = userRole === ROLES.TMO;
+  const isClassManager = canManageClasses(userRole);
 
   const [classData, setClassData] = useState(null);
   const [searchParams, setSearchParams] = useSearchParams();
@@ -62,8 +66,9 @@ export function ClassDetailPage() {
   }
 
   function openEditClass() {
-    if (!classId || !isTmo) return;
-    navigate(`/staff/classrooms/${classId}/edit`);
+    if (!classId || !isClassManager) return;
+
+    navigate(`${routeBase}/${classId}/edit`);
   }
 
   function openTraineePreview() {
@@ -71,7 +76,7 @@ export function ClassDetailPage() {
 
     const params = new URLSearchParams();
     params.set("classId", classId);
-    const workspacePath = `/staff/classrooms/${classId}/workspace`;
+    const workspacePath = `${routeBase}/${classId}/workspace`;
 
     params.set(
       "returnTo",
@@ -80,7 +85,7 @@ export function ClassDetailPage() {
         : `${workspacePath}?tab=${activeTab}`,
     );
     navigate(
-      `/staff/courses/${classData.courseId}/preview?${params.toString()}`,
+      `${coursePreviewBase}/${classData.courseId}/preview?${params.toString()}`,
     );
   }
 
@@ -128,7 +133,7 @@ export function ClassDetailPage() {
 
     try {
       await classService.delete(classId);
-      navigate("/staff/classrooms");
+      navigate(routeBase);
     } catch (err) {
       setError(err.message || "Can not delete class");
     }
@@ -189,20 +194,22 @@ export function ClassDetailPage() {
           </div>
         </div>
 
-        {(isTrainer || isTmo) && (
+        {(isTrainer || isClassManager) && (
           <div className="workspace-header__actions">
             <Button leftIcon={<Eye size={17} />} onClick={openTraineePreview}>
               View as trainee
             </Button>
 
-            <Button
-              leftIcon={<ClipboardList size={17} />}
-              onClick={openAssignments}
-            >
-              Assignment
-            </Button>
+            {(isTrainer || isTmo) && (
+              <Button
+                leftIcon={<ClipboardList size={17} />}
+                onClick={openAssignments}
+              >
+                Assignment
+              </Button>
+            )}
 
-            {isTmo && (
+            {isClassManager && (
               <Button
                 type="button"
                 variant="delete"
@@ -287,7 +294,7 @@ export function ClassDetailPage() {
           <ClassOverviewTab
             classData={classData}
             onEdit={openEditClass}
-            readOnly={isTrainer}
+            readOnly={!isClassManager}
           />
         )}
       </div>

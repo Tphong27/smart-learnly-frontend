@@ -18,11 +18,15 @@ import {
 } from "@/features/admin";
 import AdminOrdersPage from "@/features/checkout/pages/AdminOrdersPage";
 import AdminTransactionsPage from "@/features/checkout/pages/AdminTransactionsPage";
-
 import AdminCourseContentPage from "@/features/course/pages/AdminCourseContentPage";
-
 import AdminLessonDetailPage from "@/features/course/pages/AdminLessonDetailPage";
 import VideoAiReviewPage from "@/features/course/pages/VideoAiReviewPage";
+import {
+  ClassAnalyticsRedirect,
+  ClassDetailPage,
+  EditionClassPage,
+  StaffClassListPage,
+} from "@/features/classroom";
 
 function PlaceholderPage({ title }) {
   return (
@@ -47,10 +51,27 @@ function getAdminRoutes() {
             <RoleGuard allowedRoles={[ROLES.ADMIN, ROLES.TMO, ROLES.SME]} />
           ),
           children: [
-            { path: "courses", element: <AdminCoursesPage /> },
-            { path: "courses/new", element: <AdminCourseFormPage /> },
-            { path: "courses/:courseId", element: <AdminCourseFormPage /> },
-            { path: "categories", element: <AdminCategoriesPage /> },
+            {
+              path: "courses",
+              element: <AdminCoursesPage />,
+            },
+            {
+              path: "courses/:courseId",
+              element: <AdminCourseFormPage />,
+            },
+            {
+              path: "categories",
+              element: <AdminCategoriesPage />,
+            },
+          ],
+        },
+        {
+          element: <RoleGuard allowedRoles={[ROLES.ADMIN, ROLES.TMO]} />,
+          children: [
+            {
+              path: "courses/new",
+              element: <AdminCourseFormPage />,
+            },
           ],
         },
         {
@@ -94,13 +115,14 @@ function getAdminRoutes() {
               path: "question-banks/:bankId/questions/new",
               element: <AdminQuestionFormPage />,
             },
-            { path: "questions/:questionId/edit", element: <AdminQuestionFormPage /> },
+            {
+              path: "questions/:questionId/edit",
+              element: <AdminQuestionFormPage />,
+            },
           ],
         },
         {
-          element: (
-            <RoleGuard allowedRoles={[ROLES.ADMIN, ROLES.SME]} />
-          ),
+          element: <RoleGuard allowedRoles={[ROLES.ADMIN, ROLES.SME]} />,
           children: [
             {
               path: "courses/:courseId/questions/ai-drafts/new",
@@ -124,6 +146,31 @@ function getAdminRoutes() {
           element: <RoleGuard allowedRoles={[ROLES.ADMIN]} />,
           children: [
             { path: "dashboard", element: <AdminDashboardPage /> },
+            {
+              path: "classrooms",
+              element: <StaffClassListPage routeBase="/admin/classrooms" />,
+            },
+            {
+              path: "classrooms/create",
+              element: <EditionClassPage routeBase="/admin/classrooms" />,
+            },
+            {
+              path: "classrooms/:classId/edit",
+              element: <EditionClassPage routeBase="/admin/classrooms" />,
+            },
+            {
+              path: "classrooms/:classId/analytics",
+              element: <ClassAnalyticsRedirect routeBase="/admin/classrooms" />,
+            },
+            {
+              path: "classrooms/:classId/workspace",
+              element: (
+                <ClassDetailPage
+                  routeBase="/admin/classrooms"
+                  coursePreviewBase="/admin/courses"
+                />
+              ),
+            },
             { path: "users-management", element: <AdminUsersPage /> },
             { path: "audit-log", element: <AdminAuditLogPage /> },
             {

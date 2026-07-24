@@ -45,6 +45,12 @@ const navItems = [
     roles: [ROLES.ADMIN, ROLES.TMO, ROLES.SME],
   },
   {
+    label: "Class Management",
+    path: "/admin/classrooms",
+    icon: Users,
+    roles: [ROLES.ADMIN],
+  },
+  {
     label: "Categories",
     path: "/admin/categories",
     icon: Receipt,
@@ -167,8 +173,8 @@ export function Sidebar({
 }) {
   const normalizedRole = normalizeRole(userRole);
   const dashboardPath = getDashboardPathByRole(normalizedRole);
-  const [isMobile, setIsMobile] = useState(() =>
-    window.matchMedia("(max-width: 1024px)").matches,
+  const [isMobile, setIsMobile] = useState(
+    () => window.matchMedia("(max-width: 1024px)").matches,
   );
   const [hoverSuppressed, setHoverSuppressed] = useState(false);
 

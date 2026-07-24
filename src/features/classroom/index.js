@@ -10,6 +10,7 @@ export { ClassOverviewTab } from "./components/ClassOverviewTab";
 export { ClassCurriculumTab } from "./components/ClassCurriculumTab";
 export { ClassAnalyticsTab } from "./components/ClassAnalyticsTab";
 export { EditionClassPage } from "./pages/EditionClassPage";
+export { ClassAnalyticsRedirect } from "./pages/ClassAnalyticsRedirect";
 
 export const classroomFeature = {
   name: "Class Operations",
