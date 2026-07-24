@@ -11,7 +11,7 @@ export function getDashboardPathByRole(role) {
     case ROLES.SME:
       return "/admin/courses";
     case ROLES.TRAINER:
-      return "/staff/courses";
+      return "/staff/classrooms";
     case ROLES.TRAINEE:
       return "/dashboard";
     default:

@@ -4,6 +4,12 @@ const slugRule = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
 
 export const courseSchema = z.object({
   categoryId: z.string({ message: 'Category is required' }).uuid('Category is invalid'),
+  assignedSmeId: z
+  .string()
+  .uuid('Assigned SME is invalid')
+  .or(z.literal(''))
+  .nullable()
+  .optional(),
   title: z
     .string({ message: 'Course title is required' })
     .trim()

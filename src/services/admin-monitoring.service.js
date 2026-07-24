@@ -8,7 +8,10 @@ const httpClient = {
   get: async (path, config = {}) => {
     const { params, ...options } = config;
     const query = params ? `?${new URLSearchParams(params).toString()}` : "";
-    const response = await request(`${path}${query}`, { method: "GET", ...options });
+    const response = await request(`${path}${query}`, {
+      method: "GET",
+      ...options,
+    });
     return unwrapApiResponse(response);
   },
   post: async (path, body, config = {}) => {
@@ -46,6 +49,10 @@ export const adminMonitoringService = {
     return httpClient.get("/transactions", { params });
   },
 
+  getTransactionFilterOptions: async () => {
+    return httpClient.get("/transactions/filter-options");
+  },
+  
   getTransactionById: async (id) => {
     return httpClient.get(`/transactions/${id}`);
   },

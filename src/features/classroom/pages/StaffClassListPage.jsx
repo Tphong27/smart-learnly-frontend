@@ -3,20 +3,20 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { AlertCircle, Loader, Plus } from "lucide-react";
 import { Button } from "@/shared/components/ui";
 import { classService } from "@/services";
-import { ROLES } from "@/shared/constants/roles";
+import { canManageClasses, ROLES } from "@/shared/constants/roles";
 import { ClassListFilters } from "../components/ClassListFilters";
 import { getCurrentRole } from "@/shared/utils/auth";
 import Pagination from "@/shared/components/Pagination";
 import { ClassList } from "../components/ClassList";
 
-export function StaffClassListPage() {
+export function StaffClassListPage({ routeBase = "/staff/classrooms" }) {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const courseIdFilter = searchParams.get("courseId") || "";
 
   const userRole = getCurrentRole();
-  const isTmo = userRole === ROLES.TMO;
   const isTrainer = userRole === ROLES.TRAINER;
+  const isClassManager = canManageClasses(userRole);
 
   const [classes, setClasses] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -148,11 +148,11 @@ export function StaffClassListPage() {
           )}
         </div>
 
-        {isTmo && (
+        {isClassManager && (
           <Button
             type="button"
             leftIcon={<Plus size={17} />}
-            onClick={() => navigate("/staff/classrooms/create")}
+            onClick={() => navigate(`${routeBase}/create`)}
           >
             New class
           </Button>
@@ -197,16 +197,14 @@ export function StaffClassListPage() {
 
           <ClassList
             classes={classes}
-            isTmo={isTmo}
+            isClassManager={isClassManager}
             isTrainer={isTrainer}
-            onOpen={(classId) =>
-              navigate(`/staff/classrooms/${classId}/workspace`)
-            }
+            onOpen={(classId) => navigate(`${routeBase}/${classId}/workspace`)}
             onCurriculum={(classId) =>
-              navigate(`/staff/classrooms/${classId}/workspace?tab=curriculum`)
+              navigate(`${routeBase}/${classId}/workspace?tab=curriculum`)
             }
             onAnalytics={(classId) =>
-              navigate(`/staff/classrooms/${classId}/workspace?tab=analytics`)
+              navigate(`${routeBase}/${classId}/workspace?tab=analytics`)
             }
             onDelete={handleDeleteClass}
           />

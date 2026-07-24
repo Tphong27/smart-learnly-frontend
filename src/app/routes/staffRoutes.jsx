@@ -1,5 +1,5 @@
 /* eslint-disable react-refresh/only-export-components */
-import { Navigate, useParams } from "react-router-dom";
+import { Navigate } from "react-router-dom";
 import { RoleGuard } from "./RoleGuard";
 import { ROLES } from "@/shared/constants/roles";
 import { TrainerLayout } from "../layouts/TrainerLayout";
@@ -12,7 +12,7 @@ import {
   StaffTestMonitorPage,
   TestAttemptDetailPage,
 } from "@/features/flashtest";
-// import { StaffLayout } from "@/app/layouts/StaffLayout";
+// import { TrainerLayout } from "@/app/layouts/TrainerLayout";
 import { AdminCoursesPage, AdminCourseFormPage } from "@/features/admin";
 import AdminCourseContentPage from "@/features/course/pages/AdminCourseContentPage";
 import AdminLessonDetailPage from "@/features/course/pages/AdminLessonDetailPage";
@@ -22,6 +22,7 @@ import {
   EditionClassPage,
   ClassDetailPage,
   TrainerLessonDetailPage,
+  ClassAnalyticsRedirect
 } from "@/features/classroom";
 import { SchedulePage } from "@/features/schedule";
 
@@ -35,21 +36,6 @@ function PlaceholderPage({ title }) {
         added in future sprints.
       </p>
     </section>
-  );
-}
-
-function ClassAnalyticsRedirect() {
-  const { classId } = useParams();
-
-  if (!classId) {
-    return <Navigate to="/staff/classrooms" replace />;
-  }
-
-  return (
-    <Navigate
-      to={`/staff/classrooms/${classId}/workspace?tab=analytics`}
-      replace
-    />
   );
 }
 

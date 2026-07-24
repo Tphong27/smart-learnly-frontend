@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import { SmartLearnlyMark } from "@/shared/components/SmartLearnlyMark";
 import { HeaderCourseSearch } from "@/shared/components/HeaderCourseSearch";
 import { ROLES } from "@/shared/constants/roles";
+import { getDashboardPathByRole } from "@/app/routes/dashboard-path";
 import { courseService } from "@/services";
 import "./TraineeLayout.css";
 
@@ -50,6 +51,7 @@ export function TraineeHeader({ user, onLogout, roleLabel }) {
   const displayName = getDisplayName(user);
   const initials = getInitials(displayName);
   const roleText = roleLabel || getRoleLabel(user?.role);
+  const dashboardPath = getDashboardPathByRole(user?.role);
 
   useEffect(() => {
     if (!categoriesOpen && !notificationOpen && !profileOpen) return undefined;
@@ -105,7 +107,7 @@ export function TraineeHeader({ user, onLogout, roleLabel }) {
     <header className="trainee-header">
       <div className="header-container trainee-header__container">
         <Link
-          to="/dashboard"
+          to={dashboardPath}
           className="header-logo"
           aria-label="Smart Learnly dashboard"
         >

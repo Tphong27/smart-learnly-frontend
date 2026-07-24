@@ -15,7 +15,7 @@ function resolveClassItem(classItem) {
 
 function ClassActions({
   classItem,
-  isTmo,
+  isClassManager,
   isTrainer,
   onOpen,
   onCurriculum,
@@ -56,7 +56,7 @@ function ClassActions({
         <BarChart3 size={16} strokeWidth={2.2} aria-hidden="true" />
       </button>
 
-      {isTmo && (
+      {isClassManager && (
         <button
           type="button"
           className="course-management__action class-management__action--danger"
@@ -73,7 +73,7 @@ function ClassActions({
 
 export function ClassList({
   classes,
-  isTmo,
+  isClassManager,
   isTrainer,
   onOpen,
   onCurriculum,
@@ -189,7 +189,7 @@ export function ClassList({
               <td data-label="Actions">
                 <ClassActions
                   classItem={classItem}
-                  isTmo={isTmo}
+                  isClassManager={isClassManager}
                   isTrainer={isTrainer}
                   onOpen={onOpen}
                   onCurriculum={onCurriculum}
@@ -265,7 +265,7 @@ export function ClassList({
             <div className="course-management__card-actions">
               <ClassActions
                 classItem={classItem}
-                isTmo={isTmo}
+                isClassManager={isClassManager}
                 isTrainer={isTrainer}
                 onOpen={onOpen}
                 onCurriculum={onCurriculum}

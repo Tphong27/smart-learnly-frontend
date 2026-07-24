@@ -8,6 +8,11 @@ import "./TrainerLayout.css";
 
 const STAFF_TABS = [
   {
+    label: "Classrooms",
+    to: "/staff/classrooms",
+    roles: [ROLES.TRAINER, ROLES.TMO],
+  },
+  {
     label: "Course Content",
     to: "/staff/courses",
     end: true,
@@ -17,11 +22,6 @@ const STAFF_TABS = [
     label: "Flashcards Management",
     to: "/staff/flashcards",
     roles: [ROLES.TRAINER, ROLES.TMO, ROLES.SME],
-  },
-  {
-    label: "Classrooms",
-    to: "/staff/classrooms",
-    roles: [ROLES.TRAINER, ROLES.TMO],
   },
   {
     label: "Schedule",
