@@ -1,4 +1,4 @@
-import { BarChart3, Eye, School, Trash2 } from "lucide-react";
+import { BarChart3, BookOpen, Eye, School, Trash2 } from "lucide-react";
 import { ClassStatusBadge } from "./ClassStatusBadge";
 import { formatCapacity, formatDate, formatVnd } from "../utils/classFormatter";
 import "@/features/admin/courses/pages/AdminCoursesPage.css";
@@ -13,17 +13,38 @@ function resolveClassItem(classItem) {
   };
 }
 
-function ClassActions({ classItem, isTmo, onOpen, onAnalytics, onDelete }) {
+function ClassActions({
+  classItem,
+  isTmo,
+  isTrainer,
+  onOpen,
+  onCurriculum,
+  onAnalytics,
+  onDelete,
+}) {
   return (
     <div className="course-management__actions">
       <button
         type="button"
         className="course-management__action course-management__action--primary"
-        onClick={() => onOpen(classItem.id)}
+        title="Open class"
         aria-label={`Open ${classItem.resolvedClassName}`}
+        onClick={() => onOpen(classItem.id)}
       >
         <Eye size={17} strokeWidth={2.2} aria-hidden="true" />
       </button>
+
+      {isTrainer && (
+        <button
+          type="button"
+          className="course-management__action"
+          title="Curriculum"
+          aria-label={`Open curriculum for ${classItem.resolvedClassName}`}
+          onClick={() => onCurriculum(classItem.id)}
+        >
+          <BookOpen size={16} strokeWidth={2.2} aria-hidden="true" />
+        </button>
+      )}
 
       <button
         type="button"
@@ -53,7 +74,9 @@ function ClassActions({ classItem, isTmo, onOpen, onAnalytics, onDelete }) {
 export function ClassList({
   classes,
   isTmo,
+  isTrainer,
   onOpen,
+  onCurriculum,
   onAnalytics,
   onDelete,
 }) {
@@ -167,7 +190,9 @@ export function ClassList({
                 <ClassActions
                   classItem={classItem}
                   isTmo={isTmo}
+                  isTrainer={isTrainer}
                   onOpen={onOpen}
+                  onCurriculum={onCurriculum}
                   onAnalytics={onAnalytics}
                   onDelete={onDelete}
                 />
@@ -218,15 +243,14 @@ export function ClassList({
                   {formatCapacity(
                     classItem.activeEnrollmentCount,
                     classItem.maxStudents,
-                  )}{" "}
-                  trainees
+                  )}
                 </dd>
               </div>
 
-              <div>
+              {/* <div>
                 <dt>Available seats</dt>
                 <dd>{classItem.availableSeats ?? 0}</dd>
-              </div>
+              </div> */}
 
               <div>
                 <dt>Class fee</dt>
@@ -242,7 +266,9 @@ export function ClassList({
               <ClassActions
                 classItem={classItem}
                 isTmo={isTmo}
+                isTrainer={isTrainer}
                 onOpen={onOpen}
+                onCurriculum={onCurriculum}
                 onAnalytics={onAnalytics}
                 onDelete={onDelete}
               />

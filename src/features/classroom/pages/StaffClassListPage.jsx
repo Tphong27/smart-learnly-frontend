@@ -201,6 +201,9 @@ export function StaffClassListPage() {
             onOpen={(classId) =>
               navigate(`/staff/classrooms/${classId}/workspace`)
             }
+            onCurriculum={(classId) =>
+              navigate(`/staff/classrooms/${classId}/workspace?tab=curriculum`)
+            }
             onAnalytics={(classId) =>
               navigate(`/staff/classrooms/${classId}/workspace?tab=analytics`)
             }
