@@ -1179,17 +1179,15 @@
   color: #1d4ed8;
 }
 
-.ft-question-selector,
-.ft-question-list {
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  background: #f8fafc;
-  padding: 14px;
+.ft-question-selector {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
 }
 
 .ft-question-list {
   display: grid;
-  max-height: 280px;
+  max-height: 180px;
   overflow: auto;
   gap: 8px;
 }

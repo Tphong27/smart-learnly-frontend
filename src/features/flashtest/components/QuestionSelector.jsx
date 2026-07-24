@@ -98,11 +98,28 @@ export function QuestionSelector({
 
   return (
     <div className="ft-question-selector">
-      <div className="ft-row-between" style={{ marginBottom: 10 }}>
-        <strong>Selected Questions ({selectedQuestions.length})</strong>
+      <div className="ft-question-bank-header">
+        <button
+          className="ft-button ft-button--secondary"
+          type="button"
+          disabled={loading || !courseId || availableQuestions.length === 0}
+          onClick={() => {
+            setRandomCount("");
+            setRandomModalOpen(true);
+          }}
+        >
+          <Shuffle size={14} /> Random
+        </button>
       </div>
 
-      <div className="ft-question-list" style={{ maxHeight: 180, marginBottom: 14 }}>
+      {loading && <p className="ft-muted">Loading available questions...</p>}
+      {!loading && courseId && questions.length === 0 && (
+        <p className="ft-muted">
+          No questions found for the selected {moduleId === "all" ? "course" : "module"}.
+        </p>
+      )}
+
+      <div className="ft-question-list">
         {selectedQuestions.length === 0 ? (
           <p className="ft-muted">No question selected.</p>
         ) : (
@@ -168,26 +185,6 @@ export function QuestionSelector({
           })
         )}
       </div>
-
-      <div className="ft-question-bank-header">
-        <button
-          className="ft-button ft-button--secondary"
-          type="button"
-          disabled={loading || !courseId || availableQuestions.length === 0}
-          onClick={() => {
-            setRandomCount("");
-            setRandomModalOpen(true);
-          }}
-        >
-          <Shuffle size={14} /> Random
-        </button>
-      </div>
-      {loading && <p className="ft-muted">Loading available questions...</p>}
-      {!loading && courseId && questions.length === 0 && (
-        <p className="ft-muted">
-          No questions found for the selected {moduleId === "all" ? "course" : "module"}.
-        </p>
-      )}
 
       {randomModalOpen && (
         <div className="ft-modal-overlay" role="dialog" aria-modal="true">
