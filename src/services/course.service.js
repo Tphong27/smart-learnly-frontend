@@ -150,6 +150,16 @@ export const courseService = {
     return normalizePage(response);
   },
 
+  async getMostEnrolledCourse() {
+    const pageData = await this.getPublicCourses({
+      page: 0,
+      size: 1,
+      sort: "POPULAR",
+    });
+
+    return pageData.items[0] ?? null;
+  },
+
   async getPublicCoursesWithDetails(params = {}) {
     const pageData = await this.getPublicCourses(params);
 
@@ -401,9 +411,7 @@ export const courseService = {
 
   // Khớp với @GetMapping("/sections/{sectionId}/lessons")
   async getLessonsBySection(sectionId) {
-    const response = await apiClient.get(
-      `/admin/modules/${sectionId}/lessons`,
-    );
+    const response = await apiClient.get(`/admin/modules/${sectionId}/lessons`);
     const data = unwrap(response);
     return Array.isArray(data) ? data : data?.items || data?.content || [];
   },
@@ -444,25 +452,21 @@ export const courseService = {
     formData.append("video", videoFile);
     formData.append("replaceExisting", replaceExisting);
 
-    const response = await apiClient.post(
-      "/hls/upload",
-      formData,
-      {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-        timeout: 600000,
-        onUploadProgress:
-          typeof onUploadProgress === "function"
-            ? (event) => {
-                if (!event.total) return;
-                onUploadProgress(
-                  Math.min(100, Math.round((event.loaded * 100) / event.total)),
-                );
-              }
-            : undefined,
+    const response = await apiClient.post("/hls/upload", formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
       },
-    );
+      timeout: 600000,
+      onUploadProgress:
+        typeof onUploadProgress === "function"
+          ? (event) => {
+              if (!event.total) return;
+              onUploadProgress(
+                Math.min(100, Math.round((event.loaded * 100) / event.total)),
+              );
+            }
+          : undefined,
+    });
     return unwrap(response);
   },
 
