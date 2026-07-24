@@ -198,6 +198,7 @@ export function StaffClassListPage() {
           <ClassList
             classes={classes}
             isTmo={isTmo}
+            isTrainer={isTrainer}
             onOpen={(classId) =>
               navigate(`/staff/classrooms/${classId}/workspace`)
             }

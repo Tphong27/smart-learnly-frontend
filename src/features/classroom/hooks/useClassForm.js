@@ -25,6 +25,7 @@ export function useClassForm({
     formState: { errors },
     watch,
     control,
+    setValue,
   } = useForm({
     resolver: zodResolver(isEditMode ? classEditFormSchema : classFormSchema),
     defaultValues: toClassFormValues(initialData),
@@ -63,7 +64,7 @@ export function useClassForm({
         setIsSubmitting(false);
         return;
       }
-      
+
       setIsSubmitting(false);
       onSuccess?.(savedClass);
     },
@@ -75,6 +76,7 @@ export function useClassForm({
     errors,
     watch,
     control,
+    setValue,
     isSubmitting,
     submitError,
     onSubmit: handleSubmit(submitForm),

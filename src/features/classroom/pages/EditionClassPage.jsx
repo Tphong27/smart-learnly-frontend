@@ -1,22 +1,8 @@
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
-import {
-  useNavigate,
-  useParams,
-} from "react-router-dom";
-import {
-  AlertCircle,
-  Loader,
-} from "lucide-react";
-import { Button } from "@/shared/components/ui";
-import {
-  classService,
-  courseService,
-} from "@/services";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { AlertCircle, Loader, Video } from "lucide-react";
+import { Button, useToast } from "@/shared/components/ui";
+import { classService, courseService } from "@/services";
 import { useActiveTrainers } from "../hooks/useActiveTrainers";
 import { useClassForm } from "../hooks/useClassForm";
 import { getTodayDateKey } from "@/shared/utils/date";
@@ -28,41 +14,28 @@ function statusLabel(value) {
   return String(value)
     .toLowerCase()
     .split("_")
-    .map(
-      (word) =>
-        word.charAt(0).toUpperCase() +
-        word.slice(1),
-    )
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(" ");
 }
 
-function EditionClassForm({
-  mode,
-  initialData,
-  classId,
-}) {
+function EditionClassForm({ mode, initialData, classId }) {
   const navigate = useNavigate();
+  const toast = useToast();
   const isEditMode = mode === "edit";
 
-  const [courseResource, setCourseResource] =
-    useState({
-      loading: true,
-      items: [],
-      error: "",
-    });
+  const [courseResource, setCourseResource] = useState({
+    loading: true,
+    items: [],
+    error: "",
+  });
 
-  const [statusResource, setStatusResource] =
-    useState({
-      loading: isEditMode,
-      items: [],
-      error: "",
-    });
+  const [statusResource, setStatusResource] = useState({
+    loading: isEditMode,
+    items: [],
+    error: "",
+  });
 
-  const {
-    trainers,
-    loadingTrainers,
-    trainerError,
-  } = useActiveTrainers({
+  const { trainers, loadingTrainers, trainerError } = useActiveTrainers({
     autoLoad: true,
   });
 
@@ -77,16 +50,11 @@ function EditionClassForm({
       .then((data) => {
         if (cancelled) return;
 
-        const rawCourses =
-          data?.items || data?.content || [];
+        const rawCourses = data?.items || data?.content || [];
 
-        const publishedCourses =
-          rawCourses.filter(
-            (course) =>
-              String(
-                course.status || "",
-              ).toLowerCase() === "published",
-          );
+        const publishedCourses = rawCourses.filter(
+          (course) => String(course.status || "").toLowerCase() === "published",
+        );
 
         setCourseResource({
           loading: false,
@@ -97,17 +65,12 @@ function EditionClassForm({
       .catch((error) => {
         if (cancelled) return;
 
-        console.error(
-          "Error loading courses:",
-          error,
-        );
+        console.error("Error loading courses:", error);
 
         setCourseResource({
           loading: false,
           items: [],
-          error:
-            error?.message ||
-            "Can not load courses",
+          error: error?.message || "Can not load courses",
         });
       });
 
@@ -137,17 +100,12 @@ function EditionClassForm({
       .catch((error) => {
         if (cancelled) return;
 
-        console.error(
-          "Error loading class statuses:",
-          error,
-        );
+        console.error("Error loading class statuses:", error);
 
         setStatusResource({
           loading: false,
           items: [],
-          error:
-            error?.message ||
-            "Can not load class statuses",
+          error: error?.message || "Can not load class statuses",
         });
       });
 
@@ -161,10 +119,7 @@ function EditionClassForm({
 
     if (
       !initialData?.courseId ||
-      courses.some(
-        (course) =>
-          course.id === initialData.courseId,
-      )
+      courses.some((course) => course.id === initialData.courseId)
     ) {
       return courses;
     }
@@ -172,9 +127,7 @@ function EditionClassForm({
     return [
       {
         id: initialData.courseId,
-        title:
-          initialData.courseTitle ||
-          "Current course",
+        title: initialData.courseTitle || "Current course",
       },
       ...courses,
     ];
@@ -183,10 +136,7 @@ function EditionClassForm({
   const displayedTrainers = useMemo(() => {
     if (
       !initialData?.trainerId ||
-      trainers.some(
-        (trainer) =>
-          trainer.id === initialData.trainerId,
-      )
+      trainers.some((trainer) => trainer.id === initialData.trainerId)
     ) {
       return trainers;
     }
@@ -194,9 +144,7 @@ function EditionClassForm({
     return [
       {
         id: initialData.trainerId,
-        fullName:
-          initialData.trainerName ||
-          "Current trainer",
+        fullName: initialData.trainerName || "Current trainer",
         email: "",
       },
       ...trainers,
@@ -218,12 +166,7 @@ function EditionClassForm({
       initialData?.status || "upcoming",
     ).toLowerCase();
 
-    if (
-      statuses.some(
-        (status) =>
-          status.value === currentStatus,
-      )
-    ) {
+    if (statuses.some((status) => status.value === currentStatus)) {
       return statuses;
     }
 
@@ -234,21 +177,14 @@ function EditionClassForm({
       },
       ...statuses,
     ];
-  }, [
-    initialData,
-    isEditMode,
-    statusResource.items,
-  ]);
+  }, [initialData, isEditMode, statusResource.items]);
 
   const handleSuccess = useCallback(
     (savedClass) => {
       if (isEditMode) {
-        navigate(
-          `/staff/classrooms/${
-            savedClass?.id || classId
-          }/workspace`,
-          { replace: true },
-        );
+        navigate(`/staff/classrooms/${savedClass?.id || classId}/workspace`, {
+          replace: true,
+        });
         return;
       }
 
@@ -265,10 +201,58 @@ function EditionClassForm({
     onSuccess: handleSuccess,
   });
 
+  const [meetingLinkState, setMeetingLinkState] = useState({
+    loading: false,
+    error: "",
+  });
+
+  const meetingUrl = form.watch("meetingUrl");
+
+  async function handleGenerateMeetingUrl() {
+    if (meetingLinkState.loading) {
+      return;
+    }
+
+    setMeetingLinkState({
+      loading: true,
+      error: "",
+    });
+
+    try {
+      const generated = await classService.generateMeetingUrl();
+
+      if (!generated?.meetingUrl) {
+        throw new Error("The server did not return a Google Meet URL");
+      }
+
+      form.setValue("meetingUrl", generated.meetingUrl, {
+        shouldDirty: true,
+        shouldTouch: true,
+        shouldValidate: true,
+      });
+
+      setMeetingLinkState({
+        loading: false,
+        error: "",
+      });
+
+      toast.success("Google Meet link generated. Save the class to keep it.");
+    } catch (error) {
+      const message =
+        error?.message || "Could not generate a Google Meet link.";
+
+      setMeetingLinkState({
+        loading: false,
+        error: message,
+      });
+
+      toast.error(message);
+    }
+  }
+
   const minDate = isEditMode ? undefined : getTodayDateKey();
 
-  const selectedStartDate =
-    form.watch("startDate");
+  const selectedStartDate = form.watch("startDate");
 
   const referenceDataLoading =
     courseResource.loading ||
@@ -276,9 +260,7 @@ function EditionClassForm({
     (isEditMode && statusResource.loading);
 
   const referenceDataError =
-    courseResource.error ||
-    trainerError ||
-    statusResource.error;
+    courseResource.error || trainerError || statusResource.error;
 
   const cancelPath = isEditMode
     ? `/staff/classrooms/${classId}/workspace`
@@ -288,27 +270,16 @@ function EditionClassForm({
     <section className="tmo-create-class">
       <div className="section-header">
         <div>
-          <h1>
-            {isEditMode
-              ? "Edit Class"
-              : "Create Class"}
-          </h1>
+          <h1>{isEditMode ? "Edit Class" : "Create Class"}</h1>
         </div>
       </div>
 
-      <form
-        onSubmit={form.onSubmit}
-        className="class-form class-form--page"
-      >
-        {(form.submitError ||
-          referenceDataError) && (
+      <form onSubmit={form.onSubmit} className="class-form class-form--page">
+        {(form.submitError || referenceDataError) && (
           <div className="form-error">
             <AlertCircle size={20} />
 
-            <span>
-              {form.submitError ||
-                referenceDataError}
-            </span>
+            <span>{form.submitError || referenceDataError}</span>
           </div>
         )}
 
@@ -316,20 +287,14 @@ function EditionClassForm({
           <h3>Basic Information</h3>
 
           <div className="form-group">
-            <label htmlFor="className">
-              Class Name *
-            </label>
+            <label htmlFor="className">Class Name *</label>
 
             <input
               id="className"
               type="text"
               placeholder="Example: Java Advanced - Evening Class"
               {...form.register("className")}
-              className={
-                form.errors.className
-                  ? "input-error"
-                  : ""
-              }
+              className={form.errors.className ? "input-error" : ""}
             />
 
             {form.errors.className && (
@@ -340,29 +305,18 @@ function EditionClassForm({
           </div>
 
           <div className="form-group">
-            <label htmlFor="courseId">
-              Course *
-            </label>
+            <label htmlFor="courseId">Course *</label>
 
             <select
               id="courseId"
               {...form.register("courseId")}
               disabled={courseResource.loading}
-              className={
-                form.errors.courseId
-                  ? "input-error"
-                  : ""
-              }
+              className={form.errors.courseId ? "input-error" : ""}
             >
-              <option value="">
-                Select Course
-              </option>
+              <option value="">Select Course</option>
 
               {displayedCourses.map((course) => (
-                <option
-                  key={course.id}
-                  value={course.id}
-                >
+                <option key={course.id} value={course.id}>
                   {course.title || course.name}
                 </option>
               ))}
@@ -376,48 +330,31 @@ function EditionClassForm({
           </div>
 
           <div className="form-group">
-            <label htmlFor="trainerId">
-              Trainer *
-            </label>
+            <label htmlFor="trainerId">Trainer *</label>
 
             <select
               id="trainerId"
               {...form.register("trainerId")}
               disabled={loadingTrainers}
-              className={
-                form.errors.trainerId
-                  ? "input-error"
-                  : ""
-              }
-              aria-invalid={Boolean(
-                form.errors.trainerId,
-              )}
+              className={form.errors.trainerId ? "input-error" : ""}
+              aria-invalid={Boolean(form.errors.trainerId)}
             >
               <option value="" disabled>
                 Select Trainer
               </option>
 
-              {!loadingTrainers &&
-                displayedTrainers.length === 0 && (
-                  <option value="" disabled>
-                    No active trainers available
-                  </option>
-                )}
-
-              {displayedTrainers.map(
-                (trainer) => (
-                  <option
-                    key={trainer.id}
-                    value={trainer.id}
-                  >
-                    {trainer.fullName ||
-                      trainer.email}
-                    {trainer.email
-                      ? ` (${trainer.email})`
-                      : ""}
-                  </option>
-                ),
+              {!loadingTrainers && displayedTrainers.length === 0 && (
+                <option value="" disabled>
+                  No active trainers available
+                </option>
               )}
+
+              {displayedTrainers.map((trainer) => (
+                <option key={trainer.id} value={trainer.id}>
+                  {trainer.fullName || trainer.email}
+                  {trainer.email ? ` (${trainer.email})` : ""}
+                </option>
+              ))}
             </select>
 
             {form.errors.trainerId && (
@@ -428,21 +365,29 @@ function EditionClassForm({
           </div>
 
           <div className="form-group">
-            <label htmlFor="meetingUrl">
-              Google Meet URL *
-            </label>
+            <label htmlFor="meetingUrl">Google Meet URL *</label>
 
-            <input
-              id="meetingUrl"
-              type="url"
-              placeholder="https://meet.google.com/abc-defg-hij"
-              {...form.register("meetingUrl")}
-              className={
-                form.errors.meetingUrl
-                  ? "input-error"
-                  : ""
-              }
-            />
+            <div className="class-form__meeting-link-control">
+              <input
+                id="meetingUrl"
+                type="url"
+                placeholder="https://meet.google.com/abc-defg-hij"
+                aria-describedby="meetingUrlHelp"
+                {...form.register("meetingUrl")}
+                className={form.errors.meetingUrl ? "input-error" : ""}
+              />
+
+              <Button
+                type="button"
+                variant="secondary"
+                loading={meetingLinkState.loading}
+                loadingLabel="Generating..."
+                leftIcon={<Video size={17} aria-hidden="true" />}
+                onClick={handleGenerateMeetingUrl}
+              >
+                {meetingUrl ? "Generate New Link" : "Generate Meet Link"}
+              </Button>
+            </div>
 
             {form.errors.meetingUrl && (
               <span className="form-error-text">
@@ -450,16 +395,15 @@ function EditionClassForm({
               </span>
             )}
 
-            <small>
-              Create or copy a meeting link from{" "}
-              <a
-                href="https://meet.google.com/"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                Google Meet
-              </a>
-              .
+            {meetingLinkState.error && (
+              <span className="form-error-text" role="alert">
+                {meetingLinkState.error}
+              </span>
+            )}
+
+            <small id="meetingUrlHelp">
+              Generate a real Google Meet space automatically, or paste an
+              existing Google Meet URL manually.
             </small>
           </div>
         </div>
@@ -469,20 +413,14 @@ function EditionClassForm({
 
           <div className="form-row">
             <div className="form-group">
-              <label htmlFor="startDate">
-                Start Date
-              </label>
+              <label htmlFor="startDate">Start Date</label>
 
               <input
                 id="startDate"
                 type="date"
                 min={minDate}
                 {...form.register("startDate")}
-                className={
-                  form.errors.startDate
-                    ? "input-error"
-                    : ""
-                }
+                className={form.errors.startDate ? "input-error" : ""}
               />
 
               {form.errors.startDate && (
@@ -493,23 +431,14 @@ function EditionClassForm({
             </div>
 
             <div className="form-group">
-              <label htmlFor="endDate">
-                End Date
-              </label>
+              <label htmlFor="endDate">End Date</label>
 
               <input
                 id="endDate"
                 type="date"
-                min={
-                  selectedStartDate ||
-                  minDate
-                }
+                min={selectedStartDate || minDate}
                 {...form.register("endDate")}
-                className={
-                  form.errors.endDate
-                    ? "input-error"
-                    : ""
-                }
+                className={form.errors.endDate ? "input-error" : ""}
               />
 
               {form.errors.endDate && (
@@ -522,9 +451,7 @@ function EditionClassForm({
 
           <div className="form-row form-row--three-columns">
             <div className="form-group">
-              <label htmlFor="price">
-                Class price (VND) *
-              </label>
+              <label htmlFor="price">Class price (VND) *</label>
 
               <input
                 id="price"
@@ -535,11 +462,7 @@ function EditionClassForm({
                 {...form.register("price", {
                   valueAsNumber: true,
                 })}
-                className={
-                  form.errors.price
-                    ? "input-error"
-                    : ""
-                }
+                className={form.errors.price ? "input-error" : ""}
               />
 
               {form.errors.price && (
@@ -550,9 +473,7 @@ function EditionClassForm({
             </div>
 
             <div className="form-group">
-              <label htmlFor="maxStudents">
-                Capacity *
-              </label>
+              <label htmlFor="maxStudents">Capacity *</label>
 
               <input
                 id="maxStudents"
@@ -562,46 +483,29 @@ function EditionClassForm({
                 {...form.register("maxStudents", {
                   valueAsNumber: true,
                 })}
-                className={
-                  form.errors.maxStudents
-                    ? "input-error"
-                    : ""
-                }
+                className={form.errors.maxStudents ? "input-error" : ""}
               />
 
               {form.errors.maxStudents && (
                 <span className="form-error-text">
-                  {
-                    form.errors.maxStudents
-                      .message
-                  }
+                  {form.errors.maxStudents.message}
                 </span>
               )}
             </div>
 
             <div className="form-group">
-              <label htmlFor="classStatus">
-                Status
-              </label>
+              <label htmlFor="classStatus">Status</label>
 
               <select
                 id="classStatus"
                 {...form.register("status")}
-                disabled={
-                  !isEditMode ||
-                  statusResource.loading
-                }
+                disabled={!isEditMode || statusResource.loading}
               >
-                {displayedStatuses.map(
-                  (status) => (
-                    <option
-                      key={status.value}
-                      value={status.value}
-                    >
-                      {status.label}
-                    </option>
-                  ),
-                )}
+                {displayedStatuses.map((status) => (
+                  <option key={status.value} value={status.value}>
+                    {status.label}
+                  </option>
+                ))}
               </select>
             </div>
           </div>
@@ -612,9 +516,7 @@ function EditionClassForm({
             <WeeklySchedulePicker
               control={form.control}
               name="scheduleDescription"
-              error={
-                form.errors.scheduleDescription
-              }
+              error={form.errors.scheduleDescription}
             />
           </div>
         </div>
@@ -623,9 +525,7 @@ function EditionClassForm({
           <Button
             type="button"
             variant="secondary"
-            onClick={() =>
-              navigate(cancelPath)
-            }
+            onClick={() => navigate(cancelPath)}
           >
             Cancel
           </Button>
@@ -634,21 +534,15 @@ function EditionClassForm({
             type="submit"
             disabled={
               form.isSubmitting ||
-              referenceDataLoading
+              referenceDataLoading ||
+              meetingLinkState.loading
             }
           >
             {form.isSubmitting ? (
               <>
-                <Loader
-                  size={16}
-                  className="spinner"
-                />
+                <Loader size={16} className="spinner" />
 
-                <span>
-                  {isEditMode
-                    ? "Saving..."
-                    : "Creating..."}
-                </span>
+                <span>{isEditMode ? "Saving..." : "Creating..."}</span>
               </>
             ) : isEditMode ? (
               "Save Changes"
@@ -667,15 +561,12 @@ export function EditionClassPage() {
   const navigate = useNavigate();
   const isEditMode = Boolean(classId);
 
-  const [classResource, setClassResource] =
-    useState(() => ({
-      classId: classId || null,
-      status: isEditMode
-        ? "loading"
-        : "ready",
-      data: null,
-      error: "",
-    }));
+  const [classResource, setClassResource] = useState(() => ({
+    classId: classId || null,
+    status: isEditMode ? "loading" : "ready",
+    data: null,
+    error: "",
+  }));
 
   useEffect(() => {
     if (!classId) {
@@ -703,9 +594,7 @@ export function EditionClassPage() {
           classId,
           status: "error",
           data: null,
-          error:
-            error?.message ||
-            "Can not load class information",
+          error: error?.message || "Can not load class information",
         });
       });
 
@@ -716,24 +605,17 @@ export function EditionClassPage() {
 
   if (
     isEditMode &&
-    (classResource.classId !== classId ||
-      classResource.status === "loading")
+    (classResource.classId !== classId || classResource.status === "loading")
   ) {
     return (
       <div className="page-loading">
-        <Loader
-          className="spinner"
-          size={40}
-        />
+        <Loader className="spinner" size={40} />
         <p>Loading class information...</p>
       </div>
     );
   }
 
-  if (
-    isEditMode &&
-    classResource.status === "error"
-  ) {
+  if (isEditMode && classResource.status === "error") {
     return (
       <div className="page-error">
         <AlertCircle size={40} />
@@ -742,11 +624,7 @@ export function EditionClassPage() {
         <Button
           type="button"
           variant="secondary"
-          onClick={() =>
-            navigate(
-              `/staff/classrooms/${classId}/workspace`,
-            )
-          }
+          onClick={() => navigate(`/staff/classrooms/${classId}/workspace`)}
         >
           Back to class
         </Button>
@@ -756,17 +634,9 @@ export function EditionClassPage() {
 
   return (
     <EditionClassForm
-      key={
-        isEditMode
-          ? `edit-${classId}`
-          : "create"
-      }
+      key={isEditMode ? `edit-${classId}` : "create"}
       mode={isEditMode ? "edit" : "create"}
-      initialData={
-        isEditMode
-          ? classResource.data
-          : null
-      }
+      initialData={isEditMode ? classResource.data : null}
       classId={classId}
     />
   );

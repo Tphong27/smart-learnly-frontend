@@ -164,7 +164,7 @@ export function ClassList({
                     {formatCapacity(
                       classItem.activeEnrollmentCount,
                       classItem.maxStudents,
-                    )}{" "}
+                    )}
                     trainees
                   </strong>
                 </div>

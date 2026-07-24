@@ -61,6 +61,11 @@ export const classService = {
     return unwrapData(response);
   },
 
+  async generateMeetingUrl() {
+    const response = await apiClient.post("/admin/classes/meeting-links");
+    return unwrapData(response);
+  },
+
   async create(payload) {
     const response = await apiClient.post("/admin/classes", payload);
     return unwrapData(response);

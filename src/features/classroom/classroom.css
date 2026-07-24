@@ -598,6 +598,29 @@
   box-shadow: 0 0 0 3px rgba(86, 36, 208, 0.14);
 }
 
+.class-form__meeting-link-control {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: stretch;
+  gap: 12px;
+}
+
+.class-form__meeting-link-control .button {
+  min-width: 190px;
+  white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+  .class-form__meeting-link-control {
+    grid-template-columns: 1fr;
+  }
+
+  .class-form__meeting-link-control .button {
+    width: 100%;
+    min-width: 0;
+  }
+}
+
 .class-workspace-panel {
   min-width: 0;
   padding: 24px 0 0;
