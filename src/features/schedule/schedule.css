@@ -302,7 +302,7 @@
    Session card
    ========================================================================== */
 
-.schedule-session {
+/* .schedule-session {
   min-width: 0;
   padding: 10px;
   display: grid;
@@ -311,6 +311,16 @@
   border-left: 4px solid var(--primary, #5624d0);
   border-radius: 4px;
   background: #faf9fd;
+} */
+
+.schedule-session {
+  min-width: 0;
+  padding: 0;
+  display: grid;
+  gap: 5px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
 }
 
 .schedule-session__course {

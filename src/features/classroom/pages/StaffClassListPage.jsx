@@ -202,7 +202,7 @@ export function StaffClassListPage() {
               navigate(`/staff/classrooms/${classId}/workspace`)
             }
             onAnalytics={(classId) =>
-              navigate(`/staff/classrooms/${classId}/analytics`)
+              navigate(`/staff/classrooms/${classId}/workspace?tab=analytics`)
             }
             onDelete={handleDeleteClass}
           />

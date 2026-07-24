@@ -6,41 +6,41 @@ function unwrap(response) {
 
 function unwrapData(response) {
   const root = unwrap(response);
+
   return root?.data ?? root;
 }
 
+function buildAnalyticsParams(params = {}) {
+  const keyword = String(params.keyword ?? "").trim();
+
+  return {
+    inactiveDays: Number(params.inactiveDays ?? 7),
+    keyword: keyword || undefined,
+    progress: params.progress || "all",
+    indicator: params.indicator || "all",
+    page: Number(params.page ?? 0),
+    size: Number(params.size ?? 10),
+  };
+}
+
+async function getAnalytics(basePath, classId, params) {
+  if (!classId) {
+    throw new Error("Class ID is required");
+  }
+
+  const response = await apiClient.get(`${basePath}/${classId}/analytics`, {
+    params: buildAnalyticsParams(params),
+  });
+
+  return unwrapData(response);
+}
+
 export const classAnalyticsService = {
-  async getAdmin(classId, inactiveDays = 7) {
-    if (!classId) {
-      throw new Error("Class ID is required");
-    }
-
-    const response = await apiClient.get(
-      `/admin/classes/${classId}/analytics`,
-      {
-        params: {
-          inactiveDays,
-        },
-      },
-    );
-
-    return unwrapData(response);
+  getAdmin(classId, params = {}) {
+    return getAnalytics("/admin/classes", classId, params);
   },
 
-  async getTrainer(classId, inactiveDays = 7) {
-    if (!classId) {
-      throw new Error("Class ID is required");
-    }
-
-    const response = await apiClient.get(
-      `/trainer/classes/${classId}/analytics`,
-      {
-        params: {
-          inactiveDays,
-        },
-      },
-    );
-
-    return unwrapData(response);
+  getTrainer(classId, params = {}) {
+    return getAnalytics("/trainer/classes", classId, params);
   },
 };

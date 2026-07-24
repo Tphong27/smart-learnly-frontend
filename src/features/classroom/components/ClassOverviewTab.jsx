@@ -69,9 +69,9 @@ export function ClassOverviewTab({ classData, onEdit, readOnly = false }) {
             )}
           </p>
 
-          <p>
+          {/* <p>
             <strong>Available Seats:</strong> {classData.availableSeats}
-          </p>
+          </p> */}
         </div>
 
         <div className="class-overview-schedule">

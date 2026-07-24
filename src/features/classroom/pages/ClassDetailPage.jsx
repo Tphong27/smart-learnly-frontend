@@ -16,6 +16,7 @@ import { ROLES } from "@/shared/constants/roles";
 import { ClassStatusBadge } from "../components/ClassStatusBadge";
 import { ClassOverviewTab } from "../components/ClassOverviewTab";
 import { ClassCurriculumTab } from "../components/ClassCurriculumTab";
+import { ClassAnalyticsTab } from "../components/ClassAnalyticsTab";
 import { getCurrentRole } from "@/shared/utils/auth";
 
 export function ClassDetailPage() {
@@ -27,12 +28,15 @@ export function ClassDetailPage() {
   const isTmo = userRole === ROLES.TMO;
 
   const [classData, setClassData] = useState(null);
-  // Cho phép deep-link đến 1 tab qua query string ?tab=curriculum (ví dụ khi
-  // trang trainer lesson detail navigate về đây sau khi save).
-  const [searchParams] = useSearchParams();
-  const initialTab =
-    searchParams.get("tab") === "curriculum" ? "curriculum" : "overview";
-  const [activeTab, setActiveTab] = useState(initialTab);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const requestedTab = searchParams.get("tab");
+  const activeTab =
+    requestedTab === "analytics"
+      ? "analytics"
+      : requestedTab === "curriculum" && isTrainer
+        ? "curriculum"
+        : "overview";
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [refreshKey, setRefreshKey] = useState(0);
@@ -43,8 +47,18 @@ export function ClassDetailPage() {
     setRefreshKey((current) => current + 1);
   }
 
-  function openAnalytics() {
-    navigate(`/staff/classrooms/${classId}/analytics`);
+  function selectTab(tab) {
+    const nextParams = new URLSearchParams(searchParams);
+
+    if (tab === "overview") {
+      nextParams.delete("tab");
+    } else {
+      nextParams.set("tab", tab);
+    }
+
+    setSearchParams(nextParams, {
+      replace: true,
+    });
   }
 
   function openEditClass() {
@@ -57,11 +71,13 @@ export function ClassDetailPage() {
 
     const params = new URLSearchParams();
     params.set("classId", classId);
+    const workspacePath = `/staff/classrooms/${classId}/workspace`;
+
     params.set(
       "returnTo",
-      isTrainer
-        ? `/staff/classrooms/${classId}/workspace?tab=curriculum`
-        : `/staff/classrooms/${classId}/workspace`,
+      activeTab === "overview"
+        ? workspacePath
+        : `${workspacePath}?tab=${activeTab}`,
     );
     navigate(
       `/staff/courses/${classData.courseId}/preview?${params.toString()}`,
@@ -179,10 +195,6 @@ export function ClassDetailPage() {
               View as trainee
             </Button>
 
-            <Button leftIcon={<BarChart3 size={17} />} onClick={openAnalytics}>
-              Analytics
-            </Button>
-
             <Button
               leftIcon={<ClipboardList size={17} />}
               onClick={openAssignments}
@@ -227,11 +239,12 @@ export function ClassDetailPage() {
               ? "workspace-tabs__item is-active"
               : "workspace-tabs__item"
           }
-          onClick={() => setActiveTab("overview")}
+          onClick={() => selectTab("overview")}
         >
           <Info size={16} />
           Overview
         </button>
+
         {isTrainer && (
           <button
             type="button"
@@ -242,16 +255,33 @@ export function ClassDetailPage() {
                 ? "workspace-tabs__item is-active"
                 : "workspace-tabs__item"
             }
-            onClick={() => setActiveTab("curriculum")}
+            onClick={() => selectTab("curriculum")}
           >
             <BookOpen size={16} />
             Curriculum
           </button>
         )}
+
+        <button
+          type="button"
+          role="tab"
+          aria-selected={activeTab === "analytics"}
+          className={
+            activeTab === "analytics"
+              ? "workspace-tabs__item is-active"
+              : "workspace-tabs__item"
+          }
+          onClick={() => selectTab("analytics")}
+        >
+          <BarChart3 size={16} />
+          Analytics
+        </button>
       </div>
 
       <div className="class-workspace-panel">
-        {activeTab === "curriculum" && isTrainer ? (
+        {activeTab === "analytics" ? (
+          <ClassAnalyticsTab classId={classId} isTrainer={isTrainer} />
+        ) : activeTab === "curriculum" && isTrainer ? (
           <ClassCurriculumTab classId={classId} />
         ) : (
           <ClassOverviewTab

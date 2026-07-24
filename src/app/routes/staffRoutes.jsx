@@ -1,9 +1,8 @@
 /* eslint-disable react-refresh/only-export-components */
-import { Navigate } from "react-router-dom";
+import { Navigate, useParams } from "react-router-dom";
 import { RoleGuard } from "./RoleGuard";
 import { ROLES } from "@/shared/constants/roles";
 import { TrainerLayout } from "../layouts/TrainerLayout";
-// ĐÃ SỬA: Import đầy đủ các trang quản lý bài test từ feature flashtest
 import {
   StaffFlashTestListPage,
   StaffFlashTestCreatePage,
@@ -23,7 +22,6 @@ import {
   EditionClassPage,
   ClassDetailPage,
   TrainerLessonDetailPage,
-  ClassAnalyticsPage,
 } from "@/features/classroom";
 import { SchedulePage } from "@/features/schedule";
 
@@ -40,6 +38,21 @@ function PlaceholderPage({ title }) {
   );
 }
 
+function ClassAnalyticsRedirect() {
+  const { classId } = useParams();
+
+  if (!classId) {
+    return <Navigate to="/staff/classrooms" replace />;
+  }
+
+  return (
+    <Navigate
+      to={`/staff/classrooms/${classId}/workspace?tab=analytics`}
+      replace
+    />
+  );
+}
+
 function getStaffRoutes() {
   return [
     {
@@ -52,10 +65,6 @@ function getStaffRoutes() {
             <RoleGuard allowedRoles={[ROLES.TRAINER, ROLES.TMO, ROLES.SME]} />
           ),
           children: [
-            {
-              path: "classrooms/:classId/analytics",
-              element: <ClassAnalyticsPage />,
-            },
             { path: "courses", element: <AdminCoursesPage /> },
             {
               path: "courses/:courseId/edit",
@@ -162,6 +171,10 @@ function getStaffRoutes() {
                   element: <EditionClassPage />,
                 },
               ],
+            },
+            {
+              path: "classrooms/:classId/analytics",
+              element: <ClassAnalyticsRedirect />,
             },
             {
               path: "classrooms/:classId/workspace",

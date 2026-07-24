@@ -8,7 +8,7 @@ export { ClassStatusBadge } from "./components/ClassStatusBadge";
 export { ClassListFilters } from "./components/ClassListFilters";
 export { ClassOverviewTab } from "./components/ClassOverviewTab";
 export { ClassCurriculumTab } from "./components/ClassCurriculumTab";
-export { ClassAnalyticsPage } from "./pages/ClassAnalyticsPage";
+export { ClassAnalyticsTab } from "./components/ClassAnalyticsTab";
 export { EditionClassPage } from "./pages/EditionClassPage";
 
 export const classroomFeature = {
