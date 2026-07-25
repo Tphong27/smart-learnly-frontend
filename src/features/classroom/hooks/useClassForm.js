@@ -1,7 +1,7 @@
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { classEditFormSchema, classFormSchema } from "../utils/classValidator";
+import { createClassFormSchema } from "../utils/classValidator";
 import {
   toClassFormValues,
   toCreateClassPayload,
@@ -19,6 +19,15 @@ export function useClassForm({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState(null);
 
+  const validationSchema = useMemo(
+    () =>
+      createClassFormSchema({
+        mode,
+        initialData,
+      }),
+    [initialData, mode],
+  );
+
   const {
     register,
     handleSubmit,
@@ -26,8 +35,9 @@ export function useClassForm({
     watch,
     control,
     setValue,
+    setError,
   } = useForm({
-    resolver: zodResolver(isEditMode ? classEditFormSchema : classFormSchema),
+    resolver: zodResolver(validationSchema),
     defaultValues: toClassFormValues(initialData),
   });
 
@@ -60,6 +70,19 @@ export function useClassForm({
           );
         }
       } catch (error) {
+        const serverErrors = Array.isArray(error?.errors) ? error.errors : [];
+
+        for (const fieldError of serverErrors) {
+          if (!fieldError?.field || !fieldError?.message) {
+            continue;
+          }
+
+          setError(fieldError.field, {
+            type: "server",
+            message: fieldError.message,
+          });
+        }
+
         setSubmitError(error?.message || "An error occurred");
         setIsSubmitting(false);
         return;

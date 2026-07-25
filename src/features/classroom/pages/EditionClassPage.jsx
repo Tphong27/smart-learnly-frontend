@@ -5,8 +5,13 @@ import { Button, useToast } from "@/shared/components/ui";
 import { classService, courseService } from "@/services";
 import { useActiveTrainers } from "../hooks/useActiveTrainers";
 import { useClassForm } from "../hooks/useClassForm";
-import { getTodayDateKey } from "@/shared/utils/date";
+// import { getTodayDateKey } from "@/shared/utils/date";
 import { WeeklySchedulePicker } from "../components/WeeklySchedulePicker";
+import {
+  getAllowedClassStatuses,
+  getClassEditPolicy,
+  normalizeClassStatus,
+} from "../constants/classLifecycle";
 
 function statusLabel(value) {
   if (!value) return "Upcoming";
@@ -22,6 +27,9 @@ function EditionClassForm({ mode, initialData, classId, routeBase }) {
   const navigate = useNavigate();
   const toast = useToast();
   const isEditMode = mode === "edit";
+
+  const currentStatus = normalizeClassStatus(initialData?.status || "upcoming");
+  const editPolicy = getClassEditPolicy(currentStatus);
 
   const [courseResource, setCourseResource] = useState({
     loading: true,
@@ -161,13 +169,18 @@ function EditionClassForm({ mode, initialData, classId, routeBase }) {
       ];
     }
 
-    const statuses = statusResource.items;
-    const currentStatus = String(
-      initialData?.status || "upcoming",
-    ).toLowerCase();
+    const allowedStatuses = new Set(getAllowedClassStatuses(currentStatus));
 
-    if (statuses.some((status) => status.value === currentStatus)) {
-      return statuses;
+    const filteredStatuses = statusResource.items.filter((status) =>
+      allowedStatuses.has(normalizeClassStatus(status.value)),
+    );
+
+    const hasCurrentInList = filteredStatuses.some(
+      (status) => normalizeClassStatus(status.value) === currentStatus,
+    );
+
+    if (hasCurrentInList) {
+      return filteredStatuses;
     }
 
     return [
@@ -175,9 +188,9 @@ function EditionClassForm({ mode, initialData, classId, routeBase }) {
         value: currentStatus,
         label: statusLabel(currentStatus),
       },
-      ...statuses,
+      ...filteredStatuses,
     ];
-  }, [initialData, isEditMode, statusResource.items]);
+  }, [currentStatus, isEditMode, statusResource.items]);
 
   const handleSuccess = useCallback(
     (savedClass) => {
@@ -250,9 +263,8 @@ function EditionClassForm({ mode, initialData, classId, routeBase }) {
     }
   }
 
-  const minDate = isEditMode ? undefined : getTodayDateKey();
-
-  const selectedStartDate = form.watch("startDate");
+  // const minDate = isEditMode ? undefined : getTodayDateKey();
+  // const selectedStartDate = form.watch("startDate");
 
   const referenceDataLoading =
     courseResource.loading ||
@@ -292,9 +304,8 @@ function EditionClassForm({ mode, initialData, classId, routeBase }) {
             <input
               id="className"
               type="text"
-              placeholder="Example: Java Advanced - Evening Class"
+              readOnly={editPolicy.readOnly}
               {...form.register("className")}
-              className={form.errors.className ? "input-error" : ""}
             />
 
             {form.errors.className && (
@@ -309,8 +320,8 @@ function EditionClassForm({ mode, initialData, classId, routeBase }) {
 
             <select
               id="courseId"
+              disabled={courseResource.loading || editPolicy.readOnly}
               {...form.register("courseId")}
-              disabled={courseResource.loading}
               className={form.errors.courseId ? "input-error" : ""}
             >
               <option value="">Select Course</option>
@@ -371,10 +382,8 @@ function EditionClassForm({ mode, initialData, classId, routeBase }) {
               <input
                 id="meetingUrl"
                 type="url"
-                placeholder="https://meet.google.com/abc-defg-hij"
-                aria-describedby="meetingUrlHelp"
+                readOnly={editPolicy.lockMeetingUrl}
                 {...form.register("meetingUrl")}
-                className={form.errors.meetingUrl ? "input-error" : ""}
               />
 
               <Button
@@ -384,6 +393,7 @@ function EditionClassForm({ mode, initialData, classId, routeBase }) {
                 loadingLabel="Generating..."
                 leftIcon={<Video size={17} aria-hidden="true" />}
                 onClick={handleGenerateMeetingUrl}
+                disabled={meetingLinkState.loading || editPolicy.lockMeetingUrl}
               >
                 {meetingUrl ? "Generate New Link" : "Generate Meet Link"}
               </Button>
@@ -418,9 +428,8 @@ function EditionClassForm({ mode, initialData, classId, routeBase }) {
               <input
                 id="startDate"
                 type="date"
-                min={minDate}
+                disabled={editPolicy.lockStartDate}
                 {...form.register("startDate")}
-                className={form.errors.startDate ? "input-error" : ""}
               />
 
               {form.errors.startDate && (
@@ -436,9 +445,8 @@ function EditionClassForm({ mode, initialData, classId, routeBase }) {
               <input
                 id="endDate"
                 type="date"
-                min={selectedStartDate || minDate}
+                disabled={editPolicy.lockEndDate}
                 {...form.register("endDate")}
-                className={form.errors.endDate ? "input-error" : ""}
               />
 
               {form.errors.endDate && (
@@ -456,13 +464,10 @@ function EditionClassForm({ mode, initialData, classId, routeBase }) {
               <input
                 id="price"
                 type="number"
-                min="0"
-                step="1000"
-                placeholder="2500000"
+                readOnly={editPolicy.lockPrice}
                 {...form.register("price", {
                   valueAsNumber: true,
                 })}
-                className={form.errors.price ? "input-error" : ""}
               />
 
               {form.errors.price && (
@@ -478,12 +483,10 @@ function EditionClassForm({ mode, initialData, classId, routeBase }) {
               <input
                 id="maxStudents"
                 type="number"
-                min="1"
-                max="500"
+                readOnly={editPolicy.lockCapacity}
                 {...form.register("maxStudents", {
                   valueAsNumber: true,
                 })}
-                className={form.errors.maxStudents ? "input-error" : ""}
               />
 
               {form.errors.maxStudents && (
@@ -499,7 +502,9 @@ function EditionClassForm({ mode, initialData, classId, routeBase }) {
               <select
                 id="classStatus"
                 {...form.register("status")}
-                disabled={!isEditMode || statusResource.loading}
+                disabled={
+                  !isEditMode || statusResource.loading || editPolicy.lockStatus
+                }
               >
                 {displayedStatuses.map((status) => (
                   <option key={status.value} value={status.value}>
@@ -517,6 +522,7 @@ function EditionClassForm({ mode, initialData, classId, routeBase }) {
               control={form.control}
               name="scheduleDescription"
               error={form.errors.scheduleDescription}
+              disabled={editPolicy.lockSchedule}
             />
           </div>
         </div>
@@ -535,13 +541,13 @@ function EditionClassForm({ mode, initialData, classId, routeBase }) {
             disabled={
               form.isSubmitting ||
               referenceDataLoading ||
-              meetingLinkState.loading
+              meetingLinkState.loading ||
+              editPolicy.readOnly
             }
           >
             {form.isSubmitting ? (
               <>
                 <Loader size={16} className="spinner" />
-
                 <span>{isEditMode ? "Saving..." : "Creating..."}</span>
               </>
             ) : isEditMode ? (

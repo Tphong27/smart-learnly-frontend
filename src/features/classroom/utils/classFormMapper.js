@@ -113,18 +113,5 @@ export function toUpdateClassPayload(formData, originalClass) {
     payload.status = next.status;
   }
 
-  /*
-   * không cho cập nhật class CANCELLED nếu request
-   * không chứa status. Khi có field khác thay đổi, gửi lại
-   * status cancelled để backend xác nhận trạng thái.
-   */
-  if (
-    Object.keys(payload).length > 0 &&
-    original.status === "cancelled" &&
-    payload.status === undefined
-  ) {
-    payload.status = next.status;
-  }
-
   return payload;
 }
