@@ -411,18 +411,10 @@ function EditionClassForm({ mode, initialData, classId, routeBase }) {
             </div>
 
             <div className="form-group">
-              <label htmlFor="classStatus">Status</label>
-
-              <div className="form-group">
-                <label>Status</label>
-
-                <div className="class-status-readonly">
-                  <ClassStatusBadge status={currentStatus} />
-
-                  <small>
-                    Status is updated automatically.
-                  </small>
-                </div>
+              <label>Status</label>
+              <div className="class-status-readonly">
+                <ClassStatusBadge status={currentStatus} />
+                <small>Status is updated automatically.</small>
               </div>
             </div>
           </div>

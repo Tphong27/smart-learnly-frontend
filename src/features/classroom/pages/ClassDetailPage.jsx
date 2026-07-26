@@ -2,15 +2,17 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import {
   AlertCircle,
+  Ban,
   BarChart3,
   BookOpen,
   ClipboardList,
   Info,
   Loader,
   Eye,
+  RotateCcw,
   Trash2,
 } from "lucide-react";
-import { Button } from "@/shared/components/ui";
+import { Button, Modal, useToast } from "@/shared/components/ui";
 import { classService } from "@/services";
 import { canManageClasses, ROLES } from "@/shared/constants/roles";
 import { ClassStatusBadge } from "../components/ClassStatusBadge";
@@ -18,6 +20,11 @@ import { ClassOverviewTab } from "../components/ClassOverviewTab";
 import { ClassCurriculumTab } from "../components/ClassCurriculumTab";
 import { ClassAnalyticsTab } from "../components/ClassAnalyticsTab";
 import { getCurrentRole } from "@/shared/utils/auth";
+import { toDateInputValue } from "@/shared/utils/date";
+import {
+  CLASS_STATUSES,
+  normalizeClassStatus,
+} from "../constants/classLifecycle";
 
 export function ClassDetailPage({
   routeBase = "/staff/classrooms",
@@ -25,6 +32,7 @@ export function ClassDetailPage({
 }) {
   const { classId } = useParams();
   const navigate = useNavigate();
+  const toast = useToast();
 
   const userRole = getCurrentRole();
   const isTrainer = userRole === ROLES.TRAINER;
@@ -44,6 +52,14 @@ export function ClassDetailPage({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [refreshKey, setRefreshKey] = useState(0);
+
+  const [lifecycleDialog, setLifecycleDialog] = useState(null);
+  const [lifecycleSubmitting, setLifecycleSubmitting] = useState(false);
+
+  const [restoreDates, setRestoreDates] = useState({
+    startDate: "",
+    endDate: "",
+  });
 
   function reloadClass() {
     setLoading(true);
@@ -124,6 +140,86 @@ export function ClassDetailPage({
     };
   }, [classId, refreshKey, isTrainer]);
 
+  function openCancelDialog() {
+    setLifecycleDialog("cancel");
+  }
+
+  function openRestoreDialog() {
+    setRestoreDates({
+      startDate: toDateInputValue(classData?.startDate),
+      endDate: toDateInputValue(classData?.endDate),
+    });
+
+    setLifecycleDialog("restore");
+  }
+
+  function closeLifecycleDialog() {
+    if (lifecycleSubmitting) {
+      return;
+    }
+
+    setLifecycleDialog(null);
+  }
+
+  async function confirmCancelClass() {
+    if (!classId) {
+      return;
+    }
+
+    setLifecycleSubmitting(true);
+    setError("");
+
+    try {
+      const cancelledClass = await classService.cancel(classId);
+
+      setClassData(cancelledClass);
+      setLifecycleDialog(null);
+
+      toast.success("Class cancelled successfully");
+    } catch (err) {
+      const message = err?.message || "Can not cancel class";
+
+      setError(message);
+      toast.error(message);
+    } finally {
+      setLifecycleSubmitting(false);
+    }
+  }
+
+  async function confirmRestoreClass() {
+    if (!classId) {
+      return;
+    }
+
+    if (!restoreDates.startDate || !restoreDates.endDate) {
+      toast.error("Please select the start date and end date");
+      return;
+    }
+
+    if (restoreDates.endDate < restoreDates.startDate) {
+      toast.error("End date cannot be before start date");
+      return;
+    }
+
+    setLifecycleSubmitting(true);
+    setError("");
+
+    try {
+      const restoredClass = await classService.restore(classId, restoreDates);
+      setClassData(restoredClass);
+      setLifecycleDialog(null);
+
+      toast.success(`Class restored as ${restoredClass.status}`);
+    } catch (err) {
+      const message = err?.message || "Can not restore class";
+
+      setError(message);
+      toast.error(message);
+    } finally {
+      setLifecycleSubmitting(false);
+    }
+  }
+
   async function deleteClass() {
     const confirmed = window.confirm(
       "Do you want to soft delete this class? This action cannot be undone.",
@@ -181,31 +277,68 @@ export function ClassDetailPage({
     );
   }
 
+  const normalizedStatus = normalizeClassStatus(classData.status);
+
+  const canCancelClass =
+    isClassManager &&
+    (normalizedStatus === CLASS_STATUSES.UPCOMING ||
+      normalizedStatus === CLASS_STATUSES.ONGOING);
+
+  const canRestoreClass =
+    isClassManager && normalizedStatus === CLASS_STATUSES.CANCELLED;
+
   return (
     <section className="trainer-class-workspace">
       <div className="workspace-header">
-        <div>
+        <div className="workspace-header__content">
           <h1 className="workspace-header__title">{classData.className}</h1>
 
           <div className="workspace-header__info">
             <span>{classData.courseTitle}</span>
-            <span>•</span>
+            <span aria-hidden="true">•</span>
             <ClassStatusBadge status={classData.status} />
           </div>
         </div>
 
         {(isTrainer || isClassManager) && (
           <div className="workspace-header__actions">
-            <Button leftIcon={<Eye size={17} />} onClick={openTraineePreview}>
+            <Button
+              type="button"
+              leftIcon={<Eye size={17} />}
+              onClick={openTraineePreview}
+            >
               View as trainee
             </Button>
 
             {(isTrainer || isTmo) && (
               <Button
+                type="button"
                 leftIcon={<ClipboardList size={17} />}
                 onClick={openAssignments}
               >
                 Assignment
+              </Button>
+            )}
+
+            {canCancelClass && (
+              <Button
+                type="button"
+                variant="danger"
+                leftIcon={<Ban size={17} />}
+                onClick={openCancelDialog}
+              >
+                Cancel class
+              </Button>
+            )}
+
+            {canRestoreClass && (
+              <Button
+                type="button"
+                variant="success"
+                leftIcon={<RotateCcw size={17} />}
+                onClick={openRestoreDialog}
+              >
+                Restore class
               </Button>
             )}
 
@@ -298,6 +431,103 @@ export function ClassDetailPage({
           />
         )}
       </div>
+
+      <Modal
+        open={Boolean(lifecycleDialog)}
+        size="sm"
+        title={lifecycleDialog === "cancel" ? "Cancel class" : "Restore class"}
+        description={
+          lifecycleDialog === "cancel"
+            ? "The class history and enrollments will be preserved."
+            : "The class status will be recalculated from the selected dates."
+        }
+        closeDisabled={lifecycleSubmitting}
+        closeOnOverlayClick={!lifecycleSubmitting}
+        onClose={closeLifecycleDialog}
+        footer={
+          <>
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={lifecycleSubmitting}
+              onClick={closeLifecycleDialog}
+            >
+              Close
+            </Button>
+
+            {lifecycleDialog === "cancel" ? (
+              <Button
+                type="button"
+                variant="danger"
+                loading={lifecycleSubmitting}
+                loadingLabel="Cancelling..."
+                onClick={confirmCancelClass}
+              >
+                Confirm cancellation
+              </Button>
+            ) : (
+              <Button
+                type="button"
+                variant="success"
+                loading={lifecycleSubmitting}
+                loadingLabel="Restoring..."
+                onClick={confirmRestoreClass}
+              >
+                Restore class
+              </Button>
+            )}
+          </>
+        }
+      >
+        {lifecycleDialog === "cancel" ? (
+          <p>
+            Future class sessions will be removed. Existing enrollments,
+            transactions and historical sessions will not be deleted. This
+            action does not automatically issue a refund.
+          </p>
+        ) : (
+          <div className="form-row">
+            <div className="form-group">
+              <label htmlFor="restoreStartDate">Start date</label>
+
+              <input
+                id="restoreStartDate"
+                type="date"
+                value={restoreDates.startDate}
+                disabled={lifecycleSubmitting}
+                onChange={(event) =>
+                  setRestoreDates((current) => ({
+                    ...current,
+                    startDate: event.target.value,
+                  }))
+                }
+              />
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="restoreEndDate">End date</label>
+
+              <input
+                id="restoreEndDate"
+                type="date"
+                value={restoreDates.endDate}
+                disabled={lifecycleSubmitting}
+                onChange={(event) =>
+                  setRestoreDates((current) => ({
+                    ...current,
+                    endDate: event.target.value,
+                  }))
+                }
+              />
+            </div>
+
+            <p>
+              Future dates produce Upcoming. A date range containing today
+              produces Ongoing. Past dates produce Completed.
+            </p>
+          </div>
+        )}
+      </Modal>
     </section>
   );
 }

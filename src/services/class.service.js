@@ -93,7 +93,23 @@ export const classService = {
   },
 
   async cancel(classId) {
+    if (!classId) {
+      throw new Error("Class ID is required");
+    }
     const response = await apiClient.post(`/admin/classes/${classId}/cancel`);
+    return unwrapData(response);
+  },
+
+  async restore(classId, payload) {
+    if (!classId) {
+      throw new Error("Class ID is required");
+    }
+
+    const response = await apiClient.post(
+      `/admin/classes/${classId}/restore`,
+      payload,
+    );
+
     return unwrapData(response);
   },
 
