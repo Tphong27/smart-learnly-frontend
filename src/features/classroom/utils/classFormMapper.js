@@ -14,10 +14,6 @@ function normalizeNumber(value, fallback = "") {
   return Number.isFinite(numericValue) ? numericValue : fallback;
 }
 
-function normalizeStatus(value) {
-  return normalizeString(value || "upcoming").toLowerCase();
-}
-
 function normalizeFormValues(data) {
   return {
     courseId: normalizeString(data?.courseId),
@@ -29,7 +25,6 @@ function normalizeFormValues(data) {
     endDate: toDateInputValue(data?.endDate),
     maxStudents: normalizeNumber(data?.maxStudents, 30),
     price: normalizeNumber(data?.price, ""),
-    status: normalizeStatus(data?.status),
   };
 }
 
@@ -45,7 +40,6 @@ export function toClassFormValues(initialData = null) {
       endDate: "",
       maxStudents: 30,
       price: "",
-      status: "upcoming",
     };
   }
 
@@ -107,10 +101,6 @@ export function toUpdateClassPayload(formData, originalClass) {
 
   if (Number(next.price) !== Number(original.price)) {
     payload.price = Number(next.price);
-  }
-
-  if (next.status !== original.status) {
-    payload.status = next.status;
   }
 
   return payload;

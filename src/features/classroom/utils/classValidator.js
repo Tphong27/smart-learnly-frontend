@@ -4,7 +4,6 @@ import { isGoogleMeetUrl } from "@/shared/utils/googleMeetUrl";
 import { WEEK_DAY_OPTIONS } from "@/shared/constants/week-days";
 import {
   CLASS_STATUSES,
-  getAllowedClassStatuses,
   normalizeClassStatus,
 } from "../constants/classLifecycle";
 
@@ -204,15 +203,6 @@ export function createClassFormSchema({
         })
         .min(0, "Class price must be greater than or equal to 0")
         .max(9999999999.99, "Class price is too large"),
-
-      status: z
-        .string()
-        .trim()
-        .refine(
-          (value) =>
-            Object.values(CLASS_STATUSES).includes(normalizeClassStatus(value)),
-          "Invalid class status",
-        ),
     })
     .superRefine((data, context) => {
       if (data.endDate < data.startDate) {
@@ -231,17 +221,6 @@ export function createClassFormSchema({
 
       if (!isEditMode) {
         return;
-      }
-
-      const nextStatus = normalizeClassStatus(data.status);
-      const allowedStatuses = getAllowedClassStatuses(currentStatus);
-
-      if (!allowedStatuses.includes(nextStatus)) {
-        addIssue(
-          context,
-          ["status"],
-          `Class cannot change from ${currentStatus} to ${nextStatus}`,
-        );
       }
 
       if (currentStatus === CLASS_STATUSES.ONGOING) {

@@ -8,20 +8,10 @@ import { useClassForm } from "../hooks/useClassForm";
 // import { getTodayDateKey } from "@/shared/utils/date";
 import { WeeklySchedulePicker } from "../components/WeeklySchedulePicker";
 import {
-  getAllowedClassStatuses,
   getClassEditPolicy,
   normalizeClassStatus,
 } from "../constants/classLifecycle";
-
-function statusLabel(value) {
-  if (!value) return "Upcoming";
-
-  return String(value)
-    .toLowerCase()
-    .split("_")
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ");
-}
+import { ClassStatusBadge } from "../components/ClassStatusBadge";
 
 function EditionClassForm({ mode, initialData, classId, routeBase }) {
   const navigate = useNavigate();
@@ -37,11 +27,11 @@ function EditionClassForm({ mode, initialData, classId, routeBase }) {
     error: "",
   });
 
-  const [statusResource, setStatusResource] = useState({
-    loading: isEditMode,
-    items: [],
-    error: "",
-  });
+  // const [statusResource, setStatusResource] = useState({
+  //   loading: isEditMode,
+  //   items: [],
+  //   error: "",
+  // });
 
   const { trainers, loadingTrainers, trainerError } = useActiveTrainers({
     autoLoad: true,
@@ -87,41 +77,6 @@ function EditionClassForm({ mode, initialData, classId, routeBase }) {
     };
   }, []);
 
-  useEffect(() => {
-    if (!isEditMode) {
-      return undefined;
-    }
-
-    let cancelled = false;
-
-    classService
-      .listStatusOptions()
-      .then((data) => {
-        if (cancelled) return;
-
-        setStatusResource({
-          loading: false,
-          items: Array.isArray(data) ? data : [],
-          error: "",
-        });
-      })
-      .catch((error) => {
-        if (cancelled) return;
-
-        console.error("Error loading class statuses:", error);
-
-        setStatusResource({
-          loading: false,
-          items: [],
-          error: error?.message || "Can not load class statuses",
-        });
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [isEditMode]);
-
   const displayedCourses = useMemo(() => {
     const courses = courseResource.items;
 
@@ -158,39 +113,6 @@ function EditionClassForm({ mode, initialData, classId, routeBase }) {
       ...trainers,
     ];
   }, [initialData, trainers]);
-
-  const displayedStatuses = useMemo(() => {
-    if (!isEditMode) {
-      return [
-        {
-          value: "upcoming",
-          label: "Upcoming",
-        },
-      ];
-    }
-
-    const allowedStatuses = new Set(getAllowedClassStatuses(currentStatus));
-
-    const filteredStatuses = statusResource.items.filter((status) =>
-      allowedStatuses.has(normalizeClassStatus(status.value)),
-    );
-
-    const hasCurrentInList = filteredStatuses.some(
-      (status) => normalizeClassStatus(status.value) === currentStatus,
-    );
-
-    if (hasCurrentInList) {
-      return filteredStatuses;
-    }
-
-    return [
-      {
-        value: currentStatus,
-        label: statusLabel(currentStatus),
-      },
-      ...filteredStatuses,
-    ];
-  }, [currentStatus, isEditMode, statusResource.items]);
 
   const handleSuccess = useCallback(
     (savedClass) => {
@@ -263,16 +185,8 @@ function EditionClassForm({ mode, initialData, classId, routeBase }) {
     }
   }
 
-  // const minDate = isEditMode ? undefined : getTodayDateKey();
-  // const selectedStartDate = form.watch("startDate");
-
-  const referenceDataLoading =
-    courseResource.loading ||
-    loadingTrainers ||
-    (isEditMode && statusResource.loading);
-
-  const referenceDataError =
-    courseResource.error || trainerError || statusResource.error;
+  const referenceDataLoading = courseResource.loading || loadingTrainers;
+  const referenceDataError = courseResource.error || trainerError;
 
   const cancelPath = isEditMode
     ? `${routeBase}/${classId}/workspace`
@@ -499,19 +413,17 @@ function EditionClassForm({ mode, initialData, classId, routeBase }) {
             <div className="form-group">
               <label htmlFor="classStatus">Status</label>
 
-              <select
-                id="classStatus"
-                {...form.register("status")}
-                disabled={
-                  !isEditMode || statusResource.loading || editPolicy.lockStatus
-                }
-              >
-                {displayedStatuses.map((status) => (
-                  <option key={status.value} value={status.value}>
-                    {status.label}
-                  </option>
-                ))}
-              </select>
+              <div className="form-group">
+                <label>Status</label>
+
+                <div className="class-status-readonly">
+                  <ClassStatusBadge status={currentStatus} />
+
+                  <small>
+                    Status is updated automatically.
+                  </small>
+                </div>
+              </div>
             </div>
           </div>
 
