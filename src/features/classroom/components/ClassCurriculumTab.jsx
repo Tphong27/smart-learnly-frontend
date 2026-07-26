@@ -5,7 +5,8 @@ import { Button } from "@/shared/components/ui";
 import { useToast } from "@/shared/components/ui/Toast/useToast";
 import { trainerCurriculumService } from "@/services";
 import { CurriculumStructureEditor } from "@/features/course/components/CurriculumStructureEditor";
-import "@/features/course/pages/AdminCourseContent.css";
+// Dùng cùng design system với master course content (sl-cm-*).
+import "@/features/course/course-admin.css";
 
 const TRAINER_LESSON_TYPES = [
   { value: "video", label: "Video Lecture" },
@@ -251,109 +252,102 @@ export function ClassCurriculumTab({ classId, readOnly = false }) {
   const canPublishDraft = !readOnly && customizationState === "DRAFT";
 
   return (
-    <div className="admin-course-page" style={{ padding: 0, background: "transparent" }}>
-      <div className="page-container" style={{ maxWidth: "100%" }}>
-        <div
-          className="class-curriculum-summary"
-          style={{ marginBottom: 20 }}
-        >
-          <div>
-            <h3>Curriculum workspace</h3>
-            <p>
-              State: <strong>{stateLabel}</strong>
-              {metadata?.source && (
-                <>
-                  {" · "}Source: <strong>{formatLabel(metadata.source)}</strong>
-                </>
-              )}
-              {metadata?.curriculumScope && (
-                <>
-                  {" · "}Scope:{" "}
-                  <strong>{formatLabel(metadata.curriculumScope)}</strong>
-                </>
-              )}
-            </p>
-          </div>
-
-          <div className="class-curriculum-summary__actions">
-            {canInitializeDraft && (
-              <Button
-                type="button"
-                variant="create"
-                size="sm"
-                loading={actionLoading}
-                onClick={handleInitDraft}
-              >
-                {customizationState === "PUBLISHED"
-                  ? "Start new draft"
-                  : "Initialize draft"}
-              </Button>
+    <div className="sl-cm-page sl-cm-page--curriculum" style={{ padding: 0, background: "transparent" }}>
+      <header className="sl-cm-header" style={{ marginBottom: 16 }}>
+        <div>
+          <h1 className="sl-cm-header__title">Class curriculum</h1>
+          <p className="sl-cm-header__subtitle">
+            State: <strong>{stateLabel}</strong>
+            {metadata?.source && (
+              <>
+                {" · "}Source: <strong>{formatLabel(metadata.source)}</strong>
+              </>
             )}
-            {canPublishDraft && (
-              <Button
-                type="button"
-                variant="save"
-                size="sm"
-                loading={actionLoading}
-                onClick={handlePublishDraft}
-              >
-                Publish draft
-              </Button>
+            {metadata?.curriculumScope && (
+              <>
+                {" · "}Scope:{" "}
+                <strong>{formatLabel(metadata.curriculumScope)}</strong>
+              </>
             )}
-          </div>
-        </div>
-
-        {error && (
-          <div className="form-error" style={{ marginBottom: 12 }}>
-            <AlertCircle size={18} />
-            <span>{error}</span>
-          </div>
-        )}
-        {notice && (
-          <p className="form-success-text" style={{ marginBottom: 12 }}>
-            {notice}
           </p>
-        )}
+        </div>
+        <div className="sl-cm-header__actions">
+          {canInitializeDraft && (
+            <Button
+              type="button"
+              variant="create"
+              size="sm"
+              loading={actionLoading}
+              onClick={handleInitDraft}
+            >
+              {customizationState === "PUBLISHED"
+                ? "Start new draft"
+                : "Initialize draft"}
+            </Button>
+          )}
+          {canPublishDraft && (
+            <Button
+              type="button"
+              variant="save"
+              size="sm"
+              loading={actionLoading}
+              onClick={handlePublishDraft}
+            >
+              Publish draft
+            </Button>
+          )}
+        </div>
+      </header>
 
-        {customizationState === "INHERITED" || !customizationState ? (
-          <div
-            className="workspace-card"
-            style={{ textAlign: "center", padding: 32 }}
-          >
-            <h3 style={{ marginTop: 0 }}>Curriculum is inherited</h3>
-            <p style={{ color: "#434655" }}>
-              This class currently follows the master course curriculum. Click
-              "Initialize draft" above to create an editable class-specific
-              copy.
-            </p>
-          </div>
-        ) : (
-          <CurriculumStructureEditor
-            sections={sections}
-            getLessons={(section) => section?.lessons || []}
-            isSectionLessonsLoading={() => false}
-            stats={stats}
-            readOnly={!canEdit}
-            lessonTypeOptions={TRAINER_LESSON_TYPES}
-            lessonEditLabel="Edit lesson"
-            emptyMessage={
-              canEdit
-                ? "This class curriculum has no sections yet. Create the first one below."
-                : "This published curriculum has no sections yet."
-            }
-            emptyAddTitle="Add a new section"
-            emptyAddSubtitle="Organize class content so trainees can follow along."
-            onCreateSection={handleCreateSection}
-            onUpdateSection={handleUpdateSection}
-            onDeleteSection={handleDeleteSection}
-            onReorderSections={handleReorderSections}
-            onCreateLesson={handleCreateLesson}
-            onDeleteLesson={handleDeleteLesson}
-            onReorderLessons={handleReorderLessons}
-            onEditLesson={handleEditLesson}
-          />
-        )}
-      </div>
+      {error && (
+        <div className="form-error" style={{ marginBottom: 12 }}>
+          <AlertCircle size={18} />
+          <span>{error}</span>
+        </div>
+      )}
+      {notice && (
+        <p className="form-success-text" style={{ marginBottom: 12 }}>
+          {notice}
+        </p>
+      )}
+
+      {customizationState === "INHERITED" || !customizationState ? (
+        <div className="sl-cm-workspace" style={{ textAlign: "center", padding: 32 }}>
+          <h3 className="sl-cm-header__title" style={{ marginTop: 0 }}>
+            Curriculum is inherited
+          </h3>
+          <p className="sl-cm-header__subtitle">
+            This class currently follows the master course curriculum. Click
+            &quot;Initialize draft&quot; above to create an editable class-specific
+            copy.
+          </p>
+        </div>
+      ) : (
+        <CurriculumStructureEditor
+          sections={sections}
+          getLessons={(section) => section?.lessons || []}
+          isSectionLessonsLoading={() => false}
+          stats={stats}
+          readOnly={!canEdit}
+          lessonTypeOptions={TRAINER_LESSON_TYPES}
+          lessonEditLabel="Edit lesson"
+          emptyMessage={
+            canEdit
+              ? "This class curriculum has no sections yet. Create the first one below."
+              : "This published curriculum has no sections yet."
+          }
+          emptyAddTitle="Add a new section"
+          emptyAddSubtitle="Organize class content so trainees can follow along."
+          onCreateSection={handleCreateSection}
+          onUpdateSection={handleUpdateSection}
+          onDeleteSection={handleDeleteSection}
+          onReorderSections={handleReorderSections}
+          onCreateLesson={handleCreateLesson}
+          onDeleteLesson={handleDeleteLesson}
+          onReorderLessons={handleReorderLessons}
+          onEditLesson={handleEditLesson}
+        />
+      )}
     </div>
   );
 }
