@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { createClassFormSchema } from "../utils/classValidator";
@@ -36,10 +36,17 @@ export function useClassForm({
     control,
     setValue,
     setError,
+    reset,
   } = useForm({
     resolver: zodResolver(validationSchema),
     defaultValues: toClassFormValues(initialData),
   });
+
+  useEffect(() => {
+    if (initialData) {
+      reset(toClassFormValues(initialData));
+    }
+  }, [initialData, reset]);
 
   const submitForm = useCallback(
     async (formData) => {
@@ -91,7 +98,7 @@ export function useClassForm({
       setIsSubmitting(false);
       onSuccess?.(savedClass);
     },
-    [initialData, isEditMode, onSuccess],
+    [initialData, isEditMode, onSuccess, setError],
   );
 
   return {
@@ -100,6 +107,7 @@ export function useClassForm({
     watch,
     control,
     setValue,
+    reset,
     isSubmitting,
     submitError,
     onSubmit: handleSubmit(submitForm),

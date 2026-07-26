@@ -45,11 +45,12 @@ function ScheduleItem({ session, isStaff }) {
 
   return (
     <article className="schedule-session">
-      <strong className="schedule-session__course">
+      {/* <strong className="schedule-session__course">
         {session.courseTitle}
-      </strong>
+      </strong> */}
 
-      <span className="schedule-session__class">{session.className}</span>
+      {/* <span className="schedule-session__class">{session.className}</span> */}
+      <strong className="schedule-session__class">{session.className}</strong>
 
       {session.trainerName && (
         <span className="schedule-session__trainer">
