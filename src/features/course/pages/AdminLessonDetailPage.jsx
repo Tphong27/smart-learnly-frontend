@@ -3,7 +3,6 @@ import { useLocation, useParams } from "react-router-dom";
 import { courseService } from "@/services/course.service";
 import { flashcardService } from "@/services/flashcard.service";
 import { getCurrentUser } from "@/services/api-client";
-import { createAdminVideoAiService } from "@/services/video-ai.service";
 import { LessonDetailEditor } from "@/features/course/components/lesson-editor/LessonDetailEditor";
 
 export default function AdminLessonDetailPage() {
@@ -25,10 +24,6 @@ export default function AdminLessonDetailPage() {
       mode: isTrainer ? "trainer" : "admin",
       lessonId,
       backPath,
-      videoAi: {
-        service: createAdminVideoAiService(courseId, lessonId),
-        reviewPath: `${location.pathname}/video-ai`,
-      },
       services: {
         getLessonDetail: (id) =>
           courseService.getLessonDetail(id),
@@ -52,7 +47,7 @@ export default function AdminLessonDetailPage() {
         flashcardStaging: true,
       },
     }),
-    [backPath, courseId, isTrainer, lessonId, location.pathname]);
+    [backPath, isTrainer, lessonId]);
 
   return (
     <LessonDetailEditor context={context} />

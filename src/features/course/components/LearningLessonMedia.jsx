@@ -14,8 +14,8 @@ import {
     isPdfUrl,
     isOfficeDocUrl,
     officeViewerUrl,
+    youtubeEmbedUrl,
 } from "../utils/lesson-content";
-import { HlsVideoPlayer } from "./HlsVideoPlayer";
 
 pdfjs.GlobalWorkerOptions.workerSrc = new URL(
     "pdfjs-dist/build/pdf.worker.min.mjs",
@@ -281,12 +281,17 @@ export function LearningLessonMedia({ lesson }) {
     const type = (lesson.lessonType || "").toUpperCase();
 
     if (type === "VIDEO") {
-        if (lesson.hlsReady || lesson.hlsPlaylistUrl) {
+        const embedUrl = youtubeEmbedUrl(lesson.videoUrl);
+        if (embedUrl) {
             return (
                 <div className="learning-lesson-media learning-lesson-media--video">
-                    <HlsVideoPlayer
-                        lessonId={lesson.lessonId ?? lesson.id}
-                        className="learning-lesson-media__hls-player"
+                    <iframe
+                        className="learning-lesson-media__youtube"
+                        src={embedUrl}
+                        title={lesson.title || "YouTube lesson video"}
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                        referrerPolicy="strict-origin-when-cross-origin"
+                        allowFullScreen
                     />
                 </div>
             );
@@ -294,8 +299,11 @@ export function LearningLessonMedia({ lesson }) {
 
         if (lesson.videoUrl) {
             return (
-                <div className="learning-lesson-media learning-lesson-media--video">
-                    <video controls playsInline preload="metadata" src={lesson.videoUrl} />
+                <div
+                    className="learning-lesson-media learning-lesson-media--legacy"
+                    role="status"
+                >
+                    Legacy video source—replace with a YouTube URL.
                 </div>
             );
         }
