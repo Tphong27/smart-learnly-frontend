@@ -18,6 +18,12 @@ import AdminOrdersPage from "@/features/checkout/pages/AdminOrdersPage";
 import AdminTransactionsPage from "@/features/checkout/pages/AdminTransactionsPage";
 import AdminCourseContentPage from "@/features/course/pages/AdminCourseContentPage";
 import AdminLessonDetailPage from "@/features/course/pages/AdminLessonDetailPage";
+import {
+  ClassAnalyticsRedirect,
+  ClassDetailPage,
+  EditionClassPage,
+  StaffClassListPage,
+} from "@/features/classroom";
 
 function PlaceholderPage({ title }) {
     return (
