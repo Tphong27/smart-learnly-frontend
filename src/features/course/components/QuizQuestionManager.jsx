@@ -15,7 +15,7 @@ import {
 } from "../utils/quiz-question-schema";
 import { QuizQuestionEditModal } from "./QuizQuestionEditModal";
 import { QuizImportModal } from "./QuizImportModal";
-import { QuestionBankImportPanel } from "./quiz-import/QuestionBankImportPanel";
+import { CourseQuestionImportPanel } from "./quiz-import/CourseQuestionImportPanel";
 import "@/features/admin/admin-shared.css";
 import "./quiz-question-manager.css";
 
@@ -182,7 +182,6 @@ function QuizQuestionCard({ question, index, onEdit, onDelete, disabled }) {
  */
 export function QuizQuestionsPanel({
   lessonId,
-  courseId,
   lessonTitle,
   onSaved,
   onBusyChange,
@@ -197,16 +196,14 @@ export function QuizQuestionsPanel({
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const savingRef = useRef(false);
-  const [panelView, setPanelView] = useState("questions"); // questions | bank
-  const [bankBusy, setBankBusy] = useState(false);
 
   const [editIndex, setEditIndex] = useState(null); // null = đóng, -1 = thêm mới
   const [importOpen, setImportOpen] = useState(false);
+  const [bankImportOpen, setBankImportOpen] = useState(false);
   const [deleteIndex, setDeleteIndex] = useState(null);
 
-  const busy = loading || saving || bankBusy;
+  const busy = loading || saving;
   const mutationDisabled = disabled || busy;
-  const canImportFromBank = Boolean(courseId);
 
   useEffect(() => {
     onBusyChange?.(busy);
@@ -353,106 +350,82 @@ export function QuizQuestionsPanel({
 
   return (
     <div className="quiz-question-panel">
-      <div className="quiz-question-panel__tabs" role="tablist" aria-label="Quiz questions">
-        <button
-          type="button"
-          role="tab"
-          aria-selected={panelView === "questions"}
-          className={`quiz-question-panel__tab${panelView === "questions" ? " is-active" : ""}`}
-          onClick={() => setPanelView("questions")}
-          disabled={mutationDisabled && panelView !== "questions"}
-        >
-          Questions
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={panelView === "bank"}
-          className={`quiz-question-panel__tab${panelView === "bank" ? " is-active" : ""}`}
-          onClick={() => setPanelView("bank")}
-          disabled={mutationDisabled && panelView !== "bank"}
-          title={
-            canImportFromBank
-              ? "Import questions from this course question banks"
-              : "Course context is required to import from question banks"
-          }
-        >
-          Import from bank
-        </button>
-      </div>
-
-      {panelView === "questions" ? (
-        <section className="admin-card admin-card--flush">
-          <div className="admin-toolbar">
-            <div className="admin-toolbar__filters">
-              <span className="quiz-question-panel__count">
-                {questions.length} question(s)
-              </span>
-            </div>
-            <div className="quiz-question-panel__actions">
-              <Button
-                variant="secondary"
-                leftIcon={<Upload size={15} />}
-                onClick={() => setImportOpen(true)}
-                disabled={mutationDisabled}
-              >
-                Import JSON/Excel
-              </Button>
-              <Button
-                variant="secondary"
-                leftIcon={<Plus size={15} />}
-                onClick={() => openEdit(-1)}
-                disabled={mutationDisabled}
-              >
-                Add question
-              </Button>
-            </div>
+      <section className="admin-card admin-card--flush">
+        <div className="admin-toolbar">
+          <div className="admin-toolbar__filters">
+            <span className="quiz-question-panel__count">
+              {questions.length} question(s)
+            </span>
           </div>
+          <div className="quiz-question-panel__actions">
+            <Button
+              variant="secondary"
+              leftIcon={<Upload size={15} />}
+              onClick={() => setImportOpen(true)}
+              disabled={mutationDisabled || bankImportOpen}
+            >
+              Import Excel/CSV
+            </Button>
+            <Button
+              variant="secondary"
+              leftIcon={<Upload size={15} />}
+              onClick={() => setBankImportOpen((current) => !current)}
+              disabled={mutationDisabled}
+            >
+              {bankImportOpen ? "Hide question bank" : "Import from question bank"}
+            </Button>
+            <Button
+              variant="secondary"
+              leftIcon={<Plus size={15} />}
+              onClick={() => openEdit(-1)}
+              disabled={mutationDisabled || bankImportOpen}
+            >
+              Add question
+            </Button>
+          </div>
+        </div>
 
-          {loading ? (
-            <div className="admin-loading">Loading quiz questions...</div>
-          ) : (
-            <>
-              {errors.length > 0 && (
-                <ul className="quiz-question-panel__errors">
-                  {errors.map((err, i) => (
-                    <li key={i}>{err.message}</li>
-                  ))}
-                </ul>
-              )}
+        {loading ? (
+          <div className="admin-loading">Loading quiz questions...</div>
+        ) : (
+          <>
+            {errors.length > 0 && (
+              <ul className="quiz-question-panel__errors">
+                {errors.map((err, i) => (
+                  <li key={i}>{err.message}</li>
+                ))}
+              </ul>
+            )}
 
-              {questions.length === 0 ? (
-                <div className="admin-empty">
-                  No questions yet. Import JSON/Excel, import from bank, or add manually.
-                </div>
-              ) : (
-                <div className="quiz-question-card-list">
-                  {questions.map((question, idx) => (
-                    <QuizQuestionCard
-                      key={idx}
-                      question={question}
-                      index={idx}
-                      onEdit={openEdit}
-                      onDelete={setDeleteIndex}
-                      disabled={mutationDisabled}
-                    />
-                  ))}
-                </div>
-              )}
-            </>
-          )}
-        </section>
-      ) : (
-        <section className="admin-card admin-card--flush quiz-question-panel__bank">
-          <QuestionBankImportPanel
-            courseId={courseId}
+            {questions.length === 0 ? (
+              <div className="admin-empty">
+                No questions yet. Import Excel, import from question bank, or add manually.
+              </div>
+            ) : (
+              <div className="quiz-question-card-list">
+                {questions.map((question, idx) => (
+                  <QuizQuestionCard
+                    key={idx}
+                    question={question}
+                    index={idx}
+                    onEdit={openEdit}
+                    onDelete={setDeleteIndex}
+                    disabled={mutationDisabled}
+                  />
+                ))}
+              </div>
+            )}
+          </>
+        )}
+      </section>
+
+      {bankImportOpen && (
+        <section className="admin-card quiz-question-panel__bank">
+          <CourseQuestionImportPanel
+            courseId={sourceCourseId}
             existingQuestions={questions}
-            onImport={async (importedQuestions) => {
-              const saved = await handleImported(importedQuestions);
-              if (saved) setPanelView("questions");
-              return saved;
-            }}
-            onBusyChange={setBankBusy}
+            onImport={handleImported}
+            onClose={() => setBankImportOpen(false)}
           />
         </section>
       )}

@@ -39,24 +39,15 @@ export function ClassDetailPage({
   const isTmo = userRole === ROLES.TMO;
   const isClassManager = canManageClasses(userRole);
 
-    const [classData, setClassData] = useState(null);
-    // Cho phép deep-link đến 1 tab qua query string ?tab=curriculum (ví dụ khi
-    // trang trainer lesson detail navigate về đây sau khi save).
-    // Trainer mặc định mở tab Curriculum vì đây là workspace customize class.
-    const [searchParams] = useSearchParams();
-    const tabParam = searchParams.get("tab");
-    const initialTab =
-        tabParam === "curriculum"
-            ? "curriculum"
-            : tabParam === "overview"
-              ? "overview"
-              : isTrainer
-                ? "curriculum"
-                : "overview";
-    const [activeTab, setActiveTab] = useState(initialTab);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState("");
-    const [refreshKey, setRefreshKey] = useState(0);
+  const [classData, setClassData] = useState(null);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const requestedTab = searchParams.get("tab");
+  const activeTab =
+    requestedTab === "analytics"
+      ? "analytics"
+      : requestedTab === "curriculum" && isTrainer
+        ? "curriculum"
+        : "overview";
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");

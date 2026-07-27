@@ -85,24 +85,19 @@ function MediaUploader({
     if (!file) return;
 
     const isImage = file.type.startsWith("image/");
-    const isVideo = file.type.startsWith("video/");
-    const isAudio = file.type.startsWith("audio/");
-    if (!isImage && !isVideo && !isAudio) {
-      onError("Only image, video, or audio files are supported.");
+    if (!isImage) {
+      onError("Only image files are supported.");
       return;
     }
 
     setUploading(true);
     onUploadingChange?.(true);
     try {
-      const uploaded = isVideo
-        ? await courseService.uploadLessonMaterial(file)
-        : await courseService.uploadLessonResource(file);
-      const mediaType = isVideo ? "video" : isAudio ? "audio" : "image";
-      onChange(buildMediaFromUpload(uploaded, mediaType));
+      const uploaded = await courseService.uploadLessonResource(file);
+      onChange(buildMediaFromUpload(uploaded, "image"));
     } catch (error) {
       const message =
-        error?.response?.data?.message || "Failed to upload media file.";
+        error?.response?.data?.message || "Failed to upload image file.";
       onError(message);
     } finally {
       setUploading(false);
@@ -130,15 +125,15 @@ function MediaUploader({
           </button>
         </div>
       ) : (
-        <p className="quiz-question-edit-form__hint">Optional. Leave empty for text-only content.</p>
+        <p className="quiz-question-edit-form__hint">Optional. Leave empty for text-only content. Only images are supported.</p>
       )}
       <input
         type="file"
-        accept="image/*,audio/*,video/mp4,video/webm,video/quicktime"
+        accept="image/*"
         onChange={handleFileChange}
         disabled={disabled || uploading}
       />
-      {uploading && <p className="quiz-question-edit-form__hint">Uploading media...</p>}
+      {uploading && <p className="quiz-question-edit-form__hint">Uploading image...</p>}
     </div>
   );
 }
