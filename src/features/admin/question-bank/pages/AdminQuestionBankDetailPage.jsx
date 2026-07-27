@@ -176,10 +176,6 @@ export function AdminQuestionBankDetailPage() {
                               courseService.getCourseContent(courseId),
                               questionBankService.listCourseQuestions(courseId, {
                                   search: search.trim() || undefined,
-                                  type: type === "all" ? undefined : type,
-                                  status: status === "all" ? undefined : status,
-                                  difficulty:
-                                      difficulty === "all" ? undefined : difficulty,
                                   moduleId: moduleId === "all" ? undefined : moduleId,
                                   page,
                                   size: pageSize,
@@ -312,9 +308,6 @@ export function AdminQuestionBankDetailPage() {
         try {
             const response = await questionBankService.exportCourseQuestions(courseId, {
                 search: search.trim() || undefined,
-                type: type === "all" ? undefined : type,
-                status: status === "all" ? undefined : status,
-                difficulty: difficulty === "all" ? undefined : difficulty,
                 moduleId: moduleId === "all" ? undefined : moduleId,
             });
             const blob = response instanceof Blob ? response : response?.data;
@@ -523,107 +516,155 @@ export function AdminQuestionBankDetailPage() {
 
             {activeTab === "questions" && (
                 <section className="admin-card admin-card--flush admin-card--filterable">
-                    <AdminFilterToolbar
-                        ariaLabel="Question search and filters"
-                        search={
-                            <FormField
-                                id="question-list-search"
-                                aria-label="Search questions"
-                                placeholder="Search questions..."
-                                value={search}
-                                onChange={(event) => {
-                                    setSearch(event.target.value);
-                                    setPage(0);
-                                }}
-                                leftIcon={<Search size={16} />}
-                            />
-                        }
-                        fields={[
-                            {
-                                name: "moduleId",
-                                label: "Module",
-                                type: "select",
-                                value: moduleId,
-                                defaultValue: "all",
-                                options: [
-                                    { value: "all", label: "All modules" },
-                                    ...modules.map((module) => ({
-                                        value: module.id,
-                                        label: module.title,
-                                    })),
-                                ],
-                            },
-                            {
-                                name: "type",
-                                label: "Question type",
-                                type: "select",
-                                value: type,
-                                defaultValue: "all",
-                                options: [
-                                    { value: "all", label: "All types" },
-                                    {
-                                        value: "multiple_choice",
-                                        label: "Multiple choice",
-                                    },
-                                    {
-                                        value: "true_false",
-                                        label: "True/False",
-                                    },
-                                ],
-                            },
-                            {
-                                name: "status",
-                                label: "Status",
-                                type: "select",
-                                value: status,
-                                defaultValue: "all",
-                                options: [
-                                    { value: "all", label: "All statuses" },
-                                    { value: "draft", label: "Draft" },
-                                    { value: "approved", label: "Approved" },
-                                    { value: "archived", label: "Archived" },
-                                ],
-                            },
-                            {
-                                name: "difficulty",
-                                label: "Difficulty",
-                                type: "select",
-                                value: difficulty,
-                                defaultValue: "all",
-                                options: [
-                                    { value: "all", label: "All difficulties" },
-                                    ...[1, 2, 3, 4, 5].map((level) => ({
-                                        value: String(level),
-                                        label: String(level),
-                                    })),
-                                ],
-                            },
-                        ]}
-                        activeFilterCount={
-                            [
-                                moduleId !== "all",
-                                type !== "all",
-                                status !== "all",
+                    {isCourseQuestionsMode ? (
+                        <div
+                            className="admin-toolbar admin-toolbar--filter-popover"
+                            role="search"
+                            aria-label="Question search and module filter"
+                        >
+                            <div className="admin-filter-bar question-module-filter-bar">
+                                <div className="admin-filter-bar__search">
+                                    <FormField
+                                        id="question-list-search"
+                                        aria-label="Search questions"
+                                        placeholder="Search questions..."
+                                        value={search}
+                                        onChange={(event) => {
+                                            setSearch(event.target.value);
+                                            setPage(0);
+                                        }}
+                                        leftIcon={<Search size={16} />}
+                                    />
+                                </div>
+                                <div className="admin-filter-bar__actions question-module-filter-bar__actions">
+                                    <label className="question-module-filter" htmlFor="question-module-filter">
+                                        <span>Module</span>
+                                        <select
+                                            id="question-module-filter"
+                                            className="admin-toolbar__select"
+                                            value={moduleId}
+                                            onChange={(event) => {
+                                                setModuleId(event.target.value);
+                                                setPage(0);
+                                            }}
+                                        >
+                                            <option value="all">All modules</option>
+                                            {modules.map((module) => (
+                                                <option key={module.id} value={module.id}>
+                                                    {module.title}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </label>
+                                    <span className="admin-toolbar__meta" aria-live="polite">
+                                        {pageInfo.totalItems} questions
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    ) : (
+                        <AdminFilterToolbar
+                            ariaLabel="Question search and filters"
+                            search={
+                                <FormField
+                                    id="question-list-search"
+                                    aria-label="Search questions"
+                                    placeholder="Search questions..."
+                                    value={search}
+                                    onChange={(event) => {
+                                        setSearch(event.target.value);
+                                        setPage(0);
+                                    }}
+                                    leftIcon={<Search size={16} />}
+                                />
+                            }
+                            fields={[
+                                {
+                                    name: "moduleId",
+                                    label: "Module",
+                                    type: "select",
+                                    value: moduleId,
+                                    defaultValue: "all",
+                                    options: [
+                                        { value: "all", label: "All modules" },
+                                        ...modules.map((module) => ({
+                                            value: module.id,
+                                            label: module.title,
+                                        })),
+                                    ],
+                                },
+                                {
+                                    name: "type",
+                                    label: "Question type",
+                                    type: "select",
+                                    value: type,
+                                    defaultValue: "all",
+                                    options: [
+                                        { value: "all", label: "All types" },
+                                        {
+                                            value: "multiple_choice",
+                                            label: "Multiple choice",
+                                        },
+                                        {
+                                            value: "true_false",
+                                            label: "True/False",
+                                        },
+                                    ],
+                                },
+                                {
+                                    name: "status",
+                                    label: "Status",
+                                    type: "select",
+                                    value: status,
+                                    defaultValue: "all",
+                                    options: [
+                                        { value: "all", label: "All statuses" },
+                                        { value: "draft", label: "Draft" },
+                                        { value: "approved", label: "Approved" },
+                                        { value: "archived", label: "Archived" },
+                                    ],
+                                },
+                                {
+                                    name: "difficulty",
+                                    label: "Difficulty",
+                                    type: "select",
+                                    value: difficulty,
+                                    defaultValue: "all",
+                                    options: [
+                                        { value: "all", label: "All difficulties" },
+                                        ...[1, 2, 3, 4, 5].map((level) => ({
+                                            value: String(level),
+                                            label: String(level),
+                                        })),
+                                    ],
+                                },
+                            ]}
+                            activeFilterCount={
+                                [
+                                    moduleId !== "all",
+                                    type !== "all",
+                                    status !== "all",
+                                    difficulty !== "all",
+                                ].filter(Boolean).length
+                            }
+                            canClear={Boolean(
+                                search.trim() ||
+                                moduleId !== "all" ||
+                                type !== "all" ||
+                                status !== "all" ||
                                 difficulty !== "all",
-                            ].filter(Boolean).length
-                        }
-                        canClear={Boolean(
-                            search.trim() ||
-                            moduleId !== "all" ||
-                            type !== "all" ||
-                            status !== "all" ||
-                            difficulty !== "all",
-                        )}
-                        resultLabel={`${pageInfo.totalItems} questions`}
-                        onApply={(nextFilters) => {
-                            setModuleId(nextFilters.moduleId);
-                            setType(nextFilters.type);
-                            setStatus(nextFilters.status);
-                            setDifficulty(nextFilters.difficulty);
-                            setPage(0);
-                        }}
-                        onClear={clearQuestionFilters}
-                    />
+                            )}
+                            resultLabel={`${pageInfo.totalItems} questions`}
+                            onApply={(nextFilters) => {
+                                setModuleId(nextFilters.moduleId);
+                                setType(nextFilters.type);
+                                setStatus(nextFilters.status);
+                                setDifficulty(nextFilters.difficulty);
+                                setPage(0);
+                            }}
+                            onClear={clearQuestionFilters}
+                        />
+                    )}
 
                     {loading ? (
                         <div className="admin-loading">
@@ -1013,8 +1054,19 @@ export function AdminQuestionBankDetailPage() {
                                             )}
                                         </div>
                                         <div className="question-card__explanation">
-                                            <strong>Explanation:</strong>{" "}
-                                            {question.explanation || "--"}
+                                            <strong>Explanation:</strong>
+                                            {question.explanation ? (
+                                                <div
+                                                    className="question-rich-text-viewer"
+                                                    dangerouslySetInnerHTML={{
+                                                        __html: sanitizeQuestionHtml(
+                                                            question.explanation,
+                                                        ),
+                                                    }}
+                                                />
+                                            ) : (
+                                                "--"
+                                            )}
                                         </div>
                                     </article>
                                 );
