@@ -6,14 +6,14 @@ export const LESSON_STATUS = {
 
 export const LESSON_STATUS_OPTIONS = [
   {
-    value: LESSON_STATUS.PUBLISHED,
-    label: "Published",
-    description: "Visible to enrolled learners and preview users when allowed.",
-  },
-  {
     value: LESSON_STATUS.DRAFT,
     label: "Draft",
     description: "Editable by staff, hidden from learners.",
+  },
+  {
+    value: LESSON_STATUS.PUBLISHED,
+    label: "Published",
+    description: "Visible to enrolled learners and preview users when allowed.",
   },
   {
     value: LESSON_STATUS.INACTIVE,

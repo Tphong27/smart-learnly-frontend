@@ -3,160 +3,181 @@ import { RoleGuard } from "./RoleGuard";
 import { ROLES } from "@/shared/constants/roles";
 import { AppLayout } from "@/app/layouts/AppLayout";
 import {
-  AdminAuditLogPage,
-  AdminCategoriesPage,
-  AdminCoursesPage,
-  AdminCourseFormPage,
-  AdminUsersPage,
-  AdminSystemSettingsPage,
-  AdminDashboardPage,
-  AdminQuestionBankDetailPage,
-  AdminAiQuestionDraftCreatePage,
-  AdminAiQuestionDraftReviewPage,
+    AdminAuditLogPage,
+    AdminCategoriesPage,
+    AdminCoursesPage,
+    AdminCourseFormPage,
+    AdminUsersPage,
+    AdminSystemSettingsPage,
+    AdminDashboardPage,
+    AdminQuestionBankDetailPage,
+    AdminAiQuestionDraftCreatePage,
+    AdminAiQuestionDraftReviewPage,
 } from "@/features/admin";
 import AdminOrdersPage from "@/features/checkout/pages/AdminOrdersPage";
 import AdminTransactionsPage from "@/features/checkout/pages/AdminTransactionsPage";
 import AdminCourseContentPage from "@/features/course/pages/AdminCourseContentPage";
 import AdminLessonDetailPage from "@/features/course/pages/AdminLessonDetailPage";
-import VideoAiReviewPage from "@/features/course/pages/VideoAiReviewPage";
-import {
-  ClassAnalyticsRedirect,
-  ClassDetailPage,
-  EditionClassPage,
-  StaffClassListPage,
-} from "@/features/classroom";
 
 function PlaceholderPage({ title }) {
-  return (
-    <section className="placeholder-page">
-      <span className="placeholder-page__eyebrow">Coming soon</span>
-      <h1 className="placeholder-page__title">{title}</h1>
-      <p className="placeholder-page__text">
-        This is a placeholder page for <strong>{title}</strong>. Content will be
-        added in future sprints.
-      </p>
-    </section>
-  );
+    return (
+        <section className="placeholder-page">
+            <span className="placeholder-page__eyebrow">Coming soon</span>
+            <h1 className="placeholder-page__title">{title}</h1>
+            <p className="placeholder-page__text">
+                This is a placeholder page for <strong>{title}</strong>. Content
+                will be added in future sprints.
+            </p>
+        </section>
+    );
 }
 function getAdminRoutes() {
-  return [
-    {
-      path: "/admin",
-      element: <AppLayout />,
-      children: [
+    return [
         {
-          element: (
-            <RoleGuard allowedRoles={[ROLES.ADMIN, ROLES.TMO, ROLES.SME]} />
-          ),
-          children: [
-            {
-              path: "courses",
-              element: <AdminCoursesPage />,
-            },
-            {
-              path: "courses/:courseId",
-              element: <AdminCourseFormPage />,
-            },
-            {
-              path: "categories",
-              element: <AdminCategoriesPage />,
-            },
-          ],
+            path: "/admin",
+            element: <AppLayout />,
+            children: [
+                {
+                    element: (
+                        <RoleGuard
+                            allowedRoles={[ROLES.ADMIN, ROLES.TMO, ROLES.SME]}
+                        />
+                    ),
+                    children: [
+                        {
+                            path: "courses",
+                            element: <AdminCoursesPage />,
+                        },
+                        {
+                            path: "courses/:courseId",
+                            element: <AdminCourseFormPage />,
+                        },
+                        {
+                            path: "categories",
+                            element: <AdminCategoriesPage />,
+                        },
+                    ],
+                },
+                {
+                    element: (
+                        <RoleGuard allowedRoles={[ROLES.ADMIN, ROLES.TMO]} />
+                    ),
+                    children: [
+                        {
+                            path: "courses/new",
+                            element: <AdminCourseFormPage />,
+                        },
+                    ],
+                },
+                {
+                    element: (
+                        <RoleGuard
+                            allowedRoles={[
+                                ROLES.ADMIN,
+                                ROLES.TMO,
+                                ROLES.SME,
+                                ROLES.TRAINER,
+                            ]}
+                        />
+                    ),
+                    children: [
+                        {
+                            path: "courses/:courseId/content",
+                            element: <AdminCourseContentPage />,
+                        },
+                        {
+                            path: "courses/:courseId/questions",
+                            element: <AdminQuestionBankDetailPage />,
+                        },
+                        {
+                            path: "courses/:courseId/lessons/:lessonId",
+                            element: <AdminLessonDetailPage />,
+                        },
+                    ],
+                },
+                {
+                    element: (
+                        <RoleGuard allowedRoles={[ROLES.ADMIN, ROLES.SME]} />
+                    ),
+                    children: [
+                        {
+                            path: "courses/:courseId/questions/ai-drafts/new",
+                            element: <AdminAiQuestionDraftCreatePage />,
+                        },
+                        {
+                            path: "courses/:courseId/questions/ai-drafts/:batchId",
+                            element: <AdminAiQuestionDraftReviewPage />,
+                        },
+                    ],
+                },
+                {
+                    element: <RoleGuard allowedRoles={[ROLES.ADMIN]} />,
+                    children: [
+                        { path: "dashboard", element: <AdminDashboardPage /> },
+                        {
+                            path: "classrooms",
+                            element: (
+                                <StaffClassListPage routeBase="/admin/classrooms" />
+                            ),
+                        },
+                        {
+                            path: "classrooms/create",
+                            element: (
+                                <EditionClassPage routeBase="/admin/classrooms" />
+                            ),
+                        },
+                        {
+                            path: "classrooms/:classId/edit",
+                            element: (
+                                <EditionClassPage routeBase="/admin/classrooms" />
+                            ),
+                        },
+                        {
+                            path: "classrooms/:classId/analytics",
+                            element: (
+                                <ClassAnalyticsRedirect routeBase="/admin/classrooms" />
+                            ),
+                        },
+                        {
+                            path: "classrooms/:classId/workspace",
+                            element: (
+                                <ClassDetailPage
+                                    routeBase="/admin/classrooms"
+                                    coursePreviewBase="/admin/courses"
+                                />
+                            ),
+                        },
+                        {
+                            path: "users-management",
+                            element: <AdminUsersPage />,
+                        },
+                        { path: "audit-log", element: <AdminAuditLogPage /> },
+                        {
+                            path: "flashtests",
+                            element: (
+                                <PlaceholderPage title="Flash Tests Management" />
+                            ),
+                        },
+                        {
+                            path: "settings",
+                            element: <AdminSystemSettingsPage />,
+                        },
+                    ],
+                },
+                {
+                    element: (
+                        <RoleGuard allowedRoles={[ROLES.ADMIN, ROLES.TMO]} />
+                    ),
+                    children: [
+                        { path: "orders", element: <AdminOrdersPage /> },
+                        {
+                            path: "transactions",
+                            element: <AdminTransactionsPage />,
+                        },
+                    ],
+                },
+            ],
         },
-        {
-          element: <RoleGuard allowedRoles={[ROLES.ADMIN, ROLES.TMO]} />,
-          children: [
-            {
-              path: "courses/new",
-              element: <AdminCourseFormPage />,
-            },
-          ],
-        },
-        {
-          element: (
-            <RoleGuard
-              allowedRoles={[ROLES.ADMIN, ROLES.TMO, ROLES.SME, ROLES.TRAINER]}
-            />
-          ),
-          children: [
-            {
-              path: "courses/:courseId/content",
-              element: <AdminCourseContentPage />,
-            },
-            {
-              path: "courses/:courseId/questions",
-              element: <AdminQuestionBankDetailPage />,
-            },
-            {
-              path: "courses/:courseId/lessons/:lessonId",
-              element: <AdminLessonDetailPage />,
-            },
-            {
-              path: "courses/:courseId/lessons/:lessonId/video-ai",
-              element: <VideoAiReviewPage />,
-            },
-          ],
-        },
-        {
-          element: <RoleGuard allowedRoles={[ROLES.ADMIN, ROLES.SME]} />,
-          children: [
-            {
-              path: "courses/:courseId/questions/ai-drafts/new",
-              element: <AdminAiQuestionDraftCreatePage />,
-            },
-            {
-              path: "courses/:courseId/questions/ai-drafts/:batchId",
-              element: <AdminAiQuestionDraftReviewPage />,
-            },
-          ],
-        },
-        {
-          element: <RoleGuard allowedRoles={[ROLES.ADMIN]} />,
-          children: [
-            { path: "dashboard", element: <AdminDashboardPage /> },
-            {
-              path: "classrooms",
-              element: <StaffClassListPage routeBase="/admin/classrooms" />,
-            },
-            {
-              path: "classrooms/create",
-              element: <EditionClassPage routeBase="/admin/classrooms" />,
-            },
-            {
-              path: "classrooms/:classId/edit",
-              element: <EditionClassPage routeBase="/admin/classrooms" />,
-            },
-            {
-              path: "classrooms/:classId/analytics",
-              element: <ClassAnalyticsRedirect routeBase="/admin/classrooms" />,
-            },
-            {
-              path: "classrooms/:classId/workspace",
-              element: (
-                <ClassDetailPage
-                  routeBase="/admin/classrooms"
-                  coursePreviewBase="/admin/courses"
-                />
-              ),
-            },
-            { path: "users-management", element: <AdminUsersPage /> },
-            { path: "audit-log", element: <AdminAuditLogPage /> },
-            {
-              path: "flashtests",
-              element: <PlaceholderPage title="Flash Tests Management" />,
-            },
-            { path: "settings", element: <AdminSystemSettingsPage /> },
-          ],
-        },
-        {
-          element: <RoleGuard allowedRoles={[ROLES.ADMIN, ROLES.TMO]} />,
-          children: [
-            { path: "orders", element: <AdminOrdersPage /> },
-            { path: "transactions", element: <AdminTransactionsPage /> },
-          ],
-        },
-      ],
-    },
-  ];
+    ];
 }
 export default getAdminRoutes;

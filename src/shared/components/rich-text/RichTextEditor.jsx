@@ -1,7 +1,25 @@
-import { useCallback, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import ReactQuill from "react-quill-new";
 import "react-quill-new/dist/quill.snow.css";
 import "./RichTextEditor.css";
+
+const RICH_TEXT_FORMATS = [
+  "header",
+  "font",
+  "bold",
+  "italic",
+  "underline",
+  "strike",
+  "color",
+  "list",
+  "bullet",
+  "align",
+  "blockquote",
+  "code-block",
+  "link",
+  "image",
+  "video",
+];
 
 function sanitizeFileName(fileName = "uploaded-file") {
   return fileName.replaceAll('"', "").replaceAll("<", "").replaceAll(">", "");
@@ -49,6 +67,23 @@ export default function RichTextEditor({
   videoUploader,
 }) {
   const quillRef = useRef(null);
+  const onChangeRef = useRef(onChange);
+  const imageUploaderRef = useRef(imageUploader);
+  const videoUploaderRef = useRef(videoUploader);
+  const hasImageUploader = typeof imageUploader === "function";
+  const hasVideoUploader = typeof videoUploader === "function";
+
+  useEffect(() => {
+    onChangeRef.current = onChange;
+  }, [onChange]);
+
+  useEffect(() => {
+    imageUploaderRef.current = imageUploader;
+  }, [imageUploader]);
+
+  useEffect(() => {
+    videoUploaderRef.current = videoUploader;
+  }, [videoUploader]);
 
   const insertHtmlIntoEditor = useCallback((html) => {
     const editor = quillRef.current?.getEditor();
@@ -66,11 +101,13 @@ export default function RichTextEditor({
 
   const uploadAndInsertImage = useCallback(
     async (file) => {
-      if (!imageUploader || !file) {
+      const uploadImage = imageUploaderRef.current;
+
+      if (!uploadImage || !file) {
         return;
       }
 
-      const uploadedImage = await imageUploader(file);
+      const uploadedImage = await uploadImage(file);
       const imageUrl = uploadedImage?.url || uploadedImage?.data?.url;
 
       if (!imageUrl) {
@@ -83,16 +120,18 @@ export default function RichTextEditor({
         `<p><img src="${imageUrl}" alt="${safeAlt}" /></p>`,
       );
     },
-    [imageUploader, insertHtmlIntoEditor],
+    [insertHtmlIntoEditor],
   );
 
   const uploadAndInsertVideo = useCallback(
     async (file) => {
-      if (!videoUploader || !file) {
+      const uploadVideo = videoUploaderRef.current;
+
+      if (!uploadVideo || !file) {
         return;
       }
 
-      const uploadedVideo = await videoUploader(file);
+      const uploadedVideo = await uploadVideo(file);
       const videoUrl = uploadedVideo?.url || uploadedVideo?.data?.url;
       const contentType =
         uploadedVideo?.contentType ||
@@ -113,11 +152,11 @@ export default function RichTextEditor({
         </p>
       `);
     },
-    [videoUploader, insertHtmlIntoEditor],
+    [insertHtmlIntoEditor],
   );
 
   const handleImageUpload = useCallback(() => {
-    if (!imageUploader) {
+    if (!imageUploaderRef.current) {
       return;
     }
 
@@ -139,10 +178,10 @@ export default function RichTextEditor({
         console.error("Failed to upload summary image:", error);
       }
     };
-  }, [imageUploader, uploadAndInsertImage]);
+  }, [uploadAndInsertImage]);
 
   const handleVideoUpload = useCallback(() => {
-    if (!videoUploader) {
+    if (!videoUploaderRef.current) {
       return;
     }
 
@@ -164,7 +203,7 @@ export default function RichTextEditor({
         console.error("Failed to upload summary video:", error);
       }
     };
-  }, [videoUploader, uploadAndInsertVideo]);
+  }, [uploadAndInsertVideo]);
 
   const handlePaste = useCallback(
     async (event) => {
@@ -216,9 +255,9 @@ export default function RichTextEditor({
   const handleEditorChange = useCallback(
     (html) => {
       const cleanedHtml = removeBase64Media(html);
-      onChange?.(cleanedHtml);
+      onChangeRef.current?.(cleanedHtml);
     },
-    [onChange],
+    [],
   );
 
   const modules = useMemo(
@@ -234,34 +273,21 @@ export default function RichTextEditor({
           ["clean"],
         ],
         handlers: {
-          ...(imageUploader ? { image: handleImageUpload } : {}),
-          ...(videoUploader ? { video: handleVideoUpload } : {}),
+          ...(hasImageUploader ? { image: handleImageUpload } : {}),
+          ...(hasVideoUploader ? { video: handleVideoUpload } : {}),
         },
       },
       clipboard: {
         matchVisual: false,
       },
     }),
-    [handleImageUpload, handleVideoUpload, imageUploader, videoUploader],
+    [
+      handleImageUpload,
+      handleVideoUpload,
+      hasImageUploader,
+      hasVideoUploader,
+    ],
   );
-
-  const formats = [
-    "header",
-    "font",
-    "bold",
-    "italic",
-    "underline",
-    "strike",
-    "color",
-    "list",
-    "bullet",
-    "align",
-    "blockquote",
-    "code-block",
-    "link",
-    "image",
-    "video",
-  ];
 
   return (
     <div
@@ -275,7 +301,7 @@ export default function RichTextEditor({
         value={value || ""}
         onChange={handleEditorChange}
         modules={modules}
-        formats={formats}
+        formats={RICH_TEXT_FORMATS}
         placeholder={placeholder}
       />
     </div>

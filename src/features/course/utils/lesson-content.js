@@ -80,3 +80,53 @@ export function isHtmlContent(content) {
     if (!content) return false;
     return /<[a-z][\s\S]*>/i.test(content);
 }
+
+const YOUTUBE_VIDEO_ID_PATTERN = /^[A-Za-z0-9_-]{11}$/;
+const YOUTUBE_WATCH_HOSTS = new Set(["youtube.com", "www.youtube.com"]);
+
+export function getYoutubeVideoId(value) {
+    if (!value) return null;
+
+    try {
+        const url = new URL(String(value).trim());
+        const host = url.hostname.toLowerCase();
+
+        if (
+            url.protocol !== "https:" ||
+            url.username ||
+            url.password ||
+            (url.port && url.port !== "443")
+        ) {
+            return null;
+        }
+
+        let videoId = null;
+        if (host === "youtu.be") {
+            const parts = url.pathname.split("/").filter(Boolean);
+            videoId = parts.length === 1 ? parts[0] : null;
+        } else if (
+            YOUTUBE_WATCH_HOSTS.has(host) &&
+            (url.pathname === "/watch" || url.pathname === "/watch/")
+        ) {
+            videoId = url.searchParams.get("v");
+        }
+
+        return YOUTUBE_VIDEO_ID_PATTERN.test(videoId || "") ? videoId : null;
+    } catch {
+        return null;
+    }
+}
+
+export function canonicalYoutubeUrl(value) {
+    const videoId = getYoutubeVideoId(value);
+    return videoId
+        ? `https://www.youtube.com/watch?v=${videoId}`
+        : null;
+}
+
+export function youtubeEmbedUrl(value) {
+    const videoId = getYoutubeVideoId(value);
+    return videoId
+        ? `https://www.youtube-nocookie.com/embed/${videoId}`
+        : null;
+}

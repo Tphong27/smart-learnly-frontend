@@ -15,7 +15,6 @@ export {
   AUDIT_RESULTS,
 } from "./audit-log.service";
 export { learningService } from "./learning.service";
-export * from "./hls.service";
 export { flashcardService } from "./flashcard.service";
 export { classService } from "./class.service";
 export { trainerCurriculumService } from "./trainer-curriculum.service";
@@ -30,11 +29,4 @@ export { traineeProgressService } from "./trainee-progress.service";
 export { classAnalyticsService } from "./class-analytics.service";
 export { openingScheduleService } from "./opening-schedule.service";
 export { scheduleService } from "./schedule.service";
-export {
-  createAdminVideoAiService,
-  createTrainerVideoAiService,
-  learnerVideoAiService,
-  normalizeVideoAiContent,
-  normalizeLearnerVideoAiResponse,
-  normalizeVideoAiStatus,
-} from "./video-ai.service";
+export { videoAiService } from "./video-ai.service";

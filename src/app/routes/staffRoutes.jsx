@@ -16,7 +16,6 @@ import {
 import { AdminCoursesPage, AdminCourseFormPage } from "@/features/admin";
 import AdminCourseContentPage from "@/features/course/pages/AdminCourseContentPage";
 import AdminLessonDetailPage from "@/features/course/pages/AdminLessonDetailPage";
-import VideoAiReviewPage from "@/features/course/pages/VideoAiReviewPage";
 import {
   StaffClassListPage,
   EditionClassPage,
@@ -63,10 +62,6 @@ function getStaffRoutes() {
             {
               path: "courses/:courseId/lessons/:lessonId",
               element: <AdminLessonDetailPage />,
-            },
-            {
-              path: "courses/:courseId/lessons/:lessonId/video-ai",
-              element: <VideoAiReviewPage />,
             },
             {
               path: "tests",
@@ -204,10 +199,6 @@ function getStaffRoutes() {
             {
               path: "classes/:classId/curriculum/lessons/:lessonId",
               element: <TrainerLessonDetailPage />,
-            },
-            {
-              path: "classes/:classId/curriculum/lessons/:lessonId/video-ai",
-              element: <VideoAiReviewPage />,
             },
           ],
         },
