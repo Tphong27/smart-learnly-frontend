@@ -422,7 +422,7 @@ function ModalNotice({ notice }) {
   );
 }
 
-function QuestionBankImportPanel({ setId, notify, onStagingChanged }) {
+function CourseQuestionImportPanel({ setId, notify, onStagingChanged }) {
   const [filters, setFilters] = useState(DEFAULT_SOURCE_FILTERS);
   const [appliedFilters, setAppliedFilters] = useState(filters);
   const [questions, setQuestions] = useState([]);
@@ -557,7 +557,7 @@ function QuestionBankImportPanel({ setId, notify, onStagingChanged }) {
     setSubmitting(true);
     try {
       const response = normalizeResponse(
-        await flashcardService.importQuestionBankToStaging(setId, idsToImport),
+        await flashcardService.importCourseQuestionsToStaging(setId, idsToImport),
       );
       setSelectedIds([]);
       notify(
@@ -581,7 +581,7 @@ function QuestionBankImportPanel({ setId, notify, onStagingChanged }) {
   return (
     <section className="flashcard-panel">
       <div className="flashcard-panel__header">
-        <h3 className="flashcard-panel__title">Question Bank Import</h3>
+        <h3 className="flashcard-panel__title">Course Question Import</h3>
         <button
           type="button"
           className="flashcard-btn"
@@ -688,7 +688,7 @@ function QuestionBankImportPanel({ setId, notify, onStagingChanged }) {
                 <th>Correct answers</th>
                 <th>Difficulty</th>
                 <th>Import</th>
-                <th>Question bank</th>
+                <th>Source</th>
               </tr>
             </thead>
             <tbody>
@@ -743,7 +743,7 @@ function QuestionBankImportPanel({ setId, notify, onStagingChanged }) {
                           <span className="flashcard-staging__muted">Available</span>
                         )}
                       </td>
-                      <td>{question.questionBankName || "--"}</td>
+                      <td>{question.sourceName || "Course questions"}</td>
                     </tr>
                   );
                 })
@@ -1367,20 +1367,20 @@ export function ImportFlashcardsModal({
               Document
             </button>
             <button
-              id="flashcard-import-tab-question-bank"
+              id="flashcard-import-tab-course-questions"
               type="button"
               role="tab"
-              aria-selected={activeImportTab === "question-bank"}
-              aria-controls="flashcard-import-panel-question-bank"
-              tabIndex={activeImportTab === "question-bank" ? 0 : -1}
+              aria-selected={activeImportTab === "course-questions"}
+              aria-controls="flashcard-import-panel-course-questions"
+              tabIndex={activeImportTab === "course-questions" ? 0 : -1}
               className={
-                activeImportTab === "question-bank"
+                activeImportTab === "course-questions"
                   ? "flashcard-tabs__tab is-active"
                   : "flashcard-tabs__tab"
               }
-              onClick={() => selectImportTab("question-bank")}
+              onClick={() => selectImportTab("course-questions")}
             >
-              Question Bank
+              Course questions
             </button>
           </div>
         )}
@@ -1436,13 +1436,13 @@ export function ImportFlashcardsModal({
                   />
                 </div>
               )}
-              {activeImportTab === "question-bank" && (
+              {activeImportTab === "course-questions" && (
                 <div
-                  id="flashcard-import-panel-question-bank"
+                  id="flashcard-import-panel-course-questions"
                   role="tabpanel"
-                  aria-labelledby="flashcard-import-tab-question-bank"
+                  aria-labelledby="flashcard-import-tab-course-questions"
                 >
-                  <QuestionBankImportPanel
+                  <CourseQuestionImportPanel
                     setId={setId}
                     notify={notifyInModal}
                     onStagingChanged={handleStagingImportComplete}

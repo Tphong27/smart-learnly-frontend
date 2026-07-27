@@ -7,14 +7,14 @@ import {
   parseQuizImportFile,
   downloadQuizImportTemplate,
 } from "../utils/quiz-question-schema";
-import { QuestionBankImportPanel } from "./quiz-import/QuestionBankImportPanel";
+import { CourseQuestionImportPanel } from "./quiz-import/CourseQuestionImportPanel";
 import "@/features/admin/admin-shared.css";
 import "./quiz-question-manager.css";
 
 const IMPORT_ERROR = "Questions could not be imported. Please try again.";
 
 /**
- * Modal import câu hỏi từ JSON, Excel/CSV hoặc Question Bank.
+ * Modal import questions from JSON, Excel/CSV, or the current course.
  *
  * Props: { open, onClose, onImport(questions), existingQuestions }
  */
@@ -22,6 +22,7 @@ export function QuizImportModal({
   open,
   onClose,
   onImport,
+  courseId,
   existingQuestions = [],
 }) {
   const [mode, setMode] = useState("json");
@@ -266,7 +267,7 @@ export function QuizImportModal({
             aria-pressed={mode === "bank"}
             onClick={() => handleModeChange("bank")}
           >
-            Question Bank
+            Course questions
           </button>
         </div>
 
@@ -355,7 +356,8 @@ export function QuizImportModal({
         ) : null}
 
         {mode === "bank" ? (
-          <QuestionBankImportPanel
+          <CourseQuestionImportPanel
+            courseId={courseId}
             existingQuestions={existingQuestions}
             onImport={onImport}
             onClose={onClose}

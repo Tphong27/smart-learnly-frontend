@@ -109,9 +109,9 @@ export const flashcardService = {
     return Array.isArray(items) ? items : [];
   },
 
-  async importQuestionBankToStaging(setId, questionIds) {
+  async importCourseQuestionsToStaging(setId, questionIds) {
     const response = await apiClient.post(
-      `/admin/flashcard-sets/${setId}/staging/import-question-bank`,
+      `/admin/flashcard-sets/${setId}/staging/import-course-questions`,
       { questionIds },
     );
     return unwrap(response);
