@@ -98,7 +98,7 @@ export function AdminDashboardPage() {
     const courses = overview?.courses || {};
     const classes = overview?.classes || {};
     const content = overview?.content || {};
-    const questionBanks = overview?.questionBanks || {};
+    const questions = overview?.questions || {};
 
     return (
         <section className="admin-page dashboard-page">
@@ -216,9 +216,9 @@ export function AdminDashboardPage() {
                         <DashboardMetricCard
                             title="New questions"
                             value={formatNumber(
-                                questionBanks.newQuestionsInRange,
+                                questions.newInRange,
                             )}
-                            description={`${formatNumber(questionBanks.questions)} total questions`}
+                            description={`${formatNumber(questions.total)} total questions`}
                             icon={ClipboardCheck}
                             tone="slate"
                         />
@@ -239,24 +239,20 @@ export function AdminDashboardPage() {
                                     value: classes.newInRange,
                                 },
                                 {
-                                    label: "new_sections",
-                                    value: content.newSectionsInRange,
+                                    label: "new_modules",
+                                    value: content.newModulesInRange,
                                 },
                                 {
                                     label: "new_lessons",
                                     value: content.newLessonsInRange,
                                 },
                                 {
-                                    label: "new_question_banks",
-                                    value: questionBanks.newBanksInRange,
-                                },
-                                {
                                     label: "new_questions",
-                                    value: questionBanks.newQuestionsInRange,
+                                    value: questions.newInRange,
                                 },
                                 {
                                     label: "reviewed_questions",
-                                    value: questionBanks.reviewedQuestionsInRange,
+                                    value: questions.reviewedInRange,
                                 },
                             ]}
                         />
@@ -287,11 +283,11 @@ export function AdminDashboardPage() {
                                 },
                                 {
                                     label: "pending_review_questions",
-                                    value: questionBanks.pendingReviewQuestions,
+                                    value: questions.pendingReview,
                                 },
                                 {
                                     label: "rejected_questions",
-                                    value: questionBanks.rejectedQuestions,
+                                    value: questions.rejected,
                                 },
                             ]}
                         />
@@ -299,7 +295,7 @@ export function AdminDashboardPage() {
                             title="Content health"
                             description="Publishing status across course content."
                             items={[
-                                { label: "sections", value: content.sections },
+                                { label: "modules", value: content.modules },
                                 {
                                     label: "published_lessons",
                                     value: content.publishedLessons,
@@ -357,35 +353,35 @@ export function AdminDashboardPage() {
                         />
                         <DashboardSectionCard
                             title="Question review health"
-                            description="Question bank and review workflow status."
+                            description="Course question and review workflow status."
                             items={[
                                 {
                                     label: "approved_questions",
-                                    value: questionBanks.approvedQuestions,
+                                    value: questions.approved,
                                 },
                                 {
                                     label: "pending_review_questions",
-                                    value: questionBanks.pendingReviewQuestions,
+                                    value: questions.pendingReview,
                                 },
                                 {
                                     label: "draft_questions",
-                                    value: questionBanks.draftQuestions,
+                                    value: questions.draft,
                                 },
                                 {
                                     label: "rejected_questions",
-                                    value: questionBanks.rejectedQuestions,
+                                    value: questions.rejected,
                                 },
                                 {
                                     label: "archived_questions",
-                                    value: questionBanks.archivedQuestions,
+                                    value: questions.archived,
                                 },
                                 {
                                     label: "ai_generated_questions",
-                                    value: questionBanks.aiGeneratedQuestions,
+                                    value: questions.aiGenerated,
                                 },
                                 {
                                     label: "manual_questions",
-                                    value: questionBanks.manualQuestions,
+                                    value: questions.manual,
                                 },
                             ]}
                         />

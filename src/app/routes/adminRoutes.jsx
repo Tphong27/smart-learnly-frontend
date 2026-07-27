@@ -10,9 +10,7 @@ import {
   AdminUsersPage,
   AdminSystemSettingsPage,
   AdminDashboardPage,
-  AdminQuestionBanksPage,
   AdminQuestionBankDetailPage,
-  AdminQuestionFormPage,
   AdminAiQuestionDraftCreatePage,
   AdminAiQuestionDraftReviewPage,
 } from "@/features/admin";
@@ -100,28 +98,6 @@ function getAdminRoutes() {
           ],
         },
         {
-          element: (
-            <RoleGuard
-              allowedRoles={[ROLES.ADMIN, ROLES.TMO, ROLES.SME, ROLES.TRAINER]}
-            />
-          ),
-          children: [
-            { path: "question-banks", element: <AdminQuestionBanksPage /> },
-            {
-              path: "question-banks/:bankId",
-              element: <AdminQuestionBankDetailPage />,
-            },
-            {
-              path: "question-banks/:bankId/questions/new",
-              element: <AdminQuestionFormPage />,
-            },
-            {
-              path: "questions/:questionId/edit",
-              element: <AdminQuestionFormPage />,
-            },
-          ],
-        },
-        {
           element: <RoleGuard allowedRoles={[ROLES.ADMIN, ROLES.SME]} />,
           children: [
             {
@@ -130,14 +106,6 @@ function getAdminRoutes() {
             },
             {
               path: "courses/:courseId/questions/ai-drafts/:batchId",
-              element: <AdminAiQuestionDraftReviewPage />,
-            },
-            {
-              path: "question-banks/:bankId/ai-drafts/new",
-              element: <AdminAiQuestionDraftCreatePage />,
-            },
-            {
-              path: "question-banks/:bankId/ai-drafts/:batchId",
               element: <AdminAiQuestionDraftReviewPage />,
             },
           ],

@@ -31,7 +31,6 @@ export function AppLayout() {
         const path = location.pathname;
         if (/\/courses\/[^/]+\/questions/.test(path)) return "Course Questions";
         if (path.includes("/courses")) return "Course Management";
-        if (path.includes("/question-banks")) return "Questions";
         if (path.includes("/users-management")) return "Users & Roles";
         if (path.includes("/categories")) return "Categories";
         if (path.includes("/transactions")) return "Transactions";

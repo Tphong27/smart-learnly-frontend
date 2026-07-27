@@ -1,4 +1,4 @@
-import { questionBankService } from "@/services/question-bank.service";
+import { questionBankService as courseQuestionService } from "@/services/question-bank.service";
 import {
   QUESTION_TYPES,
   getOptionMedia,
@@ -130,7 +130,7 @@ function normalizeQuizOption(option) {
   return media ? { text, media } : text;
 }
 
-function normalizeCorrectAnswersFromBank(question, answers) {
+function normalizeCorrectAnswersFromCourseQuestion(question, answers) {
   const correctIndexes = answers
     .map((answer, index) => ((answer?.correct || answer?.isCorrect) ? index + 1 : null))
     .filter(Boolean);
@@ -157,7 +157,7 @@ function normalizeFalseTrueAnswerIndex(answers) {
   return correctIndex >= 0 ? correctIndex + 1 : 1;
 }
 
-export function mapBankQuestionToQuizQuestion(question) {
+export function mapCourseQuestionToQuizQuestion(question) {
   const rawType = extractQuestionType(question);
   const title = extractQuestionText(question);
   const media = extractQuestionMedia(question);
@@ -192,7 +192,7 @@ export function mapBankQuestionToQuizQuestion(question) {
   }
 
   const mappedOptions = answers.map(normalizeQuizOption).filter(Boolean);
-  const correctAnswers = normalizeCorrectAnswersFromBank(question, answers);
+  const correctAnswers = normalizeCorrectAnswersFromCourseQuestion(question, answers);
   const mappedType =
     rawType === "multiple_choice" && correctAnswers.length > 1
       ? QUESTION_TYPES.MULTIPLE
@@ -287,9 +287,9 @@ export function findDuplicateQuizQuestions(existingQuestions = [], incomingQuest
   return duplicates;
 }
 
-export function prepareQuizBankImport(existingQuestions, bankQuestions) {
-  const mappedQuestions = (Array.isArray(bankQuestions) ? bankQuestions : []).map(
-    mapBankQuestionToQuizQuestion,
+export function prepareCourseQuestionImport(existingQuestions, courseQuestions) {
+  const mappedQuestions = (Array.isArray(courseQuestions) ? courseQuestions : []).map(
+    mapCourseQuestionToQuizQuestion,
   );
   const { valid, errors } = validateQuizQuestions(mappedQuestions);
   const duplicates = findDuplicateQuizQuestions(existingQuestions, mappedQuestions);
@@ -301,20 +301,19 @@ export function prepareQuizBankImport(existingQuestions, bankQuestions) {
   };
 }
 
-export async function fetchAllFilteredBankQuestions({
-  bankId,
+export async function fetchAllFilteredCourseQuestions({
+  courseId,
   filters = {},
   pageSize = 100,
 }) {
-  if (!bankId) return [];
+  if (!courseId) return [];
 
   const allItems = [];
   let page = 0;
   let totalPages;
 
   do {
-    const response = await questionBankService.listQuestions({
-      bankId,
+    const response = await courseQuestionService.listCourseQuestions(courseId, {
       page,
       size: pageSize,
       ...filters,
