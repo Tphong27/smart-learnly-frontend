@@ -637,6 +637,7 @@ export function AdminQuestionForm({
     }
     setSubmitting(true);
     setError(null);
+    const cleanExplanation = sanitizeQuestionHtml(values.explanation).trim();
     const payload = {
       bankId: courseId ? undefined : returnBankId,
       courseId,
@@ -644,7 +645,7 @@ export function AdminQuestionForm({
       questionType: values.questionType,
       difficulty: values.difficulty ? Number(values.difficulty) : null,
       status: values.status,
-      explanation: values.explanation.trim() || null,
+      explanation: isEmptyQuestionHtml(cleanExplanation) ? null : cleanExplanation,
       moduleId: values.moduleId || null,
       answers: normalizeAnswers(values.questionType, values.answers).map(
         (answer, index) => ({
@@ -1085,15 +1086,15 @@ export function AdminQuestionForm({
             <div className="question-authoring-block__header">
               <h2>Explanation</h2>
             </div>
-            <textarea
-              id="question-explanation"
-              className="admin-textarea"
-              rows={4}
+            <QuestionTextRichEditor
               value={values.explanation}
-              onChange={(event) =>
+              disabled={submitting}
+              placeholder="Write the explanation..."
+              toolbarLabel="Explanation formatting toolbar"
+              onChange={(explanation) =>
                 setValues((current) => ({
                   ...current,
-                  explanation: event.target.value,
+                  explanation,
                 }))
               }
             />
