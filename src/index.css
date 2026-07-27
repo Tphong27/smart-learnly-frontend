@@ -130,3 +130,34 @@ img,
 svg {
     display: block;
 }
+
+.sl-loading-skeleton.sl-loading-skeleton {
+    display: block;
+    overflow: hidden;
+    border-radius: 4px;
+    background: linear-gradient(
+        90deg,
+        #f1f2f4 25%,
+        #e1e3e6 50%,
+        #f1f2f4 75%
+    );
+    background-size: 200% 100%;
+    animation: sl-loading-shimmer 1.5s ease-in-out infinite;
+}
+
+@keyframes sl-loading-shimmer {
+    0% {
+        background-position: 200% 0;
+    }
+
+    100% {
+        background-position: -200% 0;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .sl-loading-skeleton.sl-loading-skeleton {
+        animation: none;
+        background: #e8eaed;
+    }
+}

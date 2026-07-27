@@ -14,6 +14,7 @@ import {
   Loader2,
   MessageSquare,
   RefreshCw,
+  Sparkles,
   StickyNote,
   UploadCloud,
   X,
@@ -24,12 +25,14 @@ import { FlashcardPractice } from "./flashcards/FlashcardPractice";
 import { assignmentService } from "@/services/flashtest.service";
 import { getCurrentUser } from "@/services/api-client";
 import DOMPurify from "dompurify";
+import { LearnerAiToolsPanel } from "./LearnerAiToolsPanel";
 
 const TABS = [
   { key: "overview", label: "Overview", icon: BookOpen },
   { key: "resources", label: "Resources", icon: FolderOpen },
   { key: "qa", label: "Q&A", icon: MessageSquare },
   { key: "notes", label: "Notes", icon: StickyNote },
+  { key: "ai-tools", label: "AI tools", icon: Sparkles },
 ];
 
 function getLessonId(lesson) {
@@ -174,7 +177,7 @@ function OverviewContent({
     );
   }
 
-  if (type === "ESSAY") {
+  if (type === "ESSAY" || type === "ASSIGNMENT") {
     return (
       <EssayLessonContent
         lesson={lesson}
@@ -830,6 +833,7 @@ function ResourcesContent({ lesson }) {
 
 export function LearningLessonTabs({
   lesson,
+  courseId,
   classId,
   activeTab,
   onTabChange,
@@ -852,6 +856,7 @@ export function LearningLessonTabs({
       <div className="lesson-tabs__bar">
         {TABS.map(({ key, label, icon: Icon }) => (
           <button
+            type="button"
             key={key}
             className={`lesson-tabs__tab ${
               activeTab === key ? "lesson-tabs__tab--active" : ""
@@ -918,6 +923,16 @@ export function LearningLessonTabs({
               onChange={(event) => onNoteChange(event.target.value)}
             />
           </div>
+        )}
+
+        {activeTab === "ai-tools" && (
+          <LearnerAiToolsPanel
+            key={lesson?.lessonId ?? lesson?.id}
+            courseId={courseId}
+            lesson={lesson}
+            classId={classId}
+            workspaceMode={workspaceMode}
+          />
         )}
       </div>
 

@@ -1,9 +1,11 @@
-import { Calendar, Users, BookOpen, WalletCards } from "lucide-react";
 import {
-  formatCapacity,
-  formatDate,
-  formatVnd,
-} from "../utils/classFormatter";
+  ArrowRight,
+  BookOpen,
+  CalendarDays,
+  UserRound,
+  Users,
+} from "lucide-react";
+import { formatCapacity, formatDate, formatVnd } from "../utils/classFormatter";
 import { ClassStatusBadge } from "./ClassStatusBadge";
 
 export function ClassCard({
@@ -20,22 +22,27 @@ export function ClassCard({
   onClick,
   actionButtons,
 }) {
+  const resolvedClassName = className?.trim() || "Untitled class";
+
+  const resolvedCourseTitle = courseTitle?.trim() || "Course not assigned";
+
+  const resolvedTrainerName = trainerName?.trim() || "Trainer not assigned";
+
   return (
     <article className="class-card">
-      <button type="button" className="class-card__main" onClick={onClick}>
-        <div className="class-card__header">
-          <div className="class-card__heading">
-            <h3 className="class-card__title">
-              {className || "Untitled class"}
-            </h3>
-
-            {courseTitle && (
-              <p className="class-card__course">
-                <BookOpen size={15} />
-                {courseTitle}
-              </p>
-            )}
-          </div>
+      <div className="class-card__content">
+        {/* Header */}
+        <header className="class-card__header">
+          <h3 className="class-card__title">
+            <button
+              type="button"
+              className="class-card__title-button"
+              onClick={onClick}
+              aria-label={`Open ${resolvedClassName}`}
+            >
+              {resolvedClassName}
+            </button>
+          </h3>
 
           <div className="class-card__top-actions">
             <ClassStatusBadge status={status} />
@@ -44,43 +51,80 @@ export function ClassCard({
               <div className="class-card__action-buttons">{actionButtons}</div>
             )}
           </div>
-        </div>
+        </header>
 
+        {/* Metadata */}
         <div className="class-card__meta">
+          <div className="class-card__meta-item class-card__meta-item--course">
+            <BookOpen size={17} aria-hidden="true" />
+
+            <span className="class-card__meta-copy">
+              <small>Course</small>
+              <strong>{resolvedCourseTitle}</strong>
+            </span>
+          </div>
+
+          <div className="class-card__meta-divider" />
+
           <div className="class-card__meta-item">
-            <span className="class-card__meta-label">Trainer </span>
-            <span className="class-card__meta-value">
-              {trainerName || "Trainer empty"}
+            <UserRound size={17} aria-hidden="true" />
+
+            <span className="class-card__meta-copy">
+              <small>Trainer</small>
+              <strong>{resolvedTrainerName}</strong>
             </span>
           </div>
 
           <div className="class-card__meta-item">
-            <Calendar size={16} />
-            <span className="class-card__meta-value">
-              {formatDate(startDate)} - {formatDate(endDate)}
+            <CalendarDays size={17} aria-hidden="true" />
+
+            <span className="class-card__meta-copy">
+              <small>Schedule</small>
+              <strong>
+                {formatDate(startDate)} – {formatDate(endDate)}
+              </strong>
             </span>
           </div>
 
           <div className="class-card__meta-item">
-            <Users size={16} />
-            <span className="class-card__meta-value">
-              {formatCapacity(activeEnrollmentCount, maxStudents)} trainee
+            <Users size={17} aria-hidden="true" />
+
+            <span className="class-card__meta-copy">
+              <small>Enrollment</small>
+              <strong>
+                {formatCapacity(activeEnrollmentCount, maxStudents)} trainees
+              </strong>
             </span>
           </div>
 
           <div className="class-card__meta-item">
-            <WalletCards size={16} />
-            <span className="class-card__meta-value">{formatVnd(price)}</span>
-          </div>
+            <Users size={17} aria-hidden="true" />
 
-          <div className="class-card__meta-item">
-            <span className="class-card__meta-label">Available Seats </span>
-            <span className="class-card__meta-value">
-              {availableSeats ?? 0}
+            <span className="class-card__meta-copy">
+              <small>Available seats</small>
+              <strong>{availableSeats ?? 0}</strong>
             </span>
           </div>
         </div>
-      </button>
+      </div>
+
+      {/* Footer */}
+      <footer className="class-card__footer">
+        <div className="class-card__fee">
+          <small>Class fee</small>
+          <strong>{formatVnd(price)}</strong>
+        </div>
+
+        <button
+          type="button"
+          className="class-card__open-button"
+          onClick={onClick}
+          aria-label={`Open ${resolvedClassName}`}
+        >
+          <span>Open class</span>
+          <ArrowRight size={16} aria-hidden="true" />
+        </button>
+      </footer>
     </article>
   );
 }

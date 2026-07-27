@@ -23,6 +23,8 @@ import {
 import { isLessonPublished } from "../utils/lesson-status";
 import { courseService, orderService, enrollmentService } from "@/services";
 import { CourseReviewsSection } from "../components/CourseReviewsSection";
+import { ROLES } from "@/shared/constants/roles";
+import { getCurrentRole } from "@/shared/utils/auth";
 import "../../admin/admin-shared.css";
 import "./CourseDetailPage.css";
 import "../components/CourseReviewsSection.css";
@@ -76,7 +78,9 @@ export function CourseDetailPage() {
 
         setCourse(data);
 
-        if (hasAccessToken()) {
+        // Enrollment endpoints are trainee-only. Staff can still open the
+        // public course page for review without generating an avoidable 403.
+        if (hasAccessToken() && getCurrentRole() === ROLES.TRAINEE) {
           try {
             const enrolled = await courseService.isCourseEnrolled(
               data?.id || data?.slug || slug,

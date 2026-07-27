@@ -25,7 +25,18 @@ export function CourseProgressCard({ course }) {
   const [expanded, setExpanded] = useState(false);
   const detailsId = useId();
   const isCompleted = course.courseStatus === "COMPLETED";
+  const isClassLearning =
+    course.learningType === "CLASS" || Boolean(course.classId);
+
   const learningPath = getLearningPath(course);
+
+  const learningTitle = isClassLearning
+    ? course.className || "Unnamed class"
+    : course.title;
+
+  const learningTypeLabel = isClassLearning ? "Offline class" : "Online course";
+
+  const progressLabel = isClassLearning ? "Class progress" : "Course progress";
 
   const lesson = course.lesson ?? {
     completed: 0,
@@ -65,10 +76,24 @@ export function CourseProgressCard({ course }) {
           <div className="course-progress-card__heading-row">
             <div>
               <p className="course-progress-card__meta">
+                <span
+                  className={
+                    isClassLearning
+                      ? "course-learning-type course-learning-type--class"
+                      : "course-learning-type course-learning-type--course"
+                  }
+                >
+                  {learningTypeLabel}
+                </span>
                 <span>{course.categoryName}</span>
-                {course.className ? ` · ${course.className}` : ""}
               </p>
-              <h3>{course.title}</h3>
+              <h3>{learningTitle}</h3>
+
+              {isClassLearning && (
+                <p className="course-progress-card__parent-course">
+                  Course: {course.title}
+                </p>
+              )}
             </div>
 
             <span
@@ -84,25 +109,34 @@ export function CourseProgressCard({ course }) {
 
           <div className="course-progress-card__progress-row">
             <div className="course-progress-card__progress-copy">
-              <span>Course progress</span>
+              <span>{progressLabel}</span>
               <strong>{course.overallPercent}%</strong>
             </div>
             <ProgressBar
               value={course.overallPercent}
-              label={`${course.title} progress: ${course.overallPercent}%`}
+              label={`${learningTitle} progress: ${course.overallPercent}%`}
             />
           </div>
 
           <ul className="course-progress-card__metric-summary">
-            <li>{lesson.completed}/{lesson.total} lessons</li>
-            <li>{quiz.completed}/{quiz.total} quizzes</li>
-            <li>{flashcard.completed}/{flashcard.total} flashcards</li>
-            <li>{assignment.completed}/{assignment.total} assignments</li>
+            <li>
+              {lesson.completed}/{lesson.total} lessons
+            </li>
+            <li>
+              {quiz.completed}/{quiz.total} quizzes
+            </li>
+            <li>
+              {flashcard.completed}/{flashcard.total} flashcards
+            </li>
+            <li>
+              {assignment.completed}/{assignment.total} assignments
+            </li>
           </ul>
 
           {!course.accessAllowed && (
             <p className="course-progress-card__access-note">
-              {course.accessBlockedReason || "Course access is currently unavailable."}
+              {course.accessBlockedReason ||
+                "Course access is currently unavailable."}
             </p>
           )}
 
@@ -138,7 +172,7 @@ export function CourseProgressCard({ course }) {
         <div
           className="course-progress-card__metrics"
           id={detailsId}
-          aria-label={`${course.title} progress details`}
+          aria-label={`${learningTitle} progress details`}
         >
           <ProgressMetric
             label="Lessons"

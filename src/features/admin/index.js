@@ -10,7 +10,8 @@ export const adminFeature = {
   name: 'Administration',
   routeBase: '/admin',
 }
-export { AdminQuestionBanksPage } from './question-bank/pages/AdminQuestionBanksPage'
 export { AdminQuestionBankDetailPage } from './question-bank/pages/AdminQuestionBankDetailPage'
 export { AdminQuestionFormPage } from './question-bank/pages/AdminQuestionFormPage'
+export { AdminAiQuestionDraftCreatePage } from './question-bank/pages/AdminAiQuestionDraftCreatePage'
+export { AdminAiQuestionDraftReviewPage } from './question-bank/pages/AdminAiQuestionDraftReviewPage'
 

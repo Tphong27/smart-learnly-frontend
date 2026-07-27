@@ -175,7 +175,10 @@ export function LearningWorkspacePage({
         } else if (mode === "guest") {
           result = await learningService.getPreviewContent(courseId);
         } else if (mode === "admin-preview") {
-          result = await learningService.getAdminPreviewContent(courseId);
+          result = await learningService.getAdminPreviewContent(
+            courseId,
+            requestedClassId,
+          );
         } else {
           result = await learningService.getLearningContent(
             courseId,
@@ -376,7 +379,7 @@ export function LearningWorkspacePage({
       activeLesson?.lessonType || "",
     ).toUpperCase();
 
-    const isActivityLesson = ["QUIZ", "FLASHCARD", "ESSAY"].includes(
+    const isActivityLesson = ["QUIZ", "FLASHCARD", "ESSAY", "ASSIGNMENT"].includes(
       currentLessonType,
     );
     const isCompleted = currentLessonId
@@ -387,7 +390,7 @@ export function LearningWorkspacePage({
       setError(
         currentLessonType === "QUIZ"
           ? "Please submit the quiz before moving to the next lesson."
-          : currentLessonType === "ESSAY"
+          : ["ESSAY", "ASSIGNMENT"].includes(currentLessonType)
             ? "Please submit the assignment before moving to the next lesson."
             : "Please complete all flashcards before moving to the next lesson.",
       );
@@ -439,6 +442,8 @@ export function LearningWorkspacePage({
 
   const isAdminPreview = mode === "admin-preview";
   const isGuestPreview = mode === "guest";
+  const isDraftAdminPreview =
+    isAdminPreview && data?.curriculum?.source === "master_authoring";
 
   function getSafeReturnPath(returnTo) {
     if (!returnTo) {
@@ -464,7 +469,7 @@ export function LearningWorkspacePage({
 
   const currentLessonId = getLessonId(activeLesson);
 
-  const isActivityLesson = ["QUIZ", "FLASHCARD", "ESSAY"].includes(
+  const isActivityLesson = ["QUIZ", "FLASHCARD", "ESSAY", "ASSIGNMENT"].includes(
     String(activeLesson?.lessonType || "").toUpperCase(),
   );
 
@@ -530,7 +535,11 @@ export function LearningWorkspacePage({
         {isAdminPreview && (
           <span className="learning-workspace__trainee-tag">
             <Eye size={14} />
-            Viewing as trainee
+            {isDraftAdminPreview
+              ? "Previewing unpublished changes"
+              : requestedClassId
+                ? "Viewing this class as trainee"
+                : "Viewing as trainee"}
           </span>
         )}
 
@@ -624,6 +633,7 @@ export function LearningWorkspacePage({
                 <LearningLessonTabs
                   key={`tabs-${getLessonId(activeLesson)}`}
                   lesson={activeLesson}
+                  courseId={courseId}
                   classId={resolvedClassId}
                   activeTab={activeLessonTab}
                   onTabChange={setActiveLessonTab}

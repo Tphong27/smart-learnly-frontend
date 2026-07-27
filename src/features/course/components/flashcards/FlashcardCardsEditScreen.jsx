@@ -1,23 +1,20 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  ArrowLeft,
   GripVertical,
   ImagePlus,
   Plus,
   Save,
   Trash2,
+  X,
 } from "lucide-react";
 import { DragDropContext, Draggable, Droppable } from "@hello-pangea/dnd";
 import { flashcardService } from "@/services/flashcard.service";
 import { FlashcardImageInput } from "./FlashcardImageInput";
 import {
   getErrorMessage,
-  getUploadedFileUrl,
-  isImageLikeFile,
   normalizeCards,
   toCardPayload,
   validateCurrentCardDraft,
-  validateFlashcardImageFile,
 } from "./flashcard-utils";
 
 function newClientId() {
@@ -25,34 +22,6 @@ function newClientId() {
     return crypto.randomUUID();
   }
   return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-}
-
-function fileListToArray(fileList) {
-  return Array.from(fileList || []).filter(Boolean);
-}
-
-function imageSelection(files) {
-  const normalizedFiles = fileListToArray(files);
-  const imageFiles = normalizedFiles.filter(isImageLikeFile);
-  return {
-    file: imageFiles[0] || null,
-    imageCount: imageFiles.length,
-    fileCount: normalizedFiles.length,
-  };
-}
-
-function clipboardFiles(event) {
-  const dataTransferFiles = fileListToArray(event.clipboardData?.files);
-  if (dataTransferFiles.length > 0) return dataTransferFiles;
-
-  return Array.from(event.clipboardData?.items || [])
-    .filter((item) => item.kind === "file")
-    .map((item) => item.getAsFile())
-    .filter(Boolean);
-}
-
-function hasDraggedFiles(event) {
-  return Array.from(event.dataTransfer?.types || []).includes("Files");
 }
 
 function toRow(card = {}, index = 0) {
@@ -108,14 +77,73 @@ function sameOrder(cards, rows) {
   );
 }
 
-function collapsedRowOptions(row) {
-  return {
-    ...row,
-    frontImageOpen: Boolean(row.frontImageUrl),
-    backImageOpen: Boolean(row.backImageUrl),
-    hintOpen: Boolean(row.hint),
-    explanationOpen: Boolean(row.explanation),
+function hasTrimmedValue(value) {
+  return String(value || "").trim().length > 0;
+}
+
+const OPTIONAL_OPEN_FIELDS = {
+  frontImageOpen: "frontImageUrl",
+  backImageOpen: "backImageUrl",
+  hintOpen: "hint",
+  explanationOpen: "explanation",
+};
+
+function shouldKeepOptionalOpen(row, openField, imageActivityByRow, activeSection) {
+  if (
+    activeSection?.clientId === row.clientId &&
+    activeSection?.openField === openField
+  ) {
+    return true;
+  }
+
+  const valueField = OPTIONAL_OPEN_FIELDS[openField];
+  if (!valueField) return Boolean(row[openField]);
+
+  if (valueField === "frontImageUrl" || valueField === "backImageUrl") {
+    const imageState = imageActivityByRow?.[row.clientId]?.[valueField];
+    return Boolean(
+      hasTrimmedValue(row[valueField]) ||
+        imageState?.uploading ||
+        imageState?.error,
+    );
+  }
+
+  return hasTrimmedValue(row[valueField]);
+}
+
+function collapsedRowOptions(row, imageActivityByRow = {}, activeSection = null) {
+  const nextState = {
+    frontImageOpen: shouldKeepOptionalOpen(
+      row,
+      "frontImageOpen",
+      imageActivityByRow,
+      activeSection,
+    ),
+    backImageOpen: shouldKeepOptionalOpen(
+      row,
+      "backImageOpen",
+      imageActivityByRow,
+      activeSection,
+    ),
+    hintOpen: shouldKeepOptionalOpen(
+      row,
+      "hintOpen",
+      imageActivityByRow,
+      activeSection,
+    ),
+    explanationOpen: shouldKeepOptionalOpen(
+      row,
+      "explanationOpen",
+      imageActivityByRow,
+      activeSection,
+    ),
   };
+
+  const unchanged = Object.entries(nextState).every(
+    ([field, value]) => row[field] === value,
+  );
+
+  return unchanged ? row : { ...row, ...nextState };
 }
 
 function isInteractiveTarget(target) {
@@ -139,29 +167,16 @@ function EditRow({
   index,
   error,
   saving,
+  actionLocked,
   onChange,
-  onChangeFields,
-  onCollapseOptions,
+  onOpenOptional,
   onRemove,
   onUploadImage,
-  onCollapsedImageUpload,
+  onImageUploadStateChange,
   dragHandleProps,
 }) {
   function update(field, value) {
     onChange(row.clientId, field, value);
-  }
-
-  function updateFields(patch) {
-    onChangeFields(row.clientId, patch);
-  }
-
-  function expand(field) {
-    onChange(row.clientId, field, true);
-  }
-
-  function expandImage(event, openField) {
-    event.stopPropagation();
-    updateFields({ [openField]: true });
   }
 
   const showFrontImage = row.frontImageUrl || row.frontImageOpen;
@@ -169,51 +184,14 @@ function EditRow({
   const showHint = row.hint || row.hintOpen;
   const showExplanation = row.explanation || row.explanationOpen;
 
-  function handleBlur(event) {
-    if (event.currentTarget.contains(event.relatedTarget)) return;
-    onCollapseOptions(row.clientId);
-  }
-
-  function handleCollapsedImageDragOver(event) {
-    if (!hasDraggedFiles(event) || saving) return;
-    event.preventDefault();
-    event.dataTransfer.dropEffect = "copy";
-  }
-
-  function handleCollapsedImageDrop(event, imageField, openField) {
-    if (!hasDraggedFiles(event) || saving) return;
-    event.preventDefault();
-    event.stopPropagation();
-    onCollapsedImageUpload(
-      row.clientId,
-      imageField,
-      openField,
-      event.dataTransfer?.files,
-      "Drop a JPEG, PNG, or WebP image file.",
-      "Only the first dropped image was uploaded.",
-    );
-  }
-
-  function handleCollapsedImagePaste(event, imageField, openField) {
-    if (saving) return;
-    const files = clipboardFiles(event);
-    if (files.length === 0) return;
-    event.preventDefault();
-    onCollapsedImageUpload(
-      row.clientId,
-      imageField,
-      openField,
-      files,
-      "Paste a JPEG, PNG, or WebP image file.",
-      "Only the first pasted image was uploaded.",
-    );
-  }
+  const errorId = error ? `flashcard-edit-row-error-${row.clientId}` : undefined;
+  const frontTextId = `flashcard-edit-front-text-${row.clientId}`;
+  const backTextId = `flashcard-edit-back-text-${row.clientId}`;
 
   return (
     <article
       className="flashcard-edit-screen__row"
       data-flashcard-edit-row-id={row.clientId}
-      onBlur={handleBlur}
     >
       <div
         className="flashcard-edit-screen__drag"
@@ -225,173 +203,176 @@ function EditRow({
       </div>
       <div className="flashcard-edit-screen__body">
         <div className="flashcard-edit-screen__sides">
-          <section
-            className="flashcard-edit-screen__side"
-            onDragOver={!showFrontImage ? handleCollapsedImageDragOver : undefined}
-            onDrop={
-              !showFrontImage
-                ? (event) =>
-                    handleCollapsedImageDrop(
-                      event,
-                      "frontImageUrl",
-                      "frontImageOpen",
-                    )
-                : undefined
-            }
-            onPaste={
-              !showFrontImage
-                ? (event) =>
-                    handleCollapsedImagePaste(
-                      event,
-                      "frontImageUrl",
-                      "frontImageOpen",
-                    )
-                : undefined
-            }
-          >
+          <section className="flashcard-edit-screen__side">
             <label className="flashcard-field flashcard-edit-screen__main-field">
-              <span>Front</span>
+              <span className="flashcard-sr-only">
+                Front text
+              </span>
               <textarea
+                id={frontTextId}
+                data-flashcard-edit-front-input
                 value={row.frontText}
                 onChange={(event) => update("frontText", event.target.value)}
                 disabled={saving}
                 rows={2}
+                aria-invalid={Boolean(error)}
+                aria-describedby={errorId}
               />
             </label>
-            {(!showFrontImage || !showHint) && (
-              <div className="flashcard-edit-screen__optional-actions">
+            <div className="flashcard-edit-screen__accessory-row">
+              <div className="flashcard-edit-screen__media-slot">
                 {!showFrontImage && (
                   <button
                     type="button"
-                    className="flashcard-edit-screen__optional-trigger"
-                    onClick={(event) => expandImage(event, "frontImageOpen")}
+                    className="flashcard-edit-screen__optional-trigger flashcard-edit-screen__optional-trigger--media"
+                    data-flashcard-edit-optional-trigger
+                    onClick={() => onOpenOptional(row.clientId, "frontImageOpen")}
                     disabled={saving}
+                    aria-label={`Add front image to row ${index + 1}`}
                   >
                     <ImagePlus size={14} />
                     + Image
                   </button>
                 )}
+                {showFrontImage && (
+                  <div
+                    className="flashcard-edit-screen__optional-field flashcard-edit-screen__optional-field--image"
+                    data-flashcard-edit-section
+                    data-flashcard-edit-open-field="frontImageOpen"
+                  >
+                    <FlashcardImageInput
+                      id={`flashcard-edit-front-image-${row.clientId}`}
+                      label="Front image"
+                      value={row.frontImageUrl}
+                      disabled={saving}
+                      onChange={(value) => update("frontImageUrl", value)}
+                      onUploadImage={onUploadImage}
+                      onUploadStateChange={(state) =>
+                        onImageUploadStateChange(row.clientId, "frontImageUrl", state)
+                      }
+                    />
+                  </div>
+                )}
+              </div>
+              <div className="flashcard-edit-screen__detail-slot">
                 {!showHint && (
                   <button
                     type="button"
                     className="flashcard-edit-screen__optional-trigger"
-                    onClick={() => expand("hintOpen")}
+                    data-flashcard-edit-optional-trigger
+                    onClick={() => onOpenOptional(row.clientId, "hintOpen")}
                     disabled={saving}
+                    aria-label={`Add hint to row ${index + 1}`}
                   >
                     + Hint
                   </button>
                 )}
+                {showHint && (
+                  <label
+                    className="flashcard-field flashcard-edit-screen__optional-field"
+                    data-flashcard-edit-section
+                    data-flashcard-edit-open-field="hintOpen"
+                  >
+                    <span>Hint</span>
+                    <textarea
+                      value={row.hint}
+                      onChange={(event) => update("hint", event.target.value)}
+                      disabled={saving}
+                      rows={2}
+                      aria-invalid={Boolean(error)}
+                      aria-describedby={errorId}
+                    />
+                  </label>
+                )}
               </div>
-            )}
-            {showFrontImage && (
-              <div className="flashcard-edit-screen__optional-field">
-                <FlashcardImageInput
-                  id={`flashcard-edit-front-image-${row.clientId}`}
-                  label="Front image"
-                  value={row.frontImageUrl}
-                  disabled={saving}
-                  onChange={(value) => update("frontImageUrl", value)}
-                  onUploadImage={onUploadImage}
-                />
-              </div>
-            )}
-            {showHint && (
-              <label className="flashcard-field flashcard-edit-screen__optional-field">
-                <span>Hint</span>
-                <textarea
-                  value={row.hint}
-                  onChange={(event) => update("hint", event.target.value)}
-                  disabled={saving}
-                  rows={2}
-                />
-              </label>
-            )}
+            </div>
           </section>
-          <section
-            className="flashcard-edit-screen__side"
-            onDragOver={!showBackImage ? handleCollapsedImageDragOver : undefined}
-            onDrop={
-              !showBackImage
-                ? (event) =>
-                    handleCollapsedImageDrop(
-                      event,
-                      "backImageUrl",
-                      "backImageOpen",
-                    )
-                : undefined
-            }
-            onPaste={
-              !showBackImage
-                ? (event) =>
-                    handleCollapsedImagePaste(
-                      event,
-                      "backImageUrl",
-                      "backImageOpen",
-                    )
-                : undefined
-            }
-          >
+          <section className="flashcard-edit-screen__side">
             <label className="flashcard-field flashcard-edit-screen__main-field">
-              <span>Back</span>
+              <span className="flashcard-sr-only">
+                Back text
+              </span>
               <textarea
+                id={backTextId}
                 value={row.backText}
                 onChange={(event) => update("backText", event.target.value)}
                 disabled={saving}
                 rows={2}
+                aria-invalid={Boolean(error)}
+                aria-describedby={errorId}
               />
             </label>
-            {(!showBackImage || !showExplanation) && (
-              <div className="flashcard-edit-screen__optional-actions">
+            <div className="flashcard-edit-screen__accessory-row">
+              <div className="flashcard-edit-screen__media-slot">
                 {!showBackImage && (
                   <button
                     type="button"
-                    className="flashcard-edit-screen__optional-trigger"
-                    onClick={(event) => expandImage(event, "backImageOpen")}
+                    className="flashcard-edit-screen__optional-trigger flashcard-edit-screen__optional-trigger--media"
+                    data-flashcard-edit-optional-trigger
+                    onClick={() => onOpenOptional(row.clientId, "backImageOpen")}
                     disabled={saving}
+                    aria-label={`Add back image to row ${index + 1}`}
                   >
                     <ImagePlus size={14} />
                     + Image
                   </button>
                 )}
+                {showBackImage && (
+                  <div
+                    className="flashcard-edit-screen__optional-field flashcard-edit-screen__optional-field--image"
+                    data-flashcard-edit-section
+                    data-flashcard-edit-open-field="backImageOpen"
+                  >
+                    <FlashcardImageInput
+                      id={`flashcard-edit-back-image-${row.clientId}`}
+                      label="Back image"
+                      value={row.backImageUrl}
+                      disabled={saving}
+                      onChange={(value) => update("backImageUrl", value)}
+                      onUploadImage={onUploadImage}
+                      onUploadStateChange={(state) =>
+                        onImageUploadStateChange(row.clientId, "backImageUrl", state)
+                      }
+                    />
+                  </div>
+                )}
+              </div>
+              <div className="flashcard-edit-screen__detail-slot">
                 {!showExplanation && (
                   <button
                     type="button"
                     className="flashcard-edit-screen__optional-trigger"
-                    onClick={() => expand("explanationOpen")}
+                    data-flashcard-edit-optional-trigger
+                    onClick={() => onOpenOptional(row.clientId, "explanationOpen")}
                     disabled={saving}
+                    aria-label={`Add explanation to row ${index + 1}`}
                   >
                     + Explanation
                   </button>
                 )}
+                {showExplanation && (
+                  <label
+                    className="flashcard-field flashcard-edit-screen__optional-field"
+                    data-flashcard-edit-section
+                    data-flashcard-edit-open-field="explanationOpen"
+                  >
+                    <span>Explanation</span>
+                    <textarea
+                      value={row.explanation}
+                      onChange={(event) => update("explanation", event.target.value)}
+                      disabled={saving}
+                      rows={2}
+                      aria-invalid={Boolean(error)}
+                      aria-describedby={errorId}
+                    />
+                  </label>
+                )}
               </div>
-            )}
-            {showBackImage && (
-              <div className="flashcard-edit-screen__optional-field">
-                <FlashcardImageInput
-                  id={`flashcard-edit-back-image-${row.clientId}`}
-                  label="Back image"
-                  value={row.backImageUrl}
-                  disabled={saving}
-                  onChange={(value) => update("backImageUrl", value)}
-                  onUploadImage={onUploadImage}
-                />
-              </div>
-            )}
-            {showExplanation && (
-              <label className="flashcard-field flashcard-edit-screen__optional-field">
-                <span>Explanation</span>
-                <textarea
-                  value={row.explanation}
-                  onChange={(event) => update("explanation", event.target.value)}
-                  disabled={saving}
-                  rows={2}
-                />
-              </label>
-            )}
+            </div>
           </section>
         </div>
         {error && (
-          <div className="flashcard-edit-screen__error" role="alert">
+          <div id={errorId} className="flashcard-edit-screen__error" role="alert">
             {error}
           </div>
         )}
@@ -401,7 +382,7 @@ function EditRow({
           type="button"
           className="flashcard-btn flashcard-btn--icon flashcard-btn--danger"
           onClick={() => onRemove(row.clientId)}
-          disabled={saving}
+          disabled={actionLocked}
           title={row.id ? "Delete card" : "Remove new row"}
           aria-label={`${row.id ? "Delete card" : "Remove new card row"} ${index + 1}`}
         >
@@ -421,54 +402,165 @@ export function FlashcardCardsEditScreen({
   onBack,
   notify,
 }) {
-  const originalCards = useMemo(() => normalizeCards(cards), [cards]);
-  const originalById = useMemo(
-    () => new Map(originalCards.map((card) => [String(card.id), card])),
-    [originalCards],
+  const incomingCards = useMemo(() => normalizeCards(cards), [cards]);
+  const [baselineCards, setBaselineCards] = useState(() => incomingCards);
+  const baselineById = useMemo(
+    () => new Map(baselineCards.map((card) => [String(card.id), card])),
+    [baselineCards],
   );
   const [rows, setRows] = useState(() => {
-    const initialRows = originalCards.map(toRow);
+    const initialRows = incomingCards.map(toRow);
     return startWithNewRow
       ? [...initialRows, toRow({}, initialRows.length)]
       : initialRows;
   });
   const [errors, setErrors] = useState({});
+  const [editorError, setEditorError] = useState("");
+  const [lastSaveSucceeded, setLastSaveSucceeded] = useState(false);
+  const [imageActivityByRow, setImageActivityByRow] = useState({});
   const [saving, setSaving] = useState(false);
   const [discardPending, setDiscardPending] = useState(false);
   const [deleteAllPending, setDeleteAllPending] = useState(false);
+  const editScreenRef = useRef(null);
+  const imageActivityRef = useRef(imageActivityByRow);
+  const pendingFocusRowIdRef = useRef(null);
 
   const visibleRows = rows.filter((row) => !row.deleted);
-  const dirty = useMemo(() => {
+  const unsavedChangeCount = useMemo(() => {
+    let count = 0;
     const nonDeletedRows = rows.filter((row) => !row.deleted);
-    if (!sameOrder(originalCards, nonDeletedRows.filter((row) => row.id))) {
-      return true;
+    if (!sameOrder(baselineCards, nonDeletedRows.filter((row) => row.id))) {
+      count += 1;
     }
-    return nonDeletedRows.some((row) => {
-      if (!row.id) return isMeaningful(row);
-      const original = originalById.get(String(row.id));
-      return !original || payloadChanged(original, row);
+    rows.forEach((row) => {
+      if (row.deleted) {
+        if (row.id) count += 1;
+        return;
+      }
+      if (!row.id) {
+        if (isMeaningful(row)) count += 1;
+        return;
+      }
+      const original = baselineById.get(String(row.id));
+      if (!original || payloadChanged(original, row)) count += 1;
     });
-  }, [originalById, originalCards, rows]);
+    return count;
+  }, [baselineById, baselineCards, rows]);
+  const dirty = useMemo(() => {
+    return unsavedChangeCount > 0;
+  }, [unsavedChangeCount]);
+  const imageUploading = useMemo(
+    () =>
+      Object.values(imageActivityByRow).some((rowActivity) =>
+        Object.values(rowActivity || {}).some((activity) => activity?.uploading),
+      ),
+    [imageActivityByRow],
+  );
+  const editorActionLocked = saving || imageUploading;
+  const statusText = imageUploading
+    ? "Uploading image..."
+    : saving
+      ? "Saving..."
+      : dirty
+        ? `${unsavedChangeCount} unsaved change${unsavedChangeCount === 1 ? "" : "s"}`
+        : lastSaveSucceeded
+          ? "All changes saved"
+          : "";
 
   useEffect(() => {
-    function handlePointerDown(event) {
-      const activeRow = event.target?.closest?.("[data-flashcard-edit-row-id]");
-      const activeClientId =
-        activeRow?.getAttribute("data-flashcard-edit-row-id") || null;
-      setRows((current) =>
-        current.map((row) =>
-          row.deleted || row.clientId === activeClientId
-            ? row
-            : collapsedRowOptions(row),
-        ),
-      );
+    imageActivityRef.current = imageActivityByRow;
+  }, [imageActivityByRow]);
+
+  function getActiveOptionalSection(target) {
+    const section = target?.closest?.("[data-flashcard-edit-section]");
+    if (!section || !editScreenRef.current?.contains(section)) return null;
+    const row = section.closest("[data-flashcard-edit-row-id]");
+    const clientId = row?.getAttribute("data-flashcard-edit-row-id");
+    const openField = section.getAttribute("data-flashcard-edit-open-field");
+    if (!clientId || !openField) return null;
+    return { clientId, openField };
+  }
+
+  function collapseEmptyOptions(activeSection = null) {
+    setRows((current) =>
+      current.map((row) =>
+        row.deleted
+          ? row
+          : collapsedRowOptions(row, imageActivityRef.current, activeSection),
+      ),
+    );
+  }
+
+  useEffect(() => {
+    function handleBoundaryMove(event) {
+      if (!editScreenRef.current?.contains(event.target)) return;
+      if (event.target?.closest?.("[data-flashcard-edit-optional-trigger]")) {
+        return;
+      }
+      collapseEmptyOptions(getActiveOptionalSection(event.target));
     }
 
-    document.addEventListener("pointerdown", handlePointerDown, true);
-    return () => document.removeEventListener("pointerdown", handlePointerDown, true);
+    document.addEventListener("pointerdown", handleBoundaryMove, true);
+    document.addEventListener("focusin", handleBoundaryMove, true);
+    return () => {
+      document.removeEventListener("pointerdown", handleBoundaryMove, true);
+      document.removeEventListener("focusin", handleBoundaryMove, true);
+    };
   }, []);
 
+  function focusRowById(clientId) {
+    if (!clientId || !editScreenRef.current) return;
+    const rowElement = Array.from(
+      editScreenRef.current.querySelectorAll("[data-flashcard-edit-row-id]"),
+    ).find(
+      (node) => node.getAttribute("data-flashcard-edit-row-id") === clientId,
+    );
+    if (!rowElement) return;
+    const reduceMotion = window.matchMedia?.(
+      "(prefers-reduced-motion: reduce)",
+    )?.matches;
+    rowElement.scrollIntoView({
+      behavior: reduceMotion ? "auto" : "smooth",
+      block: "center",
+    });
+    rowElement
+      .querySelector("[data-flashcard-edit-front-input]")
+      ?.focus({ preventScroll: true });
+  }
+
+  function scheduleFocusRow(clientId) {
+    pendingFocusRowIdRef.current = clientId;
+    window.setTimeout(() => {
+      const pendingClientId = pendingFocusRowIdRef.current;
+      pendingFocusRowIdRef.current = null;
+      focusRowById(pendingClientId);
+    }, 0);
+  }
+
+  useEffect(() => {
+    if (!pendingFocusRowIdRef.current) return;
+    const pendingClientId = pendingFocusRowIdRef.current;
+    pendingFocusRowIdRef.current = null;
+    focusRowById(pendingClientId);
+  }, [rows]);
+
+  function handleImageUploadState(clientId, field, state) {
+    setImageActivityByRow((current) => ({
+      ...current,
+      [clientId]: {
+        ...(current[clientId] || {}),
+        [field]: state,
+      },
+    }));
+  }
+
+  function markEditingChanged() {
+    setEditorError("");
+    setLastSaveSucceeded(false);
+  }
+
   function updateRowFields(clientId, patch) {
+    markEditingChanged();
     setRows((current) =>
       current.map((row) =>
         row.clientId === clientId
@@ -483,19 +575,41 @@ export function FlashcardCardsEditScreen({
     updateRowFields(clientId, { [field]: value });
   }
 
-  function collapseRowOptions(clientId) {
+  function openOptionalSection(clientId, openField) {
+    markEditingChanged();
     setRows((current) =>
-      current.map((row) =>
-        row.clientId === clientId ? collapsedRowOptions(row) : row,
-      ),
+      current.map((row) => {
+        if (row.deleted) return row;
+        if (row.clientId !== clientId) {
+          return collapsedRowOptions(row, imageActivityRef.current);
+        }
+        return collapsedRowOptions(
+          { ...row, [openField]: true, touched: true },
+          imageActivityRef.current,
+          { clientId, openField },
+        );
+      }),
     );
+    setErrors((current) => ({ ...current, [clientId]: "" }));
   }
 
   function addRow() {
-    setRows((current) => [...current, toRow({}, current.length)]);
+    if (editorActionLocked) return;
+    const existingBlankRow = visibleRows.find(
+      (row) => !row.id && !isMeaningful(row),
+    );
+    if (existingBlankRow) {
+      scheduleFocusRow(existingBlankRow.clientId);
+      return;
+    }
+    const nextRow = toRow({}, rows.length);
+    setRows((current) => [...current, nextRow]);
+    scheduleFocusRow(nextRow.clientId);
   }
 
   function removeRow(clientId) {
+    if (editorActionLocked) return;
+    markEditingChanged();
     setRows((current) =>
       current
         .map((row) =>
@@ -512,14 +626,22 @@ export function FlashcardCardsEditScreen({
       delete next[clientId];
       return next;
     });
+    setImageActivityByRow((current) => {
+      const next = { ...current };
+      delete next[clientId];
+      return next;
+    });
   }
 
   function requestDeleteAll() {
+    if (editorActionLocked) return;
     if (visibleRows.length === 0) return;
     setDeleteAllPending(true);
   }
 
   function confirmDeleteAllRows() {
+    if (editorActionLocked) return;
+    markEditingChanged();
     setRows((current) =>
       current
         .map((row) =>
@@ -532,54 +654,9 @@ export function FlashcardCardsEditScreen({
     notify?.("Marked all cards for deletion. Save changes or Done to apply.", "info");
   }
 
-  async function uploadCollapsedImage(
-    clientId,
-    imageField,
-    openField,
-    files,
-    emptyMessage,
-    multipleMessage,
-  ) {
-    if (saving) return;
-    updateRowFields(clientId, { [openField]: true });
-
-    if (!onUploadImage) {
-      notify?.("Image upload is not available.", "error");
-      return;
-    }
-
-    const selected = imageSelection(files);
-    if (!selected.file) {
-      notify?.(emptyMessage, "error");
-      return;
-    }
-
-    const validationError = validateFlashcardImageFile(selected.file);
-    if (validationError) {
-      notify?.(validationError, "error");
-      return;
-    }
-
-    try {
-      const uploaded = await onUploadImage(selected.file);
-      const uploadedUrl = getUploadedFileUrl(uploaded);
-      if (!uploadedUrl) {
-        throw new Error("Upload response did not include a URL.");
-      }
-      updateRowFields(clientId, {
-        [imageField]: uploadedUrl,
-        [openField]: true,
-      });
-      if (selected.fileCount > 1 || selected.imageCount > 1) {
-        notify?.(multipleMessage, "info");
-      }
-    } catch (error) {
-      notify?.(error?.message || "Image upload failed.", "error");
-    }
-  }
-
   function handleDragEnd(result) {
-    if (!result.destination || saving) return;
+    if (!result.destination || editorActionLocked) return;
+    markEditingChanged();
     setRows((current) => {
       const next = current.filter((row) => !row.deleted);
       const deleted = current.filter((row) => row.deleted);
@@ -591,31 +668,65 @@ export function FlashcardCardsEditScreen({
 
   function validateRows() {
     const nextErrors = {};
+    let firstInvalidClientId = null;
     rows
       .filter((row) => !row.deleted)
       .forEach((row) => {
         if (!row.id && !isMeaningful(row)) return;
         const error = validateCurrentCardDraft(row);
-        if (error) nextErrors[row.clientId] = error;
+        if (error) {
+          nextErrors[row.clientId] = error;
+          if (!firstInvalidClientId) firstInvalidClientId = row.clientId;
+        }
       });
     setErrors(nextErrors);
-    return Object.keys(nextErrors).length === 0;
+    return {
+      valid: Object.keys(nextErrors).length === 0,
+      firstInvalidClientId,
+    };
   }
 
   async function saveChanges() {
-    if (saving) return null;
-    if (!validateRows()) {
-      notify?.("Fix invalid cards before saving.", "error");
+    if (editorActionLocked) return null;
+    setEditorError("");
+    setLastSaveSucceeded(false);
+    const validation = validateRows();
+    if (!validation.valid) {
+      const message = "Fix invalid cards before saving.";
+      setEditorError(message);
+      scheduleFocusRow(validation.firstInvalidClientId);
+      notify?.(message, "error");
       return null;
     }
 
     setSaving(true);
+    const processedClientIds = new Set();
+    const processedRowsByClientId = new Map();
+    const savedCardsById = new Map(
+      baselineCards.map((card) => [String(card.id), card]),
+    );
+    let failedClientId = null;
+
+    function reconcilePartialRows() {
+      setRows((current) =>
+        current
+          .map((row) => {
+            if (!processedClientIds.has(row.clientId)) return row;
+            if (row.deleted) return null;
+            return processedRowsByClientId.get(row.clientId) || row;
+          })
+          .filter(Boolean),
+      );
+      setBaselineCards(normalizeCards([...savedCardsById.values()]));
+    }
+
     try {
       const nextRows = [];
-      const savedCardsById = new Map(originalCards.map((card) => [String(card.id), card]));
 
       for (const row of rows.filter((current) => current.deleted && current.id)) {
+        failedClientId = row.clientId;
         await flashcardService.deleteCard(row.id);
+        processedClientIds.add(row.clientId);
         savedCardsById.delete(String(row.id));
       }
 
@@ -623,36 +734,58 @@ export function FlashcardCardsEditScreen({
         if (!row.id && !isMeaningful(row)) continue;
 
         if (!row.id) {
+          failedClientId = row.clientId;
           const saved = await flashcardService.addCard(setId, toCardPayload(row));
-          nextRows.push(toRow(saved, nextRows.length));
+          const savedRow = toRow(saved, nextRows.length);
+          nextRows.push(savedRow);
+          processedClientIds.add(row.clientId);
+          processedRowsByClientId.set(row.clientId, savedRow);
           savedCardsById.set(String(saved.id), saved);
           continue;
         }
 
-        const original = originalById.get(String(row.id));
+        const original = baselineById.get(String(row.id));
         if (payloadChanged(original, row)) {
+          failedClientId = row.clientId;
           const saved = await flashcardService.updateCard(row.id, toCardPayload(row));
-          nextRows.push(toRow(saved, nextRows.length));
+          const savedRow = toRow(saved, nextRows.length);
+          nextRows.push(savedRow);
+          processedClientIds.add(row.clientId);
+          processedRowsByClientId.set(row.clientId, savedRow);
           savedCardsById.set(String(saved.id), saved);
         } else {
-          nextRows.push(toRow(original || row, nextRows.length));
+          const cleanRow = toRow(original || row, nextRows.length);
+          nextRows.push(cleanRow);
+          processedRowsByClientId.set(row.clientId, cleanRow);
         }
       }
 
       const nextIds = nextRows.map((row) => row.id).filter(Boolean);
       let savedCards = nextRows.map((row) => savedCardsById.get(String(row.id)) || row);
-      if (nextIds.length > 0 && !sameOrder(originalCards, nextRows)) {
+      if (nextIds.length > 0 && !sameOrder(baselineCards, nextRows)) {
+        failedClientId = nextRows[0]?.clientId || null;
         const savedSet = await flashcardService.reorderCards(setId, nextIds);
         savedCards = normalizeCards(savedSet?.cards || savedSet?.data?.cards || savedCards);
       }
 
       setRows(savedCards.map(toRow));
+      setBaselineCards(savedCards);
       setErrors({});
+      setImageActivityByRow({});
+      setEditorError("");
+      setLastSaveSucceeded(true);
       onSaved?.(savedCards);
       notify?.("Flashcards saved.", "success");
       return savedCards;
     } catch (error) {
-      notify?.(getErrorMessage(error, "Failed to save flashcards."), "error");
+      const message = getErrorMessage(error, "Failed to save flashcards.");
+      reconcilePartialRows();
+      setEditorError(message);
+      if (failedClientId) {
+        setErrors((current) => ({ ...current, [failedClientId]: message }));
+        scheduleFocusRow(failedClientId);
+      }
+      notify?.(message, "error");
       return null;
     } finally {
       setSaving(false);
@@ -660,11 +793,13 @@ export function FlashcardCardsEditScreen({
   }
 
   async function handleDone() {
+    if (editorActionLocked) return;
     const savedCards = dirty ? await saveChanges() : visibleRows;
     if (savedCards) onBack?.();
   }
 
   function handleBack() {
+    if (editorActionLocked) return;
     if (dirty) {
       setDiscardPending(true);
       return;
@@ -673,8 +808,8 @@ export function FlashcardCardsEditScreen({
   }
 
   return (
-    <div className="flashcard-edit-screen">
-      <div className="flashcard-panel">
+    <div className="flashcard-edit-screen" ref={editScreenRef}>
+      <div className="flashcard-panel" aria-busy={editorActionLocked}>
         <div className="flashcard-panel__header flashcard-edit-screen__header">
           <div>
             <h3 className="flashcard-panel__title">Add/Edit Cards</h3>
@@ -686,17 +821,8 @@ export function FlashcardCardsEditScreen({
             <button
               type="button"
               className="flashcard-btn"
-              onClick={handleBack}
-              disabled={saving}
-            >
-              <ArrowLeft size={16} />
-              Back
-            </button>
-            <button
-              type="button"
-              className="flashcard-btn"
               onClick={addRow}
-              disabled={saving}
+              disabled={editorActionLocked}
             >
               <Plus size={16} />
               Add row
@@ -705,31 +831,19 @@ export function FlashcardCardsEditScreen({
               type="button"
               className="flashcard-btn flashcard-btn--danger"
               onClick={requestDeleteAll}
-              disabled={saving || visibleRows.length === 0}
+              disabled={editorActionLocked || visibleRows.length === 0}
             >
               <Trash2 size={16} />
               Delete all
             </button>
-            <button
-              type="button"
-              className="flashcard-btn flashcard-btn--primary"
-              onClick={saveChanges}
-              disabled={saving || !dirty}
-            >
-              <Save size={16} />
-              {saving ? "Saving" : "Save changes"}
-            </button>
-            <button
-              type="button"
-              className="flashcard-btn flashcard-btn--primary"
-              onClick={handleDone}
-              disabled={saving}
-            >
-              Done
-            </button>
           </div>
         </div>
         <div className="flashcard-panel__body">
+          {editorError && (
+            <div className="flashcard-edit-screen__summary" role="alert">
+              {editorError}
+            </div>
+          )}
           <DragDropContext onDragEnd={handleDragEnd}>
             <Droppable droppableId="flashcard-edit-screen-list">
               {(dropProvided) => (
@@ -743,7 +857,7 @@ export function FlashcardCardsEditScreen({
                       key={row.clientId}
                       draggableId={row.clientId}
                       index={index}
-                      isDragDisabled={saving}
+                      isDragDisabled={editorActionLocked}
                     >
                       {(dragProvided) => (
                         <div
@@ -760,12 +874,12 @@ export function FlashcardCardsEditScreen({
                             index={index}
                             error={errors[row.clientId]}
                             saving={saving}
+                            actionLocked={editorActionLocked}
                             onChange={updateRow}
-                            onChangeFields={updateRowFields}
-                            onCollapseOptions={collapseRowOptions}
+                            onOpenOptional={openOptionalSection}
                             onRemove={removeRow}
                             onUploadImage={onUploadImage}
-                            onCollapsedImageUpload={uploadCollapsedImage}
+                            onImageUploadStateChange={handleImageUploadState}
                             dragHandleProps={dragProvided.dragHandleProps}
                           />
                         </div>
@@ -782,6 +896,46 @@ export function FlashcardCardsEditScreen({
               <p>No card rows yet.</p>
             </div>
           )}
+        </div>
+        <div className="flashcard-edit-screen__action-bar">
+          <div className="flashcard-edit-screen__status" role="status" aria-live="polite">
+            {statusText && (
+              <>
+                {dirty && !editorActionLocked && (
+                  <span className="flashcard-edit-screen__dirty-dot" aria-hidden="true" />
+                )}
+                <span>{statusText}</span>
+              </>
+            )}
+          </div>
+          <div className="flashcard-actions">
+            <button
+              type="button"
+              className="flashcard-btn"
+              onClick={handleBack}
+              disabled={editorActionLocked}
+            >
+              <X size={16} />
+              Cancel
+            </button>
+            <button
+              type="button"
+              className="flashcard-btn"
+              onClick={saveChanges}
+              disabled={editorActionLocked || !dirty}
+            >
+              <Save size={16} />
+              Save changes
+            </button>
+            <button
+              type="button"
+              className="flashcard-btn flashcard-btn--primary"
+              onClick={handleDone}
+              disabled={editorActionLocked}
+            >
+              Done
+            </button>
+          </div>
         </div>
       </div>
       {discardPending && (
@@ -802,9 +956,9 @@ export function FlashcardCardsEditScreen({
                 type="button"
                 className="flashcard-btn"
                 onClick={() => setDiscardPending(false)}
-                disabled={saving}
+                disabled={editorActionLocked}
               >
-                Cancel
+                Continue editing
               </button>
               <button
                 type="button"
@@ -813,9 +967,9 @@ export function FlashcardCardsEditScreen({
                   setDiscardPending(false);
                   onBack?.();
                 }}
-                disabled={saving}
+                disabled={editorActionLocked}
               >
-                Discard
+                Discard changes
               </button>
             </div>
           </div>
@@ -841,7 +995,7 @@ export function FlashcardCardsEditScreen({
                 type="button"
                 className="flashcard-btn"
                 onClick={() => setDeleteAllPending(false)}
-                disabled={saving}
+                disabled={editorActionLocked}
               >
                 Cancel
               </button>
@@ -849,7 +1003,7 @@ export function FlashcardCardsEditScreen({
                 type="button"
                 className="flashcard-btn flashcard-btn--danger"
                 onClick={confirmDeleteAllRows}
-                disabled={saving || visibleRows.length === 0}
+                disabled={editorActionLocked || visibleRows.length === 0}
               >
                 <Trash2 size={16} />
                 Delete all

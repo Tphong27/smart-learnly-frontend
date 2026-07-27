@@ -2,59 +2,76 @@ import { Search } from "lucide-react";
 import { useEffect, useState } from "react";
 import { courseService } from "@/services";
 
-export function ClassListFilters({ initialCourseId = "", onClearCourseFilter, onFilterChange }) {
+export function ClassListFilters({
+  initialCourseId = "",
+  onClearCourseFilter,
+  onFilterChange,
+}) {
   const [filters, setFilters] = useState({
     keyword: "",
     status: "",
-    courseId: initialCourseId,
   });
-  // Cache tiêu đề khoá học đang lọc để hiển thị thân thiện thay vì UUID.
-  const [courseTitle, setCourseTitle] = useState("");
-
-  useEffect(() => {
-    setFilters((current) => {
-      if (current.courseId === initialCourseId) {
-        return current;
-      }
-
-      return {
-        ...current,
-        courseId: initialCourseId,
-      };
-    });
-  }, [initialCourseId]);
+  const [courseInfo, setCourseInfo] = useState({
+    courseId: "",
+    title: "",
+    loaded: false,
+  });
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
-      onFilterChange?.(filters);
+      onFilterChange?.({
+        ...filters,
+        courseId: initialCourseId,
+      });
     }, 350);
 
-    return () => window.clearTimeout(timeoutId);
-  }, [filters, onFilterChange]);
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [filters, initialCourseId, onFilterChange]);
 
-  // Fetch course title theo id để hiển thị tên khoá học trong filter chip.
   useEffect(() => {
-    let cancelled = false;
-    if (!filters.courseId) {
-      setCourseTitle("");
-      return () => {
-        cancelled = true;
-      };
+    if (!initialCourseId) {
+      return undefined;
     }
-    (async () => {
+
+    let cancelled = false;
+
+    async function fetchCourseTitle() {
       try {
-        const course = await courseService.getAdmin(filters.courseId);
-        if (!cancelled) {
-          setCourseTitle(course?.title || course?.name || "");
+        const course = await courseService.getAdmin(initialCourseId);
+
+        if (cancelled) {
+          return;
         }
+
+        setCourseInfo({
+          courseId: initialCourseId,
+          title:
+            course?.title?.trim() ||
+            course?.name?.trim() ||
+            "Course unavailable",
+          loaded: true,
+        });
       } catch {
-        if (!cancelled) setCourseTitle("");
+        if (cancelled) {
+          return;
+        }
+
+        setCourseInfo({
+          courseId: initialCourseId,
+          title: "Course unavailable",
+          loaded: true,
+        });
       }
-    })();
+    }
+
+    fetchCourseTitle();
+
     return () => {
       cancelled = true;
     };
-  }, [filters.courseId]);
+  }, [initialCourseId]);
 
   function updateFilter(key, value) {
     setFilters((current) => {
@@ -69,23 +86,32 @@ export function ClassListFilters({ initialCourseId = "", onClearCourseFilter, on
     });
   }
 
+  const displayedCourseTitle =
+    courseInfo.courseId === initialCourseId && courseInfo.loaded
+      ? courseInfo.title
+      : "Loading...";
+
   return (
     <div className="class-filters">
-      <div className="class-filters__item">
-        <Search size={18} />
+      <label className="class-filters__item">
+        <Search size={18} aria-hidden="true" />
+
+        <span className="sr-only">Search classes</span>
+
         <input
-          type="text"
+          type="search"
           placeholder="Search by class name..."
           value={filters.keyword}
           onChange={(event) => updateFilter("keyword", event.target.value)}
           className="class-filters__input"
         />
-      </div>
+      </label>
 
       <select
         value={filters.status}
         onChange={(event) => updateFilter("status", event.target.value)}
         className="class-filters__select"
+        aria-label="Filter classes by status"
       >
         <option value="">All Status</option>
         <option value="upcoming">Upcoming</option>
@@ -94,13 +120,17 @@ export function ClassListFilters({ initialCourseId = "", onClearCourseFilter, on
         <option value="cancelled">Cancelled</option>
       </select>
 
-      {filters.courseId && (
+      {initialCourseId && (
         <div className="class-filters__course-chip">
           <span>Filtered by course:</span>
-          <strong title={filters.courseId}>
-            {courseTitle || "Loading..."}
-          </strong>
-          <button type="button" onClick={onClearCourseFilter}>
+
+          <strong title={displayedCourseTitle}>{displayedCourseTitle}</strong>
+
+          <button
+            type="button"
+            onClick={onClearCourseFilter}
+            aria-label="Clear course filter"
+          >
             Clear
           </button>
         </div>

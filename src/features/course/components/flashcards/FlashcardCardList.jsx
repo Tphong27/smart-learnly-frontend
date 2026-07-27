@@ -1,8 +1,7 @@
 import {
-  Edit3,
   GripVertical,
-  Image,
   ListOrdered,
+  Pencil,
   Trash2,
 } from "lucide-react";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
@@ -44,15 +43,7 @@ function CardSidePreview({ label, content }) {
 
   return (
     <div className="flashcard-list-item__side">
-      <div className="flashcard-list-item__side-label">
-        <span>{label}</span>
-        {hasImage && (
-          <span className="flashcard-list-item__image-pill">
-            <Image size={12} />
-            Image
-          </span>
-        )}
-      </div>
+      <span className="flashcard-sr-only">{label}</span>
       <div className="flashcard-list-item__side-content">
         {hasImage && (
           <img
@@ -82,7 +73,7 @@ export function FlashcardCardList({
   onEdit,
   onDelete,
   onMove,
-  renderCardBody,
+  emptyAction,
   dragDisabled = disabled,
 }) {
   const normalizedCards = normalizeCards(cards);
@@ -93,6 +84,9 @@ export function FlashcardCardList({
       <div className="flashcard-empty">
         <ListOrdered size={28} />
         <p>No cards yet.</p>
+        {emptyAction && (
+          <div className="flashcard-empty__actions">{emptyAction}</div>
+        )}
       </div>
     );
   }
@@ -125,7 +119,15 @@ export function FlashcardCardList({
                 isDragDisabled={dragDisabled || !card.id}
               >
                 {(dragProvided, dragSnapshot) => {
-                  const customBody = renderCardBody?.(card);
+                  const rowIndex = pageStartIndex + index + 1;
+                  const activateCard = () => {
+                    if (disabled) return;
+                    if (selectionMode) {
+                      onToggleSelect?.(card);
+                    } else {
+                      onSelect?.(card);
+                    }
+                  };
                   return (
                     <div
                       className={[
@@ -139,15 +141,31 @@ export function FlashcardCardList({
                         .join(" ")}
                       ref={dragProvided.innerRef}
                       {...dragProvided.draggableProps}
-                      {...(!customBody ? {} : { "data-inline-editing": "true" })}
+                      role="button"
+                      tabIndex={disabled ? -1 : 0}
+                      aria-label={
+                        selectionMode
+                          ? `Select flashcard ${rowIndex}`
+                          : `Activate flashcard ${rowIndex}`
+                      }
+                      aria-pressed={
+                        selectionMode ? selectedSet.has(card.id) : undefined
+                      }
+                      aria-current={
+                        !selectionMode && activeCardId === card.id
+                          ? "true"
+                          : undefined
+                      }
                       onClick={(event) => {
                         if (disabled) return;
                         if (isInteractiveTarget(event.target)) return;
-                        if (selectionMode) {
-                          onToggleSelect?.(card);
-                        } else {
-                          onSelect?.(card);
-                        }
+                        activateCard();
+                      }}
+                      onKeyDown={(event) => {
+                        if (disabled) return;
+                        if (event.key !== "Enter" && event.key !== " ") return;
+                        event.preventDefault();
+                        activateCard();
                       }}
                       onDoubleClick={(event) => {
                         if (isInteractiveTarget(event.target)) return;
@@ -173,58 +191,55 @@ export function FlashcardCardList({
                             onDoubleClick={(event) => event.stopPropagation()}
                             onChange={() => onToggleSelect?.(card)}
                             disabled={disabled}
-                            aria-label="Select card"
+                            aria-label={`Select flashcard ${rowIndex}`}
                           />
                         )}
                       </span>
                       <div className="flashcard-list-item__body">
-                        {customBody ? (
-                          customBody
-                        ) : (
-                          <>
-                            <CardSidePreview
-                              label="Front"
-                              content={getSideContent(card, "front")}
-                            />
-                            <CardSidePreview
-                              label="Back"
-                              content={getSideContent(card, "back")}
-                            />
-                            {(card.hint || card.explanation) && (
-                              <div className="flashcard-list-item__meta">
-                                {card.hint && (
-                                  <p>
-                                    <strong>Hint:</strong> {card.hint}
-                                  </p>
-                                )}
-                                {card.explanation && (
-                                  <p>
-                                    <strong>Explanation:</strong> {card.explanation}
-                                  </p>
-                                )}
-                              </div>
+                        <CardSidePreview
+                          label="Front"
+                          content={getSideContent(card, "front")}
+                        />
+                        <CardSidePreview
+                          label="Back"
+                          content={getSideContent(card, "back")}
+                        />
+                        {(card.hint || card.explanation) && (
+                          <div className="flashcard-list-item__meta">
+                            {card.hint && (
+                              <p>
+                                <strong>Hint:</strong> {card.hint}
+                              </p>
                             )}
-                          </>
+                            {card.explanation && (
+                              <p>
+                                <strong>Explanation:</strong> {card.explanation}
+                              </p>
+                            )}
+                          </div>
                         )}
                       </div>
-                      {!customBody && (
-                        <div className="flashcard-list-item__actions">
-                        <button
-                          type="button"
-                          className="flashcard-btn flashcard-btn--icon"
-                          title="Edit card"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            onEdit?.(card);
-                          }}
-                          disabled={disabled}
-                        >
-                          <Edit3 size={15} />
-                        </button>
+                      <div className="flashcard-list-item__actions">
+                        {onEdit && (
+                          <button
+                            type="button"
+                            className="flashcard-btn flashcard-btn--icon"
+                            title="Edit flashcard"
+                            aria-label={`Edit flashcard ${rowIndex}`}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              onEdit(card);
+                            }}
+                            disabled={disabled}
+                          >
+                            <Pencil size={15} />
+                          </button>
+                        )}
                         <button
                           type="button"
                           className="flashcard-btn flashcard-btn--icon flashcard-btn--danger"
                           title="Delete card"
+                          aria-label={`Delete flashcard ${rowIndex}`}
                           onClick={(event) => {
                             event.stopPropagation();
                             onDelete?.(card);
@@ -233,8 +248,7 @@ export function FlashcardCardList({
                         >
                           <Trash2 size={15} />
                         </button>
-                        </div>
-                      )}
+                      </div>
                     </div>
                   );
                 }}

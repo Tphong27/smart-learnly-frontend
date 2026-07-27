@@ -2,7 +2,11 @@ import { Navigate } from "react-router-dom";
 import { RoleGuard } from "./RoleGuard";
 import { ROLES } from "@/shared/constants/roles";
 import { TraineeLayout } from "../layouts/TraineeLayout";
-import { CheckoutPage, MyTransactionsPage, PaymentResultPage } from "@/features/checkout";
+import {
+  CheckoutPage,
+  MyTransactionsPage,
+  PaymentResultPage,
+} from "@/features/checkout";
 import { MyEnrollmentsPage } from "@/features/enrollment";
 import {
   TraineeFlashTestListPage,
@@ -10,6 +14,7 @@ import {
   TraineeAssignmentTakePage,
   TraineeTestListPage,
   TraineeTestTakePage,
+  TestAttemptDetailPage,
 } from "@/features/flashtest";
 import {
   CourseListPage,
@@ -19,6 +24,7 @@ import {
 import { TraineeDashboardPage } from "@/features/dashboard";
 import { TraineeProgressPage } from "@/features/progress";
 import { OpeningSchedulePage } from "@/features/opening-schedule";
+import { SchedulePage } from "@/features/schedule";
 
 function PlaceholderPage({ title }) {
   return (
@@ -93,12 +99,20 @@ function getTraineeRoutes() {
             { path: "transactions", element: <MyTransactionsPage /> },
             { path: "progress", element: <TraineeProgressPage /> },
             {
+              path: "schedule",
+              element: <SchedulePage />,
+            },
+            {
               path: "classrooms",
               element: <PlaceholderPage title="Classrooms" />,
             },
             {
               path: "tests",
               element: <TraineeTestListPage />,
+            },
+            {
+              path: "tests/attempts/:testId/:attemptId",
+              element: <TestAttemptDetailPage />,
             },
             {
               path: "flashcards",

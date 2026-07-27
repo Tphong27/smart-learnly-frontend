@@ -3,7 +3,6 @@ import { Navigate } from "react-router-dom";
 import { RoleGuard } from "./RoleGuard";
 import { ROLES } from "@/shared/constants/roles";
 import { TrainerLayout } from "../layouts/TrainerLayout";
-// ĐÃ SỬA: Import đầy đủ các trang quản lý bài test từ feature flashtest
 import {
   StaffFlashTestListPage,
   StaffFlashTestCreatePage,
@@ -11,18 +10,21 @@ import {
   StaffTestListPage,
   StaffTestCreatePage,
   StaffTestMonitorPage,
+  TestAttemptDetailPage,
 } from "@/features/flashtest";
-// import { StaffLayout } from "@/app/layouts/StaffLayout";
+// import { TrainerLayout } from "@/app/layouts/TrainerLayout";
 import { AdminCoursesPage, AdminCourseFormPage } from "@/features/admin";
 import AdminCourseContentPage from "@/features/course/pages/AdminCourseContentPage";
 import AdminLessonDetailPage from "@/features/course/pages/AdminLessonDetailPage";
+import VideoAiReviewPage from "@/features/course/pages/VideoAiReviewPage";
 import {
   StaffClassListPage,
-  TmoCreateClassPage,
+  EditionClassPage,
   ClassDetailPage,
   TrainerLessonDetailPage,
-  ClassAnalyticsPage,
+  ClassAnalyticsRedirect
 } from "@/features/classroom";
+import { SchedulePage } from "@/features/schedule";
 
 function PlaceholderPage({ title }) {
   return (
@@ -49,10 +51,6 @@ function getStaffRoutes() {
             <RoleGuard allowedRoles={[ROLES.TRAINER, ROLES.TMO, ROLES.SME]} />
           ),
           children: [
-            {
-              path: "classrooms/:classId/analytics",
-              element: <ClassAnalyticsPage />,
-            },
             { path: "courses", element: <AdminCoursesPage /> },
             {
               path: "courses/:courseId/edit",
@@ -74,6 +72,10 @@ function getStaffRoutes() {
               ],
             },
             {
+              path: "courses/:courseId/lessons/:lessonId/video-ai",
+              element: <VideoAiReviewPage />,
+            },
+            {
               path: "tests",
               element: <StaffTestListPage />,
             },
@@ -88,6 +90,10 @@ function getStaffRoutes() {
             {
               path: "tests/monitor/:id/:type",
               element: <StaffTestMonitorPage />,
+            },
+            {
+              path: "tests/attempts/:testId/:attemptId",
+              element: <TestAttemptDetailPage />,
             },
             {
               path: "flashcards",
@@ -136,9 +142,32 @@ function getStaffRoutes() {
               element: <StaffClassListPage />,
             },
             {
+              path: "schedule",
+              element: <SchedulePage />,
+            },
+            {
               path: "classrooms/create",
               element: <RoleGuard allowedRoles={[ROLES.TMO]} />,
-              children: [{ index: true, element: <TmoCreateClassPage /> }],
+              children: [
+                {
+                  index: true,
+                  element: <EditionClassPage />,
+                },
+              ],
+            },
+            {
+              path: "classrooms/:classId/edit",
+              element: <RoleGuard allowedRoles={[ROLES.TMO]} />,
+              children: [
+                {
+                  index: true,
+                  element: <EditionClassPage />,
+                },
+              ],
+            },
+            {
+              path: "classrooms/:classId/analytics",
+              element: <ClassAnalyticsRedirect />,
             },
             {
               path: "classrooms/:classId/workspace",
@@ -182,6 +211,10 @@ function getStaffRoutes() {
             {
               path: "classes/:classId/curriculum/lessons/:lessonId",
               element: <TrainerLessonDetailPage />,
+            },
+            {
+              path: "classes/:classId/curriculum/lessons/:lessonId/video-ai",
+              element: <VideoAiReviewPage />,
             },
           ],
         },

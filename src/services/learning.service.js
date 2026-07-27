@@ -20,9 +20,10 @@ export const learningService = {
     return unwrap(response);
   },
 
-  async getAdminPreviewContent(courseId) {
+  async getAdminPreviewContent(courseId, classId) {
     const response = await apiClient.get(
       `/admin/courses/${courseId}/learning-preview`,
+      { params: classId ? { classId } : {} },
     );
     return unwrap(response);
   },

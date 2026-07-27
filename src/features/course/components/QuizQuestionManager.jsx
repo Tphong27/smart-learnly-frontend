@@ -192,6 +192,7 @@ export function QuizQuestionsPanel({
   const toast = useToast();
 
   const [questions, setQuestions] = useState([]);
+  const [sourceCourseId, setSourceCourseId] = useState("");
   const [errors, setErrors] = useState([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -231,6 +232,7 @@ export function QuizQuestionsPanel({
         const parsed = parseQuizContent(data?.content || "");
         if (!cancelled) {
           setQuestions(parsed.questions || []);
+          setSourceCourseId(data?.courseId || "");
         }
       } catch (error) {
         if (!cancelled) {
@@ -467,6 +469,8 @@ export function QuizQuestionsPanel({
         key={importOpen ? "import-open" : "import-closed"}
         open={importOpen}
         onClose={() => setImportOpen(false)}
+        existingQuestions={questions}
+        courseId={sourceCourseId}
         onImport={handleImported}
       />
 

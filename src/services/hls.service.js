@@ -48,7 +48,7 @@ export async function getHlsPlayback(lessonId) {
   const tokenData = unwrap(response);
 
   if (!tokenData?.playlistUrl) {
-    throw new Error("The server did not return an HLS playlist.");
+    throw new Error("The video is not available yet. Try again later.");
   }
 
   return {

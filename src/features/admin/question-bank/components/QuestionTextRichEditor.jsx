@@ -4,7 +4,13 @@ import "react-quill-new/dist/quill.snow.css";
 
 const QUESTION_TEXT_FORMATS = ["bold", "italic", "list", "code"];
 
-export function QuestionTextRichEditor({ value, onChange, disabled }) {
+export function QuestionTextRichEditor({
+  value,
+  onChange,
+  disabled,
+  placeholder = "Write the question text...",
+  toolbarLabel = "Question text formatting toolbar",
+}) {
   const toolbarId = `question-text-toolbar-${useId().replace(/:/g, "")}`;
   const modules = useMemo(
     () => ({
@@ -23,7 +29,7 @@ export function QuestionTextRichEditor({ value, onChange, disabled }) {
       <div
         id={toolbarId}
         className="question-rich-text-toolbar ql-toolbar ql-snow"
-        aria-label="Question text formatting toolbar"
+        aria-label={toolbarLabel}
       >
         <span className="ql-formats">
           <button type="button" className="ql-bold" title="Bold" aria-label="Bold" disabled={disabled} />
@@ -44,7 +50,7 @@ export function QuestionTextRichEditor({ value, onChange, disabled }) {
         onChange={(html) => onChange?.(html)}
         modules={modules}
         formats={QUESTION_TEXT_FORMATS}
-        placeholder="Write the question text..."
+        placeholder={placeholder}
         readOnly={disabled}
       />
     </div>

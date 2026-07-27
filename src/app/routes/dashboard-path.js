@@ -9,9 +9,9 @@ export function getDashboardPathByRole(role) {
     case ROLES.TMO:
       return "/admin/courses";
     case ROLES.SME:
-      return "/admin/question-banks";
+      return "/admin/courses";
     case ROLES.TRAINER:
-      return "/staff/courses";
+      return "/staff/classrooms";
     case ROLES.TRAINEE:
       return "/dashboard";
     default:
@@ -50,12 +50,13 @@ export function isPathAllowedForRole(pathname, role) {
       allow: [ROLES.ADMIN, ROLES.TMO],
     },
     {
-      prefix: "/admin/question-banks",
+      prefix: "/admin/courses",
+      match: /\/admin\/courses\/[^/]+\/questions(?:\/|$)/,
       allow: [ROLES.ADMIN, ROLES.TMO, ROLES.SME, ROLES.TRAINER],
     },
     {
-      prefix: "/admin/questions",
-      allow: [ROLES.ADMIN, ROLES.TMO, ROLES.SME, ROLES.TRAINER],
+      prefix: "/admin/courses",
+      allow: [ROLES.ADMIN, ROLES.TMO, ROLES.SME],
     },
     {
       prefix: "/admin",
@@ -75,8 +76,8 @@ export function isPathAllowedForRole(pathname, role) {
     },
   ];
 
-  for (const { prefix, allow } of restrictedPrefixes) {
-    if (pathname === prefix || pathname.startsWith(`${prefix}/`)) {
+  for (const { prefix, match, allow } of restrictedPrefixes) {
+    if (match ? match.test(pathname) : pathname === prefix || pathname.startsWith(`${prefix}/`)) {
       return isRoleAllowed(normalizedRole, allow);
     }
   }

@@ -22,6 +22,25 @@ function normalizePage(response) {
   }
 }
 
+function normalizeAiDraftSources(response) {
+  const data = unwrap(response)
+  const items = data?.items ?? data?.sources ?? data?.content ?? data?.data ?? data
+  return Array.isArray(items) ? items : []
+}
+
+function normalizeAiDraftBatch(response) {
+  const data = unwrap(response)
+  return data?.batch ?? data
+}
+
+function hasMixedAiDraftSources(payload = {}) {
+  return (
+    (Array.isArray(payload.files) && payload.files.length > 0)
+    || (Array.isArray(payload.pastedTextSources) && payload.pastedTextSources.length > 0)
+    || (Array.isArray(payload.transcriptContentIds) && payload.transcriptContentIds.length > 0)
+  )
+}
+
 export const questionBankService = {
   async listBanks(params = {}) {
     const response = await apiClient.get('/admin/question-banks', { params })
@@ -60,8 +79,18 @@ export const questionBankService = {
     return normalizePage(response)
   },
 
+  async listCourseQuestions(courseId, params = {}) {
+    const response = await apiClient.get(`/admin/courses/${courseId}/questions`, { params })
+    return normalizePage(response)
+  },
+
   async getQuestion(questionId) {
     const response = await apiClient.get(`/admin/questions/${questionId}`)
+    return unwrap(response)
+  },
+
+  async getCourseQuestion(courseId, questionId) {
+    const response = await apiClient.get(`/admin/courses/${courseId}/questions/${questionId}`)
     return unwrap(response)
   },
 
@@ -70,8 +99,18 @@ export const questionBankService = {
     return unwrap(response)
   },
 
+  async createCourseQuestion(courseId, payload) {
+    const response = await apiClient.post(`/admin/courses/${courseId}/questions`, payload)
+    return unwrap(response)
+  },
+
   async updateQuestion(questionId, payload) {
     const response = await apiClient.put(`/admin/questions/${questionId}`, payload)
+    return unwrap(response)
+  },
+
+  async updateCourseQuestion(courseId, questionId, payload) {
+    const response = await apiClient.put(`/admin/courses/${courseId}/questions/${questionId}`, payload)
     return unwrap(response)
   },
   async listQuestionMedia(questionId) {
@@ -133,6 +172,11 @@ export const questionBankService = {
     return unwrap(response)
   },
 
+  async archiveCourseQuestion(courseId, questionId) {
+    const response = await apiClient.delete(`/admin/courses/${courseId}/questions/${questionId}`)
+    return unwrap(response)
+  },
+
   async approveQuestion(questionId) {
     const response = await apiClient.post(`/admin/questions/${questionId}/approve`)
     return unwrap(response)
@@ -149,6 +193,198 @@ export const questionBankService = {
       rows,
       importSource,
     })
+    return unwrap(response)
+  },
+
+  async importCourseQuestionsBatch(courseId, rows, importSource = 'excel_import') {
+    const response = await apiClient.post(`/admin/courses/${courseId}/questions/import`, {
+      rows,
+      importSource,
+    })
+    return unwrap(response)
+  },
+
+  async exportCourseQuestions(courseId, params = {}) {
+    const response = await apiClient.get(`/admin/courses/${courseId}/questions/export`, {
+      params,
+      responseType: 'blob',
+    })
+    return response
+  },
+
+  async listAiDraftSources(bankId) {
+    const response = await apiClient.get(`/admin/question-banks/${bankId}/ai-drafts/sources`)
+    return normalizeAiDraftSources(response)
+  },
+
+  async listCourseAiDraftSources(courseId) {
+    const response = await apiClient.get(`/admin/courses/${courseId}/questions/ai-drafts/sources`)
+    return normalizeAiDraftSources(response)
+  },
+
+  async getAiDraftSourceCapabilities(bankId) {
+    const response = await apiClient.get(`/admin/question-banks/${bankId}/ai-drafts/source-capabilities`)
+    return unwrap(response)
+  },
+
+  async getCourseAiDraftSourceCapabilities(courseId) {
+    const response = await apiClient.get(`/admin/courses/${courseId}/questions/ai-drafts/source-capabilities`)
+    return unwrap(response)
+  },
+
+  async createAiDraftBatch(bankId, payload) {
+    if (hasMixedAiDraftSources(payload)) {
+      const { files = [], ...request } = payload
+      const formData = new FormData()
+      formData.append('request', new Blob([JSON.stringify(request)], { type: 'application/json' }))
+      files.forEach((file) => formData.append('files', file))
+      const response = await apiClient.post(`/admin/question-banks/${bankId}/ai-drafts`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        timeout: 150000,
+      })
+      return normalizeAiDraftBatch(response)
+    }
+    const response = await apiClient.post(`/admin/question-banks/${bankId}/ai-drafts`, payload, {
+      timeout: 150000,
+    })
+    return normalizeAiDraftBatch(response)
+  },
+
+  async createCourseAiDraftBatch(courseId, payload) {
+    if (hasMixedAiDraftSources(payload)) {
+      const { files = [], ...request } = payload
+      const formData = new FormData()
+      formData.append('request', new Blob([JSON.stringify(request)], { type: 'application/json' }))
+      files.forEach((file) => formData.append('files', file))
+      const response = await apiClient.post(`/admin/courses/${courseId}/questions/ai-drafts`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        timeout: 150000,
+      })
+      return normalizeAiDraftBatch(response)
+    }
+    const response = await apiClient.post(`/admin/courses/${courseId}/questions/ai-drafts`, payload, {
+      timeout: 150000,
+    })
+    return normalizeAiDraftBatch(response)
+  },
+
+  async getAiDraftBatch(bankId, batchId) {
+    const response = await apiClient.get(`/admin/question-banks/${bankId}/ai-drafts/${batchId}`)
+    return normalizeAiDraftBatch(response)
+  },
+
+  async getCourseAiDraftBatch(courseId, batchId) {
+    const response = await apiClient.get(`/admin/courses/${courseId}/questions/ai-drafts/${batchId}`)
+    return normalizeAiDraftBatch(response)
+  },
+
+  async retryAiDraftBatch(bankId, batchId) {
+    const response = await apiClient.post(`/admin/question-banks/${bankId}/ai-drafts/${batchId}/retry`, null, {
+      timeout: 150000,
+    })
+    return normalizeAiDraftBatch(response)
+  },
+
+  async retryCourseAiDraftBatch(courseId, batchId) {
+    const response = await apiClient.post(`/admin/courses/${courseId}/questions/ai-drafts/${batchId}/retry`, null, {
+      timeout: 150000,
+    })
+    return normalizeAiDraftBatch(response)
+  },
+
+  async updateAiDraft(bankId, batchId, draftId, payload) {
+    const response = await apiClient.put(
+      `/admin/question-banks/${bankId}/ai-drafts/${batchId}/drafts/${draftId}`,
+      payload,
+    )
+    return unwrap(response)
+  },
+
+  async updateCourseAiDraft(courseId, batchId, draftId, payload) {
+    const response = await apiClient.put(
+      `/admin/courses/${courseId}/questions/ai-drafts/${batchId}/drafts/${draftId}`,
+      payload,
+    )
+    return unwrap(response)
+  },
+
+  async rejectAiDraft(bankId, batchId, draftId, payload = {}) {
+    const response = await apiClient.post(
+      `/admin/question-banks/${bankId}/ai-drafts/${batchId}/drafts/${draftId}/reject`,
+      payload,
+    )
+    return unwrap(response)
+  },
+
+  async rejectCourseAiDraft(courseId, batchId, draftId, payload = {}) {
+    const response = await apiClient.post(
+      `/admin/courses/${courseId}/questions/ai-drafts/${batchId}/drafts/${draftId}/reject`,
+      payload,
+    )
+    return unwrap(response)
+  },
+
+  async confirmAiDraftEvidence(bankId, batchId, draftId, payload) {
+    const response = await apiClient.post(
+      `/admin/question-banks/${bankId}/ai-drafts/${batchId}/drafts/${draftId}/evidence-confirmation`,
+      payload,
+    )
+    return unwrap(response)
+  },
+
+  async confirmCourseAiDraftEvidence(courseId, batchId, draftId, payload) {
+    const response = await apiClient.post(
+      `/admin/courses/${courseId}/questions/ai-drafts/${batchId}/drafts/${draftId}/evidence-confirmation`,
+      payload,
+    )
+    return unwrap(response)
+  },
+
+  async addSelectedAiDrafts(bankId, batchId, draftIds) {
+    const drafts = draftIds.map((item) => (
+      typeof item === 'object'
+        ? { draftId: item.draftId || item.id, version: item.version }
+        : { draftId: item, version: 0 }
+    ))
+    const response = await apiClient.post(
+      `/admin/question-banks/${bankId}/ai-drafts/${batchId}/add-selected`,
+      {
+        drafts,
+        idempotencyKey: `ai-add-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      },
+      { timeout: 90000 },
+    )
+    return unwrap(response)
+  },
+
+  async addSelectedCourseAiDrafts(courseId, batchId, draftIds) {
+    const drafts = draftIds.map((item) => (
+      typeof item === 'object'
+        ? { draftId: item.draftId || item.id, version: item.version }
+        : { draftId: item, version: 0 }
+    ))
+    const response = await apiClient.post(
+      `/admin/courses/${courseId}/questions/ai-drafts/${batchId}/add-selected`,
+      {
+        drafts,
+        idempotencyKey: `ai-add-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      },
+      { timeout: 90000 },
+    )
+    return unwrap(response)
+  },
+
+  async createAiDraftSourceDownloadUrl(bankId, batchId, sourceId) {
+    const response = await apiClient.post(
+      `/admin/question-banks/${bankId}/ai-drafts/${batchId}/sources/${sourceId}/download-url`,
+    )
+    return unwrap(response)
+  },
+
+  async createCourseAiDraftSourceDownloadUrl(courseId, batchId, sourceId) {
+    const response = await apiClient.post(
+      `/admin/courses/${courseId}/questions/ai-drafts/${batchId}/sources/${sourceId}/download-url`,
+    )
     return unwrap(response)
   },
   async previewImageImport(bankId, files, language = 'vi') {

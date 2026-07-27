@@ -7,18 +7,24 @@ import {
   parseQuizImportFile,
   downloadQuizImportTemplate,
 } from "../utils/quiz-question-schema";
+import { CourseQuestionImportPanel } from "./quiz-import/CourseQuestionImportPanel";
 import "@/features/admin/admin-shared.css";
 import "./quiz-question-manager.css";
 
 const IMPORT_ERROR = "Questions could not be imported. Please try again.";
 
 /**
- * Modal import câu hỏi từ JSON hoặc Excel/CSV.
- * Question Bank import lives in the dedicated panel tab.
+ * Modal import questions from JSON, Excel/CSV, or the current course.
  *
  * Props: { open, onClose, onImport(questions) }
  */
-export function QuizImportModal({ open, onClose, onImport }) {
+export function QuizImportModal({
+  open,
+  onClose,
+  onImport,
+  courseId,
+  existingQuestions = [],
+}) {
   const [mode, setMode] = useState("json");
   const [jsonText, setJsonText] = useState("");
   const [validateBeforeImport, setValidateBeforeImport] = useState(true);
@@ -250,6 +256,15 @@ export function QuizImportModal({ open, onClose, onImport }) {
           >
             Excel/CSV
           </button>
+          <button
+            type="button"
+            className={`quiz-question-import__mode-btn${mode === "bank" ? " quiz-question-import__mode-btn--active" : ""}`}
+            disabled={parsingFile || importing || bankBusy}
+            aria-pressed={mode === "bank"}
+            onClick={() => handleModeChange("bank")}
+          >
+            Course questions
+          </button>
         </div>
 
         {mode === "json" ? (
@@ -347,9 +362,17 @@ export function QuizImportModal({ open, onClose, onImport }) {
           </>
         )}
 
-        {validMessage && (
-          <p className="quiz-question-import__valid">{validMessage}</p>
-        )}
+        {mode === "bank" ? (
+          <CourseQuestionImportPanel
+            courseId={courseId}
+            existingQuestions={existingQuestions}
+            onImport={onImport}
+            onClose={onClose}
+            onBusyChange={setBankBusy}
+          />
+        ) : null}
+
+        {validMessage && <p className="quiz-question-import__valid">{validMessage}</p>}
 
         {errors.length > 0 && (
           <ul

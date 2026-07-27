@@ -23,7 +23,7 @@ function normalizeOverview(data = {}) {
   const courses = data.courses || {}
   const classes = data.classes || {}
   const content = data.content || {}
-  const questionBanks = data.questionBanks || {}
+  const questions = data.questions || data.questionBanks || {}
 
   return {
     range: data.range || null,
@@ -52,30 +52,25 @@ function normalizeOverview(data = {}) {
       newInRange: normalizeNumber(classes.newInRange),
     },
     content: {
-      sections: normalizeNumber(content.sections),
+      modules: normalizeNumber(content.modules ?? content.sections),
       lessons: normalizeNumber(content.lessons),
       publishedLessons: normalizeNumber(content.publishedLessons),
       draftLessons: normalizeNumber(content.draftLessons),
       inactiveLessons: normalizeNumber(content.inactiveLessons),
-      newSectionsInRange: normalizeNumber(content.newSectionsInRange),
+      newModulesInRange: normalizeNumber(content.newModulesInRange ?? content.newSectionsInRange),
       newLessonsInRange: normalizeNumber(content.newLessonsInRange),
     },
-    questionBanks: {
-      total: normalizeNumber(questionBanks.total),
-      approved: normalizeNumber(questionBanks.approved),
-      draft: normalizeNumber(questionBanks.draft),
-      archived: normalizeNumber(questionBanks.archived),
-      questions: normalizeNumber(questionBanks.questions),
-      approvedQuestions: normalizeNumber(questionBanks.approvedQuestions),
-      pendingReviewQuestions: normalizeNumber(questionBanks.pendingReviewQuestions),
-      draftQuestions: normalizeNumber(questionBanks.draftQuestions),
-      rejectedQuestions: normalizeNumber(questionBanks.rejectedQuestions),
-      archivedQuestions: normalizeNumber(questionBanks.archivedQuestions),
-      newBanksInRange: normalizeNumber(questionBanks.newBanksInRange),
-      newQuestionsInRange: normalizeNumber(questionBanks.newQuestionsInRange),
-      reviewedQuestionsInRange: normalizeNumber(questionBanks.reviewedQuestionsInRange),
-      aiGeneratedQuestions: normalizeNumber(questionBanks.aiGeneratedQuestions),
-      manualQuestions: normalizeNumber(questionBanks.manualQuestions),
+    questions: {
+      total: normalizeNumber(questions.total ?? questions.questions),
+      approved: normalizeNumber(questions.approved ?? questions.approvedQuestions),
+      pendingReview: normalizeNumber(questions.pendingReview ?? questions.pendingReviewQuestions),
+      draft: normalizeNumber(questions.draft ?? questions.draftQuestions),
+      rejected: normalizeNumber(questions.rejected ?? questions.rejectedQuestions),
+      archived: normalizeNumber(questions.archived ?? questions.archivedQuestions),
+      newInRange: normalizeNumber(questions.newInRange ?? questions.newQuestionsInRange),
+      reviewedInRange: normalizeNumber(questions.reviewedInRange ?? questions.reviewedQuestionsInRange),
+      aiGenerated: normalizeNumber(questions.aiGenerated ?? questions.aiGeneratedQuestions),
+      manual: normalizeNumber(questions.manual ?? questions.manualQuestions),
     },
     recentActivities: normalizeRecentActivities(data.recentActivities),
   }

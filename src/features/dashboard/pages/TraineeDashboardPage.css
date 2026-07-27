@@ -506,6 +506,182 @@
     margin-top: 12px;
 }
 
+/* Loading skeleton */
+.trainee-dashboard-skeleton {
+    display: flex;
+    flex-direction: column;
+    gap: 28px;
+}
+
+.trainee-dashboard-skeleton__stack {
+    min-width: 0;
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.trainee-dashboard-skeleton__stack--compact {
+    flex: 0 1 auto;
+    width: 96px;
+    gap: 6px;
+}
+
+.trainee-dashboard-skeleton__line {
+    width: 100%;
+    height: 12px;
+}
+
+.trainee-dashboard-skeleton__line--heading {
+    width: min(280px, 72%);
+    height: 18px;
+}
+
+.trainee-dashboard-skeleton__line--copy {
+    width: min(420px, 94%);
+}
+
+.trainee-dashboard-skeleton__line--metric {
+    width: 90px;
+    height: 14px;
+}
+
+.trainee-dashboard-skeleton__line--label {
+    width: 72px;
+    height: 10px;
+}
+
+.trainee-dashboard-skeleton__line--label-short {
+    width: 46px;
+    height: 10px;
+}
+
+.trainee-dashboard-skeleton__icon,
+.trainee-dashboard-skeleton__ring {
+    flex: 0 0 auto;
+    border-radius: 50%;
+}
+
+.trainee-dashboard-skeleton__icon {
+    width: 44px;
+    height: 44px;
+}
+
+.trainee-dashboard-skeleton__ring {
+    width: 64px;
+    height: 64px;
+}
+
+.trainee-dashboard-skeleton__stat {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.trainee-dashboard-skeleton__stat-value,
+.trainee-dashboard-skeleton__summary-value {
+    width: 32px;
+    height: 22px;
+}
+
+.trainee-dashboard-skeleton__feature-image {
+    min-height: 304px;
+    border-radius: 0;
+}
+
+.trainee-dashboard-skeleton__feature-content {
+    display: flex;
+    flex-direction: column;
+}
+
+.trainee-dashboard-skeleton__line--eyebrow {
+    width: 112px;
+    height: 12px;
+}
+
+.trainee-dashboard-skeleton__line--category {
+    width: 132px;
+    margin-top: 16px;
+}
+
+.trainee-dashboard-skeleton__line--title {
+    width: min(470px, 88%);
+    height: 26px;
+    margin-top: 8px;
+}
+
+.trainee-dashboard-skeleton__line--title-short {
+    width: min(310px, 62%);
+    height: 26px;
+    margin-top: 6px;
+}
+
+.trainee-dashboard-skeleton__feature-meta,
+.trainee-dashboard-skeleton__actions,
+.trainee-dashboard-skeleton__course-progress-copy {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.trainee-dashboard-skeleton__feature-meta {
+    margin-top: 22px;
+}
+
+.trainee-dashboard-skeleton__progress {
+    width: 100%;
+    height: 7px;
+    border-radius: 999px;
+}
+
+.trainee-dashboard-skeleton__feature-content > .trainee-dashboard-skeleton__progress {
+    margin-top: 9px;
+}
+
+.trainee-dashboard-skeleton__actions {
+    justify-content: flex-start;
+    margin-top: 22px;
+}
+
+.trainee-dashboard-skeleton__button {
+    width: 132px;
+    height: 44px;
+}
+
+.trainee-dashboard-skeleton__button--row {
+    width: 104px;
+    height: 40px;
+}
+
+.trainee-dashboard-skeleton__line--summary-label {
+    width: min(110px, 72%);
+}
+
+.trainee-dashboard-skeleton__section-title {
+    width: 150px;
+    height: 28px;
+}
+
+.trainee-dashboard-skeleton__section-link {
+    width: 72px;
+    height: 14px;
+}
+
+.trainee-dashboard-skeleton__line--course-title {
+    width: min(280px, 88%);
+    height: 16px;
+}
+
+.trainee-dashboard-skeleton__line--course-copy {
+    width: min(210px, 72%);
+    height: 11px;
+}
+
+.trainee-dashboard-skeleton__course-progress-copy {
+    margin-bottom: 8px;
+}
+
 @media (max-width: 1040px) {
     .trainee-dashboard-momentum {
         grid-template-columns: minmax(0, 1fr) auto;
@@ -622,6 +798,18 @@
     .trainee-dashboard-quick-actions__links a {
         justify-content: space-between;
     }
+
+    .trainee-dashboard-skeleton {
+        gap: 22px;
+    }
+
+    .trainee-dashboard-skeleton__feature-image {
+        min-height: 190px;
+    }
+
+    .trainee-dashboard-skeleton__button--row {
+        width: 100%;
+    }
 }
 
 @media (max-width: 480px) {
@@ -659,6 +847,15 @@
         flex-direction: column;
         gap: 5px;
         padding: 14px;
+    }
+
+    .trainee-dashboard-skeleton__actions {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .trainee-dashboard-skeleton__button {
+        width: 100%;
     }
 }
 

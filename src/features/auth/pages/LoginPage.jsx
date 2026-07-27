@@ -30,7 +30,7 @@ function getRedirectPath(location, user) {
 
   if (role === ROLES.ADMIN) return "/admin/dashboard";
   if (role === ROLES.TMO) return "/admin/courses";
-  if (role === ROLES.SME) return "/admin/question-banks";
+  if (role === ROLES.SME) return "/admin/courses";
   if (role === ROLES.TRAINER) return "/staff/courses";
   if (role === ROLES.TRAINEE) return "/dashboard";
 

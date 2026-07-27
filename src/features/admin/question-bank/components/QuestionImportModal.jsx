@@ -20,6 +20,7 @@ const IMPORT_MODES = {
   IMAGE: 'image',
 }
 
+const IMAGE_IMPORT_ENABLED = false
 const IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/webp']
 const MAX_IMAGE_SIZE = 10 * 1024 * 1024
 const MAX_ATTACH_IMAGE_SIZE = 5 * 1024 * 1024
@@ -238,8 +239,9 @@ function applyImportRowEdit(row, values) {
   }
 }
 
-export function QuestionImportModal({ open, bank, existingQuestions = [], onClose, onImported }) {
+export function QuestionImportModal({ open, bank, courseId, existingQuestions = [], onClose, onImported }) {
   const toast = useToast()
+  const isCourseQuestionsMode = Boolean(courseId)
   const fileInputRef = useRef(null)
   const imageInputRef = useRef(null)
   const importMediaPreviewUrls = useRef(new Set())
@@ -278,7 +280,7 @@ export function QuestionImportModal({ open, bank, existingQuestions = [], onClos
     }
   }), [imageQuestions])
   const validImageRows = useMemo(() => imageRows.filter((row) => !row.errors?.length), [imageRows])
-  const isArchived = bank?.status === 'archived'
+  const isArchived = !isCourseQuestionsMode && bank?.status === 'archived'
   const sourceLabel = importMode === IMPORT_MODES.JSON
     ? 'JSON data'
     : importMode === IMPORT_MODES.IMAGE
@@ -385,6 +387,10 @@ export function QuestionImportModal({ open, bank, existingQuestions = [], onClos
   }
 
   async function handleImagePreview() {
+    if (courseId) {
+      toast.error('Image import is not available in course/module mode yet.')
+      return
+    }
     const bankId = bank?.bankId || bank?.id
     if (!bankId) {
       toast.error('Question bank is missing.')
@@ -656,11 +662,15 @@ export function QuestionImportModal({ open, bank, existingQuestions = [], onClos
 
   async function handleCommit() {
     const bankId = bank?.bankId || bank?.id
-    if (!bankId) {
+    if (!courseId && !bankId) {
       toast.error('Question bank is missing.')
       return
     }
     if (importMode === IMPORT_MODES.IMAGE) {
+      if (courseId) {
+        toast.error('Image import is not available in course/module mode yet.')
+        return
+      }
       if (!validImageRows.length || validImageRows.length !== imageRows.length) {
         toast.error('Fix invalid image-imported questions before confirming.')
         return
@@ -703,7 +713,9 @@ export function QuestionImportModal({ open, bank, existingQuestions = [], onClos
     try {
       const payload = buildImportPayload(bankId, validRows)
       const importSource = importMode === IMPORT_MODES.JSON ? 'json_import' : 'excel_import'
-      const response = await questionBankService.importQuestionsBatch(payload.bankId, payload.rows, importSource)
+      const response = courseId
+        ? await questionBankService.importCourseQuestionsBatch(courseId, payload.rows, importSource)
+        : await questionBankService.importQuestionsBatch(payload.bankId, payload.rows, importSource)
       const created = response?.created ?? validRows.length
       toast.success(`Imported ${created} question${created === 1 ? '' : 's'}.`)
       onImported?.()
@@ -921,16 +933,18 @@ export function QuestionImportModal({ open, bank, existingQuestions = [], onClos
             >
               JSON
             </button>
-            <button
-              type="button"
-              className={`question-import__mode-btn ${importMode === IMPORT_MODES.IMAGE ? 'question-import__mode-btn--active' : ''}`}
-              onClick={() => handleModeChange(IMPORT_MODES.IMAGE)}
-              disabled={parsing || submitting}
-              role="tab"
-              aria-selected={importMode === IMPORT_MODES.IMAGE}
-            >
-              Image/OCR
-            </button>
+            {IMAGE_IMPORT_ENABLED && !isCourseQuestionsMode && (
+              <button
+                type="button"
+                className={`question-import__mode-btn ${importMode === IMPORT_MODES.IMAGE ? 'question-import__mode-btn--active' : ''}`}
+                onClick={() => handleModeChange(IMPORT_MODES.IMAGE)}
+                disabled={parsing || submitting}
+                role="tab"
+                aria-selected={importMode === IMPORT_MODES.IMAGE}
+              >
+                Image/OCR
+              </button>
+            )}
           </div>
 
           {importMode === IMPORT_MODES.FILE ? (
@@ -970,7 +984,7 @@ export function QuestionImportModal({ open, bank, existingQuestions = [], onClos
           ) : importMode === IMPORT_MODES.JSON ? (
             <>
               <p className="question-import__intro">
-                Paste a JSON array using the native question bank fields. Quiz lesson JSON fields such as title,
+                Paste a JSON array using the native question fields. Quiz lesson JSON fields such as title,
                 correct_answers, single_choice, and fill_in_the_blank are not supported here.
               </p>
 
@@ -989,10 +1003,10 @@ export function QuestionImportModal({ open, bank, existingQuestions = [], onClos
                 value={jsonText}
                 onChange={(event) => setJsonText(event.target.value)}
                 disabled={isArchived || parsing}
-                placeholder="Paste question bank JSON here"
+                placeholder="Paste question JSON here"
               />
             </>
-          ) : (
+          ) : IMAGE_IMPORT_ENABLED && importMode === IMPORT_MODES.IMAGE ? (
             <>
               <p className="question-import__intro">
                 Upload up to 5 images. The system will OCR and parse questions into a preview batch; review and edit every question before confirming.
@@ -1015,9 +1029,9 @@ export function QuestionImportModal({ open, bank, existingQuestions = [], onClos
                 </ul>
               )}
             </>
-          )}
+          ) : null}
 
-          {parsing && <div className="admin-loading">{importMode === IMPORT_MODES.IMAGE ? 'Generating image preview...' : 'Parsing file...'}</div>}
+          {parsing && <div className="admin-loading">{IMAGE_IMPORT_ENABLED && importMode === IMPORT_MODES.IMAGE ? 'Generating image preview...' : 'Parsing file...'}</div>}
           {parseError && <div className="auth-card__alert" style={{ marginTop: 12 }}>{parseError}</div>}
           {parseSuccess && <div className="question-import__valid">{parseSuccess}</div>}
           {!parsing && fileName && !parseError && importMode === IMPORT_MODES.FILE && (
@@ -1028,7 +1042,7 @@ export function QuestionImportModal({ open, bank, existingQuestions = [], onClos
         </div>
       )}
 
-      {step === 'preview' && importMode === IMPORT_MODES.IMAGE && renderImagePreview()}
+      {IMAGE_IMPORT_ENABLED && step === 'preview' && importMode === IMPORT_MODES.IMAGE && renderImagePreview()}
 
       {step === 'preview' && importMode !== IMPORT_MODES.IMAGE && (
         <div className="question-import">
@@ -1255,10 +1269,10 @@ export function QuestionImportModal({ open, bank, existingQuestions = [], onClos
               type="button"
               onClick={handleCommit}
               loading={submitting}
-              disabled={importMode === IMPORT_MODES.IMAGE ? (!validImageRows.length || validImageRows.length !== imageRows.length || isArchived) : (!validRows.length || isArchived)}
+              disabled={IMAGE_IMPORT_ENABLED && importMode === IMPORT_MODES.IMAGE ? (!validImageRows.length || validImageRows.length !== imageRows.length || isArchived) : (!validRows.length || isArchived)}
               leftIcon={<Upload size={16} />}
             >
-              Import {importMode === IMPORT_MODES.IMAGE ? validImageRows.length : validRows.length} question{(importMode === IMPORT_MODES.IMAGE ? validImageRows.length : validRows.length) === 1 ? '' : 's'}
+              Import {IMAGE_IMPORT_ENABLED && importMode === IMPORT_MODES.IMAGE ? validImageRows.length : validRows.length} question{(IMAGE_IMPORT_ENABLED && importMode === IMPORT_MODES.IMAGE ? validImageRows.length : validRows.length) === 1 ? '' : 's'}
             </Button>
           </>
         ) : (
@@ -1269,13 +1283,13 @@ export function QuestionImportModal({ open, bank, existingQuestions = [], onClos
                 Validate and preview JSON
               </Button>
             )}
-            {importMode === IMPORT_MODES.IMAGE && (
+            {IMAGE_IMPORT_ENABLED && importMode === IMPORT_MODES.IMAGE && (
               <Button type="button" onClick={handleImagePreview} disabled={isArchived || parsing || !imageFiles.length} leftIcon={<FileImage size={16} />}>
                 Generate preview
               </Button>
             )}
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: '#64748b', fontSize: 13 }}>
-              {importMode === IMPORT_MODES.IMAGE ? <FileImage size={14} /> : <FileSpreadsheet size={14} />} {sourceLabel}
+              {IMAGE_IMPORT_ENABLED && importMode === IMPORT_MODES.IMAGE ? <FileImage size={14} /> : <FileSpreadsheet size={14} />} {sourceLabel}
             </span>
           </>
         )}

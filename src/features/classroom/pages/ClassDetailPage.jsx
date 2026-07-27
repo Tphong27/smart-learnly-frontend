@@ -1,29 +1,43 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import {
-    AlertCircle,
-    BarChart3,
-    BookOpen,
-    ClipboardList,
-    Info,
-    Loader,
-    Trash2,
+  AlertCircle,
+  Ban,
+  BarChart3,
+  BookOpen,
+  ClipboardList,
+  Info,
+  Loader,
+  Eye,
+  RotateCcw,
+  Trash2,
 } from "lucide-react";
-import { Button } from "@/shared/components/ui";
+import { Button, Modal, useToast } from "@/shared/components/ui";
 import { classService } from "@/services";
-import { ROLES } from "@/shared/constants/roles";
+import { canManageClasses, ROLES } from "@/shared/constants/roles";
 import { ClassStatusBadge } from "../components/ClassStatusBadge";
 import { ClassOverviewTab } from "../components/ClassOverviewTab";
 import { ClassCurriculumTab } from "../components/ClassCurriculumTab";
+import { ClassAnalyticsTab } from "../components/ClassAnalyticsTab";
 import { getCurrentRole } from "@/shared/utils/auth";
+import { toDateInputValue } from "@/shared/utils/date";
+import {
+  CLASS_STATUSES,
+  normalizeClassStatus,
+} from "../constants/classLifecycle";
 
-export function ClassDetailPage() {
-    const { classId } = useParams();
-    const navigate = useNavigate();
+export function ClassDetailPage({
+  routeBase = "/staff/classrooms",
+  coursePreviewBase = "/staff/courses",
+}) {
+  const { classId } = useParams();
+  const navigate = useNavigate();
+  const toast = useToast();
 
-    const userRole = getCurrentRole();
-    const isTrainer = userRole === ROLES.TRAINER;
-    const isTmo = userRole === ROLES.TMO;
+  const userRole = getCurrentRole();
+  const isTrainer = userRole === ROLES.TRAINER;
+  const isTmo = userRole === ROLES.TMO;
+  const isClassManager = canManageClasses(userRole);
 
     const [classData, setClassData] = useState(null);
     // Cho phép deep-link đến 1 tab qua query string ?tab=curriculum (ví dụ khi
@@ -44,219 +58,485 @@ export function ClassDetailPage() {
     const [error, setError] = useState("");
     const [refreshKey, setRefreshKey] = useState(0);
 
-    function reloadClass() {
-        setLoading(true);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  const [lifecycleDialog, setLifecycleDialog] = useState(null);
+  const [lifecycleSubmitting, setLifecycleSubmitting] = useState(false);
+
+  const [restoreDates, setRestoreDates] = useState({
+    startDate: "",
+    endDate: "",
+  });
+
+  function reloadClass() {
+    setLoading(true);
+    setError("");
+    setRefreshKey((current) => current + 1);
+  }
+
+  function selectTab(tab) {
+    const nextParams = new URLSearchParams(searchParams);
+
+    if (tab === "overview") {
+      nextParams.delete("tab");
+    } else {
+      nextParams.set("tab", tab);
+    }
+
+    setSearchParams(nextParams, {
+      replace: true,
+    });
+  }
+
+  function openEditClass() {
+    if (!classId || !isClassManager) return;
+
+    navigate(`${routeBase}/${classId}/edit`);
+  }
+
+  function openTraineePreview() {
+    if (!classData?.courseId || !classId) return;
+
+    const params = new URLSearchParams();
+    params.set("classId", classId);
+    const workspacePath = `${routeBase}/${classId}/workspace`;
+
+    params.set(
+      "returnTo",
+      activeTab === "overview"
+        ? workspacePath
+        : `${workspacePath}?tab=${activeTab}`,
+    );
+    navigate(
+      `${coursePreviewBase}/${classData.courseId}/preview?${params.toString()}`,
+    );
+  }
+
+  useEffect(() => {
+    if (!classId) {
+      return undefined;
+    }
+
+    let mounted = true;
+
+    const request = isTrainer
+      ? classService.getTrainer(classId)
+      : classService.getAdmin(classId);
+
+    request
+      .then((data) => {
+        if (!mounted) return;
+
+        setClassData(data);
         setError("");
-        setRefreshKey((current) => current + 1);
-    }
+      })
+      .catch((err) => {
+        if (!mounted) return;
 
-    function openAnalytics() {
-        navigate(`/staff/classrooms/${classId}/analytics`);
-    }
-
-    useEffect(() => {
-        if (!classId) {
-            return undefined;
+        setError(err.message || "Can not load class information");
+        setClassData(null);
+      })
+      .finally(() => {
+        if (mounted) {
+          setLoading(false);
         }
+      });
 
-        let mounted = true;
+    return () => {
+      mounted = false;
+    };
+  }, [classId, refreshKey, isTrainer]);
 
-        const request = isTrainer
-            ? classService.getTrainer(classId)
-            : classService.getAdmin(classId);
+  function openCancelDialog() {
+    setLifecycleDialog("cancel");
+  }
 
-        request
-            .then((data) => {
-                if (!mounted) return;
+  function openRestoreDialog() {
+    setRestoreDates({
+      startDate: toDateInputValue(classData?.startDate),
+      endDate: toDateInputValue(classData?.endDate),
+    });
 
-                setClassData(data);
-                setError("");
-            })
-            .catch((err) => {
-                if (!mounted) return;
+    setLifecycleDialog("restore");
+  }
 
-                setError(err.message || "Can not load class information");
-                setClassData(null);
-            })
-            .finally(() => {
-                if (mounted) {
-                    setLoading(false);
-                }
-            });
-
-        return () => {
-            mounted = false;
-        };
-    }, [classId, refreshKey, isTrainer]);
-
-    async function deleteClass() {
-        const confirmed = window.confirm(
-            "Do you want to soft delete this class? This action cannot be undone.",
-        );
-
-        if (!confirmed) return;
-
-        try {
-            await classService.delete(classId);
-            navigate("/staff/classrooms");
-        } catch (err) {
-            setError(err.message || "Can not delete class");
-        }
+  function closeLifecycleDialog() {
+    if (lifecycleSubmitting) {
+      return;
     }
 
-    function handleClassUpdated(updatedClass) {
-        setClassData(updatedClass);
+    setLifecycleDialog(null);
+  }
+
+  async function confirmCancelClass() {
+    if (!classId) {
+      return;
     }
 
-    function openAssignments() {
-        const params = new URLSearchParams();
-        if (classData.courseId) {
-            params.set("courseId", classData.courseId);
-        }
-        if (classId) {
-            params.set("classId", classId);
-        }
-        const query = params.toString();
-        navigate(`/staff/assignments${query ? `?${query}` : ""}`);
+    setLifecycleSubmitting(true);
+    setError("");
+
+    try {
+      const cancelledClass = await classService.cancel(classId);
+
+      setClassData(cancelledClass);
+      setLifecycleDialog(null);
+
+      toast.success("Class cancelled successfully");
+    } catch (err) {
+      const message = err?.message || "Can not cancel class";
+
+      setError(message);
+      toast.error(message);
+    } finally {
+      setLifecycleSubmitting(false);
+    }
+  }
+
+  async function confirmRestoreClass() {
+    if (!classId) {
+      return;
     }
 
-    if (loading) {
-        return (
-            <div className="page-loading">
-                <Loader className="spinner" size={40} />
-                <p>Loading class information...</p>
-            </div>
-        );
+    if (!restoreDates.startDate || !restoreDates.endDate) {
+      toast.error("Please select the start date and end date");
+      return;
     }
 
-    if (error && !classData) {
-        return (
-            <div className="page-error">
-                <AlertCircle size={48} />
-                <p>{error}</p>
-                <Button variant="secondary" onClick={reloadClass}>
-                    Try Again
-                </Button>
-            </div>
-        );
+    if (restoreDates.endDate < restoreDates.startDate) {
+      toast.error("End date cannot be before start date");
+      return;
     }
 
-    if (!classData) {
-        return (
-            <div className="page-error">
-                <AlertCircle size={48} />
-                <p>Class not found</p>
-            </div>
-        );
-    }
+    setLifecycleSubmitting(true);
+    setError("");
 
+    try {
+      const restoredClass = await classService.restore(classId, restoreDates);
+      setClassData(restoredClass);
+      setLifecycleDialog(null);
+
+      toast.success(`Class restored as ${restoredClass.status}`);
+    } catch (err) {
+      const message = err?.message || "Can not restore class";
+
+      setError(message);
+      toast.error(message);
+    } finally {
+      setLifecycleSubmitting(false);
+    }
+  }
+
+  async function deleteClass() {
+    const confirmed = window.confirm(
+      "Do you want to soft delete this class? This action cannot be undone.",
+    );
+
+    if (!confirmed) return;
+
+    try {
+      await classService.delete(classId);
+      navigate(routeBase);
+    } catch (err) {
+      setError(err.message || "Can not delete class");
+    }
+  }
+
+  function openAssignments() {
+    const params = new URLSearchParams();
+    if (classData.courseId) {
+      params.set("courseId", classData.courseId);
+    }
+    if (classId) {
+      params.set("classId", classId);
+    }
+    const query = params.toString();
+    navigate(`/staff/assignments${query ? `?${query}` : ""}`);
+  }
+
+  if (loading) {
     return (
-        <section className="trainer-class-workspace">
-            <div className="workspace-header">
-                <div>
-                    <h1 className="workspace-header__title">
-                        {classData.className}
-                    </h1>
+      <div className="page-loading">
+        <Loader className="spinner" size={40} />
+        <p>Loading class information...</p>
+      </div>
+    );
+  }
 
-                    <div className="workspace-header__info">
-                        <span>{classData.courseTitle}</span>
-                        <span>•</span>
-                        <ClassStatusBadge status={classData.status} />
-                    </div>
-                </div>
+  if (error && !classData) {
+    return (
+      <div className="page-error">
+        <AlertCircle size={48} />
+        <p>{error}</p>
+        <Button variant="secondary" onClick={reloadClass}>
+          Try Again
+        </Button>
+      </div>
+    );
+  }
 
-                {(isTrainer || isTmo) && (
-                    <div className="workspace-header__actions">
-                        <button
-                            className="class-analytics-button"
-                            type="button"
-                            onClick={openAnalytics}
-                        >
-                            <BarChart3 size={16} strokeWidth={2.2} />
-                            Analytics
-                        </button>
+  if (!classData) {
+    return (
+      <div className="page-error">
+        <AlertCircle size={48} />
+        <p>Class not found</p>
+      </div>
+    );
+  }
 
-                        <button
-                            className="class-assignment-button"
-                            type="button"
-                            onClick={openAssignments}
-                        >
-                            <ClipboardList size={16} strokeWidth={2.2} />
-                            Assignment
-                        </button>
+  const normalizedStatus = normalizeClassStatus(classData.status);
 
-                        {isTmo && (
-                            <Button
-                                type="button"
-                                variant="delete"
-                                size="icon"
-                                title="Soft Delete"
-                                aria-label="Soft Delete class"
-                                onClick={deleteClass}
-                            >
-                                <Trash2 size={16} strokeWidth={2.2} />
-                            </Button>
-                        )}
-                    </div>
-                )}
-            </div>
+  const canCancelClass =
+    isClassManager &&
+    (normalizedStatus === CLASS_STATUSES.UPCOMING ||
+      normalizedStatus === CLASS_STATUSES.ONGOING);
 
-            {error && (
-                <div className="form-error">
-                    <AlertCircle size={20} />
-                    <span>{error}</span>
-                </div>
+  const canRestoreClass =
+    isClassManager && normalizedStatus === CLASS_STATUSES.CANCELLED;
+
+  return (
+    <section className="trainer-class-workspace">
+      <div className="workspace-header">
+        <div className="workspace-header__content">
+          <h1 className="workspace-header__title">{classData.className}</h1>
+
+          <div className="workspace-header__info">
+            <span>{classData.courseTitle}</span>
+            <span aria-hidden="true">•</span>
+            <ClassStatusBadge status={classData.status} />
+          </div>
+        </div>
+
+        {(isTrainer || isClassManager) && (
+          <div className="workspace-header__actions">
+            <Button
+              type="button"
+              leftIcon={<Eye size={17} />}
+              onClick={openTraineePreview}
+            >
+              View as trainee
+            </Button>
+
+            {(isTrainer || isTmo) && (
+              <Button
+                type="button"
+                leftIcon={<ClipboardList size={17} />}
+                onClick={openAssignments}
+              >
+                Assignment
+              </Button>
             )}
 
-            <div
-                className="workspace-tabs"
-                role="tablist"
-                aria-label="Class workspace tabs"
+            {canCancelClass && (
+              <Button
+                type="button"
+                variant="danger"
+                leftIcon={<Ban size={17} />}
+                onClick={openCancelDialog}
+              >
+                Cancel class
+              </Button>
+            )}
+
+            {canRestoreClass && (
+              <Button
+                type="button"
+                variant="success"
+                leftIcon={<RotateCcw size={17} />}
+                onClick={openRestoreDialog}
+              >
+                Restore class
+              </Button>
+            )}
+
+            {isClassManager && (
+              <Button
+                type="button"
+                variant="delete"
+                size="icon"
+                title="Soft Delete"
+                aria-label="Soft Delete class"
+                onClick={deleteClass}
+              >
+                <Trash2 size={16} strokeWidth={2.2} />
+              </Button>
+            )}
+          </div>
+        )}
+      </div>
+
+      {error && (
+        <div className="form-error">
+          <AlertCircle size={20} />
+          <span>{error}</span>
+        </div>
+      )}
+
+      <div
+        className="workspace-tabs"
+        role="tablist"
+        aria-label="Class workspace tabs"
+      >
+        <button
+          type="button"
+          role="tab"
+          aria-selected={activeTab === "overview"}
+          className={
+            activeTab === "overview"
+              ? "workspace-tabs__item is-active"
+              : "workspace-tabs__item"
+          }
+          onClick={() => selectTab("overview")}
+        >
+          <Info size={16} />
+          Overview
+        </button>
+
+        {isTrainer && (
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === "curriculum"}
+            className={
+              activeTab === "curriculum"
+                ? "workspace-tabs__item is-active"
+                : "workspace-tabs__item"
+            }
+            onClick={() => selectTab("curriculum")}
+          >
+            <BookOpen size={16} />
+            Curriculum
+          </button>
+        )}
+
+        <button
+          type="button"
+          role="tab"
+          aria-selected={activeTab === "analytics"}
+          className={
+            activeTab === "analytics"
+              ? "workspace-tabs__item is-active"
+              : "workspace-tabs__item"
+          }
+          onClick={() => selectTab("analytics")}
+        >
+          <BarChart3 size={16} />
+          Analytics
+        </button>
+      </div>
+
+      <div className="class-workspace-panel">
+        {activeTab === "analytics" ? (
+          <ClassAnalyticsTab classId={classId} isTrainer={isTrainer} />
+        ) : activeTab === "curriculum" && isTrainer ? (
+          <ClassCurriculumTab classId={classId} />
+        ) : (
+          <ClassOverviewTab
+            classData={classData}
+            onEdit={openEditClass}
+            readOnly={!isClassManager}
+          />
+        )}
+      </div>
+
+      <Modal
+        open={Boolean(lifecycleDialog)}
+        size="sm"
+        title={lifecycleDialog === "cancel" ? "Cancel class" : "Restore class"}
+        description={
+          lifecycleDialog === "cancel"
+            ? "The class history and enrollments will be preserved."
+            : "The class status will be recalculated from the selected dates."
+        }
+        closeDisabled={lifecycleSubmitting}
+        closeOnOverlayClick={!lifecycleSubmitting}
+        onClose={closeLifecycleDialog}
+        footer={
+          <>
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={lifecycleSubmitting}
+              onClick={closeLifecycleDialog}
             >
-                <button
-                    type="button"
-                    role="tab"
-                    aria-selected={activeTab === "overview"}
-                    className={
-                        activeTab === "overview"
-                            ? "workspace-tabs__item is-active"
-                            : "workspace-tabs__item"
-                    }
-                    onClick={() => setActiveTab("overview")}
-                >
-                    <Info size={16} />
-                    Overview
-                </button>
-                {isTrainer && (
-                    <button
-                        type="button"
-                        role="tab"
-                        aria-selected={activeTab === "curriculum"}
-                        className={
-                            activeTab === "curriculum"
-                                ? "workspace-tabs__item is-active"
-                                : "workspace-tabs__item"
-                        }
-                        onClick={() => setActiveTab("curriculum")}
-                    >
-                        <BookOpen size={16} />
-                        Curriculum
-                    </button>
-                )}
+              Close
+            </Button>
+
+            {lifecycleDialog === "cancel" ? (
+              <Button
+                type="button"
+                variant="danger"
+                loading={lifecycleSubmitting}
+                loadingLabel="Cancelling..."
+                onClick={confirmCancelClass}
+              >
+                Confirm cancellation
+              </Button>
+            ) : (
+              <Button
+                type="button"
+                variant="success"
+                loading={lifecycleSubmitting}
+                loadingLabel="Restoring..."
+                onClick={confirmRestoreClass}
+              >
+                Restore class
+              </Button>
+            )}
+          </>
+        }
+      >
+        {lifecycleDialog === "cancel" ? (
+          <p>
+            Future class sessions will be removed. Existing enrollments,
+            transactions and historical sessions will not be deleted. This
+            action does not automatically issue a refund.
+          </p>
+        ) : (
+          <div className="form-row">
+            <div className="form-group">
+              <label htmlFor="restoreStartDate">Start date</label>
+
+              <input
+                id="restoreStartDate"
+                type="date"
+                value={restoreDates.startDate}
+                disabled={lifecycleSubmitting}
+                onChange={(event) =>
+                  setRestoreDates((current) => ({
+                    ...current,
+                    startDate: event.target.value,
+                  }))
+                }
+              />
             </div>
 
-            <div className="workspace-content">
-                {activeTab === "curriculum" && isTrainer ? (
-                    <ClassCurriculumTab classId={classId} />
-                ) : (
-                    <ClassOverviewTab
-                        classData={classData}
-                        classId={classId}
-                        onClassUpdated={handleClassUpdated}
-                        readOnly={isTrainer}
-                    />
-                )}
+            <div className="form-group">
+              <label htmlFor="restoreEndDate">End date</label>
+
+              <input
+                id="restoreEndDate"
+                type="date"
+                value={restoreDates.endDate}
+                disabled={lifecycleSubmitting}
+                onChange={(event) =>
+                  setRestoreDates((current) => ({
+                    ...current,
+                    endDate: event.target.value,
+                  }))
+                }
+              />
             </div>
-        </section>
-    );
+
+            <p>
+              Future dates produce Upcoming. A date range containing today
+              produces Ongoing. Past dates produce Completed.
+            </p>
+          </div>
+        )}
+      </Modal>
+    </section>
+  );
 }

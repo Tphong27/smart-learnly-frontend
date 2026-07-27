@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Modal, Button, useToast } from "@/shared/components/ui";
 import { transactionService, orderService } from "@/services";
 import { StatusBadge } from "@/shared/components/status";
+import Pagination from "@/shared/components/Pagination";
 import { InvoiceDetailModal } from "../components/InvoiceDetailModal";
 import {
   formatAmount,
@@ -75,6 +76,7 @@ export function MyTransactionsPage() {
   const toast = useToast();
   const [items, setItems] = useState([]);
   const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [totalPages, setTotalPages] = useState(0);
   const [totalItems, setTotalItems] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -92,7 +94,7 @@ export function MyTransactionsPage() {
       try {
         const data = await transactionService.list({
           page: pageRequest,
-          size: DEFAULT_PAGE_SIZE,
+          size: pageSize,
         });
         if (cancelled) return;
         setItems(data.items || []);
@@ -111,16 +113,12 @@ export function MyTransactionsPage() {
     return () => {
       cancelled = true;
     };
-  }, [pageRequest, toast, refreshKey]);
+  }, [pageRequest, pageSize, toast, refreshKey]);
 
   return (
     <div className="history-page checkout-history-page">
       <header className="history-page__header">
         <h1>Transaction history</h1>
-        <p>
-          Review your payments and download invoices for successful
-          transactions.
-        </p>
       </header>
       <section className="history-card">
         <div className="history-toolbar">
@@ -201,31 +199,20 @@ export function MyTransactionsPage() {
           </div>
         )}
 
-        {totalPages > 1 && (
-          <div className="history-pagination">
-            <span style={{ color: "#64748b", fontSize: 13 }}>
-              Page {page + 1} / {totalPages}
-            </span>
-            <div style={{ display: "flex", gap: 8 }}>
-              <button
-                type="button"
-                className="history-pagination__btn"
-                onClick={() => setPageRequest(page - 1)}
-                disabled={page === 0}
-              >
-                Previous
-              </button>
-              <button
-                type="button"
-                className="history-pagination__btn"
-                onClick={() => setPageRequest(page + 1)}
-                disabled={page + 1 >= totalPages}
-              >
-                Next
-              </button>
-            </div>
-          </div>
-        )}
+        <Pagination
+          page={page + 1}
+          totalPages={totalPages}
+          totalItems={totalItems}
+          size={pageSize}
+          disabled={loading}
+          ariaLabel="Transaction history pagination"
+          className="my-transactions-page__pagination"
+          onPageChange={(nextPage) => setPageRequest(nextPage - 1)}
+          onSizeChange={(nextSize) => {
+            setPageSize(nextSize);
+            setPageRequest(0);
+          }}
+        />
       </section>
       <InvoiceDetailModal
         open={Boolean(invoiceTarget)}

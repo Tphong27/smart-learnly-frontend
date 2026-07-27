@@ -184,9 +184,14 @@ apiClient.interceptors.response.use(
     const originalRequest = error.config
     
     if (!error.response) {
+      const isTimeout =
+        error.code === 'ECONNABORTED' ||
+        String(error.message || '').toLowerCase().includes('timeout')
       return Promise.reject({
-        code: 'NETWORK_ERROR',
-        message: 'Can not connect to server. Please check your internet connection.',
+        code: isTimeout ? 'REQUEST_TIMEOUT' : 'NETWORK_ERROR',
+        message: isTimeout
+          ? 'The request took too long to finish. Please try again with a smaller file or shorter prompt.'
+          : 'Can not connect to server. Please check your internet connection.',
         originalError: error,
       })
     }

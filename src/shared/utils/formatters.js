@@ -71,7 +71,7 @@ export function formatDate(value, locale = DEFAULT_LOCALE, options) {
   return date.toLocaleDateString(locale, options);
 }
 
-export function formatDateTime(value, locale = DEFAULT_LOCALE) {
+export function formatDateTime(value, locale = DEFAULT_LOCALE, options) {
   if (!value) return "--";
 
   const date = new Date(value);
@@ -80,16 +80,25 @@ export function formatDateTime(value, locale = DEFAULT_LOCALE) {
     return "--";
   }
 
-  return date.toLocaleString(locale);
+  return date.toLocaleString(locale, options);
 }
 
 export function formatTime(value, locale = DEFAULT_LOCALE) {
-  if (!value) return "--";
+  if (!value) return "--:--";
+
+  const text = String(value).trim();
+
+  // Supports LocalTime returned by Spring Boot: HH:mm or HH:mm:ss.
+  const localTimeMatch = /^(\d{2}):(\d{2})(?::\d{2}(?:\.\d+)?)?$/.exec(text);
+
+  if (localTimeMatch) {
+    return `${localTimeMatch[1]}:${localTimeMatch[2]}`;
+  }
 
   const date = new Date(value);
 
   if (Number.isNaN(date.getTime())) {
-    return "--";
+    return "--:--";
   }
 
   return date.toLocaleTimeString(locale, {

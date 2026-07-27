@@ -109,9 +109,9 @@ export const flashcardService = {
     return Array.isArray(items) ? items : [];
   },
 
-  async importQuestionBankToStaging(setId, questionIds) {
+  async importCourseQuestionsToStaging(setId, questionIds) {
     const response = await apiClient.post(
-      `/admin/flashcard-sets/${setId}/staging/import-question-bank`,
+      `/admin/flashcard-sets/${setId}/staging/import-course-questions`,
       { questionIds },
     );
     return unwrap(response);
@@ -129,6 +129,8 @@ export const flashcardService = {
     const response = await apiClient.post(
       `/admin/flashcard-sets/${setId}/staging/generate-from-file`,
       toGenerationFormData(payload),
+      // Scanned documents can require image reading followed by card generation.
+      { timeout: 390000 },
     );
     return unwrap(response);
   },
@@ -145,6 +147,7 @@ export const flashcardService = {
     const response = await apiClient.post(
       `/admin/flashcard-sets/${setId}/staging/generate-from-transcript-file`,
       toGenerationFormData(payload),
+      { timeout: 150000 },
     );
     return unwrap(response);
   },
@@ -169,6 +172,14 @@ export const flashcardService = {
   async rejectStagingCard(stagingCardId) {
     const response = await apiClient.delete(
       `/admin/flashcard-staging-cards/${stagingCardId}`,
+    );
+    return unwrap(response);
+  },
+
+  async rejectStagingCards(setId, stagingCardIds) {
+    const response = await apiClient.post(
+      `/admin/flashcard-sets/${setId}/staging/reject`,
+      { stagingCardIds },
     );
     return unwrap(response);
   },

@@ -29,15 +29,15 @@ export function AppLayout() {
 
     const workspaceLabel = (() => {
         const path = location.pathname;
+        if (/\/courses\/[^/]+\/questions/.test(path)) return "Course Questions";
         if (path.includes("/courses")) return "Course Management";
-        if (path.includes("/question-banks")) return "Question Bank";
         if (path.includes("/users-management")) return "Users & Roles";
         if (path.includes("/categories")) return "Categories";
         if (path.includes("/transactions")) return "Transactions";
         if (path.includes("/audit-log")) return "System Activity Log";
         if (path.includes("/settings")) return "System Settings";
         if (path.includes("/classrooms")) return "Classrooms";
-        if (path.includes("/tests")) return "Tests Management";
+        if (path.includes("/tests")) return "Manage test";
         if (path.includes("/flashcards")) return "Flashcards";
         if (path.includes("/dashboard")) return "Dashboard";
         return "Workspace";

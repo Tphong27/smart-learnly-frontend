@@ -1,94 +1,270 @@
 import { z } from "zod";
+import { getTodayDateKey } from "@/shared/utils/date";
+import { isGoogleMeetUrl } from "@/shared/utils/googleMeetUrl";
+import { WEEK_DAY_OPTIONS } from "@/shared/constants/week-days";
+import {
+  CLASS_STATUSES,
+  normalizeClassStatus,
+} from "../constants/classLifecycle";
 
-function optionalUuid(message) {
+function isNotPastDate(value) {
+  if (!value) {
+    return true;
+  }
+
+  return value >= getTodayDateKey();
+}
+
+function createRequiredDateSchema({ fieldLabel, allowPastDates }) {
   return z
     .string()
-    .optional()
-    .or(z.literal(""))
+    .min(1, `Please select ${fieldLabel}`)
     .refine(
-      (value) => {
-        if (!value) return true;
-        return z.string().uuid().safeParse(value).success;
-      },
-      { message },
+      (value) => allowPastDates || isNotPastDate(value),
+      `${fieldLabel} must not be in the past`,
     );
 }
 
-export function todayString() {
-  const now = new Date();
-  const timezoneOffset = now.getTimezoneOffset() * 60000;
+const TIME_PATTERN = /^(?:[01]\d|2[0-3]):[0-5]\d$/;
+const VALID_WEEK_DAYS = new Set(WEEK_DAY_OPTIONS.map((day) => day.value));
 
-  return new Date(now.getTime() - timezoneOffset).toISOString().slice(0, 10);
+function addIssue(context, path, message) {
+  context.addIssue({
+    code: z.ZodIssueCode.custom,
+    path,
+    message,
+  });
 }
 
-function isNotPastDate(value) {
-  if (!value) return true;
-  return value >= todayString();
+function validateScheduleDefinition(value, context) {
+  let schedule;
+
+  try {
+    schedule = JSON.parse(value);
+  } catch {
+    addIssue(context, ["scheduleDescription"], "Class schedule is invalid");
+    return;
+  }
+
+  if (!Array.isArray(schedule) || schedule.length === 0) {
+    addIssue(
+      context,
+      ["scheduleDescription"],
+      "Please select at least one class schedule",
+    );
+    return;
+  }
+
+  const configuredDays = new Set();
+
+  for (const day of schedule) {
+    if (!VALID_WEEK_DAYS.has(day?.dayOfWeek)) {
+      addIssue(
+        context,
+        ["scheduleDescription"],
+        "Class schedule contains an invalid weekday",
+      );
+      return;
+    }
+
+    if (configuredDays.has(day.dayOfWeek)) {
+      addIssue(
+        context,
+        ["scheduleDescription"],
+        `Schedule contains duplicate day: ${day.dayOfWeek}`,
+      );
+      return;
+    }
+
+    configuredDays.add(day.dayOfWeek);
+
+    if (!Array.isArray(day.slots) || day.slots.length === 0) {
+      addIssue(
+        context,
+        ["scheduleDescription"],
+        "Each selected day must contain at least one time slot",
+      );
+      return;
+    }
+
+    const validSlots = [];
+
+    for (const slot of day.slots) {
+      const startTime = String(slot?.startTime || "");
+      const endTime = String(slot?.endTime || "");
+
+      if (!TIME_PATTERN.test(startTime) || !TIME_PATTERN.test(endTime)) {
+        addIssue(
+          context,
+          ["scheduleDescription"],
+          "Schedule time must use HH:mm format",
+        );
+        return;
+      }
+
+      if (endTime <= startTime) {
+        addIssue(
+          context,
+          ["scheduleDescription"],
+          "Schedule end time must be after start time",
+        );
+        return;
+      }
+
+      validSlots.push({ startTime, endTime });
+    }
+
+    validSlots.sort((first, second) =>
+      first.startTime.localeCompare(second.startTime),
+    );
+
+    for (let index = 1; index < validSlots.length; index += 1) {
+      const previous = validSlots[index - 1];
+      const current = validSlots[index];
+
+      if (current.startTime < previous.endTime) {
+        addIssue(
+          context,
+          ["scheduleDescription"],
+          `Schedule slots overlap on ${day.dayOfWeek}`,
+        );
+        return;
+      }
+    }
+  }
 }
 
-export const classFormSchema = z
-  .object({
-    courseId: z
-      .string()
-      .uuid("Invalid course")
-      .min(1, "Please select a course"),
+export function createClassFormSchema({
+  mode = "create",
+  initialData = null,
+} = {}) {
+  const isEditMode = mode === "edit";
+  const currentStatus = normalizeClassStatus(initialData?.status);
+  const activeEnrollmentCount = Number(initialData?.activeEnrollmentCount || 0);
 
-    className: z
-      .string()
-      .min(3, "Class name must be at least 3 characters")
-      .max(255, "Class name must not exceed 255 characters")
-      .trim(),
+  return z
+    .object({
+      courseId: z
+        .string()
+        .trim()
+        .min(1, "Please select a course")
+        .uuid("Invalid course"),
 
-    trainerId: optionalUuid("Invalid trainer ID"),
+      className: z
+        .string()
+        .trim()
+        .min(3, "Class name must be at least 3 characters")
+        .max(255, "Class name must not exceed 255 characters"),
 
-    scheduleDescription: z
-      .string()
-      .max(2000, "Schedule description must not exceed 2000 characters")
-      .optional()
-      .or(z.literal("")),
+      trainerId: z
+        .string()
+        .trim()
+        .min(1, "Please select a trainer")
+        .uuid("Invalid trainer ID"),
 
-    startDate: z
-      .string()
-      .min(1, "Vui lòng chọn ngày bắt đầu")
-      .refine((value) => isNotPastDate(value), {
-        message: "Ngày bắt đầu không được là ngày trong quá khứ",
+      meetingUrl: z
+        .string()
+        .trim()
+        .min(1, "Google Meet URL is required")
+        .max(255, "Google Meet URL must not exceed 255 characters")
+        .refine(
+          isGoogleMeetUrl,
+          "Use the format https://meet.google.com/abc-defg-hij",
+        ),
+
+      scheduleDescription: z
+        .string()
+        .trim()
+        .min(1, "Please select at least one class schedule")
+        .max(2000, "Schedule description must not exceed 2000 characters"),
+
+      startDate: createRequiredDateSchema({
+        fieldLabel: "start date",
+        allowPastDates: isEditMode,
       }),
 
-    endDate: z
-      .string()
-      .min(1, "Vui lòng chọn ngày kết thúc")
-      .refine((value) => isNotPastDate(value), {
-        message: "Ngày kết thúc không được là ngày trong quá khứ",
+      endDate: createRequiredDateSchema({
+        fieldLabel: "end date",
+        allowPastDates: isEditMode,
       }),
 
-    maxStudents: z
-      .number()
-      .min(1, "Maximum students must be at least 1")
-      .max(500, "Maximum students must not exceed 500")
-      .int("Maximum students must be an integer"),
+      maxStudents: z
+        .number({
+          invalid_type_error: "Capacity must be a valid number",
+        })
+        .int("Capacity must be an integer")
+        .min(1, "Capacity must be at least 1")
+        .max(500, "Capacity must not exceed 500"),
 
-    price: z
-      .number({
-        required_error: "Class price is required",
-        invalid_type_error: "Class price must be a valid number",
-      })
-      .min(0, "Class price must be greater than or equal to 0"),
-  })
-  .refine(
-    (data) => {
-      if (!data.startDate || !data.endDate) return true;
+      price: z
+        .number({
+          required_error: "Class price is required",
+          invalid_type_error: "Class price must be a valid number",
+        })
+        .min(0, "Class price must be greater than or equal to 0")
+        .max(9999999999.99, "Class price is too large"),
+    })
+    .superRefine((data, context) => {
+      if (data.endDate < data.startDate) {
+        addIssue(context, ["endDate"], "End date cannot be before start date");
+      }
 
-      const start = new Date(data.startDate);
-      const end = new Date(data.endDate);
+      if (data.maxStudents < activeEnrollmentCount) {
+        addIssue(
+          context,
+          ["maxStudents"],
+          `Capacity cannot be lower than ${activeEnrollmentCount} active trainees`,
+        );
+      }
 
-      return end >= start;
-    },
-    {
-      message: "End date cannot be before start date",
-      path: ["endDate"],
-    },
-  );
+      validateScheduleDefinition(data.scheduleDescription, context);
 
-export function validateClassForm(data) {
-  return classFormSchema.parse(data);
+      if (!isEditMode) {
+        return;
+      }
+
+      if (currentStatus === CLASS_STATUSES.ONGOING) {
+        if (data.courseId !== String(initialData?.courseId || "")) {
+          addIssue(
+            context,
+            ["courseId"],
+            "Course cannot be changed while the class is ongoing",
+          );
+        }
+
+        if (
+          data.startDate !== String(initialData?.startDate || "").slice(0, 10)
+        ) {
+          addIssue(
+            context,
+            ["startDate"],
+            "Start date cannot be changed while the class is ongoing",
+          );
+        }
+
+        if (Number(data.price) !== Number(initialData?.price)) {
+          addIssue(
+            context,
+            ["price"],
+            "Class price cannot be changed while the class is ongoing",
+          );
+        }
+
+        if (data.endDate < getTodayDateKey()) {
+          addIssue(
+            context,
+            ["endDate"],
+            "End date of an ongoing class cannot be in the past",
+          );
+        }
+      }
+    });
 }
+
+export const classFormSchema = createClassFormSchema({
+  mode: "create",
+});
+
+export const classEditFormSchema = createClassFormSchema({
+  mode: "edit",
+});

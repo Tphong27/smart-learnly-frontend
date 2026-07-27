@@ -150,6 +150,16 @@ export const courseService = {
     return normalizePage(response);
   },
 
+  async getMostEnrolledCourse() {
+    const pageData = await this.getPublicCourses({
+      page: 0,
+      size: 1,
+      sort: "POPULAR",
+    });
+
+    return pageData.items[0] ?? null;
+  },
+
   async getPublicCoursesWithDetails(params = {}) {
     const pageData = await this.getPublicCourses(params);
 
@@ -316,14 +326,14 @@ export const courseService = {
 
   // Khớp với @GetMapping("/courses/{courseId}/sections")
   async getCourseContent(courseId) {
-    const response = await apiClient.get(`/admin/courses/${courseId}/sections`);
+    const response = await apiClient.get(`/admin/courses/${courseId}/modules`);
     return unwrap(response);
   },
 
   // Khớp với @PostMapping("/courses/{courseId}/sections")
   async createSection(courseId, payload) {
     const response = await apiClient.post(
-      `/admin/courses/${courseId}/sections`,
+      `/admin/courses/${courseId}/modules`,
       payload,
     );
     return unwrap(response);
@@ -332,7 +342,7 @@ export const courseService = {
   // Khớp với @PutMapping("/sections/{sectionId}")
   async updateSection(sectionId, payload) {
     const response = await apiClient.put(
-      `/admin/sections/${sectionId}`,
+      `/admin/modules/${sectionId}`,
       payload,
     );
     return unwrap(response);
@@ -340,14 +350,14 @@ export const courseService = {
 
   // Khớp với @DeleteMapping("/sections/{sectionId}")
   async deleteSection(sectionId) {
-    const response = await apiClient.delete(`/admin/sections/${sectionId}`);
+    const response = await apiClient.delete(`/admin/modules/${sectionId}`);
     return unwrap(response);
   },
 
   // Khớp với @PutMapping("/courses/{courseId}/sections/order")
   async reorderSections(courseId, orderedIds) {
     const response = await apiClient.put(
-      `/admin/courses/${courseId}/sections/order`,
+      `/admin/courses/${courseId}/modules/order`,
       { orderedIds },
     );
     return unwrap(response);
@@ -356,7 +366,7 @@ export const courseService = {
   // Khớp với @PostMapping("/sections/{sectionId}/lessons")
   async createLesson(sectionId, payload) {
     const response = await apiClient.post(
-      `/admin/sections/${sectionId}/lessons`,
+      `/admin/modules/${sectionId}/lessons`,
       payload,
     );
     return unwrap(response);
@@ -393,7 +403,7 @@ export const courseService = {
   // Khớp với @PutMapping("/sections/{sectionId}/lessons/order")
   async reorderLessons(sectionId, orderedIds) {
     const response = await apiClient.put(
-      `/admin/sections/${sectionId}/lessons/order`,
+      `/admin/modules/${sectionId}/lessons/order`,
       { orderedIds },
     );
     return unwrap(response);
@@ -401,9 +411,7 @@ export const courseService = {
 
   // Khớp với @GetMapping("/sections/{sectionId}/lessons")
   async getLessonsBySection(sectionId) {
-    const response = await apiClient.get(
-      `/admin/sections/${sectionId}/lessons`,
-    );
+    const response = await apiClient.get(`/admin/modules/${sectionId}/lessons`);
     const data = unwrap(response);
     return Array.isArray(data) ? data : data?.items || data?.content || [];
   },
@@ -444,25 +452,21 @@ export const courseService = {
     formData.append("video", videoFile);
     formData.append("replaceExisting", replaceExisting);
 
-    const response = await apiClient.post(
-      "/hls/upload",
-      formData,
-      {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-        timeout: 600000,
-        onUploadProgress:
-          typeof onUploadProgress === "function"
-            ? (event) => {
-                if (!event.total) return;
-                onUploadProgress(
-                  Math.min(100, Math.round((event.loaded * 100) / event.total)),
-                );
-              }
-            : undefined,
+    const response = await apiClient.post("/hls/upload", formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
       },
-    );
+      timeout: 600000,
+      onUploadProgress:
+        typeof onUploadProgress === "function"
+          ? (event) => {
+              if (!event.total) return;
+              onUploadProgress(
+                Math.min(100, Math.round((event.loaded * 100) / event.total)),
+              );
+            }
+          : undefined,
+    });
     return unwrap(response);
   },
 

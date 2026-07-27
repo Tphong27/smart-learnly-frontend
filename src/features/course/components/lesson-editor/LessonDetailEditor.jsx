@@ -5,6 +5,7 @@ import { assignmentService } from "@/services/flashtest.service";
 import { Button, useToast } from "@/shared/components/ui";
 import RichTextEditor from "@/shared/components/rich-text/RichTextEditor";
 import { FlashcardLessonEditor } from "@/features/course/components/flashcards/FlashcardLessonEditor";
+import { AssignmentAiDraftPanel } from "@/features/assignment/components/AssignmentAiDraftPanel";
 import {
     sanitizeLessonHtml,
     isEmptyLessonHtml,
@@ -47,6 +48,7 @@ import "@/features/course/course-lesson-editor.css";
 const LESSON_TYPE_LABELS = {
     VIDEO: "Video lecture",
     PDF: "Document / Reading",
+    RICH_TEXT: "Text lesson",
     QUIZ: "Quiz",
     ESSAY: "Essay assignment",
     FLASHCARD: "Flashcard",
@@ -62,6 +64,7 @@ function LessonEditorSection({
     stateLabel,
     expanded,
     onToggle,
+    className = "",
     children,
 }) {
     const StatusIcon =
@@ -77,7 +80,12 @@ function LessonEditorSection({
 
     return (
         <section
-            className={`sl-lesson-step sl-lesson-step--${state}${expanded ? " is-expanded" : ""}`}
+            className={[
+                "sl-lesson-step",
+                `sl-lesson-step--${state}`,
+                expanded ? "is-expanded" : "",
+                className,
+            ].filter(Boolean).join(" ")}
         >
             <h2 className="sl-lesson-step__heading" id={headingId}>
                 <button
@@ -152,6 +160,7 @@ export function LessonDetailEditor({ context }) {
         courseId,
         backPath,
         services,
+        videoAi,
         features = { audit: true, quizManager: true, flashcard: true },
     } = context || {};
 
@@ -197,8 +206,9 @@ export function LessonDetailEditor({ context }) {
     const [summary, setSummary] = useState("");
     const [isPreview, setIsPreview] = useState(false);
     const [status, setStatus] = useState("draft");
-    const [durationSeconds, setDurationSeconds] = useState(0);
+    const [durationMinutes, setDurationMinutes] = useState(0);
     const [assignment, setAssignment] = useState(null);
+    const [assignmentRubric, setAssignmentRubric] = useState("");
     const [assignmentLoading, setAssignmentLoading] = useState(false);
     const [assignmentSaving, setAssignmentSaving] = useState(false);
     const [assignmentFile, setAssignmentFile] = useState(null);
@@ -210,6 +220,22 @@ export function LessonDetailEditor({ context }) {
     const markChanged = () => {
         setHasChanges(true);
         setSaveNotice(null);
+    };
+
+    const applyAiSuggestions = ({ title: nextTitle, description, durationMinutes: nextDuration }) => {
+        if (nextTitle?.trim()) {
+            setTitle(nextTitle.trim());
+            setTitleError("");
+        }
+        if (description?.trim()) {
+            setSummary(sanitizeLessonHtml(description.trim()));
+            setSummaryError("");
+        }
+        if (Number(nextDuration) > 0) {
+            setDurationMinutes(Math.ceil(Number(nextDuration)));
+        }
+        setExpandedSection("basic");
+        markChanged();
     };
 
     const showSaveNotice = (notice) => {
@@ -300,7 +326,16 @@ export function LessonDetailEditor({ context }) {
                         ),
                     );
                     setStatus(normalizeLessonStatus(lessonData.status));
-                    setDurationSeconds(Number(lessonData.durationSeconds || 0));
+                    setDurationMinutes(
+                        lessonData.durationSeconds
+                            ? Math.max(
+                                  1,
+                                  Math.ceil(
+                                      Number(lessonData.durationSeconds) / 60,
+                                  ),
+                              )
+                            : 0,
+                    );
 
                     const typeFromServer = String(
                         lessonData.lessonType || lessonData.type || "VIDEO",
@@ -315,6 +350,11 @@ export function LessonDetailEditor({ context }) {
                         setLessonType("QUIZ");
                     } else if (typeFromServer === "FLASHCARD") {
                         setLessonType("FLASHCARD");
+                    } else if (
+                        typeFromServer === "RICH_TEXT" ||
+                        typeFromServer === "TEXT"
+                    ) {
+                        setLessonType("RICH_TEXT");
                     } else if (
                         typeFromServer === "ESSAY" ||
                         typeFromServer === "ASSIGNMENT"
@@ -356,6 +396,7 @@ export function LessonDetailEditor({ context }) {
                 const loaded = await assignmentService.getByLesson(lessonId);
                 if (cancelled) return;
                 setAssignment(loaded);
+                setAssignmentRubric(loaded?.rubric || "");
                 setExistingAssignmentFile(
                     loaded?.instructionFileUrl
                         ? {
@@ -372,6 +413,7 @@ export function LessonDetailEditor({ context }) {
             } catch {
                 if (cancelled) return;
                 setAssignment(null);
+                setAssignmentRubric("");
                 setExistingAssignmentFile(null);
             } finally {
                 if (!cancelled) setAssignmentLoading(false);
@@ -640,7 +682,7 @@ export function LessonDetailEditor({ context }) {
                 content,
                 videoUrl: lessonType === "VIDEO" ? resolvedVideoUrl : null,
                 attachmentUrl: lessonType === "PDF" ? uploadedFileUrl : null,
-                durationSeconds: Number(durationSeconds || 0),
+                durationSeconds: Math.round(Number(durationMinutes || 0) * 60),
                 isPreview,
                 status: normalizeLessonStatus(status),
                 resources: normalizedResources,
@@ -714,6 +756,7 @@ export function LessonDetailEditor({ context }) {
             const payload = {
                 title: nextTitle,
                 description,
+                rubric: assignmentRubric,
                 instructionFileUrl:
                     uploaded?.fileUrl || existingAssignmentFile?.fileUrl,
                 instructionFileName:
@@ -769,7 +812,7 @@ export function LessonDetailEditor({ context }) {
     })();
     const detailsComplete = basicComplete && descriptionComplete;
     const settingsComplete =
-        Boolean(status) && Number(durationSeconds || 0) >= 0;
+        Boolean(status) && Number(durationMinutes || 0) >= 0;
     const totalSections = lessonType === "FLASHCARD" ? 2 : 3;
     const completedSections =
         lessonType === "FLASHCARD"
@@ -792,7 +835,7 @@ export function LessonDetailEditor({ context }) {
     const statusLabel = statusMeta?.label || status;
     const materialSummary = (() => {
         if (videoUploaderBusy)
-            return "Video upload or HLS processing in progress";
+            return "The lesson video is still being prepared";
         if (lessonType === "VIDEO") {
             return videoUrl
                 ? `${resources.length} supporting resource${resources.length === 1 ? "" : "s"}`
@@ -812,7 +855,10 @@ export function LessonDetailEditor({ context }) {
                 ? "Assignment file added"
                 : "Assignment file is optional";
         }
-        return "Manage the flashcard set and cards";
+        if (lessonType === "FLASHCARD") {
+            return "Manage the flashcard set and cards";
+        }
+        return `${resources.length} supporting resource${resources.length === 1 ? "" : "s"}`;
     })();
 
     if (pageLoading)
@@ -996,33 +1042,53 @@ export function LessonDetailEditor({ context }) {
                                 expanded={expandedSection === "material"}
                                 onToggle={() => setExpandedSection((current) => current === "material" ? "" : "material")}
                             >
-                                <div className="flashcard-actions" style={{ marginBottom: "16px" }}>
-    <button
-        type="button"
-        className={`flashcard-btn ${
-            flashcardSection === "current"
-                ? "flashcard-btn--primary"
-                : ""
-        }`}
-        onClick={() => setFlashcardSection("current")}
-    >
-        Current Flashcards
-    </button>
+                                <div
+                                    className="flashcard-section-tabs"
+                                    role="tablist"
+                                    aria-label="Flashcard sections"
+                                >
+                                    <button
+                                        id="flashcard-current-tab"
+                                        type="button"
+                                        role="tab"
+                                        aria-selected={
+                                            flashcardSection === "current"
+                                        }
+                                        aria-controls="flashcard-current-panel"
+                                        className={`flashcard-section-tabs__tab ${
+                                            flashcardSection === "current"
+                                                ? "is-active"
+                                                : ""
+                                        }`}
+                                        onClick={() =>
+                                            setFlashcardSection("current")
+                                        }
+                                    >
+                                        Current Flashcards
+                                    </button>
 
-    {features.flashcardStaging !== false && (
-        <button
-            type="button"
-            className={`flashcard-btn ${
-                flashcardSection === "review"
-                    ? "flashcard-btn--primary"
-                    : ""
-            }`}
-            onClick={() => setFlashcardSection("review")}
-        >
-            Staging Review
-        </button>
-    )}
-</div>
+                                    {features.flashcardStaging !== false && (
+                                        <button
+                                            id="flashcard-review-tab"
+                                            type="button"
+                                            role="tab"
+                                            aria-selected={
+                                                flashcardSection === "review"
+                                            }
+                                            aria-controls="flashcard-review-panel"
+                                            className={`flashcard-section-tabs__tab ${
+                                                flashcardSection === "review"
+                                                    ? "is-active"
+                                                    : ""
+                                            }`}
+                                            onClick={() =>
+                                                setFlashcardSection("review")
+                                            }
+                                        >
+                                            Staging Review
+                                        </button>
+                                    )}
+                                </div>
 
 <FlashcardLessonEditor
     lessonId={lessonId}
@@ -1251,6 +1317,10 @@ export function LessonDetailEditor({ context }) {
                                                 }
                                                 onBusyChange={
                                                     setVideoUploaderBusy
+                                                }
+                                                videoAi={videoAi}
+                                                onApplyAiSuggestions={
+                                                    applyAiSuggestions
                                                 }
                                             />
                                         )}
@@ -1491,6 +1561,31 @@ export function LessonDetailEditor({ context }) {
                                                                 </label>
                                                             )}
                                                         </div>
+                                                        <AssignmentAiDraftPanel
+                                                            mode="essay"
+                                                            currentTitle={title}
+                                                            currentDescription={summary}
+                                                            compact
+                                                            onDraftGenerated={({ rubric }) => {
+                                                                setAssignmentRubric(rubric);
+                                                                markChanged();
+                                                            }}
+                                                        />
+                                                        <label className="sl-cm-lesson-editor__rubric-field">
+                                                            <span className="sl-cm-lesson-editor__field-label">
+                                                                Assignment rubric
+                                                            </span>
+                                                            <textarea
+                                                                className="sl-cm-lesson-editor__field-control sl-cm-lesson-editor__rubric-control"
+                                                                value={assignmentRubric}
+                                                                rows={6}
+                                                                placeholder="Grading criteria generated by AI or entered by the trainer."
+                                                                onChange={(event) => {
+                                                                    setAssignmentRubric(event.target.value);
+                                                                    markChanged();
+                                                                }}
+                                                            />
+                                                        </label>
                                                     </>
                                                 )}
                                             </div>
@@ -1513,7 +1608,7 @@ export function LessonDetailEditor({ context }) {
                                 step="3"
                                 title="Lesson settings"
                                 description="Configure status, duration, and preview access."
-                                summary={`${statusLabel} · ${durationSeconds ? `${durationSeconds} seconds` : "No duration"} · Preview ${isPreview ? "enabled" : "disabled"}`}
+                                summary={`${statusLabel} · ${durationMinutes ? `${durationMinutes} min` : "No duration"} · Preview ${isPreview ? "enabled" : "disabled"}`}
                                 state={
                                     settingsComplete
                                         ? "complete"
@@ -1585,9 +1680,9 @@ export function LessonDetailEditor({ context }) {
                                                 type="number"
                                                 min="0"
                                                 inputMode="numeric"
-                                                value={durationSeconds}
+                                                value={durationMinutes}
                                                 onChange={(event) => {
-                                                    setDurationSeconds(
+                                                    setDurationMinutes(
                                                         Math.max(
                                                             0,
                                                             Number(
@@ -1601,7 +1696,7 @@ export function LessonDetailEditor({ context }) {
                                                 className="sl-cm-lesson-editor__field-control"
                                             />
                                             <span aria-hidden="true">
-                                                seconds
+                                                minutes
                                             </span>
                                         </div>
                                     </div>

@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
 import './Modal.css'
 
@@ -13,6 +14,8 @@ export function Modal({
   closeOnOverlayClick = true,
   closeDisabled = false,
   closeLabel = 'Close dialog',
+  className = '',
+  initialFocusRef,
   onClose,
 }) {
   const dialogRef = useRef(null)
@@ -45,7 +48,10 @@ export function Modal({
     ].join(',')
 
     const focusTimer = window.requestAnimationFrame(() => {
-      const firstFocusable = dialog?.querySelector(focusableSelector)
+      const requestedFocus = initialFocusRef?.current
+      const firstFocusable = requestedFocus && dialog?.contains(requestedFocus)
+        ? requestedFocus
+        : dialog?.querySelector(focusableSelector)
       ;(firstFocusable || dialog)?.focus()
     })
 
@@ -85,7 +91,7 @@ export function Modal({
       document.body.style.overflow = previousOverflow
       previouslyFocused?.focus?.()
     }
-  }, [open])
+  }, [initialFocusRef, open])
 
   if (!open) return null
 
@@ -95,7 +101,7 @@ export function Modal({
     }
   }
 
-  return (
+  const modal = (
     <div
       className={`modal-overlay modal-overlay--${position}`}
       role="presentation"
@@ -103,7 +109,7 @@ export function Modal({
     >
       <section
         ref={dialogRef}
-        className={`modal modal--${size} modal--${position}`}
+        className={`modal modal--${size} modal--${position}${className ? ` ${className}` : ''}`}
         role="dialog"
         tabIndex={-1}
         aria-modal="true"
@@ -143,4 +149,6 @@ export function Modal({
       </section>
     </div>
   )
+
+  return createPortal(modal, document.body)
 }

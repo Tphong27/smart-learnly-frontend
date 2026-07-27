@@ -4,6 +4,12 @@ const slugRule = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
 
 export const courseSchema = z.object({
   categoryId: z.string({ message: 'Category is required' }).uuid('Category is invalid'),
+  assignedSmeId: z
+  .string()
+  .uuid('Assigned SME is invalid')
+  .or(z.literal(''))
+  .nullable()
+  .optional(),
   title: z
     .string({ message: 'Course title is required' })
     .trim()
@@ -38,4 +44,17 @@ export const courseSchema = z.object({
   ),
   isFree: z.boolean().optional(),
   status: z.enum(['draft', 'published', 'inactive']).optional(),
+}).superRefine((course, context) => {
+  if (
+    !course.isFree
+    && course.price != null
+    && course.discountedPrice != null
+    && course.discountedPrice > course.price
+  ) {
+    context.addIssue({
+      code: 'custom',
+      path: ['discountedPrice'],
+      message: 'Discounted price must not exceed the course price',
+    })
+  }
 })

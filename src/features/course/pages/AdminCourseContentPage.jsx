@@ -13,6 +13,10 @@ import { Button } from "../../../shared/components/ui";
 import { CurriculumStructureEditor } from "../components/CurriculumStructureEditor";
 import "../course-admin.css";
 
+function getApiErrorMessage(error, fallback) {
+    return error?.message || error?.response?.data?.message || fallback;
+}
+
 export default function AdminCourseContentPage() {
     const params = useParams();
     const courseId = params.courseId || params.id;
@@ -73,8 +77,10 @@ export default function AdminCourseContentPage() {
                 return lessonsBySection;
             });
         } catch (error) {
-            const message =
-                error.response?.data?.message || "Error loading content";
+            const message = getApiErrorMessage(
+                error,
+                "Could not load course content.",
+            );
             setLoadError(message);
             showToast({
                 type: "error",
@@ -131,7 +137,6 @@ export default function AdminCourseContentPage() {
         try {
             await courseService.createSection(courseId, {
                 title,
-                isActive: true,
             });
             showToast({
                 type: "success",
@@ -142,9 +147,10 @@ export default function AdminCourseContentPage() {
         } catch (error) {
             showToast({
                 type: "error",
-                message:
-                    error?.response?.data?.message ||
+                message: getApiErrorMessage(
+                    error,
                     "Could not create section.",
+                ),
             });
             return false;
         }
@@ -154,7 +160,6 @@ export default function AdminCourseContentPage() {
         try {
             await courseService.updateSection(sectionId, {
                 title,
-                isActive: true,
             });
             showToast({
                 type: "success",
@@ -188,7 +193,6 @@ export default function AdminCourseContentPage() {
                         try {
                             await courseService.createSection(courseId, {
                                 title: target.title,
-                                isActive: target.isActive ?? true,
                                 sortOrder: target.sortOrder ?? 0,
                             });
                             showToast({
@@ -199,9 +203,10 @@ export default function AdminCourseContentPage() {
                         } catch (restoreErr) {
                             showToast({
                                 type: "error",
-                                message:
-                                    restoreErr?.response?.data?.message ||
+                                message: getApiErrorMessage(
+                                    restoreErr,
                                     "Could not restore the section.",
+                                ),
                             });
                             setSections(previousSections);
                         }
@@ -213,9 +218,10 @@ export default function AdminCourseContentPage() {
             setSections(previousSections);
             showToast({
                 type: "error",
-                message:
-                    error?.response?.data?.message ||
+                message: getApiErrorMessage(
+                    error,
                     "Could not delete section.",
+                ),
             });
         }
     };
@@ -233,9 +239,10 @@ export default function AdminCourseContentPage() {
         } catch (error) {
             showToast({
                 type: "error",
-                message:
-                    error?.response?.data?.message ||
+                message: getApiErrorMessage(
+                    error,
                     "Could not reorder sections.",
+                ),
             });
             fetchSections();
         }
@@ -295,9 +302,10 @@ export default function AdminCourseContentPage() {
         } catch (error) {
             showToast({
                 type: "error",
-                message:
-                    error?.response?.data?.message ||
+                message: getApiErrorMessage(
+                    error,
                     "Could not create lesson.",
+                ),
             });
             return false;
         }
@@ -332,9 +340,10 @@ export default function AdminCourseContentPage() {
         } catch (error) {
             showToast({
                 type: "error",
-                message:
-                    error?.response?.data?.message ||
+                message: getApiErrorMessage(
+                    error,
                     "Could not delete lesson.",
+                ),
             });
         }
     };
@@ -353,9 +362,10 @@ export default function AdminCourseContentPage() {
         } catch (error) {
             showToast({
                 type: "error",
-                message:
-                    error?.response?.data?.message ||
+                message: getApiErrorMessage(
+                    error,
                     "Could not reorder lessons.",
+                ),
             });
             fetchLessonsForSection(sectionId);
         }

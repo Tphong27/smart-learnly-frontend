@@ -4,7 +4,6 @@ import {
   BookOpen,
   ClipboardCheck,
   CreditCard,
-  FileQuestion,
   FolderTree,
   GraduationCap,
   Home,
@@ -46,10 +45,10 @@ const navItems = [
     roles: [ROLES.ADMIN, ROLES.TMO, ROLES.SME],
   },
   {
-    label: "Question Bank",
-    path: "/admin/question-banks",
-    icon: FileQuestion,
-    roles: [ROLES.ADMIN, ROLES.TMO, ROLES.SME, ROLES.TRAINER],
+    label: "Class Management",
+    path: "/admin/classrooms",
+    icon: Users,
+    roles: [ROLES.ADMIN],
   },
   {
     label: "Categories",
@@ -81,12 +80,6 @@ const navItems = [
     label: "Course Content",
     path: "/staff/courses",
     icon: Layers3,
-    roles: [ROLES.TRAINER, ROLES.TMO, ROLES.SME],
-  },
-  {
-    label: "Tests Management",
-    path: "/staff/tests",
-    icon: FileQuestion,
     roles: [ROLES.TRAINER, ROLES.TMO, ROLES.SME],
   },
   {
@@ -180,8 +173,8 @@ export function Sidebar({
 }) {
   const normalizedRole = normalizeRole(userRole);
   const dashboardPath = getDashboardPathByRole(normalizedRole);
-  const [isMobile, setIsMobile] = useState(() =>
-    window.matchMedia("(max-width: 1024px)").matches,
+  const [isMobile, setIsMobile] = useState(
+    () => window.matchMedia("(max-width: 1024px)").matches,
   );
   const [hoverSuppressed, setHoverSuppressed] = useState(false);
 

@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   ArrowRight,
   BookOpen,
   CheckSquare,
+  Eye,
   FileText,
   KeyRound,
   RefreshCw,
@@ -16,7 +17,7 @@ import {
   testService,
 } from "@/services/flashtest.service.js";
 import { getCurrentUser } from "@/services/api-client";
-import { TestCard } from "../components/TestCard";
+import Pagination from "@/shared/components/Pagination";
 import "../flashtest.css";
 
 function isFlashTest(item) {
@@ -27,32 +28,6 @@ function isFlashTest(item) {
 
 function isRegularTest(item) {
   return !isFlashTest(item);
-}
-
-function getDuration(item) {
-  if (item.durationMinutes ?? item.duration_minutes ?? item.duration) {
-    return item.durationMinutes ?? item.duration_minutes ?? item.duration;
-  }
-  const dueDate = item.dueDate || item.due_date;
-  const baseTime =
-    item.updatedAt || item.updated_at || item.createdAt || item.created_at;
-  if (!dueDate || !baseTime) return "--";
-  const diff = new Date(dueDate).getTime() - new Date(baseTime).getTime();
-  return Number.isFinite(diff) ? Math.max(0, Math.round(diff / 60000)) : "--";
-}
-
-function formatDate(value) {
-  if (!value) return "--";
-  return new Date(value).toLocaleString();
-}
-
-function formatShortDate(value) {
-  if (!value) return "--";
-  return new Date(value).toLocaleDateString(undefined, {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
 }
 
 function isCompletedStatus(status) {
@@ -82,6 +57,7 @@ function getAttemptTime(attempt) {
 }
 
 function numberOrNull(value) {
+  if (value == null || value === "") return null;
   const number = Number(value);
   return Number.isFinite(number) ? number : null;
 }
@@ -98,6 +74,27 @@ function getQuestionTotal(...sources) {
     if (total && total > 0) return total;
   }
   return null;
+}
+
+function getDurationMinutes(item) {
+  const explicitDuration =
+    numberOrNull(item?.durationMinutes) ??
+    numberOrNull(item?.duration_minutes) ??
+    numberOrNull(item?.duration);
+  if (explicitDuration != null) return Math.max(1, Math.round(explicitDuration));
+
+  const dueDate = item?.dueDate || item?.due_date;
+  const baseTime =
+    item?.updatedAt ||
+    item?.updated_at ||
+    item?.createdAt ||
+    item?.created_at;
+  if (!dueDate || !baseTime) return null;
+
+  const durationMs = new Date(dueDate).getTime() - new Date(baseTime).getTime();
+  return Number.isFinite(durationMs)
+    ? Math.max(1, Math.round(durationMs / 60000))
+    : null;
 }
 
 function formatScoreValue(value) {
@@ -150,17 +147,24 @@ export function TraineeFlashTestListPage({ variant = "flash" }) {
     ? "/learning/flashtests/take"
     : "/learning/tests/take";
   const accessStoragePrefix = isFlashMode ? "flashAccess" : "testAccess";
-  const itemFilter = isAssignmentMode
-    ? isRegularTest
-    : isFlashMode ? isFlashTest : isRegularTest;
-  const currentUser = getCurrentUser();
-  const studentId =
-    currentUser?.id || currentUser?.userId || currentUser?.accountId || "";
+  const itemFilter = useMemo(
+    () => (isAssignmentMode
+      ? isRegularTest
+      : isFlashMode ? isFlashTest : isRegularTest),
+    [isAssignmentMode, isFlashMode],
+  );
+  const currentUser = useMemo(() => getCurrentUser(), []);
+  const studentId = useMemo(
+    () => currentUser?.id || currentUser?.userId || currentUser?.accountId || "",
+    [currentUser],
+  );
   const [tests, setTests] = useState([]);
   const [assignments, setAssignments] = useState([]);
   const [resultMap, setResultMap] = useState({});
   const [loading, setLoading] = useState(false);
   const [keyword, setKeyword] = useState("");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
   const [nowMs, setNowMs] = useState(0);
   const [accessModal, setAccessModal] = useState({
     open: false,
@@ -171,6 +175,7 @@ export function TraineeFlashTestListPage({ variant = "flash" }) {
   const [accessError, setAccessError] = useState("");
   const [verifyingAccess, setVerifyingAccess] = useState(false);
   const [filterTab, setFilterTab] = useState("all");
+  const [expandedResultKey, setExpandedResultKey] = useState("");
   const pageTitle = isAssignmentMode
     ? "My Assignments"
     : isFlashMode ? "My Flash Tests" : "My Tests";
@@ -187,7 +192,7 @@ export function TraineeFlashTestListPage({ variant = "flash" }) {
         isAssignmentMode ? Promise.resolve([]) : testService.getAll(),
       ];
       if (isFlashMode) {
-        requests.push(assignmentService.getAll());
+        requests.push(assignmentService.getAvailable({ isFlashtest: true }));
       } else if (isAssignmentMode) {
         requests.push(
           assignmentService.getAvailable({
@@ -197,7 +202,11 @@ export function TraineeFlashTestListPage({ variant = "flash" }) {
         );
       }
       const [testData, assignmentData] = await Promise.all(requests);
-      const flashTests = (testData || []).filter(itemFilter);
+      const flashTests = (testData || []).filter(
+        (item) =>
+          itemFilter(item) &&
+          (item?.isPublished ?? item?.is_published ?? item?.published ?? false) === true,
+      );
       const flashAssignments = isFlashMode || isAssignmentMode
         ? (assignmentData || []).filter(itemFilter)
         : [];
@@ -212,16 +221,11 @@ export function TraineeFlashTestListPage({ variant = "flash" }) {
 
       const checks = await Promise.allSettled([
         ...flashTests.map(async (test) => {
-          const [attempts, questionMappings] = await Promise.all([
-            attemptService.getHistory(test.id, studentId),
-            testService.getLearnerQuestions(test.id).catch((questionError) => {
-              console.warn("Could not load MCQ question total", questionError);
-              return [];
-            }),
-          ]);
-          const questionTotal = getQuestionTotal(test, {
-            questions: questionMappings,
-          });
+          // The list only needs attempt summaries. Fetching every question for
+          // every historical test created an N+1 burst that could exhaust the
+          // API connection pool and delay starting the selected assessment.
+          const attempts = await attemptService.getHistory(test.id, studentId);
+          const questionTotal = getQuestionTotal(test, ...(attempts || []));
           const sortedAttempts = attempts.sort(
             (a, b) => getAttemptTime(b) - getAttemptTime(a),
           );
@@ -241,6 +245,10 @@ export function TraineeFlashTestListPage({ variant = "flash" }) {
                 : "--",
               status: latestAttempt?.status,
               retakeAllowed: Boolean(latestAttempt?.retakeAllowed),
+              attempts: [...completedAttempts].sort(
+                (a, b) => getAttemptTime(a) - getAttemptTime(b),
+              ),
+              questionTotal,
             },
           ];
         }),
@@ -256,6 +264,7 @@ export function TraineeFlashTestListPage({ variant = "flash" }) {
                 taken: isCompletedAssignmentStatus(submission?.status),
                 score: submission?.score ?? "--",
                 status: submission?.status,
+                trainerFeedback: submission?.trainerFeedback,
               },
             ];
           } catch (submissionError) {
@@ -364,12 +373,21 @@ export function TraineeFlashTestListPage({ variant = "flash" }) {
     return items;
   }, [assessmentItems, keyword, filterTab, resultMap, nowMs]);
 
+  const totalPages = Math.max(1, Math.ceil(filteredRows.length / pageSize));
+  const currentPage = Math.min(page, totalPages);
+  const paginatedRows = useMemo(
+    () => filteredRows.slice((currentPage - 1) * pageSize, currentPage * pageSize),
+    [currentPage, filteredRows, pageSize],
+  );
+
   const openAccessModal = (item, isEssay) => {
     const dueDate = item?.dueDate || item?.due_date;
     if (isEssay && dueDate && new Date(dueDate).getTime() <= nowMs) {
       return;
     }
-    if (isAssignmentMode) {
+    // Assignments do not have an access-code contract. This also applies to
+    // essay items shown in the mixed Flash Test list.
+    if (isEssay) {
       navigate(`${takePath}/${item.id}/essay`);
       return;
     }
@@ -382,6 +400,70 @@ export function TraineeFlashTestListPage({ variant = "flash" }) {
     setAccessModal({ open: false, item: null, isEssay: false });
     setAccessCode("");
     setAccessError("");
+  };
+
+  const toggleAttemptHistory = (key) => {
+    setExpandedResultKey((current) => (current === key ? "" : key));
+  };
+
+  const openAttemptDetail = (item, attempt) => {
+    const attemptId = attempt?.id || attempt?.attemptId;
+    const testId = attempt?.testId || item?.id;
+    if (!attemptId || !testId) return;
+    navigate(`/learning/tests/attempts/${testId}/${attemptId}`, {
+      state: {
+        attempt,
+        studentName: currentUser?.name || currentUser?.fullName || "Trainee",
+      },
+    });
+  };
+
+  const renderAttemptList = (item, result) => {
+    const attempts = Array.isArray(result?.attempts) ? result.attempts : [];
+    return (
+      <div className="ft-inline-attempts">
+        <div className="ft-inline-attempts__header">
+          <strong>{attempts.length} attempts</strong>
+        </div>
+        <div className="ft-attempt-detail-list">
+          {attempts.map((attempt, index) => {
+            const attemptId = attempt.id || attempt.attemptId;
+            const score = formatMcqScore(
+              attempt,
+              getQuestionTotal(attempt) || result?.questionTotal,
+            );
+            return (
+              <div className="ft-history-attempt" key={attemptId || index}>
+                <div className="ft-history-attempt__summary">
+                  <div className="ft-history-attempt__meta">
+                    <strong>Attempt {index + 1}</strong>
+                    <span>
+                      {attempt.startTime
+                        ? new Date(attempt.startTime).toLocaleString()
+                        : "--"}
+                    </span>
+                  </div>
+                  <strong>{score}/10</strong>
+                  <span className="ft-muted">
+                    {attempt.status || "Submitted"}
+                  </span>
+                  <button
+                    className="ft-history-attempt__toggle"
+                    type="button"
+                    title="View answer detail"
+                    aria-label="View answer detail"
+                    disabled={!attemptId}
+                    onClick={() => openAttemptDetail(item, attempt)}
+                  >
+                    <Eye size={18} />
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
   };
 
   const handleVerifyAccessCode = async () => {
@@ -440,7 +522,10 @@ export function TraineeFlashTestListPage({ variant = "flash" }) {
               <button
                 type="button"
                 className={`ft-tests-tab ${filterTab === "all" ? "ft-tests-tab--active" : ""}`}
-                onClick={() => setFilterTab("all")}
+                onClick={() => {
+                  setFilterTab("all");
+                  setPage(1);
+                }}
                 role="tab"
                 aria-selected={filterTab === "all"}
               >
@@ -449,7 +534,10 @@ export function TraineeFlashTestListPage({ variant = "flash" }) {
               <button
                 type="button"
                 className={`ft-tests-tab ${filterTab === "ready" ? "ft-tests-tab--active" : ""}`}
-                onClick={() => setFilterTab("ready")}
+                onClick={() => {
+                  setFilterTab("ready");
+                  setPage(1);
+                }}
                 role="tab"
                 aria-selected={filterTab === "ready"}
               >
@@ -458,7 +546,10 @@ export function TraineeFlashTestListPage({ variant = "flash" }) {
               <button
                 type="button"
                 className={`ft-tests-tab ${filterTab === "done" ? "ft-tests-tab--active" : ""}`}
-                onClick={() => setFilterTab("done")}
+                onClick={() => {
+                  setFilterTab("done");
+                  setPage(1);
+                }}
                 role="tab"
                 aria-selected={filterTab === "done"}
               >
@@ -467,7 +558,10 @@ export function TraineeFlashTestListPage({ variant = "flash" }) {
               <button
                 type="button"
                 className={`ft-tests-tab ${filterTab === "expired" ? "ft-tests-tab--active" : ""}`}
-                onClick={() => setFilterTab("expired")}
+                onClick={() => {
+                  setFilterTab("expired");
+                  setPage(1);
+                }}
                 role="tab"
                 aria-selected={filterTab === "expired"}
               >
@@ -480,7 +574,10 @@ export function TraineeFlashTestListPage({ variant = "flash" }) {
                 type="search"
                 placeholder="Search tests..."
                 value={keyword}
-                onChange={(event) => setKeyword(event.target.value)}
+                onChange={(event) => {
+                  setKeyword(event.target.value);
+                  setPage(1);
+                }}
               />
             </label>
           </div>
@@ -497,7 +594,7 @@ export function TraineeFlashTestListPage({ variant = "flash" }) {
                   <th>Due Date</th>
                   <th>Score</th>
                   <th>Status</th>
-                  <th>Action</th>
+                  <th className="ft-tests-action-column">Action</th>
                 </tr>
               </thead>
               <tbody>
@@ -546,67 +643,99 @@ export function TraineeFlashTestListPage({ variant = "flash" }) {
                   <th>Due Date</th>
                   <th>Score</th>
                   <th>Status</th>
-                  <th>Action</th>
+                  <th className="ft-tests-action-column">Action</th>
                 </tr>
               </thead>
               <tbody>
-                {filteredRows.map((item) => {
+                {paginatedRows.map((item) => {
                   const key = `${item.flashType}-${item.id}`;
                   const result = resultMap[key];
                   const isEssay = item.flashType === "essay";
                   const taken = Boolean(result?.taken);
+                  const hasAttemptHistory = !isEssay && Array.isArray(result?.attempts) && result.attempts.length > 0;
+                  const expanded = expandedResultKey === key;
                   const dueDate = item.dueDate || item.due_date;
                   const expired = isEssay && dueDate && new Date(dueDate).getTime() <= nowMs;
                   const statusLabel = taken ? "Completed" : expired ? "Expired" : "Ready";
                   const typeLabel = isEssay ? "Essay" : "MCQ";
                   const TypeIcon = isEssay ? FileText : CheckSquare;
-                  const duration = item.durationMinutes ?? item.duration_minutes ?? item.duration ?? "--";
+                  const duration = getDurationMinutes(item);
                   const displayDate = dueDate || item.createdAt || item.created_at;
                   const score = result?.score;
-                  const displayScore = score != null ? (Number.isFinite(score) ? score : "--") : "--";
+                  const displayScore = score != null ? score : "--";
 
                   return (
-                    <tr key={key} className={expired ? "ft-row--expired" : taken ? "ft-row--completed" : ""}>
-                      <td>
-                        <span className={`ft-badge ft-badge--${isEssay ? "essay" : "mcq"}`}>
-                          <TypeIcon size={12} />
-                          {typeLabel}
-                        </span>
-                      </td>
-                      <td className="ft-cell--title">
-                        <span className="ft-title">{item.title || item.name}</span>
-                        {item.description && <span className="ft-desc">{item.description}</span>}
-                      </td>
-                      <td>{duration} mins</td>
-                      <td>{displayDate ? new Date(displayDate).toLocaleDateString() : "--"}</td>
-                      <td>{displayScore}</td>
-                      <td>
-                        <span className={`ft-status ft-status--${statusLabel.toLowerCase()}`}>
-                          {statusLabel}
-                        </span>
-                      </td>
-                      <td>
-                        {taken ? (
-                          <span className="ft-button ft-button--disabled">Completed</span>
-                        ) : expired ? (
-                          <span className="ft-button ft-button--disabled">Expired</span>
-                        ) : (
-                          <button
-                            type="button"
-                            className="ft-button ft-button--primary"
-                            onClick={() => openAccessModal(item, isEssay)}
-                          >
-                            Start <ArrowRight size={15} />
-                          </button>
-                        )}
-                      </td>
-                    </tr>
+                    <Fragment key={key}>
+                      <tr className={taken ? "ft-row--completed" : expired ? "ft-row--expired" : ""}>
+                        <td>
+                          <span className={`ft-badge ft-badge--${isEssay ? "essay" : "mcq"}`}>
+                            <TypeIcon size={12} />
+                            {typeLabel}
+                          </span>
+                        </td>
+                        <td className="ft-cell--title">
+                          <span className="ft-title">{item.title || item.name}</span>
+                        </td>
+                        <td>{duration != null ? `${duration} mins` : "--"}</td>
+                        <td>{displayDate ? new Date(displayDate).toLocaleDateString() : "--"}</td>
+                        <td>{displayScore}</td>
+                        <td>
+                          <span className={`ft-status ft-status--${statusLabel.toLowerCase()}`}>
+                            {statusLabel}
+                          </span>
+                        </td>
+                        <td className="ft-tests-action-column">
+                          <div className="ft-table-actions">
+                            {hasAttemptHistory && (
+                              <button
+                                type="button"
+                                className="ft-button ft-button--secondary"
+                                onClick={() => toggleAttemptHistory(key)}
+                              >
+                                {expanded ? "Hide" : "Details"}
+                              </button>
+                            )}
+                            {taken ? (
+                              !hasAttemptHistory && <span className="ft-button ft-button--disabled">Completed</span>
+                            ) : expired ? (
+                              <span className="ft-button ft-button--disabled">Expired</span>
+                            ) : (
+                              <button
+                                type="button"
+                                className="ft-button ft-button--primary"
+                                onClick={() => openAccessModal(item, isEssay)}
+                              >
+                                Start <ArrowRight size={15} />
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                      {hasAttemptHistory && expanded && (
+                        <tr className="ft-expanded-row">
+                          <td colSpan={7}>{renderAttemptList(item, result)}</td>
+                        </tr>
+                      )}
+                    </Fragment>
                   );
                 })}
               </tbody>
             </table>
           </div>
         )}
+        <Pagination
+          page={currentPage}
+          totalPages={totalPages}
+          totalItems={filteredRows.length}
+          size={pageSize}
+          onPageChange={setPage}
+          onSizeChange={(nextSize) => {
+            setPageSize(nextSize);
+            setPage(1);
+          }}
+          disabled={loading}
+          ariaLabel={`${pageTitle} pagination`}
+        />
       </div>
 
       {loading && (

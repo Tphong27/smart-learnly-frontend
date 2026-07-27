@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import {
@@ -16,6 +16,7 @@ import {
   ClipboardList,
   Sparkles,
   AlertTriangle,
+  Check,
   CheckCircle2,
   X,
 } from "lucide-react";
@@ -39,7 +40,7 @@ function sortByOrder(items) {
 const LESSON_TYPE_META = {
   video: {
     label: "Video lecture",
-    description: "Upload an HLS video lesson for streaming.",
+    description: "Upload a video learners can watch in this lesson.",
     Icon: Video,
   },
   document: {
@@ -50,6 +51,11 @@ const LESSON_TYPE_META = {
   pdf: {
     label: "Reading material",
     description: "PDF or Word document the learner can download or preview.",
+    Icon: FileText,
+  },
+  rich_text: {
+    label: "Text lesson",
+    description: "Write formatted lesson content learners can read online.",
     Icon: FileText,
   },
   quiz: {
@@ -72,13 +78,16 @@ const LESSON_TYPE_META = {
 const DEFAULT_LESSON_TYPES = [
   { value: "video", label: "Video lecture" },
   { value: "document", label: "Reading material" },
+  { value: "rich_text", label: "Text lesson" },
   { value: "quiz", label: "Quiz" },
   { value: "flashcard", label: "Flashcard" },
+  { value: "essay", label: "Assignment" },
 ];
 
 function lessonTypeKey(type) {
   const t = String(type || "").toLowerCase();
-  if (t === "rich_text" || t === "text") return "document";
+  if (t === "text") return "rich_text";
+  if (t === "assignment") return "essay";
   return LESSON_TYPE_META[t] ? t : "video";
 }
 
@@ -282,7 +291,7 @@ function SectionRow({
           <span
             {...dragHandleProps}
             className="sl-cm-section__handle"
-            title="Drag to reorder this section."
+            title="Drag to reorder this module."
           >
             <GripVertical size={18} aria-hidden="true" />
           </span>
@@ -293,7 +302,7 @@ function SectionRow({
           className="sl-cm-section__toggle"
           aria-expanded={isExpanded}
           aria-controls={lessonsListId}
-          aria-label={isExpanded ? "Collapse section" : "Expand section"}
+          aria-label={isExpanded ? "Collapse module" : "Expand module"}
           onClick={() => setIsExpanded((v) => !v)}
         >
           <ChevronDown size={18} aria-hidden="true" />
@@ -707,6 +716,7 @@ function LessonCreateModal({
   onSubmit,
   onClose,
 }) {
+  const titleInputRef = useRef(null);
   const [title, setTitle] = useState("");
   const [lessonType, setLessonType] = useState(
     lessonTypeOptions?.[0]?.value || "video",
@@ -738,7 +748,10 @@ function LessonCreateModal({
     <Modal
       open={open}
       title="Add new lesson"
-      position="right"
+      description="Name the lesson and choose how learners will study it."
+      size="lg"
+      className="sl-cm-lesson-create-modal"
+      initialFocusRef={titleInputRef}
       onClose={onClose}
       closeDisabled={submitting}
       footer={
@@ -769,6 +782,7 @@ function LessonCreateModal({
             Lesson title <span className="required">*</span>
           </label>
           <input
+            ref={titleInputRef}
             id="sl-cm-lesson-title"
             type="text"
             className="sl-cm-field__control"
@@ -778,7 +792,6 @@ function LessonCreateModal({
               if (event.target.value.trim()) setTitleError("");
             }}
             placeholder="e.g. 1.1. ReactJS overview"
-            autoFocus
             aria-invalid={Boolean(titleError) || undefined}
             aria-describedby={titleError ? "sl-cm-lesson-title-error" : undefined}
           />
@@ -793,31 +806,40 @@ function LessonCreateModal({
           ) : null}
         </div>
 
-        <fieldset className="sl-cm-field sl-cm-field--fieldset" role="radiogroup" aria-label="Lesson type">
+        <fieldset className="sl-cm-field sl-cm-field--fieldset">
           <legend className="sl-cm-field__label">Lesson type</legend>
+          <p className="sl-cm-field__helper sl-cm-field__helper--type">
+            Select the format that best fits this lesson.
+          </p>
           <div className="sl-cm-type-grid">
             {options.map((option) => {
               const meta = LESSON_TYPE_META[option.value] || LESSON_TYPE_META.video;
               const { Icon } = meta;
               const selected = lessonType === option.value;
               return (
-                <button
-                  type="button"
+                <label
                   key={option.value}
-                  className="sl-cm-type-card"
-                  aria-pressed={selected}
-                  aria-checked={selected}
-                  role="radio"
-                  onClick={() => setLessonType(option.value)}
+                  className={`sl-cm-type-card${selected ? " sl-cm-type-card--selected" : ""}`}
                 >
+                  <input
+                    className="sl-cm-type-card__input"
+                    type="radio"
+                    name="lessonType"
+                    value={option.value}
+                    checked={selected}
+                    onChange={(event) => setLessonType(event.target.value)}
+                  />
                   <span className="sl-cm-type-card__icon" aria-hidden="true">
                     <Icon size={20} />
                   </span>
-                  <span>
+                  <span className="sl-cm-type-card__content">
                     <span className="sl-cm-type-card__title">{option.label}</span>
                     <span className="sl-cm-type-card__desc">{meta.description}</span>
                   </span>
-                </button>
+                  <span className="sl-cm-type-card__check" aria-hidden="true">
+                    <Check size={14} strokeWidth={3} />
+                  </span>
+                </label>
               );
             })}
           </div>
@@ -877,7 +899,117 @@ function ConfirmModal({
   );
 }
 
-/* ==========================================================================
+const CurriculumTree = memo(function CurriculumTree({
+  sortedSections,
+  getLessons,
+  isSectionLessonsLoading,
+  readOnly,
+  emptyMessage,
+  emptyAddTitle,
+  emptyAddSubtitle,
+  showManageQuestions,
+  lessonEditLabel,
+  onDragEnd,
+  onOpenCreateLesson,
+  onOpenCreateSection,
+  onEditSection,
+  onDeleteSection,
+  onEditLesson,
+  onDeleteLesson,
+  onManageQuestions,
+  onMoveSection,
+  onMoveLesson,
+}) {
+  return (
+    <>
+      <DragDropContext onDragEnd={onDragEnd}>
+        <Droppable droppableId="sections" type="SECTION">
+          {(provided) => (
+            <div
+              ref={provided.innerRef}
+              {...provided.droppableProps}
+              className="sl-cm-tree"
+            >
+              {sortedSections.length > 0 ? (
+                sortedSections.map((section, index) => (
+                  <Draggable
+                    key={section.id}
+                    draggableId={`section-${section.id}`}
+                    index={index}
+                  >
+                    {(provided, snapshot) => (
+                      <div
+                        ref={provided.innerRef}
+                        {...provided.draggableProps}
+                        className={`sl-cm-section-wrap${snapshot.isDragging ? " sl-cm-section-wrap--dragging" : ""}`}
+                      >
+                        <SectionRow
+                          section={section}
+                          index={index}
+                          readOnly={readOnly}
+                          lessons={getLessons?.(section) || []}
+                          loadingLessons={
+                            isSectionLessonsLoading?.(section.id) || false
+                          }
+                          onOpenCreateLesson={onOpenCreateLesson}
+                          onEditSection={onEditSection}
+                          onDeleteSection={onDeleteSection}
+                          onEditLesson={(lesson) => onEditLesson?.(lesson, section)}
+                          onDeleteLesson={onDeleteLesson}
+                          onManageQuestions={onManageQuestions}
+                          showManageQuestions={showManageQuestions}
+                          lessonEditLabel={lessonEditLabel}
+                          isFirstSection={index === 0}
+                          isLastSection={index === sortedSections.length - 1}
+                          onMoveSectionUp={() => onMoveSection(section, "up")}
+                          onMoveSectionDown={() => onMoveSection(section, "down")}
+                          onMoveLesson={onMoveLesson}
+                          dragHandleProps={provided.dragHandleProps}
+                        />
+                      </div>
+                    )}
+                  </Draggable>
+                ))
+              ) : (
+                <div className="sl-cm-empty">
+                  <span className="sl-cm-empty__icon" aria-hidden="true">
+                    <Sparkles size={26} />
+                  </span>
+                  <h3 className="sl-cm-empty__title">{emptyAddTitle}</h3>
+                  <p className="sl-cm-empty__desc">
+                    {readOnly ? emptyMessage : emptyAddSubtitle || emptyMessage}
+                  </p>
+                  {!readOnly && (
+                    <Button
+                      leftIcon={<Plus size={16} />}
+                      onClick={onOpenCreateSection}
+                    >
+                      Add first module
+                    </Button>
+                  )}
+                </div>
+              )}
+              {provided.placeholder}
+            </div>
+          )}
+        </Droppable>
+      </DragDropContext>
+
+      {!readOnly && sortedSections.length > 0 && (
+        <button
+          type="button"
+          className="sl-cm-add-section"
+          onClick={onOpenCreateSection}
+        >
+          <Plus size={18} aria-hidden="true" />
+          <span>Add new module</span>
+        </button>
+      )}
+    </>
+  );
+});
+
+/* ===========================================================================
    Main component
    ========================================================================== */
 
@@ -889,7 +1021,7 @@ export function CurriculumStructureEditor({
   readOnly = false,
   lessonTypeOptions = DEFAULT_LESSON_TYPES,
   emptyMessage = "The course has no content structure yet.",
-  emptyAddTitle = "Add a new section",
+  emptyAddTitle = "Add a new module",
   emptyAddSubtitle = "Build a logical structure so learners can follow along easily.",
   showManageQuestions = false,
   lessonEditLabel = "Open lesson",
@@ -949,7 +1081,7 @@ export function CurriculumStructureEditor({
     if (saved !== false) setLessonModalSection(null);
   };
 
-  const requestDeleteSection = (sectionId, title) => {
+  const requestDeleteSection = useCallback((sectionId, title) => {
     setConfirm({
       title: `Delete “${title}”?`,
       description:
@@ -960,9 +1092,9 @@ export function CurriculumStructureEditor({
         await onDeleteSection?.(sectionId, title);
       },
     });
-  };
+  }, [onDeleteSection]);
 
-  const requestDeleteLesson = (lessonId, lessonTitle, lesson) => {
+  const requestDeleteLesson = useCallback((lessonId, lessonTitle, lesson) => {
     setConfirm({
       title: `Delete “${lessonTitle}”?`,
       description:
@@ -973,9 +1105,9 @@ export function CurriculumStructureEditor({
         await onDeleteLesson?.(lessonId, lessonTitle, lesson);
       },
     });
-  };
+  }, [onDeleteLesson]);
 
-  const moveSection = (section, direction) => {
+  const moveSection = useCallback((section, direction) => {
     const index = sortedSections.findIndex(
       (item) => String(item.id) === String(section.id),
     );
@@ -984,9 +1116,9 @@ export function CurriculumStructureEditor({
     if (targetIndex < 0 || targetIndex >= sortedSections.length) return;
     const reordered = reorderArray(sortedSections, index, targetIndex);
     onReorderSections?.(reordered.map((item) => item.id));
-  };
+  }, [onReorderSections, sortedSections]);
 
-  const moveLesson = (section, lesson, direction) => {
+  const moveLesson = useCallback((section, lesson, direction) => {
     const lessons = sortByOrder(getLessons?.(section) || []);
     const index = lessons.findIndex(
       (item) => String(item.id) === String(lesson.id),
@@ -999,7 +1131,11 @@ export function CurriculumStructureEditor({
       section.id,
       reordered.map((item) => item.id),
     );
-  };
+  }, [getLessons, onReorderLessons]);
+
+  const openCreateSection = useCallback(() => {
+    setIsSectionModalOpen(true);
+  }, []);
 
   const handleDragEnd = useCallback((result) => {
     if (!result.destination) return;
@@ -1063,91 +1199,27 @@ export function CurriculumStructureEditor({
         </p>
       ) : null}
 
-      <DragDropContext onDragEnd={handleDragEnd}>
-        <Droppable droppableId="sections" type="SECTION">
-          {(provided) => (
-            <div
-              ref={provided.innerRef}
-              {...provided.droppableProps}
-              className="sl-cm-tree"
-            >
-              {sortedSections.length > 0 ? (
-                sortedSections.map((section, index) => (
-                  <Draggable
-                    key={section.id}
-                    draggableId={`section-${section.id}`}
-                    index={index}
-                  >
-                    {(provided, snapshot) => (
-                      <div
-                        ref={provided.innerRef}
-                        {...provided.draggableProps}
-                        className={`sl-cm-section-wrap${snapshot.isDragging ? " sl-cm-section-wrap--dragging" : ""}`}
-                      >
-                        <SectionRow
-                          section={section}
-                          index={index}
-                          readOnly={readOnly}
-                          lessons={getLessons?.(section) || []}
-                          loadingLessons={
-                            isSectionLessonsLoading?.(section.id) || false
-                          }
-                          onOpenCreateLesson={(s) => setLessonModalSection(s)}
-                          onEditSection={(s) => setEditingSection(s)}
-                          onDeleteSection={requestDeleteSection}
-                          onEditLesson={(lesson) =>
-                            onEditLesson?.(lesson, section)
-                          }
-                          onDeleteLesson={requestDeleteLesson}
-                          onManageQuestions={onManageQuestions}
-                          showManageQuestions={showManageQuestions}
-                          lessonEditLabel={lessonEditLabel}
-                          isFirstSection={index === 0}
-                          isLastSection={index === sortedSections.length - 1}
-                          onMoveSectionUp={() => moveSection(section, "up")}
-                          onMoveSectionDown={() => moveSection(section, "down")}
-                          onMoveLesson={moveLesson}
-                          dragHandleProps={provided.dragHandleProps}
-                        />
-                      </div>
-                    )}
-                  </Draggable>
-                ))
-              ) : (
-                <div className="sl-cm-empty">
-                  <span className="sl-cm-empty__icon" aria-hidden="true">
-                    <Sparkles size={26} />
-                  </span>
-                  <h3 className="sl-cm-empty__title">{emptyAddTitle}</h3>
-                  <p className="sl-cm-empty__desc">
-                    {readOnly ? emptyMessage : emptyAddSubtitle || emptyMessage}
-                  </p>
-                  {!readOnly && (
-                    <Button
-                      leftIcon={<Plus size={16} />}
-                      onClick={() => setIsSectionModalOpen(true)}
-                    >
-                      Add first section
-                    </Button>
-                  )}
-                </div>
-              )}
-              {provided.placeholder}
-            </div>
-          )}
-        </Droppable>
-      </DragDropContext>
-
-      {!readOnly && sortedSections.length > 0 && (
-        <button
-          type="button"
-          className="sl-cm-add-section"
-          onClick={() => setIsSectionModalOpen(true)}
-        >
-          <Plus size={18} aria-hidden="true" />
-          <span>Add new section</span>
-        </button>
-      )}
+      <CurriculumTree
+        sortedSections={sortedSections}
+        getLessons={getLessons}
+        isSectionLessonsLoading={isSectionLessonsLoading}
+        readOnly={readOnly}
+        emptyMessage={emptyMessage}
+        emptyAddTitle={emptyAddTitle}
+        emptyAddSubtitle={emptyAddSubtitle}
+        showManageQuestions={showManageQuestions}
+        lessonEditLabel={lessonEditLabel}
+        onDragEnd={handleDragEnd}
+        onOpenCreateLesson={setLessonModalSection}
+        onOpenCreateSection={openCreateSection}
+        onEditSection={setEditingSection}
+        onDeleteSection={requestDeleteSection}
+        onEditLesson={onEditLesson}
+        onDeleteLesson={requestDeleteLesson}
+        onManageQuestions={onManageQuestions}
+        onMoveSection={moveSection}
+        onMoveLesson={moveLesson}
+      />
 
       {isSectionModalOpen ? (
         <SectionFormModal

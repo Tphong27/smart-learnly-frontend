@@ -11,15 +11,18 @@ function unwrapData(response) {
 
 function normalizePage(response) {
   const data = unwrapData(response);
-
   const content = data?.content ?? data?.items ?? data?.data ?? [];
+  const normalizedContent = Array.isArray(content) ? content : [];
 
   return {
-    content: Array.isArray(content) ? content : [],
+    content: normalizedContent,
     page: Number(data?.page ?? data?.number ?? 0),
-    size: Number(data?.size ?? 20),
+    size: Number(data?.size ?? normalizedContent.length ?? 20),
     totalElements: Number(
-      data?.totalElements ?? data?.total ?? content.length ?? 0,
+      data?.totalElements ??
+        data?.totalItems ??
+        data?.total ??
+        normalizedContent.length,
     ),
     totalPages: Number(data?.totalPages ?? 1),
   };
@@ -58,6 +61,11 @@ export const classService = {
     return unwrapData(response);
   },
 
+  async generateMeetingUrl() {
+    const response = await apiClient.post("/admin/classes/meeting-links");
+    return unwrapData(response);
+  },
+
   async create(payload) {
     const response = await apiClient.post("/admin/classes", payload);
     return unwrapData(response);
@@ -85,7 +93,23 @@ export const classService = {
   },
 
   async cancel(classId) {
+    if (!classId) {
+      throw new Error("Class ID is required");
+    }
     const response = await apiClient.post(`/admin/classes/${classId}/cancel`);
+    return unwrapData(response);
+  },
+
+  async restore(classId, payload) {
+    if (!classId) {
+      throw new Error("Class ID is required");
+    }
+
+    const response = await apiClient.post(
+      `/admin/classes/${classId}/restore`,
+      payload,
+    );
+
     return unwrapData(response);
   },
 

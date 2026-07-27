@@ -357,6 +357,20 @@
   min-height: 320px;
 }
 
+.sl-cm-lesson-editor__rubric-field {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  flex-direction: column;
+  box-sizing: border-box;
+}
+
+.sl-cm-lesson-editor__rubric-control {
+  width: 100%;
+  min-height: 140px;
+  resize: vertical;
+}
+
 .sl-cm-lesson-editor__loading {
   display: flex;
   align-items: center;

@@ -3,6 +3,7 @@ import {
   ArrowLeft,
   BookOpen,
   CalendarDays,
+  CheckCircle2,
   Clock3,
   LoaderCircle,
   UserRound,
@@ -37,6 +38,8 @@ export function OpeningScheduleDetailPage() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const backTarget = location.state?.from || "/opening-schedule";
+  const backLabel = location.state?.backLabel || "Back to Opening Schedule";
 
   useEffect(() => {
     let cancelled = false;
@@ -199,10 +202,11 @@ export function OpeningScheduleDetailPage() {
           <p>{error || "Opening class was not found."}</p>
 
           <Link
-            to="/opening-schedule"
+            to={backTarget}
             className="opening-button opening-button--primary"
           >
-            Back to Opening Schedule
+            <ArrowLeft size={16} aria-hidden="true" />
+            {backLabel}
           </Link>
         </div>
       </main>
@@ -223,56 +227,89 @@ export function OpeningScheduleDetailPage() {
     String(classItem.status || "").toUpperCase() === "UPCOMING" &&
     availableSlots > 0 &&
     hasValidClassPrice;
-  const backTarget = location.state?.from || "/opening-schedule";
-  const backLabel = location.state?.backLabel || "Back to Opening Schedule";
 
   return (
     <main className="opening-detail">
-      <Link to={backTarget} className="opening-detail__back">
-        <ArrowLeft size={17} />
-        {backLabel}
-      </Link>
+      <div className="opening-detail__hero">
+        <div className="opening-detail__hero-main">
+          <Link to={backTarget} className="opening-detail__back">
+            <ArrowLeft size={14} aria-hidden="true" />
+            {backLabel}
+          </Link>
 
-      <section className="opening-detail__layout">
-        <div className="opening-detail__main">
-          <div className="opening-detail__hero">
-            {classItem.courseThumbnailUrl ? (
-              <img
-                src={classItem.courseThumbnailUrl}
-                alt={classItem.courseTitle}
-              />
+          <section className="opening-detail__hero-card">
+            {classItem.courseSlug ? (
+              <Link
+                to={`/courses/${classItem.courseSlug}`}
+                className="opening-detail__chip"
+              >
+                {classItem.courseTitle}
+              </Link>
             ) : (
-              <div className="opening-detail__image-fallback">
-                <BookOpen size={58} />
-              </div>
+              <span className="opening-detail__chip">
+                {classItem.courseTitle}
+              </span>
             )}
 
-            <div>
-              <span className="opening-page__eyebrow">Offline class</span>
+            <span className="opening-detail__eyebrow">Offline class</span>
 
-              <p className="opening-detail__course">{classItem.courseTitle}</p>
+            <h1 className="opening-detail__title">{classItem.className}</h1>
 
-              <h1>{classItem.className}</h1>
+            <p className="opening-detail__lede">
+              Join this scheduled offline class and access the associated course
+              learning content after registration.
+            </p>
+
+            <div className="opening-detail__meta">
+              <span className="opening-detail__meta-item">
+                <UserRound size={15} aria-hidden="true" />
+                {classItem.trainerName || "Trainer not assigned"}
+              </span>
+
+              <span className="opening-detail__meta-item">
+                <CalendarDays size={15} aria-hidden="true" />
+                {formatDate(classItem.startDate, "vi-VN", DETAIL_DATE_OPTIONS)}
+                {" – "}
+                {formatDate(classItem.endDate, "vi-VN", DETAIL_DATE_OPTIONS)}
+              </span>
+
+              <span className="opening-detail__meta-item">
+                <Users size={15} aria-hidden="true" />
+                {availableSlots} places remaining
+              </span>
             </div>
-          </div>
+          </section>
 
           <section className="opening-detail__section">
-            <h2>Class information</h2>
+            <div className="opening-detail__section-head">
+              <div>
+                <h2 className="opening-detail__section-title">
+                  Class information
+                </h2>
+
+                <p className="opening-detail__section-sub">
+                  Review the trainer, class duration, availability and weekly
+                  schedule before registering.
+                </p>
+              </div>
+            </div>
 
             <div className="opening-detail__information">
-              <div>
-                <UserRound size={20} />
+              <article className="opening-detail__information-item">
+                <UserRound size={18} aria-hidden="true" />
 
-                <span>
+                <div>
                   <small>Trainer</small>
-                  <strong>{classItem.trainerName || "Not assigned"}</strong>
-                </span>
-              </div>
+                  <strong>
+                    {classItem.trainerName || "Trainer not assigned"}
+                  </strong>
+                </div>
+              </article>
 
-              <div>
-                <CalendarDays size={20} />
+              <article className="opening-detail__information-item">
+                <CalendarDays size={18} aria-hidden="true" />
 
-                <span>
+                <div>
                   <small>Duration</small>
                   <strong>
                     {formatDate(
@@ -287,64 +324,125 @@ export function OpeningScheduleDetailPage() {
                       DETAIL_DATE_OPTIONS,
                     )}
                   </strong>
-                </span>
-              </div>
+                </div>
+              </article>
 
-              <div className="opening-detail__information-item opening-detail__information-item--schedule">
-                <Clock3 size={20} />
-                <span className="opening-detail__schedule-content">
-                  <small>Schedule</small>
-                  <ScheduleCalendar
-                    scheduleDescription={classItem.scheduleDescription}
-                  />
-                </span>
-              </div>
+              <article className="opening-detail__information-item">
+                <Users size={18} aria-hidden="true" />
 
-              <div>
-                <Users size={20} />
-
-                <span>
+                <div>
                   <small>Availability</small>
                   <strong>
                     {availableSlots} of {classItem.maxStudents} places remaining
                   </strong>
-                </span>
-              </div>
+                </div>
+              </article>
+
+              <article className="opening-detail__information-item">
+                <BookOpen size={18} aria-hidden="true" />
+
+                <div>
+                  <small>Learning mode</small>
+                  <strong>Offline class</strong>
+                </div>
+              </article>
+
+              <article className="opening-detail__information-item opening-detail__information-item--schedule">
+                <Clock3 size={18} aria-hidden="true" />
+
+                <div className="opening-detail__schedule-content">
+                  <small>Weekly schedule</small>
+
+                  <ScheduleCalendar
+                    scheduleDescription={classItem.scheduleDescription}
+                    emptyText="Schedule not available"
+                  />
+                </div>
+              </article>
             </div>
           </section>
         </div>
 
-        <aside className="opening-detail__checkout">
-          <span>Class tuition</span>
+        <aside className="opening-detail__sidecard">
+          <div className="opening-detail__sidecard-thumb">
+            {classItem.courseThumbnailUrl ? (
+              <img
+                src={classItem.courseThumbnailUrl}
+                alt={classItem.courseTitle}
+              />
+            ) : (
+              <div className="opening-detail__sidecard-thumb-fallback">
+                <BookOpen size={48} aria-hidden="true" />
+              </div>
+            )}
+          </div>
 
-          <strong className="opening-detail__price">
-            {formatPrice(classItem.price, isFreeClass)}
-          </strong>
+          <div className="opening-detail__sidecard-body">
+            <span
+              className={
+                canRegister
+                  ? "opening-detail__status opening-detail__status--available"
+                  : "opening-detail__status opening-detail__status--unavailable"
+              }
+            >
+              {canRegister
+                ? "Open for registration"
+                : availableSlots <= 0
+                  ? "Class full"
+                  : "Registration unavailable"}
+            </span>
 
-          <p>
-            {isFreeClass
-              ? "Registration is free and grants access to this class's course content."
-              : "This payment registers you for the selected offline class and grants access to its course learning content."}
-          </p>
+            <div className="opening-detail__price-block">
+              <span>Class tuition</span>
 
-          <button
-            type="button"
-            className="opening-button opening-button--primary opening-detail__register"
-            disabled={!canRegister || submitting}
-            onClick={handleRegister}
-          >
-            {submitting
-              ? isFreeClass
-                ? "Registering..."
-                : "Creating checkout..."
-              : canRegister
+              <strong className="opening-detail__price">
+                {formatPrice(classItem.price, isFreeClass)}
+              </strong>
+            </div>
+
+            <p className="opening-detail__sidecard-copy">
+              {isFreeClass
+                ? "Registration is free and grants access to this class's course content."
+                : "Payment registers you for this offline class and grants access to its course content."}
+            </p>
+
+            <button
+              type="button"
+              className="opening-button opening-button--primary opening-detail__register"
+              disabled={!canRegister || submitting}
+              aria-busy={submitting}
+              onClick={handleRegister}
+            >
+              {submitting
                 ? isFreeClass
-                  ? "Register for free"
-                  : "Register and pay"
-                : "Registration unavailable"}
-          </button>
+                  ? "Registering..."
+                  : "Creating checkout..."
+                : canRegister
+                  ? isFreeClass
+                    ? "Register for free"
+                    : "Register and pay"
+                  : "Registration unavailable"}
+            </button>
+
+            <ul className="opening-detail__sidecard-list">
+              <li>
+                <CheckCircle2 size={15} aria-hidden="true" />
+                Access to the associated course content
+              </li>
+
+              <li>
+                <CheckCircle2 size={15} aria-hidden="true" />
+                Trainer-led offline learning schedule
+              </li>
+
+              <li>
+                <CheckCircle2 size={15} aria-hidden="true" />
+                Class capacity is limited to {classItem.maxStudents} learners
+              </li>
+            </ul>
+          </div>
         </aside>
-      </section>
+      </div>
     </main>
   );
 }

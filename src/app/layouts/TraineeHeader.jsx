@@ -1,9 +1,12 @@
 import { useEffect, useRef, useState } from "react";
-import { Bell, ChevronDown, LogOut, User } from "lucide-react";
+import { Bell, ChevronDown, LogOut, Receipt, User } from "lucide-react";
 import { Link } from "react-router-dom";
 import { SmartLearnlyMark } from "@/shared/components/SmartLearnlyMark";
 import { HeaderCourseSearch } from "@/shared/components/HeaderCourseSearch";
+import { ROLES } from "@/shared/constants/roles";
+import { getDashboardPathByRole } from "@/app/routes/dashboard-path";
 import { courseService } from "@/services";
+import "./TraineeLayout.css";
 
 function getDisplayName(user) {
   return (
@@ -48,6 +51,7 @@ export function TraineeHeader({ user, onLogout, roleLabel }) {
   const displayName = getDisplayName(user);
   const initials = getInitials(displayName);
   const roleText = roleLabel || getRoleLabel(user?.role);
+  const dashboardPath = getDashboardPathByRole(user?.role);
 
   useEffect(() => {
     if (!categoriesOpen && !notificationOpen && !profileOpen) return undefined;
@@ -103,7 +107,7 @@ export function TraineeHeader({ user, onLogout, roleLabel }) {
     <header className="trainee-header">
       <div className="header-container trainee-header__container">
         <Link
-          to="/dashboard"
+          to={dashboardPath}
           className="header-logo"
           aria-label="Smart Learnly dashboard"
         >
@@ -112,10 +116,11 @@ export function TraineeHeader({ user, onLogout, roleLabel }) {
         </Link>
 
         <HeaderCourseSearch
-          catalogPath="/learning/courses"
-          catalogHash=""
-          placeholder="Search courses, topics, or skills..."
-          backLabel="Back to Course Catalog"
+          includeOpeningClasses
+          placeholder="Search courses, classes, topics, or skills..."
+          classDetailPath="/opening-schedule"
+          classReturnPath="/#opening-schedule"
+          classBackLabel="Back to homepage"
         />
 
         <div className="trainee-header__category-anchor" ref={categoriesRef}>
@@ -152,7 +157,10 @@ export function TraineeHeader({ user, onLogout, roleLabel }) {
                 All categories
               </Link>
               {categoriesLoading ? (
-                <span className="trainee-header__categories-status" role="status">
+                <span
+                  className="trainee-header__categories-status"
+                  role="status"
+                >
                   Loading categories…
                 </span>
               ) : categories.length > 0 ? (
@@ -238,11 +246,32 @@ export function TraineeHeader({ user, onLogout, roleLabel }) {
                   <strong>{displayName}</strong>
                   <span>{user?.email || `${roleText} account`}</span>
                 </div>
-                <Link to="/profile" role="menuitem" onClick={() => setProfileOpen(false)}>
+                <Link
+                  to="/profile"
+                  role="menuitem"
+                  onClick={() => setProfileOpen(false)}
+                >
                   <User size={17} /> Profile
                 </Link>
-                <button type="button" role="menuitem" onClick={onLogout}>
-                  <LogOut size={17} /> Log out
+                <Link
+                  to="/learning/transactions"
+                  role="menuitem"
+                  onClick={() => setProfileOpen(false)}
+                >
+                  <Receipt size={17} />
+                  My Transactions
+                </Link>
+
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    setProfileOpen(false);
+                    onLogout?.();
+                  }}
+                >
+                  <LogOut size={17} />
+                  Log out
                 </button>
               </div>
             )}

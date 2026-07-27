@@ -1,22 +1,59 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { userService } from "@/services";
 
-export function useActiveTrainers() {
+function fetchActiveTrainers() {
+  return userService.listActiveTrainers({
+    page: 0,
+    size: 100,
+  });
+}
+
+function normalizeTrainers(data) {
+  return Array.isArray(data?.content) ? data.content : [];
+}
+
+export function useActiveTrainers({ autoLoad = true } = {}) {
   const [trainers, setTrainers] = useState([]);
-  const [loadingTrainers, setLoadingTrainers] = useState(false);
+  const [loadingTrainers, setLoadingTrainers] = useState(autoLoad);
   const [trainerError, setTrainerError] = useState("");
 
-  const reloadTrainers = useCallback(async () => {
-    try {
-      setLoadingTrainers(true);
-      setTrainerError("");
+  useEffect(() => {
+    if (!autoLoad) {
+      return undefined;
+    }
 
-      const data = await userService.listActiveTrainers({
-        page: 0,
-        size: 100,
+    let cancelled = false;
+
+    fetchActiveTrainers()
+      .then((data) => {
+        if (cancelled) return;
+
+        setTrainers(normalizeTrainers(data));
+        setTrainerError("");
+        setLoadingTrainers(false);
+      })
+      .catch((error) => {
+        if (cancelled) return;
+
+        console.error("Error loading active trainers:", error);
+
+        setTrainers([]);
+        setTrainerError(error?.message || "Can not load active trainers");
+        setLoadingTrainers(false);
       });
 
-      setTrainers(Array.isArray(data?.content) ? data.content : []);
+    return () => {
+      cancelled = true;
+    };
+  }, [autoLoad]);
+
+  const reloadTrainers = useCallback(async () => {
+    setLoadingTrainers(true);
+    setTrainerError("");
+
+    try {
+      const data = await fetchActiveTrainers();
+      setTrainers(normalizeTrainers(data));
     } catch (error) {
       console.error("Error loading active trainers:", error);
 

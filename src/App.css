@@ -3958,3 +3958,43 @@ html {
         text-align: center;
     }
 }
+
+/* =========================================================
+   HOMEPAGE CARD TYPOGRAPHY
+   ========================================================= */
+.courses-section
+  .course-card.course-card--catalog
+  h3,
+.opening-home-section
+  .opening-card
+  .opening-card__title {
+  font-family: "Lato", sans-serif;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.35;
+  letter-spacing: -0.02em;
+}
+
+.courses-section
+  .course-card.course-card--catalog
+  .course-card__price-current,
+.opening-home-section
+  .opening-card
+  .opening-card__price {
+  font-family: "Lato", sans-serif;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.courses-section
+  .course-card.course-card--catalog
+  .course-card__link,
+.opening-home-section
+  .opening-card
+  .opening-card__link {
+  font-family: "Lato", sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.4;
+}
