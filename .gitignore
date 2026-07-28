@@ -32,3 +32,5 @@ template/
 .env.*.local
 
 scripts/
+
+.xlsx-inspect-unit-report
