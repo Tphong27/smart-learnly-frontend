@@ -774,7 +774,10 @@ export function LessonDetailEditor({ context }) {
                 content,
                 videoUrl: lessonType === "VIDEO" ? resolvedVideoUrl : null,
                 attachmentUrl: lessonType === "PDF" ? uploadedFileUrl : null,
-                durationSeconds: Math.round(Number(durationMinutes || 0) * 60),
+                durationSeconds:
+                    lessonType === "ESSAY"
+                        ? 0
+                        : Math.round(Number(durationMinutes || 0) * 60),
                 isPreview,
                 status: normalizeLessonStatus(status),
                 resources: normalizedResources,
@@ -994,10 +997,27 @@ export function LessonDetailEditor({ context }) {
                             ? "Lesson audit history"
                             : "Edit lesson"}
                     </h1>
-                    <div className="sl-cm-lesson-editor__lesson-line">
-                        <strong>{title || "Untitled lesson"}</strong>
-                    </div>
-                    <p className="sl-cm-lesson-editor__context">{typeLabel}</p>
+                    {activeTab === "edit" && (
+                        <label className="sl-cm-lesson-editor__type-selector">
+                            <span>Lesson type</span>
+                            <select
+                                value={lessonType}
+                                onChange={(event) => {
+                                    setLessonType(event.target.value);
+                                    setExpandedSection("basic");
+                                    markChanged();
+                                }}
+                            >
+                                {Object.entries(LESSON_TYPE_LABELS).map(
+                                    ([value, label]) => (
+                                        <option key={value} value={value}>
+                                            {label}
+                                        </option>
+                                    ),
+                                )}
+                            </select>
+                        </label>
+                    )}
                 </div>
                 {features.audit && (
                     <Button
@@ -1062,7 +1082,7 @@ export function LessonDetailEditor({ context }) {
                 </div>
             )}
 
-            {activeTab === "edit" && (
+            {activeTab === "edit" && lessonType !== "ESSAY" && (
                 <section
                     className="sl-cm-lesson-editor__progress"
                     aria-label="Lesson completion"
@@ -1234,7 +1254,11 @@ export function LessonDetailEditor({ context }) {
                 ) : (
                     <form
                         onSubmit={handleSave}
-                        className="sl-cm-lesson-editor__accordion-form"
+                        className={`sl-cm-lesson-editor__accordion-form ${
+                            lessonType === "ESSAY"
+                                ? "sl-cm-lesson-editor__assignment-form"
+                                : ""
+                        }`}
                         noValidate
                     >
                         {lessonType === "VIDEO" ? (
@@ -1574,7 +1598,10 @@ export function LessonDetailEditor({ context }) {
                                                 ? "Needs attention"
                                                 : "Incomplete"
                                     }
-                                    expanded={expandedSection === "basic"}
+                                    expanded={
+                                        lessonType === "ESSAY" ||
+                                        expandedSection === "basic"
+                                    }
                                     onToggle={() =>
                                         setExpandedSection((current) =>
                                             current === "basic" ? "" : "basic",
@@ -1701,7 +1728,10 @@ export function LessonDetailEditor({ context }) {
                                                 ? "Complete"
                                                 : "Items missing"
                                     }
-                                    expanded={expandedSection === "material"}
+                                    expanded={
+                                        lessonType === "ESSAY" ||
+                                        expandedSection === "material"
+                                    }
                                     onToggle={() =>
                                         setExpandedSection((current) =>
                                             current === "material"
@@ -2040,8 +2070,16 @@ export function LessonDetailEditor({ context }) {
                                     id="lesson-step-settings"
                                     step="3"
                                     title="Lesson settings"
-                                    description="Configure status, duration, and preview access."
-                                    summary={`${statusLabel} · ${durationMinutes ? `${durationMinutes} min` : "No duration"} · Preview ${isPreview ? "enabled" : "disabled"}`}
+                                    description={
+                                        lessonType === "ESSAY"
+                                            ? "Configure status and preview access. This assignment remains available until the course ends."
+                                            : "Configure status, duration, and preview access."
+                                    }
+                                    summary={
+                                        lessonType === "ESSAY"
+                                            ? `${statusLabel} · Available until course end · Preview ${isPreview ? "enabled" : "disabled"}`
+                                            : `${statusLabel} · ${durationMinutes ? `${durationMinutes} min` : "No duration"} · Preview ${isPreview ? "enabled" : "disabled"}`
+                                    }
                                     state={
                                         settingsComplete
                                             ? "complete"
@@ -2052,7 +2090,10 @@ export function LessonDetailEditor({ context }) {
                                             ? "Complete"
                                             : "Incomplete"
                                     }
-                                    expanded={expandedSection === "settings"}
+                                    expanded={
+                                        lessonType === "ESSAY" ||
+                                        expandedSection === "settings"
+                                    }
                                     onToggle={() =>
                                         setExpandedSection((current) =>
                                             current === "settings"
@@ -2098,6 +2139,36 @@ export function LessonDetailEditor({ context }) {
                                                 )}
                                             </select>
                                         </div>
+                                        {lessonType !== "ESSAY" && (
+                                            <div className="sl-cm-lesson-editor__settings-field">
+                                                <div>
+                                                    <label
+                                                        className="sl-cm-lesson-editor__field-label"
+                                                        htmlFor="lesson-duration-input"
+                                                    >
+                                                        Estimated duration
+                                                    </label>
+                                                    <p>
+                                                        Used to estimate the
+                                                        learner's course duration.
+                                                    </p>
+                                                </div>
+                                                <div className="sl-cm-lesson-editor__input-unit">
+                                                    <input
+                                                        id="lesson-duration-input"
+                                                        type="number"
+                                                        min="0"
+                                                        inputMode="numeric"
+                                                        value={durationMinutes}
+                                                        onChange={(event) => {
+                                                            setDurationMinutes(
+                                                                Math.max(
+                                                                    0,
+                                                                    Number(
+                                                                        event.target
+                                                                            .value ||
+                                                                            0,
+                                                                    ),
                                         <div className="sl-cm-lesson-editor__settings-field">
                                             <div>
                                                 <label
@@ -2127,17 +2198,17 @@ export function LessonDetailEditor({ context }) {
                                                                         .value ||
                                                                     0,
                                                                 ),
-                                                            ),
-                                                        );
-                                                        markChanged();
-                                                    }}
-                                                    className="sl-cm-lesson-editor__field-control"
-                                                />
-                                                <span aria-hidden="true">
-                                                    minutes
-                                                </span>
+                                                            );
+                                                            markChanged();
+                                                        }}
+                                                        className="sl-cm-lesson-editor__field-control"
+                                                    />
+                                                    <span aria-hidden="true">
+                                                        minutes
+                                                    </span>
+                                                </div>
                                             </div>
-                                        </div>
+                                        )}
 
                                         <label className="sl-cm-lesson-editor__preview-setting sl-cm-lesson-editor__preview-setting--settings">
                                             <span className="sl-cm-lesson-editor__preview-copy">
