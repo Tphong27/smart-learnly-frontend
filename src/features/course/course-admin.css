@@ -1143,6 +1143,52 @@
     background: var(--sl-surface);
 }
 
+.sl-cm-flashcard-create {
+    display: grid;
+    gap: 14px;
+}
+
+.sl-cm-flashcard-create__notice {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 14px;
+    border: 1px solid var(--sl-line);
+    border-radius: var(--sl-radius-md);
+    background: var(--sl-surface);
+}
+
+.sl-cm-flashcard-create__notice > svg {
+    flex: 0 0 auto;
+    color: var(--sl-purple);
+    margin-top: 2px;
+}
+
+.sl-cm-flashcard-create__notice div {
+    display: grid;
+    gap: 4px;
+}
+
+.sl-cm-flashcard-create__notice strong {
+    color: var(--sl-ink);
+    font-size: 14px;
+}
+
+.sl-cm-flashcard-create__notice span {
+    color: var(--sl-muted);
+    font-size: 12.5px;
+    line-height: 1.5;
+}
+
+.sl-cm-form-grid {
+    display: grid;
+    gap: 12px;
+}
+
+.sl-cm-form-grid--two {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 /* Confirm modal description */
 .sl-cm-confirm__desc {
     margin: 0;
@@ -1528,6 +1574,10 @@
 
     .sl-cm-type-card {
         min-height: 0;
+    }
+
+    .sl-cm-form-grid--two {
+        grid-template-columns: minmax(0, 1fr);
     }
 
     .sl-cm-lesson-create-modal .modal__body {

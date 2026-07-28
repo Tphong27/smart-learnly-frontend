@@ -9,6 +9,7 @@ import {
   Trash2,
   Upload,
 } from "lucide-react";
+import { courseService } from "@/services/course.service";
 import { flashcardService } from "@/services/flashcard.service";
 import { FlashcardCardEditor } from "./FlashcardCardEditor";
 import {
@@ -58,6 +59,7 @@ const DEFAULT_PASTED_IMPORT = {
 };
 const DEFAULT_SOURCE_FILTERS = {
   keyword: "",
+  moduleId: "",
   difficulty: "",
   showImported: false,
 };
@@ -84,6 +86,37 @@ function formatLabel(value, fallback = "Unknown") {
     .replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
+function formatSourceTypeLabel(value, fallback = "Staging Batch") {
+  const normalized = String(value || "").trim().toUpperCase();
+  if (normalized === "COURSE_QUESTIONS") return "Course Questions";
+  if (normalized === "QUESTION_BANK") return "Question Bank (Historical)";
+  return formatLabel(value, fallback);
+}
+
+function getModuleId(question) {
+  return question?.moduleId || question?.courseModuleId || question?.module?.id;
+}
+
+function getModuleTitle(module) {
+  return module?.title || module?.name || module?.moduleTitle || "Untitled module";
+}
+
+function normalizeModules(payload) {
+  const data = normalizeResponse(payload);
+  const modules = Array.isArray(data?.modules)
+    ? data.modules
+    : Array.isArray(data)
+      ? data
+      : [];
+  return modules
+    .map((module) => ({
+      ...module,
+      id: module?.id || module?.moduleId,
+      title: getModuleTitle(module),
+    }))
+    .filter((module) => module.id);
+}
+
 function normalizeStatus(status) {
   return String(status || "draft").toLowerCase();
 }
@@ -103,6 +136,21 @@ function correctAnswersLabel(question) {
         .filter((answer) => answer.correct || answer.isCorrect)
         .map((answer) => answer.answerText);
   return answers.filter(Boolean).join(", ") || "--";
+}
+
+function answersLabel(question) {
+  const answers = Array.isArray(question?.answers) ? question.answers : [];
+  if (!answers.length) return correctAnswersLabel(question);
+  return (
+    answers
+      .map((answer, index) => {
+        const label = answer.answerText || answer.text || `Answer ${index + 1}`;
+        const correct = answer.correct || answer.isCorrect;
+        return correct ? `${label} (correct)` : label;
+      })
+      .filter(Boolean)
+      .join("; ") || "--"
+  );
 }
 
 function getBatchCards(batch) {
@@ -422,15 +470,63 @@ function ModalNotice({ notice }) {
   );
 }
 
-function CourseQuestionImportPanel({ setId, notify, onStagingChanged }) {
+function CourseQuestionsImportPanel({ setId, courseId, notify, onStagingChanged }) {
   const [filters, setFilters] = useState(DEFAULT_SOURCE_FILTERS);
   const [appliedFilters, setAppliedFilters] = useState(filters);
+  const [modules, setModules] = useState([]);
+  const [modulesLoading, setModulesLoading] = useState(false);
+  const [modulesError, setModulesError] = useState(null);
   const [questions, setQuestions] = useState([]);
   const [selectedIds, setSelectedIds] = useState([]);
   const [page, setPage] = useState(0);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadModules() {
+      if (!courseId) {
+        setModules([]);
+        setModulesError(null);
+        return;
+      }
+      setModulesLoading(true);
+      setModulesError(null);
+      try {
+        const response = await courseService.getCourseContent(courseId);
+        if (!cancelled) {
+          setModules(normalizeModules(response));
+        }
+      } catch (moduleError) {
+        if (!cancelled) {
+          setModules([]);
+          setModulesError(
+            getErrorMessage(moduleError, "Failed to load course modules."),
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setModulesLoading(false);
+        }
+      }
+    }
+
+    loadModules();
+    return () => {
+      cancelled = true;
+    };
+  }, [courseId]);
+
+  const moduleTitleById = useMemo(() => {
+    const titles = new Map();
+    modules.forEach((module) => {
+      if (module.id) {
+        titles.set(String(module.id), module.title);
+      }
+    });
+    return titles;
+  }, [modules]);
 
   const loadQuestions = useCallback(async () => {
     if (!setId) return;
@@ -439,6 +535,7 @@ function CourseQuestionImportPanel({ setId, notify, onStagingChanged }) {
     try {
       const params = {
         keyword: appliedFilters.keyword.trim() || undefined,
+        moduleId: appliedFilters.moduleId || undefined,
         difficulty: appliedFilters.difficulty || undefined,
       };
       const items = await flashcardService.listSourceQuestions(setId, params);
@@ -581,7 +678,7 @@ function CourseQuestionImportPanel({ setId, notify, onStagingChanged }) {
   return (
     <section className="flashcard-panel">
       <div className="flashcard-panel__header">
-        <h3 className="flashcard-panel__title">Course Question Import</h3>
+        <h3 className="flashcard-panel__title">Course Questions</h3>
         <button
           type="button"
           className="flashcard-btn"
@@ -593,6 +690,9 @@ function CourseQuestionImportPanel({ setId, notify, onStagingChanged }) {
         </button>
       </div>
       <div className="flashcard-panel__body flashcard-staging__section">
+        <p className="flashcard-staging__muted">
+          Choose approved questions from this course and import them as reviewable flashcard drafts.
+        </p>
         <div className="flashcard-staging__filters">
           <div className="flashcard-field">
             <label htmlFor="staging-question-keyword">Search</label>
@@ -608,6 +708,27 @@ function CourseQuestionImportPanel({ setId, notify, onStagingChanged }) {
               }
               placeholder="Question text"
             />
+          </div>
+          <div className="flashcard-field">
+            <label htmlFor="staging-question-module">Module</label>
+            <select
+              id="staging-question-module"
+              value={filters.moduleId}
+              onChange={(event) =>
+                setFilters((current) => ({
+                  ...current,
+                  moduleId: event.target.value,
+                }))
+              }
+              disabled={modulesLoading}
+            >
+              <option value="">All modules</option>
+              {modules.map((module) => (
+                <option key={module.id} value={module.id}>
+                  {module.title}
+                </option>
+              ))}
+            </select>
           </div>
           <div className="flashcard-field">
             <label htmlFor="staging-question-difficulty">Difficulty</label>
@@ -669,6 +790,7 @@ function CourseQuestionImportPanel({ setId, notify, onStagingChanged }) {
             <RefreshCw size={16} />
           </button>
         </div>
+        <InlineAlert>{modulesError}</InlineAlert>
         <InlineAlert>{error}</InlineAlert>
 
         <div className="flashcard-staging__table-wrap">
@@ -685,8 +807,10 @@ function CourseQuestionImportPanel({ setId, notify, onStagingChanged }) {
                   />
                 </th>
                 <th>Question</th>
-                <th>Correct answers</th>
+                <th>Module</th>
+                <th>Answers</th>
                 <th>Difficulty</th>
+                <th>Status</th>
                 <th>Import</th>
                 <th>Source</th>
               </tr>
@@ -694,11 +818,11 @@ function CourseQuestionImportPanel({ setId, notify, onStagingChanged }) {
             <tbody>
               {loading ? (
                 <tr>
-                      <td colSpan="6">Loading source questions...</td>
+                  <td colSpan="8">Loading source questions...</td>
                 </tr>
               ) : filteredQuestions.length === 0 ? (
                 <tr>
-                  <td colSpan="6">No source questions match these filters.</td>
+                  <td colSpan="8">No source questions match these filters.</td>
                 </tr>
               ) : (
                 pageQuestions.map((question) => {
@@ -731,9 +855,13 @@ function CourseQuestionImportPanel({ setId, notify, onStagingChanged }) {
                         {question.questionText || "--"}
                       </td>
                       <td className="flashcard-staging__wrap-cell">
-                        {correctAnswersLabel(question)}
+                        {moduleTitleById.get(String(getModuleId(question))) || "--"}
+                      </td>
+                      <td className="flashcard-staging__wrap-cell">
+                        {answersLabel(question)}
                       </td>
                       <td>{question.difficulty ?? "--"}</td>
+                      <td>{formatLabel(question.status, "Approved")}</td>
                       <td className="flashcard-staging__import-state-cell">
                         {isImported ? (
                           <span className="flashcard-staging__badge flashcard-staging__badge--imported">
@@ -1231,6 +1359,7 @@ function DocumentGenerationPanel({ setId, notify, onStagingChanged }) {
 }
 
 export function ImportFlashcardsModal({
+  courseId,
   setId,
   existingCards = [],
   notify,
@@ -1380,7 +1509,7 @@ export function ImportFlashcardsModal({
               }
               onClick={() => selectImportTab("course-questions")}
             >
-              Course questions
+              Course Questions
             </button>
           </div>
         )}
@@ -1442,7 +1571,8 @@ export function ImportFlashcardsModal({
                   role="tabpanel"
                   aria-labelledby="flashcard-import-tab-course-questions"
                 >
-                  <CourseQuestionImportPanel
+                  <CourseQuestionsImportPanel
+                    courseId={courseId}
                     setId={setId}
                     notify={notifyInModal}
                     onStagingChanged={handleStagingImportComplete}
@@ -1709,7 +1839,7 @@ function StagingBatchCardGroup({
           <h4>
             {hideSourceSummary
               ? "Cards"
-              : `${formatLabel(batch.sourceType, "Staging Batch")}${
+              : `${formatSourceTypeLabel(batch.sourceType, "Staging Batch")}${
                   batch.sourceName ? ` - ${batch.sourceName}` : ""
                 }`}
           </h4>
@@ -2476,7 +2606,7 @@ function ImportedBatchReviewPanel({
         <div className="flashcard-section-heading flashcard-imported-review__header">
           <div>
             <p className="flashcard-imported-review__summary">
-              {formatLabel(batch?.sourceType, "Imported Batch")}
+              {formatSourceTypeLabel(batch?.sourceType, "Imported Batch")}
               {batch?.sourceName ? ` - ${batch.sourceName}` : ""} - {cards.length} card
               {cards.length === 1 ? "" : "s"}
             </p>

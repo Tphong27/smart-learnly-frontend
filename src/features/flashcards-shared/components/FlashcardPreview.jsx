@@ -1,0 +1,350 @@
+import { useMemo, useState } from "react";
+import {
+  ChevronsUpDown,
+  ChevronLeft,
+  ChevronRight,
+  Shuffle,
+} from "lucide-react";
+import { isGenericGeneratedExplanation, normalizeCards } from "../utils/flashcard-utils";
+import "../flashcards-shared.css";
+
+// eslint-disable-next-line react-refresh/only-export-components
+export function shuffleCards(cards) {
+  const shuffled = [...cards];
+  for (let index = shuffled.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(Math.random() * (index + 1));
+    [shuffled[index], shuffled[swapIndex]] = [
+      shuffled[swapIndex],
+      shuffled[index],
+    ];
+  }
+  return shuffled;
+}
+
+function cardKey(id) {
+  return id == null ? "" : String(id);
+}
+
+function isStructuredPreviewText(value) {
+  const lines = String(value || "")
+    .replace(/\r\n/g, "\n")
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  return lines.some((line) =>
+    /^(options?|choices?|answer choices?)\s*:$/i.test(line) ||
+      /^([A-Z]|\d+)[.)]\s+\S/.test(line) ||
+      /^[-*]\s+\S/.test(line),
+  );
+}
+
+function ManagementPreviewText({ text }) {
+  const source = String(text || "");
+  const structured = isStructuredPreviewText(source);
+  const longProse = !structured && source.trim().length > 280;
+
+  if (!longProse) {
+    return (
+      <div
+        className={[
+          "flashcard-preview__text",
+          structured ? "flashcard-preview__text--structured" : "",
+        ]
+          .filter(Boolean)
+          .join(" ")}
+      >
+        {source}
+      </div>
+    );
+  }
+
+  return (
+    <div className="flashcard-preview__text flashcard-preview__text--prose">
+      {source
+        .replace(/\r\n/g, "\n")
+        .split(/(\n{2,})/)
+        .map((block, index) =>
+          /^\n{2,}$/.test(block) ? (
+            <span
+              key={`space-${index}-${block.length}`}
+              className="flashcard-preview__text-break"
+              aria-hidden="true"
+            >
+              {block}
+            </span>
+          ) : (
+            <p
+              key={`block-${index}-${block.slice(0, 16)}`}
+              className="flashcard-preview__text-block"
+            >
+              {block}
+            </p>
+          ),
+        )}
+    </div>
+  );
+}
+
+function CardFace({
+  label,
+  text,
+  imageUrl,
+  hint,
+  explanation,
+  contentLayout,
+  suppressGenericGeneratedExplanation,
+}) {
+  const visibleExplanation =
+    suppressGenericGeneratedExplanation && isGenericGeneratedExplanation(explanation)
+      ? ""
+      : explanation;
+  const hasText = Boolean(text);
+  const hasImage = Boolean(imageUrl);
+  const textLength = String(text || "").trim().length;
+  const hasSupportingContent = Boolean(hint || visibleExplanation);
+  const isShortTextOnly =
+    hasText && !hasImage && !hasSupportingContent && textLength <= 180;
+  const isLongText = textLength > 280;
+  const isVeryLongText = textLength > 700;
+  const isImageLongText = hasImage && textLength > 180;
+  const isImageShortText =
+    hasImage && hasText && !hasSupportingContent && textLength <= 180;
+  const isManagement = contentLayout === "management";
+
+  return (
+    <div
+      className={[
+        "flashcard-preview__face",
+        `flashcard-preview__face--${label.toLowerCase()}`,
+        isShortTextOnly ? "flashcard-preview__face--centered" : "",
+        hasImage || !isShortTextOnly ? "flashcard-preview__face--scrollable" : "",
+        hasImage ? "flashcard-preview__face--with-image" : "",
+        isLongText ? "flashcard-preview__face--long-text" : "",
+        isVeryLongText ? "flashcard-preview__face--very-long-text" : "",
+        isImageLongText ? "flashcard-preview__face--image-long-text" : "",
+        isImageShortText ? "flashcard-preview__face--image-short-text" : "",
+        isManagement ? "flashcard-preview__face--management" : "",
+      ]
+        .filter(Boolean)
+        .join(" ")}
+    >
+      <span className="flashcard-preview__label">{label}</span>
+      <div className="flashcard-preview__main-content">
+        {imageUrl && (
+          <img
+            src={imageUrl}
+            alt=""
+            className="flashcard-preview__image"
+            loading="lazy"
+          />
+        )}
+        {text ? (
+          isManagement ? (
+            <ManagementPreviewText text={text} />
+          ) : (
+            <div className="flashcard-preview__text">{text}</div>
+          )
+        ) : (
+          !imageUrl && <div className="flashcard-preview__text is-muted">...</div>
+        )}
+      </div>
+      {(hint || visibleExplanation) && (
+        <div className="flashcard-preview__support">
+          {hint && <div className="flashcard-preview__hint">{hint}</div>}
+          {visibleExplanation && (
+            <div className="flashcard-preview__explanation">{visibleExplanation}</div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function FlashcardPreview({
+  cards,
+  activeCardId,
+  orderedCardIds,
+  onActiveCardChange,
+  onAdvancePastEnd,
+  onShuffle,
+  emptyMessage = "No cards available.",
+  className = "",
+  renderControls,
+  renderActions,
+  contentLayout = "default",
+  showNavigation = true,
+  suppressGenericGeneratedExplanation = true,
+}) {
+  const normalizedCards = useMemo(() => normalizeCards(cards), [cards]);
+  const [internalActiveCardId, setInternalActiveCardId] = useState(null);
+  const [internalOrderIds, setInternalOrderIds] = useState([]);
+  const [flipped, setFlipped] = useState(false);
+
+  const orderedCards = useMemo(() => {
+    if (!normalizedCards.length) return [];
+    const cardById = new Map(
+      normalizedCards.map((card) => [cardKey(card.id), card]),
+    );
+    const ids = orderedCardIds?.length ? orderedCardIds : internalOrderIds;
+    const ordered = ids
+      .map((id) => cardById.get(cardKey(id)))
+      .filter(Boolean);
+    const orderedIds = new Set(ordered.map((card) => cardKey(card.id)));
+    return [
+      ...ordered,
+      ...normalizedCards.filter((card) => !orderedIds.has(cardKey(card.id))),
+    ];
+  }, [internalOrderIds, normalizedCards, orderedCardIds]);
+
+  const resolvedActiveCardId = activeCardId ?? internalActiveCardId;
+  const resolvedActiveCardKey = cardKey(resolvedActiveCardId);
+
+  const currentIndex = useMemo(() => {
+    if (!orderedCards.length) return -1;
+    const index = orderedCards.findIndex(
+      (card) => cardKey(card.id) === resolvedActiveCardKey,
+    );
+    return index >= 0 ? index : 0;
+  }, [orderedCards, resolvedActiveCardKey]);
+
+  const currentCard = orderedCards[currentIndex] || null;
+
+  const cardCount = orderedCards.length;
+
+  const setActiveCard = (card) => {
+    if (card?.id == null) return;
+    if (activeCardId === undefined) {
+      setInternalActiveCardId(card.id);
+    }
+    onActiveCardChange?.(card.id, card);
+    setFlipped(false);
+  };
+
+  const goPrevious = () => {
+    const previousCard = orderedCards[Math.max(0, currentIndex - 1)];
+    setActiveCard(previousCard);
+  };
+
+  const goNext = () => {
+    if (currentIndex >= cardCount - 1) {
+      onAdvancePastEnd?.(currentCard, orderedCards);
+      setFlipped(false);
+      return;
+    }
+
+    const nextCard = orderedCards[Math.min(cardCount - 1, currentIndex + 1)];
+    setActiveCard(nextCard);
+  };
+
+  const shuffle = () => {
+    const shuffledCards = shuffleCards(orderedCards);
+    const shuffledIds = shuffledCards.map((card) => card.id);
+    if (onShuffle) {
+      onShuffle(shuffledIds, shuffledCards);
+    } else {
+      setInternalOrderIds(shuffledIds);
+    }
+    setActiveCard(shuffledCards[0]);
+  };
+
+  const flipCard = () => {
+    setFlipped((value) => !value);
+  };
+
+  const controlState = {
+    card: currentCard,
+    index: currentIndex,
+    cardCount,
+    isBackVisible: flipped,
+    setFlipped,
+    flipCard,
+    goPrevious,
+    goNext,
+    shuffle,
+    orderedCards,
+    canGoPrevious: currentIndex > 0,
+    canGoNext: currentIndex < cardCount - 1 || Boolean(onAdvancePastEnd),
+  };
+
+  if (!cardCount) {
+    return (
+      <div className="flashcard-empty">
+        <ChevronsUpDown size={28} />
+        <p>{emptyMessage}</p>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className={[
+        "flashcard-preview",
+        contentLayout === "management" ? "flashcard-preview--management" : "",
+        className,
+      ]
+        .filter(Boolean)
+        .join(" ")}
+    >
+      <div className="flashcard-preview__stage">
+        <button
+          type="button"
+          className={`flashcard-preview__card ${flipped ? "is-flipped" : ""}`}
+          onClick={flipCard}
+          aria-label={flipped ? "Show front side" : "Show back side"}
+        >
+          <CardFace
+            label="Front"
+            text={currentCard.frontText}
+            imageUrl={currentCard.frontImageUrl}
+            hint={currentCard.hint}
+            contentLayout={contentLayout}
+            suppressGenericGeneratedExplanation={suppressGenericGeneratedExplanation}
+          />
+          <CardFace
+            label="Back"
+            text={currentCard.backText}
+            imageUrl={currentCard.backImageUrl}
+            explanation={currentCard.explanation}
+            contentLayout={contentLayout}
+            suppressGenericGeneratedExplanation={suppressGenericGeneratedExplanation}
+          />
+        </button>
+      </div>
+
+      {!showNavigation ? null : renderControls ? (
+        renderControls(controlState)
+      ) : (
+        <div className="flashcard-preview__controls">
+          <button
+            type="button"
+            className="flashcard-btn"
+            onClick={goPrevious}
+            disabled={!controlState.canGoPrevious}
+          >
+            <ChevronLeft size={16} />
+            Previous
+          </button>
+          <span className="flashcard-preview__counter">
+            {currentIndex + 1} / {cardCount}
+          </span>
+          <button
+            type="button"
+            className="flashcard-btn"
+            onClick={goNext}
+            disabled={!controlState.canGoNext}
+          >
+            Next
+            <ChevronRight size={16} />
+          </button>
+          <button type="button" className="flashcard-btn" onClick={shuffle}>
+            <Shuffle size={16} />
+            Shuffle
+          </button>
+        </div>
+      )}
+
+      {renderActions?.(controlState)}
+    </div>
+  );
+}

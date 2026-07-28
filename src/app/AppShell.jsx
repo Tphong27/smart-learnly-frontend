@@ -7,9 +7,18 @@ import {
 import { PublicLayout } from "./layouts/PublicLayout";
 import { AuthAwareLayout } from "./layouts/AuthAwareLayout";
 import { AppLayout } from "./layouts/AppLayout";
+import { TraineeLayout } from "./layouts/TraineeLayout";
+import { TrainerLayout } from "./layouts/TrainerLayout";
 import { ProtectedRoute } from "./routes/ProtectedRoute";
 import { RoleGuard } from "./routes/RoleGuard";
-import { ROLES } from "@/shared/constants/roles";
+import {
+  isRoleAllowed,
+  normalizeRole,
+  PERSONAL_FLASHCARD_ROLES,
+  PERSONAL_FLASHCARD_STAFF_LAYOUT_ROLES,
+  ROLES,
+} from "@/shared/constants/roles";
+import { getCurrentUser } from "@/services";
 import { HomePage } from "../features/home/HomePage";
 import {
   CourseDetailPage,
@@ -35,6 +44,26 @@ import { NotFoundPage } from "./pages/error/NotFoundPage";
 import { ForbiddenPage } from "./pages/error/ForbiddenPage";
 import { ServerErrorPage } from "./pages/error/ServerErrorPage";
 import { SiteFooter } from "@/shared/components/SiteFooter";
+import {
+  PersonalFlashcardLibraryPage,
+  PersonalFlashcardSetDetailPage,
+  PersonalFlashcardStudyPage,
+} from "@/features/personal-flashcards";
+
+function PersonalFlashcardLayoutBoundary() {
+  const user = getCurrentUser();
+  const normalizedRole = normalizeRole(user?.role);
+
+  if (normalizedRole === ROLES.TRAINEE) {
+    return <TraineeLayout />;
+  }
+
+  if (isRoleAllowed(normalizedRole, PERSONAL_FLASHCARD_STAFF_LAYOUT_ROLES)) {
+    return <TrainerLayout />;
+  }
+
+  return <Navigate to="/403" replace />;
+}
 
 const appRoutes = [
   {
@@ -171,6 +200,25 @@ const appRoutes = [
       {
         element: <AppLayout />,
         children: [{ path: "/profile", element: <ProfilePage /> }],
+      },
+      {
+        element: <RoleGuard allowedRoles={PERSONAL_FLASHCARD_ROLES} />,
+        children: [
+          {
+            element: <PersonalFlashcardLayoutBoundary />,
+            children: [
+              { path: "/flashcards", element: <PersonalFlashcardLibraryPage /> },
+              {
+                path: "/flashcards/:setId",
+                element: <PersonalFlashcardSetDetailPage />,
+              },
+              {
+                path: "/flashcards/:setId/study",
+                element: <PersonalFlashcardStudyPage />,
+              },
+            ],
+          },
+        ],
       },
 
       // Nhóm 2: Bung riêng cụm Trainee thông qua thực thi hàm

@@ -7,6 +7,17 @@ export const ROLES = {
   ADMIN: "admin",
 };
 
+export const PERSONAL_FLASHCARD_ROLES = Object.freeze([
+  ROLES.TRAINEE,
+  ROLES.TRAINER,
+  ROLES.SME,
+]);
+
+export const PERSONAL_FLASHCARD_STAFF_LAYOUT_ROLES = Object.freeze([
+  ROLES.TRAINER,
+  ROLES.SME,
+]);
+
 export function normalizeRole(role) {
   return typeof role === "string" ? role.toLowerCase() : role;
 }

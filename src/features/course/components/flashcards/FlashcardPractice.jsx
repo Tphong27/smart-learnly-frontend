@@ -13,9 +13,12 @@ import {
 } from "lucide-react";
 import { flashcardService } from "@/services/flashcard.service";
 import { useToast } from "@/shared/components/ui";
+import {
+  FlashcardStudyCardList,
+  FlashcardStudyControls,
+} from "@/features/flashcards-shared";
 import { FlashcardPreview, shuffleCards } from "./FlashcardPreview";
 import { getErrorMessage, normalizeSet } from "./flashcard-utils";
-import { useProgressiveVisibleItems } from "./useProgressiveVisibleItems";
 import "./Flashcards.css";
 
 const FILTERS = [
@@ -327,57 +330,6 @@ function isTypingShortcutTarget(target) {
   );
 }
 
-function FlashcardPracticeControls({
-  controls,
-  showFocusButton,
-  onOpenFocusMode,
-}) {
-  return (
-    <div className="flashcard-preview__controls flashcard-practice__controls">
-      <button
-        type="button"
-        className="flashcard-btn"
-        onClick={controls.goPrevious}
-        disabled={!controls.canGoPrevious}
-      >
-        <ChevronLeft size={16} />
-        Previous
-      </button>
-      <span className="flashcard-preview__counter">
-        {controls.index + 1} / {controls.cardCount}
-      </span>
-      <button
-        type="button"
-        className="flashcard-btn"
-        onClick={controls.goNext}
-        disabled={!controls.canGoNext}
-      >
-        Next
-        <ChevronRight size={16} />
-      </button>
-      <button
-        type="button"
-        className="flashcard-btn"
-        onClick={controls.shuffle}
-      >
-        <Shuffle size={16} />
-        Shuffle
-      </button>
-      {showFocusButton && (
-        <button
-          type="button"
-          className="flashcard-btn flashcard-btn--icon flashcard-focus-toggle"
-          onClick={onOpenFocusMode}
-          aria-label="Open focus mode"
-          title="Open focus mode"
-        >
-          <Maximize2 size={16} />
-        </button>
-      )}
-    </div>
-  );
-}
-
 function FlashcardReviewActions({
   card,
   readOnly,
@@ -622,102 +574,6 @@ function FlashcardFocusMode({
           />
         </div>
       </section>
-    </div>
-  );
-}
-
-function CardSideSummary({ label, text, imageUrl }) {
-  const hasText = Boolean(text);
-  const hasImage = Boolean(imageUrl);
-
-  return (
-    <div className="flashcard-compact-item__side">
-      <span className="flashcard-compact-item__side-label">{label}</span>
-      {hasImage && (
-        <img
-          src={imageUrl}
-          alt=""
-          className="flashcard-compact-item__image"
-          loading="lazy"
-        />
-      )}
-      {hasText ? (
-        <div className="flashcard-compact-item__text">{text}</div>
-      ) : (
-        !hasImage && (
-          <div className="flashcard-compact-item__empty">No content</div>
-        )
-      )}
-    </div>
-  );
-}
-
-function FlashcardCompactList({ cards, activeCardId, onSelect }) {
-  const {
-    visibleItems,
-    remainingCount,
-    showMore,
-  } = useProgressiveVisibleItems(cards, `practice:${cards.map((card) => cardKey(card.id)).join("|")}`, 40);
-  if (!cards.length) return null;
-
-  const activeKey = cardKey(activeCardId);
-
-  return (
-    <div className="flashcard-compact">
-      <div className="flashcard-compact__header">
-        <h3>Cards</h3>
-        <span>
-          {cards.length} card{cards.length === 1 ? "" : "s"}
-        </span>
-      </div>
-      <div className="flashcard-compact-list">
-        {visibleItems.map((card, index) => {
-          const status = progressStatus(card);
-          const isActive = cardKey(card.id) === activeKey;
-
-          return (
-            <button
-              key={card.id}
-              type="button"
-              className={`flashcard-compact-item ${
-                isActive ? "is-active" : ""
-              }`}
-              onClick={() => onSelect(card.id)}
-              aria-current={isActive ? "true" : undefined}
-            >
-              <span className="flashcard-compact-item__number">
-                {index + 1}
-              </span>
-              <div className="flashcard-compact-item__content">
-                <div className="flashcard-compact-item__sides">
-                  <CardSideSummary
-                    label="Front"
-                    text={card.frontText}
-                    imageUrl={card.frontImageUrl}
-                  />
-                  <CardSideSummary
-                    label="Back"
-                    text={card.backText}
-                    imageUrl={card.backImageUrl}
-                  />
-                </div>
-              </div>
-              <span
-                className={`flashcard-progress-badge flashcard-progress-badge--${status}`}
-              >
-                {STATUS_META[status].label}
-              </span>
-            </button>
-          );
-        })}
-      </div>
-      {remainingCount > 0 && (
-        <div className="flashcard-compact__more">
-          <button type="button" className="flashcard-btn" onClick={showMore}>
-            Show more ({Math.min(remainingCount, 40)} of {remainingCount})
-          </button>
-        </div>
-      )}
     </div>
   );
 }
@@ -1440,10 +1296,25 @@ export function FlashcardPractice({
         renderControls={
           !readOnly
             ? (controls) => (
-                <FlashcardPracticeControls
+                <FlashcardStudyControls
                   controls={controls}
-                  showFocusButton={canOpenFocusMode}
-                  onOpenFocusMode={openFocusMode}
+                  className="flashcard-practice__controls"
+                  auxiliaryAction={{
+                    icon: <Shuffle size={16} />,
+                    label: "Shuffle",
+                    onClick: controls.shuffle,
+                  }}
+                  trailingAction={
+                    canOpenFocusMode
+                      ? {
+                          ariaLabel: "Open focus mode",
+                          className: "flashcard-btn flashcard-btn--icon flashcard-focus-toggle",
+                          icon: <Maximize2 size={16} />,
+                          onClick: openFocusMode,
+                          title: "Open focus mode",
+                        }
+                      : null
+                  }
                 />
               )
             : undefined
@@ -1458,10 +1329,21 @@ export function FlashcardPractice({
         )}
       />
 
-      <FlashcardCompactList
+      <FlashcardStudyCardList
         cards={currentQueue}
         activeCardId={activeCardIdForCurrentFilter}
         onSelect={handleActiveCardChange}
+        contextKey={`practice:${currentQueue.map((card) => cardKey(card.id)).join("|")}`}
+        renderItemMeta={(card) => {
+          const status = progressStatus(card);
+          return (
+            <span
+              className={`flashcard-progress-badge flashcard-progress-badge--${status}`}
+            >
+              {STATUS_META[status].label}
+            </span>
+          );
+        }}
       />
 
       {isFocusModeOpen && (

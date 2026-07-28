@@ -713,6 +713,7 @@ function SectionFormModal({
 function LessonCreateModal({
   open,
   lessonTypeOptions,
+  enableFlashcardCreateFields = false,
   onSubmit,
   onClose,
 }) {
@@ -722,8 +723,13 @@ function LessonCreateModal({
     lessonTypeOptions?.[0]?.value || "video",
   );
   const [isPreview, setIsPreview] = useState(false);
+  const [status, setStatus] = useState("draft");
+  const [durationMinutes, setDurationMinutes] = useState("");
   const [titleError, setTitleError] = useState("");
+  const [durationError, setDurationError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const isFlashcardLesson = lessonTypeKey(lessonType) === "flashcard";
+  const showFlashcardFields = enableFlashcardCreateFields && isFlashcardLesson;
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -732,9 +738,24 @@ function LessonCreateModal({
       setTitleError("Lesson title is required.");
       return;
     }
+    let durationSeconds = 0;
+    if (showFlashcardFields && String(durationMinutes).trim()) {
+      const parsedDuration = Number(durationMinutes);
+      if (!Number.isFinite(parsedDuration) || parsedDuration < 0) {
+        setDurationError("Estimated duration must be 0 or more minutes.");
+        return;
+      }
+      durationSeconds = Math.round(parsedDuration * 60);
+    }
     setSubmitting(true);
     try {
-      await onSubmit?.({ title: trimmed, lessonType, isPreview });
+      await onSubmit?.({
+        title: trimmed,
+        lessonType,
+        isPreview: showFlashcardFields ? false : isPreview,
+        status: showFlashcardFields ? status : "draft",
+        durationSeconds: showFlashcardFields ? durationSeconds : 0,
+      });
     } finally {
       setSubmitting(false);
     }
@@ -845,19 +866,80 @@ function LessonCreateModal({
           </div>
         </fieldset>
 
-        <label className="sl-cm-checkbox">
-          <input
-            type="checkbox"
-            checked={isPreview}
-            onChange={(event) => setIsPreview(event.target.checked)}
-          />
-          <span>
-            <span className="sl-cm-checkbox__title">Allow preview</span>
-            <span className="sl-cm-checkbox__desc">
-              Learners who have not purchased the course can still view this lesson.
+        {showFlashcardFields ? (
+          <section className="sl-cm-flashcard-create" aria-label="Flashcard lesson setup">
+            <div className="sl-cm-flashcard-create__notice">
+              <Layers size={18} aria-hidden="true" />
+              <div>
+                <strong>Flashcard set is created automatically</strong>
+                <span>
+                  After creation, you will open the lesson editor to add, import, and organize cards.
+                </span>
+              </div>
+            </div>
+
+            <div className="sl-cm-form-grid sl-cm-form-grid--two">
+              <label className="sl-cm-field" htmlFor="sl-cm-lesson-status">
+                <span className="sl-cm-field__label">Status</span>
+                <select
+                  id="sl-cm-lesson-status"
+                  className="sl-cm-field__control"
+                  value={status}
+                  onChange={(event) => setStatus(event.target.value)}
+                >
+                  <option value="draft">Draft</option>
+                  <option value="published">Published</option>
+                  <option value="inactive">Inactive</option>
+                </select>
+              </label>
+
+              <label className="sl-cm-field" htmlFor="sl-cm-lesson-duration">
+                <span className="sl-cm-field__label">Estimated duration</span>
+                <input
+                  id="sl-cm-lesson-duration"
+                  type="number"
+                  min="0"
+                  step="1"
+                  inputMode="numeric"
+                  className="sl-cm-field__control"
+                  value={durationMinutes}
+                  onChange={(event) => {
+                    setDurationMinutes(event.target.value);
+                    setDurationError("");
+                  }}
+                  placeholder="Minutes"
+                  aria-invalid={Boolean(durationError) || undefined}
+                  aria-describedby={durationError ? "sl-cm-lesson-duration-error" : undefined}
+                />
+                {durationError ? (
+                  <p
+                    id="sl-cm-lesson-duration-error"
+                    className="sl-cm-field__error"
+                    role="alert"
+                  >
+                    {durationError}
+                  </p>
+                ) : (
+                  <p className="sl-cm-field__helper">Optional. Use 0 or leave blank if unknown.</p>
+                )}
+              </label>
+            </div>
+          </section>
+        ) : (
+          <label className="sl-cm-checkbox">
+            <input
+              type="checkbox"
+              checked={isPreview}
+              onChange={(event) => setIsPreview(event.target.checked)}
+            />
+            <span>
+              <span className="sl-cm-checkbox__title">Allow preview</span>
+              <span className="sl-cm-checkbox__desc">
+                Learners who have not purchased the course can still view this lesson.
+              </span>
             </span>
-          </span>
-        </label>
+          </label>
+        )}
       </form>
     </Modal>
   );
@@ -1020,6 +1102,7 @@ export function CurriculumStructureEditor({
   stats,
   readOnly = false,
   lessonTypeOptions = DEFAULT_LESSON_TYPES,
+  enableFlashcardCreateFields = false,
   emptyMessage = "The course has no content structure yet.",
   emptyAddTitle = "Add a new module",
   emptyAddSubtitle = "Build a logical structure so learners can follow along easily.",
@@ -1247,6 +1330,7 @@ export function CurriculumStructureEditor({
         <LessonCreateModal
           open
           lessonTypeOptions={lessonTypeOptions}
+          enableFlashcardCreateFields={enableFlashcardCreateFields}
           onSubmit={handleCreateLesson}
           onClose={() => setLessonModalSection(null)}
         />

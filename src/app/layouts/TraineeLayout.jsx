@@ -24,7 +24,7 @@ const TRAINEE_TABS = [
     to: "/learning/tests",
   },
   {
-    label: "My Flashcards",
+    label: "Course Flashcards",
     to: "/learning/flashcards",
   },
   {
@@ -34,6 +34,10 @@ const TRAINEE_TABS = [
   {
     label: "Opening Class",
     to: "/learning/opening-schedule",
+  },
+  {
+    label: "Flashcards",
+    to: "/flashcards",
   },
 ];
 
@@ -67,6 +71,8 @@ export function TraineeLayout({ children }) {
   const displayName = getDisplayName(user);
   const showLearningNavigation =
     location.pathname === "/dashboard" ||
+    location.pathname === "/flashcards" ||
+    location.pathname.startsWith("/flashcards/") ||
     location.pathname.startsWith("/learning/");
 
   async function handleLogout() {
