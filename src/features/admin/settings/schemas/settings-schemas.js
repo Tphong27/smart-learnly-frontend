@@ -33,3 +33,47 @@ export const googleOAuthSchema = z.object({
   clientSecret: z.string().max(300, 'Client Secret must be at most 300 characters').optional(),
   scope: z.string().trim().max(300, 'Scope must be at most 300 characters').optional(),
 })
+
+export const googleMeetSettingsSchema = z.object({
+  enabled: z.boolean(),
+  refreshToken: z.string().max(1000, 'Refresh token must be at most 1000 characters').optional(),
+})
+
+export const questionImageImportSettingsSchema = z.object({
+  enabled: z.boolean(),
+  provider: z
+    .string({ message: 'Provider is required' })
+    .trim()
+    .min(1, 'Provider is required')
+    .max(100, 'Provider must be at most 100 characters'),
+  apiKey: z.string().max(500, 'API key must be at most 500 characters').optional(),
+  model: z
+    .string({ message: 'Model is required' })
+    .trim()
+    .min(1, 'Model is required')
+    .max(200, 'Model must be at most 200 characters'),
+  timeoutSeconds: z.coerce.number().min(5, 'Timeout must be at least 5 seconds').max(300, 'Timeout must be at most 300 seconds'),
+  maxFileSizeMb: z.coerce.number().min(1, 'Max file size must be at least 1 MB').max(50, 'Max file size must be at most 50 MB'),
+  maxFiles: z.coerce.number().min(1, 'Max files must be at least 1').max(20, 'Max files must be at most 20'),
+})
+
+export const assignmentAiSettingsSchema = z.object({
+  enabled: z.boolean(),
+  provider: z
+    .string({ message: 'Provider is required' })
+    .trim()
+    .min(1, 'Provider is required')
+    .max(100, 'Provider must be at most 100 characters'),
+  apiKey: z.string().max(500, 'API key must be at most 500 characters').optional(),
+  model: z
+    .string({ message: 'Model is required' })
+    .trim()
+    .min(1, 'Model is required')
+    .max(200, 'Model must be at most 200 characters'),
+  fallbackModel: z
+    .string({ message: 'Fallback model is required' })
+    .trim()
+    .min(1, 'Fallback model is required')
+    .max(200, 'Fallback model must be at most 200 characters'),
+  timeoutSeconds: z.coerce.number().min(5, 'Timeout must be at least 5 seconds').max(300, 'Timeout must be at most 300 seconds'),
+})
