@@ -17,13 +17,12 @@ import { Button, useToast } from "@/shared/components/ui";
 import { courseService, getCurrentUser, questionBankService } from "@/services";
 import { formatDate } from "@/shared/utils/formatters";
 import {
-  getDefaultLanguage,
   normalizeAiSource,
 } from "../utils/aiQuestionDrafts";
 import "../../admin-shared.css";
 import "./question-bank.css";
 
-const QUANTITY_OPTIONS = [5, 10, 20];
+const MAX_REQUESTED_COUNT = 20;
 const QUESTION_TYPE_OPTIONS = [
   { value: "multiple_choice", label: "Multiple choice" },
   { value: "true_false", label: "True/False" },
@@ -117,7 +116,7 @@ export function AdminAiQuestionDraftCreatePage() {
   ]);
   const [requestedCount, setRequestedCount] = useState(10);
   const [moduleId, setModuleId] = useState("");
-  const [language, setLanguage] = useState("vi");
+  const [language, setLanguage] = useState("en");
   const [generationInstruction, setGenerationInstruction] = useState("");
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -146,7 +145,7 @@ export function AdminAiQuestionDraftCreatePage() {
             }
           : bankData;
         setBank(normalizedBank);
-        setLanguage(getDefaultLanguage(normalizedBank));
+        setLanguage("en");
 
         const resolvedCourseId = isCourseQuestionsMode
           ? courseId
@@ -242,14 +241,15 @@ export function AdminAiQuestionDraftCreatePage() {
     writable &&
     !loading &&
     !submitting &&
-    selectedSourcesCount > 0 &&
     !sourceCountExceeded &&
     !contentBudgetExceeded &&
     pastedTextErrors.size === 0 &&
     fileErrors.length === 0 &&
     questionTypes.length > 0 &&
     Boolean(moduleId) &&
-    QUANTITY_OPTIONS.includes(requestedCount) &&
+    Number.isInteger(requestedCount) &&
+    requestedCount >= 1 &&
+    requestedCount <= MAX_REQUESTED_COUNT &&
     ["vi", "en"].includes(language) &&
     !instructionTooLong &&
     bank?.status !== "archived";
@@ -320,7 +320,7 @@ export function AdminAiQuestionDraftCreatePage() {
     event.preventDefault();
     if (!canSubmit) {
       setError(
-        "Select at least one valid source and complete the generation setup.",
+        "Complete the generation setup before creating draft questions.",
       );
       return;
     }
@@ -430,7 +430,7 @@ export function AdminAiQuestionDraftCreatePage() {
             Back
           </Button>
           <h1 className="admin-page__title" style={{ marginTop: 8 }}>
-            Generate draft questions
+            {bank?.name || "Course questions"} - Question Bank, AI Generating
           </h1>
           <p className="ai-drafts-muted">
             AI creates drafts only. Review every question and answer before
@@ -458,254 +458,254 @@ export function AdminAiQuestionDraftCreatePage() {
         </section>
       )}
 
-      <form className="ai-drafts-layout" onSubmit={handleSubmit}>
-        <section className="admin-card ai-drafts-form-card">
-          <div className="ai-drafts-section-header">
-            <div>
-              <h2>Content sources</h2>
-              <p>
-                Paste text, attach documents, or use published video
-                transcripts.
-              </p>
-            </div>
-            <span className="admin-status admin-status--approved">
-              {selectedSourcesCount}/{capabilities.maxSourcesPerBatch} selected
+      <form className="ai-generating-form" onSubmit={handleSubmit}>
+        <div className="ai-generating-field">
+          <label className="input-field__label" htmlFor="ai-draft-instruction">
+            Extra AI Guides
+          </label>
+          <textarea
+            id="ai-draft-instruction"
+            className={`admin-textarea ai-generating-guides ${instructionTooLong ? "admin-textarea--error" : ""}`}
+            rows={3}
+            value={generationInstruction}
+            maxLength={2200}
+            onChange={(event) => setGenerationInstruction(event.target.value)}
+            disabled={submitting}
+            placeholder="Mention scope, topic, or learning goals to cover."
+          />
+          <div className="ai-drafts-counter">
+            <span>
+              Optional. If blank, the backend uses the default instruction.
             </span>
+            <strong className={instructionTooLong ? "is-danger" : ""}>
+              {trimmedInstruction.length}/2000
+            </strong>
           </div>
+        </div>
 
-          <SourceSection
-            icon={<Clipboard size={18} />}
-            title="Pasted text"
-            description={`Each item needs ${capabilities.minTextCharacters}-${capabilities.maxPastedTextCharacters.toLocaleString()} characters.`}
-            action={
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                leftIcon={<Plus size={15} />}
-                onClick={addPastedText}
-                disabled={submitting}
-              >
-                Add text
-              </Button>
-            }
-          >
-            {pastedTextSources.length === 0 ? (
-              <div className="admin-empty ai-drafts-empty">
-                No pasted text added.
-              </div>
-            ) : (
-              pastedTextSources.map((item, index) => (
-                <div className="ai-pasted-source" key={item.id}>
-                  <div className="ai-pasted-source__header">
-                    <label
-                      className="input-field__label"
-                      htmlFor={`ai-pasted-name-${item.id}`}
-                    >
-                      Source name
-                    </label>
-                    <button
-                      type="button"
-                      className="admin-table__icon-btn admin-table__icon-btn--danger"
-                      onClick={() => removePastedText(item.id)}
-                      aria-label={`Remove pasted text ${index + 1}`}
+        <details className="admin-card ai-source-collapsible">
+          <summary>
+            <span>Source material</span>
+            <strong>
+              Optional - {selectedSourcesCount}/{capabilities.maxSourcesPerBatch} selected
+            </strong>
+          </summary>
+          <div className="ai-source-collapsible__body">
+            <div className="ai-drafts-fieldset">
+              <span className="input-field__label">Question type</span>
+              <div className="ai-drafts-check-grid ai-drafts-check-grid--inline">
+                {QUESTION_TYPE_OPTIONS.map((option) => (
+                  <label className="admin-checkbox" key={option.value}>
+                    <input
+                      type="checkbox"
+                      checked={questionTypes.includes(option.value)}
+                      onChange={() => toggleQuestionType(option.value)}
                       disabled={submitting}
-                    >
-                      <Trash2 size={15} />
-                    </button>
-                  </div>
-                  <input
-                    id={`ai-pasted-name-${item.id}`}
-                    className="admin-toolbar__input"
-                    value={item.sourceName}
-                    onChange={(event) =>
-                      updatePastedText(item.id, {
-                        sourceName: event.target.value,
-                      })
-                    }
-                    disabled={submitting}
-                    placeholder={`Pasted text ${index + 1}`}
-                  />
-                  <label
-                    className="input-field__label"
-                    htmlFor={`ai-pasted-text-${item.id}`}
-                  >
-                    Source text
+                    />
+                    {option.label}
                   </label>
-                  <textarea
-                    id={`ai-pasted-text-${item.id}`}
-                    className={`admin-textarea ${pastedTextErrors.has(item.id) ? "admin-textarea--error" : ""}`}
-                    rows={7}
-                    value={item.text}
-                    onChange={(event) =>
-                      updatePastedText(item.id, { text: event.target.value })
-                    }
-                    disabled={submitting}
-                  />
-                  <div className="ai-drafts-counter">
-                    <span
-                      className={
-                        pastedTextErrors.has(item.id) ? "is-danger" : ""
-                      }
-                    >
-                      {pastedTextErrors.get(item.id) ||
-                        "This text will be snapshotted for retry and audit."}
-                    </span>
-                    <strong>{item.text.trim().length.toLocaleString()}</strong>
-                  </div>
-                </div>
-              ))
-            )}
-          </SourceSection>
-
-          <SourceSection
-            icon={<Upload size={18} />}
-            title="Documents"
-            description={`PDF, DOCX, or TXT up to ${formatBytes(capabilities.maxDocumentBytes)} each.`}
-          >
-            <div
-              className="ai-file-dropzone"
-              onDragOver={(event) => event.preventDefault()}
-              onDrop={(event) => {
-                event.preventDefault();
-                addFiles(event.dataTransfer.files);
-              }}
-            >
-              <input
-                ref={fileInputRef}
-                id="ai-source-files"
-                type="file"
-                multiple
-                accept=".pdf,.docx,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain"
-                onChange={(event) => addFiles(event.target.files)}
-                disabled={submitting}
-              />
-              <Upload size={18} />
-              <label htmlFor="ai-source-files">Choose files</label>
-              <span>or drop them here</span>
-            </div>
-            {fileErrors.length > 0 && (
-              <ul className="ai-draft-row__notes" role="alert">
-                {fileErrors.map((item) => (
-                  <li key={item}>{item}</li>
-                ))}
-              </ul>
-            )}
-            {files.length > 0 && (
-              <div className="ai-source-list">
-                {files.map((file, index) => (
-                  <div
-                    className="ai-file-row"
-                    key={`${file.name}-${file.size}-${index}`}
-                  >
-                    <FileText size={17} />
-                    <span>{file.name}</span>
-                    <strong>{formatBytes(file.size)}</strong>
-                    <button
-                      type="button"
-                      className="admin-table__icon-btn"
-                      onClick={() => removeFile(index)}
-                      aria-label={`Remove ${file.name}`}
-                      disabled={submitting}
-                    >
-                      <X size={15} />
-                    </button>
-                  </div>
                 ))}
               </div>
-            )}
-          </SourceSection>
-
-          <SourceSection
-            icon={<Video size={18} />}
-            title="Video transcripts"
-            description="Published course-level transcripts from Smart Learnly video lessons."
-            emptyText="No published video transcripts are available for this course."
-          >
-            {transcriptSources.map((source) => (
-              <SourceRow
-                key={source.id}
-                source={source}
-                checked={selectedTranscriptIds.includes(source.id)}
-                disabled={submitting}
-                onChange={() => toggleTranscript(source.id)}
-              />
-            ))}
-          </SourceSection>
-        </section>
-
-        <aside className="admin-card ai-drafts-form-card ai-drafts-summary-panel">
-          <div className="ai-drafts-section-header">
-            <div>
-              <h2>Generation setup</h2>
-              <p>{bank?.name || "Course questions"}</p>
+              {questionTypes.length > 1 && (
+                <p className="ai-drafts-hint">
+                  Backend will split the requested count nearly evenly between
+                  selected types.
+                </p>
+              )}
             </div>
-          </div>
 
-          <div className="ai-drafts-fieldset">
-            <span className="input-field__label">Question type</span>
-            <div className="ai-drafts-check-grid">
-              {QUESTION_TYPE_OPTIONS.map((option) => (
-                <label className="admin-checkbox" key={option.value}>
-                  <input
-                    type="checkbox"
-                    checked={questionTypes.includes(option.value)}
-                    onChange={() => toggleQuestionType(option.value)}
-                    disabled={submitting}
-                  />
-                  {option.label}
-                </label>
-              ))}
-            </div>
-            {questionTypes.length > 1 && (
-              <p className="ai-drafts-hint">
-                Backend will split the requested count nearly evenly between
-                selected types.
-              </p>
-            )}
-          </div>
-
-          <div className="ai-drafts-fieldset">
-            <span className="input-field__label">Number of questions</span>
-            <div
-              className="ai-drafts-segmented"
-              role="radiogroup"
-              aria-label="Number of questions"
-            >
-              {QUANTITY_OPTIONS.map((value) => (
-                <button
+            <SourceSection
+              icon={<Clipboard size={18} />}
+              title="Pasted text"
+              description={`Each item needs ${capabilities.minTextCharacters}-${capabilities.maxPastedTextCharacters.toLocaleString()} characters.`}
+              action={
+                <Button
                   type="button"
-                  key={value}
-                  className={requestedCount === value ? "is-active" : ""}
-                  aria-pressed={requestedCount === value}
-                  onClick={() => setRequestedCount(value)}
+                  variant="secondary"
+                  size="sm"
+                  leftIcon={<Plus size={15} />}
+                  onClick={addPastedText}
                   disabled={submitting}
                 >
-                  {value}
-                </button>
+                  Add text
+                </Button>
+              }
+            >
+              {pastedTextSources.length === 0 ? (
+                <div className="admin-empty ai-drafts-empty">
+                  No pasted text added.
+                </div>
+              ) : (
+                pastedTextSources.map((item, index) => (
+                  <div className="ai-pasted-source" key={item.id}>
+                    <div className="ai-pasted-source__header">
+                      <label
+                        className="input-field__label"
+                        htmlFor={`ai-pasted-name-${item.id}`}
+                      >
+                        Source name
+                      </label>
+                      <button
+                        type="button"
+                        className="admin-table__icon-btn admin-table__icon-btn--danger"
+                        onClick={() => removePastedText(item.id)}
+                        aria-label={`Remove pasted text ${index + 1}`}
+                        disabled={submitting}
+                      >
+                        <Trash2 size={15} />
+                      </button>
+                    </div>
+                    <input
+                      id={`ai-pasted-name-${item.id}`}
+                      className="admin-toolbar__input"
+                      value={item.sourceName}
+                      onChange={(event) =>
+                        updatePastedText(item.id, {
+                          sourceName: event.target.value,
+                        })
+                      }
+                      disabled={submitting}
+                      placeholder={`Pasted text ${index + 1}`}
+                    />
+                    <label
+                      className="input-field__label"
+                      htmlFor={`ai-pasted-text-${item.id}`}
+                    >
+                      Source text
+                    </label>
+                    <textarea
+                      id={`ai-pasted-text-${item.id}`}
+                      className={`admin-textarea ${pastedTextErrors.has(item.id) ? "admin-textarea--error" : ""}`}
+                      rows={7}
+                      value={item.text}
+                      onChange={(event) =>
+                        updatePastedText(item.id, { text: event.target.value })
+                      }
+                      disabled={submitting}
+                    />
+                    <div className="ai-drafts-counter">
+                      <span
+                        className={
+                          pastedTextErrors.has(item.id) ? "is-danger" : ""
+                        }
+                      >
+                        {pastedTextErrors.get(item.id) ||
+                          "This text will be snapshotted for retry and audit."}
+                      </span>
+                      <strong>{item.text.trim().length.toLocaleString()}</strong>
+                    </div>
+                  </div>
+                ))
+              )}
+            </SourceSection>
+
+            <SourceSection
+              icon={<Upload size={18} />}
+              title="Documents"
+              description={`PDF, DOCX, or TXT up to ${formatBytes(capabilities.maxDocumentBytes)} each.`}
+            >
+              <div
+                className="ai-file-dropzone"
+                onDragOver={(event) => event.preventDefault()}
+                onDrop={(event) => {
+                  event.preventDefault();
+                  addFiles(event.dataTransfer.files);
+                }}
+              >
+                <input
+                  ref={fileInputRef}
+                  id="ai-source-files"
+                  type="file"
+                  multiple
+                  accept=".pdf,.docx,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain"
+                  onChange={(event) => addFiles(event.target.files)}
+                  disabled={submitting}
+                />
+                <Upload size={18} />
+                <label htmlFor="ai-source-files">Choose files</label>
+                <span>or drop them here</span>
+              </div>
+              {fileErrors.length > 0 && (
+                <ul className="ai-draft-row__notes" role="alert">
+                  {fileErrors.map((item) => (
+                    <li key={item}>{item}</li>
+                  ))}
+                </ul>
+              )}
+              {files.length > 0 && (
+                <div className="ai-source-list">
+                  {files.map((file, index) => (
+                    <div
+                      className="ai-file-row"
+                      key={`${file.name}-${file.size}-${index}`}
+                    >
+                      <FileText size={17} />
+                      <span>{file.name}</span>
+                      <strong>{formatBytes(file.size)}</strong>
+                      <button
+                        type="button"
+                        className="admin-table__icon-btn"
+                        onClick={() => removeFile(index)}
+                        aria-label={`Remove ${file.name}`}
+                        disabled={submitting}
+                      >
+                        <X size={15} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </SourceSection>
+
+            <SourceSection
+              icon={<Video size={18} />}
+              title="Video transcripts"
+              description="Published course-level transcripts from Smart Learnly video lessons."
+              emptyText="No published video transcripts are available for this course."
+            >
+              {transcriptSources.map((source) => (
+                <SourceRow
+                  key={source.id}
+                  source={source}
+                  checked={selectedTranscriptIds.includes(source.id)}
+                  disabled={submitting}
+                  onChange={() => toggleTranscript(source.id)}
+                />
               ))}
+            </SourceSection>
+
+            <div className="ai-drafts-notice">
+              <Info size={16} />
+              <span>
+                Selected sources are snapshotted for retry. Document originals are
+                stored for audit and can be downloaded after review authorization.
+              </span>
             </div>
           </div>
+        </details>
 
-          <div className="ai-drafts-fieldset">
-            <label className="input-field__label" htmlFor="ai-draft-language">
-              Output language
-            </label>
-            <select
-              id="ai-draft-language"
-              className="admin-toolbar__select"
-              value={language}
-              onChange={(event) => setLanguage(event.target.value)}
-              disabled={submitting}
-            >
-              <option value="vi">Vietnamese</option>
-              <option value="en">English</option>
-            </select>
+        {(sourceCountExceeded || contentBudgetExceeded) && (
+          <div
+            className="ai-drafts-alert ai-drafts-alert--danger"
+            role="alert"
+          >
+            {sourceCountExceeded && (
+              <p>Use at most {capabilities.maxSourcesPerBatch} sources.</p>
+            )}
+            {contentBudgetExceeded && (
+              <p>
+                Selected text/transcripts exceed{" "}
+                {capabilities.maxNormalizedCharactersPerBatch.toLocaleString()}{" "}
+                characters.
+              </p>
+            )}
           </div>
+        )}
 
-          <div className="ai-drafts-fieldset">
+        <div className="ai-generating-controls">
+          <div className="ai-generating-control ai-generating-control--module">
             <label className="input-field__label" htmlFor="ai-draft-module">
-              Target module
+              Module
             </label>
             <select
               id="ai-draft-module"
@@ -723,68 +723,27 @@ export function AdminAiQuestionDraftCreatePage() {
             </select>
           </div>
 
-          <div className="ai-drafts-fieldset">
-            <label
-              className="input-field__label"
-              htmlFor="ai-draft-instruction"
-            >
-              Generation instruction
+          <div className="ai-generating-control">
+            <label className="input-field__label" htmlFor="ai-draft-count">
+              Number of Questions
             </label>
-            <textarea
-              id="ai-draft-instruction"
-              className={`admin-textarea ${instructionTooLong ? "admin-textarea--error" : ""}`}
-              rows={7}
-              value={generationInstruction}
-              maxLength={2200}
-              onChange={(event) => setGenerationInstruction(event.target.value)}
+            <input
+              id="ai-draft-count"
+              className="admin-toolbar__input"
+              type="number"
+              min="1"
+              max={MAX_REQUESTED_COUNT}
+              value={requestedCount}
+              onChange={(event) =>
+                setRequestedCount(Number(event.target.value))
+              }
               disabled={submitting}
-              placeholder="Mention scope, topic, or learning goals to cover."
             />
-            <div className="ai-drafts-counter">
-              <span>
-                Optional. If blank, the backend uses the default instruction.
-              </span>
-              <strong className={instructionTooLong ? "is-danger" : ""}>
-                {trimmedInstruction.length}/2000
-              </strong>
-            </div>
           </div>
 
-          <div className="ai-drafts-notice">
-            <Info size={16} />
-            <span>
-              Selected sources are snapshotted for retry. Document originals are
-              stored for audit and can be downloaded after review authorization.
-            </span>
-          </div>
+          <input type="hidden" value={language} readOnly />
 
-          {(sourceCountExceeded || contentBudgetExceeded) && (
-            <div
-              className="ai-drafts-alert ai-drafts-alert--danger"
-              role="alert"
-            >
-              {sourceCountExceeded && (
-                <p>Use at most {capabilities.maxSourcesPerBatch} sources.</p>
-              )}
-              {contentBudgetExceeded && (
-                <p>
-                  Selected text/transcripts exceed{" "}
-                  {capabilities.maxNormalizedCharactersPerBatch.toLocaleString()}{" "}
-                  characters.
-                </p>
-              )}
-            </div>
-          )}
-
-          <div className="ai-drafts-actions">
-            <Button
-              type="button"
-              variant="ghost"
-              to={backPath}
-              disabled={submitting}
-            >
-              Cancel
-            </Button>
+          <div className="ai-generating-actions">
             <Button
               type="submit"
               leftIcon={<Sparkles size={16} />}
@@ -792,22 +751,55 @@ export function AdminAiQuestionDraftCreatePage() {
               disabled={!canSubmit}
               loadingLabel="Creating batch..."
             >
-              Generate drafts
+              AI Generate
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              to={backPath}
+              disabled={submitting}
+            >
+              Select & Return
             </Button>
           </div>
+        </div>
 
-          <div className="ai-drafts-footnote">
-            <CheckCircle2 size={15} />
-            <span>
-              Created questions will be saved as draft after human review.
-            </span>
+        <div className="admin-card admin-card--flush ai-generating-table-card">
+          <div className="admin-table-wrap">
+            <table className="admin-table ai-generated-table">
+              <thead>
+                <tr>
+                  <th>Select</th>
+                  <th>Question content</th>
+                  <th>Type</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td colSpan="5">
+                    <div className="admin-empty ai-drafts-empty">
+                      Generated questions will appear after AI Generate finishes.
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
           </div>
-          {bank?.updatedAt && (
-            <p className="ai-drafts-muted ai-drafts-muted--small">
-              Updated {formatDate(bank.updatedAt)}
-            </p>
-          )}
-        </aside>
+        </div>
+
+        <div className="ai-drafts-footnote">
+          <CheckCircle2 size={15} />
+          <span>
+            Created questions will be saved as draft after human review.
+          </span>
+        </div>
+        {bank?.updatedAt && (
+          <p className="ai-drafts-muted ai-drafts-muted--small">
+            Updated {formatDate(bank.updatedAt)}
+          </p>
+        )}
       </form>
     </div>
   );

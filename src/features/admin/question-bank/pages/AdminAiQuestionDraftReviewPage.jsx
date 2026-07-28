@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react"
-import { useParams } from "react-router-dom"
+import { useNavigate, useParams } from "react-router-dom"
 import {
   ArrowLeft,
   CheckCircle2,
@@ -72,6 +72,10 @@ function formatMillis(value) {
   return `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`
 }
 
+function draftEditStatusLabel(draft) {
+  return Number(draft?.version || 0) > 0 ? "Edited" : "Original"
+}
+
 function sortedAnswers(draft) {
   return [...(draft.answers || [])].sort(
     (left, right) => (left.displayOrder ?? 0) - (right.displayOrder ?? 0),
@@ -117,6 +121,7 @@ function buildDraftPayload(values) {
 
 export function AdminAiQuestionDraftReviewPage() {
   const { bankId, courseId, batchId } = useParams()
+  const navigate = useNavigate()
   const toast = useToast()
   const writable = canWriteQuestionBank()
   const isCourseQuestionsMode = Boolean(courseId)
@@ -270,7 +275,7 @@ export function AdminAiQuestionDraftReviewPage() {
       setAddResult(result)
       toast.success("Selected drafts processed")
       setSelectedDraftIds([])
-      await loadBatch({ silent: true })
+      navigate(backPath)
     } catch (err) {
       setActionError(err?.message || "Could not add selected drafts.")
       toast.error(err?.message || "Could not add selected drafts.")
@@ -429,7 +434,7 @@ export function AdminAiQuestionDraftReviewPage() {
             Back
           </Button>
           <h1 className="admin-page__title" style={{ marginTop: 8 }}>
-            Review AI draft questions
+            {bank?.name || "Course questions"} - Question Bank, AI Generating
           </h1>
           <p className="ai-drafts-muted">
             {bank?.name || "Course questions"} · Batch {batch?.id || batchId}
@@ -467,14 +472,12 @@ export function AdminAiQuestionDraftReviewPage() {
       )}
 
       {batch?.sources?.length > 0 && (
-        <section className="admin-card ai-source-review-card">
-          <div className="ai-drafts-section-header">
-            <div>
-              <h2>Generation sources</h2>
-              <p>These source snapshots were used for this batch and retry.</p>
-            </div>
-          </div>
-          <div className="ai-source-list">
+        <details className="admin-card ai-source-collapsible">
+          <summary>
+            <span>Source material</span>
+            <strong>{batch.sources.length} snapshot sources</strong>
+          </summary>
+          <div className="ai-source-list ai-source-collapsible__body">
             {batch.sources.map((source) => {
               const sourceId = source.sourceId || source.generationSourceId || source.id
               return (
@@ -503,7 +506,7 @@ export function AdminAiQuestionDraftReviewPage() {
               )
             })}
           </div>
-        </section>
+        </details>
       )}
 
       {actionError && (
@@ -553,7 +556,7 @@ export function AdminAiQuestionDraftReviewPage() {
         <section className="admin-card admin-card--flush">
           <div className="ai-drafts-toolbar">
             <div>
-              <strong>Draft items</strong>
+              <strong>Generated questions</strong>
               <span>
                 {selectedDraftIds.length} selected · {selectableDrafts.length} can be added
               </span>
@@ -577,7 +580,7 @@ export function AdminAiQuestionDraftReviewPage() {
                 loadingLabel="Adding..."
                 disabled={!ready || selectedDraftIds.length === 0}
               >
-                Add selected drafts
+                Select & Return
               </Button>
             </div>
           </div>
@@ -587,22 +590,35 @@ export function AdminAiQuestionDraftReviewPage() {
               {processing ? "Drafts will appear here when generation is ready." : "No draft questions were generated."}
             </div>
           ) : (
-            <div className="ai-draft-list">
-              {batch.drafts.map((draft) => (
-                <DraftReviewRow
-                  key={draft.id}
-                  draft={draft}
-                  moduleName={moduleNameById.get(draft.moduleId)}
-                  selected={selectedDraftIds.includes(draft.id)}
-                  selectable={ready && canDraftBeSelected(draft)}
-                  mutating={mutating}
-                  onToggle={() => toggleDraft(draft.id)}
-                  onEdit={() => setEditDraft(draft)}
-                  onReject={() => setRejectDraft(draft)}
-                  onDetail={() => setDetailDraft(draft)}
-                  onConfirmEvidence={(suitable) => handleEvidenceConfirmation(draft, suitable)}
-                />
-              ))}
+            <div className="admin-table-wrap">
+              <table className="admin-table ai-generated-table">
+                <thead>
+                  <tr>
+                    <th>Select</th>
+                    <th>Question content</th>
+                    <th>Type</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {batch.drafts.map((draft) => (
+                    <DraftReviewRow
+                      key={draft.id}
+                      draft={draft}
+                      moduleName={moduleNameById.get(draft.moduleId)}
+                      selected={selectedDraftIds.includes(draft.id)}
+                      selectable={ready && canDraftBeSelected(draft)}
+                      mutating={mutating}
+                      onToggle={() => toggleDraft(draft.id)}
+                      onEdit={() => setEditDraft(draft)}
+                      onReject={() => setRejectDraft(draft)}
+                      onDetail={() => setDetailDraft(draft)}
+                      onConfirmEvidence={(suitable) => handleEvidenceConfirmation(draft, suitable)}
+                    />
+                  ))}
+                </tbody>
+              </table>
             </div>
           )}
         </section>
@@ -654,8 +670,8 @@ function DraftReviewRow({
   const rejected = draft.status === "rejected"
 
   return (
-    <article className={`ai-draft-row ai-draft-row--${draft.validationStatus}`}>
-      <div className="ai-draft-row__select">
+    <tr className={`ai-generated-table__row ai-generated-table__row--${draft.validationStatus}`}>
+      <td className="ai-generated-table__select">
         <input
           type="checkbox"
           checked={selected}
@@ -663,17 +679,10 @@ function DraftReviewRow({
           onChange={onToggle}
           aria-label={`Select draft ${draft.rowNumber}`}
         />
-      </div>
-      <div className="ai-draft-row__main">
+      </td>
+      <td className="ai-generated-table__content">
         <div className="ai-draft-row__meta">
           <span>Draft {draft.rowNumber}</span>
-          <span className={`admin-status admin-status--ai-${draft.validationStatus}`}>
-            {validationStatusLabel(draft.validationStatus)}
-          </span>
-          <span className={`admin-status admin-status--ai-${draft.status}`}>
-            {draft.status}
-          </span>
-          <span>{aiQuestionTypeLabel(draft.questionType)}</span>
           <span>{moduleName || "Unassigned"}</span>
         </div>
         <div
@@ -740,39 +749,51 @@ function DraftReviewRow({
             )}
           </div>
         )}
-      </div>
-      <div className="ai-draft-row__actions">
-        <button
-          type="button"
-          className="admin-table__icon-btn"
-          title="View evidence"
-          aria-label="View evidence"
-          onClick={onDetail}
-        >
-          <Eye size={15} />
-        </button>
-        <button
-          type="button"
-          className="admin-table__icon-btn"
-          title="Edit"
-          aria-label="Edit draft"
-          onClick={onEdit}
-          disabled={accepted || rejected || mutating}
-        >
-          <Edit2 size={15} />
-        </button>
-        <button
-          type="button"
-          className="admin-table__icon-btn admin-table__icon-btn--danger"
-          title="Reject"
-          aria-label="Reject draft"
-          onClick={onReject}
-          disabled={accepted || rejected || mutating}
-        >
-          <Trash2 size={15} />
-        </button>
-      </div>
-    </article>
+      </td>
+      <td>{aiQuestionTypeLabel(draft.questionType)}</td>
+      <td className="ai-generated-table__status">
+        <strong>{draftEditStatusLabel(draft)}</strong>
+        <span className={`admin-status admin-status--ai-${draft.validationStatus}`}>
+          {validationStatusLabel(draft.validationStatus)}
+        </span>
+        <span className={`admin-status admin-status--ai-${draft.status}`}>
+          {draft.status}
+        </span>
+      </td>
+      <td>
+        <div className="ai-draft-row__actions">
+          <button
+            type="button"
+            className="admin-table__icon-btn"
+            title="View evidence"
+            aria-label="View evidence"
+            onClick={onDetail}
+          >
+            <Eye size={15} />
+          </button>
+          <button
+            type="button"
+            className="admin-table__icon-btn"
+            title="Edit"
+            aria-label="Edit draft"
+            onClick={onEdit}
+            disabled={accepted || rejected || mutating}
+          >
+            <Edit2 size={15} />
+          </button>
+          <button
+            type="button"
+            className="admin-table__icon-btn admin-table__icon-btn--danger"
+            title="Reject"
+            aria-label="Reject draft"
+            onClick={onReject}
+            disabled={accepted || rejected || mutating}
+          >
+            <Trash2 size={15} />
+          </button>
+        </div>
+      </td>
+    </tr>
   )
 }
 
