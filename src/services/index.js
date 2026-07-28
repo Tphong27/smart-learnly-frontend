@@ -16,6 +16,7 @@ export {
 } from "./audit-log.service";
 export { learningService } from "./learning.service";
 export { flashcardService } from "./flashcard.service";
+export { personalFlashcardService } from "./personal-flashcard.service";
 export { classService } from "./class.service";
 export { trainerCurriculumService } from "./trainer-curriculum.service";
 export { createTrainerLessonService } from "./trainer-lesson.service";

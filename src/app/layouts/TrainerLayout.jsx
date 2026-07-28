@@ -3,7 +3,12 @@ import { LayoutBackground } from "./LayoutBackground";
 import { TraineeHeader } from "./TraineeHeader";
 import { authService, getCurrentUser } from "@/services";
 import { SiteFooter } from "@/shared/components";
-import { isRoleAllowed, normalizeRole, ROLES } from "@/shared/constants/roles";
+import {
+  isRoleAllowed,
+  normalizeRole,
+  PERSONAL_FLASHCARD_STAFF_LAYOUT_ROLES,
+  ROLES,
+} from "@/shared/constants/roles";
 import "./TrainerLayout.css";
 
 const STAFF_TABS = [
@@ -19,14 +24,14 @@ const STAFF_TABS = [
     roles: [ROLES.TRAINER, ROLES.TMO, ROLES.SME],
   },
   {
-    label: "Flashcards Management",
-    to: "/staff/flashcards",
-    roles: [ROLES.TRAINER, ROLES.TMO, ROLES.SME],
-  },
-  {
     label: "Schedule",
     to: "/staff/schedule",
     roles: [ROLES.TRAINER, ROLES.TMO],
+  },
+  {
+    label: "Flashcards",
+    to: "/flashcards",
+    roles: PERSONAL_FLASHCARD_STAFF_LAYOUT_ROLES,
   },
 ];
 
@@ -70,7 +75,9 @@ function isStaffPage(pathname) {
     pathname.startsWith("/staff/") ||
     pathname.startsWith("/trainer/") ||
     pathname.startsWith("/sme/") ||
-    pathname.startsWith("/tmo/")
+    pathname.startsWith("/tmo/") ||
+    pathname === "/flashcards" ||
+    pathname.startsWith("/flashcards/")
   );
 }
 

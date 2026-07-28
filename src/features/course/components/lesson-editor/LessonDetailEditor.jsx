@@ -77,10 +77,10 @@ function LessonEditorSection({
         state === "complete"
             ? CheckCircle2
             : state === "error"
-              ? AlertCircle
-              : state === "processing"
-                ? Loader2
-                : Circle;
+                ? AlertCircle
+                : state === "processing"
+                    ? Loader2
+                    : Circle;
     const headingId = `${id}-heading`;
     const panelId = `${id}-panel`;
 
@@ -164,8 +164,8 @@ function LessonEditorSection({
  */
 export function LessonDetailEditor({ context }) {
     const {
-        lessonId,
         courseId,
+        lessonId,
         backPath,
         services,
         features = { audit: true, quizManager: true, flashcard: true },
@@ -308,11 +308,11 @@ export function LessonDetailEditor({ context }) {
                     setDurationMinutes(
                         lessonData.durationSeconds
                             ? Math.max(
-                                  1,
-                                  Math.ceil(
-                                      Number(lessonData.durationSeconds) / 60,
-                                  ),
-                              )
+                                1,
+                                Math.ceil(
+                                    Number(lessonData.durationSeconds) / 60,
+                                ),
+                            )
                             : 0,
                     );
 
@@ -379,14 +379,14 @@ export function LessonDetailEditor({ context }) {
                 setExistingAssignmentFile(
                     loaded?.instructionFileUrl
                         ? {
-                              fileUrl: loaded.instructionFileUrl,
-                              fileName:
-                                  loaded.instructionFileName ||
-                                  getFileNameFromUrl(
-                                      loaded.instructionFileUrl,
-                                  ) ||
-                                  "Instruction file",
-                          }
+                            fileUrl: loaded.instructionFileUrl,
+                            fileName:
+                                loaded.instructionFileName ||
+                                getFileNameFromUrl(
+                                    loaded.instructionFileUrl,
+                                ) ||
+                                "Instruction file",
+                        }
                         : null,
                 );
             } catch {
@@ -549,13 +549,13 @@ export function LessonDetailEditor({ context }) {
     const summaryToHtml = (value) => {
         const paragraphs = Array.isArray(value?.overviewParagraphs)
             ? value.overviewParagraphs.filter(
-                  (paragraph) => typeof paragraph === "string" && paragraph.trim(),
-              )
+                (paragraph) => typeof paragraph === "string" && paragraph.trim(),
+            )
             : [];
         const takeaways = Array.isArray(value?.keyTakeaways)
             ? value.keyTakeaways.filter(
-                  (takeaway) => typeof takeaway === "string" && takeaway.trim(),
-              )
+                (takeaway) => typeof takeaway === "string" && takeaway.trim(),
+            )
             : [];
         const title =
             typeof value?.keyTakeawaysTitle === "string"
@@ -757,11 +757,11 @@ export function LessonDetailEditor({ context }) {
 
             const normalizedResources = usesLessonResources
                 ? resources
-                      .map((resource, index) =>
-                          normalizeResourceForPayload(resource, index),
-                      )
-                      .filter(Boolean)
-                      .slice(0, 10)
+                    .map((resource, index) =>
+                        normalizeResourceForPayload(resource, index),
+                    )
+                    .filter(Boolean)
+                    .slice(0, 10)
                 : [];
 
             const content = isQuiz
@@ -867,12 +867,12 @@ export function LessonDetailEditor({ context }) {
             setExistingAssignmentFile(
                 saved?.instructionFileUrl
                     ? {
-                          fileUrl: saved.instructionFileUrl,
-                          fileName:
-                              saved.instructionFileName ||
-                              getFileNameFromUrl(saved.instructionFileUrl) ||
-                              "Instruction file",
-                      }
+                        fileUrl: saved.instructionFileUrl,
+                        fileName:
+                            saved.instructionFileName ||
+                            getFileNameFromUrl(saved.instructionFileUrl) ||
+                            "Instruction file",
+                    }
                     : null,
             );
             return true;
@@ -916,8 +916,8 @@ export function LessonDetailEditor({ context }) {
         lessonType === "FLASHCARD"
             ? [basicComplete, true].filter(Boolean).length
             : [detailsComplete, materialComplete, settingsComplete].filter(
-                  Boolean,
-              ).length;
+                Boolean,
+            ).length;
     const completionPercent = Math.round(
         (completedSections / totalSections) * 100,
     );
@@ -1093,8 +1093,8 @@ export function LessonDetailEditor({ context }) {
                         {editorBusy
                             ? "Saving or processing lesson content..."
                             : hasChanges
-                              ? "Unsaved changes"
-                              : "All changes loaded"}
+                                ? "Unsaved changes"
+                                : "All changes loaded"}
                     </p>
                 </section>
             )}
@@ -1177,11 +1177,10 @@ export function LessonDetailEditor({ context }) {
                                             flashcardSection === "current"
                                         }
                                         aria-controls="flashcard-current-panel"
-                                        className={`flashcard-section-tabs__tab ${
-                                            flashcardSection === "current"
+                                        className={`flashcard-section-tabs__tab ${flashcardSection === "current"
                                                 ? "is-active"
                                                 : ""
-                                        }`}
+                                            }`}
                                         onClick={() =>
                                             setFlashcardSection("current")
                                         }
@@ -1198,11 +1197,10 @@ export function LessonDetailEditor({ context }) {
                                                 flashcardSection === "review"
                                             }
                                             aria-controls="flashcard-review-panel"
-                                            className={`flashcard-section-tabs__tab ${
-                                                flashcardSection === "review"
+                                            className={`flashcard-section-tabs__tab ${flashcardSection === "review"
                                                     ? "is-active"
                                                     : ""
-                                            }`}
+                                                }`}
                                             onClick={() =>
                                                 setFlashcardSection("review")
                                             }
@@ -1211,8 +1209,8 @@ export function LessonDetailEditor({ context }) {
                                         </button>
                                     )}
                                 </div>
-
                                 <FlashcardLessonEditor
+                                    courseId={courseId}
                                     lessonId={lessonId}
                                     initialSetId={initialFlashcardSetId}
                                     defaultTitle={title}
@@ -1313,7 +1311,7 @@ export function LessonDetailEditor({ context }) {
                                                                 Number(
                                                                     event.target
                                                                         .value ||
-                                                                        0,
+                                                                    0,
                                                                 ),
                                                             ),
                                                         );
@@ -1559,22 +1557,22 @@ export function LessonDetailEditor({ context }) {
                                                 ? "Lesson title added"
                                                 : "Lesson title is required"
                                             : detailsComplete
-                                              ? "Title and description added"
-                                              : "Title and description are required"
+                                                ? "Title and description added"
+                                                : "Title and description are required"
                                     }
                                     state={
                                         detailsComplete
                                             ? "complete"
                                             : titleError || summaryError
-                                              ? "error"
-                                              : "incomplete"
+                                                ? "error"
+                                                : "incomplete"
                                     }
                                     stateLabel={
                                         detailsComplete
                                             ? "Complete"
                                             : titleError || summaryError
-                                              ? "Needs attention"
-                                              : "Incomplete"
+                                                ? "Needs attention"
+                                                : "Incomplete"
                                     }
                                     expanded={expandedSection === "basic"}
                                     onToggle={() =>
@@ -1687,21 +1685,21 @@ export function LessonDetailEditor({ context }) {
                                     summary={materialSummary}
                                     state={
                                         uploadingPdf ||
-                                        uploadingResources ||
-                                        assignmentLoading
+                                            uploadingResources ||
+                                            assignmentLoading
                                             ? "processing"
                                             : materialComplete
-                                              ? "complete"
-                                              : "incomplete"
+                                                ? "complete"
+                                                : "incomplete"
                                     }
                                     stateLabel={
                                         uploadingPdf ||
-                                        uploadingResources ||
-                                        assignmentLoading
+                                            uploadingResources ||
+                                            assignmentLoading
                                             ? "Processing"
                                             : materialComplete
-                                              ? "Complete"
-                                              : "Items missing"
+                                                ? "Complete"
+                                                : "Items missing"
                                     }
                                     expanded={expandedSection === "material"}
                                     onToggle={() =>
@@ -1830,7 +1828,7 @@ export function LessonDetailEditor({ context }) {
                                                                     File
                                                                 </span>
                                                                 {assignmentFile ||
-                                                                existingAssignmentFile ? (
+                                                                    existingAssignmentFile ? (
                                                                     <div
                                                                         style={{
                                                                             display:
@@ -1969,7 +1967,7 @@ export function LessonDetailEditor({ context }) {
                                                                                     event
                                                                                         .target
                                                                                         .files?.[0] ||
-                                                                                        null,
+                                                                                    null,
                                                                                 );
                                                                                 markChanged();
                                                                             }}
@@ -2127,7 +2125,7 @@ export function LessonDetailEditor({ context }) {
                                                                 Number(
                                                                     event.target
                                                                         .value ||
-                                                                        0,
+                                                                    0,
                                                                 ),
                                                             ),
                                                         );
@@ -2188,8 +2186,8 @@ export function LessonDetailEditor({ context }) {
                                 {editorBusy
                                     ? "Saving or processing..."
                                     : hasChanges
-                                      ? "Unsaved changes"
-                                      : "Ready"}
+                                        ? "Unsaved changes"
+                                        : "Ready"}
                             </span>
                             <div className="sl-cm-lesson-editor__sticky-spacer" />
                             <Button
@@ -2356,12 +2354,12 @@ export function LessonDetailEditor({ context }) {
                                                             fontWeight: "600",
                                                             backgroundColor:
                                                                 log.result ===
-                                                                "SUCCESS"
+                                                                    "SUCCESS"
                                                                     ? "#dcfce7"
                                                                     : "#fee2e2",
                                                             color:
                                                                 log.result ===
-                                                                "SUCCESS"
+                                                                    "SUCCESS"
                                                                     ? "#15803d"
                                                                     : "#b91c1c",
                                                         }}
@@ -2501,19 +2499,19 @@ export function LessonDetailEditor({ context }) {
                                                 backgroundColor:
                                                     currentPage >=
                                                         totalPages - 1 ||
-                                                    totalPages === 0
+                                                        totalPages === 0
                                                         ? "#f8fafc"
                                                         : "#fff",
                                                 color:
                                                     currentPage >=
                                                         totalPages - 1 ||
-                                                    totalPages === 0
+                                                        totalPages === 0
                                                         ? "#94a3b8"
                                                         : "#334155",
                                                 cursor:
                                                     currentPage >=
                                                         totalPages - 1 ||
-                                                    totalPages === 0
+                                                        totalPages === 0
                                                         ? "not-allowed"
                                                         : "pointer",
                                                 fontSize: "13px",
