@@ -13,8 +13,9 @@
 
 .shared-schedule-calendar__table {
   width: 100%;
-  min-width: 680px;
+  min-width: 1050px;
   border-collapse: collapse;
+  table-layout: fixed;
   font-size: 14px;
 }
 

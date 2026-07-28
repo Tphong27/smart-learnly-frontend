@@ -38,9 +38,7 @@ function getSlotsByDay(scheduleDescription) {
 
     const slots = Array.isArray(matchedDay?.slots)
       ? matchedDay.slots
-          .map((slot) =>
-            getClassTimeSlot(slot?.startTime, slot?.endTime),
-          )
+          .map((slot) => getClassTimeSlot(slot?.startTime, slot?.endTime))
           .filter(Boolean)
       : [];
 
@@ -56,12 +54,10 @@ export function ScheduleCalendar({
 }) {
   const slotsByDay = getSlotsByDay(scheduleDescription);
 
-  const scheduledDays = WEEK_DAYS
-    .map((day) => ({
-      ...day,
-      slots: slotsByDay[day.key] || [],
-    }))
-    .filter((day) => day.slots.length > 0);
+  const scheduledDays = WEEK_DAYS.map((day) => ({
+    ...day,
+    slots: slotsByDay[day.key] || [],
+  })).filter((day) => day.slots.length > 0);
 
   if (variant === "compact") {
     if (scheduledDays.length === 0) {
@@ -75,10 +71,7 @@ export function ScheduleCalendar({
     return (
       <div className="shared-schedule-calendar shared-schedule-calendar--compact">
         {scheduledDays.map((day) => (
-          <div
-            className="shared-schedule-calendar__compact-day"
-            key={day.key}
-          >
+          <div className="shared-schedule-calendar__compact-day" key={day.key}>
             <strong className="shared-schedule-calendar__compact-day-name">
               {day.fullLabel}
             </strong>
@@ -133,17 +126,16 @@ export function ScheduleCalendar({
                             className="shared-schedule-calendar__class-cell"
                             key={`${day.key}-${slot.code}`}
                           >
-                            <strong>{slot.label}</strong>
                             <span>
+                              <strong>{slot.label}</strong>
+                              {" - "}
                               {slot.startTime}–{slot.endTime}
                             </span>
                           </div>
                         ))}
                       </div>
                     ) : (
-                      <span className="shared-schedule-calendar__empty">
-                        -
-                      </span>
+                      <span className="shared-schedule-calendar__empty">-</span>
                     )}
                   </td>
                 );
