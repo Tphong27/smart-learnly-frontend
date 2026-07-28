@@ -139,6 +139,12 @@ export const assignmentService = {
     const response = await apiClient.put(`/submissions/${id}/grade`, gradeData);
     return unwrap(response);
   },
+  async generateSubmissionFeedback(id) {
+    const response = await apiClient.post(`/submissions/${id}/ai-feedback`, null, {
+      timeout: 90000,
+    });
+    return unwrap(response);
+  },
   async getSubmissionsByAssignment(assignmentId) {
     const response = await apiClient.get(
       `/submissions/assignment/${assignmentId}`,

@@ -9,11 +9,17 @@ import {
   Clock,
   Download,
   Eye,
+  MessageSquareText,
+  Sparkles,
+  Copy,
+  Check,
+  Loader2,
   RefreshCw,
   RotateCcw,
   Users,
   XCircle,
 } from "lucide-react";
+import { Modal } from "@/shared/components/ui";
 import {
   assignmentService,
   attemptService,
@@ -149,6 +155,13 @@ export function TeacherMonitorPage() {
   const [activeTab, setActiveTab] = useState("live");
   const [attemptHistory, setAttemptHistory] = useState([]);
   const [expandedStudentId, setExpandedStudentId] = useState(null);
+  const [feedbackModal, setFeedbackModal] = useState(null);
+  const [feedbackText, setFeedbackText] = useState("");
+  const [aiFeedbackDraft, setAiFeedbackDraft] = useState("");
+  const [generatingFeedback, setGeneratingFeedback] = useState(false);
+  const [savingFeedback, setSavingFeedback] = useState(false);
+  const [feedbackCopied, setFeedbackCopied] = useState(false);
+  const [feedbackError, setFeedbackError] = useState("");
 
   const rowList = useMemo(
     () =>
@@ -489,6 +502,77 @@ export function TeacherMonitorPage() {
     }
   };
 
+  const openFeedbackModal = (row) => {
+    setFeedbackModal(row);
+    setFeedbackText(row.trainerFeedback || "");
+    setAiFeedbackDraft("");
+    setFeedbackError("");
+    setFeedbackCopied(false);
+  };
+
+  const closeFeedbackModal = () => {
+    if (generatingFeedback || savingFeedback) return;
+    setFeedbackModal(null);
+  };
+
+  const handleGenerateFeedback = async () => {
+    if (!feedbackModal?.submissionId) return;
+    setGeneratingFeedback(true);
+    setFeedbackError("");
+    setAiFeedbackDraft("");
+    try {
+      const result = await assignmentService.generateSubmissionFeedback(
+        feedbackModal.submissionId,
+      );
+      setAiFeedbackDraft(result?.feedback || "");
+    } catch (error) {
+      setFeedbackError(error.message || "Could not generate AI feedback.");
+    } finally {
+      setGeneratingFeedback(false);
+    }
+  };
+
+  const handleCopyFeedback = async () => {
+    if (!aiFeedbackDraft) return;
+    try {
+      await navigator.clipboard.writeText(aiFeedbackDraft);
+      setFeedbackCopied(true);
+      window.setTimeout(() => setFeedbackCopied(false), 1600);
+    } catch {
+      setFeedbackError("Could not copy the feedback. Please select it manually.");
+    }
+  };
+
+  const handleSaveFeedback = async () => {
+    if (!feedbackModal?.submissionId) return;
+    setSavingFeedback(true);
+    setFeedbackError("");
+    try {
+      const graded = await assignmentService.gradeSubmission(
+        feedbackModal.submissionId,
+        {
+          score: feedbackModal.score ?? null,
+          trainerFeedback: feedbackText.trim(),
+          status: feedbackModal.status || "SUBMITTED",
+        },
+      );
+      mergeEvent({
+        ...feedbackModal,
+        targetId: graded.assignmentId,
+        submissionId: graded.id,
+        studentId: graded.studentId,
+        status: graded.status,
+        score: graded.score,
+        trainerFeedback: graded.trainerFeedback,
+      });
+      setFeedbackModal(null);
+    } catch (error) {
+      setFeedbackError(error.message || "Could not save feedback.");
+    } finally {
+      setSavingFeedback(false);
+    }
+  };
+
   const handleReopen = async (row) => {
     if (!row.studentId || normalizedType !== "mcq") return;
     const confirmed = window.confirm(
@@ -684,6 +768,7 @@ export function TeacherMonitorPage() {
                   <>
                     <th>Submission</th>
                     <th>Score</th>
+                    <th>Feedback</th>
                     <th className="ft-table-action">Grade</th>
                   </>
                 ) : (
@@ -811,6 +896,21 @@ export function TeacherMonitorPage() {
                               <span className="ft-muted">--</span>
                             )}
                           </td>
+                          <td>
+                            {info.done ? (
+                              <button
+                                className="ft-button ft-button--secondary"
+                                type="button"
+                                disabled={!row.submissionId}
+                                onClick={() => openFeedbackModal(row)}
+                              >
+                                <MessageSquareText size={16} />
+                                {row.trainerFeedback ? "View feedback" : "Add feedback"}
+                              </button>
+                            ) : (
+                              <span className="ft-muted">--</span>
+                            )}
+                          </td>
                           <td className="ft-table-action">
                             {info.done ? (
                               <button
@@ -900,7 +1000,7 @@ export function TeacherMonitorPage() {
               })}
               {!loading && rowList.length === 0 && (
                 <tr>
-                  <td colSpan={normalizedType === "mcq" ? 6 : 5}>
+                  <td colSpan={normalizedType === "mcq" ? 6 : 8}>
                     No student activity yet.
                   </td>
                 </tr>
@@ -1001,6 +1101,103 @@ export function TeacherMonitorPage() {
           </table>
         </div>
       )}
+
+      <Modal
+        open={Boolean(feedbackModal)}
+        title={`Feedback for ${feedbackModal?.studentName || "trainee"}`}
+        description="Write feedback directly or generate a plain-text evaluation from the assignment, rubric, and submitted file."
+        size="lg"
+        closeDisabled={generatingFeedback || savingFeedback}
+        onClose={closeFeedbackModal}
+        footer={
+          <>
+            <button
+              className="ft-button ft-button--secondary"
+              type="button"
+              disabled={generatingFeedback || savingFeedback}
+              onClick={closeFeedbackModal}
+            >
+              Cancel
+            </button>
+            <button
+              className="ft-button ft-button--primary"
+              type="button"
+              disabled={generatingFeedback || savingFeedback}
+              onClick={handleSaveFeedback}
+            >
+              {savingFeedback ? "Saving..." : "Save feedback"}
+            </button>
+          </>
+        }
+      >
+        <div className="ft-feedback-modal">
+          <label className="ft-field">
+            <span className="ft-label">Trainer feedback</span>
+            <textarea
+              className="ft-textarea"
+              rows={7}
+              value={feedbackText}
+              placeholder="Enter feedback for this trainee..."
+              disabled={savingFeedback}
+              onChange={(event) => setFeedbackText(event.target.value)}
+            />
+          </label>
+
+          <div className="ft-feedback-ai">
+            <div className="ft-feedback-ai__heading">
+              <div>
+                <strong>AI feedback assistant</strong>
+                <span>
+                  Evaluates the submission against the description, attached
+                  instructions, and rubric.
+                </span>
+              </div>
+              <button
+                className="ft-button ft-button--secondary"
+                type="button"
+                disabled={generatingFeedback || !feedbackModal?.fileUrl}
+                onClick={handleGenerateFeedback}
+              >
+                {generatingFeedback ? (
+                  <Loader2 className="ft-spin" size={16} />
+                ) : (
+                  <Sparkles size={16} />
+                )}
+                {generatingFeedback ? "Generating..." : "Generate feedback"}
+              </button>
+            </div>
+
+            {aiFeedbackDraft && (
+              <div className="ft-feedback-ai__result">
+                <div className="ft-feedback-ai__actions">
+                  <button
+                    className="ft-button ft-button--secondary"
+                    type="button"
+                    onClick={handleCopyFeedback}
+                  >
+                    {feedbackCopied ? <Check size={16} /> : <Copy size={16} />}
+                    {feedbackCopied ? "Copied" : "Copy"}
+                  </button>
+                  <button
+                    className="ft-button ft-button--primary"
+                    type="button"
+                    onClick={() => setFeedbackText(aiFeedbackDraft)}
+                  >
+                    Use this feedback
+                  </button>
+                </div>
+                <div className="ft-feedback-ai__content">{aiFeedbackDraft}</div>
+              </div>
+            )}
+
+            {feedbackError && (
+              <p className="ft-field-error" role="alert">
+                {feedbackError}
+              </p>
+            )}
+          </div>
+        </div>
+      </Modal>
     </section>
   );
 }

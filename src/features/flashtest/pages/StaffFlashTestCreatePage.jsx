@@ -521,7 +521,12 @@ export function StaffFlashTestCreatePage({ variant = "flash" }) {
         </div>
       </header>
 
-      <div className="ft-panel ft-builder-shell">
+      <div
+        className={`ft-panel ft-builder-shell ${
+          isAssignmentMode ? "ft-builder-shell--assignment" : ""
+        }`}
+      >
+        {!isAssignmentMode && (
         <div className="ft-ribbon" aria-label={`${pageName} setup summary`}>
           <div className="ft-ribbon__item">
             <FileText size={18} />
@@ -579,6 +584,7 @@ export function StaffFlashTestCreatePage({ variant = "flash" }) {
             </div>
           </div>
         </div>
+        )}
 
         <fieldset
           className="ft-form ft-form-fieldset"

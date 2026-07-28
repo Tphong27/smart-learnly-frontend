@@ -124,7 +124,7 @@
 }
 
 .assignment-ai__assistant-message {
-  width: min(760px, 94%);
+  width: 100%;
   color: var(--ink);
 }
 
@@ -180,10 +180,10 @@
 
 .assignment-ai__user-message {
   display: grid;
-  justify-items: end;
-  justify-self: end;
+  justify-items: stretch;
+  justify-self: stretch;
   gap: 5px;
-  width: min(680px, 88%);
+  width: 100%;
 }
 
 .assignment-ai__user-message > span {
@@ -193,12 +193,13 @@
 }
 
 .assignment-ai__user-message > div {
-  border-radius: 8px 8px 2px 8px;
-  background: var(--primary);
-  color: #ffffff;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #ffffff;
+  color: var(--ink);
   font-size: 14px;
   line-height: 1.55;
-  padding: 10px 13px;
+  padding: 12px 14px;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
@@ -217,6 +218,18 @@
   border-radius: 8px;
   background: #ffffff;
   overflow: hidden;
+}
+
+.assignment-ai__result {
+  padding: 0 16px 16px;
+}
+
+.assignment-ai__result .assignment-ai__thinking {
+  min-height: 54px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
 }
 
 .assignment-ai__reply-header {
