@@ -2,7 +2,6 @@ import { useMemo } from "react";
 import { useLocation, useParams } from "react-router-dom";
 import { courseService } from "@/services/course.service";
 import { flashcardService } from "@/services/flashcard.service";
-import { createAdminVideoAiService } from "@/services/video-ai.service";
 import { LessonDetailEditor } from "@/features/course/components/lesson-editor/LessonDetailEditor";
 
 /**
