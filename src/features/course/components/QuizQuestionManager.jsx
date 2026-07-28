@@ -15,6 +15,7 @@ import {
 } from "../utils/quiz-question-schema";
 import { QuizQuestionEditModal } from "./QuizQuestionEditModal";
 import { QuizImportModal } from "./QuizImportModal";
+import { CourseQuestionImportPanel } from "./quiz-import/CourseQuestionImportPanel";
 import "@/features/admin/admin-shared.css";
 import "./quiz-question-manager.css";
 
@@ -198,6 +199,7 @@ export function QuizQuestionsPanel({
 
   const [editIndex, setEditIndex] = useState(null); // null = đóng, -1 = thêm mới
   const [importOpen, setImportOpen] = useState(false);
+  const [bankImportOpen, setBankImportOpen] = useState(false);
   const [deleteIndex, setDeleteIndex] = useState(null);
 
   const busy = loading || saving;
@@ -360,15 +362,23 @@ export function QuizQuestionsPanel({
               variant="secondary"
               leftIcon={<Upload size={15} />}
               onClick={() => setImportOpen(true)}
+              disabled={mutationDisabled || bankImportOpen}
+            >
+              Import Excel/CSV
+            </Button>
+            <Button
+              variant="secondary"
+              leftIcon={<Upload size={15} />}
+              onClick={() => setBankImportOpen((current) => !current)}
               disabled={mutationDisabled}
             >
-              Import questions
+              {bankImportOpen ? "Hide question bank" : "Import from question bank"}
             </Button>
             <Button
               variant="secondary"
               leftIcon={<Plus size={15} />}
               onClick={() => openEdit(-1)}
-              disabled={mutationDisabled}
+              disabled={mutationDisabled || bankImportOpen}
             >
               Add question
             </Button>
@@ -389,7 +399,7 @@ export function QuizQuestionsPanel({
 
             {questions.length === 0 ? (
               <div className="admin-empty">
-                No questions yet. Import JSON/Excel or add manually.
+                No questions yet. Import Excel, import from question bank, or add manually.
               </div>
             ) : (
               <div className="quiz-question-card-list">
@@ -408,6 +418,17 @@ export function QuizQuestionsPanel({
           </>
         )}
       </section>
+
+      {bankImportOpen && (
+        <section className="admin-card quiz-question-panel__bank">
+          <CourseQuestionImportPanel
+            courseId={sourceCourseId}
+            existingQuestions={questions}
+            onImport={handleImported}
+            onClose={() => setBankImportOpen(false)}
+          />
+        </section>
+      )}
 
       <QuizQuestionEditModal
         key={editIndex == null ? "closed" : `edit-${editIndex}`}
