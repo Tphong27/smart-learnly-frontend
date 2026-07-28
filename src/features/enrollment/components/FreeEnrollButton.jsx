@@ -21,7 +21,7 @@ export function FreeEnrollButton({ courseId, label = 'Enroll for free', onEnroll
 
     setLoading(true)
     try {
-      const result = await enrollmentService.enrollFree(courseId)
+      const result = await enrollmentService.enrollFreeCourse(courseId)
       if (result?.alreadyEnrolled) {
         toast.info('You already have access to this course.')
       } else if (result?.reactivated) {

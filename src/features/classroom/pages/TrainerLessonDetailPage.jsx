@@ -1,6 +1,7 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import {
+  classService,
   createTrainerLessonService,
   createTrainerQuizService,
   createTrainerFlashcardService,
@@ -11,9 +12,42 @@ import { LessonDetailEditor } from "@/features/course/components/lesson-editor/L
  * Trainer lesson detail page — mirror of AdminLessonDetailPage but
  * scoped to a class curriculum draft. Audit tab is hidden; quiz &
  * flashcard editors are wired to trainer-scoped services.
+ *
+ * courseId is required so QuestionBankImportPanel can list banks of the
+ * parent course (trainer imports existing bank questions, does not author banks).
  */
 export default function TrainerLessonDetailPage() {
   const { classId, lessonId } = useParams();
+  const [courseId, setCourseId] = useState(null);
+  const [loadError, setLoadError] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!classId) return undefined;
+
+    (async () => {
+      try {
+        const classDetail = await classService.getTrainer(classId);
+        if (!cancelled) {
+          setCourseId(classDetail?.courseId || null);
+          setLoadError("");
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setCourseId(null);
+          setLoadError(
+            error?.response?.data?.message ||
+              error?.message ||
+              "Could not load class for quiz bank import",
+          );
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [classId]);
 
   const context = useMemo(() => {
     if (!classId || !lessonId) return null;
@@ -26,7 +60,9 @@ export default function TrainerLessonDetailPage() {
       mode: "trainer",
       lessonId,
       classId,
-      // Về thẳng tab Curriculum của lớp sau khi save/back để tránh trainer phải bấm lại tab.
+      // Bắt buộc cho import question bank (banks scoped theo course).
+      courseId,
+      // Về thẳng tab Curriculum của lớp sau khi save/back.
       backPath: `/staff/classrooms/${classId}/workspace?tab=curriculum`,
       services: {
         getLessonDetail: lessonService.getLessonDetail,
@@ -45,8 +81,32 @@ export default function TrainerLessonDetailPage() {
         flashcardStaging: false,
       },
     };
-  }, [classId, lessonId]);
+  }, [classId, courseId, lessonId]);
 
-  if (!context) return null;
+  if (!classId || !lessonId) return null;
+
+  if (loadError) {
+    return (
+      <div className="sl-cm-page sl-cm-page--curriculum">
+        <div className="sl-cm-workspace" role="alert">
+          <h1 className="sl-cm-header__title">Lesson editor unavailable</h1>
+          <p>{loadError}</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!context || !courseId) {
+    return (
+      <div className="sl-cm-page sl-cm-page--curriculum" role="status">
+        <div className="sl-cm-workspace" aria-busy="true">
+          <div className="sl-cm-skeleton" style={{ width: "40%", marginBottom: 12 }} />
+          <div className="sl-cm-skeleton" style={{ width: "70%", marginBottom: 24 }} />
+          <div className="sl-cm-skeleton" style={{ width: "100%", height: 64 }} />
+        </div>
+      </div>
+    );
+  }
+
   return <LessonDetailEditor context={context} />;
 }

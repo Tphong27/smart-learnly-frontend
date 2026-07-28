@@ -20,7 +20,11 @@ import {
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, NavLink } from "react-router-dom";
-import { isRoleAllowed, normalizeRole, ROLES } from "@/shared/constants/roles";
+import {
+  isRoleAllowed,
+  normalizeRole,
+  ROLES,
+} from "@/shared/constants/roles";
 import { getDashboardPathByRole } from "@/app/routes/dashboard-path";
 import { SmartLearnlyMark } from "@/shared/components/SmartLearnlyMark";
 
@@ -80,12 +84,6 @@ const navItems = [
     label: "Course Content",
     path: "/staff/courses",
     icon: Layers3,
-    roles: [ROLES.TRAINER, ROLES.TMO, ROLES.SME],
-  },
-  {
-    label: "Flashcards Management",
-    path: "/staff/flashcards",
-    icon: BookOpen,
     roles: [ROLES.TRAINER, ROLES.TMO, ROLES.SME],
   },
   {

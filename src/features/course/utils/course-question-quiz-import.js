@@ -47,12 +47,10 @@ function firstMediaCandidate(...candidates) {
     const mediaType = String(
       candidate.mediaType || candidate.type || candidate.kind || "",
     ).toLowerCase();
-    const normalizedType = ["image", "audio", "video"].includes(mediaType)
-      ? mediaType
-      : "image";
+    if (mediaType && mediaType !== "image") continue;
     if (!url && !objectPath) continue;
     return normalizeMedia({
-      type: normalizedType,
+      type: "image",
       url,
       objectPath,
       fileName: candidate.fileName || candidate.name || null,
@@ -71,10 +69,6 @@ function extractQuestionMedia(question) {
     Array.isArray(question?.mediaAttachments) ? question.mediaAttachments : null,
     question?.questionImage,
     question?.image,
-    question?.questionAudio,
-    question?.audio,
-    question?.questionVideo,
-    question?.video,
   );
 }
 
@@ -86,16 +80,12 @@ function extractAnswerMedia(answer) {
   if (media && typeof media === "object") {
     return firstMediaCandidate(
       media.image,
-      media.audio,
-      media.video,
       media.media,
       media.file,
     );
   }
   return firstMediaCandidate(
     answer?.answerImage,
-    answer?.answerAudio,
-    answer?.answerVideo,
     media,
   );
 }

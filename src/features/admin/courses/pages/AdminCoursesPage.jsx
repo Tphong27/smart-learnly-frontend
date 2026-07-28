@@ -22,6 +22,7 @@ import { categoryService, courseService } from "@/services";
 import { getCurrentUser } from "@/services/api-client";
 import { formatDate, formatPrice } from "@/shared/utils/formatters";
 import { DEFAULT_PAGE_SIZE } from "@/shared/constants/pagination";
+import { canViewClasses as canViewClassRooms } from "@/shared/constants/roles";
 import "@/features/course/course-admin.css";
 import "./AdminCoursesPage.css";
 
@@ -65,11 +66,7 @@ function CourseThumbnail({ course }) {
   const imageUrl = course.thumbnailUrl || course.avatarUrl;
   return (
     <span className="course-management__thumbnail">
-      {imageUrl ? (
-        <img src={imageUrl} alt="" />
-      ) : (
-        <BookOpen size={19} aria-hidden="true" />
-      )}
+      {imageUrl ? <img src={imageUrl} alt="" /> : <BookOpen size={19} aria-hidden="true" />}
     </span>
   );
 }
@@ -105,28 +102,15 @@ function DeleteCourseModal({ open, target, onClose, onConfirmed }) {
     >
       <div className="course-management-delete">
         <p>
-          Delete <strong>{target?.title}</strong>? Learners will no longer be
-          able to access it. This action is reversible only through system
-          recovery.
+          Delete <strong>{target?.title}</strong>? Learners will no longer be able to access it.
+          This action is reversible only through system recovery.
         </p>
-        {error ? (
-          <p className="course-management-delete__error">{error}</p>
-        ) : null}
+        {error ? <p className="course-management-delete__error">{error}</p> : null}
         <div className="course-management-delete__actions">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={onClose}
-            disabled={loading}
-          >
+          <Button type="button" variant="outline" onClick={onClose} disabled={loading}>
             Cancel
           </Button>
-          <Button
-            type="button"
-            variant="danger"
-            onClick={handleConfirm}
-            loading={loading}
-          >
+          <Button type="button" variant="danger" onClick={handleConfirm} loading={loading}>
             Delete course
           </Button>
         </div>
@@ -139,6 +123,7 @@ function RowActionsMenu({
   course,
   basePath,
   canViewClasses,
+  canOpenMasterCurriculum = true,
   canDelete,
   previewReturnPath,
   onRequestDelete,
@@ -206,9 +191,11 @@ function RowActionsMenu({
   }, [open, updateMenuPosition]);
 
   const contentPath = `${basePath}/${course.id}/content`;
-  const questionsPath = `${basePath}/${course.id}/questions`;
+  const questionsPath = `/admin/courses/${course.id}/questions`;
   const testsPath = `/staff/tests?courseId=${encodeURIComponent(course.id)}`;
-  const showManageTest = basePath.startsWith("/staff");
+  const classesBasePath = basePath.startsWith("/admin") ? "/admin/classrooms" : "/staff/classrooms";
+  const classesPath = `${classesBasePath}?courseId=${encodeURIComponent(course.id)}`;
+  const showManageTest = basePath.startsWith("/staff") && canOpenMasterCurriculum;
   const previewPath = `${basePath}/${course.id}/preview?returnTo=${encodeURIComponent(previewReturnPath)}`;
   const editPath = basePath.startsWith("/staff")
     ? `${basePath}/${course.id}/edit`
@@ -221,47 +208,52 @@ function RowActionsMenu({
       className="course-management__menu-list course-management__menu-list--portal"
       style={menuPosition}
     >
-      <li role="none">
-        <Link
-          role="menuitem"
-          to={contentPath}
-          className="course-management__menu-item"
-          onClick={() => setOpen(false)}
-        >
-          <BookOpen size={14} aria-hidden="true" /> Open curriculum
-        </Link>
-      </li>
-      <li role="none">
-        <Link
-          role="menuitem"
-          to={questionsPath}
-          className="course-management__menu-item"
-          onClick={() => setOpen(false)}
-        >
-          <FileQuestion size={14} aria-hidden="true" /> Manage questions
-        </Link>
-      </li>
-      {showManageTest ? (
-        <li role="none">
-          <Link
-            role="menuitem"
-            to={testsPath}
-            className="course-management__menu-item"
-            onClick={() => setOpen(false)}
-          >
-            <ClipboardCheck size={14} aria-hidden="true" /> Manage test
-          </Link>
-        </li>
+      {canOpenMasterCurriculum ? (
+        <>
+          <li role="none">
+            <Link
+              role="menuitem"
+              to={contentPath}
+              className="course-management__menu-item"
+              onClick={() => setOpen(false)}
+            >
+              <BookOpen size={14} aria-hidden="true" /> Open master curriculum
+            </Link>
+          </li>
+          <li role="none">
+            <Link
+              role="menuitem"
+              to={questionsPath}
+              className="course-management__menu-item"
+              onClick={() => setOpen(false)}
+            >
+              <FileQuestion size={14} aria-hidden="true" /> Manage questions
+            </Link>
+          </li>
+          {showManageTest ? (
+            <li role="none">
+              <Link
+                role="menuitem"
+                to={testsPath}
+                className="course-management__menu-item"
+                onClick={() => setOpen(false)}
+              >
+                <ClipboardCheck size={14} aria-hidden="true" /> Manage test
+              </Link>
+            </li>
+          ) : null}
+        </>
       ) : null}
       {canViewClasses ? (
         <li role="none">
           <Link
             role="menuitem"
-            to={`/staff/classrooms?courseId=${encodeURIComponent(course.id)}`}
+            to={classesPath}
             className="course-management__menu-item"
             onClick={() => setOpen(false)}
           >
-            <Users size={14} aria-hidden="true" /> View classes
+            <Users size={14} aria-hidden="true" />
+            {canOpenMasterCurriculum ? "View classes" : "View classes"}
           </Link>
         </li>
       ) : null}
@@ -330,21 +322,27 @@ export function AdminCoursesPage() {
   const location = useLocation();
   const currentUser = getCurrentUser();
   const currentRole = String(currentUser?.role || "").toLowerCase();
-
   const isTrainer = currentRole === "trainer";
   const isSme = currentRole === "sme";
   const isAssignedOnlyRole = isTrainer || isSme;
-
   const canManageCourses = currentRole === "admin" || currentRole === "tmo";
 
   const isStaffRoute = location.pathname.startsWith("/staff/");
   const courseBasePath = isStaffRoute ? "/staff/courses" : "/admin/courses";
-
   const previewReturnPath = isStaffRoute ? "/staff/courses" : "/admin/courses";
-
-  const canViewClasses = currentRole === "tmo";
+  const canViewClasses = canViewClassRooms(currentRole);
+  const canOpenMasterCurriculum = !isTrainer;
   const canCreate = canManageCourses;
   const canDelete = canManageCourses;
+  const openCoursePath = (courseId) => {
+    if (isTrainer) {
+      return `/staff/classrooms?courseId=${encodeURIComponent(courseId)}`;
+    }
+    if (isAssignedOnlyRole) {
+      return `${courseBasePath}/${courseId}/edit`;
+    }
+    return `${courseBasePath}/${courseId}/content`;
+  };
 
   const [page, setPage] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
@@ -438,9 +436,9 @@ export function AdminCoursesPage() {
 
   const hasFilters = Boolean(
     keyword ||
-    statusFilter !== "all" ||
-    categoryFilter !== "all" ||
-    levelFilter !== "all",
+      statusFilter !== "all" ||
+      categoryFilter !== "all" ||
+      levelFilter !== "all",
   );
 
   function clearFilters() {
@@ -471,22 +469,21 @@ export function AdminCoursesPage() {
       <header className="sl-cm-header course-management__header">
         <div>
           <h1>Course management</h1>
+          <p>
+            {isAssignedOnlyRole
+              ? "Review and update the courses assigned to you."
+              : "Create, publish, and maintain the learning experiences available on the platform."}
+          </p>
         </div>
 
         {canCreate ? (
-          <Button
-            leftIcon={<Plus size={17} />}
-            onClick={() => navigate("/admin/courses/new")}
-          >
+          <Button leftIcon={<Plus size={17} />} onClick={() => navigate("/admin/courses/new")}>
             Create course
           </Button>
         ) : null}
       </header>
 
-      <section
-        className="course-management__panel"
-        aria-labelledby="course-list-title"
-      >
+      <section className="course-management__panel" aria-labelledby="course-list-title">
         <h2 id="course-list-title" className="sr-only">
           Courses
         </h2>
@@ -510,9 +507,7 @@ export function AdminCoursesPage() {
             <span className="course-management__control course-management__select">
               <select
                 value={categoryFilter}
-                onChange={(event) =>
-                  changeFilter(setCategoryFilter, event.target.value)
-                }
+                onChange={(event) => changeFilter(setCategoryFilter, event.target.value)}
               >
                 <option value="all">All categories</option>
                 {categories.map((category) => (
@@ -529,9 +524,7 @@ export function AdminCoursesPage() {
             <span className="course-management__control course-management__select">
               <select
                 value={levelFilter}
-                onChange={(event) =>
-                  changeFilter(setLevelFilter, event.target.value)
-                }
+                onChange={(event) => changeFilter(setLevelFilter, event.target.value)}
               >
                 {LEVEL_FILTERS.map((level) => (
                   <option key={level.value} value={level.value}>
@@ -553,10 +546,7 @@ export function AdminCoursesPage() {
         </div>
 
         <div className="course-management__status-bar">
-          <div
-            className="course-management__tabs"
-            aria-label="Filter courses by status"
-          >
+          <div className="course-management__tabs" aria-label="Filter courses by status">
             {STATUS_FILTERS.map((status) => {
               const selected = statusFilter === status.value;
               return (
@@ -573,19 +563,12 @@ export function AdminCoursesPage() {
             })}
           </div>
           <p className="course-management__result-count" aria-live="polite">
-            <strong>{totalItems}</strong>{" "}
-            {totalItems === 1 ? "course" : "courses"}
+            <strong>{totalItems}</strong> {totalItems === 1 ? "course" : "courses"}
           </p>
         </div>
 
-        <div
-          className="course-management__table-wrap"
-          role="region"
-          aria-label="Course list"
-        >
-          {loading ? (
-            <div className="course-management__state">Loading courses…</div>
-          ) : null}
+        <div className="course-management__table-wrap" role="region" aria-label="Course list">
+          {loading ? <div className="course-management__state">Loading courses…</div> : null}
           {!loading && error ? (
             <div className="course-management__state course-management__state--error">
               <AlertTriangle size={28} aria-hidden="true" />
@@ -614,10 +597,7 @@ export function AdminCoursesPage() {
                   : "Try another search term or clear your filters."}
               </span>
               {canCreate && !hasFilters ? (
-                <Button
-                  leftIcon={<Plus size={16} />}
-                  onClick={() => navigate("/admin/courses/new")}
-                >
+                <Button leftIcon={<Plus size={16} />} onClick={() => navigate("/admin/courses/new")}>
                   Create course
                 </Button>
               ) : null}
@@ -643,14 +623,7 @@ export function AdminCoursesPage() {
                   {items.map((course) => (
                     <tr key={course.id}>
                       <td data-label="Course">
-                        <Link
-                          to={
-                            isAssignedOnlyRole
-                              ? `${courseBasePath}/${course.id}/edit`
-                              : `${courseBasePath}/${course.id}/content`
-                          }
-                          className="course-management__course-cell"
-                        >
+                        <Link to={openCoursePath(course.id)} className="course-management__course-cell">
                           <CourseThumbnail course={course} />
                           <div>
                             <strong>{course.title}</strong>
@@ -664,9 +637,7 @@ export function AdminCoursesPage() {
                         </span>
                       </td>
                       <td data-label="Level">
-                        <span className="course-management__level">
-                          {formatLevel(course.level)}
-                        </span>
+                        <span className="course-management__level">{formatLevel(course.level)}</span>
                       </td>
                       <td data-label="Price">
                         <div className="course-management__meta-cell">
@@ -696,13 +667,15 @@ export function AdminCoursesPage() {
                       <td data-label="Actions">
                         <div className="course-management__actions">
                           <Link
-                            to={
-                              isAssignedOnlyRole
-                                ? `${courseBasePath}/${course.id}/edit`
-                                : `${courseBasePath}/${course.id}/content`
-                            }
+                            to={openCoursePath(course.id)}
                             className="course-management__action course-management__action--primary"
-                            title="Open"
+                            title={
+                              isTrainer
+                                ? "View classes"
+                                : canOpenMasterCurriculum
+                                  ? "Open master curriculum"
+                                  : "Open"
+                            }
                             aria-label={`Open ${course.title}`}
                           >
                             Open
@@ -711,6 +684,7 @@ export function AdminCoursesPage() {
                             course={course}
                             basePath={courseBasePath}
                             canViewClasses={canViewClasses}
+                            canOpenMasterCurriculum={canOpenMasterCurriculum}
                             canDelete={canDelete}
                             previewReturnPath={previewReturnPath}
                             onRequestDelete={(c) =>
@@ -727,7 +701,6 @@ export function AdminCoursesPage() {
                 </tbody>
               </table>
 
-              {/* Mobile stacked cards — same data, compact layout */}
               <ul className="course-management__cards" aria-label="Course list">
                 {items.map((course) => (
                   <li key={course.id} className="course-management__card">
@@ -769,22 +742,14 @@ export function AdminCoursesPage() {
                       <CourseStatusBadge status={course.status} />
                     </div>
                     <div className="course-management__card-actions">
-                      <Button
-                        size="sm"
-                        onClick={() =>
-                          navigate(
-                            isAssignedOnlyRole
-                              ? `${courseBasePath}/${course.id}/edit`
-                              : `${courseBasePath}/${course.id}/content`,
-                          )
-                        }
-                      >
+                      <Button size="sm" onClick={() => navigate(openCoursePath(course.id))}>
                         Open
                       </Button>
                       <RowActionsMenu
                         course={course}
                         basePath={courseBasePath}
                         canViewClasses={canViewClasses}
+                        canOpenMasterCurriculum={canOpenMasterCurriculum}
                         canDelete={canDelete}
                         previewReturnPath={previewReturnPath}
                         onRequestDelete={(c) =>

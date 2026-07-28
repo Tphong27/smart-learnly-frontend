@@ -254,6 +254,9 @@ export default function AdminCourseContentPage() {
             if (mappedType === "document") mappedType = "pdf";
 
             if (mappedType === "flashcard") {
+                const durationSeconds = Number.isFinite(Number(payload.durationSeconds))
+                    ? Math.max(0, Math.round(Number(payload.durationSeconds)))
+                    : 0;
                 const createdLesson = await flashcardService.createLesson(
                     courseId,
                     sectionId,
@@ -261,7 +264,8 @@ export default function AdminCourseContentPage() {
                         title: payload.title,
                         description: "",
                         isPreview: !!payload.isPreview,
-                        status: "draft",
+                        status: payload.status || "draft",
+                        durationSeconds,
                         sortOrder: 0,
                     },
                 );
@@ -541,6 +545,7 @@ export default function AdminCourseContentPage() {
                 onDeleteLesson={handleDeleteLesson}
                 onReorderLessons={handleReorderLessons}
                 onEditLesson={handleEditLesson}
+                enableFlashcardCreateFields
             />
         </div>
     );
