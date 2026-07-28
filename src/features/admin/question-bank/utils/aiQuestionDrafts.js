@@ -29,29 +29,20 @@ export function normalizeAiSource(source, index = 0) {
     source?.generationSourceId ||
     source?.sourceId ||
     source?.id ||
-    source?.transcriptContentId ||
-    source?.materialSnapshotId ||
-    source?.materialId
-  const kind = normalizeStatus(source?.sourceKind || source?.kind || "material")
-  const ragStatus = normalizeStatus(
-    source?.ragStatus ||
-      source?.status ||
-      source?.extractionStatus ||
-      source?.ingestionStatus ||
-      "unknown",
-  )
+    source?.transcriptContentId
+  const kind = normalizeStatus(source?.sourceKind || source?.kind || "source")
+  const sourceStatus = normalizeStatus(source?.status || source?.extractionStatus || "unknown")
 
   return {
     ...source,
     id,
     kind,
-    ragStatus,
+    sourceStatus,
     title:
       source?.sourceName ||
-      source?.materialName ||
       source?.title ||
       source?.name ||
-      `Material ${index + 1}`,
+      `Source ${index + 1}`,
     lessonTitle: source?.lessonTitle || source?.lessonName || source?.lesson || "",
     courseTitle: source?.courseTitle || source?.courseName || source?.course || "",
     checksum: source?.sourceChecksum || source?.checksum || source?.snapshotChecksum || "",
@@ -63,8 +54,8 @@ export function normalizeAiSource(source, index = 0) {
     normalizedCharCount: Number(source?.normalizedCharCount ?? source?.characterCount ?? 0),
     downloadable: Boolean(source?.downloadable),
     ready:
-      ["rag_ready", "ready", "completed", "success"].includes(ragStatus) ||
-      source?.ragReady === true,
+      ["ready", "completed", "success", "published"].includes(sourceStatus) ||
+      source?.ready === true,
   }
 }
 
