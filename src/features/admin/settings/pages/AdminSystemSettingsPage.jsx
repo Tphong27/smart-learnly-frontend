@@ -1,7 +1,9 @@
 import { useState } from "react";
-import { Mail, KeyRound } from "lucide-react";
+import { Bot, KeyRound, Mail, Video } from "lucide-react";
 import { EmailSettingsSection } from "../components/EmailSettingsSection";
 import { OAuthSettingsSection } from "../components/OAuthSettingsSection";
+import { GoogleMeetSettingsSection } from "../components/GoogleMeetSettingsSection";
+import { AiIntegrationsSettingsSection } from "../components/AiIntegrationsSettingsSection";
 import "../../admin-shared.css";
 
 // Add new settings groups here to surface them as tabs in System Settings.
@@ -17,6 +19,18 @@ const TABS = [
         label: "OAuth Providers",
         icon: KeyRound,
         render: () => <OAuthSettingsSection />,
+    },
+    {
+        key: "google-meet",
+        label: "Google Meet",
+        icon: Video,
+        render: () => <GoogleMeetSettingsSection />,
+    },
+    {
+        key: "ai-integrations",
+        label: "AI Integrations",
+        icon: Bot,
+        render: () => <AiIntegrationsSettingsSection />,
     },
 ];
 

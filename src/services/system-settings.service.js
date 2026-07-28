@@ -30,4 +30,34 @@ export const systemSettingsService = {
     const response = await apiClient.put('/admin/settings/oauth/google', payload)
     return unwrap(response)
   },
+
+  async getGoogleMeetSettings() {
+    const response = await apiClient.get('/admin/settings/integrations/google-meet')
+    return unwrap(response)
+  },
+
+  async updateGoogleMeetSettings(payload) {
+    const response = await apiClient.put('/admin/settings/integrations/google-meet', payload)
+    return unwrap(response)
+  },
+
+  async getQuestionImageImportSettings() {
+    const response = await apiClient.get('/admin/settings/ai/question-image-import')
+    return unwrap(response)
+  },
+
+  async updateQuestionImageImportSettings(payload) {
+    const response = await apiClient.put('/admin/settings/ai/question-image-import', payload)
+    return unwrap(response)
+  },
+
+  async getAssignmentAiSettings() {
+    const response = await apiClient.get('/admin/settings/ai/assignment-draft')
+    return unwrap(response)
+  },
+
+  async updateAssignmentAiSettings(payload) {
+    const response = await apiClient.put('/admin/settings/ai/assignment-draft', payload)
+    return unwrap(response)
+  },
 }
