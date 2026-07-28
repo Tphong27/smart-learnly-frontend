@@ -12,6 +12,10 @@ import { formatDate, formatTime } from "@/shared/utils/formatters";
 import { getGoogleMeetUrl } from "@/shared/utils/googleMeetUrl";
 import { WEEK_DAY_OPTIONS } from "@/shared/constants/week-days";
 import {
+  CLASS_TIME_SLOTS,
+  normalizeScheduleTime,
+} from "@/shared/constants/class-time-slots";
+import {
   addDays,
   formatWeekInput,
   fromIsoWeek,
@@ -214,26 +218,6 @@ export function SchedulePage() {
     [weekStart],
   );
 
-  const timeRanges = useMemo(() => {
-    const rangeMap = new Map();
-
-    sessions.forEach((session) => {
-      const key = `${session.startTime}|${session.endTime}`;
-
-      if (!rangeMap.has(key)) {
-        rangeMap.set(key, {
-          key,
-          startTime: session.startTime,
-          endTime: session.endTime,
-        });
-      }
-    });
-
-    return Array.from(rangeMap.values()).sort((left, right) =>
-      String(left.startTime).localeCompare(String(right.startTime)),
-    );
-  }, [sessions]);
-
   const todayKey = toDateKey(new Date());
 
   function moveWeek(days) {
@@ -354,57 +338,50 @@ export function SchedulePage() {
             </thead>
 
             <tbody>
-              {timeRanges.length === 0 ? (
-                <tr>
-                  <td colSpan={8} className="schedule-table__empty">
-                    No class sessions are scheduled for this week.
-                  </td>
+              {CLASS_TIME_SLOTS.map((slot) => (
+                <tr key={slot.code}>
+                  <th scope="row">
+                    <span>{slot.label}</span>
+
+                    <strong>
+                      {formatTime(slot.startTime)}
+                      {" – "}
+                      {formatTime(slot.endTime)}
+                    </strong>
+                  </th>
+
+                  {days.map((day) => {
+                    const cellSessions = sessions.filter(
+                      (session) =>
+                        session.sessionDate === day.date &&
+                        normalizeScheduleTime(session.startTime) ===
+                          slot.startTime &&
+                        normalizeScheduleTime(session.endTime) === slot.endTime,
+                    );
+
+                    return (
+                      <td
+                        key={`${slot.code}-${day.date}`}
+                        className={day.date === todayKey ? "is-today" : ""}
+                      >
+                        {cellSessions.length === 0 ? (
+                          <span className="schedule-table__dash">–</span>
+                        ) : (
+                          <div className="schedule-table__items">
+                            {cellSessions.map((session) => (
+                              <ScheduleItem
+                                key={session.sessionId}
+                                session={session}
+                                isStaff={isStaff}
+                              />
+                            ))}
+                          </div>
+                        )}
+                      </td>
+                    );
+                  })}
                 </tr>
-              ) : (
-                timeRanges.map((range, index) => (
-                  <tr key={range.key}>
-                    <th scope="row">
-                      <span>Slot {index + 1}</span>
-
-                      <strong>
-                        {formatTime(range.startTime)}
-                        {" – "}
-                        {formatTime(range.endTime)}
-                      </strong>
-                    </th>
-
-                    {days.map((day) => {
-                      const cellSessions = sessions.filter(
-                        (session) =>
-                          session.sessionDate === day.date &&
-                          session.startTime === range.startTime &&
-                          session.endTime === range.endTime,
-                      );
-
-                      return (
-                        <td
-                          key={`${range.key}-${day.date}`}
-                          className={day.date === todayKey ? "is-today" : ""}
-                        >
-                          {cellSessions.length === 0 ? (
-                            <span className="schedule-table__dash">–</span>
-                          ) : (
-                            <div className="schedule-table__items">
-                              {cellSessions.map((session) => (
-                                <ScheduleItem
-                                  key={session.sessionId}
-                                  session={session}
-                                  isStaff={isStaff}
-                                />
-                              ))}
-                            </div>
-                          )}
-                        </td>
-                      );
-                    })}
-                  </tr>
-                ))
-              )}
+              ))}
             </tbody>
           </table>
         </div>

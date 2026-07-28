@@ -272,6 +272,7 @@
 
 .schedule-table td {
   min-width: 138px;
+  height: 92px;
   padding: 9px;
   background: #ffffff;
   vertical-align: top;

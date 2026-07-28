@@ -1,4 +1,5 @@
 import "./ScheduleCalendar.css";
+import { getClassTimeSlot } from "@/shared/constants/class-time-slots";
 
 const WEEK_DAYS = [
   { key: "MONDAY", shortLabel: "MON", fullLabel: "Monday" },
@@ -36,7 +37,11 @@ function getSlotsByDay(scheduleDescription) {
     const matchedDay = schedule.find((item) => item.dayOfWeek === day.key);
 
     const slots = Array.isArray(matchedDay?.slots)
-      ? matchedDay.slots.filter((slot) => slot?.startTime && slot?.endTime)
+      ? matchedDay.slots
+          .map((slot) =>
+            getClassTimeSlot(slot?.startTime, slot?.endTime),
+          )
+          .filter(Boolean)
       : [];
 
     result[day.key] = slots;
@@ -79,12 +84,12 @@ export function ScheduleCalendar({
             </strong>
 
             <div className="shared-schedule-calendar__compact-slots">
-              {day.slots.map((slot, index) => (
+              {day.slots.map((slot) => (
                 <span
                   className="shared-schedule-calendar__compact-slot"
-                  key={`${day.key}-${slot.startTime}-${slot.endTime}-${index}`}
+                  key={`${day.key}-${slot.code}`}
                 >
-                  {slot.startTime} – {slot.endTime}
+                  {slot.label}: {slot.startTime}–{slot.endTime}
                 </span>
               ))}
             </div>
@@ -123,14 +128,15 @@ export function ScheduleCalendar({
                   <td key={day.key}>
                     {slots.length > 0 ? (
                       <div className="shared-schedule-calendar__slot-list">
-                        {slots.map((slot, index) => (
+                        {slots.map((slot) => (
                           <div
                             className="shared-schedule-calendar__class-cell"
-                            key={`${day.key}-${slot.startTime}-${slot.endTime}-${index}`}
+                            key={`${day.key}-${slot.code}`}
                           >
-                            <strong>
-                              {slot.startTime} – {slot.endTime}
-                            </strong>
+                            <strong>{slot.label}</strong>
+                            <span>
+                              {slot.startTime}–{slot.endTime}
+                            </span>
                           </div>
                         ))}
                       </div>
