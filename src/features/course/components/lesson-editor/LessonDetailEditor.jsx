@@ -60,6 +60,17 @@ const LESSON_TYPE_LABELS = {
   FLASHCARD: "Flashcard",
 };
 
+function normalizeExactDurationSeconds(value) {
+  if (value == null || String(value).trim() === "") {
+    return null;
+  }
+  const duration = Number(value);
+  if (!Number.isFinite(duration) || duration < 0) {
+    return null;
+  }
+  return Math.round(duration);
+}
+
 function LessonEditorSection({
   id,
   step,
@@ -209,6 +220,7 @@ export function LessonDetailEditor({ context }) {
   const [isPreview, setIsPreview] = useState(false);
   const [status, setStatus] = useState("draft");
   const [durationMinutes, setDurationMinutes] = useState(0);
+  const [exactDurationSeconds, setExactDurationSeconds] = useState(null);
   const [assignment, setAssignment] = useState(null);
   const [assignmentRubric, setAssignmentRubric] = useState("");
   const [assignmentLoading, setAssignmentLoading] = useState(false);
@@ -277,6 +289,7 @@ export function LessonDetailEditor({ context }) {
     const fetchLessonDetail = async () => {
       try {
         setPageLoading(true);
+        setSummaryGenerating(false);
         const response = await services.getLessonDetail(lessonId);
         const lessonData = response?.data || response;
 
@@ -288,6 +301,7 @@ export function LessonDetailEditor({ context }) {
           setTextContent(lessonData.content || "");
 
           setVideoUrl(lessonData.videoUrl || "");
+          setSummaryGenerated(false);
           setUploadedFileUrl(
             lessonData.attachmentUrl || lessonData.fileUrl || "",
           );
@@ -296,9 +310,13 @@ export function LessonDetailEditor({ context }) {
             Boolean(lessonData.isPreview ?? lessonData.isPreviewable),
           );
           setStatus(normalizeLessonStatus(lessonData.status));
+          const loadedDurationSeconds = normalizeExactDurationSeconds(
+            lessonData.durationSeconds,
+          );
+          setExactDurationSeconds(loadedDurationSeconds);
           setDurationMinutes(
-            lessonData.durationSeconds
-              ? Math.max(1, Math.ceil(Number(lessonData.durationSeconds) / 60))
+            loadedDurationSeconds
+              ? Math.max(1, Math.ceil(loadedDurationSeconds / 60))
               : 0,
           );
 
@@ -508,6 +526,7 @@ export function LessonDetailEditor({ context }) {
     (value) => {
       setSummary(value);
       setSummaryError("");
+      setSummaryGenerated(false);
       markChanged();
     },
     [markChanged],
@@ -554,7 +573,8 @@ export function LessonDetailEditor({ context }) {
   };
 
   const handleGenerateSummary = async () => {
-    if (!getYoutubeVideoId(videoUrl)) {
+    const requestedUrl = videoUrl.trim();
+    if (!getYoutubeVideoId(requestedUrl)) {
       setVideoSummaryError(
         "Enter a valid HTTPS YouTube URL (youtube.com/watch?v= or youtu.be).",
       );
@@ -571,15 +591,28 @@ export function LessonDetailEditor({ context }) {
     }
 
     setSummaryGenerating(true);
+    setSummaryGenerated(false);
     setVideoSummaryError("");
+
     try {
-      const result = await videoAiService.generateSummary(videoUrl.trim());
+      const result = await videoAiService.generateSummary(requestedUrl);
       const generatedSummary = summaryToHtml(result.summary);
       if (isEmptyLessonHtml(generatedSummary)) {
         throw new Error("The generated summary has an invalid format.");
       }
-      setVideoUrl(result.videoUrl);
-      setDurationMinutes(Number(result.durationMinutes) || 0);
+
+      const resolvedVideoUrl = result.videoUrl || requestedUrl;
+      const generatedDurationSeconds = normalizeExactDurationSeconds(
+        result.durationSeconds,
+      );
+
+      setVideoUrl(resolvedVideoUrl);
+      setExactDurationSeconds(generatedDurationSeconds);
+      setDurationMinutes(
+        generatedDurationSeconds
+          ? Math.max(1, Math.ceil(generatedDurationSeconds / 60))
+          : Math.max(0, Number(result.durationMinutes) || 0),
+      );
       setSummary(generatedSummary);
       setSummaryError("");
       setSummaryGenerated(true);
@@ -750,7 +783,8 @@ export function LessonDetailEditor({ context }) {
         durationSeconds:
           lessonType === "ESSAY"
             ? 0
-            : Math.round(Number(durationMinutes || 0) * 60),
+            : exactDurationSeconds ??
+              Math.round(Number(durationMinutes || 0) * 60),
         isPreview,
         status: normalizeLessonStatus(status),
         resources: normalizedResources,
@@ -1247,6 +1281,7 @@ export function LessonDetailEditor({ context }) {
                             setDurationMinutes(
                               Math.max(0, Number(event.target.value || 0)),
                             );
+                            setExactDurationSeconds(null);
                             markChanged();
                           }}
                           className="sl-cm-lesson-editor__field-control"
@@ -1326,8 +1361,17 @@ export function LessonDetailEditor({ context }) {
                       placeholder="https://www.youtube.com/watch?v=..."
                       value={videoUrl}
                       onChange={(event) => {
-                        setVideoUrl(event.target.value);
+                        const nextVideoUrl = event.target.value;
+                        if (
+                          getYoutubeVideoId(nextVideoUrl) !==
+                          getYoutubeVideoId(videoUrl)
+                        ) {
+                          setDurationMinutes(0);
+                        }
+                        setExactDurationSeconds(null);
+                        setVideoUrl(nextVideoUrl);
                         setVideoSummaryError("");
+                        setSummaryGenerated(false);
                         markChanged();
                       }}
                       className="sl-cm-lesson-editor__field-control"
@@ -1870,6 +1914,7 @@ export function LessonDetailEditor({ context }) {
                               setDurationMinutes(
                                 Math.max(0, Number(event.target.value || 0)),
                               );
+                              setExactDurationSeconds(null);
                               markChanged();
                             }}
                             className="sl-cm-lesson-editor__field-control"
