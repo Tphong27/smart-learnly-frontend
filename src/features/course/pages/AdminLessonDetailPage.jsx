@@ -38,7 +38,7 @@ export default function AdminLessonDetailPage() {
         flashcardStaging: true,
       },
     }),
-    [backPath, courseId, lessonId, location.pathname],
+    [backPath, courseId, lessonId],
   );
 
   return <LessonDetailEditor context={context} />;

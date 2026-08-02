@@ -337,7 +337,6 @@ export function AdminAiQuestionDraftCreatePage() {
     try {
       const createBatch = isCourseQuestionsMode
         ? questionBankService.createCourseAiDraftBatch(courseId, {
-            generationSourceIds: [],
             transcriptContentIds: selectedTranscriptIds,
             pastedTextSources: trimmedPastedSources,
             files,
@@ -349,7 +348,6 @@ export function AdminAiQuestionDraftCreatePage() {
             idempotencyKey,
           })
         : questionBankService.createAiDraftBatch(bankId, {
-            generationSourceIds: [],
             transcriptContentIds: selectedTranscriptIds,
             pastedTextSources: trimmedPastedSources,
             files,

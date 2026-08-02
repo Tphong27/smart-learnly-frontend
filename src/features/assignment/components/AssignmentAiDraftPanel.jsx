@@ -18,12 +18,6 @@ const DEFAULT_PROMPT =
   "Hay tao noi dung bai assignment dua tren tai lieu nay va kem tieu chi cham diem.";
 const UNSUPPORTED_SOURCE_MESSAGE = "Only PDF or DOCX files can be uploaded.";
 const MIN_THINKING_MS = 700;
-const PROMPT_SUGGESTIONS = [
-  "Create an assignment from the lesson summary",
-  "Draft an essay with a detailed rubric",
-  "Create 3 practice assignments",
-];
-
 function isSupportedSourceFile(file) {
   if (!file?.name) return false;
   const extension = file.name.split(".").pop()?.toLowerCase();
@@ -42,7 +36,6 @@ export function AssignmentAiDraftPanel({
   const [open, setOpen] = useState(false);
   const [message, setMessage] = useState(DEFAULT_PROMPT);
   const [file, setFile] = useState(null);
-  const [submittedMessage, setSubmittedMessage] = useState("");
   const [reply, setReply] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -55,7 +48,6 @@ export function AssignmentAiDraftPanel({
     setFile(null);
     setSourceCacheKey("");
     setCachedSourceName("");
-    setSubmittedMessage("");
     setReply("");
     setError("");
     setCopied(false);
@@ -83,7 +75,6 @@ export function AssignmentAiDraftPanel({
     }
 
     const startedAt = Date.now();
-    setSubmittedMessage(trimmed);
     setLoading(true);
     setError("");
     setReply("");
@@ -185,85 +176,6 @@ export function AssignmentAiDraftPanel({
             </div>
           </div>
 
-          <div className="assignment-ai__conversation" aria-live="polite">
-            {!submittedMessage && (
-              <div className="assignment-ai__assistant-message">
-                <div className="assignment-ai__message-author">
-                  <Sparkles size={15} aria-hidden="true" />
-                  <strong>AI assistant</strong>
-                </div>
-                <p>
-                  Tell me what learners should create or practice. You can also
-                  attach a PDF or DOCX so the draft follows your source
-                  material.
-                </p>
-                <div
-                  className="assignment-ai__suggestions"
-                  aria-label="Prompt suggestions"
-                >
-                  {PROMPT_SUGGESTIONS.map((suggestion) => (
-                    <button
-                      key={suggestion}
-                      type="button"
-                      disabled={loading}
-                      onClick={() => setMessage(suggestion)}
-                    >
-                      {suggestion}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {submittedMessage && (
-              <div className="assignment-ai__user-message">
-                <span>You</span>
-                <div>{submittedMessage}</div>
-                {(file || sourceCacheKey) && (
-                  <small>
-                    <Paperclip size={12} />
-                    {file?.name || cachedSourceName || "Attached source"}
-                  </small>
-                )}
-              </div>
-            )}
-
-            {loading && (
-              <div className="assignment-ai__assistant-message" role="status">
-                <div className="assignment-ai__message-author">
-                  <Sparkles size={15} aria-hidden="true" />
-                  <strong>AI assistant</strong>
-                </div>
-                <div className="assignment-ai__thinking">
-                  <Loader2 className="assignment-ai__spin" size={16} />
-                  <span>Reviewing your request and preparing a draft...</span>
-                </div>
-              </div>
-            )}
-
-            {reply && (
-              <div className="assignment-ai__assistant-message">
-                <div className="assignment-ai__message-author">
-                  <Sparkles size={15} aria-hidden="true" />
-                  <strong>AI assistant</strong>
-                </div>
-                <div className="assignment-ai__reply">
-                  <div className="assignment-ai__reply-header">
-                    <strong>AI draft</strong>
-                    <button type="button" onClick={handleCopy}>
-                      {copied ? <Check size={15} /> : <Copy size={15} />}
-                      <span>{copied ? "Copied" : "Copy"}</span>
-                    </button>
-                  </div>
-                  <div className="assignment-ai__reply-content">{reply}</div>
-                  <p className="assignment-ai__disclaimer">
-                    Review this draft before using it in your assignment.
-                  </p>
-                </div>
-              </div>
-            )}
-          </div>
-
           {error && (
             <div className="assignment-ai__error" role="alert">
               {error}
@@ -352,6 +264,31 @@ export function AssignmentAiDraftPanel({
               </button>
             </div>
           </div>
+
+          {(loading || reply) && (
+            <div className="assignment-ai__result" aria-live="polite">
+              {loading ? (
+                <div className="assignment-ai__thinking" role="status">
+                  <Loader2 className="assignment-ai__spin" size={16} />
+                  <span>Reviewing your request and preparing a draft...</span>
+                </div>
+              ) : (
+                <div className="assignment-ai__reply">
+                  <div className="assignment-ai__reply-header">
+                    <strong>AI draft</strong>
+                    <button type="button" onClick={handleCopy}>
+                      {copied ? <Check size={15} /> : <Copy size={15} />}
+                      <span>{copied ? "Copied" : "Copy"}</span>
+                    </button>
+                  </div>
+                  <div className="assignment-ai__reply-content">{reply}</div>
+                  <p className="assignment-ai__disclaimer">
+                    Review this draft before using it in your assignment.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
 
           <p className="assignment-ai__privacy">
             AI uses your message, current lesson summary, and attached source

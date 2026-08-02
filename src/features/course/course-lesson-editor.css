@@ -48,6 +48,37 @@
   font-size: 14px;
 }
 
+.sl-cm-lesson-editor__type-selector {
+  display: grid;
+  width: min(100%, 320px);
+  gap: 6px;
+  margin-top: 14px;
+}
+
+.sl-cm-lesson-editor__type-selector > span {
+  color: var(--sl-ink);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.sl-cm-lesson-editor__type-selector select {
+  width: 100%;
+  min-height: 44px;
+  padding: 9px 36px 9px 12px;
+  border: 1px solid var(--sl-line);
+  border-radius: var(--sl-radius-md);
+  background: #ffffff;
+  color: var(--sl-ink);
+  font: inherit;
+  font-size: 14px;
+}
+
+.sl-cm-lesson-editor__type-selector select:focus {
+  outline: none;
+  border-color: var(--sl-purple);
+  box-shadow: 0 0 0 3px rgba(130, 94, 245, 0.18);
+}
+
 .sl-cm-lesson-editor__notice {
   display: flex;
   align-items: flex-start;
@@ -235,7 +266,7 @@
   display: grid;
   gap: 24px;
   width: 100%;
-  max-width: 1100px;
+  max-width: none;
 }
 
 .sl-cm-lesson-editor__basic-title {
@@ -419,6 +450,36 @@
   gap: 12px;
   min-width: 0;
   margin: 0;
+}
+
+.sl-cm-lesson-editor__assignment-form .sl-cm-lesson-editor__steps {
+  gap: 20px;
+  width: 100%;
+  max-width: none;
+}
+
+.sl-cm-lesson-editor__assignment-form .sl-lesson-step {
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.sl-cm-lesson-editor__assignment-form .sl-lesson-step__heading,
+.sl-cm-lesson-editor__assignment-form .sl-lesson-step__footer {
+  display: none;
+}
+
+.sl-cm-lesson-editor__assignment-form .sl-lesson-step__content {
+  padding: 0;
+}
+
+.sl-cm-lesson-editor__assignment-form .sl-cm-lesson-editor__essay-card {
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
 }
 
 .sl-lesson-step {
@@ -695,7 +756,7 @@
 .sl-cm-lesson-editor__settings-grid {
   display: grid;
   width: 100%;
-  max-width: 1100px;
+  max-width: none;
   border-top: 1px solid var(--sl-line);
 }
 

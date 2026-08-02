@@ -1,4 +1,5 @@
 import "./ScheduleCalendar.css";
+import { getClassTimeSlot } from "@/shared/constants/class-time-slots";
 
 const WEEK_DAYS = [
   { key: "MONDAY", shortLabel: "MON", fullLabel: "Monday" },
@@ -36,7 +37,9 @@ function getSlotsByDay(scheduleDescription) {
     const matchedDay = schedule.find((item) => item.dayOfWeek === day.key);
 
     const slots = Array.isArray(matchedDay?.slots)
-      ? matchedDay.slots.filter((slot) => slot?.startTime && slot?.endTime)
+      ? matchedDay.slots
+          .map((slot) => getClassTimeSlot(slot?.startTime, slot?.endTime))
+          .filter(Boolean)
       : [];
 
     result[day.key] = slots;
@@ -51,12 +54,10 @@ export function ScheduleCalendar({
 }) {
   const slotsByDay = getSlotsByDay(scheduleDescription);
 
-  const scheduledDays = WEEK_DAYS
-    .map((day) => ({
-      ...day,
-      slots: slotsByDay[day.key] || [],
-    }))
-    .filter((day) => day.slots.length > 0);
+  const scheduledDays = WEEK_DAYS.map((day) => ({
+    ...day,
+    slots: slotsByDay[day.key] || [],
+  })).filter((day) => day.slots.length > 0);
 
   if (variant === "compact") {
     if (scheduledDays.length === 0) {
@@ -70,21 +71,18 @@ export function ScheduleCalendar({
     return (
       <div className="shared-schedule-calendar shared-schedule-calendar--compact">
         {scheduledDays.map((day) => (
-          <div
-            className="shared-schedule-calendar__compact-day"
-            key={day.key}
-          >
+          <div className="shared-schedule-calendar__compact-day" key={day.key}>
             <strong className="shared-schedule-calendar__compact-day-name">
               {day.fullLabel}
             </strong>
 
             <div className="shared-schedule-calendar__compact-slots">
-              {day.slots.map((slot, index) => (
+              {day.slots.map((slot) => (
                 <span
                   className="shared-schedule-calendar__compact-slot"
-                  key={`${day.key}-${slot.startTime}-${slot.endTime}-${index}`}
+                  key={`${day.key}-${slot.code}`}
                 >
-                  {slot.startTime} – {slot.endTime}
+                  {slot.label}: {slot.startTime}–{slot.endTime}
                 </span>
               ))}
             </div>
@@ -123,21 +121,21 @@ export function ScheduleCalendar({
                   <td key={day.key}>
                     {slots.length > 0 ? (
                       <div className="shared-schedule-calendar__slot-list">
-                        {slots.map((slot, index) => (
+                        {slots.map((slot) => (
                           <div
                             className="shared-schedule-calendar__class-cell"
-                            key={`${day.key}-${slot.startTime}-${slot.endTime}-${index}`}
+                            key={`${day.key}-${slot.code}`}
                           >
-                            <strong>
-                              {slot.startTime} – {slot.endTime}
-                            </strong>
+                            <span>
+                              <strong>{slot.label}</strong>
+                              {" - "}
+                              {slot.startTime}–{slot.endTime}
+                            </span>
                           </div>
                         ))}
                       </div>
                     ) : (
-                      <span className="shared-schedule-calendar__empty">
-                        -
-                      </span>
+                      <span className="shared-schedule-calendar__empty">-</span>
                     )}
                   </td>
                 );

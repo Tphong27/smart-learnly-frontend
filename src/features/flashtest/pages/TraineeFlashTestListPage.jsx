@@ -7,6 +7,7 @@ import {
   Eye,
   FileText,
   KeyRound,
+  MessageSquareText,
   RefreshCw,
   Search,
   X,
@@ -18,6 +19,7 @@ import {
 } from "@/services/flashtest.service.js";
 import { getCurrentUser } from "@/services/api-client";
 import Pagination from "@/shared/components/Pagination";
+import { Modal } from "@/shared/components/ui";
 import "../flashtest.css";
 
 function isFlashTest(item) {
@@ -176,6 +178,7 @@ export function TraineeFlashTestListPage({ variant = "flash" }) {
   const [verifyingAccess, setVerifyingAccess] = useState(false);
   const [filterTab, setFilterTab] = useState("all");
   const [expandedResultKey, setExpandedResultKey] = useState("");
+  const [visibleFeedback, setVisibleFeedback] = useState(null);
   const pageTitle = isAssignmentMode
     ? "My Assignments"
     : isFlashMode ? "My Flash Tests" : "My Tests";
@@ -594,6 +597,7 @@ export function TraineeFlashTestListPage({ variant = "flash" }) {
                   <th>Due Date</th>
                   <th>Score</th>
                   <th>Status</th>
+                  <th>Feedback</th>
                   <th className="ft-tests-action-column">Action</th>
                 </tr>
               </thead>
@@ -605,6 +609,7 @@ export function TraineeFlashTestListPage({ variant = "flash" }) {
                     <td><span className="ft-skeleton" style={{ width: 50 }} /></td>
                     <td><span className="ft-skeleton" style={{ width: 80 }} /></td>
                     <td><span className="ft-skeleton" style={{ width: 40 }} /></td>
+                    <td><span className="ft-skeleton" style={{ width: 70 }} /></td>
                     <td><span className="ft-skeleton" style={{ width: 70 }} /></td>
                     <td><span className="ft-skeleton" style={{ width: 80 }} /></td>
                   </tr>
@@ -643,6 +648,7 @@ export function TraineeFlashTestListPage({ variant = "flash" }) {
                   <th>Due Date</th>
                   <th>Score</th>
                   <th>Status</th>
+                  <th>Feedback</th>
                   <th className="ft-tests-action-column">Action</th>
                 </tr>
               </thead>
@@ -684,6 +690,25 @@ export function TraineeFlashTestListPage({ variant = "flash" }) {
                             {statusLabel}
                           </span>
                         </td>
+                        <td>
+                          {isEssay && result?.trainerFeedback ? (
+                            <button
+                              type="button"
+                              className="ft-button ft-button--secondary"
+                              onClick={() =>
+                                setVisibleFeedback({
+                                  title: item.title || item.name,
+                                  feedback: result.trainerFeedback,
+                                })
+                              }
+                            >
+                              <MessageSquareText size={15} />
+                              View feedback
+                            </button>
+                          ) : (
+                            <span className="ft-muted">--</span>
+                          )}
+                        </td>
                         <td className="ft-tests-action-column">
                           <div className="ft-table-actions">
                             {hasAttemptHistory && (
@@ -713,7 +738,7 @@ export function TraineeFlashTestListPage({ variant = "flash" }) {
                       </tr>
                       {hasAttemptHistory && expanded && (
                         <tr className="ft-expanded-row">
-                          <td colSpan={7}>{renderAttemptList(item, result)}</td>
+                          <td colSpan={8}>{renderAttemptList(item, result)}</td>
                         </tr>
                       )}
                     </Fragment>
@@ -737,6 +762,27 @@ export function TraineeFlashTestListPage({ variant = "flash" }) {
           ariaLabel={`${pageTitle} pagination`}
         />
       </div>
+
+      <Modal
+        open={Boolean(visibleFeedback)}
+        title="Trainer feedback"
+        description={visibleFeedback?.title || ""}
+        size="md"
+        onClose={() => setVisibleFeedback(null)}
+        footer={
+          <button
+            type="button"
+            className="ft-button ft-button--primary"
+            onClick={() => setVisibleFeedback(null)}
+          >
+            Close
+          </button>
+        }
+      >
+        <div className="ft-trainee-feedback-text">
+          {visibleFeedback?.feedback}
+        </div>
+      </Modal>
 
       {loading && (
         <div className="ft-tests-refresh">

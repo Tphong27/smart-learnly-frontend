@@ -1,12 +1,14 @@
 import { Controller } from "react-hook-form";
-import { Plus, Trash2 } from "lucide-react";
+import {
+  CLASS_TIME_SLOTS,
+  getClassTimeSlot,
+  toScheduleTimeRange,
+} from "@/shared/constants/class-time-slots";
 import { WEEK_DAY_OPTIONS } from "@/shared/constants/week-days";
-
 
 function createEmptySchedule() {
   return WEEK_DAY_OPTIONS.map((day) => ({
     dayOfWeek: day.value,
-    enabled: false,
     slots: [],
   }));
 }
@@ -24,17 +26,19 @@ function parseSchedule(value) {
     }
 
     return WEEK_DAY_OPTIONS.map((day) => {
-      const matchedDay = parsed.find((item) => item.dayOfWeek === day.value);
+      const matchedDay = parsed.find((item) => item?.dayOfWeek === day.value);
+      const selectedSlotCodes = new Set(
+        (Array.isArray(matchedDay?.slots) ? matchedDay.slots : [])
+          .map((slot) => getClassTimeSlot(slot?.startTime, slot?.endTime))
+          .filter(Boolean)
+          .map((slot) => slot.code),
+      );
 
       return {
         dayOfWeek: day.value,
-        enabled: Boolean(matchedDay),
-        slots: Array.isArray(matchedDay?.slots)
-          ? matchedDay.slots.map((slot) => ({
-              startTime: slot.startTime || "",
-              endTime: slot.endTime || "",
-            }))
-          : [],
+        slots: CLASS_TIME_SLOTS.filter((slot) =>
+          selectedSlotCodes.has(slot.code),
+        ).map(toScheduleTimeRange),
       };
     });
   } catch {
@@ -44,12 +48,11 @@ function parseSchedule(value) {
 
 function stringifySchedule(schedule) {
   const selectedDays = schedule
-    .filter((day) => day.enabled)
+    .filter((day) => day.slots.length > 0)
     .map((day) => ({
       dayOfWeek: day.dayOfWeek,
-      slots: day.slots.filter((slot) => slot.startTime && slot.endTime),
-    }))
-    .filter((day) => day.slots.length > 0);
+      slots: day.slots,
+    }));
 
   return selectedDays.length > 0 ? JSON.stringify(selectedDays) : "";
 }
@@ -62,172 +65,92 @@ export function WeeklyScheduleEditor({
 }) {
   const schedule = parseSchedule(value);
 
-  function updateSchedule(nextSchedule) {
-    if (disabled) return;
-    onChange?.(stringifySchedule(nextSchedule));
-  }
+  function toggleSlot(dayIndex, selectedSlot) {
+    if (disabled) {
+      return;
+    }
 
-  function toggleDay(dayIndex) {
-    const nextSchedule = schedule.map((day, index) => {
-      if (index !== dayIndex) return day;
+    const nextSchedule = schedule.map((day, currentDayIndex) => {
+      if (currentDayIndex !== dayIndex) {
+        return day;
+      }
 
-      const nextEnabled = !day.enabled;
-
-      return {
-        ...day,
-        enabled: nextEnabled,
-        slots:
-          nextEnabled && day.slots.length === 0
-            ? [{ startTime: "19:00", endTime: "21:00" }]
-            : day.slots,
-      };
-    });
-
-    updateSchedule(nextSchedule);
-  }
-
-  function addSlot(dayIndex) {
-    const nextSchedule = schedule.map((day, index) => {
-      if (index !== dayIndex) return day;
-
-      return {
-        ...day,
-        enabled: true,
-        slots: [...day.slots, { startTime: "19:00", endTime: "21:00" }],
-      };
-    });
-
-    updateSchedule(nextSchedule);
-  }
-
-  function updateSlot(dayIndex, slotIndex, fieldName, nextValue) {
-    const nextSchedule = schedule.map((day, index) => {
-      if (index !== dayIndex) return day;
-
-      return {
-        ...day,
-        slots: day.slots.map((slot, currentSlotIndex) => {
-          if (currentSlotIndex !== slotIndex) return slot;
-
-          return {
-            ...slot,
-            [fieldName]: nextValue,
-          };
-        }),
-      };
-    });
-
-    updateSchedule(nextSchedule);
-  }
-
-  function removeSlot(dayIndex, slotIndex) {
-    const nextSchedule = schedule.map((day, index) => {
-      if (index !== dayIndex) return day;
-
-      const nextSlots = day.slots.filter(
-        (_, currentSlotIndex) => currentSlotIndex !== slotIndex
+      const selected = day.slots.some(
+        (slot) =>
+          slot.startTime === selectedSlot.startTime &&
+          slot.endTime === selectedSlot.endTime,
       );
+      const nextSlots = selected
+        ? day.slots.filter(
+            (slot) =>
+              slot.startTime !== selectedSlot.startTime ||
+              slot.endTime !== selectedSlot.endTime,
+          )
+        : [...day.slots, toScheduleTimeRange(selectedSlot)];
 
       return {
         ...day,
-        enabled: nextSlots.length > 0,
-        slots: nextSlots,
+        slots: CLASS_TIME_SLOTS.filter((slot) =>
+          nextSlots.some(
+            (selectedTime) =>
+              selectedTime.startTime === slot.startTime &&
+              selectedTime.endTime === slot.endTime,
+          ),
+        ).map(toScheduleTimeRange),
       };
     });
 
-    updateSchedule(nextSchedule);
+    onChange?.(stringifySchedule(nextSchedule));
   }
 
   return (
     <div className="weekly-schedule-picker">
       <div className="weekly-schedule-picker__header">
         <span>Day</span>
-        <span>Time slots</span>
+        <span>Class time slots</span>
       </div>
 
       {WEEK_DAY_OPTIONS.map((day, dayIndex) => {
-        const daySchedule = schedule[dayIndex] || {
-          dayOfWeek: day.value,
-          enabled: false,
-          slots: [],
-        };
+        const daySchedule = schedule[dayIndex];
 
         return (
           <div className="weekly-schedule-picker__row" key={day.value}>
-            <label className="weekly-schedule-picker__day">
-              <input
-                type="checkbox"
-                checked={daySchedule.enabled}
-                disabled={disabled}
-                onChange={() => toggleDay(dayIndex)}
-              />
-              <span>{day.label}</span>
-            </label>
+            <strong className="weekly-schedule-picker__day">{day.label}</strong>
 
-            <div className="weekly-schedule-picker__slots">
-              {!daySchedule.enabled && (
-                <span className="weekly-schedule-picker__empty">No class</span>
-              )}
+            <div className="weekly-schedule-picker__slot-grid">
+              {CLASS_TIME_SLOTS.map((slot) => {
+                const checked = daySchedule.slots.some(
+                  (selected) =>
+                    selected.startTime === slot.startTime &&
+                    selected.endTime === slot.endTime,
+                );
 
-              {daySchedule.enabled &&
-                daySchedule.slots.map((slot, slotIndex) => (
-                  <div
-                    className="weekly-schedule-picker__slot"
-                    key={`${day.value}-${slotIndex}`}
+                return (
+                  <label
+                    className={[
+                      "weekly-schedule-picker__slot-option",
+                      checked ? "is-selected" : "",
+                    ]
+                      .filter(Boolean)
+                      .join(" ")}
+                    key={slot.code}
                   >
                     <input
-                      type="time"
-                      value={slot.startTime}
+                      type="checkbox"
+                      checked={checked}
                       disabled={disabled}
-                      onChange={(event) =>
-                        updateSlot(
-                          dayIndex,
-                          slotIndex,
-                          "startTime",
-                          event.target.value
-                        )
-                      }
+                      onChange={() => toggleSlot(dayIndex, slot)}
                     />
 
-                    <span>to</span>
-
-                    <input
-                      type="time"
-                      value={slot.endTime}
-                      disabled={disabled}
-                      onChange={(event) =>
-                        updateSlot(
-                          dayIndex,
-                          slotIndex,
-                          "endTime",
-                          event.target.value
-                        )
-                      }
-                    />
-
-                    <button
-                      type="button"
-                      className="weekly-schedule-picker__remove"
-                      disabled={disabled}
-                      onClick={() => removeSlot(dayIndex, slotIndex)}
-                      aria-label={`Remove ${day.label} slot`}
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  </div>
-                ))}
-
-              {daySchedule.enabled && (
-                <button
-                  type="button"
-                  className="weekly-schedule-picker__add"
-                  disabled={disabled}
-                  onClick={() => addSlot(dayIndex)}
-                >
-                  <Plus size={16} />
-                  <span>Add slot</span>
-                </button>
-              )}
+                    <span>
+                      <strong>{slot.label}</strong>
+                      <small>
+                        {slot.startTime}–{slot.endTime}
+                      </small>
+                    </span>
+                  </label>
+                );
+              })}
             </div>
           </div>
         );

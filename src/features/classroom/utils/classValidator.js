@@ -2,6 +2,7 @@ import { z } from "zod";
 import { getTodayDateKey } from "@/shared/utils/date";
 import { isGoogleMeetUrl } from "@/shared/utils/googleMeetUrl";
 import { WEEK_DAY_OPTIONS } from "@/shared/constants/week-days";
+import { getClassTimeSlot } from "@/shared/constants/class-time-slots";
 import {
   CLASS_STATUSES,
   normalizeClassStatus,
@@ -87,7 +88,7 @@ function validateScheduleDefinition(value, context) {
       return;
     }
 
-    const validSlots = [];
+    const configuredSlots = new Set();
 
     for (const slot of day.slots) {
       const startTime = String(slot?.startTime || "");
@@ -102,34 +103,27 @@ function validateScheduleDefinition(value, context) {
         return;
       }
 
-      if (endTime <= startTime) {
+      const classTimeSlot = getClassTimeSlot(startTime, endTime);
+
+      if (!classTimeSlot) {
         addIssue(
           context,
           ["scheduleDescription"],
-          "Schedule end time must be after start time",
+          `Unsupported class time: ${startTime}–${endTime}`,
         );
         return;
       }
 
-      validSlots.push({ startTime, endTime });
-    }
-
-    validSlots.sort((first, second) =>
-      first.startTime.localeCompare(second.startTime),
-    );
-
-    for (let index = 1; index < validSlots.length; index += 1) {
-      const previous = validSlots[index - 1];
-      const current = validSlots[index];
-
-      if (current.startTime < previous.endTime) {
+      if (configuredSlots.has(classTimeSlot.code)) {
         addIssue(
           context,
           ["scheduleDescription"],
-          `Schedule slots overlap on ${day.dayOfWeek}`,
+          `${classTimeSlot.label} is selected more than once on ${day.dayOfWeek}`,
         );
         return;
       }
+
+      configuredSlots.add(classTimeSlot.code);
     }
   }
 }
