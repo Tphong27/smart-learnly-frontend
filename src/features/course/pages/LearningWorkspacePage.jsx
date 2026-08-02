@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   useParams,
   useNavigate,
@@ -20,9 +20,11 @@ import {
 } from "lucide-react";
 import { LearningLessonMedia } from "@/features/course/components/LearningLessonMedia";
 import { LearningLessonTabs } from "@/features/course/components/LearningLessonTabs";
-import { learningService, enrollmentService } from "@/services";
+import { learningService, enrollmentService, getCurrentUser } from "@/services";
 import { filterPublishedSections } from "@/features/course/utils/lesson-status";
 import "./LearningWorkspacePage.css";
+
+const LAST_LESSON_STORAGE_PREFIX = "smartLearnly:learningWorkspace:lastLesson";
 
 function formatDuration(seconds) {
   if (!seconds || seconds <= 0) return "--";
@@ -57,16 +59,60 @@ function formatCurriculumSource(curriculum) {
   return "Master curriculum";
 }
 
+function getUserPreferenceKey(user) {
+  return user?.id || user?.userId || user?.accountId || user?.email || null;
+}
+
+function lessonPositionStorageKey(userKey, courseId) {
+  if (!userKey || !courseId) return null;
+  return `${LAST_LESSON_STORAGE_PREFIX}:${userKey}:${courseId}`;
+}
+
+function readStoredLessonId(storageKey) {
+  if (!storageKey || typeof window === "undefined") return null;
+  try {
+    return window.localStorage.getItem(storageKey);
+  } catch {
+    return null;
+  }
+}
+
+function writeStoredLessonId(storageKey, lessonId) {
+  if (!storageKey || lessonId == null || typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(storageKey, String(lessonId));
+  } catch {
+    // Lesson resume is best-effort.
+  }
+}
+
+function findValidLessonById(lessons, lessonId) {
+  const targetId = lessonId == null ? "" : String(lessonId);
+  if (!targetId) return null;
+  return (
+    lessons.find((lesson) => String(getLessonId(lesson)) === targetId) || null
+  );
+}
+
 export function LearningWorkspacePage({
   previewMode = false,
   mode = "student",
 }) {
   const { courseId } = useParams();
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const requestedReturnTo = searchParams.get("returnTo");
   const requestedLessonId = searchParams.get("lessonId");
+  const requestedLessonIdRef = useRef(requestedLessonId);
   const requestedClassId = searchParams.get("classId");
+  const workspaceUserKey = useMemo(
+    () => getUserPreferenceKey(getCurrentUser()),
+    [],
+  );
+  const lessonResumeStorageKey = useMemo(
+    () => lessonPositionStorageKey(workspaceUserKey, courseId),
+    [courseId, workspaceUserKey],
+  );
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -79,6 +125,11 @@ export function LearningWorkspacePage({
   const [updatingLessonIds, setUpdatingLessonIds] = useState(() => new Set());
   const [lessonNotesById, setLessonNotesById] = useState({});
   const [resolvedClassId, setResolvedClassId] = useState(requestedClassId);
+  const flashcardProgressUserKey = mode === "student" ? workspaceUserKey : null;
+
+  useEffect(() => {
+    requestedLessonIdRef.current = requestedLessonId;
+  }, [requestedLessonId]);
 
   useEffect(() => {
     const narrowLayout = window.matchMedia("(max-width: 1024px)");
@@ -144,8 +195,9 @@ export function LearningWorkspacePage({
       const params = new URLSearchParams();
       params.set("classId", enrolledClass.id);
 
-      if (requestedLessonId) {
-        params.set("lessonId", requestedLessonId);
+      const lessonIdForClassRedirect = requestedLessonIdRef.current;
+      if (lessonIdForClassRedirect) {
+        params.set("lessonId", lessonIdForClassRedirect);
       }
 
       navigate(`/learning/courses/${courseId}?${params.toString()}`, {
@@ -220,7 +272,7 @@ export function LearningWorkspacePage({
     return () => {
       cancelled = true;
     };
-  }, [courseId, mode, requestedClassId, requestedLessonId, navigate]);
+  }, [courseId, mode, requestedClassId, navigate]);
 
   const sections = useMemo(() => groupLessonsBySection(data), [data]);
 
@@ -228,27 +280,60 @@ export function LearningWorkspacePage({
     return sections.flatMap((s) => s.lessons || []);
   }, [sections]);
 
-  const [activeLessonId, setActiveLessonId] = useState(requestedLessonId);
+  const [activeLessonId, setActiveLessonId] = useState(null);
+
+  const updateLessonQuery = useCallback(
+    (lessonId) => {
+      if (lessonId == null) return;
+      const nextLessonId = String(lessonId);
+      if (searchParams.get("lessonId") === nextLessonId) return;
+
+      const nextParams = new URLSearchParams(searchParams);
+      nextParams.set("lessonId", nextLessonId);
+      setSearchParams(nextParams, { replace: true });
+    },
+    [searchParams, setSearchParams],
+  );
 
   const handleSelectLesson = useCallback(
     (lesson) => {
-      setActiveLessonId(getLessonId(lesson));
+      const lessonId = getLessonId(lesson);
+      setActiveLessonId(lessonId);
       setActiveLessonTab("overview");
+      writeStoredLessonId(lessonResumeStorageKey, lessonId);
+      updateLessonQuery(lessonId);
 
       if (window.matchMedia("(max-width: 1024px)").matches) {
         setSidebarOpen(false);
       }
     },
-    [setActiveLessonId, setActiveLessonTab, setSidebarOpen],
+    [
+      lessonResumeStorageKey,
+      setActiveLessonId,
+      setActiveLessonTab,
+      setSidebarOpen,
+      updateLessonQuery,
+    ],
   );
 
   const activeLesson = useMemo(() => {
     if (allLessons.length === 0) return null;
-    return (
-      allLessons.find((lesson) => getLessonId(lesson) === activeLessonId) ||
-      allLessons[0]
+    const requestedLesson = findValidLessonById(allLessons, requestedLessonId);
+    const selectedLesson = findValidLessonById(allLessons, activeLessonId);
+    const storedLesson = findValidLessonById(
+      allLessons,
+      readStoredLessonId(lessonResumeStorageKey),
     );
-  }, [allLessons, activeLessonId]);
+
+    return requestedLesson || selectedLesson || storedLesson || allLessons[0];
+  }, [activeLessonId, allLessons, lessonResumeStorageKey, requestedLessonId]);
+
+  useEffect(() => {
+    const lessonId = getLessonId(activeLesson);
+    if (lessonId == null) return;
+    writeStoredLessonId(lessonResumeStorageKey, lessonId);
+    updateLessonQuery(lessonId);
+  }, [activeLesson, lessonResumeStorageKey, updateLessonQuery]);
 
   const currentIndex = useMemo(
     () =>
@@ -513,15 +598,22 @@ export function LearningWorkspacePage({
         Skip to lesson content
       </a>
       <header className="learning-workspace__topbar">
-        <button
-          type="button"
-          className="learning-workspace__brand"
-          onClick={handleLeaveWorkspace}
-          aria-label="Leave course player"
-        >
-          <BookOpen size={24} aria-hidden="true" />
-          <span>Smart Learnly</span>
-        </button>
+        {isAdminPreview ? (
+          <span className="learning-workspace__brand learning-workspace__brand--static">
+            <BookOpen size={24} aria-hidden="true" />
+            <span>Smart Learnly</span>
+          </span>
+        ) : (
+          <button
+            type="button"
+            className="learning-workspace__brand"
+            onClick={handleLeaveWorkspace}
+            aria-label="Leave course player"
+          >
+            <BookOpen size={24} aria-hidden="true" />
+            <span>Smart Learnly</span>
+          </button>
+        )}
 
         <span
           className="learning-workspace__topbar-divider"
@@ -569,42 +661,54 @@ export function LearningWorkspacePage({
           </Link>
         )}
 
-        <div
-          className="learning-workspace__topbar-progress"
-          role="progressbar"
-          aria-label="Course progress"
-          aria-valuemin="0"
-          aria-valuemax="100"
-          aria-valuenow={progressPercent}
-        >
-          <svg
-            className="learning-workspace__progress-ring"
-            viewBox="0 0 36 36"
-            aria-hidden="true"
+        {isAdminPreview && (
+          <button
+            type="button"
+            className="learning-workspace__topbar-cta"
+            onClick={handleLeaveWorkspace}
           >
-            <circle
+            Exit preview
+          </button>
+        )}
+
+        {!isAdminPreview && (
+          <div
+            className="learning-workspace__topbar-progress"
+            role="progressbar"
+            aria-label="Course progress"
+            aria-valuemin="0"
+            aria-valuemax="100"
+            aria-valuenow={progressPercent}
+          >
+            <svg
+              className="learning-workspace__progress-ring"
+              viewBox="0 0 36 36"
+              aria-hidden="true"
+            >
+              <circle
               className="learning-workspace__progress-ring-track"
               cx="18"
               cy="18"
               r="15.5"
               pathLength="100"
-            />
-            <circle
+              />
+              <circle
               className="learning-workspace__progress-ring-value"
               cx="18"
               cy="18"
               r="15.5"
               pathLength="100"
               strokeDashoffset={100 - progressPercent}
-            />
-          </svg>
-          <div className="learning-workspace__progress-copy">
-            <strong>Your progress</strong>
-            <span>
+              />
+            </svg>
+            <div className="learning-workspace__progress-copy">
+              <strong>Your progress</strong>
+              <span>
               {progressPercent}% · {completedCount}/{totalLessonCount} lessons
-            </span>
+              </span>
+            </div>
           </div>
-        </div>
+        )}
 
         {!sidebarOpen && (
           <button
@@ -644,6 +748,8 @@ export function LearningWorkspacePage({
                   canGoNext={canGoNext}
                   isActivityLesson={isActivityLesson}
                   workspaceMode={mode}
+                  flashcardProgressUserKey={flashcardProgressUserKey}
+                  flashcardPositionUserKey={workspaceUserKey}
                   onQuizCompleted={markLessonCompleted}
                   onFlashcardCompleted={markLessonCompleted}
                   onEssayCompleted={markLessonCompleted}

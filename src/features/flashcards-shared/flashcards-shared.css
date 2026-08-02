@@ -892,6 +892,14 @@
   outline-offset: -1px;
 }
 
+.flashcard-list-item.is-selection-disabled {
+  cursor: default;
+}
+
+.flashcard-list-item.is-selection-disabled:hover {
+  background: #ffffff;
+}
+
 .flashcard-list-item__drag-handle {
   align-self: stretch;
   display: flex;
@@ -941,6 +949,11 @@
   height: 18px;
   accent-color: var(--primary);
   cursor: pointer;
+}
+
+.flashcard-list-item__checkbox:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
 }
 
 .flashcard-list-item__body {

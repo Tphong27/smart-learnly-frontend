@@ -26,6 +26,13 @@ function toGenerationFormData({
   return formData;
 }
 
+function practiceReadParams(params = {}) {
+  return {
+    ...params,
+    _progressReadAt: Date.now(),
+  };
+}
+
 export const flashcardService = {
   async createLesson(courseId, sectionId, payload) {
     const response = await apiClient.post(
@@ -117,6 +124,14 @@ export const flashcardService = {
     return unwrap(response);
   },
 
+  async importCourseQuestionsToTemporaryReview(setId, questionIds) {
+    const response = await apiClient.post(
+      `/admin/flashcard-sets/${setId}/temporary-review/import-course-questions`,
+      { questionIds },
+    );
+    return unwrap(response);
+  },
+
   async generateStagingFromText(setId, payload) {
     const response = await apiClient.post(
       `/admin/flashcard-sets/${setId}/staging/generate-from-text`,
@@ -130,6 +145,15 @@ export const flashcardService = {
       `/admin/flashcard-sets/${setId}/staging/generate-from-file`,
       toGenerationFormData(payload),
       // Scanned documents can require image reading followed by card generation.
+      { timeout: 390000 },
+    );
+    return unwrap(response);
+  },
+
+  async generateTemporaryFromFile(setId, payload) {
+    const response = await apiClient.post(
+      `/admin/flashcard-sets/${setId}/temporary-review/generate-from-file`,
+      toGenerationFormData(payload),
       { timeout: 390000 },
     );
     return unwrap(response);
@@ -192,6 +216,14 @@ export const flashcardService = {
     return unwrap(response);
   },
 
+  async approveTemporaryCards(setId, cards) {
+    const response = await apiClient.post(
+      `/admin/flashcard-sets/${setId}/temporary-review/approve`,
+      { cards },
+    );
+    return unwrap(response);
+  },
+
   async listLearningFlashcards() {
     const response = await apiClient.get("/learning/flashcards");
     const payload = unwrap(response);
@@ -203,9 +235,9 @@ export const flashcardService = {
     const response = await apiClient.get(
       `/learning/lessons/${lessonId}/flashcards`,
       {
-        params: {
+        params: practiceReadParams({
           classId,
-        },
+        }),
       },
     );
 
@@ -213,7 +245,9 @@ export const flashcardService = {
   },
 
   async getSetPractice(setId) {
-    const response = await apiClient.get(`/learning/flashcard-sets/${setId}`);
+    const response = await apiClient.get(`/learning/flashcard-sets/${setId}`, {
+      params: practiceReadParams(),
+    });
     return unwrap(response);
   },
 

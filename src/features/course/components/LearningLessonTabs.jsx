@@ -143,8 +143,11 @@ function AssignmentRichContent({ content }) {
 
 function OverviewContent({
   lesson,
+  courseId,
   classId,
   workspaceMode,
+  flashcardProgressUserKey,
+  flashcardPositionUserKey,
   onQuizCompleted,
   onFlashcardCompleted,
   onEssayCompleted,
@@ -155,9 +158,12 @@ function OverviewContent({
     return (
       <FlashcardPractice
         lessonId={getLessonId(lesson)}
+        courseId={courseId}
         classId={classId}
         adminMode={workspaceMode === "admin-preview"}
         readOnly={workspaceMode !== "student"}
+        progressUserKey={flashcardProgressUserKey}
+        positionUserKey={flashcardPositionUserKey}
         onCompleted={() => onFlashcardCompleted?.(getLessonId(lesson))}
       />
     );
@@ -830,6 +836,7 @@ function ResourcesContent({ lesson }) {
 
 export function LearningLessonTabs({
   lesson,
+  courseId,
   classId,
   activeTab,
   onTabChange,
@@ -840,6 +847,8 @@ export function LearningLessonTabs({
   canGoNext = true,
   isActivityLesson = false,
   workspaceMode = "student",
+  flashcardProgressUserKey,
+  flashcardPositionUserKey,
   onQuizCompleted,
   onFlashcardCompleted,
   onEssayCompleted,
@@ -873,8 +882,11 @@ export function LearningLessonTabs({
           <div className="tab-overview">
             <OverviewContent
               lesson={lesson}
+              courseId={courseId}
               classId={classId}
               workspaceMode={workspaceMode}
+              flashcardProgressUserKey={flashcardProgressUserKey}
+              flashcardPositionUserKey={flashcardPositionUserKey}
               onQuizCompleted={onQuizCompleted}
               onFlashcardCompleted={onFlashcardCompleted}
               onEssayCompleted={onEssayCompleted}

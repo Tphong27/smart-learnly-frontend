@@ -190,7 +190,6 @@ export function LessonDetailEditor({ context }) {
   const [titleError, setTitleError] = useState("");
   const [summaryError, setSummaryError] = useState("");
   const [activeTab, setActiveTab] = useState("edit");
-  const [flashcardSection, setFlashcardSection] = useState("current");
   const [title, setTitle] = useState("");
   const [loading, setLoading] = useState(false);
   const saveInProgressRef = useRef(false);
@@ -219,7 +218,7 @@ export function LessonDetailEditor({ context }) {
   const [summary, setSummary] = useState("");
   const [isPreview, setIsPreview] = useState(false);
   const [status, setStatus] = useState("draft");
-  const [durationMinutes, setDurationMinutes] = useState(0);
+  const [durationMinutes, setDurationMinutes] = useState("");
   const [exactDurationSeconds, setExactDurationSeconds] = useState(null);
   const [assignment, setAssignment] = useState(null);
   const [assignmentRubric, setAssignmentRubric] = useState("");
@@ -235,6 +234,17 @@ export function LessonDetailEditor({ context }) {
     setHasChanges(true);
     setSaveNotice(null);
   }, []);
+
+  const updateDurationMinutes = useCallback(
+    (value) => {
+      setDurationMinutes(
+        value === "" ? "" : Math.max(0, Number(value || 0)),
+      );
+      setExactDurationSeconds(null);
+      markChanged();
+    },
+    [markChanged],
+  );
 
   const showSaveNotice = (notice) => {
     setSaveNotice(notice);
@@ -317,7 +327,7 @@ export function LessonDetailEditor({ context }) {
           setDurationMinutes(
             loadedDurationSeconds
               ? Math.max(1, Math.ceil(loadedDurationSeconds / 60))
-              : 0,
+              : "",
           );
 
           const typeFromServer = String(
@@ -611,7 +621,9 @@ export function LessonDetailEditor({ context }) {
       setDurationMinutes(
         generatedDurationSeconds
           ? Math.max(1, Math.ceil(generatedDurationSeconds / 60))
-          : Math.max(0, Number(result.durationMinutes) || 0),
+          : result.durationMinutes == null || result.durationMinutes === ""
+            ? ""
+            : Math.max(0, Number(result.durationMinutes) || 0),
       );
       setSummary(generatedSummary);
       setSummaryError("");
@@ -685,10 +697,12 @@ export function LessonDetailEditor({ context }) {
     setTitleError("");
 
     const isQuiz = lessonType === "QUIZ";
-    const usesLessonResources = !isQuiz && lessonType !== "ESSAY";
+    const isFlashcard = lessonType === "FLASHCARD";
+    const usesLessonResources =
+      !isQuiz && lessonType !== "ESSAY" && !isFlashcard;
     const cleanSummary = sanitizeLessonHtml(summary);
 
-    if (!isQuiz && isEmptyLessonHtml(cleanSummary)) {
+    if (!isQuiz && !isFlashcard && isEmptyLessonHtml(cleanSummary)) {
       setSummaryError("Lesson summary cannot be empty.");
       showSaveNotice({
         type: "error",
@@ -700,7 +714,7 @@ export function LessonDetailEditor({ context }) {
     }
     setSummaryError("");
 
-    if (!isQuiz && !materialComplete) {
+    if (!isQuiz && !isFlashcard && !materialComplete) {
       if (lessonType === "VIDEO") {
         const message = videoUrl.trim()
           ? "Replace the video source with a valid HTTPS YouTube URL."
@@ -773,26 +787,53 @@ export function LessonDetailEditor({ context }) {
       const content = isQuiz
         ? serializeQuizContent(title.trim(), latestQuizQuestions)
         : cleanSummary;
-
-      const payload = {
-        title: title.trim(),
-        lessonType,
-        content,
-        videoUrl: lessonType === "VIDEO" ? resolvedVideoUrl : null,
-        attachmentUrl: lessonType === "PDF" ? uploadedFileUrl : null,
-        durationSeconds:
-          lessonType === "ESSAY"
+      const durationSeconds =
+        durationMinutes === ""
+          ? null
+          : lessonType === "ESSAY"
             ? 0
             : exactDurationSeconds ??
-              Math.round(Number(durationMinutes || 0) * 60),
-        isPreview,
-        status: normalizeLessonStatus(status),
-        resources: normalizedResources,
-        sortOrder:
-          latestQuizLesson?.sortOrder ?? existingLessonData?.sortOrder ?? 0,
-      };
+              Math.round(Number(durationMinutes || 0) * 60);
 
-      await services.updateLesson(lessonId, payload);
+      const payload = isFlashcard
+        ? {
+            title: title.trim(),
+            lessonType,
+            durationSeconds,
+            isPreview,
+            status: normalizeLessonStatus(status),
+            sortOrder:
+              latestQuizLesson?.sortOrder ??
+              existingLessonData?.sortOrder ??
+              0,
+          }
+        : {
+            title: title.trim(),
+            lessonType,
+            content,
+            videoUrl: lessonType === "VIDEO" ? resolvedVideoUrl : null,
+            attachmentUrl: lessonType === "PDF" ? uploadedFileUrl : null,
+            durationSeconds,
+            isPreview,
+            status: normalizeLessonStatus(status),
+            resources: normalizedResources,
+            sortOrder:
+              latestQuizLesson?.sortOrder ??
+              existingLessonData?.sortOrder ??
+              0,
+          };
+
+      const savedLessonResponse = await services.updateLesson(
+        lessonId,
+        payload,
+      );
+      const savedLesson = savedLessonResponse?.data || savedLessonResponse;
+      if (savedLesson) {
+        setExistingLessonData((current) => ({
+          ...(current || {}),
+          ...savedLesson,
+        }));
+      }
 
       if (lessonType === "ESSAY") {
         const assignmentSaved = await saveLessonAssignment({
@@ -815,8 +856,12 @@ export function LessonDetailEditor({ context }) {
         title: "Lesson saved",
         message: "All lesson changes were saved successfully.",
       });
-      showToast("Update successfully!", "success");
-      if (backPath) navigate(backPath);
+      if (isFlashcard) {
+        showToast("Lesson metadata saved.", "success");
+      } else {
+        showToast("Update successfully!", "success");
+        if (backPath) navigate(backPath);
+      }
     } catch (error) {
       console.error("Error updating lesson details:", error);
 
@@ -958,6 +1003,48 @@ export function LessonDetailEditor({ context }) {
     }
     return `${resources.length} supporting resource${resources.length === 1 ? "" : "s"}`;
   })();
+  const defaultFlashcardModuleId =
+    existingLessonData?.moduleId ||
+    existingLessonData?.courseModuleId ||
+    existingLessonData?.module?.id ||
+    "";
+  const lessonMetadataFormId = "sl-cm-lesson-metadata-form";
+  const lessonSaveBarVisible =
+    activeTab === "edit" &&
+    (hasChanges ||
+      loading ||
+      assignmentSaving ||
+      saveNotice?.type === "saving" ||
+      saveNotice?.type === "error");
+  const lessonSaveBar = lessonSaveBarVisible ? (
+    <div className="sl-cm-lesson-editor__sticky">
+      <Button
+        type="button"
+        variant="outline"
+        onClick={() => backPath && navigate(backPath)}
+      >
+        Cancel
+      </Button>
+      <span className="sl-cm-lesson-editor__sticky-state" aria-live="polite">
+        {editorBusy
+          ? "Saving or processing..."
+          : hasChanges
+            ? "Unsaved changes"
+            : "Ready"}
+      </span>
+      <div className="sl-cm-lesson-editor__sticky-spacer" />
+      <Button
+        type="submit"
+        variant="primary"
+        loading={loading}
+        disabled={editorBusy}
+        form={lessonType === "FLASHCARD" ? lessonMetadataFormId : undefined}
+        leftIcon={<Save size={16} />}
+      >
+        {assignmentSaving ? "Saving assignment..." : "Save changes"}
+      </Button>
+    </div>
+  ) : null;
 
   if (pageLoading)
     return (
@@ -980,7 +1067,14 @@ export function LessonDetailEditor({ context }) {
     );
 
   return (
-    <div className="sl-cm-lesson-editor">
+    <div
+      className={[
+        "sl-cm-lesson-editor",
+        lessonSaveBarVisible ? "sl-cm-lesson-editor--save-bar-visible" : "",
+      ]
+        .filter(Boolean)
+        .join(" ")}
+    >
       <div className="sl-cm-lesson-editor__header">
         <div className="sl-cm-lesson-editor__header-copy">
           <button
@@ -1105,50 +1199,176 @@ export function LessonDetailEditor({ context }) {
         lessonType === "FLASHCARD" && features.flashcard ? (
           <div className="sl-cm-lesson-editor__accordion-form">
             <div className="sl-cm-lesson-editor__steps">
-              <LessonEditorSection
-                id="lesson-step-basic"
-                step="1"
-                title="Basic information"
-                description="Review the lesson identity before editing its flashcards."
-                summary={`${typeLabel} · Preview ${isPreview ? "enabled" : "disabled"}`}
-                state="complete"
-                stateLabel="Complete"
-                expanded={expandedSection === "basic"}
-                onToggle={() =>
-                  setExpandedSection((current) =>
-                    current === "basic" ? "" : "basic",
-                  )
-                }
+              <form
+                id={lessonMetadataFormId}
+                onSubmit={handleSave}
+                className="sl-cm-lesson-editor__metadata-form"
+                noValidate
               >
-                <div className="sl-cm-lesson-editor__preview-card">
-                  <strong>{title || "Untitled flashcard lesson"}</strong>
-                  <dl>
-                    <div>
-                      <dt>Type</dt>
-                      <dd>{typeLabel}</dd>
+                <LessonEditorSection
+                  id="lesson-step-basic"
+                  step="1"
+                  title="Basic information"
+                  description="Edit the lesson metadata for this flashcard set."
+                  summary={`${typeLabel} - ${statusLabel} - ${durationMinutes ? `${durationMinutes} min` : "No duration"} - Preview ${isPreview ? "enabled" : "disabled"}`}
+                  state={
+                    basicComplete && settingsComplete
+                      ? "complete"
+                      : "incomplete"
+                  }
+                  stateLabel={
+                    basicComplete && settingsComplete
+                      ? "Complete"
+                      : "Incomplete"
+                  }
+                  expanded={expandedSection === "basic"}
+                  onToggle={() =>
+                    setExpandedSection((current) =>
+                      current === "basic" ? "" : "basic",
+                    )
+                  }
+                >
+                  <div className="sl-video-lesson-form__info-grid sl-video-lesson-form__info-grid--flashcard">
+                    <div className="sl-video-lesson-form__field">
+                      <label
+                        className="sl-cm-lesson-editor__field-label"
+                        htmlFor="lesson-title-input"
+                      >
+                        Lesson title <span className="required">*</span>
+                      </label>
+                      <input
+                        id="lesson-title-input"
+                        type="text"
+                        value={title}
+                        onChange={(event) => {
+                          setTitle(event.target.value);
+                          setTitleError("");
+                          markChanged();
+                        }}
+                        className="sl-cm-lesson-editor__field-control"
+                        aria-invalid={titleError ? "true" : undefined}
+                        aria-describedby={
+                          titleError ? "lesson-title-error" : undefined
+                        }
+                      />
+                      {titleError && (
+                        <p
+                          id="lesson-title-error"
+                          className="sl-cm-lesson-editor__field-help sl-cm-lesson-editor__field-help--error"
+                          role="alert"
+                        >
+                          {titleError}
+                        </p>
+                      )}
                     </div>
-                    <div>
-                      <dt>Preview</dt>
-                      <dd>{isPreview ? "Enabled" : "Disabled"}</dd>
+
+                    <div className="sl-video-lesson-form__field">
+                      <label
+                        className="sl-cm-lesson-editor__field-label"
+                        htmlFor="lesson-flashcard-type"
+                      >
+                        Type
+                      </label>
+                      <input
+                        id="lesson-flashcard-type"
+                        type="text"
+                        value={typeLabel}
+                        className="sl-cm-lesson-editor__field-control sl-cm-lesson-editor__field-control--readonly"
+                        readOnly
+                      />
                     </div>
-                  </dl>
-                </div>
-                <div className="sl-lesson-step__footer">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => openSection("material")}
-                  >
-                    Next: Flashcards
-                  </Button>
-                </div>
-              </LessonEditorSection>
+
+                    <div className="sl-video-lesson-form__field">
+                      <label
+                        className="sl-cm-lesson-editor__field-label"
+                        htmlFor="lesson-flashcard-duration"
+                      >
+                        Estimated duration
+                      </label>
+                      <div className="sl-cm-lesson-editor__input-unit">
+                        <input
+                          id="lesson-flashcard-duration"
+                          type="number"
+                          min="0"
+                          inputMode="numeric"
+                          placeholder="Optional"
+                          aria-describedby="lesson-flashcard-duration-unit"
+                          value={durationMinutes}
+                          onChange={(event) => {
+                            updateDurationMinutes(event.target.value);
+                          }}
+                          className="sl-cm-lesson-editor__field-control"
+                        />
+                        <span id="lesson-flashcard-duration-unit">minutes</span>
+                      </div>
+                    </div>
+
+                    <fieldset className="sl-video-lesson-form__status-field">
+                      <legend className="sl-cm-lesson-editor__field-label">
+                        Status
+                      </legend>
+                      <div className="sl-video-lesson-form__status-options">
+                        {LESSON_STATUS_OPTIONS.map((option) => (
+                          <label
+                            key={option.value}
+                            className="sl-video-lesson-form__status-option"
+                          >
+                            <input
+                              type="radio"
+                              name="lesson-flashcard-status"
+                              value={option.value}
+                              checked={status === option.value}
+                              onChange={(event) => {
+                                setStatus(event.target.value);
+                                markChanged();
+                              }}
+                            />
+                            <span>{option.label}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </fieldset>
+
+                    <label className="sl-cm-lesson-editor__preview-setting sl-video-lesson-form__preview-setting">
+                      <span className="sl-cm-lesson-editor__preview-copy">
+                        <strong>Preview lesson</strong>
+                        <small>
+                          Let learners view this lesson before enrolling.
+                        </small>
+                      </span>
+                      <span className="sl-cm-lesson-editor__switch">
+                        <input
+                          type="checkbox"
+                          checked={isPreview}
+                          onChange={(event) => {
+                            setIsPreview(event.target.checked);
+                            markChanged();
+                          }}
+                        />
+                        <span
+                          className="sl-cm-lesson-editor__switch-track"
+                          aria-hidden="true"
+                        />
+                      </span>
+                    </label>
+                  </div>
+                  <div className="sl-lesson-step__footer">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => openSection("material")}
+                    >
+                      Next: Flashcards
+                    </Button>
+                  </div>
+                </LessonEditorSection>
+              </form>
               <LessonEditorSection
                 id="lesson-step-material"
                 step="2"
                 title="Flashcards"
                 description="Manage the flashcard set and its learning cards."
-                summary="Edit the set title, cards, and study content"
+                summary="Current cards and imports"
                 state="complete"
                 stateLabel="Editor ready"
                 expanded={expandedSection === "material"}
@@ -1158,58 +1378,31 @@ export function LessonDetailEditor({ context }) {
                   )
                 }
               >
-                <div
-                  className="flashcard-section-tabs"
-                  role="tablist"
-                  aria-label="Flashcard sections"
-                >
-                  <button
+                <div className="flashcard-section-tabs" role="tablist">
+                  <span
                     id="flashcard-current-tab"
-                    type="button"
                     role="tab"
-                    aria-selected={flashcardSection === "current"}
+                    aria-selected="true"
                     aria-controls="flashcard-current-panel"
-                    className={`flashcard-section-tabs__tab ${
-                      flashcardSection === "current" ? "is-active" : ""
-                    }`}
-                    onClick={() => setFlashcardSection("current")}
+                    className="flashcard-section-tabs__tab is-active"
                   >
                     Current Flashcards
-                  </button>
-
-                  {features.flashcardStaging !== false && (
-                    <button
-                      id="flashcard-review-tab"
-                      type="button"
-                      role="tab"
-                      aria-selected={flashcardSection === "review"}
-                      aria-controls="flashcard-review-panel"
-                      className={`flashcard-section-tabs__tab ${
-                        flashcardSection === "review" ? "is-active" : ""
-                      }`}
-                      onClick={() => setFlashcardSection("review")}
-                    >
-                      Staging Review
-                    </button>
-                  )}
+                  </span>
                 </div>
                 <FlashcardLessonEditor
                   courseId={courseId}
                   lessonId={lessonId}
                   initialSetId={initialFlashcardSetId}
                   defaultTitle={title}
-                  activeSection={flashcardSection}
+                  defaultModuleId={defaultFlashcardModuleId}
+                  activeSection="current"
                   showToast={showToast}
-                  onTitleSaved={(nextTitle) => {
-                    setTitle(nextTitle);
-                    setHasChanges(false);
-                  }}
-                  onNavigateToCurrent={() => setFlashcardSection("current")}
                   flashcardService={services.flashcardService}
                   stagingEnabled={features.flashcardStaging !== false}
                 />
               </LessonEditorSection>
             </div>
+            {lessonSaveBar}
           </div>
         ) : (
           <form
@@ -1278,11 +1471,7 @@ export function LessonDetailEditor({ context }) {
                           aria-describedby="lesson-video-duration-unit"
                           value={durationMinutes}
                           onChange={(event) => {
-                            setDurationMinutes(
-                              Math.max(0, Number(event.target.value || 0)),
-                            );
-                            setExactDurationSeconds(null);
-                            markChanged();
+                            updateDurationMinutes(event.target.value);
                           }}
                           className="sl-cm-lesson-editor__field-control"
                         />
@@ -1366,7 +1555,7 @@ export function LessonDetailEditor({ context }) {
                           getYoutubeVideoId(nextVideoUrl) !==
                           getYoutubeVideoId(videoUrl)
                         ) {
-                          setDurationMinutes(0);
+                          setDurationMinutes("");
                         }
                         setExactDurationSeconds(null);
                         setVideoUrl(nextVideoUrl);
@@ -1445,13 +1634,13 @@ export function LessonDetailEditor({ context }) {
                       onClick={handleGenerateSummary}
                     >
                       {summaryGenerating
-                        ? "Getting transcript and generating summary…"
+                        ? "Getting transcript and generating summaryÃ¢â‚¬Â¦"
                         : "Generate summary"}
                     </Button>
                   </div>
                   {summaryGenerated && (
                     <p className="sl-video-lesson-form__ai-note" role="status">
-                      AI-generated—review before saving.
+                      AI-generatedÃ¢â‚¬â€review before saving.
                     </p>
                   )}
                   <RichTextEditor
@@ -1848,8 +2037,8 @@ export function LessonDetailEditor({ context }) {
                   }
                   summary={
                     lessonType === "ESSAY"
-                      ? `${statusLabel} · Available until course end · Preview ${isPreview ? "enabled" : "disabled"}`
-                      : `${statusLabel} · ${durationMinutes ? `${durationMinutes} min` : "No duration"} · Preview ${isPreview ? "enabled" : "disabled"}`
+                      ? `${statusLabel} Ã‚Â· Available until course end Ã‚Â· Preview ${isPreview ? "enabled" : "disabled"}`
+                      : `${statusLabel} Ã‚Â· ${durationMinutes ? `${durationMinutes} min` : "No duration"} Ã‚Â· Preview ${isPreview ? "enabled" : "disabled"}`
                   }
                   state={settingsComplete ? "complete" : "incomplete"}
                   stateLabel={settingsComplete ? "Complete" : "Incomplete"}
@@ -1911,11 +2100,7 @@ export function LessonDetailEditor({ context }) {
                             inputMode="numeric"
                             value={durationMinutes}
                             onChange={(event) => {
-                              setDurationMinutes(
-                                Math.max(0, Number(event.target.value || 0)),
-                              );
-                              setExactDurationSeconds(null);
-                              markChanged();
+                              updateDurationMinutes(event.target.value);
                             }}
                             className="sl-cm-lesson-editor__field-control"
                           />
@@ -1952,35 +2137,7 @@ export function LessonDetailEditor({ context }) {
               </div>
             )}
 
-            <div className="sl-cm-lesson-editor__sticky">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => backPath && navigate(backPath)}
-              >
-                Cancel
-              </Button>
-              <span
-                className="sl-cm-lesson-editor__sticky-state"
-                aria-live="polite"
-              >
-                {editorBusy
-                  ? "Saving or processing..."
-                  : hasChanges
-                    ? "Unsaved changes"
-                    : "Ready"}
-              </span>
-              <div className="sl-cm-lesson-editor__sticky-spacer" />
-              <Button
-                type="submit"
-                variant="primary"
-                loading={loading}
-                disabled={editorBusy}
-                leftIcon={<Save size={16} />}
-              >
-                {assignmentSaving ? "Saving assignment..." : "Save changes"}
-              </Button>
-            </div>
+            {lessonSaveBar}
           </form>
         )
       ) : (

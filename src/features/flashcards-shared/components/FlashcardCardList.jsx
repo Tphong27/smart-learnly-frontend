@@ -74,11 +74,20 @@ export function FlashcardCardList({
   onDelete,
   onMove,
   renderCardMeta,
+  isCardSelectable = () => true,
+  getSelectionDisabledReason,
   emptyAction,
   dragDisabled = disabled,
 }) {
   const normalizedCards = normalizeCards(cards);
-  const selectedSet = new Set(selectedCardIds);
+  const selectableIdSet = new Set(
+    normalizedCards
+      .filter((card) => isCardSelectable(card))
+      .map((card) => card.id),
+  );
+  const selectedSet = new Set(
+    selectedCardIds.filter((cardId) => selectableIdSet.has(cardId)),
+  );
 
   if (normalizedCards.length === 0) {
     return (
@@ -121,9 +130,14 @@ export function FlashcardCardList({
               >
                 {(dragProvided, dragSnapshot) => {
                   const rowIndex = pageStartIndex + index + 1;
+                  const cardSelectable =
+                    !selectionMode || isCardSelectable(card);
+                  const selectionDisabledReason =
+                    cardSelectable ? "" : getSelectionDisabledReason?.(card);
                   const activateCard = () => {
                     if (disabled) return;
                     if (selectionMode) {
+                      if (!cardSelectable) return;
                       onToggleSelect?.(card);
                     } else {
                       onSelect?.(card);
@@ -136,6 +150,7 @@ export function FlashcardCardList({
                         activeCardId === card.id ? "flashcard-list-item--active" : "",
                         selectionMode ? "flashcard-list-item--selecting" : "",
                         selectedSet.has(card.id) ? "is-selected" : "",
+                        !cardSelectable ? "is-selection-disabled" : "",
                         dragSnapshot.isDragging ? "is-dragging" : "",
                       ]
                         .filter(Boolean)
@@ -151,6 +166,11 @@ export function FlashcardCardList({
                       }
                       aria-pressed={
                         selectionMode ? selectedSet.has(card.id) : undefined
+                      }
+                      aria-disabled={
+                        disabled || (selectionMode && !cardSelectable)
+                          ? "true"
+                          : undefined
                       }
                       aria-current={
                         !selectionMode && activeCardId === card.id
@@ -187,12 +207,18 @@ export function FlashcardCardList({
                           <input
                             type="checkbox"
                             className="flashcard-list-item__checkbox"
-                            checked={selectedSet.has(card.id)}
+                            checked={
+                              cardSelectable && selectedSet.has(card.id)
+                            }
                             onClick={(event) => event.stopPropagation()}
                             onDoubleClick={(event) => event.stopPropagation()}
                             onChange={() => onToggleSelect?.(card)}
-                            disabled={disabled}
-                            aria-label={`Select flashcard ${rowIndex}`}
+                            disabled={disabled || !cardSelectable}
+                            title={selectionDisabledReason || undefined}
+                            aria-label={
+                              selectionDisabledReason ||
+                              `Select flashcard ${rowIndex}`
+                            }
                           />
                         )}
                       </span>

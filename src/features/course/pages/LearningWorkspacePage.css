@@ -96,8 +96,16 @@
     color: #a435f0;
 }
 
+.learning-workspace__brand--static {
+    cursor: default;
+}
+
 .learning-workspace__brand:hover {
     background: #2d2f31;
+}
+
+.learning-workspace__brand--static:hover {
+    background: transparent;
 }
 
 .learning-workspace__topbar-divider {
