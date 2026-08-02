@@ -84,7 +84,7 @@ export function CourseQuestionImportPanel({
   const source = useMemo(
     () =>
       courseId
-        ? { id: courseId, courseId, name: "Question bank", status: "active" }
+        ? { id: courseId, courseId, name: "Question list", status: "active" }
         : null,
     [courseId],
   );
@@ -253,7 +253,7 @@ export function CourseQuestionImportPanel({
   const importQuestions = async (rawQuestions) => {
     if (importing) return false;
     if (!courseId) {
-      setImportError("Question bank context is missing.");
+      setImportError("Question list context is missing.");
       return false;
     }
     if (!rawQuestions.length) {
@@ -292,7 +292,7 @@ export function CourseQuestionImportPanel({
       onClose?.();
       return true;
     } catch (error) {
-      console.error("Question bank import error:", error);
+      console.error("Question list import error:", error);
       setImportError("Questions could not be imported. Please try again.");
       return false;
     } finally {
@@ -313,10 +313,10 @@ export function CourseQuestionImportPanel({
           </span>
           <div>
             <h3 className="quiz-question-bank-import__heading">
-              {source?.name || "Question bank"}
+              {source?.name || "Question list"}
             </h3>
             <p className="quiz-question-bank-import__subtitle">
-              Import question bank items scoped to the current course into this quiz.
+              Import question list items scoped to the current course into this quiz.
             </p>
           </div>
         </div>
@@ -474,7 +474,7 @@ export function CourseQuestionImportPanel({
         <section className="quiz-question-bank-import__column">
           <div className="quiz-question-bank-import__column-header">
             <div>
-              <h4 className="quiz-question-bank-import__heading">Question bank items</h4>
+              <h4 className="quiz-question-bank-import__heading">Question list items</h4>
               <p className="quiz-question-bank-import__subtitle">
                 Browse filtered items for the current course and add them to the selection.
               </p>
@@ -491,9 +491,9 @@ export function CourseQuestionImportPanel({
           )}
 
           {!courseId ? (
-            <div className="admin-empty">Question bank context is unavailable.</div>
+            <div className="admin-empty">Question list context is unavailable.</div>
           ) : loadingQuestions ? (
-            <div className="admin-loading">Loading question bank items...</div>
+            <div className="admin-loading">Loading question list items...</div>
           ) : items.length === 0 ? (
             <div className="admin-empty">No questions match the current filters.</div>
           ) : (
@@ -593,7 +593,7 @@ export function CourseQuestionImportPanel({
             totalItems={pageInfo.totalItems}
             size={DEFAULT_PAGE_SIZE}
             disabled={bankBusy}
-            ariaLabel="Question bank pagination"
+            ariaLabel="Question list pagination"
             onPageChange={(nextPage) => {
               setPageInfo((current) => ({ ...current, page: nextPage - 1 }));
             }}

@@ -372,7 +372,7 @@ export function QuizQuestionsPanel({
               onClick={() => setBankImportOpen((current) => !current)}
               disabled={mutationDisabled}
             >
-              {bankImportOpen ? "Hide question bank" : "Import from question bank"}
+              {bankImportOpen ? "Hide question list" : "Import from question list"}
             </Button>
             <Button
               variant="secondary"
@@ -399,7 +399,7 @@ export function QuizQuestionsPanel({
 
             {questions.length === 0 ? (
               <div className="admin-empty">
-                No questions yet. Import Excel, import from question bank, or add manually.
+                No questions yet. Import Excel, import from question list, or add manually.
               </div>
             ) : (
               <div className="quiz-question-card-list">
