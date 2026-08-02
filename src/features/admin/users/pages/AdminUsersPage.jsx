@@ -19,97 +19,49 @@ import "../../admin-shared.css";
 
 const USER_ROLES = ["GUEST", "TRAINEE", "TRAINER", "TMO", "SME", "ADMIN"];
 const USER_STATUSES = ["pending_verify", "active", "inactive", "banned"];
-const PASSWORD_RULE =
-    /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d]).{8,100}$/;
 
-function getUserFormSchema(mode) {
-    return z
-        .object({
-            fullName: z
-                .string()
-                .trim()
-                .min(1, "Full name is required")
-                .max(150, "Full name must be at most 150 characters"),
-            email: z
-                .string()
-                .trim()
-                .email("Email is invalid")
-                .max(255, "Email must be at most 255 characters"),
-            avatarUrl: z
-                .string()
-                .trim()
-                .max(500, "Avatar URL must be at most 500 characters")
-                .or(z.literal(""))
-                .optional(),
-            phoneNumber: z
-                .string()
-                .trim()
-                .max(20, "Phone number must be at most 20 characters")
-                .or(z.literal(""))
-                .optional(),
-            bio: z
-                .string()
-                .max(5000, "Bio must be at most 5000 characters")
-                .or(z.literal(""))
-                .optional(),
-            role: z.enum(USER_ROLES, { message: "Role is required" }),
-            status: z.enum(USER_STATUSES, { message: "Status is required" }),
-            emailVerified: z.boolean().optional(),
-            password: z.string().or(z.literal("")).optional(),
-        })
-        .superRefine((values, context) => {
-            const password = values.password?.trim() || "";
-            if (mode === "create" && !password) {
-                context.addIssue({
-                    code: z.ZodIssueCode.custom,
-                    path: ["password"],
-                    message: "Password is required",
-                });
-                return;
-            }
-            if (password && !PASSWORD_RULE.test(password)) {
-                context.addIssue({
-                    code: z.ZodIssueCode.custom,
-                    path: ["password"],
-                    message:
-                        "Password must contain uppercase, lowercase, number, and special character",
-                });
-            }
-        });
-}
+const userFormSchema = z.object({
+    fullName: z
+        .string()
+        .trim()
+        .min(1, "Full name is required")
+        .max(150, "Full name must be at most 150 characters"),
+    email: z
+        .string()
+        .trim()
+        .email("Email is invalid")
+        .max(255, "Email must be at most 255 characters"),
+    phoneNumber: z
+        .string()
+        .trim()
+        .max(20, "Phone number must be at most 20 characters")
+        .or(z.literal(""))
+        .optional(),
+    role: z.enum(USER_ROLES, { message: "Role is required" }),
+    status: z.enum(USER_STATUSES, { message: "Status is required" }),
+    emailVerified: z.boolean().optional(),
+});
 
 function toDefaultValues(initial) {
     return {
         fullName: initial?.fullName ?? "",
         email: initial?.email ?? "",
-        avatarUrl: initial?.avatarUrl ?? "",
         phoneNumber: initial?.phoneNumber ?? "",
-        bio: initial?.bio ?? "",
         role: initial?.role ?? "TRAINEE",
         status: initial?.status ?? "active",
         emailVerified: initial?.emailVerified ?? true,
-        password: "",
     };
 }
 
-function buildPayload(values, mode) {
-    const payload = {
+function buildPayload(values) {
+    return {
         fullName: values.fullName?.trim(),
         email: values.email?.trim().toLowerCase(),
-        avatarUrl: values.avatarUrl?.trim() || "",
         phoneNumber: values.phoneNumber?.trim() || "",
-        bio: values.bio?.trim() || "",
         role: values.role,
         status: values.status,
         emailVerified: Boolean(values.emailVerified),
     };
-
-    const password = values.password?.trim();
-    if (mode === "create" || password) {
-        payload.password = password;
-    }
-
-    return payload;
 }
 
 function UserFormModal({ open, mode, initial, onClose, onSaved }) {
@@ -123,7 +75,7 @@ function UserFormModal({ open, mode, initial, onClose, onSaved }) {
         reset,
         formState: { errors, isSubmitting },
     } = useForm({
-        resolver: zodResolver(getUserFormSchema(mode)),
+        resolver: zodResolver(userFormSchema),
         defaultValues,
         mode: "onBlur",
     });
@@ -136,7 +88,7 @@ function UserFormModal({ open, mode, initial, onClose, onSaved }) {
     async function onSubmit(values) {
         setServerError(null);
         try {
-            const payload = buildPayload(values, mode);
+            const payload = buildPayload(values);
             if (mode === "edit") {
                 await userService.update(initial.id, payload);
                 toast.success("User updated successfully");
@@ -154,7 +106,11 @@ function UserFormModal({ open, mode, initial, onClose, onSaved }) {
         <Modal
             open={open}
             title={mode === "edit" ? "Update user" : "Create user"}
-            description="Manage account profile, role, status, and local password access."
+            description={
+                mode === "edit"
+                    ? "Update basic account information, role, and status."
+                    : "Create an account with basic information, role, and status."
+            }
             size="lg"
             onClose={isSubmitting ? undefined : onClose}
         >
@@ -236,50 +192,6 @@ function UserFormModal({ open, mode, initial, onClose, onSaved }) {
                         registration={register("phoneNumber")}
                         error={errors.phoneNumber?.message}
                     />
-                    <FormField
-                        label="Avatar URL"
-                        registration={register("avatarUrl")}
-                        error={errors.avatarUrl?.message}
-                    />
-
-                    <div className="admin-form-grid__full">
-                        <FormField
-                            label={
-                                mode === "edit" ? "Reset password" : "Password"
-                            }
-                            required={mode === "create"}
-                            type="password"
-                            registration={register("password")}
-                            error={errors.password?.message}
-                            helperText={
-                                mode === "edit"
-                                    ? "Leave blank to keep the current password."
-                                    : "At least 8 characters with uppercase, lowercase, number, and special character."
-                            }
-                        />
-                    </div>
-
-                    <div className="admin-form-grid__full">
-                        <div className="input-field">
-                            <label
-                                className="input-field__label"
-                                htmlFor="admin-user-bio"
-                            >
-                                Bio
-                            </label>
-                            <textarea
-                                id="admin-user-bio"
-                                className="admin-textarea"
-                                rows={3}
-                                {...register("bio")}
-                            />
-                            {errors.bio && (
-                                <p className="input-field__error">
-                                    {errors.bio.message}
-                                </p>
-                            )}
-                        </div>
-                    </div>
 
                     <label
                         className="admin-checkbox"

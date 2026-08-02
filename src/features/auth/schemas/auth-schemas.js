@@ -73,13 +73,6 @@ export const profileSchema = z.object({
     .trim()
     .min(1, 'Full name is required')
     .max(150, 'Full name must not exceed 150 characters'),
-  avatarUrl: z
-    .string()
-    .trim()
-    .max(2048, 'Avatar URL is too long')
-    .url('Avatar URL is invalid')
-    .or(z.literal(''))
-    .optional(),
   phoneNumber: z
     .string()
     .trim()

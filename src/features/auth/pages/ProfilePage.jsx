@@ -1,14 +1,14 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import {
   AlertCircle,
   Eye,
   EyeOff,
-  Image as ImageIcon,
   Lock,
   Phone,
   ShieldCheck,
+  Upload,
   User,
   UserRound,
 } from 'lucide-react'
@@ -24,6 +24,9 @@ const TABS = {
   PASSWORD: 'password',
 }
 
+const AVATAR_TYPES = ['image/jpeg', 'image/png', 'image/webp']
+const MAX_AVATAR_SIZE = 5 * 1024 * 1024
+
 function getInitials(fullName) {
   if (!fullName) return '?'
   const parts = fullName.trim().split(/\s+/)
@@ -32,9 +35,108 @@ function getInitials(fullName) {
   return (first + last).toUpperCase() || '?'
 }
 
+function ProfileAvatarUploader({ profile, onUploaded }) {
+  const toast = useToast()
+  const inputRef = useRef(null)
+  const [previewUrl, setPreviewUrl] = useState(null)
+  const [isUploading, setIsUploading] = useState(false)
+  const [uploadError, setUploadError] = useState(null)
+  const displayedAvatar = previewUrl || profile?.avatarUrl || null
+
+  useEffect(() => {
+    return () => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl)
+    }
+  }, [previewUrl])
+
+  async function uploadFile(file) {
+    if (!file) return
+
+    if (!AVATAR_TYPES.includes(file.type)) {
+      setUploadError('Please choose a JPEG, PNG, or WebP image.')
+      if (inputRef.current) inputRef.current.value = ''
+      return
+    }
+    if (file.size > MAX_AVATAR_SIZE) {
+      setUploadError('Image size cannot exceed 5 MB.')
+      if (inputRef.current) inputRef.current.value = ''
+      return
+    }
+
+    const localPreview = URL.createObjectURL(file)
+    setPreviewUrl(localPreview)
+    setUploadError(null)
+    setIsUploading(true)
+
+    try {
+      const updated = await authService.uploadAvatar(file)
+      const user = getCurrentUser()
+      setAuthSession({
+        accessToken: undefined,
+        user: { ...(user ?? {}), ...updated },
+      })
+      onUploaded(updated)
+      toast.success('Profile photo updated successfully.')
+    } catch (error) {
+      setUploadError(error?.message || 'Could not upload profile photo.')
+    } finally {
+      setPreviewUrl(null)
+      setIsUploading(false)
+      if (inputRef.current) inputRef.current.value = ''
+    }
+  }
+
+  return (
+    <div className="profile-avatar-upload profile-form__full">
+      <span className="input-field__label">Profile photo</span>
+      <div className="profile-avatar-upload__content">
+        {displayedAvatar ? (
+          <img
+            className="profile-avatar-upload__preview"
+            src={displayedAvatar}
+            alt="Profile photo preview"
+          />
+        ) : (
+          <div className="profile-avatar-upload__fallback" aria-hidden="true">
+            {getInitials(profile?.fullName)}
+          </div>
+        )}
+
+        <div className="profile-avatar-upload__controls">
+          <input
+            ref={inputRef}
+            className="profile-avatar-upload__input"
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            onChange={(event) => uploadFile(event.target.files?.[0])}
+            disabled={isUploading}
+          />
+          <Button
+            type="button"
+            variant="outline"
+            loading={isUploading}
+            disabled={isUploading}
+            onClick={() => inputRef.current?.click()}
+          >
+            {!isUploading && <Upload size={16} aria-hidden="true" />}
+            {profile?.avatarUrl ? 'Change photo' : 'Upload photo'}
+          </Button>
+          <p>JPEG, PNG, or WebP. Maximum 5 MB. The photo is saved immediately.</p>
+        </div>
+      </div>
+      {uploadError && (
+        <p className="input-field__error" role="alert">
+          {uploadError}
+        </p>
+      )}
+    </div>
+  )
+}
+
 function ProfileInfoForm({ profile, onSaved }) {
   const toast = useToast()
   const [serverError, setServerError] = useState(null)
+  const loadedProfileKeyRef = useRef(null)
 
   const {
     register,
@@ -46,7 +148,6 @@ function ProfileInfoForm({ profile, onSaved }) {
     resolver: zodResolver(profileSchema),
     defaultValues: {
       fullName: profile?.fullName ?? '',
-      avatarUrl: profile?.avatarUrl ?? '',
       phoneNumber: profile?.phoneNumber ?? '',
       bio: profile?.bio ?? '',
     },
@@ -54,9 +155,12 @@ function ProfileInfoForm({ profile, onSaved }) {
   })
 
   useEffect(() => {
+    const profileKey = profile?.id || profile?.email || null
+    if (loadedProfileKeyRef.current === profileKey) return
+
+    loadedProfileKeyRef.current = profileKey
     reset({
       fullName: profile?.fullName ?? '',
-      avatarUrl: profile?.avatarUrl ?? '',
       phoneNumber: profile?.phoneNumber ?? '',
       bio: profile?.bio ?? '',
     })
@@ -69,11 +173,15 @@ function ProfileInfoForm({ profile, onSaved }) {
     try {
       const payload = {
         fullName: values.fullName?.trim(),
-        avatarUrl: values.avatarUrl?.trim() || null,
         phoneNumber: values.phoneNumber?.trim() || null,
         bio: values.bio?.trim() || null,
       }
       const updated = await authService.updateProfile(payload)
+      reset({
+        fullName: updated?.fullName ?? '',
+        phoneNumber: updated?.phoneNumber ?? '',
+        bio: updated?.bio ?? '',
+      })
       const user = getCurrentUser()
       setAuthSession({
         accessToken: undefined,
@@ -107,6 +215,8 @@ function ProfileInfoForm({ profile, onSaved }) {
 
       <Form className="profile-form" onSubmit={handleSubmit(onSubmit)}>
         <div className="profile-form__grid">
+          <ProfileAvatarUploader profile={profile} onUploaded={onSaved} />
+
           <FormField
             id="profile-full-name"
             label="Full name"
@@ -126,18 +236,6 @@ function ProfileInfoForm({ profile, onSaved }) {
             leftIcon={<Phone size={16} aria-hidden="true" />}
             autoComplete="tel"
             inputMode="tel"
-          />
-
-          <FormField
-            id="profile-avatar-url"
-            className="profile-form__full"
-            label="Avatar URL"
-            placeholder="https://example.com/avatar.jpg"
-            registration={register('avatarUrl')}
-            error={errors.avatarUrl?.message}
-            leftIcon={<ImageIcon size={16} aria-hidden="true" />}
-            helperText="Use a public JPEG, PNG, or WebP image URL."
-            type="url"
           />
 
           <div className="input-field profile-form__full">

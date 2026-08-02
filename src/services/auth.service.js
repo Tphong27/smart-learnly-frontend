@@ -70,6 +70,13 @@ export const authService = {
     return unwrap(response)
   },
 
+  async uploadAvatar(file) {
+    const formData = new FormData()
+    formData.append('file', file)
+    const response = await apiClient.post('/auth/profile/avatar', formData)
+    return unwrap(response)
+  },
+
   async changePassword(payload) {
     return apiClient.post('/auth/change-password', payload)
   },

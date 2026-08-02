@@ -93,12 +93,6 @@ const navItems = [
     roles: [ROLES.TRAINER, ROLES.TMO],
   },
   {
-    label: "AI Chatbot Config",
-    path: "/staff/ai-chatbot",
-    icon: Settings,
-    roles: [ROLES.ADMIN],
-  },
-  {
     label: "Reports & Analytics",
     path: "/staff/reports",
     icon: BarChart3,
