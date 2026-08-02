@@ -197,6 +197,15 @@
   padding-bottom: calc(82px + env(safe-area-inset-bottom, 0px));
 }
 
+.sl-cm-lesson-editor--save-bar-visible
+  .flashcard-current-workspace--with-fixed-preview-bar {
+  padding-bottom: calc(154px + env(safe-area-inset-bottom, 0px));
+}
+
+.sl-cm-lesson-editor--save-bar-visible .flashcard-current-preview-bar {
+  bottom: calc(86px + max(12px, env(safe-area-inset-bottom, 0px)));
+}
+
 .flashcard-current-workspace__inner {
   width: 100%;
 }
@@ -290,7 +299,15 @@
 }
 
 .flashcard-staging__settings {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.flashcard-course-question-filters {
+  grid-template-columns: minmax(220px, 0.9fr) minmax(320px, 1.25fr) auto auto;
+}
+
+.flashcard-course-question-filters__module {
+  min-width: min(100%, 320px);
 }
 
 .flashcard-staging__advanced {
@@ -484,6 +501,101 @@
   color: var(--muted);
   font-size: 12px;
   line-height: 1.45;
+}
+
+.flashcard-temp-review {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-height: 0;
+}
+
+.flashcard-temp-review__header {
+  align-items: flex-start;
+}
+
+.flashcard-temp-review__meta {
+  display: grid;
+  gap: 6px;
+  margin-top: 10px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.flashcard-temp-review__meta p {
+  margin: 0;
+}
+
+.flashcard-temp-review__issues {
+  color: #a16207;
+}
+
+.flashcard-temp-review__source-field {
+  flex-shrink: 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  padding: 12px;
+}
+
+.flashcard-temp-review__source-field > span {
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.flashcard-temp-review__source-field textarea {
+  min-height: 96px;
+  resize: vertical;
+  background: #ffffff;
+}
+
+.flashcard-temp-review__delete-copy {
+  margin: 0;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.flashcard-temp-review__footer {
+  position: sticky;
+  bottom: 0;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 4px -2px -2px;
+  border: 1px solid var(--line);
+  border-radius: 8px 8px 0 0;
+  background: #ffffff;
+  box-shadow: 0 -8px 22px rgba(45, 47, 49, 0.08);
+  padding: 12px;
+  flex-wrap: wrap;
+}
+
+.flashcard-temp-review__footer-status {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+@media (max-width: 680px) {
+  .flashcard-temp-review__footer {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .flashcard-temp-review__footer .flashcard-actions {
+    justify-content: stretch;
+    width: 100%;
+  }
+
+  .flashcard-temp-review__footer .flashcard-btn {
+    flex: 1 1 auto;
+  }
 }
 
 .flashcard-staging__file-drop {
@@ -1123,6 +1235,41 @@
   line-height: 1.5;
 }
 
+.flashcard-practice__header-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.flashcard-practice__track-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #ffffff;
+  color: var(--ink);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 800;
+  padding: 6px 10px;
+  white-space: nowrap;
+}
+
+.flashcard-practice__track-toggle:hover {
+  border-color: var(--muted);
+  background: var(--surface);
+}
+
+.flashcard-practice__track-toggle input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--primary);
+}
+
 .flashcard-practice__status {
   display: inline-flex;
   align-items: center;
@@ -1199,6 +1346,22 @@
   gap: 12px;
 }
 
+.flashcard-practice__inline-error {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: -4px 0 12px;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  background: #fef2f2;
+  color: #b91c1c;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.45;
+  padding: 10px 12px;
+  text-align: center;
+}
+
 .flashcard-compact-item > .flashcard-progress-badge {
   align-self: start;
   white-space: nowrap;
@@ -1238,6 +1401,81 @@
 
 .flashcard-focus-mode__review {
   padding-bottom: 4px;
+}
+
+.flashcard-focus-mode__header-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+}
+
+.flashcard-focus-mode__study {
+  display: flex;
+  width: min(100%, 1080px);
+  flex-direction: column;
+  gap: 14px;
+}
+
+.flashcard-focus-mode__study .flashcard-preview--focus {
+  width: 100%;
+}
+
+.flashcard-focus-mode__progress-counts {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.flashcard-focus-mode__progress-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 42px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #ffffff;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 800;
+  padding: 7px 12px;
+  white-space: nowrap;
+}
+
+.flashcard-focus-mode__progress-chip strong {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 26px;
+  border-radius: 999px;
+  font-size: 12px;
+  line-height: 1;
+  padding: 5px 7px;
+}
+
+.flashcard-focus-mode__progress-chip--learning {
+  border-color: #fed7aa;
+  background: #fff7ed;
+  color: #c2410c;
+}
+
+.flashcard-focus-mode__progress-chip--learning strong {
+  background: #fed7aa;
+  color: #9a3412;
+}
+
+.flashcard-focus-mode__progress-chip--known {
+  border-color: #bbf7d0;
+  background: #f0fdf4;
+  color: #15803d;
+}
+
+.flashcard-focus-mode__progress-chip--known strong {
+  background: #bbf7d0;
+  color: #166534;
 }
 
 .flashcard-practice__loading,
@@ -1329,6 +1567,16 @@
     flex: 1 1 150px;
   }
 
+  .flashcard-focus-mode__progress-counts {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .flashcard-focus-mode__progress-chip {
+    justify-content: space-between;
+    width: 100%;
+  }
+
   .flashcard-current-pagination {
     align-items: stretch;
     grid-template-columns: 1fr;
@@ -1355,6 +1603,10 @@
 
   .flashcard-practice__header {
     flex-direction: column;
+  }
+
+  .flashcard-practice__header-actions {
+    justify-content: flex-start;
   }
 
   .flashcard-staging-batch__header,

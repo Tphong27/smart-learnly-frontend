@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Brain,
@@ -5,19 +6,17 @@ import {
   ChevronLeft,
   ChevronRight,
   Clock3,
-  FlipHorizontal2,
   Maximize2,
   Minimize2,
   RefreshCw,
   Shuffle,
 } from "lucide-react";
 import { flashcardService } from "@/services/flashcard.service";
-import { useToast } from "@/shared/components/ui";
 import {
   FlashcardStudyCardList,
   FlashcardStudyControls,
 } from "@/features/flashcards-shared";
-import { FlashcardPreview, shuffleCards } from "./FlashcardPreview";
+import { FlashcardPreview } from "./FlashcardPreview";
 import { getErrorMessage, normalizeSet } from "./flashcard-utils";
 import "./Flashcards.css";
 
@@ -34,12 +33,8 @@ const STATUS_META = {
   known: { label: "Known" },
 };
 
-const AUTO_LEARNING_PROGRESS = {
-  learningStatus: "still_learning",
-  lastReviewResult: "still_learning",
-};
-
-const BACKGROUND_SAVE_CONCURRENCY = 5;
+const TRACK_PROGRESS_STORAGE_PREFIX = "smartLearnly:flashcards:trackProgress";
+const CARD_POSITION_STORAGE_PREFIX = "smartLearnly:flashcards:lastCard";
 
 function cardKey(id) {
   return id == null ? "" : String(id);
@@ -135,11 +130,6 @@ function findCardById(cards, cardId) {
   return cards.find((card) => cardKey(card.id) === targetKey) || null;
 }
 
-function isFinalCardInQueue(cardId, queue) {
-  if (!queue.length) return false;
-  return cardKey(queue[queue.length - 1]?.id) === cardKey(cardId);
-}
-
 function getPracticeSetId(flashcardSet, explicitSetId, cards = []) {
   const firstCard = cards[0] || {};
 
@@ -160,6 +150,38 @@ function getPracticeSetId(flashcardSet, explicitSetId, cards = []) {
 
 function resumeStorageKeyForSet(setId) {
   return setId == null ? null : `flashcard:lastActiveCard:${setId}`;
+}
+
+function cardPositionStorageKey({ userKey, courseId, lessonId, setId }) {
+  if (!userKey || !courseId || !setId) return null;
+  const lessonPart = lessonId == null ? "lesson:none" : `lesson:${lessonId}`;
+  return `${CARD_POSITION_STORAGE_PREFIX}:${userKey}:${courseId}:${lessonPart}:set:${setId}`;
+}
+
+function trackProgressStorageKey(userKey) {
+  return userKey ? `${TRACK_PROGRESS_STORAGE_PREFIX}:${userKey}` : null;
+}
+
+function readStoredTrackProgress(storageKey) {
+  if (!storageKey || typeof window === "undefined") return true;
+
+  try {
+    const storedValue = window.localStorage.getItem(storageKey);
+    if (storedValue == null) return true;
+    return storedValue !== "false";
+  } catch {
+    return true;
+  }
+}
+
+function writeStoredTrackProgress(storageKey, enabled) {
+  if (!storageKey || typeof window === "undefined") return;
+
+  try {
+    window.localStorage.setItem(storageKey, enabled ? "true" : "false");
+  } catch {
+    // Preference storage is best-effort.
+  }
 }
 
 function normalizeProgressPayload(payload, fallbackResult) {
@@ -196,62 +218,6 @@ function applyProgressToCards(cards, cardId, savedProgress) {
         }
       : card,
   );
-}
-
-function applyProgressToMultipleCards(cards, progressByCardKey) {
-  return cards.map((card) => {
-    const savedProgress = progressByCardKey.get(cardKey(card.id));
-    if (!savedProgress) return card;
-
-    return {
-      ...card,
-      progress: {
-        ...(card.progress || {}),
-        ...omitUndefinedValues(savedProgress),
-      },
-    };
-  });
-}
-
-function applyAutoSavedProgressToCards(cards, progressByCardKey) {
-  return cards.map((card) => {
-    const savedProgress = progressByCardKey.get(cardKey(card.id));
-    if (!savedProgress || progressStatus(card) === "known") return card;
-
-    return {
-      ...card,
-      progress: {
-        ...(card.progress || {}),
-        ...omitUndefinedValues(savedProgress),
-      },
-    };
-  });
-}
-
-async function settleWithConcurrency(items, limit, task) {
-  if (!items.length) return [];
-
-  const results = new Array(items.length);
-  let nextIndex = 0;
-  const workerCount = Math.min(limit, items.length);
-  const workers = Array.from({ length: workerCount }, async () => {
-    while (nextIndex < items.length) {
-      const index = nextIndex;
-      nextIndex += 1;
-
-      try {
-        results[index] = {
-          status: "fulfilled",
-          value: await task(items[index], index),
-        };
-      } catch (reason) {
-        results[index] = { status: "rejected", reason };
-      }
-    }
-  });
-
-  await Promise.all(workers);
-  return results;
 }
 
 function findNextCardAfterAction(cardId, previousQueue, nextQueue) {
@@ -310,13 +276,7 @@ function writeStoredCardIds(storageKeys, cardId) {
 }
 
 function getResumeCardId(cards, savedCardId) {
-  return (
-    findCardById(cards, savedCardId)?.id ??
-    cards.find((card) => progressStatus(card) === "still_learning")?.id ??
-    cards.find((card) => progressStatus(card) === "new")?.id ??
-    cards[0]?.id ??
-    null
-  );
+  return findCardById(cards, savedCardId)?.id ?? cards[0]?.id ?? null;
 }
 
 function isTypingShortcutTarget(target) {
@@ -324,23 +284,39 @@ function isTypingShortcutTarget(target) {
   const tagName = target.tagName.toLowerCase();
   return (
     target.isContentEditable ||
+    Boolean(target.closest("[contenteditable]")) ||
     tagName === "input" ||
     tagName === "textarea" ||
-    tagName === "select"
+    tagName === "select" ||
+    tagName === "button" ||
+    Boolean(target.closest("button"))
   );
+}
+
+function lockedStudyControls(controls, locked) {
+  if (!locked) return controls;
+
+  return {
+    ...controls,
+    canGoPrevious: false,
+    canGoNext: false,
+    goPrevious: () => {},
+    goNext: () => {},
+    shuffle: () => {},
+  };
 }
 
 function FlashcardReviewActions({
   card,
-  readOnly,
+  trackProgress,
   submittingCardId,
   onSubmitProgress,
   className = "",
 }) {
-  if (!card) return null;
+  if (!card || !trackProgress) return null;
 
   const status = progressStatus(card);
-  const isSubmitting = cardKey(submittingCardId) === cardKey(card.id);
+  const isSubmitting = submittingCardId != null;
 
   return (
     <div
@@ -353,120 +329,133 @@ function FlashcardReviewActions({
       >
         {STATUS_META[status].label}
       </span>
-      {!readOnly && (
-        <div className="flashcard-practice__results">
-          <button
-            type="button"
-            className="flashcard-btn flashcard-btn--warning"
-            disabled={isSubmitting}
-            onClick={() => onSubmitProgress(card, "still_learning")}
-          >
-            <Clock3 size={16} />
-            Still learning
-          </button>
-          <button
-            type="button"
-            className="flashcard-btn flashcard-btn--success"
-            disabled={isSubmitting}
-            onClick={() => onSubmitProgress(card, "known")}
-          >
-            <CheckCircle2 size={16} />
-            Know
-          </button>
-        </div>
-      )}
+      <div className="flashcard-practice__results">
+        <button
+          type="button"
+          className="flashcard-btn flashcard-btn--warning"
+          disabled={isSubmitting}
+          onClick={() => onSubmitProgress(card, "still_learning")}
+        >
+          <Clock3 size={16} />
+          Still learning
+        </button>
+        <button
+          type="button"
+          className="flashcard-btn flashcard-btn--success"
+          disabled={isSubmitting}
+          onClick={() => onSubmitProgress(card, "known")}
+        >
+          <CheckCircle2 size={16} />
+          Know
+        </button>
+      </div>
     </div>
+  );
+}
+
+function FlashcardTrackProgressToggle({ checked, onChange }) {
+  return (
+    <label className="flashcard-practice__track-toggle">
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={(event) => onChange(event.target.checked)}
+      />
+      <span>Track progress</span>
+    </label>
+  );
+}
+
+function useKeyboardControlsRegistration({
+  controls,
+  enabled,
+  scope,
+  onKeyboardControlsChange,
+}) {
+  useEffect(() => {
+    if (!enabled) return undefined;
+
+    onKeyboardControlsChange(scope, controls);
+    return () => onKeyboardControlsChange(scope, null);
+  }, [controls, enabled, onKeyboardControlsChange, scope]);
+}
+
+function FlashcardPracticeControls({
+  controls,
+  canOpenFocusMode,
+  keyboardEnabled,
+  navigationLocked,
+  onOpenFocusMode,
+  onKeyboardControlsChange,
+}) {
+  const resolvedControls = lockedStudyControls(controls, navigationLocked);
+
+  useKeyboardControlsRegistration({
+    controls: resolvedControls,
+    enabled: keyboardEnabled,
+    scope: "normal",
+    onKeyboardControlsChange,
+  });
+
+  return (
+    <FlashcardStudyControls
+      controls={resolvedControls}
+      className="flashcard-practice__controls"
+      auxiliaryAction={{
+        icon: <Shuffle size={16} />,
+        label: "Shuffle",
+        onClick: resolvedControls.shuffle,
+        disabled: navigationLocked,
+      }}
+      trailingAction={
+        canOpenFocusMode
+          ? {
+              ariaLabel: "Open focus mode",
+              className: "flashcard-btn flashcard-btn--icon flashcard-focus-toggle",
+              disabled: navigationLocked,
+              icon: <Maximize2 size={16} />,
+              onClick: navigationLocked ? undefined : onOpenFocusMode,
+              title: "Open focus mode",
+            }
+          : null
+      }
+    />
   );
 }
 
 function FlashcardFocusControls({
   controls,
-  readOnly,
-  submittingCardId,
-  onClose,
-  onSubmitProgress,
+  navigationLocked,
+  onKeyboardControlsChange,
 }) {
-  const isSubmitting = cardKey(submittingCardId) === cardKey(controls.card?.id);
-  const canSubmitProgress =
-    Boolean(controls.card) && !readOnly && !isSubmitting;
+  const resolvedControls = lockedStudyControls(controls, navigationLocked);
 
-  const submitStillLearning = useCallback(() => {
-    if (!canSubmitProgress) return;
-    void onSubmitProgress(controls.card, "still_learning");
-  }, [canSubmitProgress, controls.card, onSubmitProgress]);
-
-  const submitKnown = useCallback(() => {
-    if (!canSubmitProgress) return;
-    void onSubmitProgress(controls.card, "known");
-  }, [canSubmitProgress, controls.card, onSubmitProgress]);
-
-  useEffect(() => {
-    function handleKeyDown(event) {
-      if (isTypingShortcutTarget(event.target)) return;
-
-      if (event.key === "ArrowRight") {
-        event.preventDefault();
-        if (controls.canGoNext) controls.goNext();
-        return;
-      }
-
-      if (event.key === "ArrowLeft") {
-        event.preventDefault();
-        if (controls.canGoPrevious) controls.goPrevious();
-        return;
-      }
-
-      if (
-        event.key === " " ||
-        event.key === "Enter" ||
-        event.key === "Spacebar"
-      ) {
-        event.preventDefault();
-        controls.flipCard();
-        return;
-      }
-
-      if (event.key === "1") {
-        event.preventDefault();
-        if (!event.repeat) submitStillLearning();
-        return;
-      }
-
-      if (event.key === "2") {
-        event.preventDefault();
-        if (!event.repeat) submitKnown();
-        return;
-      }
-
-      if (event.key === "Escape" || event.key === "Esc") {
-        event.preventDefault();
-        onClose();
-      }
-    }
-
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [controls, onClose, submitKnown, submitStillLearning]);
+  useKeyboardControlsRegistration({
+    controls: resolvedControls,
+    enabled: true,
+    scope: "focus",
+    onKeyboardControlsChange,
+  });
 
   return (
     <div className="flashcard-preview__controls flashcard-focus-mode__controls">
       <button
         type="button"
         className="flashcard-btn"
-        onClick={controls.goPrevious}
-        disabled={!controls.canGoPrevious}
+        onClick={resolvedControls.goPrevious}
+        disabled={!resolvedControls.canGoPrevious}
       >
         <ChevronLeft size={16} />
         Previous
       </button>
       <span className="flashcard-preview__counter flashcard-focus-mode__counter">
-        {controls.index + 1} / {controls.cardCount}
+        {resolvedControls.index + 1} / {resolvedControls.cardCount}
       </span>
       <button
         type="button"
         className="flashcard-btn"
-        onClick={controls.goNext}
-        disabled={!controls.canGoNext}
+        onClick={resolvedControls.goNext}
+        disabled={!resolvedControls.canGoNext}
       >
         Next
         <ChevronRight size={16} />
@@ -474,23 +463,35 @@ function FlashcardFocusControls({
       <button
         type="button"
         className="flashcard-btn"
-        onClick={controls.flipCard}
-      >
-        <FlipHorizontal2 size={16} />
-        Flip card
-      </button>
-      <button
-        type="button"
-        className="flashcard-btn"
-        onClick={controls.shuffle}
+        onClick={resolvedControls.shuffle}
+        disabled={navigationLocked}
       >
         <Shuffle size={16} />
         Shuffle
       </button>
-      <button type="button" className="flashcard-btn" onClick={onClose}>
-        <Minimize2 size={16} />
-        Exit
-      </button>
+    </div>
+  );
+}
+
+function FlashcardFocusProgressCounts({ progressCounts }) {
+  const learningCount = progressCounts?.still_learning ?? 0;
+  const knownCount = progressCounts?.known ?? 0;
+
+  return (
+    <div
+      className="flashcard-focus-mode__progress-counts"
+      aria-label="Flashcard progress counts"
+    >
+      <div className="flashcard-focus-mode__progress-chip flashcard-focus-mode__progress-chip--learning">
+        <Clock3 size={16} aria-hidden="true" />
+        <span>Still learning</span>
+        <strong>{learningCount}</strong>
+      </div>
+      <div className="flashcard-focus-mode__progress-chip flashcard-focus-mode__progress-chip--known">
+        <CheckCircle2 size={16} aria-hidden="true" />
+        <span>Known</span>
+        <strong>{knownCount}</strong>
+      </div>
     </div>
   );
 }
@@ -501,13 +502,16 @@ function FlashcardFocusMode({
   cards,
   activeCardId,
   orderedCardIds,
-  readOnly,
+  progressCounts,
+  trackingAvailable,
+  trackProgress,
   submittingCardId,
   onActiveCardChange,
-  onAdvancePastEnd,
   onClose,
+  onKeyboardControlsChange,
   onShuffle,
   onSubmitProgress,
+  onTrackProgressChange,
 }) {
   useEffect(() => {
     const previousOverflow = document.body.style.overflow;
@@ -532,46 +536,56 @@ function FlashcardFocusMode({
             <h2 id="flashcard-focus-mode-title">{title || "Flashcards"}</h2>
             <p>{filterLabel(selectedFilter)}</p>
           </div>
-          <button
-            type="button"
-            className="flashcard-btn flashcard-btn--icon flashcard-focus-mode__close"
-            onClick={onClose}
-            aria-label="Exit focus mode"
-            title="Exit focus mode"
-          >
-            <Minimize2 size={18} />
-          </button>
+          <div className="flashcard-focus-mode__header-actions">
+            {trackingAvailable && (
+              <FlashcardTrackProgressToggle
+                checked={trackProgress}
+                onChange={onTrackProgressChange}
+              />
+            )}
+            <button
+              type="button"
+              className="flashcard-btn flashcard-btn--icon flashcard-focus-mode__close"
+              onClick={onClose}
+              aria-label="Exit focus mode"
+              title="Exit focus mode"
+            >
+              <Minimize2 size={18} />
+            </button>
+          </div>
         </header>
 
         <div className="flashcard-focus-mode__body">
-          <FlashcardPreview
-            cards={cards}
-            activeCardId={activeCardId}
-            orderedCardIds={orderedCardIds}
-            onActiveCardChange={onActiveCardChange}
-            onAdvancePastEnd={onAdvancePastEnd}
-            onShuffle={onShuffle}
-            emptyMessage={filterEmptyMessage(selectedFilter)}
-            className="flashcard-preview--focus"
-            renderControls={(controls) => (
-              <FlashcardFocusControls
-                controls={controls}
-                readOnly={readOnly}
-                submittingCardId={submittingCardId}
-                onClose={onClose}
-                onSubmitProgress={onSubmitProgress}
-              />
+          <div className="flashcard-focus-mode__study">
+            {trackProgress && (
+              <FlashcardFocusProgressCounts progressCounts={progressCounts} />
             )}
-            renderActions={({ card }) => (
-              <FlashcardReviewActions
-                card={card}
-                readOnly={readOnly}
-                submittingCardId={submittingCardId}
-                onSubmitProgress={onSubmitProgress}
-                className="flashcard-focus-mode__review"
-              />
-            )}
-          />
+            <FlashcardPreview
+              cards={cards}
+              activeCardId={activeCardId}
+              orderedCardIds={orderedCardIds}
+              onActiveCardChange={onActiveCardChange}
+              onShuffle={onShuffle}
+              emptyMessage={filterEmptyMessage(selectedFilter)}
+              className="flashcard-preview--focus"
+              renderControls={(controls) => (
+                <FlashcardFocusControls
+                  controls={controls}
+                  navigationLocked={submittingCardId != null}
+                  onKeyboardControlsChange={onKeyboardControlsChange}
+                />
+              )}
+              renderActions={({ card }) => (
+                <FlashcardReviewActions
+                  card={card}
+                  trackProgress={trackProgress}
+                  submittingCardId={submittingCardId}
+                  onSubmitProgress={onSubmitProgress}
+                  className="flashcard-focus-mode__review"
+                />
+              )}
+            />
+          </div>
         </div>
       </section>
     </div>
@@ -580,36 +594,56 @@ function FlashcardFocusMode({
 
 export function FlashcardPractice({
   lessonId,
+  courseId,
   classId,
   setId,
   adminMode = false,
   readOnly = false,
+  progressUserKey,
+  positionUserKey,
   onCompleted,
 }) {
-  const toast = useToast();
+  const trackingPreferenceKey = useMemo(
+    () => trackProgressStorageKey(progressUserKey),
+    [progressUserKey],
+  );
   const [flashcardSet, setFlashcardSet] = useState(null);
   const [selectedFilter, setSelectedFilter] = useState("all");
+  const [trackProgressPreference, setTrackProgressPreference] = useState(
+    () => ({
+      storageKey: trackingPreferenceKey,
+      enabled: readStoredTrackProgress(trackingPreferenceKey),
+    }),
+  );
   const [activeCardId, setActiveCardId] = useState(null);
   const [lastActiveCardByFilter, setLastActiveCardByFilter] = useState({});
   const [orderedIdsByFilter, setOrderedIdsByFilter] = useState({});
   const [loading, setLoading] = useState(true);
   const [submittingCardId, setSubmittingCardId] = useState(null);
-  const [backgroundSavingCount, setBackgroundSavingCount] = useState(0);
-  const [error, setError] = useState(null);
+  const [loadError, setLoadError] = useState(null);
+  const [progressError, setProgressError] = useState(null);
   const [completionNotified, setCompletionNotified] = useState(false);
   const [isFocusModeOpen, setIsFocusModeOpen] = useState(false);
 
   const cardsRef = useRef([]);
   const initializedSetKeyRef = useRef(null);
   const restoredSetKeyRef = useRef(null);
-  const autoSubmittedCardIdsRef = useRef(new Set());
-  const failedAutoSaveCardIdsRef = useRef(new Set());
-  const seenCardIdsInAllPassRef = useRef(new Set());
-  const passCompletionRunningRef = useRef(false);
+  const submittingCardIdRef = useRef(null);
+  const keyboardControlsRef = useRef(null);
+  const keyboardStateRef = useRef(null);
+  const trackProgress =
+    trackProgressPreference.storageKey === trackingPreferenceKey
+      ? trackProgressPreference.enabled
+      : readStoredTrackProgress(trackingPreferenceKey);
+  const trackingAvailable = !readOnly && !adminMode && Boolean(progressUserKey);
+  const canTrackProgress = trackingAvailable && trackProgress;
+  const activeFilter = canTrackProgress ? selectedFilter : "all";
+  const progressNavigationLocked = canTrackProgress && submittingCardId != null;
 
   const loadPractice = useCallback(async () => {
     setLoading(true);
-    setError(null);
+    setLoadError(null);
+    setProgressError(null);
     try {
       let payload;
       if (adminMode && lessonId) {
@@ -623,7 +657,7 @@ export function FlashcardPractice({
       setFlashcardSet(normalizedSet);
       cardsRef.current = normalizedSet.cards || [];
     } catch (loadError) {
-      setError(getErrorMessage(loadError, "Failed to load flashcards."));
+      setLoadError(getErrorMessage(loadError, "Failed to load flashcards."));
     } finally {
       setLoading(false);
     }
@@ -642,27 +676,43 @@ export function FlashcardPractice({
   }, [cards]);
 
   const practiceSetKey = getPracticeSetId(flashcardSet, setId, cards);
-  const resumeStorageKey = resumeStorageKeyForSet(practiceSetKey);
+  const resolvedCourseId = courseId ?? flashcardSet?.courseId ?? null;
+  const resolvedLessonId = lessonId ?? flashcardSet?.lessonId ?? null;
+  const cardResumeStorageKey = cardPositionStorageKey({
+    userKey: positionUserKey,
+    courseId: resolvedCourseId,
+    lessonId: resolvedLessonId,
+    setId: practiceSetKey,
+  });
+  const legacySetResumeStorageKey = resumeStorageKeyForSet(practiceSetKey);
   const legacyLessonResumeStorageKey =
     lessonId == null ? null : resumeStorageKeyForSet(lessonId);
   const resumeWriteStorageKeys = useMemo(
-    () => [resumeStorageKey || legacyLessonResumeStorageKey].filter(Boolean),
-    [legacyLessonResumeStorageKey, resumeStorageKey],
+    () => [cardResumeStorageKey].filter(Boolean),
+    [cardResumeStorageKey],
   );
   const resumeReadStorageKeys = useMemo(
     () =>
-      [resumeStorageKey, legacyLessonResumeStorageKey].filter(
+      [
+        cardResumeStorageKey,
+        legacySetResumeStorageKey,
+        legacyLessonResumeStorageKey,
+      ].filter(
         (storageKey, index, storageKeys) =>
           storageKey && storageKeys.indexOf(storageKey) === index,
       ),
-    [legacyLessonResumeStorageKey, resumeStorageKey],
+    [
+      cardResumeStorageKey,
+      legacyLessonResumeStorageKey,
+      legacySetResumeStorageKey,
+    ],
   );
 
   const queues = useMemo(() => buildQueues(cards), [cards]);
 
   const currentQueue = useMemo(
-    () => getQueueForFilter(queues, selectedFilter, orderedIdsByFilter),
-    [orderedIdsByFilter, queues, selectedFilter],
+    () => getQueueForFilter(queues, activeFilter, orderedIdsByFilter),
+    [activeFilter, orderedIdsByFilter, queues],
   );
 
   const currentQueueIds = useMemo(
@@ -685,274 +735,22 @@ export function FlashcardPractice({
     }
   }, [activeCardId, cards, practiceSetKey, resumeWriteStorageKeys]);
 
-  const resetSeenCardsInAllPass = useCallback(() => {
-    seenCardIdsInAllPassRef.current = new Set();
-  }, []);
-
-  const markCardSeenInAllPass = useCallback((cardId, filterKey) => {
-    if (filterKey !== "all" || cardId == null) return;
-    seenCardIdsInAllPassRef.current.add(cardKey(cardId));
-  }, []);
-
   const setActiveCardForFilter = useCallback(
-    (cardId, filterKey = selectedFilter) => {
+    (cardId, filterKey = activeFilter) => {
       if (cardId == null) return;
-      markCardSeenInAllPass(cardId, filterKey);
       setActiveCardId(cardId);
       setLastActiveCardByFilter((currentActiveCards) => ({
         ...currentActiveCards,
         [filterKey]: cardId,
       }));
     },
-    [markCardSeenInAllPass, selectedFilter],
+    [activeFilter],
   );
 
   const submitProgressForCard = useCallback(async (card, result) => {
     const response = await flashcardService.submitProgress(card.id, result);
-    const savedProgress = normalizeProgressPayload(response, result);
-    const nextCards = applyProgressToCards(
-      cardsRef.current,
-      card.id,
-      savedProgress,
-    );
-
-    cardsRef.current = nextCards;
-    setFlashcardSet((currentSet) =>
-      currentSet
-        ? {
-            ...currentSet,
-            cards: applyProgressToCards(
-              currentSet.cards || [],
-              card.id,
-              savedProgress,
-            ),
-          }
-        : currentSet,
-    );
-
-    return nextCards;
+    return normalizeProgressPayload(response, result);
   }, []);
-
-  const persistAutoLearningProgress = useCallback(
-    (cardsToSave) => {
-      if (!cardsToSave.length) return;
-
-      setBackgroundSavingCount(
-        (currentCount) => currentCount + cardsToSave.length,
-      );
-
-      void settleWithConcurrency(
-        cardsToSave,
-        BACKGROUND_SAVE_CONCURRENCY,
-        async (card) => {
-          const response = await flashcardService.submitProgress(
-            card.id,
-            "still_learning",
-          );
-
-          return {
-            cardId: card.id,
-            savedProgress: normalizeProgressPayload(response, "still_learning"),
-          };
-        },
-      )
-        .then((results) => {
-          const successfulProgressByCardKey = new Map();
-          let failedCount = 0;
-
-          results.forEach((result, index) => {
-            const card = cardsToSave[index];
-            const key = cardKey(card?.id);
-
-            if (result.status === "fulfilled") {
-              successfulProgressByCardKey.set(
-                cardKey(result.value.cardId),
-                result.value.savedProgress,
-              );
-              failedAutoSaveCardIdsRef.current.delete(
-                cardKey(result.value.cardId),
-              );
-              return;
-            }
-
-            failedCount += 1;
-            autoSubmittedCardIdsRef.current.delete(key);
-            failedAutoSaveCardIdsRef.current.add(key);
-          });
-
-          if (successfulProgressByCardKey.size > 0) {
-            const nextCards = applyAutoSavedProgressToCards(
-              cardsRef.current,
-              successfulProgressByCardKey,
-            );
-            cardsRef.current = nextCards;
-            setFlashcardSet((currentSet) =>
-              currentSet
-                ? {
-                    ...currentSet,
-                    cards: applyAutoSavedProgressToCards(
-                      currentSet.cards || [],
-                      successfulProgressByCardKey,
-                    ),
-                  }
-                : currentSet,
-            );
-          }
-
-          if (failedCount > 0) {
-            toast.warning(
-              "Some flashcard progress could not be saved. Refresh after reconnecting to verify progress.",
-              { duration: 5000 },
-            );
-          }
-        })
-        .finally(() => {
-          setBackgroundSavingCount((currentCount) =>
-            Math.max(0, currentCount - cardsToSave.length),
-          );
-        });
-    },
-    [toast],
-  );
-
-  const completeAllPass = useCallback(
-    async (triggerCardId, sourceCards, allQueueAtTrigger) => {
-      const passCards = sourceCards?.length ? sourceCards : cardsRef.current;
-      const allQueue = allQueueAtTrigger?.length
-        ? allQueueAtTrigger
-        : getQueueForFilter(buildQueues(passCards), "all", orderedIdsByFilter);
-
-      if (
-        readOnly ||
-        !allQueue.length ||
-        passCompletionRunningRef.current ||
-        !isFinalCardInQueue(triggerCardId, allQueue)
-      ) {
-        return false;
-      }
-
-      passCompletionRunningRef.current = true;
-
-      try {
-        seenCardIdsInAllPassRef.current.add(cardKey(triggerCardId));
-        const cardsWithoutProgress = passCards.filter((card) => {
-          const key = cardKey(card.id);
-          const status = progressStatus(card);
-          return (
-            seenCardIdsInAllPassRef.current.has(key) &&
-            (status === "new" ||
-              (status === "still_learning" &&
-                failedAutoSaveCardIdsRef.current.has(key))) &&
-            !autoSubmittedCardIdsRef.current.has(key)
-          );
-        });
-
-        const optimisticProgressByCardKey = new Map();
-        for (const card of cardsWithoutProgress) {
-          const key = cardKey(card.id);
-          autoSubmittedCardIdsRef.current.add(key);
-          optimisticProgressByCardKey.set(key, AUTO_LEARNING_PROGRESS);
-        }
-
-        const workingCards =
-          optimisticProgressByCardKey.size > 0
-            ? applyProgressToMultipleCards(
-                passCards,
-                optimisticProgressByCardKey,
-              )
-            : passCards;
-
-        if (optimisticProgressByCardKey.size > 0) {
-          cardsRef.current = workingCards;
-          setFlashcardSet((currentSet) =>
-            currentSet
-              ? {
-                  ...currentSet,
-                  cards: applyProgressToMultipleCards(
-                    currentSet.cards || [],
-                    optimisticProgressByCardKey,
-                  ),
-                }
-              : currentSet,
-          );
-          persistAutoLearningProgress(cardsWithoutProgress);
-        }
-
-        const nextQueues = buildQueues(workingCards);
-        const learningCards = getQueueForFilter(
-          nextQueues,
-          "still_learning",
-          orderedIdsByFilter,
-        );
-        let shouldResetSeenCards = true;
-
-        if (learningCards.length > 0) {
-          const shuffledLearningCards = shuffleCards(learningCards);
-          const shuffledLearningIds = shuffledLearningCards.map(
-            (card) => card.id,
-          );
-
-          setOrderedIdsByFilter((currentOrders) => ({
-            ...currentOrders,
-            still_learning: shuffledLearningIds,
-          }));
-          setSelectedFilter("still_learning");
-          setActiveCardForFilter(shuffledLearningCards[0].id, "still_learning");
-        } else {
-          const knownCards = getQueueForFilter(
-            nextQueues,
-            "known",
-            orderedIdsByFilter,
-          );
-          const remainingAllCards = getQueueForFilter(
-            nextQueues,
-            "all",
-            orderedIdsByFilter,
-          );
-
-          setOrderedIdsByFilter((currentOrders) => ({
-            ...currentOrders,
-            still_learning: [],
-          }));
-
-          if (knownCards.length > 0) {
-            setSelectedFilter("known");
-            setActiveCardForFilter(knownCards[0].id, "known");
-          } else if (remainingAllCards.length > 0) {
-            resetSeenCardsInAllPass();
-            setSelectedFilter("all");
-            setActiveCardForFilter(remainingAllCards[0].id, "all");
-            shouldResetSeenCards = false;
-          } else {
-            setActiveCardId(null);
-          }
-        }
-
-        if (shouldResetSeenCards) {
-          resetSeenCardsInAllPass();
-        }
-
-        return true;
-      } catch (completionError) {
-        setError(
-          getErrorMessage(
-            completionError,
-            "Failed to prepare the flashcard review round.",
-          ),
-        );
-        return false;
-      } finally {
-        passCompletionRunningRef.current = false;
-      }
-    },
-    [
-      orderedIdsByFilter,
-      readOnly,
-      persistAutoLearningProgress,
-      resetSeenCardsInAllPass,
-      setActiveCardForFilter,
-    ],
-  );
 
   useEffect(() => {
     if (!cards.length) {
@@ -967,10 +765,6 @@ export function FlashcardPractice({
 
     initializedSetKeyRef.current = setKey;
     restoredSetKeyRef.current = null;
-    autoSubmittedCardIdsRef.current = new Set();
-    failedAutoSaveCardIdsRef.current = new Set();
-    resetSeenCardsInAllPass();
-    passCompletionRunningRef.current = false;
     setSelectedFilter("all");
     setLastActiveCardByFilter({});
     setOrderedIdsByFilter({});
@@ -986,7 +780,6 @@ export function FlashcardPractice({
   }, [
     cards,
     practiceSetKey,
-    resetSeenCardsInAllPass,
     resumeReadStorageKeys,
     setActiveCardForFilter,
   ]);
@@ -1002,24 +795,24 @@ export function FlashcardPractice({
     }
 
     if (activeCardId == null) {
-      setActiveCardForFilter(currentQueue[0].id, selectedFilter);
+      setActiveCardForFilter(currentQueue[0].id, activeFilter);
       return;
     }
 
     if (!findCardById(currentQueue, activeCardId)) {
       const rememberedCard = findCardById(
         currentQueue,
-        lastActiveCardByFilter[selectedFilter],
+        lastActiveCardByFilter[activeFilter],
       );
       const nextCard = rememberedCard || currentQueue[0];
-      setActiveCardForFilter(nextCard.id, selectedFilter);
+      setActiveCardForFilter(nextCard.id, activeFilter);
     }
   }, [
     activeCardId,
+    activeFilter,
     cards.length,
     currentQueue,
     lastActiveCardByFilter,
-    selectedFilter,
     setActiveCardForFilter,
   ]);
 
@@ -1053,11 +846,13 @@ export function FlashcardPractice({
   }, [cards]);
 
   useEffect(() => {
-    if (readOnly || !lessonId || completionNotified || !allCardsKnown) return;
+    if (!canTrackProgress || !lessonId || completionNotified || !allCardsKnown) {
+      return;
+    }
 
     setCompletionNotified(true);
     onCompleted?.(lessonId);
-  }, [allCardsKnown, completionNotified, lessonId, onCompleted, readOnly]);
+  }, [allCardsKnown, canTrackProgress, completionNotified, lessonId, onCompleted]);
 
   const progressCounts = useMemo(
     () => ({
@@ -1075,7 +870,7 @@ export function FlashcardPractice({
   }, [activeCardId, currentQueue]);
 
   const activeCardIdForCurrentFilter = activeCardForCurrentFilter?.id ?? null;
-  const canOpenFocusMode = !readOnly && currentQueue.length > 0;
+  const canOpenFocusMode = currentQueue.length > 0;
 
   const openFocusMode = useCallback(() => {
     if (canOpenFocusMode) {
@@ -1101,10 +896,6 @@ export function FlashcardPractice({
       const currentCard = findCardById(targetQueue, activeCardId);
       const nextCard = rememberedCard || currentCard || targetQueue[0] || null;
 
-      if (filterKey === "all" && selectedFilter !== "all") {
-        resetSeenCardsInAllPass();
-      }
-
       setSelectedFilter(filterKey);
       if (nextCard) {
         setActiveCardForFilter(nextCard.id, filterKey);
@@ -1117,20 +908,33 @@ export function FlashcardPractice({
       lastActiveCardByFilter,
       orderedIdsByFilter,
       queues,
-      resetSeenCardsInAllPass,
-      selectedFilter,
       setActiveCardForFilter,
     ],
+  );
+
+  const handleTrackProgressChange = useCallback(
+    (enabled) => {
+      setTrackProgressPreference({
+        storageKey: trackingPreferenceKey,
+        enabled,
+      });
+      writeStoredTrackProgress(trackingPreferenceKey, enabled);
+
+      if (!enabled) {
+        setSelectedFilter("all");
+      }
+    },
+    [trackingPreferenceKey],
   );
 
   const handleShuffle = useCallback(
     (shuffledIds) => {
       setOrderedIdsByFilter((currentOrders) => ({
         ...currentOrders,
-        [selectedFilter]: shuffledIds,
+        [activeFilter]: shuffledIds,
       }));
     },
-    [selectedFilter],
+    [activeFilter],
   );
 
   const handleActiveCardChange = useCallback(
@@ -1140,38 +944,34 @@ export function FlashcardPractice({
     [setActiveCardForFilter],
   );
 
-  const handleAdvancePastEnd = useCallback(
-    (card, orderedCards) => {
-      if (selectedFilter !== "all" || card?.id == null) return;
-      void completeAllPass(card.id, cardsRef.current, orderedCards);
-    },
-    [completeAllPass, selectedFilter],
-  );
-
   const handleSubmitProgress = useCallback(
     async (card, result) => {
-      if (card?.id == null || readOnly) return;
+      if (
+        card?.id == null ||
+        !canTrackProgress ||
+        submittingCardIdRef.current != null
+      ) {
+        return;
+      }
 
-      markCardSeenInAllPass(card.id, selectedFilter);
       const previousQueue = currentQueue;
-      const wasFinalAllCard =
-        selectedFilter === "all" && isFinalCardInQueue(card.id, previousQueue);
 
+      submittingCardIdRef.current = card.id;
       setSubmittingCardId(card.id);
-      setError(null);
+      setProgressError(null);
 
       try {
-        const nextCards = await submitProgressForCard(card, result);
-        const completedPass = wasFinalAllCard
-          ? await completeAllPass(card.id, nextCards, previousQueue)
-          : false;
-
-        if (completedPass) return;
+        const savedProgress = await submitProgressForCard(card, result);
+        const nextCards = applyProgressToCards(
+          cardsRef.current,
+          card.id,
+          savedProgress,
+        );
 
         const nextQueues = buildQueues(nextCards);
         const nextQueue = getQueueForFilter(
           nextQueues,
-          selectedFilter,
+          activeFilter,
           orderedIdsByFilter,
         );
         const nextCard = findNextCardAfterAction(
@@ -1180,39 +980,140 @@ export function FlashcardPractice({
           nextQueue,
         );
 
+        cardsRef.current = nextCards;
+        setFlashcardSet((currentSet) =>
+          currentSet
+            ? {
+                ...currentSet,
+                cards: applyProgressToCards(
+                  currentSet.cards || [],
+                  card.id,
+                  savedProgress,
+                ),
+              }
+            : currentSet,
+        );
+
         if (nextCard) {
-          setActiveCardForFilter(nextCard.id, selectedFilter);
+          setActiveCardForFilter(nextCard.id, activeFilter);
         } else {
           const currentCardAfterUpdate = findCardById(nextQueue, card.id);
           const stableCard =
             currentCardAfterUpdate || nextQueue[nextQueue.length - 1] || null;
 
           if (stableCard) {
-            setActiveCardForFilter(stableCard.id, selectedFilter);
+            setActiveCardForFilter(stableCard.id, activeFilter);
           } else {
             setActiveCardId(null);
             setIsFocusModeOpen(false);
           }
         }
       } catch (submitError) {
-        setError(
+        setProgressError(
           getErrorMessage(submitError, "Failed to save flashcard progress."),
         );
       } finally {
+        submittingCardIdRef.current = null;
         setSubmittingCardId(null);
       }
     },
     [
-      completeAllPass,
+      activeFilter,
+      canTrackProgress,
       currentQueue,
-      markCardSeenInAllPass,
       orderedIdsByFilter,
-      readOnly,
-      selectedFilter,
       setActiveCardForFilter,
       submitProgressForCard,
     ],
   );
+
+  const handleKeyboardControlsChange = useCallback((scope, controls) => {
+    if (controls) {
+      keyboardControlsRef.current = { scope, controls };
+      return;
+    }
+
+    if (keyboardControlsRef.current?.scope === scope) {
+      keyboardControlsRef.current = null;
+    }
+  }, []);
+
+  useEffect(() => {
+    keyboardStateRef.current = {
+      enabled: !loading && !loadError,
+      isFocusModeOpen,
+      submitting: submittingCardIdRef.current != null,
+      submitProgress: handleSubmitProgress,
+      trackProgress: canTrackProgress,
+    };
+  });
+
+  useEffect(() => {
+    function handleKeyDown(event) {
+      const state = keyboardStateRef.current;
+      const controls = keyboardControlsRef.current?.controls;
+
+      if (!state?.enabled || !controls || event.defaultPrevented) return;
+      if (event.altKey || event.ctrlKey || event.metaKey) return;
+      if (isTypingShortcutTarget(event.target)) return;
+
+      if (
+        event.key === " " ||
+        event.key === "Enter" ||
+        event.key === "Spacebar"
+      ) {
+        if (!controls.card) return;
+        event.preventDefault();
+        controls.flipCard();
+        return;
+      }
+
+      if (event.key === "ArrowRight") {
+        if (state.trackProgress) {
+          if (!controls.card) return;
+          event.preventDefault();
+          if (!event.repeat && !state.submitting) {
+            state.submitProgress(controls.card, "known");
+          }
+          return;
+        }
+
+        if (controls.canGoNext) {
+          event.preventDefault();
+          controls.goNext();
+        }
+        return;
+      }
+
+      if (event.key === "ArrowLeft") {
+        if (state.trackProgress) {
+          if (!controls.card) return;
+          event.preventDefault();
+          if (!event.repeat && !state.submitting) {
+            state.submitProgress(controls.card, "still_learning");
+          }
+          return;
+        }
+
+        if (controls.canGoPrevious) {
+          event.preventDefault();
+          controls.goPrevious();
+        }
+        return;
+      }
+
+      if (
+        state.isFocusModeOpen &&
+        (event.key === "Escape" || event.key === "Esc")
+      ) {
+        event.preventDefault();
+        closeFocusMode();
+      }
+    }
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [closeFocusMode]);
 
   if (loading) {
     return (
@@ -1223,10 +1124,10 @@ export function FlashcardPractice({
     );
   }
 
-  if (error) {
+  if (loadError) {
     return (
       <div className="flashcard-practice__error">
-        <span>{error}</span>
+        <span>{loadError}</span>
         <button type="button" className="flashcard-btn" onClick={loadPractice}>
           <RefreshCw size={16} />
           Retry
@@ -1248,21 +1149,31 @@ export function FlashcardPractice({
             </p>
           )}
         </div>
-        {cards.length > 0 && (
-          <span className="flashcard-practice__status">
-            <Brain size={14} />
-            {progressLabel(cards)}
-            {backgroundSavingCount > 0 && (
-              <>
-                <RefreshCw size={13} className="flashcard-spin-icon" />
-                Saving progress...
-              </>
+        {(trackingAvailable || (canTrackProgress && cards.length > 0)) && (
+          <div className="flashcard-practice__header-actions">
+            {trackingAvailable && (
+              <FlashcardTrackProgressToggle
+                checked={trackProgress}
+                onChange={handleTrackProgressChange}
+              />
             )}
-          </span>
+            {canTrackProgress && cards.length > 0 && (
+              <span className="flashcard-practice__status">
+                <Brain size={14} />
+                {progressLabel(cards)}
+                {submittingCardId != null && (
+                  <>
+                    <RefreshCw size={13} className="flashcard-spin-icon" />
+                    Saving progress...
+                  </>
+                )}
+              </span>
+            )}
+          </div>
         )}
       </div>
 
-      {cards.length > 0 && (
+      {canTrackProgress && cards.length > 0 && (
         <div
           className="flashcard-practice__filters"
           aria-label="Filter flashcards by progress"
@@ -1283,46 +1194,33 @@ export function FlashcardPractice({
         </div>
       )}
 
+      {progressError && (
+        <div className="flashcard-practice__inline-error" role="alert">
+          <span>{progressError}</span>
+        </div>
+      )}
+
       <FlashcardPreview
         cards={currentQueue}
         activeCardId={activeCardIdForCurrentFilter}
         orderedCardIds={currentQueueIds}
         onActiveCardChange={handleActiveCardChange}
-        onAdvancePastEnd={
-          selectedFilter === "all" ? handleAdvancePastEnd : undefined
-        }
         onShuffle={handleShuffle}
-        emptyMessage={filterEmptyMessage(selectedFilter)}
-        renderControls={
-          !readOnly
-            ? (controls) => (
-                <FlashcardStudyControls
-                  controls={controls}
-                  className="flashcard-practice__controls"
-                  auxiliaryAction={{
-                    icon: <Shuffle size={16} />,
-                    label: "Shuffle",
-                    onClick: controls.shuffle,
-                  }}
-                  trailingAction={
-                    canOpenFocusMode
-                      ? {
-                          ariaLabel: "Open focus mode",
-                          className: "flashcard-btn flashcard-btn--icon flashcard-focus-toggle",
-                          icon: <Maximize2 size={16} />,
-                          onClick: openFocusMode,
-                          title: "Open focus mode",
-                        }
-                      : null
-                  }
-                />
-              )
-            : undefined
-        }
+        emptyMessage={filterEmptyMessage(activeFilter)}
+        renderControls={(controls) => (
+          <FlashcardPracticeControls
+            controls={controls}
+            canOpenFocusMode={canOpenFocusMode}
+            keyboardEnabled={!isFocusModeOpen}
+            navigationLocked={progressNavigationLocked}
+            onOpenFocusMode={openFocusMode}
+            onKeyboardControlsChange={handleKeyboardControlsChange}
+          />
+        )}
         renderActions={({ card }) => (
           <FlashcardReviewActions
             card={card}
-            readOnly={readOnly}
+            trackProgress={canTrackProgress}
             submittingCardId={submittingCardId}
             onSubmitProgress={handleSubmitProgress}
           />
@@ -1334,34 +1232,39 @@ export function FlashcardPractice({
         activeCardId={activeCardIdForCurrentFilter}
         onSelect={handleActiveCardChange}
         contextKey={`practice:${currentQueue.map((card) => cardKey(card.id)).join("|")}`}
-        renderItemMeta={(card) => {
-          const status = progressStatus(card);
-          return (
-            <span
-              className={`flashcard-progress-badge flashcard-progress-badge--${status}`}
-            >
-              {STATUS_META[status].label}
-            </span>
-          );
-        }}
+        renderItemMeta={
+          canTrackProgress
+            ? (card) => {
+                const status = progressStatus(card);
+                return (
+                  <span
+                    className={`flashcard-progress-badge flashcard-progress-badge--${status}`}
+                  >
+                    {STATUS_META[status].label}
+                  </span>
+                );
+              }
+            : undefined
+        }
       />
 
       {isFocusModeOpen && (
         <FlashcardFocusMode
           title={flashcardSet?.title || "Flashcards"}
-          selectedFilter={selectedFilter}
+          selectedFilter={activeFilter}
           cards={currentQueue}
           activeCardId={activeCardIdForCurrentFilter}
           orderedCardIds={currentQueueIds}
-          readOnly={readOnly}
+          progressCounts={progressCounts}
+          trackingAvailable={trackingAvailable}
+          trackProgress={canTrackProgress}
           submittingCardId={submittingCardId}
           onActiveCardChange={handleActiveCardChange}
-          onAdvancePastEnd={
-            selectedFilter === "all" ? handleAdvancePastEnd : undefined
-          }
           onClose={closeFocusMode}
+          onKeyboardControlsChange={handleKeyboardControlsChange}
           onShuffle={handleShuffle}
           onSubmitProgress={handleSubmitProgress}
+          onTrackProgressChange={handleTrackProgressChange}
         />
       )}
     </div>

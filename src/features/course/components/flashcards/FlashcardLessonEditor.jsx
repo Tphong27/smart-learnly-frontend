@@ -19,10 +19,7 @@ import {
 } from "../../../flashcards-shared";
 import { FlashcardCardList } from "./FlashcardCardList";
 import { FlashcardPreview } from "./FlashcardPreview";
-import {
-  FlashcardStagingWorkspace,
-  ImportFlashcardsModal,
-} from "./FlashcardStagingWorkspace";
+import { ImportFlashcardsModal } from "./FlashcardStagingWorkspace";
 import { useProgressiveVisibleItems } from "./useProgressiveVisibleItems";
 import {
   getErrorMessage,
@@ -79,6 +76,7 @@ export function FlashcardLessonEditor({
   lessonId,
   initialSetId,
   defaultTitle = "",
+  defaultModuleId = "",
   activeSection = "details",
   onTitleSaved,
   onNavigateToCurrent,
@@ -111,7 +109,6 @@ export function FlashcardLessonEditor({
   const [bulkDeletePending, setBulkDeletePending] = useState(false);
   const [bulkDeleting, setBulkDeleting] = useState(false);
   const [importModalOpen, setImportModalOpen] = useState(false);
-  const [stagingRefreshKey, setStagingRefreshKey] = useState(0);
   const [error, setError] = useState(null);
 
   const canUseStaging =
@@ -458,10 +455,6 @@ export function FlashcardLessonEditor({
   return loadSet();
 }, [loadSet]);
 
-  const refreshStagingReview = useCallback(() => {
-    setStagingRefreshKey((current) => current + 1);
-  }, []);
-
   const handleCardsImported = async (cardIds = []) => {
     onNavigateToCurrent?.();
     const refreshedSet = await refreshCurrentFlashcards();
@@ -476,10 +469,6 @@ export function FlashcardLessonEditor({
       }
     }
   };
-
-  const handleStagingImportCreated = useCallback(() => {
-    refreshStagingReview();
-  }, [refreshStagingReview]);
 
   const openCardEditor = useCallback((card = null) => {
     const mode = card?.id ? "edit" : "create";
@@ -961,33 +950,14 @@ export function FlashcardLessonEditor({
           triggerRef={currentPreviewTriggerRef}
         />
       )}
-      {activeSection === "review" && canUseStaging && (
-        <div
-          id="flashcard-review-panel"
-          role="tabpanel"
-          aria-labelledby="flashcard-review-tab"
-        >
-          <FlashcardStagingWorkspace
-            setId={flashcardSet?.id}
-            existingCards={orderedCards}
-            notify={notify}
-            onUploadImage={handleUploadImage}
-            onApproved={refreshCurrentFlashcards}
-            refreshKey={stagingRefreshKey}
-            onImport={openImportModal}
-            onModalOpen={clearFlashcardToasts}
-            importDisabled={reordering || bulkDeleting}
-          />
-        </div>
-      )}
       {importModalOpen && flashcardSet?.id && (
         <ImportFlashcardsModal
           courseId={courseId}
+          defaultModuleId={defaultModuleId}
           setId={flashcardSet.id}
           existingCards={orderedCards}
           notify={notify}
           onClose={closeImportModal}
-          onStagingChanged={handleStagingImportCreated}
           onCardsImported={handleCardsImported}
           onApproved={handleCardsImported}
           onUploadImage={handleUploadImage}
