@@ -36,6 +36,10 @@ function normalizeType(type) {
 
 function normalizeNotification(notification) {
   if (!notification || typeof notification !== "object") return notification;
+  const payload =
+    notification.payload && typeof notification.payload === "object"
+      ? notification.payload
+      : {};
 
   return {
     id: notification.id,
@@ -46,6 +50,8 @@ function normalizeNotification(notification) {
     referenceId: notification.referenceId || null,
     actionUrl: notification.actionUrl || null,
     actorId: notification.actorId || null,
+    eventKey: notification.eventKey || null,
+    payload,
     readAt: notification.readAt || null,
     deliveredAt: notification.deliveredAt || null,
     seenAt: notification.seenAt || null,
