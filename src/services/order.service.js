@@ -22,6 +22,7 @@ export function normalizeCheckout(payload) {
     transactionId: data?.transactionId,
     paymentGateway: data?.paymentGateway ?? "SEPAY",
     paymentCode: data?.paymentCode,
+    transferContent: data?.transferContent ?? data?.paymentCode,
     amount: toNumber(data?.amount ?? data?.totalAmount),
     currency: data?.currency ?? "VND",
     bankAccountNumber: data?.bankAccountNumber,
@@ -46,6 +47,11 @@ export function normalizeOrderPayment(payload) {
     paymentGateway:
       data?.paymentGateway ?? transaction?.paymentGateway ?? "SEPAY",
     paymentCode: data?.paymentCode ?? sepayOrder?.paymentCode,
+    transferContent:
+      data?.transferContent ??
+      sepayOrder?.transferContent ??
+      data?.paymentCode ??
+      sepayOrder?.paymentCode,
     amount: toNumber(
       data?.amount ??
         data?.totalAmount ??

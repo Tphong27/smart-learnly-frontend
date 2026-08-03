@@ -38,7 +38,7 @@ export function PaymentInstructionCard({ payment, onCopy }) {
         <div>
           <h2>Scan to pay</h2>
           <p>
-            Transfer the exact amount and include the exact payment code.
+            Transfer the exact amount and keep the full transfer content unchanged.
           </p>
         </div>
 
@@ -72,8 +72,8 @@ export function PaymentInstructionCard({ payment, onCopy }) {
           />
 
           <InfoRow
-            label="Payment code"
-            value={payment?.paymentCode}
+            label="Transfer content"
+            value={payment?.transferContent || payment?.paymentCode}
             copyable
             onCopy={onCopy}
           />

@@ -141,30 +141,17 @@ export function TraineeHeader({ user, onLogout, roleLabel }) {
           classBackLabel="Back to homepage"
         />
 
-        <div className="trainee-header__category-anchor" ref={categoriesRef}>
-          <button
-            type="button"
-            className="header-categories-btn trainee-header__categories-button"
-            aria-expanded={categoriesOpen}
-            aria-haspopup="menu"
-            onClick={() => {
-              setCategoriesOpen((current) => !current);
-              setProfileOpen(false);
-            }}
-          >
-            <span>Categories</span>
-            <ChevronDown
-              size={16}
-              className={categoriesOpen ? "is-open" : undefined}
-              aria-hidden="true"
-            />
-          </button>
-
-          {categoriesOpen && (
-            <div
-              className="trainee-header__popover trainee-header__categories-menu"
-              role="menu"
-              aria-label="Course categories"
+        {!isStaffHeader && (
+          <div className="trainee-header__category-anchor" ref={categoriesRef}>
+            <button
+              type="button"
+              className="header-categories-btn trainee-header__categories-button"
+              aria-expanded={categoriesOpen}
+              aria-haspopup="menu"
+              onClick={() => {
+                setCategoriesOpen((current) => !current);
+                setProfileOpen(false);
+              }}
             >
               <span>Categories</span>
               <ChevronDown
