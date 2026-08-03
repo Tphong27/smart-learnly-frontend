@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   useParams,
   useNavigate,
@@ -20,7 +20,7 @@ import {
 } from "lucide-react";
 import { LearningLessonMedia } from "@/features/course/components/LearningLessonMedia";
 import { LearningLessonTabs } from "@/features/course/components/LearningLessonTabs";
-import { learningService, enrollmentService, getCurrentUser } from "@/services";
+import { learningService, getCurrentUser } from "@/services";
 import { filterPublishedSections } from "@/features/course/utils/lesson-status";
 import "./LearningWorkspacePage.css";
 
@@ -63,9 +63,10 @@ function getUserPreferenceKey(user) {
   return user?.id || user?.userId || user?.accountId || user?.email || null;
 }
 
-function lessonPositionStorageKey(userKey, courseId) {
+function lessonPositionStorageKey(userKey, courseId, classId) {
   if (!userKey || !courseId) return null;
-  return `${LAST_LESSON_STORAGE_PREFIX}:${userKey}:${courseId}`;
+  const learningContext = classId ? `class:${classId}` : "online";
+  return `${LAST_LESSON_STORAGE_PREFIX}:${userKey}:${courseId}:${learningContext}`;
 }
 
 function readStoredLessonId(storageKey) {
@@ -103,15 +104,15 @@ export function LearningWorkspacePage({
   const [searchParams, setSearchParams] = useSearchParams();
   const requestedReturnTo = searchParams.get("returnTo");
   const requestedLessonId = searchParams.get("lessonId");
-  const requestedLessonIdRef = useRef(requestedLessonId);
   const requestedClassId = searchParams.get("classId");
   const workspaceUserKey = useMemo(
     () => getUserPreferenceKey(getCurrentUser()),
     [],
   );
   const lessonResumeStorageKey = useMemo(
-    () => lessonPositionStorageKey(workspaceUserKey, courseId),
-    [courseId, workspaceUserKey],
+    () =>
+      lessonPositionStorageKey(workspaceUserKey, courseId, requestedClassId),
+    [courseId, requestedClassId, workspaceUserKey],
   );
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -124,12 +125,8 @@ export function LearningWorkspacePage({
   const [completedLessonIds, setCompletedLessonIds] = useState(() => new Set());
   const [updatingLessonIds, setUpdatingLessonIds] = useState(() => new Set());
   const [lessonNotesById, setLessonNotesById] = useState({});
-  const [resolvedClassId, setResolvedClassId] = useState(requestedClassId);
+  const resolvedClassId = requestedClassId || null;
   const flashcardProgressUserKey = mode === "student" ? workspaceUserKey : null;
-
-  useEffect(() => {
-    requestedLessonIdRef.current = requestedLessonId;
-  }, [requestedLessonId]);
 
   useEffect(() => {
     const narrowLayout = window.matchMedia("(max-width: 1024px)");
@@ -163,58 +160,11 @@ export function LearningWorkspacePage({
   useEffect(() => {
     let cancelled = false;
 
-    async function resolveClassIdIfMissing() {
-      if (mode !== "student") {
-        return requestedClassId;
-      }
-
-      if (requestedClassId) {
-        return requestedClassId;
-      }
-
-      const myCourses = await enrollmentService.getMyCourses();
-
-      const matchedCourse = (myCourses || []).find((course) => {
-        const currentCourseId = course.id || course.courseId;
-        return String(currentCourseId) === String(courseId);
-      });
-
-      if (!matchedCourse) {
-        throw new Error("You are not enrolled in this course.");
-      }
-
-      const enrolledClass =
-        matchedCourse.enrolledClass || matchedCourse.myCourseClass || null;
-
-      // Online course:
-      if (!enrolledClass?.id) {
-        return null;
-      }
-
-      //Offline course
-      const params = new URLSearchParams();
-      params.set("classId", enrolledClass.id);
-
-      const lessonIdForClassRedirect = requestedLessonIdRef.current;
-      if (lessonIdForClassRedirect) {
-        params.set("lessonId", lessonIdForClassRedirect);
-      }
-
-      navigate(`/learning/courses/${courseId}?${params.toString()}`, {
-        replace: true,
-      });
-
-      return enrolledClass.id;
-    }
-
     async function load() {
       setLoading(true);
       setError(null);
 
       try {
-        const resolvedClassId = await resolveClassIdIfMissing();
-        setResolvedClassId(resolvedClassId);
-
         if (cancelled) return;
 
         let result;
@@ -272,7 +222,7 @@ export function LearningWorkspacePage({
     return () => {
       cancelled = true;
     };
-  }, [courseId, mode, requestedClassId, navigate]);
+  }, [courseId, mode, requestedClassId, resolvedClassId]);
 
   const sections = useMemo(() => groupLessonsBySection(data), [data]);
 

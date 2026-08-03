@@ -665,10 +665,10 @@
     border: 0;
 }
 
-.learning-lesson-media--legacy {
+.learning-lesson-media--invalid-video {
     padding: 20px 24px;
-    background: #fffbeb;
-    color: #854d0e;
+    background: var(--sl-danger-soft);
+    color: var(--sl-danger);
     font-size: 14px;
     font-weight: 700;
 }
