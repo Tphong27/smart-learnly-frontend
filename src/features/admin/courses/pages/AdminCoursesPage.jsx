@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 import { Button, Modal, useToast } from "@/shared/components/ui";
 import Pagination from "@/shared/components/Pagination";
-import { categoryService, courseService } from "@/services";
+import { categoryService, classService, courseService } from "@/services";
 import { getCurrentUser } from "@/services/api-client";
 import { formatDate, formatPrice } from "@/shared/utils/formatters";
 import { DEFAULT_PAGE_SIZE } from "@/shared/constants/pagination";
@@ -360,6 +360,44 @@ export function AdminCoursesPage() {
     open: false,
     target: null,
   });
+  const [openingCourseId, setOpeningCourseId] = useState(null);
+
+  async function handleOpenCourse(course) {
+    if (!isTrainer) {
+      navigate(openCoursePath(course.id));
+      return;
+    }
+
+    if (openingCourseId) return;
+
+    setOpeningCourseId(course.id);
+    try {
+      const assignedClasses = await classService.listTrainer({
+        courseId: course.id,
+        page: 0,
+        size: 100,
+      });
+      const classes = assignedClasses.content || [];
+      const assignedClass =
+        classes.find((item) => String(item.status).toLowerCase() === "ongoing") ||
+        classes.find((item) => String(item.status).toLowerCase() === "upcoming") ||
+        classes[0];
+
+      if (!assignedClass?.id) {
+        throw new Error("No assigned class was found for this course.");
+      }
+
+      navigate(
+        `/staff/classrooms/${assignedClass.id}/workspace?tab=curriculum`,
+      );
+    } catch (error) {
+      toast.error(
+        error?.message || "Could not open the curriculum for this course.",
+      );
+    } finally {
+      setOpeningCourseId(null);
+    }
+  }
   const [pageRequest, setPageRequest] = useState(0);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [reloadRequest, setReloadRequest] = useState(0);
@@ -666,20 +704,20 @@ export function AdminCoursesPage() {
                       </td>
                       <td data-label="Actions">
                         <div className="course-management__actions">
-                          <Link
-                            to={openCoursePath(course.id)}
+                          <button
+                            type="button"
                             className="course-management__action course-management__action--primary"
-                            title={
+                            title={isTrainer ? "Open curriculum" : "Open"}
+                            aria-label={
                               isTrainer
-                                ? "View classes"
-                                : canOpenMasterCurriculum
-                                  ? "Open master curriculum"
-                                  : "Open"
+                                ? `Open curriculum for ${course.title}`
+                                : `Open ${course.title}`
                             }
-                            aria-label={`Open ${course.title}`}
+                            disabled={Boolean(openingCourseId)}
+                            onClick={() => handleOpenCourse(course)}
                           >
-                            Open
-                          </Link>
+                            {openingCourseId === course.id ? "Opening..." : "Open"}
+                          </button>
                           <RowActionsMenu
                             course={course}
                             basePath={courseBasePath}
@@ -742,7 +780,12 @@ export function AdminCoursesPage() {
                       <CourseStatusBadge status={course.status} />
                     </div>
                     <div className="course-management__card-actions">
-                      <Button size="sm" onClick={() => navigate(openCoursePath(course.id))}>
+                      <Button
+                        size="sm"
+                        loading={openingCourseId === course.id}
+                        disabled={Boolean(openingCourseId)}
+                        onClick={() => handleOpenCourse(course)}
+                      >
                         Open
                       </Button>
                       <RowActionsMenu

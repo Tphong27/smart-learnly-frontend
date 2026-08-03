@@ -380,6 +380,11 @@
   background: #f7f9fa;
 }
 
+.course-management__action:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}
+
 .course-management__action--primary {
   color: var(--primary-dark);
 }

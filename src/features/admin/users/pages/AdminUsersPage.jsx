@@ -14,6 +14,10 @@ import { AdminFilterToolbar } from "@/features/admin/components/AdminFilterToolb
 import Pagination from "@/shared/components/Pagination";
 import { userService } from "@/services";
 import { formatDateTime, formatLabel } from "@/shared/utils/formatters";
+import {
+    isValidOptionalVietnameseMobilePhone,
+    VIETNAMESE_MOBILE_PHONE_MESSAGE,
+} from "@/shared/utils/phone-validation";
 import { DEFAULT_PAGE_SIZE } from "@/shared/constants/pagination";
 import "../../admin-shared.css";
 
@@ -34,8 +38,10 @@ const userFormSchema = z.object({
     phoneNumber: z
         .string()
         .trim()
-        .max(20, "Phone number must be at most 20 characters")
-        .or(z.literal(""))
+        .refine(
+            isValidOptionalVietnameseMobilePhone,
+            VIETNAMESE_MOBILE_PHONE_MESSAGE,
+        )
         .optional(),
     role: z.enum(USER_ROLES, { message: "Role is required" }),
     status: z.enum(USER_STATUSES, { message: "Status is required" }),
@@ -189,6 +195,11 @@ function UserFormModal({ open, mode, initial, onClose, onSaved }) {
 
                     <FormField
                         label="Phone number"
+                        type="tel"
+                        inputMode="tel"
+                        autoComplete="tel"
+                        placeholder="0901234567 or +84901234567"
+                        helperText="Use a Vietnamese mobile number beginning with 0 or +84."
                         registration={register("phoneNumber")}
                         error={errors.phoneNumber?.message}
                     />
