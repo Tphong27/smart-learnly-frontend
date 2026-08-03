@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Bell, LogOut, User, ChevronDown, Menu } from "lucide-react";
+import { LogOut, User, ChevronDown, Menu } from "lucide-react";
 import { getDashboardPathByRole } from "@/app/routes/dashboard-path";
 import { normalizeRole } from "@/shared/constants/roles";
 import { SmartLearnlyMark } from "@/shared/components/SmartLearnlyMark";
+import { NotificationBell } from "@/features/notification";
 import "./Header.css";
 
 function getInitials(name) {
@@ -27,7 +28,6 @@ export function Header({
 }) {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
-  const [notificationOpen, setNotificationOpen] = useState(false);
   const [isCompact, setIsCompact] = useState(() => window.scrollY > 24);
   const actionsRef = useRef(null);
 
@@ -44,16 +44,14 @@ export function Header({
     function handleClick(event) {
       if (actionsRef.current && !actionsRef.current.contains(event.target)) {
         setOpen(false);
-        setNotificationOpen(false);
       }
     }
     function handleEscape(event) {
       if (event.key === "Escape") {
         setOpen(false);
-        setNotificationOpen(false);
       }
     }
-    if (open || notificationOpen) {
+    if (open) {
       document.addEventListener("mousedown", handleClick);
       document.addEventListener("keydown", handleEscape);
       return () => {
@@ -62,7 +60,7 @@ export function Header({
       };
     }
     return undefined;
-  }, [notificationOpen, open]);
+  }, [open]);
 
   useEffect(() => {
     let frameId = null;
@@ -134,33 +132,7 @@ export function Header({
 
         {/* Right: Actions + Profile */}
         <div className="app-header__actions" ref={actionsRef}>
-          {/* Notification */}
-          <div className="app-header__notification">
-            <button
-              type="button"
-              className="app-header__icon-button"
-              aria-label="Notifications"
-              aria-expanded={notificationOpen}
-              aria-haspopup="dialog"
-              onClick={() => {
-                setNotificationOpen((value) => !value);
-                setOpen(false);
-              }}
-            >
-              <Bell size={18} />
-              <span className="app-header__notification-dot" />
-            </button>
-            {notificationOpen && (
-              <div
-                className="app-header__notification-panel"
-                role="dialog"
-                aria-label="Notifications"
-              >
-                <strong>Notifications</strong>
-                <p>You are all caught up.</p>
-              </div>
-            )}
-          </div>
+          <NotificationBell variant="app" onOpen={() => setOpen(false)} />
 
           <div className="app-header__divider" />
 
@@ -170,7 +142,6 @@ export function Header({
               type="button"
               onClick={() => {
                 setOpen((value) => !value);
-                setNotificationOpen(false);
               }}
               className={`app-header__user-button ${open ? "app-header__user-button--active" : ""}`}
               aria-expanded={open}

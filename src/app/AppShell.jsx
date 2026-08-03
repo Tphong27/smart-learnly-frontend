@@ -49,6 +49,11 @@ import {
   PersonalFlashcardSetDetailPage,
   PersonalFlashcardStudyPage,
 } from "@/features/personal-flashcards";
+import {
+  NotificationCenterPage,
+  NotificationDetailPage,
+  NotificationProvider,
+} from "@/features/notification";
 
 function PersonalFlashcardLayoutBoundary() {
   const user = getCurrentUser();
@@ -63,6 +68,25 @@ function PersonalFlashcardLayoutBoundary() {
   }
 
   return <Navigate to="/403" replace />;
+}
+
+function NotificationLayoutBoundary() {
+  const user = getCurrentUser();
+  const normalizedRole = normalizeRole(user?.role);
+
+  if (normalizedRole === ROLES.TRAINEE) {
+    return <TraineeLayout />;
+  }
+
+  if (normalizedRole === ROLES.ADMIN) {
+    return <AppLayout />;
+  }
+
+  if (isRoleAllowed(normalizedRole, [ROLES.TRAINER, ROLES.TMO, ROLES.SME])) {
+    return <TrainerLayout />;
+  }
+
+  return <AppLayout />;
 }
 
 const appRoutes = [
@@ -202,6 +226,16 @@ const appRoutes = [
         children: [{ path: "/profile", element: <ProfilePage /> }],
       },
       {
+        element: <NotificationLayoutBoundary />,
+        children: [
+          { path: "/notifications", element: <NotificationCenterPage /> },
+          {
+            path: "/notifications/:notificationId",
+            element: <NotificationDetailPage />,
+          },
+        ],
+      },
+      {
         element: <RoleGuard allowedRoles={PERSONAL_FLASHCARD_ROLES} />,
         children: [
           {
@@ -249,10 +283,10 @@ function RoutedApp() {
     /^\/trainers\/[^/]+$/.test(pathname);
 
   return (
-    <>
+    <NotificationProvider>
       <AppRoutes />
       {showPublicFooter && <SiteFooter />}
-    </>
+    </NotificationProvider>
   );
 }
 
