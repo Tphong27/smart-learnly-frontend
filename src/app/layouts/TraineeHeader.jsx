@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from "react";
-import { Bell, ChevronDown, LogOut, Receipt, User } from "lucide-react";
+import { ChevronDown, LogOut, Receipt, User } from "lucide-react";
 import { Link } from "react-router-dom";
 import { SmartLearnlyMark } from "@/shared/components/SmartLearnlyMark";
 import { HeaderCourseSearch } from "@/shared/components/HeaderCourseSearch";
 import { ROLES } from "@/shared/constants/roles";
 import { getDashboardPathByRole } from "@/app/routes/dashboard-path";
 import { courseService } from "@/services";
+import { NotificationBell } from "@/features/notification";
 import "./TraineeLayout.css";
 
 function getDisplayName(user) {
@@ -45,7 +46,6 @@ export function TraineeHeader({ user, onLogout, roleLabel }) {
   const [categories, setCategories] = useState([]);
   const [categoriesLoading, setCategoriesLoading] = useState(true);
   const [categoriesOpen, setCategoriesOpen] = useState(false);
-  const [notificationOpen, setNotificationOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
 
   const displayName = getDisplayName(user);
@@ -54,7 +54,7 @@ export function TraineeHeader({ user, onLogout, roleLabel }) {
   const dashboardPath = getDashboardPathByRole(user?.role);
 
   useEffect(() => {
-    if (!categoriesOpen && !notificationOpen && !profileOpen) return undefined;
+    if (!categoriesOpen && !profileOpen) return undefined;
 
     function closeMenus(event) {
       const outsideCategories = !categoriesRef.current?.contains(event.target);
@@ -62,7 +62,6 @@ export function TraineeHeader({ user, onLogout, roleLabel }) {
 
       if (outsideCategories && outsideActions) {
         setCategoriesOpen(false);
-        setNotificationOpen(false);
         setProfileOpen(false);
       }
     }
@@ -70,7 +69,6 @@ export function TraineeHeader({ user, onLogout, roleLabel }) {
     function handleEscape(event) {
       if (event.key === "Escape") {
         setCategoriesOpen(false);
-        setNotificationOpen(false);
         setProfileOpen(false);
       }
     }
@@ -81,7 +79,7 @@ export function TraineeHeader({ user, onLogout, roleLabel }) {
       document.removeEventListener("pointerdown", closeMenus);
       document.removeEventListener("keydown", handleEscape);
     };
-  }, [categoriesOpen, notificationOpen, profileOpen]);
+  }, [categoriesOpen, profileOpen]);
 
   useEffect(() => {
     let mounted = true;
@@ -131,7 +129,6 @@ export function TraineeHeader({ user, onLogout, roleLabel }) {
             aria-haspopup="menu"
             onClick={() => {
               setCategoriesOpen((current) => !current);
-              setNotificationOpen(false);
               setProfileOpen(false);
             }}
           >
@@ -186,33 +183,13 @@ export function TraineeHeader({ user, onLogout, roleLabel }) {
         </div>
 
         <div className="trainee-header__actions" ref={actionsRef}>
-          <div className="trainee-header__menu-anchor">
-            <button
-              type="button"
-              className="trainee-header__icon-button"
-              aria-label="Notifications"
-              aria-expanded={notificationOpen}
-              aria-haspopup="dialog"
-              onClick={() => {
-                setNotificationOpen((current) => !current);
-                setProfileOpen(false);
-              }}
-            >
-              <Bell size={20} />
-              <span className="trainee-header__notification-dot" />
-            </button>
-
-            {notificationOpen && (
-              <div
-                className="trainee-header__popover trainee-header__notifications"
-                role="dialog"
-                aria-label="Notifications"
-              >
-                <strong>Notifications</strong>
-                <p>You are all caught up.</p>
-              </div>
-            )}
-          </div>
+          <NotificationBell
+            variant="trainee"
+            onOpen={() => {
+              setCategoriesOpen(false);
+              setProfileOpen(false);
+            }}
+          />
 
           <div className="trainee-header__menu-anchor">
             <button
@@ -222,7 +199,7 @@ export function TraineeHeader({ user, onLogout, roleLabel }) {
               aria-haspopup="menu"
               onClick={() => {
                 setProfileOpen((current) => !current);
-                setNotificationOpen(false);
+                setCategoriesOpen(false);
               }}
             >
               {user?.avatarUrl ? (

@@ -31,3 +31,7 @@ export { classAnalyticsService } from "./class-analytics.service";
 export { openingScheduleService } from "./opening-schedule.service";
 export { scheduleService } from "./schedule.service";
 export { videoAiService } from "./video-ai.service";
+export {
+  notificationService,
+  NOTIFICATION_TYPES,
+} from "./notification.service";

@@ -230,18 +230,6 @@
     transform: none;
 }
 
-.app-header__notification-dot {
-    position: absolute;
-    top: 8px;
-    right: 8px;
-    width: 8px;
-    height: 8px;
-    background: #ef4444;
-    border: 2px solid #ffffff;
-    border-radius: 50%;
-    box-shadow: 0 2px 4px rgba(239, 68, 68, 0.3);
-}
-
 .app-header__divider {
     width: 1px;
     height: 28px;
@@ -504,12 +492,6 @@
     background: #e8eaed;
     transform: none;
     box-shadow: none;
-}
-
-.app-header--embedded .app-header__notification-dot {
-    top: 7px;
-    right: 7px;
-    background: var(--primary, #5624d0);
 }
 
 .app-header--embedded .app-header__divider {
