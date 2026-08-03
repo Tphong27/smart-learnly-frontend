@@ -143,6 +143,7 @@ export function TraineeFlashTestListPage({ variant = "flash" }) {
   const isFlashMode = variant === "flash";
   const isAssignmentMode = variant === "assignment";
   const courseId = searchParams.get("courseId") || "";
+  const classId = searchParams.get("classId") || "";
   const takePath = isAssignmentMode
     ? "/learning/assignments/take"
     : isFlashMode
@@ -192,14 +193,27 @@ export function TraineeFlashTestListPage({ variant = "flash" }) {
     setLoading(true);
     try {
       const requests = [
-        isAssignmentMode ? Promise.resolve([]) : testService.getAll(),
+        isAssignmentMode
+          ? Promise.resolve([])
+            : testService.getAvailable({
+              ...(courseId && { courseId }),
+              ...(classId && { classId }),
+              isFlashtest: isFlashMode,
+            }),
       ];
       if (isFlashMode) {
-        requests.push(assignmentService.getAvailable({ isFlashtest: true }));
+        requests.push(
+          assignmentService.getAvailable({
+            ...(courseId && { courseId }),
+            ...(classId && { classId }),
+            isFlashtest: true,
+          }),
+        );
       } else if (isAssignmentMode) {
         requests.push(
           assignmentService.getAvailable({
             ...(courseId && { courseId }),
+            ...(classId && { classId }),
             isFlashtest: false,
           }),
         );
@@ -291,7 +305,7 @@ export function TraineeFlashTestListPage({ variant = "flash" }) {
     } finally {
       setLoading(false);
     }
-  }, [courseId, isAssignmentMode, isFlashMode, itemFilter, studentId]);
+  }, [classId, courseId, isAssignmentMode, isFlashMode, itemFilter, studentId]);
 
   useEffect(() => {
     const timer = window.setTimeout(loadAvailableTests, 0);

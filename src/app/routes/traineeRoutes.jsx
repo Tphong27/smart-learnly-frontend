@@ -75,7 +75,7 @@ function getTraineeRoutes() {
               element: (
                 <CourseListPage
                   pageSize={6}
-                  excludeEnrolled={true}
+                  defaultSort="NEWEST"
                   detailState={{
                     from: "/learning/courses",
                     backLabel: "Back to Course Catalog",
