@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { Bot, KeyRound, Mail, Video } from "lucide-react";
+import { Bot, CreditCard, KeyRound, Mail, Video } from "lucide-react";
 import { EmailSettingsSection } from "../components/EmailSettingsSection";
 import { OAuthSettingsSection } from "../components/OAuthSettingsSection";
 import { GoogleMeetSettingsSection } from "../components/GoogleMeetSettingsSection";
+import { SePayBankDisplaySettingsSection } from "../components/SePayBankDisplaySettingsSection";
 import { AiIntegrationsSettingsSection } from "../components/AiIntegrationsSettingsSection";
 import "../../admin-shared.css";
 
@@ -25,6 +26,12 @@ const TABS = [
         label: "Google Meet",
         icon: Video,
         render: () => <GoogleMeetSettingsSection />,
+    },
+    {
+        key: "sepay-bank",
+        label: "SePay Bank",
+        icon: CreditCard,
+        render: () => <SePayBankDisplaySettingsSection />,
     },
     {
         key: "ai-integrations",

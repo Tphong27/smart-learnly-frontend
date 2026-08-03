@@ -41,6 +41,31 @@ export const systemSettingsService = {
     return unwrap(response)
   },
 
+  async getSePayBankDisplaySettings() {
+    const response = await apiClient.get('/admin/settings/integrations/sepay/bank-display')
+    return unwrap(response)
+  },
+
+  async updateSePayBankDisplaySettings(payload) {
+    const response = await apiClient.put('/admin/settings/integrations/sepay/bank-display', payload)
+    return unwrap(response)
+  },
+
+  async getSePayRuntimeSettings() {
+    const response = await apiClient.get('/admin/settings/integrations/sepay/runtime')
+    return unwrap(response)
+  },
+
+  async updateSePayRuntimeSettings(payload) {
+    const response = await apiClient.put('/admin/settings/integrations/sepay/runtime', payload)
+    return unwrap(response)
+  },
+
+  async runSePayReconciliationNow() {
+    const response = await apiClient.post('/admin/settings/integrations/sepay/reconciliation/run')
+    return unwrap(response)
+  },
+
   async getQuestionImageImportSettings() {
     const response = await apiClient.get('/admin/settings/ai/question-image-import')
     return unwrap(response)

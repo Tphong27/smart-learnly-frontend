@@ -39,6 +39,29 @@ export const googleMeetSettingsSchema = z.object({
   refreshToken: z.string().max(1000, 'Refresh token must be at most 1000 characters').optional(),
 })
 
+export const sePayBankDisplaySettingsSchema = z.object({
+  accountNumber: z
+    .string({ message: 'Account number is required' })
+    .trim()
+    .min(1, 'Account number is required')
+    .max(100, 'Account number must be at most 100 characters'),
+  bankName: z
+    .string({ message: 'Bank name is required' })
+    .trim()
+    .min(1, 'Bank name is required')
+    .max(100, 'Bank name must be at most 100 characters'),
+  accountName: z
+    .string({ message: 'Account name is required' })
+    .trim()
+    .min(1, 'Account name is required')
+    .max(150, 'Account name must be at most 150 characters'),
+})
+
+export const sePayRuntimeSettingsSchema = z.object({
+  apiToken: z.string().max(1000, 'API token must be at most 1000 characters').optional(),
+  webhookSecret: z.string().max(1000, 'Webhook secret must be at most 1000 characters').optional(),
+})
+
 export const questionImageImportSettingsSchema = z.object({
   enabled: z.boolean(),
   provider: z
