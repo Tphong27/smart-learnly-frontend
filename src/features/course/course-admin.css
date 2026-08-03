@@ -1139,10 +1139,6 @@
     padding: 24px;
 }
 
-.sl-cm-lesson-create-modal .sl-cm-checkbox {
-    background: var(--sl-surface);
-}
-
 .sl-cm-flashcard-create {
     display: grid;
     gap: 14px;

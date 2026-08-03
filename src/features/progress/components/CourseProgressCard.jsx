@@ -21,6 +21,17 @@ function getLearningPath(course) {
   return `/learning/courses/${courseId}?${params.toString()}`;
 }
 
+function getScopedListPath(basePath, course) {
+  const params = new URLSearchParams();
+  const courseId = course.courseId || course.id;
+
+  if (courseId) params.set("courseId", courseId);
+  if (course.classId) params.set("classId", course.classId);
+
+  const query = params.toString();
+  return query ? `${basePath}?${query}` : basePath;
+}
+
 export function CourseProgressCard({ course }) {
   const [expanded, setExpanded] = useState(false);
   const detailsId = useId();
@@ -34,7 +45,7 @@ export function CourseProgressCard({ course }) {
     ? course.className || "Unnamed class"
     : course.title;
 
-  const learningTypeLabel = isClassLearning ? "Offline class" : "Online course";
+  const learningTypeLabel = isClassLearning ? "Class course" : "Online course";
 
   const progressLabel = isClassLearning ? "Class progress" : "Course progress";
 
@@ -187,7 +198,7 @@ export function CourseProgressCard({ course }) {
             completed={quiz.completed}
             total={quiz.total}
             percent={quiz.percent}
-            to="/learning/tests"
+            to={getScopedListPath("/learning/tests", course)}
           />
 
           <ProgressMetric
@@ -195,7 +206,7 @@ export function CourseProgressCard({ course }) {
             completed={flashcard.completed}
             total={flashcard.total}
             percent={flashcard.percent}
-            to={`/learning/flashcards?courseId=${course.courseId}`}
+            to={getScopedListPath("/learning/flashcards", course)}
           />
 
           <ProgressMetric
@@ -203,7 +214,7 @@ export function CourseProgressCard({ course }) {
             completed={assignment.completed}
             total={assignment.total}
             percent={assignment.percent}
-            to={`/learning/assignments?courseId=${course.courseId}`}
+            to={getScopedListPath("/learning/assignments", course)}
           />
         </div>
       )}
