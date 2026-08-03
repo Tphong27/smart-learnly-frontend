@@ -522,8 +522,8 @@ export function ClassDetailPage({
             </div>
 
             <p>
-              Future dates produce Upcoming. A date range containing today
-              produces Ongoing. Past dates produce Completed.
+              A class stays Upcoming through its start date, becomes Ongoing
+              on the following day, and becomes Completed after its end date.
             </p>
           </div>
         )}

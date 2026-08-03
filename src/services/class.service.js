@@ -119,13 +119,20 @@ export const classService = {
   },
 
   // Placeholder methods for trainee-specific APIs
-  async listTrainer({ page = 0, size = 20, keyword = "", status = "" } = {}) {
+  async listTrainer({
+    page = 0,
+    size = 20,
+    keyword = "",
+    status = "",
+    courseId = "",
+  } = {}) {
     const response = await apiClient.get("/trainer/classes", {
       params: {
         page,
         size,
         ...(keyword && { keyword }),
         ...(status && { status }),
+        ...(courseId && { courseId }),
       },
     });
 

@@ -369,10 +369,10 @@ export function QuizQuestionsPanel({
             <Button
               variant="secondary"
               leftIcon={<Upload size={15} />}
-              onClick={() => setBankImportOpen((current) => !current)}
+              onClick={() => setBankImportOpen(true)}
               disabled={mutationDisabled}
             >
-              {bankImportOpen ? "Hide question bank" : "Import from question bank"}
+              Import from question bank
             </Button>
             <Button
               variant="secondary"
@@ -420,14 +420,13 @@ export function QuizQuestionsPanel({
       </section>
 
       {bankImportOpen && (
-        <section className="admin-card quiz-question-panel__bank">
-          <CourseQuestionImportPanel
-            courseId={sourceCourseId}
-            existingQuestions={questions}
-            onImport={handleImported}
-            onClose={() => setBankImportOpen(false)}
-          />
-        </section>
+        <CourseQuestionImportPanel
+          open
+          courseId={sourceCourseId}
+          existingQuestions={questions}
+          onImport={handleImported}
+          onClose={() => setBankImportOpen(false)}
+        />
       )}
 
       <QuizQuestionEditModal

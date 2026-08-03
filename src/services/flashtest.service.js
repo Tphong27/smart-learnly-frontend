@@ -169,6 +169,10 @@ export const testService = {
     const response = await apiClient.get("/tests/mine", { params });
     return normalizeList(response);
   },
+  async getAvailable(params = {}) {
+    const response = await apiClient.get("/tests/available", { params });
+    return normalizeList(response);
+  },
   async getById(id) {
     const response = await apiClient.get(`/tests/${id}`);
     return unwrap(response);

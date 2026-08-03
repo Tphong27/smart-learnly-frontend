@@ -1,4 +1,8 @@
 import { z } from 'zod'
+import {
+  isValidOptionalVietnameseMobilePhone,
+  VIETNAMESE_MOBILE_PHONE_MESSAGE,
+} from '@/shared/utils/phone-validation'
 
 export const passwordRules = {
   minLength: 8,
@@ -76,8 +80,10 @@ export const profileSchema = z.object({
   phoneNumber: z
     .string()
     .trim()
-    .regex(/^\+?[0-9]{9,15}$/, 'Phone number must contain 9 to 15 digits')
-    .or(z.literal(''))
+    .refine(
+      isValidOptionalVietnameseMobilePhone,
+      VIETNAMESE_MOBILE_PHONE_MESSAGE,
+    )
     .optional(),
   bio: z
     .string()

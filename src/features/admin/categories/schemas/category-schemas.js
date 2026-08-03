@@ -22,17 +22,4 @@ export const categorySchema = z.object({
     .optional(),
   parentId: z.string().uuid().or(z.literal('')).optional(),
   isActive: z.boolean().optional(),
-  sortOrder: z
-    .preprocess(
-      (val) => {
-        if (val === '' || val === null || val === undefined) return 0
-        if (typeof val === 'number' && Number.isNaN(val)) return 0
-        return val
-      },
-      z
-        .number({ message: 'Display order must be a number' })
-        .int('Display order must be an integer')
-        .min(0, 'Display order cannot be negative'),
-    )
-    .optional(),
 })
