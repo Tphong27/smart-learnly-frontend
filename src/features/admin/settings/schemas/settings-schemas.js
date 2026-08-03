@@ -57,6 +57,11 @@ export const sePayBankDisplaySettingsSchema = z.object({
     .max(150, 'Account name must be at most 150 characters'),
 })
 
+export const sePayRuntimeSettingsSchema = z.object({
+  apiToken: z.string().max(1000, 'API token must be at most 1000 characters').optional(),
+  webhookSecret: z.string().max(1000, 'Webhook secret must be at most 1000 characters').optional(),
+})
+
 export const questionImageImportSettingsSchema = z.object({
   enabled: z.boolean(),
   provider: z
