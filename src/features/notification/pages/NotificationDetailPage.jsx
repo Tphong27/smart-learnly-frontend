@@ -12,10 +12,10 @@ import { notificationService } from "@/services";
 import { useNotifications } from "../NotificationProvider";
 import {
   formatNotificationTime,
+  getNotificationActionDestination,
   getNotificationReadState,
   getNotificationTypeLabel,
   isUnreadNotification,
-  resolveSafeNotificationActionUrl,
   withNotificationRead,
 } from "../notification-utils";
 import "./NotificationPages.css";
@@ -62,9 +62,9 @@ export function NotificationDetailPage() {
     mutationVersion,
   } = useNotifications();
 
-  const safeActionUrl = useMemo(
-    () => resolveSafeNotificationActionUrl(notification?.actionUrl),
-    [notification?.actionUrl],
+  const actionDestination = useMemo(
+    () => getNotificationActionDestination(notification),
+    [notification],
   );
 
   const loadNotification = useCallback(async () => {
@@ -136,7 +136,7 @@ export function NotificationDetailPage() {
   }
 
   async function handleOpenAction() {
-    if (!notification || !safeActionUrl) return;
+    if (!notification || !actionDestination) return;
 
     setActionError(null);
     const previousNotification = notification;
@@ -149,7 +149,7 @@ export function NotificationDetailPage() {
     try {
       const saved = await recordClick(notification);
       if (saved) setNotification(saved);
-      navigate(safeActionUrl);
+      navigate(actionDestination);
     } catch (clickError) {
       setNotification(previousNotification);
       setActionError(
@@ -248,7 +248,7 @@ export function NotificationDetailPage() {
                 <Archive size={16} aria-hidden="true" />
                 Archive
               </button>
-              {safeActionUrl && (
+              {actionDestination && (
                 <button
                   type="button"
                   className="notifications-action notifications-action--primary"
