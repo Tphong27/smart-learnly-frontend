@@ -41,6 +41,16 @@ export const systemSettingsService = {
     return unwrap(response)
   },
 
+  async getSePayBankDisplaySettings() {
+    const response = await apiClient.get('/admin/settings/integrations/sepay/bank-display')
+    return unwrap(response)
+  },
+
+  async updateSePayBankDisplaySettings(payload) {
+    const response = await apiClient.put('/admin/settings/integrations/sepay/bank-display', payload)
+    return unwrap(response)
+  },
+
   async getQuestionImageImportSettings() {
     const response = await apiClient.get('/admin/settings/ai/question-image-import')
     return unwrap(response)
