@@ -3,11 +3,18 @@ import { ChevronDown, LogOut, Receipt, User } from "lucide-react";
 import { Link } from "react-router-dom";
 import { SmartLearnlyMark } from "@/shared/components/SmartLearnlyMark";
 import { HeaderCourseSearch } from "@/shared/components/HeaderCourseSearch";
-import { ROLES } from "@/shared/constants/roles";
+import {
+  isRoleAllowed,
+  normalizeRole,
+  PROFILE_ROLES,
+  ROLES,
+} from "@/shared/constants/roles";
 import { getDashboardPathByRole } from "@/app/routes/dashboard-path";
 import { courseService } from "@/services";
 import { NotificationBell } from "@/features/notification";
 import "./TraineeLayout.css";
+
+const STAFF_HEADER_ROLES = [ROLES.TRAINER, ROLES.SME, ROLES.TMO];
 
 function getDisplayName(user) {
   return (
@@ -52,6 +59,9 @@ export function TraineeHeader({ user, onLogout, roleLabel }) {
   const initials = getInitials(displayName);
   const roleText = roleLabel || getRoleLabel(user?.role);
   const dashboardPath = getDashboardPathByRole(user?.role);
+  const normalizedRole = normalizeRole(user?.role);
+  const isStaffHeader = isRoleAllowed(normalizedRole, STAFF_HEADER_ROLES);
+  const canAccessProfile = isRoleAllowed(normalizedRole, PROFILE_ROLES);
 
   useEffect(() => {
     if (!categoriesOpen && !profileOpen) return undefined;
@@ -82,6 +92,8 @@ export function TraineeHeader({ user, onLogout, roleLabel }) {
   }, [categoriesOpen, profileOpen]);
 
   useEffect(() => {
+    if (isStaffHeader) return undefined;
+
     let mounted = true;
 
     async function loadCategories() {
@@ -99,7 +111,7 @@ export function TraineeHeader({ user, onLogout, roleLabel }) {
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [isStaffHeader]);
 
   return (
     <header className="trainee-header">
@@ -114,8 +126,16 @@ export function TraineeHeader({ user, onLogout, roleLabel }) {
         </Link>
 
         <HeaderCourseSearch
-          includeOpeningClasses
-          placeholder="Search courses, classes, topics, or skills..."
+          searchScope={isStaffHeader ? "staff" : "public"}
+          userRole={normalizedRole}
+          includeOpeningClasses={!isStaffHeader}
+          placeholder={
+            isStaffHeader
+              ? normalizedRole === ROLES.SME
+                ? "Search assigned course content..."
+                : "Search course content and classrooms..."
+              : "Search courses, classes, topics, or skills..."
+          }
           classDetailPath="/opening-schedule"
           classReturnPath="/#opening-schedule"
           classBackLabel="Back to homepage"
@@ -146,41 +166,56 @@ export function TraineeHeader({ user, onLogout, roleLabel }) {
               role="menu"
               aria-label="Course categories"
             >
-              <Link
-                to="/learning/courses"
-                role="menuitem"
-                onClick={() => setCategoriesOpen(false)}
+              <span>Categories</span>
+              <ChevronDown
+                size={16}
+                className={categoriesOpen ? "is-open" : undefined}
+                aria-hidden="true"
+              />
+            </button>
+
+            {categoriesOpen && (
+              <div
+                className="trainee-header__popover trainee-header__categories-menu"
+                role="menu"
+                aria-label="Course categories"
               >
-                All categories
-              </Link>
-              {categoriesLoading ? (
-                <span
-                  className="trainee-header__categories-status"
-                  role="status"
+                <Link
+                  to="/learning/courses"
+                  role="menuitem"
+                  onClick={() => setCategoriesOpen(false)}
                 >
-                  Loading categories…
-                </span>
-              ) : categories.length > 0 ? (
-                categories.map((category) => (
-                  <Link
-                    key={category.id || category.slug || category.name}
-                    to={`/learning/courses?categorySlug=${encodeURIComponent(
-                      category.slug || category.id,
-                    )}`}
-                    role="menuitem"
-                    onClick={() => setCategoriesOpen(false)}
+                  All categories
+                </Link>
+                {categoriesLoading ? (
+                  <span
+                    className="trainee-header__categories-status"
+                    role="status"
                   >
-                    {category.name}
-                  </Link>
-                ))
-              ) : (
-                <span className="trainee-header__categories-status">
-                  No categories available.
-                </span>
-              )}
-            </div>
-          )}
-        </div>
+                    Loading categories…
+                  </span>
+                ) : categories.length > 0 ? (
+                  categories.map((category) => (
+                    <Link
+                      key={category.id || category.slug || category.name}
+                      to={`/learning/courses?categorySlug=${encodeURIComponent(
+                        category.slug || category.id,
+                      )}`}
+                      role="menuitem"
+                      onClick={() => setCategoriesOpen(false)}
+                    >
+                      {category.name}
+                    </Link>
+                  ))
+                ) : (
+                  <span className="trainee-header__categories-status">
+                    No categories available.
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
+        )}
 
         <div className="trainee-header__actions" ref={actionsRef}>
           <NotificationBell
@@ -223,21 +258,25 @@ export function TraineeHeader({ user, onLogout, roleLabel }) {
                   <strong>{displayName}</strong>
                   <span>{user?.email || `${roleText} account`}</span>
                 </div>
-                <Link
-                  to="/profile"
-                  role="menuitem"
-                  onClick={() => setProfileOpen(false)}
-                >
-                  <User size={17} /> Profile
-                </Link>
-                <Link
-                  to="/learning/transactions"
-                  role="menuitem"
-                  onClick={() => setProfileOpen(false)}
-                >
-                  <Receipt size={17} />
-                  My Transactions
-                </Link>
+                {canAccessProfile && (
+                  <Link
+                    to="/profile"
+                    role="menuitem"
+                    onClick={() => setProfileOpen(false)}
+                  >
+                    <User size={17} /> Profile
+                  </Link>
+                )}
+                {!isStaffHeader && (
+                  <Link
+                    to="/learning/transactions"
+                    role="menuitem"
+                    onClick={() => setProfileOpen(false)}
+                  >
+                    <Receipt size={17} />
+                    My Transactions
+                  </Link>
+                )}
 
                 <button
                   type="button"

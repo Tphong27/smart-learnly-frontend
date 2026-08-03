@@ -241,7 +241,14 @@ export function MyCoursesPage() {
               >
                 {filteredEnrolledCourses.map((course) => (
                   <EnrolledCourseCard
-                    key={course.enrollmentId || course.id || course.slug}
+                    key={[
+                      course.learningType || "COURSE",
+                      course.enrolledClass?.id ||
+                        course.classId ||
+                        course.enrollmentId ||
+                        course.id ||
+                        course.slug,
+                    ].join(":")}
                     course={course}
                     viewMode={enrolledViewMode}
                   />

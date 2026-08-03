@@ -140,7 +140,10 @@ export function StaffFlashTestListPage({ variant = "flash" }) {
             const [testResult, assignmentResult] = await Promise.allSettled([
                 isAssignmentMode
                     ? Promise.resolve([])
-                    : testService.getMine({ ...(courseId && { courseId }) }),
+                    : testService.getMine({
+                          ...(courseId && { courseId }),
+                          ...(classId && { classId }),
+                      }),
                 isFlashMode || isAssignmentMode
                     ? assignmentService.getMine({
                           ...(courseId && { courseId }),
@@ -165,7 +168,7 @@ export function StaffFlashTestListPage({ variant = "flash" }) {
         } finally {
             setLoading(false);
         }
-    }, [courseId, isAssignmentMode, isFlashMode, itemFilter]);
+    }, [classId, courseId, isAssignmentMode, isFlashMode, itemFilter]);
 
     useEffect(() => {
         const timer = window.setTimeout(loadAllFlashTests, 0);

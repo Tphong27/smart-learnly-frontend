@@ -43,7 +43,6 @@ function toNumber(value) {
 
 function createProgressMap(progressCourses = []) {
     const byCourseAndClass = new Map();
-    const byCourse = new Map();
 
     progressCourses.forEach((course) => {
         const courseId = getCourseId(course);
@@ -51,20 +50,15 @@ function createProgressMap(progressCourses = []) {
         if (!courseId) return;
 
         byCourseAndClass.set(`${courseId}:${classId}`, course);
-        if (!byCourse.has(String(courseId)))
-            byCourse.set(String(courseId), course);
     });
 
-    return { byCourseAndClass, byCourse };
+    return byCourseAndClass;
 }
 
 function enrichCourse(course, progressMap) {
     const courseId = getCourseId(course);
     const classId = getClassId(course);
-    const progress =
-        progressMap.byCourseAndClass.get(`${courseId}:${classId}`) ||
-        progressMap.byCourse.get(String(courseId)) ||
-        {};
+    const progress = progressMap.get(`${courseId}:${classId}`) || {};
 
     return {
         ...course,
@@ -438,6 +432,10 @@ export function TraineeDashboardPage() {
                                 <CourseThumbnail course={course} />
                                 <div className="trainee-dashboard-course-row__content">
                                     <span className="trainee-dashboard-course-row__category">
+                                        {course.classId
+                                            ? "Class course"
+                                            : "Online course"}
+                                        {" · "}
                                         {course.categoryName}
                                     </span>
                                     <h3>{course.title}</h3>

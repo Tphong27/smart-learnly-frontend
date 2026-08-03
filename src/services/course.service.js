@@ -46,6 +46,16 @@ function normalizeCourse(payload) {
   return data?.course ?? data;
 }
 
+function isOnlineLearningEnrollment(course) {
+  const learningType = String(course?.learningType || "").toUpperCase();
+
+  if (learningType) {
+    return learningType === "COURSE" || learningType === "ONLINE";
+  }
+
+  return !course?.classId && !course?.enrolledClass?.id;
+}
+
 export const courseService = {
   async listAdmin({
     page = 0,
@@ -226,7 +236,12 @@ export const courseService = {
   async getMyEnrolledCourseIds() {
     const courses = await this.getMyCourses();
 
-    return new Set(courses.map((course) => course.id).filter(Boolean));
+    return new Set(
+      courses
+        .filter(isOnlineLearningEnrollment)
+        .map((course) => course.id)
+        .filter(Boolean),
+    );
   },
 
   async isCourseEnrolled(courseIdOrSlug) {
@@ -236,7 +251,7 @@ export const courseService = {
 
     const courses = await this.getMyCourses();
 
-    return courses.some((course) => {
+    return courses.filter(isOnlineLearningEnrollment).some((course) => {
       return course.id === courseIdOrSlug || course.slug === courseIdOrSlug;
     });
   },

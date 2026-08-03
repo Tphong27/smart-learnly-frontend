@@ -77,6 +77,7 @@ export function CourseListPage({
   showFilters = true,
   detailState,
   excludeEnrolled = false,
+  defaultSort = "POPULAR",
   cardVariant = "default",
   showAdvancedFilters = false,
 }) {
@@ -107,7 +108,7 @@ export function CourseListPage({
   const priceRange = searchParams.get("priceRange") || "";
   const onSale = searchParams.get("onSale") === "true";
   const featured = searchParams.get("featured") === "true";
-  const sort = searchParams.get("sort") || "POPULAR";
+  const sort = searchParams.get("sort") || defaultSort;
   const requestedPage = Number(searchParams.get("page") || 0);
   const page =
     Number.isInteger(requestedPage) && requestedPage >= 0 ? requestedPage : 0;
@@ -288,13 +289,17 @@ export function CourseListPage({
       priceRange,
       onSale: onSale ? "true" : "",
       featured: featured ? "true" : "",
-      sort: sort === "POPULAR" ? "" : sort,
+      sort: sort === defaultSort ? "" : sort,
       page: String(page),
       ...nextValues,
     };
 
     Object.keys(next).forEach((key) => {
-      if (!next[key] || next[key] === "0" || next[key] === "POPULAR") {
+      if (
+        !next[key] ||
+        next[key] === "0" ||
+        (key === "sort" && next[key] === defaultSort)
+      ) {
         delete next[key];
       }
     });
@@ -339,7 +344,7 @@ export function CourseListPage({
 
   function handleSortChange(value) {
     updateQuery({
-      sort: value === "POPULAR" ? "" : value,
+      sort: value === defaultSort ? "" : value,
       page: "0",
     });
   }
@@ -371,7 +376,7 @@ export function CourseListPage({
       priceRange ||
       onSale ||
       featured ||
-      sort !== "POPULAR",
+      sort !== defaultSort,
   );
 
   function clearCatalogMenuFilters() {

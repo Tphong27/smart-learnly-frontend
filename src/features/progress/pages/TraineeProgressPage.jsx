@@ -23,10 +23,10 @@ const LEARNING_TYPES = {
     label: "All",
   },
   COURSE: {
-    label: "Courses",
+    label: "Online courses",
   },
   CLASS: {
-    label: "Classes",
+    label: "Class courses",
   },
 };
 
@@ -268,7 +268,7 @@ export function TraineeProgressPage() {
                 <span className="sr-only">Search courses and class</span>
                 <input
                   type="search"
-                  placeholder="Search course ang class..."
+                  placeholder="Search courses and classes..."
                   value={searchTerm}
                   onChange={(event) => {
                     setSearchTerm(event.target.value);

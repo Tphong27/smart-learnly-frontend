@@ -193,6 +193,14 @@
     line-height: 1.4;
 }
 
+.sl-course-field__label {
+    margin: 0;
+    color: var(--sl-ink, #1c1d1f);
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 1.4;
+}
+
 .sl-course-field > label span {
     color: #b42318;
 }
@@ -330,6 +338,29 @@
 }
 
 .sl-course-editor__free-option small {
+    color: var(--sl-muted, #6a6f73);
+    font-size: 12px;
+    line-height: 1.45;
+}
+
+.sl-course-editor__draft-status {
+    display: grid;
+    gap: 3px;
+    min-height: 44px;
+    padding: 10px 12px;
+    border: 1px solid var(--sl-line, #d1d7dc);
+    border-radius: 4px;
+    background: var(--sl-surface, #f7f9fa);
+    box-sizing: border-box;
+}
+
+.sl-course-editor__draft-status strong {
+    color: var(--sl-ink, #1c1d1f);
+    font-size: 13px;
+    line-height: 1.4;
+}
+
+.sl-course-editor__draft-status span {
     color: var(--sl-muted, #6a6f73);
     font-size: 12px;
     line-height: 1.45;

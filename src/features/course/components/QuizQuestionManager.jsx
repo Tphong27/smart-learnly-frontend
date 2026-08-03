@@ -4,14 +4,14 @@ import { Button, Modal, useToast } from "@/shared/components/ui";
 import { courseService } from "@/services/course.service";
 import { normalizeLessonStatus } from "@/features/course/utils/lesson-status";
 import {
-  QUESTION_TYPES,
-  QUESTION_TYPE_LABELS,
-  validateQuizQuestions,
-  sanitizeQuizHtml,
-  parseQuizContent,
-  serializeQuizContent,
-  getOptionMedia,
-  getOptionText,
+    QUESTION_TYPES,
+    QUESTION_TYPE_LABELS,
+    validateQuizQuestions,
+    sanitizeQuizHtml,
+    parseQuizContent,
+    serializeQuizContent,
+    getOptionMedia,
+    getOptionText,
 } from "../utils/quiz-question-schema";
 import { QuizQuestionEditModal } from "./QuizQuestionEditModal";
 import { QuizImportModal } from "./QuizImportModal";
@@ -20,159 +20,189 @@ import "@/features/admin/admin-shared.css";
 import "./quiz-question-manager.css";
 
 const TYPE_BADGE_CLASS = {
-  [QUESTION_TYPES.SINGLE]: "admin-status admin-status--approved",
-  [QUESTION_TYPES.MULTIPLE]: "admin-status admin-status--pending_verify",
-  [QUESTION_TYPES.FILL]: "admin-status admin-status--draft",
+    [QUESTION_TYPES.SINGLE]: "admin-status admin-status--approved",
+    [QUESTION_TYPES.MULTIPLE]: "admin-status admin-status--pending_verify",
+    [QUESTION_TYPES.FILL]: "admin-status admin-status--draft",
 };
 
 function HtmlText({ html }) {
-  return <span dangerouslySetInnerHTML={{ __html: sanitizeQuizHtml(html) }} />;
+    return (
+        <span dangerouslySetInnerHTML={{ __html: sanitizeQuizHtml(html) }} />
+    );
 }
 
 function mediaLabel(media) {
-  if (!media) return "";
-  if (media.type === "video") return "Video";
-  if (media.type === "audio") return "Audio";
-  if (media.type === "image") return "Image";
-  return "";
+    if (!media) return "";
+    if (media.type === "video") return "Video";
+    if (media.type === "audio") return "Audio";
+    if (media.type === "image") return "Image";
+    return "";
 }
 
 function mediaChipClass(media) {
-  const type = media?.type;
-  if (type === "video") return "quiz-question-card__media-chip quiz-question-card__media-chip--video";
-  if (type === "audio") return "quiz-question-card__media-chip quiz-question-card__media-chip--audio";
-  return "quiz-question-card__media-chip quiz-question-card__media-chip--image";
+    const type = media?.type;
+    if (type === "video")
+        return "quiz-question-card__media-chip quiz-question-card__media-chip--video";
+    if (type === "audio")
+        return "quiz-question-card__media-chip quiz-question-card__media-chip--audio";
+    return "quiz-question-card__media-chip quiz-question-card__media-chip--image";
 }
 
 function optionLetter(index) {
-  return String.fromCharCode(65 + index);
+    return String.fromCharCode(65 + index);
 }
 
 function QuizQuestionCard({ question, index, onEdit, onDelete, disabled }) {
-  const type = question.type;
-  const isChoice = type === QUESTION_TYPES.SINGLE || type === QUESTION_TYPES.MULTIPLE;
-  const isFill = type === QUESTION_TYPES.FILL;
-  const options = Array.isArray(question.options) ? question.options : [];
-  const correctSet = new Set(
-    Array.isArray(question.correct_answers) ? question.correct_answers : [],
-  );
-  const optionMediaCount = options.filter((opt) => getOptionMedia(opt)).length;
+    const type = question.type;
+    const isChoice =
+        type === QUESTION_TYPES.SINGLE || type === QUESTION_TYPES.MULTIPLE;
+    const isFill = type === QUESTION_TYPES.FILL;
+    const options = Array.isArray(question.options) ? question.options : [];
+    const correctSet = new Set(
+        Array.isArray(question.correct_answers) ? question.correct_answers : [],
+    );
+    const optionMediaCount = options.filter((opt) =>
+        getOptionMedia(opt),
+    ).length;
 
-  return (
-    <article className="quiz-question-card">
-      <div className="quiz-question-card__header">
-        <div>
-          <div className="quiz-question-card__eyebrow">
-            <span>Question {index + 1}</span>
-            <span className={TYPE_BADGE_CLASS[type] || "admin-status admin-status--draft"}>
-              {QUESTION_TYPE_LABELS[type] || type || "Unknown"}
-            </span>
-          </div>
-          {question.title ? (
-            <h3 className="quiz-question-card__title">
-              <HtmlText html={question.title} />
-            </h3>
-          ) : (
-            <h3 className="quiz-question-card__title quiz-question-card__title--empty">
-              Media-only question
-            </h3>
-          )}
-          <div className="quiz-question-card__meta">
-            {question.media && (
-              <span className={mediaChipClass(question.media)}>
-                Question {mediaLabel(question.media)}
-              </span>
+    return (
+        <article className="quiz-question-card">
+            <div className="quiz-question-card__header">
+                <div>
+                    <div className="quiz-question-card__eyebrow">
+                        <span>Question {index + 1}</span>
+                        <span
+                            className={
+                                TYPE_BADGE_CLASS[type] ||
+                                "admin-status admin-status--draft"
+                            }
+                        >
+                            {QUESTION_TYPE_LABELS[type] || type || "Unknown"}
+                        </span>
+                    </div>
+                    {question.title ? (
+                        <h3 className="quiz-question-card__title">
+                            <HtmlText html={question.title} />
+                        </h3>
+                    ) : (
+                        <h3 className="quiz-question-card__title quiz-question-card__title--empty">
+                            Media-only question
+                        </h3>
+                    )}
+                    <div className="quiz-question-card__meta">
+                        {question.media && (
+                            <span className={mediaChipClass(question.media)}>
+                                Question {mediaLabel(question.media)}
+                            </span>
+                        )}
+                        {optionMediaCount > 0 && (
+                            <span className="quiz-question-card__media-chip">
+                                {optionMediaCount} option media
+                            </span>
+                        )}
+                    </div>
+                </div>
+                <div className="quiz-question-card__actions">
+                    <button
+                        type="button"
+                        className="admin-table__icon-btn"
+                        onClick={() => onEdit(index)}
+                        title="Edit question"
+                        aria-label={`Edit question ${index + 1}`}
+                        disabled={disabled}
+                    >
+                        <Pencil size={15} />
+                    </button>
+                    <button
+                        type="button"
+                        className="admin-table__icon-btn admin-table__icon-btn--danger"
+                        onClick={() => onDelete(index)}
+                        title="Delete question"
+                        aria-label={`Delete question ${index + 1}`}
+                        disabled={disabled}
+                    >
+                        <Trash2 size={15} />
+                    </button>
+                </div>
+            </div>
+
+            {isChoice && options.length > 0 && (
+                <div className="quiz-question-card__answers">
+                    {options.map((option, optIdx) => {
+                        const optionNumber = optIdx + 1;
+                        const isCorrect = correctSet.has(optionNumber);
+                        const optMedia = getOptionMedia(option);
+                        const text = getOptionText(option);
+                        return (
+                            <div
+                                key={optIdx}
+                                className={`quiz-question-card__answer${isCorrect ? " quiz-question-card__answer--correct" : ""}`}
+                            >
+                                <span className="quiz-question-card__answer-index">
+                                    {optionLetter(optIdx)}
+                                </span>
+                                <span className="quiz-question-card__answer-text">
+                                    {text ? (
+                                        <HtmlText html={text} />
+                                    ) : (
+                                        <em>-</em>
+                                    )}
+                                    {optMedia && (
+                                        <>
+                                            {" "}
+                                            <span
+                                                className={mediaChipClass(
+                                                    optMedia,
+                                                )}
+                                            >
+                                                {mediaLabel(optMedia)}
+                                            </span>
+                                        </>
+                                    )}
+                                </span>
+                                {isCorrect && (
+                                    <span className="quiz-question-card__correct">
+                                        <CheckCircle2 size={14} /> Correct
+                                    </span>
+                                )}
+                            </div>
+                        );
+                    })}
+                </div>
             )}
-            {optionMediaCount > 0 && (
-              <span className="quiz-question-card__media-chip">
-                {optionMediaCount} option media
-              </span>
+
+            {isFill && (
+                <div className="quiz-question-card__answers">
+                    {(Array.isArray(question.correct_answers)
+                        ? question.correct_answers
+                        : []
+                    ).map((answer, idx) => (
+                        <div
+                            key={idx}
+                            className="quiz-question-card__answer quiz-question-card__answer--correct"
+                        >
+                            <span className="quiz-question-card__answer-index">
+                                {idx + 1}
+                            </span>
+                            <span className="quiz-question-card__answer-text">
+                                {answer}
+                            </span>
+                            <span className="quiz-question-card__correct">
+                                <CheckCircle2 size={14} /> Accepted
+                            </span>
+                        </div>
+                    ))}
+                </div>
             )}
-          </div>
-        </div>
-        <div className="quiz-question-card__actions">
-          <button
-            type="button"
-            className="admin-table__icon-btn"
-            onClick={() => onEdit(index)}
-            title="Edit question"
-            aria-label={`Edit question ${index + 1}`}
-            disabled={disabled}
-          >
-            <Pencil size={15} />
-          </button>
-          <button
-            type="button"
-            className="admin-table__icon-btn admin-table__icon-btn--danger"
-            onClick={() => onDelete(index)}
-            title="Delete question"
-            aria-label={`Delete question ${index + 1}`}
-            disabled={disabled}
-          >
-            <Trash2 size={15} />
-          </button>
-        </div>
-      </div>
 
-      {isChoice && options.length > 0 && (
-        <div className="quiz-question-card__answers">
-          {options.map((option, optIdx) => {
-            const optionNumber = optIdx + 1;
-            const isCorrect = correctSet.has(optionNumber);
-            const optMedia = getOptionMedia(option);
-            const text = getOptionText(option);
-            return (
-              <div
-                key={optIdx}
-                className={`quiz-question-card__answer${isCorrect ? " quiz-question-card__answer--correct" : ""}`}
-              >
-                <span className="quiz-question-card__answer-index">{optionLetter(optIdx)}</span>
-                <span className="quiz-question-card__answer-text">
-                  {text ? <HtmlText html={text} /> : <em>-</em>}
-                  {optMedia && (
-                    <>
-                      {" "}
-                      <span className={mediaChipClass(optMedia)}>{mediaLabel(optMedia)}</span>
-                    </>
-                  )}
-                </span>
-                {isCorrect && (
-                  <span className="quiz-question-card__correct">
-                    <CheckCircle2 size={14} /> Correct
-                  </span>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      {isFill && (
-        <div className="quiz-question-card__answers">
-          {(Array.isArray(question.correct_answers) ? question.correct_answers : []).map(
-            (answer, idx) => (
-              <div
-                key={idx}
-                className="quiz-question-card__answer quiz-question-card__answer--correct"
-              >
-                <span className="quiz-question-card__answer-index">{idx + 1}</span>
-                <span className="quiz-question-card__answer-text">{answer}</span>
-                <span className="quiz-question-card__correct">
-                  <CheckCircle2 size={14} /> Accepted
-                </span>
-              </div>
-            ),
-          )}
-        </div>
-      )}
-
-      {question.explain_question && (
-        <div className="quiz-question-card__explanation">
-          <strong>Explanation:</strong> <HtmlText html={question.explain_question} />
-        </div>
-      )}
-    </article>
-  );
+            {question.explain_question && (
+                <div className="quiz-question-card__explanation">
+                    <strong>Explanation:</strong>{" "}
+                    <HtmlText html={question.explain_question} />
+                </div>
+            )}
+        </article>
+    );
 }
 
 /**
@@ -181,303 +211,317 @@ function QuizQuestionCard({ question, index, onEdit, onDelete, disabled }) {
  * bị nút Save changes của lesson ghi đè.
  */
 export function QuizQuestionsPanel({
-  lessonId,
-  lessonTitle,
-  onSaved,
-  onBusyChange,
-  disabled = false,
-  service = courseService,
+    lessonId,
+    lessonTitle,
+    onSaved,
+    onBusyChange,
+    disabled = false,
+    service = courseService,
 }) {
-  const toast = useToast();
+    const toast = useToast();
 
-  const [questions, setQuestions] = useState([]);
-  const [sourceCourseId, setSourceCourseId] = useState("");
-  const [errors, setErrors] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const savingRef = useRef(false);
+    const [questions, setQuestions] = useState([]);
+    const [sourceCourseId, setSourceCourseId] = useState("");
+    const [errors, setErrors] = useState([]);
+    const [loading, setLoading] = useState(false);
+    const [saving, setSaving] = useState(false);
+    const savingRef = useRef(false);
 
-  const [editIndex, setEditIndex] = useState(null); // null = đóng, -1 = thêm mới
-  const [importOpen, setImportOpen] = useState(false);
-  const [bankImportOpen, setBankImportOpen] = useState(false);
-  const [deleteIndex, setDeleteIndex] = useState(null);
+    const [editIndex, setEditIndex] = useState(null); // null = đóng, -1 = thêm mới
+    const [importOpen, setImportOpen] = useState(false);
+    const [bankImportOpen, setBankImportOpen] = useState(false);
+    const [deleteIndex, setDeleteIndex] = useState(null);
 
-  const busy = loading || saving;
-  const mutationDisabled = disabled || busy;
+    const busy = loading || saving;
+    const mutationDisabled = disabled || busy;
 
-  useEffect(() => {
-    onBusyChange?.(busy);
-  }, [busy, onBusyChange]);
+    useEffect(() => {
+        onBusyChange?.(busy);
+    }, [busy, onBusyChange]);
 
-  useEffect(
-    () => () => {
-      onBusyChange?.(false);
-    },
-    [onBusyChange],
-  );
+    useEffect(
+        () => () => {
+            onBusyChange?.(false);
+        },
+        [onBusyChange],
+    );
 
-  // Load câu hỏi hiện có khi lessonId đổi.
-  useEffect(() => {
-    if (!lessonId) return;
-    let cancelled = false;
-    (async () => {
-      setLoading(true);
-      setErrors([]);
-      try {
-        const response = await service.getLessonDetail(lessonId);
-        const data = response?.data || response;
-        const parsed = parseQuizContent(data?.content || "");
-        if (!cancelled) {
-          setQuestions(parsed.questions || []);
-          setSourceCourseId(data?.courseId || "");
+    // Load câu hỏi hiện có khi lessonId đổi.
+    useEffect(() => {
+        if (!lessonId) return;
+        let cancelled = false;
+        (async () => {
+            setLoading(true);
+            setErrors([]);
+            try {
+                const response = await service.getLessonDetail(lessonId);
+                const data = response?.data || response;
+                const parsed = parseQuizContent(data?.content || "");
+                if (!cancelled) {
+                    setQuestions(parsed.questions || []);
+                    setSourceCourseId(data?.courseId || "");
+                }
+            } catch (error) {
+                if (!cancelled) {
+                    toast.error("Failed to load quiz questions.");
+                    console.error("Load quiz error:", error);
+                }
+            } finally {
+                if (!cancelled) setLoading(false);
+            }
+        })();
+        return () => {
+            cancelled = true;
+        };
+    }, [lessonId, toast, service]);
+
+    const persistQuestions = async (nextQuestions, successMessage) => {
+        if (!lessonId || savingRef.current) return false;
+
+        const { valid, errors: validationErrors } =
+            validateQuizQuestions(nextQuestions);
+        if (!valid) {
+            setErrors(validationErrors);
+            toast.error("Cannot save: some questions are invalid.");
+            return false;
         }
-      } catch (error) {
-        if (!cancelled) {
-          toast.error("Failed to load quiz questions.");
-          console.error("Load quiz error:", error);
+
+        savingRef.current = true;
+        setSaving(true);
+        try {
+            const detail = await service.getLessonDetail(lessonId);
+            const latestLesson = detail?.data || detail;
+            const persistedTitle = String(
+                latestLesson?.title || lessonTitle || "",
+            ).trim();
+            const content = serializeQuizContent(persistedTitle, nextQuestions);
+            const payload = {
+                title: persistedTitle,
+                lessonType:
+                    latestLesson.lessonType || latestLesson.type || "QUIZ",
+                content,
+                videoUrl: latestLesson.videoUrl ?? null,
+                attachmentUrl: latestLesson.attachmentUrl ?? null,
+                durationSeconds: Number(latestLesson.durationSeconds || 0),
+                isPreview: Boolean(
+                    latestLesson.isPreview ?? latestLesson.isPreviewable,
+                ),
+                status: normalizeLessonStatus(latestLesson.status),
+                resources: Array.isArray(latestLesson.resources)
+                    ? latestLesson.resources
+                    : [],
+                sortOrder: latestLesson.sortOrder ?? 0,
+            };
+
+            const response = await service.updateLesson(lessonId, payload);
+            const responseLesson = response?.data || response;
+            const savedLesson = {
+                ...latestLesson,
+                ...payload,
+                ...(responseLesson && typeof responseLesson === "object"
+                    ? responseLesson
+                    : {}),
+                content,
+            };
+
+            setQuestions(nextQuestions);
+            setErrors([]);
+            try {
+                await onSaved?.(content, savedLesson);
+            } catch (callbackError) {
+                console.error("Sync saved quiz state error:", callbackError);
+            }
+            toast.success(successMessage);
+            return true;
+        } catch (error) {
+            const responseData = error?.response?.data;
+            let message = "Failed to save quiz questions.";
+            if (responseData?.message) message = responseData.message;
+            else if (Array.isArray(responseData?.errors)) {
+                message = responseData.errors
+                    .map((item) => `${item.field}: ${item.message}`)
+                    .join(", ");
+            }
+            toast.error(message);
+            console.error("Save quiz error:", error);
+            return false;
+        } finally {
+            savingRef.current = false;
+            setSaving(false);
         }
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
     };
-  }, [lessonId, toast, service]);
 
-  const persistQuestions = async (nextQuestions, successMessage) => {
-    if (!lessonId || savingRef.current) return false;
+    const handleImported = (importedQuestions) =>
+        persistQuestions(
+            [...questions, ...importedQuestions],
+            `Imported ${importedQuestions.length} question(s).`,
+        );
 
-    const { valid, errors: validationErrors } =
-      validateQuizQuestions(nextQuestions);
-    if (!valid) {
-      setErrors(validationErrors);
-      toast.error("Cannot save: some questions are invalid.");
-      return false;
-    }
+    const openEdit = (index) => {
+        if (!mutationDisabled) setEditIndex(index);
+    };
 
-    savingRef.current = true;
-    setSaving(true);
-    try {
-      const detail = await service.getLessonDetail(lessonId);
-      const latestLesson = detail?.data || detail;
-      const persistedTitle = String(latestLesson?.title || lessonTitle || "").trim();
-      const content = serializeQuizContent(persistedTitle, nextQuestions);
-      const payload = {
-        title: persistedTitle,
-        lessonType: latestLesson.lessonType || latestLesson.type || "QUIZ",
-        content,
-        videoUrl: latestLesson.videoUrl ?? null,
-        attachmentUrl: latestLesson.attachmentUrl ?? null,
-        durationSeconds: Number(latestLesson.durationSeconds || 0),
-        isPreview: Boolean(
-          latestLesson.isPreview ?? latestLesson.isPreviewable,
-        ),
-        status: normalizeLessonStatus(latestLesson.status),
-        resources: Array.isArray(latestLesson.resources)
-          ? latestLesson.resources
-          : [],
-        sortOrder: latestLesson.sortOrder ?? 0,
-      };
+    const handleEditSubmit = (question) => {
+        const nextQuestions =
+            editIndex === -1
+                ? [...questions, question]
+                : questions.map((current, index) =>
+                      index === editIndex ? question : current,
+                  );
+        return persistQuestions(
+            nextQuestions,
+            editIndex === -1 ? "Question added." : "Question updated.",
+        );
+    };
 
-      const response = await service.updateLesson(lessonId, payload);
-      const responseLesson = response?.data || response;
-      const savedLesson = {
-        ...latestLesson,
-        ...payload,
-        ...(responseLesson && typeof responseLesson === "object"
-          ? responseLesson
-          : {}),
-        content,
-      };
+    const handleConfirmDelete = async () => {
+        if (deleteIndex == null) return;
+        const nextQuestions = questions.filter(
+            (_, index) => index !== deleteIndex,
+        );
+        const saved = await persistQuestions(
+            nextQuestions,
+            "Question deleted.",
+        );
+        if (saved) setDeleteIndex(null);
+    };
 
-      setQuestions(nextQuestions);
-      setErrors([]);
-      try {
-        await onSaved?.(content, savedLesson);
-      } catch (callbackError) {
-        console.error("Sync saved quiz state error:", callbackError);
-      }
-      toast.success(successMessage);
-      return true;
-    } catch (error) {
-      const responseData = error?.response?.data;
-      let message = "Failed to save quiz questions.";
-      if (responseData?.message) message = responseData.message;
-      else if (Array.isArray(responseData?.errors)) {
-        message = responseData.errors
-          .map((item) => `${item.field}: ${item.message}`)
-          .join(", ");
-      }
-      toast.error(message);
-      console.error("Save quiz error:", error);
-      return false;
-    } finally {
-      savingRef.current = false;
-      setSaving(false);
-    }
-  };
+    return (
+        <div className="quiz-question-panel">
+            <section className="admin-card admin-card--flush">
+                <div className="admin-toolbar">
+                    <div className="admin-toolbar__filters">
+                        <span className="quiz-question-panel__count">
+                            {questions.length} question(s)
+                        </span>
+                    </div>
+                    <div className="quiz-question-panel__actions">
+                        <Button
+                            variant="secondary"
+                            leftIcon={<Upload size={15} />}
+                            onClick={() => setImportOpen(true)}
+                            disabled={mutationDisabled || bankImportOpen}
+                        >
+                            Import Excel/CSV
+                        </Button>
+                        <Button
+                            variant="secondary"
+                            leftIcon={<Upload size={15} />}
+                            onClick={() => setBankImportOpen(true)}
+                            disabled={mutationDisabled}
+                        >
+                            Import from question bank
+                        </Button>
+                        <Button
+                            variant="secondary"
+                            leftIcon={<Plus size={15} />}
+                            onClick={() => openEdit(-1)}
+                            disabled={mutationDisabled || bankImportOpen}
+                        >
+                            Add question
+                        </Button>
+                    </div>
+                </div>
 
-  const handleImported = (importedQuestions) =>
-    persistQuestions(
-      [...questions, ...importedQuestions],
-      `Imported ${importedQuestions.length} question(s).`,
-    );
+                {loading ? (
+                    <div className="admin-loading">
+                        Loading quiz questions...
+                    </div>
+                ) : (
+                    <>
+                        {errors.length > 0 && (
+                            <ul className="quiz-question-panel__errors">
+                                {errors.map((err, i) => (
+                                    <li key={i}>{err.message}</li>
+                                ))}
+                            </ul>
+                        )}
 
-  const openEdit = (index) => {
-    if (!mutationDisabled) setEditIndex(index);
-  };
+                        {questions.length === 0 ? (
+                            <div className="admin-empty">
+                                No questions yet. Import Excel, import from
+                                question list, or add manually.
+                            </div>
+                        ) : (
+                            <div className="quiz-question-card-list">
+                                {questions.map((question, idx) => (
+                                    <QuizQuestionCard
+                                        key={idx}
+                                        question={question}
+                                        index={idx}
+                                        onEdit={openEdit}
+                                        onDelete={setDeleteIndex}
+                                        disabled={mutationDisabled}
+                                    />
+                                ))}
+                            </div>
+                        )}
+                    </>
+                )}
+            </section>
 
-  const handleEditSubmit = (question) => {
-    const nextQuestions =
-      editIndex === -1
-        ? [...questions, question]
-        : questions.map((current, index) =>
-            index === editIndex ? question : current,
-          );
-    return persistQuestions(
-      nextQuestions,
-      editIndex === -1 ? "Question added." : "Question updated.",
-    );
-  };
+            {bankImportOpen && (
+                <CourseQuestionImportPanel
+                    open
+                    courseId={sourceCourseId}
+                    existingQuestions={questions}
+                    onImport={handleImported}
+                    onClose={() => setBankImportOpen(false)}
+                />
+            )}
 
-  const handleConfirmDelete = async () => {
-    if (deleteIndex == null) return;
-    const nextQuestions = questions.filter((_, index) => index !== deleteIndex);
-    const saved = await persistQuestions(nextQuestions, "Question deleted.");
-    if (saved) setDeleteIndex(null);
-  };
+            <QuizQuestionEditModal
+                key={editIndex == null ? "closed" : `edit-${editIndex}`}
+                open={editIndex != null}
+                question={
+                    editIndex != null && editIndex >= 0
+                        ? questions[editIndex]
+                        : null
+                }
+                onClose={() => setEditIndex(null)}
+                onSubmit={handleEditSubmit}
+            />
 
-  return (
-    <div className="quiz-question-panel">
-      <section className="admin-card admin-card--flush">
-        <div className="admin-toolbar">
-          <div className="admin-toolbar__filters">
-            <span className="quiz-question-panel__count">
-              {questions.length} question(s)
-            </span>
-          </div>
-          <div className="quiz-question-panel__actions">
-            <Button
-              variant="secondary"
-              leftIcon={<Upload size={15} />}
-              onClick={() => setImportOpen(true)}
-              disabled={mutationDisabled || bankImportOpen}
+            <QuizImportModal
+                key={importOpen ? "import-open" : "import-closed"}
+                open={importOpen}
+                onClose={() => setImportOpen(false)}
+                existingQuestions={questions}
+                courseId={sourceCourseId}
+                onImport={handleImported}
+            />
+
+            <Modal
+                open={deleteIndex != null}
+                title="Delete question"
+                description={
+                    deleteIndex == null
+                        ? ""
+                        : `Question ${deleteIndex + 1} will be permanently removed from this quiz.`
+                }
+                onClose={() => setDeleteIndex(null)}
+                closeDisabled={saving}
+                footer={
+                    <>
+                        <Button
+                            variant="ghost"
+                            onClick={() => setDeleteIndex(null)}
+                            disabled={saving}
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            variant="danger"
+                            onClick={handleConfirmDelete}
+                            loading={saving}
+                        >
+                            Delete question
+                        </Button>
+                    </>
+                }
             >
-              Import Excel/CSV
-            </Button>
-            <Button
-              variant="secondary"
-              leftIcon={<Upload size={15} />}
-              onClick={() => setBankImportOpen((current) => !current)}
-              disabled={mutationDisabled}
-            >
-              {bankImportOpen ? "Hide question list" : "Import from question list"}
-            </Button>
-            <Button
-              variant="secondary"
-              leftIcon={<Plus size={15} />}
-              onClick={() => openEdit(-1)}
-              disabled={mutationDisabled || bankImportOpen}
-            >
-              Add question
-            </Button>
-          </div>
+                <p>This action cannot be undone.</p>
+            </Modal>
         </div>
-
-        {loading ? (
-          <div className="admin-loading">Loading quiz questions...</div>
-        ) : (
-          <>
-            {errors.length > 0 && (
-              <ul className="quiz-question-panel__errors">
-                {errors.map((err, i) => (
-                  <li key={i}>{err.message}</li>
-                ))}
-              </ul>
-            )}
-
-            {questions.length === 0 ? (
-              <div className="admin-empty">
-                No questions yet. Import Excel, import from question list, or add manually.
-              </div>
-            ) : (
-              <div className="quiz-question-card-list">
-                {questions.map((question, idx) => (
-                  <QuizQuestionCard
-                    key={idx}
-                    question={question}
-                    index={idx}
-                    onEdit={openEdit}
-                    onDelete={setDeleteIndex}
-                    disabled={mutationDisabled}
-                  />
-                ))}
-              </div>
-            )}
-          </>
-        )}
-      </section>
-
-      {bankImportOpen && (
-        <section className="admin-card quiz-question-panel__bank">
-          <CourseQuestionImportPanel
-            courseId={sourceCourseId}
-            existingQuestions={questions}
-            onImport={handleImported}
-            onClose={() => setBankImportOpen(false)}
-          />
-        </section>
-      )}
-
-      <QuizQuestionEditModal
-        key={editIndex == null ? "closed" : `edit-${editIndex}`}
-        open={editIndex != null}
-        question={editIndex != null && editIndex >= 0 ? questions[editIndex] : null}
-        onClose={() => setEditIndex(null)}
-        onSubmit={handleEditSubmit}
-      />
-
-      <QuizImportModal
-        key={importOpen ? "import-open" : "import-closed"}
-        open={importOpen}
-        onClose={() => setImportOpen(false)}
-        existingQuestions={questions}
-        courseId={sourceCourseId}
-        onImport={handleImported}
-      />
-
-      <Modal
-        open={deleteIndex != null}
-        title="Delete question"
-        description={
-          deleteIndex == null
-            ? ""
-            : `Question ${deleteIndex + 1} will be permanently removed from this quiz.`
-        }
-        onClose={() => setDeleteIndex(null)}
-        closeDisabled={saving}
-        footer={
-          <>
-            <Button
-              variant="ghost"
-              onClick={() => setDeleteIndex(null)}
-              disabled={saving}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="danger"
-              onClick={handleConfirmDelete}
-              loading={saving}
-            >
-              Delete question
-            </Button>
-          </>
-        }
-      >
-        <p>This action cannot be undone.</p>
-      </Modal>
-    </div>
-  );
+    );
 }

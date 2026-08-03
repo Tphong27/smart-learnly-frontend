@@ -72,6 +72,13 @@ export function EnrolledCourseCard({ course, viewMode = "grid" }) {
   const imageUrl = getCourseImage(course);
 
   const enrolledClass = getEnrolledClass(course);
+  const isClassLearning =
+    String(course.learningType || "").toUpperCase() === "CLASS" ||
+    Boolean(enrolledClass?.id);
+  const LearningTypeIcon = isClassLearning ? GraduationCap : BookOpen;
+  const learningTypeLabel = isClassLearning
+    ? "Class course"
+    : "Online course";
   const classDateRange = enrolledClass
     ? formatDateRange(enrolledClass.startDate, enrolledClass.endDate)
     : "";
@@ -97,8 +104,8 @@ export function EnrolledCourseCard({ course, viewMode = "grid" }) {
         <div className="enrolled-course-card__body">
           <div className="enrolled-course-card__top">
             <span className="enrolled-course-card__label">
-              <GraduationCap size={15} />
-              {categoryName}
+              <LearningTypeIcon size={15} aria-hidden="true" />
+              {learningTypeLabel} · {categoryName}
             </span>
 
             {course.enrollmentStatus && (
@@ -155,7 +162,7 @@ export function EnrolledCourseCard({ course, viewMode = "grid" }) {
                 }
               }}
             >
-              Learning
+              {isClassLearning ? "Open class course" : "Continue online course"}
             </Link>
 
             <Link

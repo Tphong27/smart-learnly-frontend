@@ -1,7 +1,16 @@
 import { useEffect, useRef, useState } from "react";
 import { BookOpen, CalendarDays, LoaderCircle, Search, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { courseService, openingScheduleService } from "@/services";
+import {
+  classService,
+  courseService,
+  openingScheduleService,
+} from "@/services";
+import {
+  canViewClasses,
+  normalizeRole,
+  ROLES,
+} from "@/shared/constants/roles";
 
 function SuggestionThumbnail({ imageUrl, type = "course" }) {
   const [imageFailed, setImageFailed] = useState(false);
@@ -33,6 +42,8 @@ export function HeaderCourseSearch({
   catalogHash = "#courses",
   placeholder = "Search courses, classes, topics, or skills...",
   backLabel = "Back to homepage",
+  searchScope = "public",
+  userRole,
 
   includeOpeningClasses = false,
   classDetailPath = "/opening-schedule",
@@ -46,17 +57,31 @@ export function HeaderCourseSearch({
   const [classes, setClasses] = useState([]);
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isOpeningResult, setIsOpeningResult] = useState(false);
+  const [searchError, setSearchError] = useState("");
   const [activeOption, setActiveOption] = useState(0);
 
+  const normalizedRole = normalizeRole(userRole);
+  const isStaffSearch = searchScope === "staff";
+  const includeStaffClasses =
+    isStaffSearch && canViewClasses(normalizedRole);
   const normalizedQuery = query.trim();
   const hasSearchQuery = normalizedQuery.length >= 2;
 
-  const visibleClasses = includeOpeningClasses ? classes : [];
+  const includesClassResults = isStaffSearch
+    ? includeStaffClasses
+    : includeOpeningClasses;
+  const visibleClasses = includesClassResults ? classes : [];
   const hasAnyResults = courses.length > 0 || visibleClasses.length > 0;
+  const resultOptionOffset = isStaffSearch ? 0 : 1;
 
-  const searchTargetLabel = includeOpeningClasses
-    ? "courses and classes"
-    : "courses";
+  const searchTargetLabel = isStaffSearch
+    ? includeStaffClasses
+      ? "course content and classrooms"
+      : "course content"
+    : includeOpeningClasses
+      ? "courses and classes"
+      : "courses";
 
   useEffect(() => {
     if (!hasSearchQuery) {
@@ -67,6 +92,7 @@ export function HeaderCourseSearch({
 
     const timeoutId = window.setTimeout(async () => {
       setIsLoading(true);
+      setSearchError("");
 
       try {
         /*
@@ -76,18 +102,36 @@ export function HeaderCourseSearch({
          * - API course lỗi vẫn có thể hiện class.
          */
         const [courseResult, classResult] = await Promise.allSettled([
-          courseService.getPublicCourses({
-            keyword: normalizedQuery,
-            page: 0,
-            size: 5,
-          }),
-
-          includeOpeningClasses
-            ? openingScheduleService.list({
+          isStaffSearch
+            ? courseService.listAdmin({
                 keyword: normalizedQuery,
                 page: 0,
                 size: 5,
               })
+            : courseService.getPublicCourses({
+                keyword: normalizedQuery,
+                page: 0,
+                size: 5,
+              }),
+
+          includesClassResults
+            ? isStaffSearch
+              ? normalizedRole === ROLES.TRAINER
+                ? classService.listTrainer({
+                    keyword: normalizedQuery,
+                    page: 0,
+                    size: 5,
+                  })
+                : classService.listAdmin({
+                    keyword: normalizedQuery,
+                    page: 0,
+                    size: 5,
+                  })
+              : openingScheduleService.list({
+                  keyword: normalizedQuery,
+                  page: 0,
+                  size: 5,
+                })
             : Promise.resolve(null),
         ]);
 
@@ -102,7 +146,7 @@ export function HeaderCourseSearch({
             : [];
 
         const nextClasses =
-          includeOpeningClasses &&
+          includesClassResults &&
           classResult.status === "fulfilled" &&
           Array.isArray(classResult.value?.content)
             ? classResult.value.content
@@ -110,6 +154,12 @@ export function HeaderCourseSearch({
 
         setCourses(nextCourses);
         setClasses(nextClasses);
+        setSearchError(
+          courseResult.status === "rejected" &&
+            (!includesClassResults || classResult.status === "rejected")
+            ? "Search is unavailable right now. Please try again."
+            : "",
+        );
       } finally {
         if (!cancelled) {
           setIsLoading(false);
@@ -121,7 +171,13 @@ export function HeaderCourseSearch({
       cancelled = true;
       window.clearTimeout(timeoutId);
     };
-  }, [hasSearchQuery, includeOpeningClasses, normalizedQuery]);
+  }, [
+    hasSearchQuery,
+    includesClassResults,
+    isStaffSearch,
+    normalizedQuery,
+    normalizedRole,
+  ]);
 
   useEffect(() => {
     function handlePointerDown(event) {
@@ -152,6 +208,13 @@ export function HeaderCourseSearch({
       return;
     }
 
+    if (isStaffSearch) {
+      if (hasAnyResults) {
+        selectActiveSuggestion();
+      }
+      return;
+    }
+
     /*
      * URL keyword dùng chung cho:
      * - Popular Courses
@@ -164,10 +227,61 @@ export function HeaderCourseSearch({
     setIsOpen(false);
   }
 
-  function selectCourse(course) {
+  async function selectCourse(course) {
     const courseIdentifier = course.slug || course.id;
 
     if (!courseIdentifier) {
+      return;
+    }
+
+    if (isStaffSearch) {
+      if (normalizedRole === ROLES.TRAINER) {
+        if (isOpeningResult) return;
+
+        setIsOpeningResult(true);
+        setSearchError("");
+
+        try {
+          const assignedClasses = await classService.listTrainer({
+            courseId: course.id,
+            page: 0,
+            size: 100,
+          });
+          const classItems = assignedClasses.content || [];
+          const assignedClass =
+            classItems.find(
+              (item) => String(item.status).toLowerCase() === "ongoing",
+            ) ||
+            classItems.find(
+              (item) => String(item.status).toLowerCase() === "upcoming",
+            ) ||
+            classItems[0];
+
+          if (!assignedClass?.id) {
+            throw new Error("No assigned class was found for this course.");
+          }
+
+          navigate(
+            `/staff/classrooms/${assignedClass.id}/workspace?tab=curriculum`,
+          );
+          setIsOpen(false);
+        } catch (error) {
+          setSearchError(
+            error?.message || "Could not open the assigned course content.",
+          );
+        } finally {
+          setIsOpeningResult(false);
+        }
+
+        return;
+      }
+
+      navigate(
+        normalizedRole === ROLES.SME
+          ? `/staff/courses/${course.id}/edit`
+          : `/staff/courses/${course.id}/content`,
+      );
+      setIsOpen(false);
       return;
     }
 
@@ -183,11 +297,19 @@ export function HeaderCourseSearch({
   }
 
   function selectClass(classItem) {
-    if (!classItem?.classId) {
+    const classId = classItem?.id || classItem?.classId;
+
+    if (!classId) {
       return;
     }
 
-    navigate(`${classDetailPath}/${classItem.classId}`, {
+    if (isStaffSearch) {
+      navigate(`/staff/classrooms/${classId}/workspace`);
+      setIsOpen(false);
+      return;
+    }
+
+    navigate(`${classDetailPath}/${classId}`, {
       state: {
         from: classReturnPath,
         backLabel: classBackLabel,
@@ -198,17 +320,19 @@ export function HeaderCourseSearch({
   }
 
   function selectActiveSuggestion() {
-    if (activeOption <= 0) {
+    if (!isStaffSearch && activeOption === 0) {
       submitSearch();
       return;
     }
 
-    if (activeOption <= courses.length) {
-      selectCourse(courses[activeOption - 1]);
+    const courseIndex = activeOption - resultOptionOffset;
+
+    if (courseIndex >= 0 && courseIndex < courses.length) {
+      selectCourse(courses[courseIndex]);
       return;
     }
 
-    const classIndex = activeOption - courses.length - 1;
+    const classIndex = activeOption - resultOptionOffset - courses.length;
 
     const selectedClass = visibleClasses[classIndex];
 
@@ -227,10 +351,12 @@ export function HeaderCourseSearch({
       return;
     }
 
-    const optionCount = 1 + courses.length + visibleClasses.length;
+    const optionCount =
+      resultOptionOffset + courses.length + visibleClasses.length;
 
     if (event.key === "ArrowDown") {
       event.preventDefault();
+      if (optionCount === 0) return;
       setIsOpen(true);
 
       setActiveOption((current) => Math.min(current + 1, optionCount - 1));
@@ -238,6 +364,7 @@ export function HeaderCourseSearch({
 
     if (event.key === "ArrowUp") {
       event.preventDefault();
+      if (optionCount === 0) return;
 
       setActiveOption((current) => Math.max(current - 1, 0));
     }
@@ -246,11 +373,17 @@ export function HeaderCourseSearch({
       event.preventDefault();
 
       if (isOpen) {
-        selectActiveSuggestion();
+        if (hasAnyResults || !isStaffSearch) {
+          selectActiveSuggestion();
+        }
         return;
       }
 
-      submitSearch();
+      if (isStaffSearch) {
+        setIsOpen(true);
+      } else {
+        submitSearch();
+      }
     }
   }
 
@@ -258,6 +391,7 @@ export function HeaderCourseSearch({
     setQuery("");
     setCourses([]);
     setClasses([]);
+    setSearchError("");
     setActiveOption(0);
     setIsOpen(false);
   }
@@ -281,15 +415,15 @@ export function HeaderCourseSearch({
           className="header-search-input"
           role="combobox"
           aria-label={
-            includeOpeningClasses
-              ? "Search courses and classes"
-              : "Search courses"
+            `Search ${searchTargetLabel}`
           }
           aria-autocomplete="list"
           aria-controls="header-search-results"
           aria-expanded={isOpen && hasSearchQuery}
           aria-activedescendant={
-            isOpen && hasSearchQuery
+            isOpen &&
+            hasSearchQuery &&
+            (!isStaffSearch || hasAnyResults)
               ? `header-search-option-${activeOption}`
               : undefined
           }
@@ -325,38 +459,51 @@ export function HeaderCourseSearch({
           role="listbox"
           aria-label={`Search ${searchTargetLabel}`}
         >
-          <button
-            type="button"
-            id="header-search-option-0"
-            role="option"
-            aria-selected={activeOption === 0}
-            className={`header-search__search-action${
-              activeOption === 0 ? " is-active" : ""
-            }`}
-            onMouseEnter={() => setActiveOption(0)}
-            onClick={submitSearch}
-          >
-            <Search size={18} />
+          {!isStaffSearch && (
+            <button
+              type="button"
+              id="header-search-option-0"
+              role="option"
+              aria-selected={activeOption === 0}
+              className={`header-search__search-action${
+                activeOption === 0 ? " is-active" : ""
+              }`}
+              onMouseEnter={() => setActiveOption(0)}
+              onClick={submitSearch}
+            >
+              <Search size={18} />
 
-            <span>
-              Search {searchTargetLabel} for{" "}
-              <strong>“{normalizedQuery}”</strong>
-            </span>
-          </button>
+              <span>
+                Search {searchTargetLabel} for{" "}
+                <strong>“{normalizedQuery}”</strong>
+              </span>
+            </button>
+          )}
 
-          {isLoading ? (
+          {isLoading || isOpeningResult ? (
             <div className="header-search__status" role="status">
               <LoaderCircle size={18} className="header-search__spinner" />
-              Finding {searchTargetLabel}…
+              {isOpeningResult
+                ? "Opening assigned course content…"
+                : `Finding ${searchTargetLabel}…`}
+            </div>
+          ) : searchError ? (
+            <div
+              className="header-search__status header-search__status--error"
+              role="alert"
+            >
+              {searchError}
             </div>
           ) : (
             <>
               {courses.length > 0 && (
                 <div className="header-search__course-list">
-                  <p className="header-search__label">Courses</p>
+                  <p className="header-search__label">
+                    {isStaffSearch ? "Course Content" : "Courses"}
+                  </p>
 
                   {courses.map((course, index) => {
-                    const optionIndex = index + 1;
+                    const optionIndex = index + resultOptionOffset;
 
                     return (
                       <button
@@ -372,7 +519,7 @@ export function HeaderCourseSearch({
                         onClick={() => selectCourse(course)}
                       >
                         <SuggestionThumbnail
-                          imageUrl={course.avatarUrl}
+                          imageUrl={course.thumbnailUrl || course.avatarUrl}
                           type="course"
                         />
 
@@ -380,7 +527,10 @@ export function HeaderCourseSearch({
                           <strong>{course.title}</strong>
 
                           <small>
-                            Course · {course.category?.name || "General"}
+                            {isStaffSearch ? "Course content" : "Course"} ·{" "}
+                            {course.category?.name ||
+                              course.categoryName ||
+                              "General"}
                           </small>
                         </span>
                       </button>
@@ -391,15 +541,19 @@ export function HeaderCourseSearch({
 
               {visibleClasses.length > 0 && (
                 <div className="header-search__course-list">
-                  <p className="header-search__label">Classes</p>
+                  <p className="header-search__label">
+                    {isStaffSearch ? "Classrooms" : "Classes"}
+                  </p>
 
                   {visibleClasses.map((classItem, index) => {
-                    const optionIndex = courses.length + index + 1;
+                    const optionIndex =
+                      courses.length + index + resultOptionOffset;
+                    const classId = classItem.id || classItem.classId;
 
                     return (
                       <button
                         type="button"
-                        key={classItem.classId}
+                        key={classId}
                         id={`header-search-option-${optionIndex}`}
                         role="option"
                         aria-selected={activeOption === optionIndex}
@@ -430,8 +584,9 @@ export function HeaderCourseSearch({
 
               {!hasAnyResults && (
                 <div className="header-search__status" role="status">
-                  No courses or classes found. Press Enter to view the full
-                  search result.
+                  {isStaffSearch
+                    ? `No accessible ${searchTargetLabel} found.`
+                    : "No courses or classes found. Press Enter to view the full search result."}
                 </div>
               )}
             </>

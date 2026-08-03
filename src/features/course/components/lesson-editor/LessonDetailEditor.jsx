@@ -717,7 +717,7 @@ export function LessonDetailEditor({ context }) {
     if (!isQuiz && !isFlashcard && !materialComplete) {
       if (lessonType === "VIDEO") {
         const message = videoUrl.trim()
-          ? "Replace the video source with a valid HTTPS YouTube URL."
+          ? "Enter a valid HTTPS YouTube URL (youtube.com/watch?v= or youtu.be)."
           : "Add a YouTube URL before saving this video lesson.";
         setVideoSummaryError(message);
         showSaveNotice({
@@ -939,18 +939,14 @@ export function LessonDetailEditor({ context }) {
   const parsedQuizContent = parseQuizContent(textContent);
   const sanitizedSummary = sanitizeLessonHtml(summary);
   const videoEmbedUrl = youtubeEmbedUrl(videoUrl);
-  const hasLegacyVideoSource = Boolean(videoUrl) && !videoEmbedUrl;
-  const unchangedLegacyVideo =
-    hasLegacyVideoSource &&
-    videoUrl.trim() === String(existingLessonData?.videoUrl || "").trim();
+  const hasInvalidYoutubeUrl = Boolean(videoUrl.trim()) && !videoEmbedUrl;
   const basicComplete = Boolean(title.trim());
   const descriptionComplete =
     lessonType === "QUIZ" ||
     lessonType === "FLASHCARD" ||
     !isEmptyLessonHtml(sanitizedSummary);
   const materialComplete = (() => {
-    if (lessonType === "VIDEO")
-      return Boolean(videoEmbedUrl || unchangedLegacyVideo);
+    if (lessonType === "VIDEO") return Boolean(videoEmbedUrl);
     if (lessonType === "PDF") return Boolean(uploadedFileUrl);
     if (lessonType === "QUIZ") {
       return (parsedQuizContent.questions || []).length > 0;
@@ -980,9 +976,9 @@ export function LessonDetailEditor({ context }) {
   const statusLabel = statusMeta?.label || status;
   const materialSummary = (() => {
     if (lessonType === "VIDEO") {
-      return videoUrl
-        ? `${resources.length} supporting resource${resources.length === 1 ? "" : "s"}`
-        : "Video is required";
+      if (!videoUrl.trim()) return "Video is required";
+      if (hasInvalidYoutubeUrl) return "Invalid YouTube URL";
+      return `${resources.length} supporting resource${resources.length === 1 ? "" : "s"}`;
     }
     if (lessonType === "PDF") {
       return uploadedFileUrl
@@ -1009,13 +1005,7 @@ export function LessonDetailEditor({ context }) {
     existingLessonData?.module?.id ||
     "";
   const lessonMetadataFormId = "sl-cm-lesson-metadata-form";
-  const lessonSaveBarVisible =
-    activeTab === "edit" &&
-    (hasChanges ||
-      loading ||
-      assignmentSaving ||
-      saveNotice?.type === "saving" ||
-      saveNotice?.type === "error");
+  const lessonSaveBarVisible = activeTab === "edit";
   const lessonSaveBar = lessonSaveBarVisible ? (
     <div className="sl-cm-lesson-editor__sticky">
       <Button
@@ -1037,7 +1027,7 @@ export function LessonDetailEditor({ context }) {
         type="submit"
         variant="primary"
         loading={loading}
-        disabled={editorBusy}
+        disabled={editorBusy || !hasChanges}
         form={lessonType === "FLASHCARD" ? lessonMetadataFormId : undefined}
         leftIcon={<Save size={16} />}
       >
@@ -1479,6 +1469,9 @@ export function LessonDetailEditor({ context }) {
                       </div>
                     </div>
 
+                  </div>
+
+                  <div className="sl-video-lesson-form__settings-row">
                     <fieldset className="sl-video-lesson-form__status-field">
                       <legend className="sl-cm-lesson-editor__field-label">
                         Status
@@ -1504,30 +1497,30 @@ export function LessonDetailEditor({ context }) {
                         ))}
                       </div>
                     </fieldset>
-                  </div>
 
-                  <label className="sl-cm-lesson-editor__preview-setting sl-video-lesson-form__preview-setting">
-                    <span className="sl-cm-lesson-editor__preview-copy">
-                      <strong>Preview lesson</strong>
-                      <small>
-                        Let learners view this lesson before enrolling.
-                      </small>
-                    </span>
-                    <span className="sl-cm-lesson-editor__switch">
-                      <input
-                        type="checkbox"
-                        checked={isPreview}
-                        onChange={(event) => {
-                          setIsPreview(event.target.checked);
-                          markChanged();
-                        }}
-                      />
-                      <span
-                        className="sl-cm-lesson-editor__switch-track"
-                        aria-hidden="true"
-                      />
-                    </span>
-                  </label>
+                    <label className="sl-cm-lesson-editor__preview-setting sl-video-lesson-form__preview-setting">
+                      <span className="sl-cm-lesson-editor__preview-copy">
+                        <strong>Preview lesson</strong>
+                        <small>
+                          Let learners view this lesson before enrolling.
+                        </small>
+                      </span>
+                      <span className="sl-cm-lesson-editor__switch">
+                        <input
+                          type="checkbox"
+                          checked={isPreview}
+                          onChange={(event) => {
+                            setIsPreview(event.target.checked);
+                            markChanged();
+                          }}
+                        />
+                        <span
+                          className="sl-cm-lesson-editor__switch-track"
+                          aria-hidden="true"
+                        />
+                      </span>
+                    </label>
+                  </div>
                 </section>
 
                 <section className="sl-video-lesson-form__section">
@@ -1564,7 +1557,20 @@ export function LessonDetailEditor({ context }) {
                         markChanged();
                       }}
                       className="sl-cm-lesson-editor__field-control"
-                      aria-describedby="lesson-youtube-help lesson-youtube-error"
+                      aria-describedby={[
+                        "lesson-youtube-help",
+                        videoSummaryError ? "lesson-youtube-error" : "",
+                        hasInvalidYoutubeUrl
+                          ? "lesson-youtube-format-error"
+                          : "",
+                      ]
+                        .filter(Boolean)
+                        .join(" ")}
+                      aria-invalid={
+                        videoSummaryError || hasInvalidYoutubeUrl
+                          ? "true"
+                          : undefined
+                      }
                     />
                     <p
                       id="lesson-youtube-help"
@@ -1593,14 +1599,18 @@ export function LessonDetailEditor({ context }) {
                         allowFullScreen
                       />
                     </div>
-                  ) : hasLegacyVideoSource ? (
-                    <div className="sl-video-lesson-form__legacy" role="status">
+                  ) : hasInvalidYoutubeUrl ? (
+                    <div
+                      id="lesson-youtube-format-error"
+                      className="sl-video-lesson-form__url-error"
+                      role="alert"
+                    >
                       <AlertCircle size={19} aria-hidden="true" />
                       <div>
-                        <strong>Legacy video source</strong>
+                        <strong>Invalid YouTube URL</strong>
                         <p>
-                          This existing source is preserved until you replace it
-                          with a valid YouTube URL.
+                          Enter an HTTPS URL in youtube.com/watch?v=... or
+                          youtu.be/... format.
                         </p>
                       </div>
                     </div>
@@ -1634,13 +1644,13 @@ export function LessonDetailEditor({ context }) {
                       onClick={handleGenerateSummary}
                     >
                       {summaryGenerating
-                        ? "Getting transcript and generating summaryÃ¢â‚¬Â¦"
+                        ? "Getting transcript and generating summary..."
                         : "Generate summary"}
                     </Button>
                   </div>
                   {summaryGenerated && (
                     <p className="sl-video-lesson-form__ai-note" role="status">
-                      AI-generatedÃ¢â‚¬â€review before saving.
+                      AI-generated - review before saving.
                     </p>
                   )}
                   <RichTextEditor
@@ -2037,8 +2047,8 @@ export function LessonDetailEditor({ context }) {
                   }
                   summary={
                     lessonType === "ESSAY"
-                      ? `${statusLabel} Ã‚Â· Available until course end Ã‚Â· Preview ${isPreview ? "enabled" : "disabled"}`
-                      : `${statusLabel} Ã‚Â· ${durationMinutes ? `${durationMinutes} min` : "No duration"} Ã‚Â· Preview ${isPreview ? "enabled" : "disabled"}`
+                      ? `${statusLabel} \u00B7 Available until course end \u00B7 Preview ${isPreview ? "enabled" : "disabled"}`
+                      : `${statusLabel} \u00B7 ${durationMinutes ? `${durationMinutes} min` : "No duration"} \u00B7 Preview ${isPreview ? "enabled" : "disabled"}`
                   }
                   state={settingsComplete ? "complete" : "incomplete"}
                   stateLabel={settingsComplete ? "Complete" : "Incomplete"}

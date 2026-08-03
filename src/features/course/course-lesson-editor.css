@@ -309,6 +309,14 @@
   box-shadow: 0 0 0 3px rgba(130, 94, 245, 0.18);
 }
 
+.sl-cm-lesson-editor__field-control[aria-invalid="true"] {
+  border-color: var(--sl-danger);
+}
+
+.sl-cm-lesson-editor__field-control[aria-invalid="true"]:focus {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--sl-danger) 18%, transparent);
+}
+
 .sl-cm-lesson-editor__field-control--readonly {
   background: var(--sl-surface, #f7f9fa);
   color: var(--sl-muted);
@@ -945,6 +953,24 @@
   border: 0;
 }
 
+.sl-video-lesson-form__settings-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 0.65fr);
+  align-items: end;
+  gap: 24px;
+  margin-top: 18px;
+}
+
+.sl-video-lesson-form__settings-row
+  > .sl-video-lesson-form__status-field {
+  grid-column: auto;
+}
+
+.sl-video-lesson-form__settings-row
+  > .sl-video-lesson-form__preview-setting {
+  margin-top: 0;
+}
+
 .sl-video-lesson-form__status-field > legend {
   margin-bottom: 8px;
   padding: 0;
@@ -1016,30 +1042,30 @@
   text-align: center;
 }
 
-.sl-video-lesson-form__legacy {
+.sl-video-lesson-form__url-error {
   display: flex;
   align-items: flex-start;
   gap: 12px;
   width: min(100%, 820px);
   margin-top: 20px;
   padding: 16px;
-  border: 1px solid #f5c96a;
+  border: 1px solid var(--sl-danger);
   border-radius: 6px;
-  background: #fffbeb;
-  color: #854d0e;
+  background: var(--sl-danger-soft);
+  color: var(--sl-danger);
 }
 
-.sl-video-lesson-form__legacy svg {
+.sl-video-lesson-form__url-error svg {
   flex: 0 0 auto;
   margin-top: 1px;
 }
 
-.sl-video-lesson-form__legacy strong {
+.sl-video-lesson-form__url-error strong {
   display: block;
   font-size: 14px;
 }
 
-.sl-video-lesson-form__legacy p {
+.sl-video-lesson-form__url-error p {
   margin: 4px 0 0;
   font-size: 13px;
   line-height: 1.5;
@@ -1102,6 +1128,12 @@
 
   .sl-video-lesson-form__info-grid {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .sl-video-lesson-form__settings-row {
+    grid-template-columns: minmax(0, 1fr);
+    align-items: stretch;
+    gap: 12px;
   }
 
   .sl-video-lesson-form__details-heading {

@@ -6,7 +6,6 @@ import {
 } from "react-router-dom";
 import { PublicLayout } from "./layouts/PublicLayout";
 import { AuthAwareLayout } from "./layouts/AuthAwareLayout";
-import { AppLayout } from "./layouts/AppLayout";
 import { TraineeLayout } from "./layouts/TraineeLayout";
 import { TrainerLayout } from "./layouts/TrainerLayout";
 import { ProtectedRoute } from "./routes/ProtectedRoute";
@@ -16,6 +15,7 @@ import {
   normalizeRole,
   PERSONAL_FLASHCARD_ROLES,
   PERSONAL_FLASHCARD_STAFF_LAYOUT_ROLES,
+  PROFILE_ROLES,
   ROLES,
 } from "@/shared/constants/roles";
 import { getCurrentUser } from "@/services";
@@ -220,10 +220,15 @@ const appRoutes = [
         ],
       },
 
-      // Nhóm 1: Trang cá nhân dùng chung AppLayout hệ thống
+      // Profile dùng header ngang chung, không hiển thị welcome/tab bar theo role.
       {
-        element: <AppLayout />,
-        children: [{ path: "/profile", element: <ProfilePage /> }],
+        element: <RoleGuard allowedRoles={PROFILE_ROLES} />,
+        children: [
+          {
+            element: <TrainerLayout />,
+            children: [{ path: "/profile", element: <ProfilePage /> }],
+          },
+        ],
       },
       {
         element: <NotificationLayoutBoundary />,
