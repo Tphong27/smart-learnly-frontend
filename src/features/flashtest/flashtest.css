@@ -3147,6 +3147,13 @@
   gap: 20px;
 }
 
+.ft-tests-filter-group {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-width: 0;
+}
+
 /* Tabs */
 .ft-tests-tabs {
   display: flex;
@@ -3440,6 +3447,11 @@
     align-items: flex-start;
     flex-direction: column;
     gap: 0;
+  }
+
+  .ft-tests-filter-group {
+    width: 100%;
+    flex-wrap: wrap;
   }
 
   .ft-tests-tabs {

@@ -21,13 +21,25 @@ import { Modal } from "@/shared/components/ui";
 import "../flashtest.css";
 
 function isFlashTest(item) {
-  return item?.isFlashtest === true ||
+  return (
+    item?.isFlashtest === true ||
     item?.isFlashTest === true ||
-    item?.is_flashtest === true;
+    item?.is_flashtest === true
+  );
 }
 
 function isRegularTest(item) {
   return !isFlashTest(item);
+}
+
+/** Phân biệt assignment độc lập với essay được gắn vào lesson trong course. */
+function isCurriculumEssay(item) {
+  return Boolean(item?.lessonId || item?.lesson_id);
+}
+
+/** Chuẩn hóa feedback từ cả response camelCase và snake_case. */
+function getTrainerFeedback(submission) {
+  return submission?.trainerFeedback ?? submission?.trainer_feedback ?? "";
 }
 
 function isCompletedStatus(status) {
@@ -81,14 +93,12 @@ function getDurationMinutes(item) {
     numberOrNull(item?.durationMinutes) ??
     numberOrNull(item?.duration_minutes) ??
     numberOrNull(item?.duration);
-  if (explicitDuration != null) return Math.max(1, Math.round(explicitDuration));
+  if (explicitDuration != null)
+    return Math.max(1, Math.round(explicitDuration));
 
   const dueDate = item?.dueDate || item?.due_date;
   const baseTime =
-    item?.updatedAt ||
-    item?.updated_at ||
-    item?.createdAt ||
-    item?.created_at;
+    item?.updatedAt || item?.updated_at || item?.createdAt || item?.created_at;
   if (!dueDate || !baseTime) return null;
 
   const durationMs = new Date(dueDate).getTime() - new Date(baseTime).getTime();
@@ -145,18 +155,22 @@ export function TraineeFlashTestListPage({ variant = "flash" }) {
   const takePath = isAssignmentMode
     ? "/learning/assignments/take"
     : isFlashMode
-    ? "/learning/flashtests/take"
-    : "/learning/tests/take";
+      ? "/learning/flashtests/take"
+      : "/learning/tests/take";
   const accessStoragePrefix = isFlashMode ? "flashAccess" : "testAccess";
   const itemFilter = useMemo(
-    () => (isAssignmentMode
-      ? isRegularTest
-      : isFlashMode ? isFlashTest : isRegularTest),
+    () =>
+      isAssignmentMode
+        ? isRegularTest
+        : isFlashMode
+          ? isFlashTest
+          : isRegularTest,
     [isAssignmentMode, isFlashMode],
   );
   const currentUser = useMemo(() => getCurrentUser(), []);
   const studentId = useMemo(
-    () => currentUser?.id || currentUser?.userId || currentUser?.accountId || "",
+    () =>
+      currentUser?.id || currentUser?.userId || currentUser?.accountId || "",
     [currentUser],
   );
   const [tests, setTests] = useState([]);
@@ -176,16 +190,19 @@ export function TraineeFlashTestListPage({ variant = "flash" }) {
   const [accessError, setAccessError] = useState("");
   const [verifyingAccess, setVerifyingAccess] = useState(false);
   const [filterTab, setFilterTab] = useState("all");
+  const [assignmentView, setAssignmentView] = useState("daily");
   const [expandedResultKey, setExpandedResultKey] = useState("");
   const [visibleFeedback, setVisibleFeedback] = useState(null);
   const pageTitle = isAssignmentMode
     ? "My Assignments"
-    : isFlashMode ? "My Flash Tests" : "My Tests";
+    : isFlashMode
+      ? "My Flash Tests"
+      : "My Tests";
   const pageSubtitle = isAssignmentMode
     ? "Track essay work from your enrolled classes and continue before each due date."
     : isFlashMode
-    ? "Practice with trainer-published MCQ and essay work while your progress stays visible."
-    : "Review available trainer tests, check your latest result, and start the next one.";
+      ? "Practice with trainer-published MCQ and essay work while your progress stays visible."
+      : "";
 
   const loadAvailableTests = useCallback(async () => {
     setLoading(true);
@@ -193,7 +210,7 @@ export function TraineeFlashTestListPage({ variant = "flash" }) {
       const requests = [
         isAssignmentMode
           ? Promise.resolve([])
-            : testService.getAvailable({
+          : testService.getAvailable({
               ...(courseId && { courseId }),
               ...(classId && { classId }),
               isFlashtest: isFlashMode,
@@ -220,11 +237,15 @@ export function TraineeFlashTestListPage({ variant = "flash" }) {
       const flashTests = (testData || []).filter(
         (item) =>
           itemFilter(item) &&
-          (item?.isPublished ?? item?.is_published ?? item?.published ?? false) === true,
+          (item?.isPublished ??
+            item?.is_published ??
+            item?.published ??
+            false) === true,
       );
-      const flashAssignments = isFlashMode || isAssignmentMode
-        ? (assignmentData || []).filter(itemFilter)
-        : [];
+      const flashAssignments =
+        isFlashMode || isAssignmentMode
+          ? (assignmentData || []).filter(itemFilter)
+          : [];
       setTests(flashTests);
       setAssignments(flashAssignments);
       setNowMs(Date.now());
@@ -279,12 +300,15 @@ export function TraineeFlashTestListPage({ variant = "flash" }) {
                 taken: isCompletedAssignmentStatus(submission?.status),
                 score: submission?.score ?? "--",
                 status: submission?.status,
-                trainerFeedback: submission?.trainerFeedback,
+                trainerFeedback: getTrainerFeedback(submission),
               },
             ];
           } catch (submissionError) {
             if (submissionError?.originalError?.response?.status !== 404) {
-              console.warn("Could not load flash assignment status", submissionError);
+              console.warn(
+                "Could not load flash assignment status",
+                submissionError,
+              );
             }
             return [`essay-${assignment.id}`, { taken: false, score: "--" }];
           }
@@ -316,16 +340,24 @@ export function TraineeFlashTestListPage({ variant = "flash" }) {
   }, []);
 
   const assessmentItems = useMemo(() => {
-    return [
+    const merged = [
       ...tests.map((item) => ({ ...item, flashType: "mcq" })),
       ...assignments.map((item) => ({ ...item, flashType: "essay" })),
-    ].sort((a, b) =>
-      new Date(b.createdAt || b.created_at || 0).getTime() -
-      new Date(a.createdAt || a.created_at || 0).getTime(),
+    ].sort(
+      (a, b) =>
+        new Date(b.createdAt || b.created_at || 0).getTime() -
+        new Date(a.createdAt || a.created_at || 0).getTime(),
     );
-  }, [assignments, tests]);
 
-  const total = tests.length + assignments.length;
+    if (!isAssignmentMode) return merged;
+    return merged.filter((item) =>
+      assignmentView === "curriculum"
+        ? isCurriculumEssay(item)
+        : !isCurriculumEssay(item),
+    );
+  }, [assignmentView, assignments, isAssignmentMode, tests]);
+
+  const total = assessmentItems.length;
 
   const filterCounts = useMemo(() => {
     return {
@@ -334,10 +366,17 @@ export function TraineeFlashTestListPage({ variant = "flash" }) {
         const result = resultMap[`${item.flashType}-${item.id}`];
         if (result?.taken) return false;
         const dueDate = item.dueDate || item.due_date;
-        if (item.flashType === "essay" && dueDate && new Date(dueDate).getTime() <= nowMs) return false;
+        if (
+          item.flashType === "essay" &&
+          dueDate &&
+          new Date(dueDate).getTime() <= nowMs
+        )
+          return false;
         return true;
       }).length,
-      done: assessmentItems.filter((item) => Boolean(resultMap[`${item.flashType}-${item.id}`]?.taken)).length,
+      done: assessmentItems.filter((item) =>
+        Boolean(resultMap[`${item.flashType}-${item.id}`]?.taken),
+      ).length,
       expired: assessmentItems.filter((item) => {
         if (item.flashType !== "essay") return false;
         const dueDate = item.dueDate || item.due_date;
@@ -371,11 +410,18 @@ export function TraineeFlashTestListPage({ variant = "flash" }) {
         const result = resultMap[`${item.flashType}-${item.id}`];
         if (result?.taken) return false;
         const dueDate = item.dueDate || item.due_date;
-        if (item.flashType === "essay" && dueDate && new Date(dueDate).getTime() <= nowMs) return false;
+        if (
+          item.flashType === "essay" &&
+          dueDate &&
+          new Date(dueDate).getTime() <= nowMs
+        )
+          return false;
         return true;
       });
     } else if (filterTab === "done") {
-      items = items.filter((item) => Boolean(resultMap[`${item.flashType}-${item.id}`]?.taken));
+      items = items.filter((item) =>
+        Boolean(resultMap[`${item.flashType}-${item.id}`]?.taken),
+      );
     } else if (filterTab === "expired") {
       items = items.filter((item) => {
         if (item.flashType !== "essay") return false;
@@ -391,7 +437,8 @@ export function TraineeFlashTestListPage({ variant = "flash" }) {
   const totalPages = Math.max(1, Math.ceil(filteredRows.length / pageSize));
   const currentPage = Math.min(page, totalPages);
   const paginatedRows = useMemo(
-    () => filteredRows.slice((currentPage - 1) * pageSize, currentPage * pageSize),
+    () =>
+      filteredRows.slice((currentPage - 1) * pageSize, currentPage * pageSize),
     [currentPage, filteredRows, pageSize],
   );
 
@@ -484,7 +531,9 @@ export function TraineeFlashTestListPage({ variant = "flash" }) {
   const handleVerifyAccessCode = async () => {
     const code = accessCode.trim();
     if (!code) {
-      setAccessError(`Please enter the ${isFlashMode ? "flash test" : "test"} code.`);
+      setAccessError(
+        `Please enter the ${isFlashMode ? "flash test" : "test"} code.`,
+      );
       return;
     }
 
@@ -493,7 +542,9 @@ export function TraineeFlashTestListPage({ variant = "flash" }) {
 
     const currentExpiresAt = getAccessExpiresAt(item);
     if (isPastDate(currentExpiresAt, nowMs)) {
-      setAccessError("This code has expired. Please ask your trainer for a new code.");
+      setAccessError(
+        "This code has expired. Please ask your trainer for a new code.",
+      );
       return;
     }
 
@@ -508,11 +559,16 @@ export function TraineeFlashTestListPage({ variant = "flash" }) {
         return;
       }
       if (isPastDate(getAccessExpiresAt(item, result), nowMs)) {
-        setAccessError("This code has expired. Please ask your trainer for a new code.");
+        setAccessError(
+          "This code has expired. Please ask your trainer for a new code.",
+        );
         return;
       }
       const type = accessModal.isEssay ? "essay" : "mcq";
-      window.sessionStorage.setItem(`${accessStoragePrefix}:${type}:${item.id}`, code);
+      window.sessionStorage.setItem(
+        `${accessStoragePrefix}:${type}:${item.id}`,
+        code,
+      );
       navigate(`${takePath}/${item.id}/${type}`, {
         state: { accessCode: code },
       });
@@ -533,55 +589,89 @@ export function TraineeFlashTestListPage({ variant = "flash" }) {
       <div className="ft-tests-panel">
         <div className="ft-tests-tabs-panel">
           <div className="ft-tests-tabs-panel__top">
-            <div className="ft-tests-tabs" role="tablist" aria-label="Filter tests">
-              <button
-                type="button"
-                className={`ft-tests-tab ${filterTab === "all" ? "ft-tests-tab--active" : ""}`}
-                onClick={() => {
-                  setFilterTab("all");
-                  setPage(1);
-                }}
-                role="tab"
-                aria-selected={filterTab === "all"}
+            <div className="ft-tests-filter-group">
+              <div
+                className="ft-tests-tabs"
+                role="tablist"
+                aria-label="Filter tests"
               >
-                All <span className="ft-tests-tab__count">{loading ? "..." : filterCounts.all}</span>
-              </button>
-              <button
-                type="button"
-                className={`ft-tests-tab ${filterTab === "ready" ? "ft-tests-tab--active" : ""}`}
-                onClick={() => {
-                  setFilterTab("ready");
-                  setPage(1);
-                }}
-                role="tab"
-                aria-selected={filterTab === "ready"}
-              >
-                Ready <span className="ft-tests-tab__count">{loading ? "..." : filterCounts.ready}</span>
-              </button>
-              <button
-                type="button"
-                className={`ft-tests-tab ${filterTab === "done" ? "ft-tests-tab--active" : ""}`}
-                onClick={() => {
-                  setFilterTab("done");
-                  setPage(1);
-                }}
-                role="tab"
-                aria-selected={filterTab === "done"}
-              >
-                Done <span className="ft-tests-tab__count">{loading ? "..." : filterCounts.done}</span>
-              </button>
-              <button
-                type="button"
-                className={`ft-tests-tab ${filterTab === "expired" ? "ft-tests-tab--active" : ""}`}
-                onClick={() => {
-                  setFilterTab("expired");
-                  setPage(1);
-                }}
-                role="tab"
-                aria-selected={filterTab === "expired"}
-              >
-                Expired <span className="ft-tests-tab__count">{loading ? "..." : filterCounts.expired}</span>
-              </button>
+                <button
+                  type="button"
+                  className={`ft-tests-tab ${filterTab === "all" ? "ft-tests-tab--active" : ""}`}
+                  onClick={() => {
+                    setFilterTab("all");
+                    setPage(1);
+                  }}
+                  role="tab"
+                  aria-selected={filterTab === "all"}
+                >
+                  All{" "}
+                  <span className="ft-tests-tab__count">
+                    {loading ? "..." : filterCounts.all}
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  className={`ft-tests-tab ${filterTab === "ready" ? "ft-tests-tab--active" : ""}`}
+                  onClick={() => {
+                    setFilterTab("ready");
+                    setPage(1);
+                  }}
+                  role="tab"
+                  aria-selected={filterTab === "ready"}
+                >
+                  Ready{" "}
+                  <span className="ft-tests-tab__count">
+                    {loading ? "..." : filterCounts.ready}
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  className={`ft-tests-tab ${filterTab === "done" ? "ft-tests-tab--active" : ""}`}
+                  onClick={() => {
+                    setFilterTab("done");
+                    setPage(1);
+                  }}
+                  role="tab"
+                  aria-selected={filterTab === "done"}
+                >
+                  Done{" "}
+                  <span className="ft-tests-tab__count">
+                    {loading ? "..." : filterCounts.done}
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  className={`ft-tests-tab ${filterTab === "expired" ? "ft-tests-tab--active" : ""}`}
+                  onClick={() => {
+                    setFilterTab("expired");
+                    setPage(1);
+                  }}
+                  role="tab"
+                  aria-selected={filterTab === "expired"}
+                >
+                  Expired{" "}
+                  <span className="ft-tests-tab__count">
+                    {loading ? "..." : filterCounts.expired}
+                  </span>
+                </button>
+              </div>
+              {isAssignmentMode && (
+                <label className="ft-filter-select">
+                  <select
+                    value={assignmentView}
+                    onChange={(event) => {
+                      setAssignmentView(event.target.value);
+                      setFilterTab("all");
+                      setPage(1);
+                    }}
+                    aria-label="Assignment source"
+                  >
+                    <option value="daily">Daily Assignment</option>
+                    <option value="curriculum">Essay in Course</option>
+                  </select>
+                </label>
+              )}
             </div>
             <label className="ft-tests-search">
               <Search size={16} />
@@ -609,21 +699,39 @@ export function TraineeFlashTestListPage({ variant = "flash" }) {
                   <th>Due Date</th>
                   <th>Score</th>
                   <th>Status</th>
-                  <th>Feedback</th>
+                  {isAssignmentMode && <th>Feedback</th>}
                   <th className="ft-tests-action-column">Action</th>
                 </tr>
               </thead>
               <tbody>
                 {[...Array(6)].map((_, i) => (
                   <tr key={i}>
-                    <td><span className="ft-skeleton" style={{ width: 60 }} /></td>
-                    <td><span className="ft-skeleton" style={{ width: "80%" }} /></td>
-                    <td><span className="ft-skeleton" style={{ width: 50 }} /></td>
-                    <td><span className="ft-skeleton" style={{ width: 80 }} /></td>
-                    <td><span className="ft-skeleton" style={{ width: 40 }} /></td>
-                    <td><span className="ft-skeleton" style={{ width: 70 }} /></td>
-                    <td><span className="ft-skeleton" style={{ width: 70 }} /></td>
-                    <td><span className="ft-skeleton" style={{ width: 80 }} /></td>
+                    <td>
+                      <span className="ft-skeleton" style={{ width: 60 }} />
+                    </td>
+                    <td>
+                      <span className="ft-skeleton" style={{ width: "80%" }} />
+                    </td>
+                    <td>
+                      <span className="ft-skeleton" style={{ width: 50 }} />
+                    </td>
+                    <td>
+                      <span className="ft-skeleton" style={{ width: 80 }} />
+                    </td>
+                    <td>
+                      <span className="ft-skeleton" style={{ width: 40 }} />
+                    </td>
+                    {isAssignmentMode && (
+                      <td>
+                        <span className="ft-skeleton" style={{ width: 70 }} />
+                      </td>
+                    )}
+                    <td>
+                      <span className="ft-skeleton" style={{ width: 70 }} />
+                    </td>
+                    <td>
+                      <span className="ft-skeleton" style={{ width: 80 }} />
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -634,19 +742,27 @@ export function TraineeFlashTestListPage({ variant = "flash" }) {
             <BookOpen size={36} strokeWidth={1.5} />
             <strong>
               {isAssignmentMode
-                ? "No assignments available"
-                : isFlashMode ? "No flash tests available" : "No tests available"}
+                ? assignmentView === "curriculum"
+                  ? "No essay lessons available"
+                  : "No daily assignments available"
+                : isFlashMode
+                  ? "No flash tests available"
+                  : "No tests available"}
             </strong>
             <p>
               {isAssignmentMode
-                ? "Your trainer has not assigned extra essay work for this course yet."
+                ? assignmentView === "curriculum"
+                  ? "No assignment lessons are available in your enrolled course yet."
+                  : "Your trainer has not assigned daily essay work yet."
                 : "Your instructors have not published any tests yet."}
             </p>
           </div>
         ) : filteredRows.length === 0 ? (
           <div className="ft-tests-empty">
             <Search size={36} strokeWidth={1.5} />
-            <strong>No {filterTab === "all" ? "" : filterTab} tests found</strong>
+            <strong>
+              No {filterTab === "all" ? "" : filterTab} tests found
+            </strong>
             <p>Try a different filter or clear the search box.</p>
           </div>
         ) : (
@@ -660,7 +776,7 @@ export function TraineeFlashTestListPage({ variant = "flash" }) {
                   <th>Due Date</th>
                   <th>Score</th>
                   <th>Status</th>
-                  <th>Feedback</th>
+                  {isAssignmentMode && <th>Feedback</th>}
                   <th className="ft-tests-action-column">Action</th>
                 </tr>
               </thead>
@@ -670,57 +786,90 @@ export function TraineeFlashTestListPage({ variant = "flash" }) {
                   const result = resultMap[key];
                   const isEssay = item.flashType === "essay";
                   const taken = Boolean(result?.taken);
-                  const hasAttemptHistory = !isEssay && Array.isArray(result?.attempts) && result.attempts.length > 0;
+                  const hasAttemptHistory =
+                    !isEssay &&
+                    Array.isArray(result?.attempts) &&
+                    result.attempts.length > 0;
                   const expanded = expandedResultKey === key;
                   const dueDate = item.dueDate || item.due_date;
-                  const expired = isEssay && dueDate && new Date(dueDate).getTime() <= nowMs;
-                  const statusLabel = taken ? "Completed" : expired ? "Expired" : "Ready";
-                  const typeLabel = isEssay ? "Essay" : "MCQ";
+                  const expired =
+                    isEssay && dueDate && new Date(dueDate).getTime() <= nowMs;
+                  const statusLabel = taken
+                    ? "Completed"
+                    : expired
+                      ? "Expired"
+                      : "Ready";
+                  const typeLabel = isEssay
+                    ? isCurriculumEssay(item)
+                      ? "Essay in Course"
+                      : "Daily Assignment"
+                    : "MCQ";
                   const TypeIcon = isEssay ? FileText : CheckSquare;
                   const duration = getDurationMinutes(item);
-                  const displayDate = dueDate || item.createdAt || item.created_at;
+                  const displayDate =
+                    dueDate || item.createdAt || item.created_at;
                   const score = result?.score;
                   const displayScore = score != null ? score : "--";
 
                   return (
                     <Fragment key={key}>
-                      <tr className={taken ? "ft-row--completed" : expired ? "ft-row--expired" : ""}>
+                      <tr
+                        className={
+                          taken
+                            ? "ft-row--completed"
+                            : expired
+                              ? "ft-row--expired"
+                              : ""
+                        }
+                      >
                         <td>
-                          <span className={`ft-badge ft-badge--${isEssay ? "essay" : "mcq"}`}>
+                          <span
+                            className={`ft-badge ft-badge--${isEssay ? "essay" : "mcq"}`}
+                          >
                             <TypeIcon size={12} />
                             {typeLabel}
                           </span>
                         </td>
                         <td className="ft-cell--title">
-                          <span className="ft-title">{item.title || item.name}</span>
+                          <span className="ft-title">
+                            {item.title || item.name}
+                          </span>
                         </td>
                         <td>{duration != null ? `${duration} mins` : "--"}</td>
-                        <td>{displayDate ? new Date(displayDate).toLocaleDateString() : "--"}</td>
+                        <td>
+                          {displayDate
+                            ? new Date(displayDate).toLocaleDateString()
+                            : "--"}
+                        </td>
                         <td>{displayScore}</td>
                         <td>
-                          <span className={`ft-status ft-status--${statusLabel.toLowerCase()}`}>
+                          <span
+                            className={`ft-status ft-status--${statusLabel.toLowerCase()}`}
+                          >
                             {statusLabel}
                           </span>
                         </td>
-                        <td>
-                          {isEssay && result?.trainerFeedback ? (
-                            <button
-                              type="button"
-                              className="ft-button ft-button--secondary"
-                              onClick={() =>
-                                setVisibleFeedback({
-                                  title: item.title || item.name,
-                                  feedback: result.trainerFeedback,
-                                })
-                              }
-                            >
-                              <MessageSquareText size={15} />
-                              View feedback
-                            </button>
-                          ) : (
-                            <span className="ft-muted">--</span>
-                          )}
-                        </td>
+                        {isAssignmentMode && (
+                          <td>
+                            {isEssay && result?.trainerFeedback ? (
+                              <button
+                                type="button"
+                                className="ft-button ft-button--secondary"
+                                onClick={() =>
+                                  setVisibleFeedback({
+                                    title: item.title || item.name,
+                                    feedback: result.trainerFeedback,
+                                  })
+                                }
+                              >
+                                <MessageSquareText size={15} />
+                                View feedback
+                              </button>
+                            ) : (
+                              <span className="ft-muted">--</span>
+                            )}
+                          </td>
+                        )}
                         <td className="ft-tests-action-column">
                           <div className="ft-table-actions">
                             {hasAttemptHistory && (
@@ -733,9 +882,15 @@ export function TraineeFlashTestListPage({ variant = "flash" }) {
                               </button>
                             )}
                             {taken ? (
-                              !hasAttemptHistory && <span className="ft-button ft-button--disabled">Completed</span>
+                              !hasAttemptHistory && (
+                                <span className="ft-button ft-button--disabled">
+                                  Completed
+                                </span>
+                              )
                             ) : expired ? (
-                              <span className="ft-button ft-button--disabled">Expired</span>
+                              <span className="ft-button ft-button--disabled">
+                                Expired
+                              </span>
                             ) : (
                               <button
                                 type="button"
@@ -750,7 +905,9 @@ export function TraineeFlashTestListPage({ variant = "flash" }) {
                       </tr>
                       {hasAttemptHistory && expanded && (
                         <tr className="ft-expanded-row">
-                          <td colSpan={8}>{renderAttemptList(item, result)}</td>
+                          <td colSpan={isAssignmentMode ? 8 : 7}>
+                            {renderAttemptList(item, result)}
+                          </td>
                         </tr>
                       )}
                     </Fragment>
@@ -828,7 +985,8 @@ export function TraineeFlashTestListPage({ variant = "flash" }) {
 
             <h2 className="ft-access-modal__title">Access Code</h2>
             <p className="ft-access-modal__desc">
-              To start this test, enter the access code provided by your trainer.
+              To start this test, enter the access code provided by your
+              trainer.
             </p>
 
             <div className="ft-access-modal__input-group">
@@ -852,7 +1010,9 @@ export function TraineeFlashTestListPage({ variant = "flash" }) {
                   }}
                 />
               </label>
-              {accessError && <span className="ft-field-error">{accessError}</span>}
+              {accessError && (
+                <span className="ft-field-error">{accessError}</span>
+              )}
             </div>
 
             <div className="ft-access-modal__actions">
