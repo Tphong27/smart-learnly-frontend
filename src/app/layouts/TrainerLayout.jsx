@@ -44,11 +44,6 @@ const STAFF_TABS = [
     roles: [ROLES.TRAINER],
   },
   {
-    label: "Schedule",
-    to: "/staff/schedule",
-    roles: [ROLES.TRAINER],
-  },
-  {
     label: "Flashcards",
     to: "/flashcards",
     roles: [ROLES.TRAINER],

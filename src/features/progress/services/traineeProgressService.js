@@ -11,6 +11,7 @@ function toNumber(value, fallback = 0) {
   return Number.isFinite(number) ? number : fallback;
 }
 
+
 /** Chuẩn hóa một chỉ số tiến độ để UI luôn có đầy đủ số lượng và phần trăm. */
 function normalizeMetric(metric, label) {
   return {

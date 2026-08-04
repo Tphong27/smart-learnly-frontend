@@ -17,7 +17,7 @@ import {
 } from "../../../flashcards-shared";
 import { FlashcardCardList } from "./FlashcardCardList";
 import { FlashcardPreview } from "./FlashcardPreview";
-import { ImportFlashcardsModal } from "./FlashcardStagingWorkspace";
+import { ImportFlashcardsModal } from "./FlashcardStagingTemporaryReview";
 import { useProgressiveVisibleItems } from "./useProgressiveVisibleItems";
 import {
   getErrorMessage,

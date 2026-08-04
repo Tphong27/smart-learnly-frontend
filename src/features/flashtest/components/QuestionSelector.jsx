@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Eye, Plus, RefreshCw, Shuffle, Trash2, X } from "lucide-react";
-import { questionBankService } from "@/services/flashtest.service.js";
+import { questionBankService } from "@/features/admin/question-bank";
 import {
     sanitizeAnswerHtml,
     sanitizeQuestionHtml,
