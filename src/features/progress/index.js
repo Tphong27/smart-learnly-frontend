@@ -1,1 +1,1 @@
-export { TraineeProgressPage } from "./pages/TraineeProgressPage";
+export { TraineeProgress } from "./components/TraineeProgress";

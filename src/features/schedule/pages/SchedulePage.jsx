@@ -41,19 +41,12 @@ function getTrainerLabel(trainer) {
   );
 }
 
-function ScheduleItem({ session, isStaff }) {
+function ScheduleItem({ session }) {
   const meetingUrl = getGoogleMeetUrl(session.meetingUrl);
-  const detailPath = isStaff
-    ? `/staff/classrooms/${session.classId}/workspace`
-    : `/learning/courses/${session.courseId}?classId=${session.classId}`;
+  const detailPath = `/staff/classrooms/${session.classId}/workspace`;
 
   return (
     <article className="schedule-session">
-      {/* <strong className="schedule-session__course">
-        {session.courseTitle}
-      </strong> */}
-
-      {/* <span className="schedule-session__class">{session.className}</span> */}
       <strong className="schedule-session__class">{session.className}</strong>
 
       {session.trainerName && (
@@ -64,7 +57,7 @@ function ScheduleItem({ session, isStaff }) {
 
       <div className="schedule-session__actions">
         <Link to={detailPath} className="schedule-session__button">
-          {isStaff ? "View class" : "View materials"}
+          View class
         </Link>
 
         {meetingUrl && (
@@ -91,7 +84,6 @@ export function SchedulePage() {
   const role = normalizeRole(currentUser?.role);
 
   const isTmo = role === ROLES.TMO;
-  const isStaff = role === ROLES.TRAINER || role === ROLES.TMO;
 
   const [weekStart, setWeekStart] = useState(() =>
     toDateKey(startOfWeek(new Date())),
@@ -105,11 +97,9 @@ export function SchedulePage() {
     error: "",
   });
 
-  const requestKey = [
-    isStaff ? "staff" : "trainee",
-    weekStart,
-    isTmo ? selectedTrainerId : "",
-  ].join("|");
+  const requestKey = ["staff", weekStart, isTmo ? selectedTrainerId : ""].join(
+    "|",
+  );
 
   const [scheduleState, setScheduleState] = useState({
     resolvedRequestKey: null,
@@ -176,9 +166,10 @@ export function SchedulePage() {
   useEffect(() => {
     let active = true;
 
-    const request = isStaff
-      ? scheduleService.getStaffWeek(weekStart, isTmo ? selectedTrainerId : "")
-      : scheduleService.getMyWeek(weekStart);
+    const request = scheduleService.getStaffWeek(
+      weekStart,
+      isTmo ? selectedTrainerId : "",
+    );
 
     request
       .then((data) => {
@@ -207,7 +198,7 @@ export function SchedulePage() {
     return () => {
       active = false;
     };
-  }, [isStaff, isTmo, requestKey, selectedTrainerId, weekStart]);
+  }, [isTmo, requestKey, selectedTrainerId, weekStart]);
 
   const days = useMemo(
     () =>
@@ -242,7 +233,7 @@ export function SchedulePage() {
     <section className="schedule-page">
       <header className="schedule-heading">
         <div>
-          <h2>{isTmo ? "Trainer Schedule" : "My Schedule"}</h2>
+          <h2>{isTmo ? "Trainer Schedule" : "Teaching Schedule"}</h2>
         </div>
       </header>
 
@@ -372,7 +363,6 @@ export function SchedulePage() {
                               <ScheduleItem
                                 key={session.sessionId}
                                 session={session}
-                                isStaff={isStaff}
                               />
                             ))}
                           </div>

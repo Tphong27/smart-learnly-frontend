@@ -22,9 +22,7 @@ import {
   LearningWorkspacePage,
 } from "@/features/course";
 import { TraineeDashboardPage } from "@/features/dashboard";
-import { TraineeProgressPage } from "@/features/progress";
 import { OpeningSchedulePage } from "@/features/opening-schedule";
-import { SchedulePage } from "@/features/schedule";
 
 function PlaceholderPage({ title }) {
   return (
@@ -97,10 +95,9 @@ function getTraineeRoutes() {
             },
             { path: "enrollments", element: <MyEnrollmentsPage /> },
             { path: "transactions", element: <MyTransactionsPage /> },
-            { path: "progress", element: <TraineeProgressPage /> },
             {
-              path: "schedule",
-              element: <SchedulePage />,
+              path: "progress",
+              element: <Navigate to="/dashboard" replace />,
             },
             {
               path: "classrooms",

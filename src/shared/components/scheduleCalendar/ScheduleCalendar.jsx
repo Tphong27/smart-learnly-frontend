@@ -59,6 +59,30 @@ export function ScheduleCalendar({
     slots: slotsByDay[day.key] || [],
   })).filter((day) => day.slots.length > 0);
 
+  if (variant === "inline") {
+    if (scheduledDays.length === 0) {
+      return (
+        <span className="shared-schedule-calendar__inline-empty">
+          {emptyText}
+        </span>
+      );
+    }
+
+    const scheduleText = scheduledDays
+      .map((day) => {
+        const slotText = day.slots
+          .map((slot) => `${slot.label} - ${slot.startTime}–${slot.endTime}`)
+          .join(", ");
+
+        return `${day.shortLabel}: ${slotText}`;
+      })
+      .join(" · ");
+
+    return (
+      <span className="shared-schedule-calendar__inline">{scheduleText}</span>
+    );
+  }
+  
   if (variant === "compact") {
     if (scheduledDays.length === 0) {
       return (

@@ -14,16 +14,6 @@ function normalizeSchedule(data, fallbackWeekStart) {
 }
 
 export const scheduleService = {
-  async getMyWeek(weekStart) {
-    const response = await apiClient.get("/learning/schedule", {
-      params: {
-        ...(weekStart && { weekStart }),
-      },
-    });
-
-    return normalizeSchedule(unwrapData(response), weekStart);
-  },
-
   async getStaffWeek(weekStart, trainerId = "") {
     const response = await apiClient.get("/staff/schedule", {
       params: {

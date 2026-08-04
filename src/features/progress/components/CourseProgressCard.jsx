@@ -1,14 +1,23 @@
+import {
+  BookOpen,
+  CalendarDays,
+  ChevronDown,
+  Clock3,
+  ExternalLink,
+} from "lucide-react";
 import { useId, useState } from "react";
-import { BookOpen, ChevronDown } from "lucide-react";
 import { Button } from "@/shared/components/ui";
 import { ProgressBar } from "./ProgressBar";
 import { ProgressMetric } from "./ProgressMetric";
+import { ScheduleCalendar } from "@/shared/components/scheduleCalendar";
+import { formatDate } from "@/shared/utils/formatters";
+import { getGoogleMeetUrl } from "@/shared/utils/googleMeetUrl";
 
 function getLearningPath(course) {
   const courseId = course.courseId || course.id;
 
   if (!courseId) {
-    return "/learning/progress";
+    return "/dashboard";
   }
 
   if (!course.classId) {
@@ -38,6 +47,9 @@ export function CourseProgressCard({ course }) {
   const isCompleted = course.courseStatus === "COMPLETED";
   const isClassLearning =
     course.learningType === "CLASS" || Boolean(course.classId);
+  const meetingUrl = isClassLearning
+    ? getGoogleMeetUrl(course.classMeetingUrl)
+    : "";
 
   const learningPath = getLearningPath(course);
 
@@ -104,6 +116,33 @@ export function CourseProgressCard({ course }) {
                 <p className="course-progress-card__parent-course">
                   Course: {course.title}
                 </p>
+              )}
+              {isClassLearning && (
+                <div className="course-progress-card__class-info">
+                  {(course.classStartDate || course.classEndDate) && (
+                    <div className="course-progress-card__class-info-row">
+                      <CalendarDays size={15} aria-hidden="true" />
+
+                      <span>
+                        {formatDate(course.classStartDate)}
+                        {course.classStartDate && course.classEndDate
+                          ? " – "
+                          : ""}
+                        {formatDate(course.classEndDate)}
+                      </span>
+                    </div>
+                  )}
+
+                  <div className="course-progress-card__class-info-row">
+                    <Clock3 size={15} aria-hidden="true" />
+
+                    <ScheduleCalendar
+                      scheduleDescription={course.classScheduleDescription}
+                      variant="inline"
+                      emptyText="Class schedule not available"
+                    />
+                  </div>
+                </div>
               )}
             </div>
 
@@ -175,6 +214,18 @@ export function CourseProgressCard({ course }) {
             >
               {expanded ? "Hide details" : "View details"}
             </Button>
+            {isClassLearning && meetingUrl && (
+              <Button
+                href={meetingUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                variant="outline"
+                size="sm"
+                rightIcon={<ExternalLink size={15} aria-hidden="true" />}
+              >
+                Join Meet
+              </Button>
+            )}
           </div>
         </div>
       </div>
@@ -206,7 +257,7 @@ export function CourseProgressCard({ course }) {
             completed={flashcard.completed}
             total={flashcard.total}
             percent={flashcard.percent}
-            to={getScopedListPath("/learning/flashcards", course)}
+            to={getScopedListPath("/flashcards", course)}
           />
 
           <ProgressMetric

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { ChevronDown, LogOut, Receipt, User } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, NavLink } from "react-router-dom";
 import { SmartLearnlyMark } from "@/shared/components/SmartLearnlyMark";
 import { HeaderCourseSearch } from "@/shared/components/HeaderCourseSearch";
 import {
@@ -142,66 +142,109 @@ export function TraineeHeader({ user, onLogout, roleLabel }) {
         />
 
         {!isStaffHeader && (
-          <div className="trainee-header__category-anchor" ref={categoriesRef}>
-            <button
-              type="button"
-              className="header-categories-btn trainee-header__categories-button"
-              aria-expanded={categoriesOpen}
-              aria-haspopup="menu"
-              onClick={() => {
-                setCategoriesOpen((current) => !current);
-                setProfileOpen(false);
-              }}
+          <nav
+            className="trainee-header__browse-nav"
+            aria-label="Course discovery"
+          >
+            <div
+              className="trainee-header__category-anchor"
+              ref={categoriesRef}
             >
-              <span>Categories</span>
-              <ChevronDown
-                size={16}
-                className={categoriesOpen ? "is-open" : undefined}
-                aria-hidden="true"
-              />
-            </button>
-
-            {categoriesOpen && (
-              <div
-                className="trainee-header__popover trainee-header__categories-menu"
-                role="menu"
-                aria-label="Course categories"
+              <button
+                type="button"
+                className="header-categories-btn trainee-header__categories-button"
+                aria-expanded={categoriesOpen}
+                aria-haspopup="menu"
+                onClick={() => {
+                  setCategoriesOpen((current) => !current);
+                  setProfileOpen(false);
+                }}
               >
-                <Link
-                  to="/learning/courses"
-                  role="menuitem"
-                  onClick={() => setCategoriesOpen(false)}
+                <span>Categories</span>
+                <ChevronDown
+                  size={16}
+                  className={categoriesOpen ? "is-open" : undefined}
+                  aria-hidden="true"
+                />
+              </button>
+
+              {categoriesOpen && (
+                <div
+                  className="trainee-header__popover trainee-header__categories-menu"
+                  role="menu"
+                  aria-label="Course categories"
                 >
-                  All categories
-                </Link>
-                {categoriesLoading ? (
-                  <span
-                    className="trainee-header__categories-status"
-                    role="status"
+                  <Link
+                    to="/learning/courses"
+                    role="menuitem"
+                    onClick={() => setCategoriesOpen(false)}
                   >
-                    Loading categories…
-                  </span>
-                ) : categories.length > 0 ? (
-                  categories.map((category) => (
-                    <Link
-                      key={category.id || category.slug || category.name}
-                      to={`/learning/courses?categorySlug=${encodeURIComponent(
-                        category.slug || category.id,
-                      )}`}
-                      role="menuitem"
-                      onClick={() => setCategoriesOpen(false)}
+                    All categories
+                  </Link>
+
+                  {categoriesLoading ? (
+                    <span
+                      className="trainee-header__categories-status"
+                      role="status"
                     >
-                      {category.name}
-                    </Link>
-                  ))
-                ) : (
-                  <span className="trainee-header__categories-status">
-                    No categories available.
-                  </span>
-                )}
-              </div>
+                      Loading categories…
+                    </span>
+                  ) : categories.length > 0 ? (
+                    categories.map((category) => (
+                      <Link
+                        key={category.id || category.slug || category.name}
+                        to={`/learning/courses?categorySlug=${encodeURIComponent(
+                          category.slug || category.id,
+                        )}`}
+                        role="menuitem"
+                        onClick={() => setCategoriesOpen(false)}
+                      >
+                        {category.name}
+                      </Link>
+                    ))
+                  ) : (
+                    <span className="trainee-header__categories-status">
+                      No categories available.
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {normalizedRole === ROLES.TRAINEE && (
+              <>
+                <NavLink
+                  to="/learning/courses"
+                  className={({ isActive }) =>
+                    `trainee-header__primary-link${
+                      isActive ? " is-active" : ""
+                    }`
+                  }
+                  onClick={() => {
+                    setCategoriesOpen(false);
+                    setProfileOpen(false);
+                  }}
+                >
+                  Course Catalog
+                </NavLink>
+
+                <NavLink
+                  to="/learning/opening-schedule"
+                  className={({ isActive }) =>
+                    `trainee-header__primary-link${
+                      isActive ? " is-active" : ""
+                    }`
+                  }
+                  onClick={() => {
+                    setCategoriesOpen(false);
+                    setProfileOpen(false);
+                  }}
+                >
+                  Opening Class
+                </NavLink>
+              </>
             )}
-          </div>
+          </nav>
         )}
 
         <div className="trainee-header__actions" ref={actionsRef}>

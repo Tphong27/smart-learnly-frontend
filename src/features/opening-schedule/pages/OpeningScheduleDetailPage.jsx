@@ -355,6 +355,7 @@ export function OpeningScheduleDetailPage() {
 
                   <ScheduleCalendar
                     scheduleDescription={classItem.scheduleDescription}
+                    variant="inline"
                     emptyText="Schedule not available"
                   />
                 </div>

@@ -405,10 +405,6 @@ export function CourseListPage({
       {showHero && (
         <section className="course-hero course-hero--catalog">
           <h1>Course Catalog</h1>
-          <p>
-            Explore practical courses and find the right next step for your
-            learning goals.
-          </p>
         </section>
       )}
 

@@ -12,28 +12,12 @@ const TRAINEE_TABS = [
     end: true,
   },
   {
-    label: "Progress",
-    to: "/learning/progress",
-  },
-  {
-    label: "Schedule",
-    to: "/learning/schedule",
-  },
-  {
     label: "My Tests",
     to: "/learning/tests",
   },
   {
     label: "Course Flashcards",
     to: "/learning/flashcards",
-  },
-  {
-    label: "Course Catalog",
-    to: "/learning/courses",
-  },
-  {
-    label: "Opening Class",
-    to: "/learning/opening-schedule",
   },
   {
     label: "Flashcards",
