@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { AlertCircle, Loader, Plus } from "lucide-react";
 import { Button } from "@/shared/components/ui";
-import { classService } from "@/services";
+import { classroomService } from "../services/classroomService";
 import { canManageClasses, ROLES } from "@/shared/constants/roles";
 import { ClassListFilters } from "../components/ClassListFilters";
 import { getCurrentRole } from "@/shared/utils/auth";
@@ -51,8 +51,8 @@ export function StaffClassListPage({ routeBase = "/staff/classrooms" }) {
         };
 
         const data = isTrainer
-          ? await classService.listTrainer(requestFilters)
-          : await classService.listAdmin(requestFilters);
+          ? await classroomService.listTrainer(requestFilters)
+          : await classroomService.listAdmin(requestFilters);
 
         if (!mounted) return;
 
@@ -116,7 +116,7 @@ export function StaffClassListPage({ routeBase = "/staff/classrooms" }) {
     if (!confirmed) return;
 
     try {
-      await classService.delete(classId);
+      await classroomService.delete(classId);
       reloadClasses();
     } catch (err) {
       window.alert(err.message || "Error deleting class");

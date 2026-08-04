@@ -1,7 +1,7 @@
 import { AlertCircle, CalendarDays, LoaderCircle } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { openingScheduleService } from "@/services";
+import { openingScheduleService } from "../services/openingScheduleService";
 import { toNumber } from "@/shared/utils/formatters";
 import { OpeningScheduleCard } from "../components/OpeningScheduleCard";
 import { OpeningScheduleFilters } from "../components/OpeningScheduleFilters";

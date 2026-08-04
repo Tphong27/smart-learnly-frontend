@@ -1,4 +1,4 @@
-import { questionBankService as courseQuestionService } from "@/services/question-bank.service";
+import { questionBankService as courseQuestionService } from "@/features/admin/question-bank";
 import {
   QUESTION_TYPES,
   getOptionMedia,

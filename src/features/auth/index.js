@@ -4,6 +4,7 @@ export { ForgotPasswordPage } from "./pages/ForgotPasswordPage"
 export { ResetPasswordPage } from "./pages/ResetPasswordPage"
 export { VerifyEmailPage } from "./pages/VerifyEmailPage"
 export { ProfilePage } from "./pages/ProfilePage"
+export { authService } from "./services/authService"
 
 export const authFeature = {
   name: "Authentication",

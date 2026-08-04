@@ -7,7 +7,7 @@ import {
   toCreateClassPayload,
   toUpdateClassPayload,
 } from "../utils/classFormMapper";
-import { classService } from "@/services";
+import { classroomService } from "../services/classroomService";
 
 export function useClassForm({
   mode = "create",
@@ -66,13 +66,13 @@ export function useClassForm({
           if (Object.keys(updatePayload).length === 0) {
             savedClass = initialData;
           } else {
-            savedClass = await classService.update(
+            savedClass = await classroomService.update(
               initialData.id,
               updatePayload,
             );
           }
         } else {
-          savedClass = await classService.create(
+          savedClass = await classroomService.create(
             toCreateClassPayload(formData),
           );
         }

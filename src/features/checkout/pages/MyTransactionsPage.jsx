@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Modal, Button, useToast } from "@/shared/components/ui";
-import { transactionService, orderService } from "@/services";
+import { checkoutService } from "../services/checkoutService";
 import { StatusBadge } from "@/shared/components/status";
 import Pagination from "@/shared/components/Pagination";
 import { InvoiceDetailModal } from "../components/InvoiceDetailModal";
@@ -23,7 +23,7 @@ function CancelOrderModal({ open, target, onClose, onConfirmed }) {
     setError(null);
     setLoading(true);
     try {
-      await orderService.cancel(target.orderId);
+      await checkoutService.cancel(target.orderId);
       toast.success("Order cancelled successfully");
       onConfirmed(target);
     } catch (err) {
@@ -92,7 +92,7 @@ export function MyTransactionsPage() {
       setLoading(true);
       setError(null);
       try {
-        const data = await transactionService.list({
+        const data = await checkoutService.listTransactions({
           page: pageRequest,
           size: pageSize,
         });

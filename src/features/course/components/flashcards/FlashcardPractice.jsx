@@ -11,7 +11,8 @@ import {
   RefreshCw,
   Shuffle,
 } from "lucide-react";
-import { flashcardService } from "@/services/flashcard.service";
+import { flashcardLearningService } from "@/features/flashcard";
+import { flashcardAuthoringService as flashcardService } from "@/features/flashcard";
 import {
   FlashcardStudyCardList,
   FlashcardStudyControls,
@@ -649,9 +650,9 @@ export function FlashcardPractice({
       if (adminMode && lessonId) {
         payload = await flashcardService.getAdminSetByLesson(lessonId);
       } else if (setId) {
-        payload = await flashcardService.getSetPractice(setId);
+        payload = await flashcardLearningService.getSetPractice(setId);
       } else {
-        payload = await flashcardService.getLessonPractice(lessonId, classId);
+        payload = await flashcardLearningService.getLessonPractice(lessonId, classId);
       }
       const normalizedSet = normalizeSet(payload);
       setFlashcardSet(normalizedSet);
@@ -748,7 +749,7 @@ export function FlashcardPractice({
   );
 
   const submitProgressForCard = useCallback(async (card, result) => {
-    const response = await flashcardService.submitProgress(card.id, result);
+    const response = await flashcardLearningService.submitProgress(card.id, result);
     return normalizeProgressPayload(response, result);
   }, []);
 

@@ -18,7 +18,8 @@ import {
 } from "lucide-react";
 import { Button, Modal, useToast } from "@/shared/components/ui";
 import Pagination from "@/shared/components/Pagination";
-import { categoryService, classService, courseService } from "@/services";
+import { classroomService } from "@/features/classroom";
+import { categoryService, courseAdminService } from "@/features/course";
 import { getCurrentUser } from "@/services/api-client";
 import { formatDate, formatPrice } from "@/shared/utils/formatters";
 import { DEFAULT_PAGE_SIZE } from "@/shared/constants/pagination";
@@ -82,7 +83,7 @@ function DeleteCourseModal({ open, target, onClose, onConfirmed }) {
     setError(null);
     setLoading(true);
     try {
-      await courseService.remove(target.id);
+      await courseAdminService.remove(target.id);
       toast.success("Course deleted");
       setLoading(false);
       onConfirmed(target);
@@ -372,7 +373,7 @@ export function AdminCoursesPage() {
 
     setOpeningCourseId(course.id);
     try {
-      const assignedClasses = await classService.listTrainer({
+      const assignedClasses = await classroomService.listTrainer({
         courseId: course.id,
         page: 0,
         size: 100,
@@ -434,7 +435,7 @@ export function AdminCoursesPage() {
       setLoading(true);
       setError(null);
       try {
-        const data = await courseService.listAdmin({
+        const data = await courseAdminService.list({
           page: pageRequest,
           size: pageSize,
           keyword: debouncedKeyword,

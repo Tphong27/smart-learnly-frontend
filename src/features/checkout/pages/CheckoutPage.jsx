@@ -1,126 +1,22 @@
-import { useEffect, useMemo, useState } from "react";
-import { useLocation, useNavigate, useParams } from "react-router-dom";
-import { orderService, paymentStatusService } from "@/services";
-import { Button, useToast } from "@/shared/components/ui";
+import { useLocation, useParams } from "react-router-dom";
+import { Button } from "@/shared/components/ui";
 import { PaymentInstructionCard } from "../components/PaymentInstructionCard";
 import { CheckoutSummary } from "../components/CheckoutSummary";
+import { useCheckoutPayment } from "../hooks/useCheckoutPayment";
 import "../checkout.css";
 
-const POLLING_INTERVAL_MS = 4000;
-
+/**
+ * Hiển thị màn hình hoàn tất checkout gồm QR, thông tin chuyển khoản và tóm tắt đơn.
+ * Việc tải và polling order được giao cho useCheckoutPayment để page chỉ điều phối UI.
+ */
 export function CheckoutPage() {
   const { orderId } = useParams();
   const location = useLocation();
-  const navigate = useNavigate();
-  const toast = useToast();
-
   const initialCheckout = location.state?.checkout ?? null;
   const expectedCourse = location.state?.expectedCourse ?? null;
+  const { payment, isLoading, error } = useCheckoutPayment(orderId, initialCheckout);
 
-  const [payment, setPayment] = useState(initialCheckout);
-  const [loading, setLoading] = useState(!initialCheckout);
-  const [error, setError] = useState(null);
-
-  const isFinalStatus = useMemo(
-    () => paymentStatusService.isFinal(payment?.status),
-    [payment?.status],
-  );
-
-  useEffect(() => {
-    let cancelled = false;
-
-    async function loadOrder() {
-      if (!orderId) return;
-
-      setLoading(true);
-      setError(null);
-
-      try {
-        const data = await orderService.getOrder(orderId);
-
-        if (!cancelled) {
-          setPayment(data);
-        }
-      } catch (err) {
-        if (!cancelled) {
-          const message = err?.message || "Could not load checkout order.";
-          setError(message);
-          toast.error(message);
-        }
-      } finally {
-        if (!cancelled) {
-          setLoading(false);
-        }
-      }
-    }
-
-    if (!initialCheckout) {
-      loadOrder();
-    }
-
-    return () => {
-      cancelled = true;
-    };
-  }, [orderId, initialCheckout, toast]);
-
-  useEffect(() => {
-    if (!orderId || isFinalStatus) {
-      return undefined;
-    }
-
-    let cancelled = false;
-
-    async function pollOrderStatus() {
-      try {
-        const orderPayment = await orderService.getOrder(orderId);
-        const nextStatus = orderPayment.status;
-
-        if (cancelled) return;
-
-        setPayment((current) => ({
-          ...current,
-          ...orderPayment,
-          status: nextStatus,
-        }));
-
-        if (paymentStatusService.isFinal(nextStatus)) {
-          navigate(`/payment-result?orderId=${orderId}`, {
-            replace: true,
-            state: {
-              orderId,
-              transactionId: orderPayment.transactionId,
-              status: nextStatus,
-              payment: orderPayment,
-            },
-          });
-        }
-      } catch {
-        // Không toast liên tục khi polling lỗi tạm thời.
-      }
-    }
-
-    pollOrderStatus();
-
-    const timer = window.setInterval(pollOrderStatus, POLLING_INTERVAL_MS);
-
-    return () => {
-      cancelled = true;
-      window.clearInterval(timer);
-    };
-  }, [orderId, isFinalStatus, navigate]);
-
-  async function handleCopy(value) {
-    if (!value) return;
-
-    try {
-      await navigator.clipboard.writeText(value);
-      toast.success("Copied.");
-    } catch {
-      toast.error("Could not copy.");
-    }
-  }
-
-  if (loading) {
+  if (isLoading) {
     return (
       <section className="checkout-page">
         <div className="checkout-page__state" role="status" aria-live="polite">
@@ -157,7 +53,7 @@ export function CheckoutPage() {
       </header>
 
       <div className="checkout-layout">
-        <PaymentInstructionCard payment={payment} onCopy={handleCopy} />
+        <PaymentInstructionCard payment={payment} />
 
         <CheckoutSummary payment={payment} expectedCourse={expectedCourse} />
       </div>

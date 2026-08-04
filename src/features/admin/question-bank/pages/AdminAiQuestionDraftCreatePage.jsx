@@ -14,7 +14,9 @@ import {
   X,
 } from "lucide-react";
 import { Button, useToast } from "@/shared/components/ui";
-import { courseService, getCurrentUser, questionBankService } from "@/services";
+import { questionBankService } from "@/features/admin/question-bank";
+import { getCurrentUser } from "@/services/api-client";
+import { courseAdminService, courseContentService } from "@/features/course";
 import { formatDate } from "@/shared/utils/formatters";
 import {
   normalizeAiSource,
@@ -132,7 +134,7 @@ export function AdminAiQuestionDraftCreatePage() {
       setError(null);
       try {
         const bankData = isCourseQuestionsMode
-          ? await courseService.getAdmin(courseId)
+          ? await courseAdminService.get(courseId)
           : await questionBankService.getBank(bankId);
         if (cancelled) return;
         const normalizedBank = isCourseQuestionsMode
@@ -152,7 +154,7 @@ export function AdminAiQuestionDraftCreatePage() {
           : bankData?.courseId;
         const [moduleData, sourceData, capabilityData] = await Promise.all([
           resolvedCourseId
-            ? courseService.getCourseContent(resolvedCourseId)
+            ? courseContentService.getCourseContent(resolvedCourseId)
             : Promise.resolve([]),
           isCourseQuestionsMode
             ? questionBankService

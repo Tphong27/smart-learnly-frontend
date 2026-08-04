@@ -11,7 +11,8 @@ import {
   Trash2,
 } from "lucide-react"
 import { Button, Modal, useToast } from "@/shared/components/ui"
-import { courseService, getCurrentUser, questionBankService } from "@/services"
+import { questionBankService } from "@/features/admin/question-bank"
+import { courseAdminService, courseContentService } from "@/features/course"
 import {
   sanitizeAnswerHtml,
   sanitizeQuestionHtml,
@@ -27,103 +28,25 @@ import {
   normalizeAiBatch,
   validationStatusLabel,
 } from "../utils/aiQuestionDrafts"
+import {
+  buildDraftPayload, canReviewAiQuestionDrafts,
+  createAiDraftFormValues,
+  draftEditStatusLabel,
+  formatBytes,
+  formatEvidenceTime,
+  getDraftValidationError,
+  normalizeDraftModules,
+  sortedDraftAnswers,
+  sourceKindLabel,
+} from "../utils/aiQuestionDraftReview"
 import "../../admin-shared.css"
 import "./question-bank.css"
-
-function canWriteQuestionBank() {
-  const role = getCurrentUser()?.role
-  return role === "ADMIN" || role === "SME"
-}
-
-function normalizeModules(payload) {
-  const root = payload?.data ?? payload
-  const items = Array.isArray(root)
-    ? root
-    : (root?.items ?? root?.content ?? root?.sections ?? [])
-  return items
-    .map((item, index) => ({
-      id: item.moduleId || item.sectionId || item.id,
-      title: item.title || item.name || `Module ${index + 1}`,
-    }))
-    .filter((item) => item.id)
-}
-
-function sourceKindLabel(kind) {
-  if (kind === "transcript") return "Transcript"
-  if (kind === "temporary_file") return "Document"
-  if (kind === "pasted_text") return "Pasted text"
-  return "Source"
-}
-
-function formatBytes(value) {
-  const bytes = Number(value || 0)
-  if (bytes < 1024) return `${bytes} B`
-  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
-}
-
-function formatEvidenceTime(startMs, endMs) {
-  if (startMs == null && endMs == null) return null
-  return `${formatMillis(startMs)}-${formatMillis(endMs)}`
-}
-
-function formatMillis(value) {
-  const seconds = Math.floor(Math.max(0, Number(value || 0)) / 1000)
-  return `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`
-}
-
-function draftEditStatusLabel(draft) {
-  return Number(draft?.version || 0) > 0 ? "Edited" : "Original"
-}
-
-function sortedAnswers(draft) {
-  return [...(draft.answers || [])].sort(
-    (left, right) => (left.displayOrder ?? 0) - (right.displayOrder ?? 0),
-  )
-}
-
-function draftValidationError(values) {
-  const questionText = values.questionText.trim()
-  if (!questionText) return "Question text is required."
-  if (!values.moduleId) return "Module is required."
-  const answers = sortedAnswers(values)
-  if (values.questionType === "multiple_choice") {
-    if (answers.length < 2 || answers.length > 6) return "MCQ needs 2 to 6 answers."
-    if (answers.some((answer) => !String(answer.answerText || "").trim())) {
-      return "Answer text must not be empty."
-    }
-  }
-  if (values.questionType === "true_false") {
-    const labels = answers.map((answer) => String(answer.answerText || "").trim().toLowerCase())
-    if (answers.length !== 2 || !labels.includes("true") || !labels.includes("false")) {
-      return "True/False answers must be exactly True and False."
-    }
-  }
-  if (answers.filter((answer) => answer.correct).length !== 1) {
-    return "Exactly one correct answer is required."
-  }
-  return null
-}
-
-function buildDraftPayload(values) {
-  return {
-    version: values.version,
-    questionText: values.questionText.trim(),
-    explanation: values.explanation.trim() || null,
-    moduleId: values.moduleId || null,
-    answers: sortedAnswers(values).map((answer, index) => ({
-      answerText: String(answer.answerText || "").trim(),
-      correct: Boolean(answer.correct),
-      displayOrder: index + 1,
-    })),
-  }
-}
 
 export function AdminAiQuestionDraftReviewPage() {
   const { bankId, courseId, batchId } = useParams()
   const navigate = useNavigate()
   const toast = useToast()
-  const writable = canWriteQuestionBank()
+  const writable = canReviewAiQuestionDrafts()
   const isCourseQuestionsMode = Boolean(courseId)
   const backPath = isCourseQuestionsMode
     ? `/admin/courses/${courseId}/questions`
@@ -153,7 +76,7 @@ export function AdminAiQuestionDraftReviewPage() {
     try {
       const [bankData, batchData] = await Promise.all([
         isCourseQuestionsMode
-          ? courseService.getAdmin(courseId)
+          ? courseAdminService.get(courseId)
           : questionBankService.getBank(bankId),
         isCourseQuestionsMode
           ? questionBankService.getCourseAiDraftBatch(courseId, batchId)
@@ -177,8 +100,8 @@ export function AdminAiQuestionDraftReviewPage() {
       )
       const resolvedCourseId = isCourseQuestionsMode ? courseId : bankData?.courseId
       if (resolvedCourseId) {
-        const moduleData = await courseService.getCourseContent(resolvedCourseId)
-        setModules(normalizeModules(moduleData))
+        const moduleData = await courseContentService.getCourseContent(resolvedCourseId)
+        setModules(normalizeDraftModules(moduleData))
       }
     } catch (err) {
       setError(err?.message || "Could not load AI draft batch.")
@@ -328,7 +251,7 @@ export function AdminAiQuestionDraftReviewPage() {
   }
 
   async function handleEditSave(values) {
-    const validationError = draftValidationError(values)
+    const validationError = getDraftValidationError(values)
     if (validationError) {
       setActionError(validationError)
       return
@@ -665,7 +588,7 @@ function DraftReviewRow({
   onDetail,
   onConfirmEvidence,
 }) {
-  const answers = sortedAnswers(draft)
+  const answers = sortedDraftAnswers(draft)
   const accepted = draft.status === "accepted"
   const rejected = draft.status === "rejected"
 
@@ -833,15 +756,8 @@ function AddResultNotice({ result }) {
   )
 }
 
-function createDraftFormValues(draft) {
-  return {
-    ...draft,
-    answers: sortedAnswers(draft),
-  }
-}
-
 function EditDraftModal({ draft, modules, mutating, onClose, onSave }) {
-  const [values, setValues] = useState(() => createDraftFormValues(draft))
+  const [values, setValues] = useState(() => createAiDraftFormValues(draft))
 
   function updateAnswer(index, answerText) {
     setValues((current) => ({

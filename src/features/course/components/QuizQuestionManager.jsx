@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Pencil, Trash2, Plus, Upload, CheckCircle2 } from "lucide-react";
 import { Button, Modal, useToast } from "@/shared/components/ui";
-import { courseService } from "@/services/course.service";
+import { courseContentService } from "../services/courseContentService";
 import { normalizeLessonStatus } from "@/features/course/utils/lesson-status";
 import {
     QUESTION_TYPES,
@@ -216,7 +216,7 @@ export function QuizQuestionsPanel({
     onSaved,
     onBusyChange,
     disabled = false,
-    service = courseService,
+    service = courseContentService,
 }) {
     const toast = useToast();
 

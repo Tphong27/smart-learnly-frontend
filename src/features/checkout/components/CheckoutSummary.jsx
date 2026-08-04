@@ -1,3 +1,4 @@
+/** Chuyển dữ liệu API thành number và dùng giá trị dự phòng khi dữ liệu không hợp lệ. */
 function toNumber(value, fallback = 0) {
   if (
     value === null ||
@@ -14,6 +15,7 @@ function toNumber(value, fallback = 0) {
     : numberValue;
 }
 
+/** Định dạng giá checkout; giá không dương được hiển thị là Free. */
 function formatMoney(
   value,
   currency = "VND",
@@ -31,6 +33,7 @@ function formatMoney(
   }).format(amount);
 }
 
+/** Định dạng ngày theo ngôn ngữ Việt Nam và giữ nguyên dữ liệu nếu ngày không hợp lệ. */
 function formatDate(value) {
   if (!value) {
     return "-";
@@ -45,6 +48,7 @@ function formatDate(value) {
   return date.toLocaleDateString("vi-VN");
 }
 
+/** Hiển thị tóm tắt sản phẩm, order, cổng thanh toán và tổng tiền cần trả. */
 export function CheckoutSummary({
   payment,
   expectedCourse,

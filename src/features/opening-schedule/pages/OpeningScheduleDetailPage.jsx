@@ -11,12 +11,10 @@ import {
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
-import {
-  enrollmentService,
-  getAccessToken,
-  openingScheduleService,
-  orderService,
-} from "@/services";
+import { getAccessToken } from "@/services";
+import { enrollmentService } from "@/features/enrollment";
+import { openingScheduleService } from "../services/openingScheduleService";
+import { checkoutService } from "@/features/checkout";
 import { useToast } from "@/shared/components/ui";
 import { ScheduleCalendar } from "@/shared/components/scheduleCalendar";
 import { formatDate, formatPrice, toNumber } from "@/shared/utils/formatters";
@@ -147,7 +145,7 @@ export function OpeningScheduleDetailPage() {
       }
 
       //OFFLINE CLASS CÓ PHÍ
-      const checkout = await orderService.checkoutClass(
+      const checkout = await checkoutService.checkoutClass(
         classItem.courseId,
         classItem.classId,
       );

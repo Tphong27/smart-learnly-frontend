@@ -5,7 +5,7 @@ import { Button } from "../../shared/components/ui";
 import { CourseListPage } from "../course/pages/CourseListPage";
 import { CourseCard } from "../course/components/CourseCard";
 import { OpeningSchedulePage } from "../opening-schedule";
-import { courseService } from "@/services";
+import { courseCatalogService } from "@/features/course";
 
 function RoadStop({ className }) {
   return (
@@ -26,7 +26,7 @@ export function HomePage() {
 
     async function loadMostEnrolledCourse() {
       try {
-        const course = await courseService.getMostEnrolledCourse();
+        const course = await courseCatalogService.getMostEnrolled();
 
         if (!cancelled) {
           setHeroPopularCourse(course);

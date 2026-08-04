@@ -1,0 +1,29 @@
+import apiClient from "@/services/api-client";
+
+// Bóc payload lịch học trong ApiResponse backend.
+function unwrapData(response) {
+  const root = response?.data ?? response;
+  return root?.data ?? root;
+}
+
+// Đảm bảo tuần và danh sách session luôn có giá trị an toàn cho calendar.
+function normalizeSchedule(data, fallbackWeekStart) {
+  return {
+    weekStart: data?.weekStart || fallbackWeekStart,
+    weekEnd: data?.weekEnd || fallbackWeekStart,
+    sessions: Array.isArray(data?.sessions) ? data.sessions : [],
+  };
+}
+
+export const scheduleService = {
+  async getStaffWeek(weekStart, trainerId = "") {
+    const response = await apiClient.get("/staff/schedule", {
+      params: {
+        ...(weekStart && { weekStart }),
+        ...(trainerId && { trainerId }),
+      },
+    });
+
+    return normalizeSchedule(unwrapData(response), weekStart);
+  },
+};

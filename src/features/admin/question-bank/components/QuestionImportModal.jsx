@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { AlertTriangle, ArrowDown, ArrowUp, CheckCircle2, Download, FileAudio, FileImage, FileSpreadsheet, ImagePlus, Pencil, Trash2, Upload } from 'lucide-react'
+import { AlertTriangle, ArrowDown, ArrowUp, CheckCircle2, Download, FileImage, FileSpreadsheet, Pencil, Trash2, Upload } from 'lucide-react'
 import { Button, Modal, useToast } from '@/shared/components/ui'
-import { questionBankService } from '@/services'
+import { questionBankService } from '@/features/admin/question-bank'
 import {
   buildImportPayload,
   downloadTemplate,
@@ -12,232 +12,29 @@ import {
   SAMPLE_QUESTION_BANK_JSON,
   validateAgainstExisting,
 } from '../utils/questionImportSchema'
+import {
+  applyImportRowEdit,
+  formatImportMediaSize,
+  getImageImportErrorMessage,
+  getImportRowEditValues,
+  IMAGE_IMPORT_ENABLED,
+  IMAGE_TYPES,
+  IMPORT_MEDIA_CONFIG,
+  IMPORT_MODES,
+  importMediaName,
+  MAX_IMAGE_FILES,
+  MAX_IMAGE_SIZE,
+  normalizeImageQuestion,
+  toImageConfirmPayload,
+  validateImageImportMedia,
+  validateImageQuestion,
+} from '../utils/questionImportModalUtils'
+import {
+  QuestionImportRowEditor,
+  QuestionImportStatusBadge,
+  QuestionImportSummary,
+} from './QuestionImportPreview'
 import './question-import-modal.css'
-
-const IMPORT_MODES = {
-  FILE: 'file',
-  JSON: 'json',
-  IMAGE: 'image',
-}
-
-const IMAGE_IMPORT_ENABLED = false
-const IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/webp']
-const MAX_IMAGE_SIZE = 10 * 1024 * 1024
-const MAX_ATTACH_IMAGE_SIZE = 5 * 1024 * 1024
-const MAX_AUDIO_SIZE = 20 * 1024 * 1024
-const MAX_IMAGE_FILES = 5
-const AUDIO_TYPES = ['audio/mpeg', 'audio/mp4', 'audio/x-m4a', 'audio/wav', 'audio/x-wav']
-const MAX_AUDIO_FILES = 3
-
-const IMPORT_MEDIA_CONFIG = {
-  image: {
-    label: 'Images',
-    empty: 'No images attached',
-    accept: 'image/png,image/jpeg,image/webp',
-    allowedTypes: IMAGE_TYPES,
-    maxSize: MAX_ATTACH_IMAGE_SIZE,
-    maxCount: MAX_IMAGE_FILES,
-    maxSizeLabel: '5MB',
-    typeLabel: 'PNG, JPEG, or WebP',
-    Icon: ImagePlus,
-  },
-  audio: {
-    label: 'Audio',
-    empty: 'No audio attached',
-    accept: 'audio/mpeg,audio/mp4,audio/x-m4a,audio/wav,audio/x-wav',
-    allowedTypes: AUDIO_TYPES,
-    maxSize: MAX_AUDIO_SIZE,
-    maxCount: MAX_AUDIO_FILES,
-    maxSizeLabel: '20MB',
-    typeLabel: 'MP3, M4A, or WAV',
-    Icon: FileAudio,
-  },
-}
-
-function getImageImportErrorMessage(err) {
-  const genericMessage = 'Image import is unavailable. Gemini may be misconfigured, rate-limited, or temporarily failing. Check backend logs for the provider status and response body.'
-  if (err?.code !== 'IMAGE_IMPORT_UNAVAILABLE') {
-    return err?.message || 'Could not preview image import.'
-  }
-  const message = typeof err?.message === 'string' ? err.message.trim() : ''
-  if (!message || message === 'IMAGE_IMPORT_UNAVAILABLE') {
-    return genericMessage
-  }
-  return `Image import is unavailable. ${message}`
-}
-function StatusBadge({ row }) {
-  if (!row.errors?.length) {
-    return <span className="admin-status admin-status--approved">Valid</span>
-  }
-  return <span className="admin-status admin-status--archived">Invalid ({row.errors.length})</span>
-}
-
-function SummaryStrip({ parsedRows }) {
-  const total = parsedRows.length
-  const valid = parsedRows.filter((row) => !row.errors?.length).length
-  const invalid = total - valid
-  if (!total) return null
-  return (
-    <div className="question-import__summary">
-      <span><strong>Total rows:</strong> {total}</span>
-      <span><strong>Valid:</strong> {valid}</span>
-      <span><strong>Errors:</strong> {invalid}</span>
-    </div>
-  )
-}
-
-function normalizeImageQuestion(question, index) {
-  const answers = Array.isArray(question?.answers) ? question.answers : []
-  return {
-    clientImportId: question?.clientImportId || `tmp-${index + 1}`,
-    questionNumber: question?.questionNumber || index + 1,
-    questionText: question?.questionText || '',
-    questionType: question?.questionType || 'multiple_choice',
-    answers: answers.map((answer, answerIndex) => ({
-      answerText: answer?.answerText || '',
-      correct: Boolean(answer?.correct || answer?.isCorrect),
-      displayOrder: answerIndex + 1,
-    })),
-    difficulty: question?.difficulty || '',
-    explanation: question?.explanation || '',
-    warnings: Array.isArray(question?.warnings) ? question.warnings : [],
-    providerErrors: Array.isArray(question?.errors) ? question.errors : [],
-    imageMedia: [],
-    audioMedia: [],
-  }
-}
-
-function validateImageImportMedia(question) {
-  const errors = []
-  const images = Array.isArray(question.imageMedia) ? question.imageMedia : []
-  const audios = Array.isArray(question.audioMedia) ? question.audioMedia : []
-  if (images.length > MAX_IMAGE_FILES) errors.push('A question can attach at most 5 images')
-  if (audios.length > MAX_AUDIO_FILES) errors.push('A question can attach at most 3 audio files')
-  return errors
-}
-
-function importMediaName(item) {
-  return item?.fileName || item?.file?.name || 'Attachment'
-}
-
-function formatImportMediaSize(file) {
-  const bytes = Number(file?.size || 0)
-  if (!bytes) return ''
-  if (bytes >= 1024 * 1024) return (bytes / 1024 / 1024).toFixed(1) + ' MB'
-  if (bytes >= 1024) return Math.round(bytes / 1024) + ' KB'
-  return bytes + ' B'
-}
-
-function validateImageQuestion(question) {
-  const errors = [...(question.providerErrors || [])]
-  const text = question.questionText?.trim()
-  const type = question.questionType
-  const answers = Array.isArray(question.answers) ? question.answers : []
-  if (!text) errors.push('Question text is required')
-  if (!['multiple_choice', 'true_false'].includes(type)) errors.push('Question type must be multiple_choice or true_false')
-  if (answers.length < 2) errors.push('At least two answers are required')
-  if (type === 'multiple_choice' && answers.length > 6) errors.push('Multiple choice supports 2 to 6 answers')
-  if (answers.some((answer) => !answer.answerText?.trim())) errors.push('Answer text is required')
-  if (answers.filter((answer) => answer.correct).length !== 1) errors.push('Exactly one correct answer is required')
-  if (type === 'true_false') {
-    if (answers.length !== 2) errors.push('True/false must have exactly two answers')
-    const normalizedAnswers = answers.map((answer) => answer.answerText?.trim().toLowerCase())
-    if (!normalizedAnswers.includes('true') || !normalizedAnswers.includes('false')) {
-      errors.push('True/false answers must be True and False')
-    }
-  }
-  const difficulty = question.difficulty === '' || question.difficulty == null ? null : Number(question.difficulty)
-  if (difficulty != null && (Number.isNaN(difficulty) || difficulty < 1 || difficulty > 5)) {
-    errors.push('Difficulty must be between 1 and 5')
-  }
-  return errors
-}
-
-function toImageConfirmPayload(question, imageFileIndexes = [], audioFileIndexes = []) {
-  return {
-    questionText: question.questionText.trim(),
-    questionType: question.questionType,
-    answers: question.answers.map((answer, index) => ({
-      answerText: answer.answerText.trim(),
-      correct: Boolean(answer.correct),
-      displayOrder: index + 1,
-    })),
-    difficulty: question.difficulty === '' || question.difficulty == null ? null : Number(question.difficulty),
-    explanation: question.explanation?.trim() || null,
-    imageFileIndexes,
-    audioFileIndexes,
-  }
-}
-
-function mediaUrlsToText(urls) {
-  return (Array.isArray(urls) ? urls : [])
-    .map((url) => String(url || '').trim())
-    .filter(Boolean)
-    .join('; ')
-}
-
-function textToMediaUrls(value) {
-  return String(value || '')
-    .split(';')
-    .map((url) => url.trim())
-    .filter(Boolean)
-}
-
-function getImportRowEditValues(row) {
-  const data = row?.data || {}
-  const options = Array.isArray(data.options) ? data.options : []
-  return {
-    questionText: data.questionText || '',
-    questionType: data.questionType || 'multiple_choice',
-    options: Array.from({ length: 6 }, (_, index) => options[index] || ''),
-    correctAnswer: data.correctAnswer || '',
-    explanation: data.explanation || '',
-    difficulty: data.difficulty ?? '',
-    bloomLevel: data.bloomLevel || '',
-    moduleId: data.moduleId || '',
-    imageFiles: mediaUrlsToText(data.imageFiles),
-    audioFiles: mediaUrlsToText(data.audioFiles),
-  }
-}
-
-function applyImportRowEdit(row, values) {
-  const optionValues = values.options.map((option) => String(option || '').trim())
-  const imageFiles = textToMediaUrls(values.imageFiles)
-  const audioFiles = textToMediaUrls(values.audioFiles)
-  return {
-    ...row,
-    data: {
-      questionText: values.questionText.trim(),
-      questionType: values.questionType,
-      options: optionValues.filter(Boolean),
-      correctAnswer: values.correctAnswer.trim(),
-      explanation: values.explanation.trim() || null,
-      difficulty: String(values.difficulty ?? '').trim(),
-      bloomLevel: values.bloomLevel.trim() || null,
-      moduleId: values.moduleId.trim() || null,
-      imageFiles,
-      audioFiles,
-    },
-    raw: {
-      ...(row.raw || {}),
-      question_text: values.questionText.trim(),
-      question_type: values.questionType,
-      option_a: optionValues[0] || '',
-      option_b: optionValues[1] || '',
-      option_c: optionValues[2] || '',
-      option_d: optionValues[3] || '',
-      option_e: optionValues[4] || '',
-      option_f: optionValues[5] || '',
-      correct_answer: values.correctAnswer.trim(),
-      explanation: values.explanation.trim(),
-      difficulty: String(values.difficulty ?? '').trim(),
-      bloom_level: values.bloomLevel.trim(),
-      module_id: values.moduleId.trim(),
-      image_files: mediaUrlsToText(imageFiles),
-      audio_files: mediaUrlsToText(audioFiles),
-    },
-  }
-}
 
 export function QuestionImportModal({ open, bank, courseId, existingQuestions = [], onClose, onImported }) {
   const toast = useToast()
@@ -788,7 +585,7 @@ export function QuestionImportModal({ open, bank, courseId, existingQuestions = 
   function renderImagePreview() {
     return (
       <div className="question-import">
-        <SummaryStrip parsedRows={imageRows} />
+        <QuestionImportSummary parsedRows={imageRows} />
         {imageWarnings.length > 0 && (
           <div className="question-import__warning-list">
             {imageWarnings.map((warning, index) => <div key={index}>{warning}</div>)}
@@ -808,7 +605,7 @@ export function QuestionImportModal({ open, bank, courseId, existingQuestions = 
             <div className="question-import__question-card" key={question.clientImportId || questionIndex}>
               <div className="question-import__question-head">
                 <strong>Question {questionIndex + 1}</strong>
-                <StatusBadge row={question} />
+                <QuestionImportStatusBadge row={question} />
               </div>
               <label className="question-import__field-label">Question text</label>
               <textarea
@@ -1046,7 +843,7 @@ export function QuestionImportModal({ open, bank, courseId, existingQuestions = 
 
       {step === 'preview' && importMode !== IMPORT_MODES.IMAGE && (
         <div className="question-import">
-          <SummaryStrip parsedRows={parsedRows} />
+          <QuestionImportSummary parsedRows={parsedRows} />
           {parsedRows.length > 0 && validRows.length === 0 && (
             <div className="auth-card__alert" style={{ marginBottom: 12 }}>
               <AlertTriangle size={16} style={{ verticalAlign: 'middle', marginRight: 6 }} />
@@ -1058,135 +855,16 @@ export function QuestionImportModal({ open, bank, courseId, existingQuestions = 
               No rows left in preview. Go back to import another file or JSON payload.
             </div>
           )}
-          {editDraft && (
-            <form className="question-import__edit-card" onSubmit={saveImportRowEdit} noValidate>
-              <div className="question-import__edit-head">
-                <div>
-                  <strong>Editing row {parsedRows[editRowIndex]?.rowNumber || editRowIndex + 1}</strong>
-                  <span>Save to re-validate this preview batch before importing.</span>
-                </div>
-                <StatusBadge row={parsedRows[editRowIndex] || { errors: [] }} />
-              </div>
-              <label className="question-import__field-label">
-                Question text
-                <textarea
-                  className="question-import__textarea question-import__textarea--compact"
-                  value={editDraft.questionText}
-                  onChange={(event) => updateImportRowEdit('questionText', event.target.value)}
-                />
-              </label>
-              <div className="question-import__grid">
-                <label className="question-import__field-label">
-                  Type
-                  <select
-                    className="question-import__select"
-                    value={editDraft.questionType}
-                    onChange={(event) => updateImportRowEdit('questionType', event.target.value)}
-                  >
-                    <option value="multiple_choice">Multiple choice</option>
-                    <option value="true_false">True/False</option>
-                  </select>
-                </label>
-                <label className="question-import__field-label">
-                  Correct answer
-                  <select
-                    className="question-import__select"
-                    value={editDraft.correctAnswer}
-                    onChange={(event) => updateImportRowEdit('correctAnswer', event.target.value)}
-                  >
-                    {editDraft.questionType === 'true_false' ? (
-                      <>
-                        <option value="True">True</option>
-                        <option value="False">False</option>
-                      </>
-                    ) : (
-                      <>
-                        <option value="">Choose answer</option>
-                        {['A', 'B', 'C', 'D', 'E', 'F'].map((letter) => (
-                          <option key={letter} value={letter}>{letter}</option>
-                        ))}
-                      </>
-                    )}
-                  </select>
-                </label>
-                <label className="question-import__field-label">
-                  Difficulty
-                  <input
-                    className="question-import__input"
-                    value={editDraft.difficulty}
-                    onChange={(event) => updateImportRowEdit('difficulty', event.target.value)}
-                    placeholder="1-5, easy, medium, hard"
-                  />
-                </label>
-                <label className="question-import__field-label">
-                  Bloom level
-                  <input
-                    className="question-import__input"
-                    value={editDraft.bloomLevel}
-                    onChange={(event) => updateImportRowEdit('bloomLevel', event.target.value)}
-                    placeholder="remember, understand, apply..."
-                  />
-                </label>
-              </div>
-              <div className="question-import__options-grid">
-                {(editDraft.questionType === 'true_false' ? [0, 1] : [0, 1, 2, 3, 4, 5]).map((optionIndex) => (
-                  <label className="question-import__field-label" key={optionIndex}>
-                    Option {String.fromCharCode(65 + optionIndex)}
-                    <input
-                      className="question-import__input"
-                      value={editDraft.options[optionIndex]}
-                      onChange={(event) => updateImportRowOption(optionIndex, event.target.value)}
-                    />
-                  </label>
-                ))}
-              </div>
-              <label className="question-import__field-label">
-                Explanation
-                <textarea
-                  className="question-import__textarea question-import__textarea--compact"
-                  value={editDraft.explanation}
-                  onChange={(event) => updateImportRowEdit('explanation', event.target.value)}
-                />
-              </label>
-              <div className="question-import__grid">
-                <label className="question-import__field-label">
-                  Module ID
-                  <input
-                    className="question-import__input"
-                    value={editDraft.moduleId}
-                    onChange={(event) => updateImportRowEdit('moduleId', event.target.value)}
-                    placeholder="UUID"
-                  />
-                </label>
-                <label className="question-import__field-label">
-                  Image URLs
-                  <input
-                    className="question-import__input"
-                    value={editDraft.imageFiles}
-                    onChange={(event) => updateImportRowEdit('imageFiles', event.target.value)}
-                    placeholder="Separate URLs with semicolons"
-                  />
-                </label>
-                <label className="question-import__field-label">
-                  Audio URLs
-                  <input
-                    className="question-import__input"
-                    value={editDraft.audioFiles}
-                    onChange={(event) => updateImportRowEdit('audioFiles', event.target.value)}
-                    placeholder="Separate URLs with semicolons"
-                  />
-                </label>
-              </div>
-              <div className="question-import__edit-actions">
-                <Button type="button" variant="ghost" size="sm" onClick={cancelImportRowEdit} disabled={submitting}>
-                  Cancel
-                </Button>
-                <Button type="submit" size="sm" disabled={submitting}>
-                  Save row
-                </Button>
-              </div>
-            </form>
-          )}
+          <QuestionImportRowEditor
+            draft={editDraft}
+            row={parsedRows[editRowIndex]}
+            rowNumber={parsedRows[editRowIndex]?.rowNumber || editRowIndex + 1}
+            disabled={submitting}
+            onFieldChange={updateImportRowEdit}
+            onOptionChange={updateImportRowOption}
+            onCancel={cancelImportRowEdit}
+            onSave={saveImportRowEdit}
+          />
           {parsedRows.length > 0 && (
           <div className="question-import__table-wrap">
             <table className="admin-table">
@@ -1214,7 +892,7 @@ export function QuestionImportModal({ open, bank, courseId, existingQuestions = 
                     <td>{row.data.options?.length || 0}</td>
                     <td>{row.data.correctAnswer || '--'}</td>
                     <td>{(row.data.imageFiles?.length || 0) + (row.data.audioFiles?.length || 0) ? String(row.data.imageFiles?.length || 0) + ' img / ' + String(row.data.audioFiles?.length || 0) + ' audio' : '--'}</td>
-                    <td><StatusBadge row={row} /></td>
+                    <td><QuestionImportStatusBadge row={row} /></td>
                     <td>
                       {row.errors?.length ? (
                         <ul className="question-import__errors">

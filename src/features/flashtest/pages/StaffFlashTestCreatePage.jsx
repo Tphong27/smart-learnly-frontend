@@ -10,12 +10,10 @@ import {
   Save,
   X,
 } from "lucide-react";
-import { courseService } from "@/services/course.service";
-import { classService } from "@/services/class.service";
-import {
-  assignmentService,
-  testService,
-} from "@/services/flashtest.service.js";
+import { classroomService } from "@/features/classroom";
+import { courseAdminService, courseContentService } from "@/features/course";
+import { assignmentService } from "@/features/assignment";
+import { testService } from "../services/testService";
 import { useToast } from "@/shared/components/ui";
 import RichTextEditor from "@/shared/components/rich-text/RichTextEditor";
 import { AssignmentAiDraftPanel } from "@/features/assignment/components/AssignmentAiDraftPanel";
@@ -168,7 +166,7 @@ export function StaffFlashTestCreatePage({ variant = "flash" }) {
     let cancelled = false;
     async function loadCourses() {
       try {
-        const data = await courseService.listAdmin({
+        const data = await courseAdminService.list({
           page: 0,
           size: 100,
         });
@@ -192,7 +190,7 @@ export function StaffFlashTestCreatePage({ variant = "flash" }) {
       return undefined;
     }
     let cancelled = false;
-    courseService
+    courseContentService
       .getCourseContent(formData.courseId)
       .then((items) => {
         if (!cancelled) setModules(Array.isArray(items) ? items : []);
@@ -211,7 +209,7 @@ export function StaffFlashTestCreatePage({ variant = "flash" }) {
       try {
         const [trainerClassesResult, assignmentClassesResult] =
           await Promise.allSettled([
-            classService.listTrainer({ page: 0, size: 100 }),
+            classroomService.listTrainer({ page: 0, size: 100 }),
             assignmentService.getClasses({
               ...(formData.courseId && {
                 courseId: formData.courseId,

@@ -13,7 +13,8 @@ import {
   WalletCards,
 } from "lucide-react";
 import { Button, Form, useToast } from "@/shared/components/ui";
-import { categoryService, courseService, userService } from "@/services";
+import { categoryService, courseAdminService } from "@/features/course";
+import { adminUserService } from "@/features/admin/users/services/adminUserService";
 import ThumbnailUploader from "@/features/course/components/ThumbnailUploader";
 import { getCurrentUser } from "@/services/api-client";
 import { courseSchema } from "../schemas/course-schemas";
@@ -165,7 +166,7 @@ export function AdminCourseFormPage() {
       if (!isEdit) return;
 
       try {
-        const detail = await courseService.getAdmin(courseId);
+        const detail = await courseAdminService.get(courseId);
         if (cancelled) return;
         reset({
           categoryId: detail.categoryId || "",
@@ -212,14 +213,14 @@ export function AdminCourseFormPage() {
         canManageAssignment,
       );
       if (isEdit) {
-        await courseService.update(courseId, payload);
+        await courseAdminService.update(courseId, payload);
         toast.success("Course updated successfully");
         navigate(courseListPath, {
           replace: true,
         });
         return;
       } else {
-        const created = await courseService.create(payload);
+        const created = await courseAdminService.create(payload);
         toast.success("Course draft created successfully");
         navigate(`/admin/courses/${created.id}/content`, {
           replace: true,
@@ -242,7 +243,7 @@ export function AdminCourseFormPage() {
 
     async function loadActiveSmes() {
       try {
-        const pageData = await userService.listActiveSmes({
+        const pageData = await adminUserService.listActiveSmes({
           page: 0,
           size: 100,
         });

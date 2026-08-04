@@ -13,7 +13,7 @@ import {
   UserRound,
 } from 'lucide-react'
 import { Form, FormField, Button, useToast } from '@/shared/components/ui'
-import { authService } from '@/services'
+import { authService } from '../services/authService'
 import { setAuthSession, getCurrentUser } from '@/services/api-client'
 import { profileSchema, changePasswordSchema } from '../schemas/auth-schemas'
 import { PasswordStrengthChecklist } from '../components/PasswordStrengthChecklist'

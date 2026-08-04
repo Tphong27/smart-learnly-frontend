@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
 import { Modal, Button } from "@/shared/components/ui";
-import { courseService } from "@/services/course.service";
+import { courseContentService } from "../services/courseContentService";
 import {
   QUESTION_TYPES,
   QUESTION_TYPE_LABELS,
@@ -93,7 +93,7 @@ function MediaUploader({
     setUploading(true);
     onUploadingChange?.(true);
     try {
-      const uploaded = await courseService.uploadLessonResource(file);
+      const uploaded = await courseContentService.uploadLessonResource(file);
       onChange(buildMediaFromUpload(uploaded, "image"));
     } catch (error) {
       const message =

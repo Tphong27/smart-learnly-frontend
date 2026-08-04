@@ -1,10 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, CheckCircle, RefreshCw, XCircle } from "lucide-react";
-import {
-  attemptService,
-  testService,
-} from "@/services/flashtest.service.js";
+import { attemptService } from "../services/attemptService";
+import { testService } from "../services/testService";
 import {
   sanitizeAnswerHtml,
   sanitizeQuestionHtml,

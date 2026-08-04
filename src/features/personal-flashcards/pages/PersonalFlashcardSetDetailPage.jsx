@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, BookOpen, Pencil, RefreshCw } from "lucide-react";
 import { Button, useToast } from "@/shared/components/ui";
-import { personalFlashcardService } from "@/services";
+import { personalFlashcardService } from "../services/personalFlashcardService";
 import { PersonalFlashcardCardEditor } from "../components/PersonalFlashcardCardEditor";
 import { PersonalFlashcardSetFormModal } from "../components/PersonalFlashcardSetFormModal";
 import {

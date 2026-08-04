@@ -3,7 +3,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Save } from 'lucide-react'
 import { Button, Form, FormField, useToast } from '@/shared/components/ui'
-import { systemSettingsService } from '@/services/system-settings.service'
+import { systemSettingsService } from '../services/systemSettingsService'
 import {
   assignmentAiSettingsSchema,
   questionImageImportSettingsSchema,

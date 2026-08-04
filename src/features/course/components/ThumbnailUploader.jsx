@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { UploadCloud, X } from "lucide-react";
-import { courseService } from "@/services";
+import { courseAdminService } from "../services/courseAdminService";
 import { useToast } from "@/shared/components/ui";
 import "./ThumbnailUploader.css";
 
@@ -38,7 +38,7 @@ export default function ThumbnailUploader({ value, onUploadSuccess }) {
     setIsUploading(true);
 
     try {
-      const uploaded = await courseService.uploadThumbnail(file);
+      const uploaded = await courseAdminService.uploadThumbnail(file);
       const uploadedUrl =
         uploaded?.url ||
         uploaded?.thumbnailUrl ||

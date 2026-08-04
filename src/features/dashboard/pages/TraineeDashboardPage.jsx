@@ -9,7 +9,9 @@ import {
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/shared/components/ui";
-import { courseService, traineeProgressService } from "@/services";
+// import { courseService } from "@/services";
+import { traineeProgressService } from "@/features/progress";
+import { enrollmentService } from "@/features/enrollment";
 import { TraineeDashboardSkeleton } from "../components/TraineeDashboardSkeleton";
 import { TraineeProgress } from "@/features/progress";
 import "./TraineeDashboardPage.css";
@@ -169,8 +171,12 @@ export function TraineeDashboardPage() {
       setLoading(true);
       setError("");
 
+      //   const [courseResult, progressResult] = await Promise.allSettled([
+      //     courseService.getMyCourses(),
+      //     traineeProgressService.getMyProgress(),
+      //   ]);
       const [courseResult, progressResult] = await Promise.allSettled([
-        courseService.getMyCourses(),
+        enrollmentService.getMyCourses(),
         traineeProgressService.getMyProgress(),
       ]);
 
