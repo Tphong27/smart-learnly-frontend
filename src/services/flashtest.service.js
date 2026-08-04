@@ -233,13 +233,10 @@ export const questionService = {
   },
   async getByCourse(courseId, params = {}) {
     if (!courseId) return [];
-    const response = await apiClient.get("/admin/questions", {
-      params: {
-        ...params,
-        courseId,
-        course_id: courseId,
-      },
-    });
+    const response = await apiClient.get(
+      `/admin/courses/${courseId}/questions`,
+      { params },
+    );
     return normalizePage(response).items;
   },
   async getById(id) {
