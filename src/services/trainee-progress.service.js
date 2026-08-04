@@ -19,8 +19,9 @@ function normalizeMetric(metric, label) {
 }
 
 function normalizeCourse(course) {
-  const classId = course.classId || course.enrolledClass?.id || null;
-  const className = course.className || course.enrolledClass?.className || "";
+  const classId = course.classId ?? course.enrolledClass?.id ?? null;
+  const className =
+    course.className ?? course.enrolledClass?.className ?? "";
 
   return {
     id: course.id ?? course.courseId,
@@ -29,10 +30,27 @@ function normalizeCourse(course) {
 
     classId,
     classEnrollmentId:
-      course.classEnrollmentId ||
-      course.enrolledClass?.classEnrollmentId ||
+      course.classEnrollmentId ??
+      course.enrolledClass?.classEnrollmentId ??
       null,
     className,
+
+    classMeetingUrl:
+      course.classMeetingUrl ??
+      course.enrolledClass?.meetingUrl ??
+      "",
+    classScheduleDescription:
+      course.classScheduleDescription ??
+      course.enrolledClass?.scheduleDescription ??
+      "",
+    classStartDate:
+      course.classStartDate ??
+      course.enrolledClass?.startDate ??
+      null,
+    classEndDate:
+      course.classEndDate ??
+      course.enrolledClass?.endDate ??
+      null,
 
     learningType: classId ? "CLASS" : "COURSE",
 

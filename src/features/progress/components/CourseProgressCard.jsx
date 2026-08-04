@@ -138,7 +138,6 @@ export function CourseProgressCard({ course }) {
 
                     <ScheduleCalendar
                       scheduleDescription={course.classScheduleDescription}
-                      variant="inline"
                       emptyText="Class schedule not available"
                     />
                   </div>
