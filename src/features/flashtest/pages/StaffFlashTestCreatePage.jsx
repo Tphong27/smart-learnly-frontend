@@ -712,7 +712,7 @@ export function StaffFlashTestCreatePage({ variant = "flash" }) {
             </div>
           )}
 
-          {testType === "mcq" && (
+          {testType === "mcq" && isFlashMode && (
             <label className="ft-field">
               <span className="ft-label">Course</span>
               <select

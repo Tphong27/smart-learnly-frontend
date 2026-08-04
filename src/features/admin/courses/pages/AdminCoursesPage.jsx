@@ -196,7 +196,7 @@ function RowActionsMenu({
   const testsPath = `/staff/tests?courseId=${encodeURIComponent(course.id)}`;
   const classesBasePath = basePath.startsWith("/admin") ? "/admin/classrooms" : "/staff/classrooms";
   const classesPath = `${classesBasePath}?courseId=${encodeURIComponent(course.id)}`;
-  const showManageTest = basePath.startsWith("/staff") && canOpenMasterCurriculum;
+  const showManageTest = basePath.startsWith("/staff");
   const previewPath = `${basePath}/${course.id}/preview?returnTo=${encodeURIComponent(previewReturnPath)}`;
   const editPath = basePath.startsWith("/staff")
     ? `${basePath}/${course.id}/edit`
@@ -231,19 +231,19 @@ function RowActionsMenu({
               <FileQuestion size={14} aria-hidden="true" /> Manage questions
             </Link>
           </li>
-          {showManageTest ? (
-            <li role="none">
-              <Link
-                role="menuitem"
-                to={testsPath}
-                className="course-management__menu-item"
-                onClick={() => setOpen(false)}
-              >
-                <ClipboardCheck size={14} aria-hidden="true" /> Manage test
-              </Link>
-            </li>
-          ) : null}
         </>
+      ) : null}
+      {showManageTest ? (
+        <li role="none">
+          <Link
+            role="menuitem"
+            to={testsPath}
+            className="course-management__menu-item"
+            onClick={() => setOpen(false)}
+          >
+            <ClipboardCheck size={14} aria-hidden="true" /> Test management
+          </Link>
+        </li>
       ) : null}
       {canViewClasses ? (
         <li role="none">

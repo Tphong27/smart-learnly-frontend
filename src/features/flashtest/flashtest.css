@@ -1204,9 +1204,35 @@
 
 .ft-question-list {
   display: grid;
-  max-height: 180px;
+  max-height: 280px;
   overflow: auto;
   gap: 8px;
+}
+
+.ft-question-pool {
+  display: grid;
+  gap: 8px;
+}
+
+.ft-question-pool > strong {
+  color: var(--ink);
+  font-size: 14px;
+}
+
+.ft-question-load-error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid var(--sl-danger);
+  border-radius: 8px;
+  color: var(--sl-danger);
+  padding: 12px;
+}
+
+.ft-question-add {
+  min-height: 36px;
+  padding: 6px 10px;
 }
 
 .ft-question-row {
