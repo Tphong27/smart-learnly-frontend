@@ -2,8 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AlertCircle, Loader } from "lucide-react";
 import { Button } from "@/shared/components/ui";
-import { useToast } from "@/shared/components/ui/Toast/useToast";
-import { trainerCurriculumService } from "@/services";
+import { trainerCurriculumService } from "../services/trainerCurriculumService";
 import { CurriculumStructureEditor } from "@/features/course/components/CurriculumStructureEditor";
 // Dùng cùng design system với master course content (sl-cm-*).
 import "@/features/course/course-admin.css";
@@ -16,6 +15,7 @@ const TRAINER_LESSON_TYPES = [
   { value: "essay", label: "Essay" },
 ];
 
+// Chuyển enum backend thành nhãn dễ đọc trên giao diện curriculum.
 function formatLabel(value) {
   if (!value) return "Not provided";
   return String(value)
@@ -24,6 +24,7 @@ function formatLabel(value) {
     .replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
+// Tổng hợp số module, lesson và loại nội dung để hiển thị thống kê nhanh.
 function computeStats(sections) {
   let totalVideos = 0;
   let totalDocs = 0;
@@ -52,17 +53,9 @@ function computeStats(sections) {
   };
 }
 
+// Hiển thị và điều phối bản curriculum riêng của một lớp trainer.
 export function ClassCurriculumTab({ classId, readOnly = false }) {
   const navigate = useNavigate();
-  const { showToast: emitToast } = useToast();
-  const showToast = useCallback(
-    (message, type) => emitToast({ message, type }),
-    [emitToast],
-  );
-  // showToast is intentionally exposed but currently unused after the
-  // lesson editor modal was replaced by a full-page route. Keep to
-  // preserve API for children hooks that may re-appear.
-  void showToast;
   const [curriculumData, setCurriculumData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
@@ -91,6 +84,7 @@ export function ClassCurriculumTab({ classId, readOnly = false }) {
 
   const canEdit = !readOnly && customizationState === "DRAFT";
 
+  // Tải curriculum hiệu lực của lớp và đồng bộ trạng thái loading/error.
   const loadCurriculum = useCallback(async () => {
     if (!classId) return;
     try {
@@ -106,9 +100,13 @@ export function ClassCurriculumTab({ classId, readOnly = false }) {
   }, [classId]);
 
   useEffect(() => {
-    loadCurriculum();
+    const timeoutId = window.setTimeout(() => {
+      void loadCurriculum();
+    }, 0);
+    return () => window.clearTimeout(timeoutId);
   }, [loadCurriculum]);
 
+  // Chạy một thao tác chỉnh sửa rồi cập nhật lại curriculum và thông báo kết quả.
   const runAction = useCallback(
     async (action, successMessage) => {
       try {
@@ -131,18 +129,21 @@ export function ClassCurriculumTab({ classId, readOnly = false }) {
     [loadCurriculum],
   );
 
+  // Khởi tạo curriculum draft riêng cho lớp từ bản đang kế thừa.
   const handleInitDraft = () =>
     runAction(
       () => trainerCurriculumService.initializeDraft(classId),
       "Draft initialized",
     );
 
+  // Xuất bản draft hiện tại để học viên của lớp sử dụng.
   const handlePublishDraft = () =>
     runAction(
       () => trainerCurriculumService.publishDraft(classId),
       "Draft published",
     );
 
+  // Tạo section mới rồi tải lại curriculum đã cập nhật.
   const handleCreateSection = ({ title }) =>
     runAction(async () => {
       await trainerCurriculumService.createSection(classId, {
@@ -152,6 +153,7 @@ export function ClassCurriculumTab({ classId, readOnly = false }) {
       return trainerCurriculumService.getCurriculum(classId);
     }, "Section added");
 
+  // Đổi tên section rồi tải lại curriculum.
   const handleUpdateSection = (sectionId, { title }) =>
     runAction(async () => {
       await trainerCurriculumService.updateSection(classId, sectionId, {
@@ -160,18 +162,21 @@ export function ClassCurriculumTab({ classId, readOnly = false }) {
       return trainerCurriculumService.getCurriculum(classId);
     }, "Section updated");
 
+  // Xóa section khỏi draft rồi tải lại curriculum.
   const handleDeleteSection = (sectionId) =>
     runAction(async () => {
       await trainerCurriculumService.deleteSection(classId, sectionId);
       return trainerCurriculumService.getCurriculum(classId);
     }, "Section deleted");
 
+  // Lưu thứ tự section do thao tác kéo thả tạo ra.
   const handleReorderSections = (orderedIds) =>
     runAction(async () => {
       await trainerCurriculumService.reorderSections(classId, orderedIds);
       return trainerCurriculumService.getCurriculum(classId);
     }, "Sections reordered");
 
+  // Chuẩn hóa dữ liệu editor và tạo lesson ở cuối section đã chọn.
   const handleCreateLesson = (sectionId, payload) => {
     let lessonType = String(payload.lessonType || "video").toLowerCase();
     if (lessonType === "document") lessonType = "pdf";
@@ -197,6 +202,7 @@ export function ClassCurriculumTab({ classId, readOnly = false }) {
     }, "Lesson added");
   };
 
+  // Xác nhận rồi xóa lesson khỏi curriculum draft.
   const handleDeleteLesson = (lessonId, lessonTitle) => {
     if (!window.confirm(`Delete lesson "${lessonTitle}"?`)) return;
     runAction(async () => {
@@ -205,6 +211,7 @@ export function ClassCurriculumTab({ classId, readOnly = false }) {
     }, "Lesson deleted");
   };
 
+  // Lưu thứ tự lesson mới trong section.
   const handleReorderLessons = (sectionId, orderedIds) =>
     runAction(async () => {
       await trainerCurriculumService.reorderLessons(
@@ -215,6 +222,7 @@ export function ClassCurriculumTab({ classId, readOnly = false }) {
       return trainerCurriculumService.getCurriculum(classId);
     }, "Lessons reordered");
 
+  // Mở trang editor toàn màn hình cho lesson trong lớp hiện tại.
   const handleEditLesson = (lesson) => {
     if (!lesson?.id || !classId) return;
     navigate(`/trainer/classes/${classId}/curriculum/lessons/${lesson.id}`);

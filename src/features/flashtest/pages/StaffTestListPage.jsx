@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { ArrowRight, BookOpen, RefreshCw } from "lucide-react";
 import { Link, useSearchParams } from "react-router-dom";
-import { courseService } from "@/services/course.service";
+import { courseAdminService } from "@/features/course";
 import { StaffFlashTestListPage } from "./StaffFlashTestListPage";
 import "../flashtest.css";
 
@@ -23,7 +23,7 @@ export function StaffTestListPage() {
       setLoading(true);
       setError("");
       try {
-        const result = await courseService.listAdmin({ page: 0, size: 100 });
+        const result = await courseAdminService.list({ page: 0, size: 100 });
         if (!cancelled) setCourses(result?.items || []);
       } catch (requestError) {
         if (!cancelled) setError(requestError?.message || "Could not load courses.");

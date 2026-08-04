@@ -2,7 +2,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { AlertCircle, Loader, Video } from "lucide-react";
 import { Button, useToast } from "@/shared/components/ui";
-import { classService, courseService } from "@/services";
+import { courseAdminService } from "@/features/course";
+import { classroomService } from "../services/classroomService";
 import { useActiveTrainers } from "../hooks/useActiveTrainers";
 import { useClassForm } from "../hooks/useClassForm";
 // import { getTodayDateKey } from "@/shared/utils/date";
@@ -40,8 +41,8 @@ function EditionClassForm({ mode, initialData, classId, routeBase }) {
   useEffect(() => {
     let cancelled = false;
 
-    courseService
-      .listAdmin({
+    courseAdminService
+      .list({
         page: 0,
         size: 100,
       })
@@ -154,7 +155,7 @@ function EditionClassForm({ mode, initialData, classId, routeBase }) {
     });
 
     try {
-      const generated = await classService.generateMeetingUrl();
+      const generated = await classroomService.generateMeetingUrl();
 
       if (!generated?.meetingUrl) {
         throw new Error("The server did not return a Google Meet URL");
@@ -485,7 +486,7 @@ export function EditionClassPage({ routeBase = "/staff/classrooms" }) {
 
     let cancelled = false;
 
-    classService
+    classroomService
       .getAdmin(classId)
       .then((data) => {
         if (cancelled) return;

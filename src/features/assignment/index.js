@@ -1,4 +1,1 @@
-export const assignmentFeature = {
-  name: 'Assignment',
-  routeBase: '/assignments',
-}
+export { assignmentService } from "./services/assignmentService";

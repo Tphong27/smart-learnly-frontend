@@ -10,7 +10,7 @@ import {
   ROLES,
 } from "@/shared/constants/roles";
 import { getDashboardPathByRole } from "@/app/routes/dashboard-path";
-import { courseService } from "@/services";
+import { categoryService } from "@/features/course";
 import { NotificationBell } from "@/features/notification";
 import "./TraineeLayout.css";
 
@@ -98,7 +98,7 @@ export function TraineeHeader({ user, onLogout, roleLabel }) {
 
     async function loadCategories() {
       try {
-        const data = await courseService.getCategories();
+        const data = await categoryService.listPublic();
         if (mounted) setCategories(Array.isArray(data) ? data : []);
       } catch {
         if (mounted) setCategories([]);

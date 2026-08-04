@@ -11,11 +11,9 @@ import {
   Loader2,
 } from "lucide-react";
 import { getCurrentUser } from "@/services/api-client";
-import {
-  assignmentService,
-  attemptService,
-  testService,
-} from "@/services/flashtest.service.js";
+import { assignmentService } from "@/features/assignment";
+import { attemptService } from "../services/attemptService";
+import { testService } from "../services/testService";
 import {
   sanitizeAnswerHtml,
   sanitizeLessonHtml,

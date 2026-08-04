@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { courseService } from "@/services";
+import { enrollmentService } from "@/features/enrollment";
+import { categoryService } from "../services/categoryService";
+import { courseCatalogService } from "../services/courseCatalogService";
 import { CourseCard } from "../components/CourseCard";
 import { CourseCatalogFilterMenu } from "../components/CourseCatalogFilterMenu";
 import {
@@ -119,7 +121,7 @@ export function CourseListPage({
 
     async function loadCategories() {
       try {
-        const data = await courseService.getCategories();
+        const data = await categoryService.listPublic();
         if (mounted) {
           setCategories(Array.isArray(data) ? data : []);
         }
@@ -152,7 +154,7 @@ export function CourseListPage({
       sort,
     }) {
       const enrolledIds = hasAccessToken()
-        ? await courseService.getMyEnrolledCourseIds()
+        ? await enrollmentService.getMyEnrolledCourseIds()
         : new Set();
 
       const allItems = [];
@@ -160,7 +162,7 @@ export function CourseListPage({
       let hasMorePages = true;
 
       while (hasMorePages) {
-        const pageData = await courseService.getPublicCoursesWithDetails({
+        const pageData = await courseCatalogService.listWithDetails({
           page: backendPage,
           size,
           keyword,
@@ -234,7 +236,7 @@ export function CourseListPage({
             sort,
           });
         } else {
-          data = await courseService.getPublicCoursesWithDetails({
+          data = await courseCatalogService.listWithDetails({
             page,
             size: pageSize,
             keyword,

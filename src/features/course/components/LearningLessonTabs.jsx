@@ -21,7 +21,7 @@ import {
 import { fileNameFromUrl, isHtmlContent } from "../utils/lesson-content";
 import { LearningQuizPlayer } from "./LearningQuizPlayer";
 import { FlashcardPractice } from "./flashcards/FlashcardPractice";
-import { assignmentService } from "@/services/flashtest.service";
+import { assignmentService } from "@/features/assignment";
 import { getCurrentUser } from "@/services/api-client";
 import DOMPurify from "dompurify";
 

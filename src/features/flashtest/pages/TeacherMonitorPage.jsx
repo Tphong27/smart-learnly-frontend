@@ -20,11 +20,9 @@ import {
   XCircle,
 } from "lucide-react";
 import { Modal } from "@/shared/components/ui";
-import {
-  assignmentService,
-  attemptService,
-  testService,
-} from "@/services/flashtest.service.js";
+import { assignmentService } from "@/features/assignment";
+import { attemptService } from "../services/attemptService";
+import { testService } from "../services/testService";
 import "../flashtest.css";
 
 const API_BASE_URL =

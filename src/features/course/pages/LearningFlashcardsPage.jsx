@@ -8,7 +8,7 @@ import {
   RefreshCw,
   Search,
 } from "lucide-react";
-import { flashcardService } from "@/services/flashcard.service";
+import { flashcardLearningService } from "@/features/flashcard";
 import Pagination from "@/shared/components/Pagination";
 import { Button } from "@/shared/components/ui";
 import "./LearningFlashcardsPage.css";
@@ -243,7 +243,7 @@ export function LearningFlashcardsPage() {
     setLoading(true);
     setError(null);
     try {
-      setItems(await flashcardService.listLearningFlashcards());
+      setItems(await flashcardLearningService.listLearningFlashcards());
     } catch (loadError) {
       setError(loadError?.message || "Failed to load flashcards.");
     } finally {
@@ -254,7 +254,7 @@ export function LearningFlashcardsPage() {
   useEffect(() => {
     let isActive = true;
 
-    flashcardService
+    flashcardLearningService
       .listLearningFlashcards()
       .then((data) => {
         if (isActive) setItems(data);

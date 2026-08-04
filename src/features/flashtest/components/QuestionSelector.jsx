@@ -1,17 +1,20 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Eye, Shuffle, Trash2, X } from "lucide-react";
-import { questionService } from "@/services/flashtest.service.js";
+import { questionBankService } from "@/features/admin/question-bank";
 import { sanitizeAnswerHtml, sanitizeQuestionHtml } from "@/shared/utils/htmlSanitizer";
 import "../flashtest.css";
 
+/** Lấy nội dung hiển thị từ các kiểu payload câu hỏi tương thích. */
 function questionText(question) {
   return question.questionText || question.content || question.title || "Untitled question";
 }
 
+/** Lấy định danh câu hỏi từ response cũ hoặc mới. */
 function questionId(question) {
   return question?.id || question?.questionId || "";
 }
 
+/** Cho giảng viên chọn hoặc rút ngẫu nhiên câu hỏi của một khóa học vào đề. */
 export function QuestionSelector({
   courseId,
   moduleId,
@@ -51,11 +54,12 @@ export function QuestionSelector({
       const pageSize = 100;
       const loaded = [];
       for (let page = 0; page < 20; page += 1) {
-        const batch = await questionService.getByCourse(courseId, {
+        const response = await questionBankService.listCourseQuestions(courseId, {
           size: pageSize,
           page,
           ...(moduleId && moduleId !== "all" ? { moduleId } : {}),
         });
+        const batch = response.items;
         loaded.push(...batch);
         if (batch.length < pageSize) break;
       }

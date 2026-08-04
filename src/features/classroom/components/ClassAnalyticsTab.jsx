@@ -9,7 +9,7 @@ import {
   TrendingUp,
   Users,
 } from "lucide-react";
-import { classAnalyticsService } from "@/services";
+import { classAnalyticsService } from "../services/classAnalyticsService";
 import { formatNumber, formatPercent } from "@/shared/utils/formatters";
 import { DEFAULT_STUDENT_PERFORMANCE_QUERY } from "../constants/studentPerformanceFilters";
 import { StudentPerformanceTable } from "./StudentPerformanceTable";

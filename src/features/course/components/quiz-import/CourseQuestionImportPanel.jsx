@@ -2,8 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { Search } from "lucide-react";
 import Pagination from "@/shared/components/Pagination";
 import { Button, Modal } from "@/shared/components/ui";
-import { courseService } from "@/services/course.service";
-import { questionBankService } from "@/services/question-bank.service";
+import { courseContentService } from "../../services/courseContentService";
+import { questionBankService } from "@/features/admin/question-bank";
 import { sanitizeQuestionHtml } from "@/shared/utils/htmlSanitizer";
 import { prepareCourseQuestionImport } from "@/features/course/utils/course-question-quiz-import";
 import "@/features/admin/admin-shared.css";
@@ -153,7 +153,7 @@ export function CourseQuestionImportPanel({
         (async () => {
             try {
                 const moduleData =
-                    await courseService.getCourseContent(courseId);
+                    await courseContentService.getCourseContent(courseId);
                 if (!cancelled) setModules(normalizeModules(moduleData));
             } catch {
                 if (!cancelled) setModules([]);

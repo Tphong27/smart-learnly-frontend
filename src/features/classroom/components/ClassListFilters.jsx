@@ -1,6 +1,6 @@
 import { Search } from "lucide-react";
 import { useEffect, useState } from "react";
-import { courseService } from "@/services";
+import { courseAdminService } from "@/features/course";
 
 export function ClassListFilters({
   initialCourseId = "",
@@ -39,7 +39,7 @@ export function ClassListFilters({
 
     async function fetchCourseTitle() {
       try {
-        const course = await courseService.getAdmin(initialCourseId);
+        const course = await courseAdminService.get(initialCourseId);
 
         if (cancelled) {
           return;

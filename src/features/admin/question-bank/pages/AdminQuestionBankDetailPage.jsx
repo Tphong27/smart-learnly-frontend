@@ -8,80 +8,36 @@ import {
   Edit2,
   Plus,
   RotateCcw,
-  Search,
   Sparkles,
   Upload,
 } from "lucide-react";
-import { Button, FormField, Modal, useToast } from "@/shared/components/ui";
-import { AdminFilterToolbar } from "@/features/admin/components/AdminFilterToolbar";
+import { Button, useToast } from "@/shared/components/ui";
 import Pagination from "@/shared/components/Pagination";
 import {
   sanitizeAnswerHtml,
   sanitizeQuestionHtml,
 } from "@/shared/utils/htmlSanitizer";
-import {
-  auditLogService,
-  courseService,
-  getCurrentUser,
-  questionBankService,
-} from "@/services";
+import { auditLogService } from "@/services";
+import { questionBankService } from "@/features/admin/question-bank";
+import { courseAdminService, courseContentService } from "@/features/course";
 import { formatDate } from "@/shared/utils/formatters";
 import { DEFAULT_PAGE_SIZE } from "@/shared/constants/pagination";
 import "../../admin-shared.css";
 import "./question-bank.css";
 import { QuestionImportModal } from "../components/QuestionImportModal";
 import { AdminQuestionFormModal } from "./AdminQuestionFormPage";
-
-function canWriteQuestionBank() {
-  const role = getCurrentUser()?.role;
-  return role === "ADMIN" || role === "SME";
-}
-
-function normalizeModules(payload) {
-  const root = payload?.data ?? payload;
-  const items = Array.isArray(root)
-    ? root
-    : (root?.items ?? root?.content ?? root?.sections ?? []);
-  return items
-    .map((item, index) => ({
-      id: item.moduleId || item.sectionId || item.id,
-      title: item.title || item.name || "Module " + (index + 1),
-    }))
-    .filter((item) => item.id);
-}
-
-function mediaUrl(item) {
-  return item?.mediaUrl || item?.fileUrl || item?.url || null;
-}
-
-function mediaName(item, fallback) {
-  return item?.fileName || item?.originalFileName || item?.name || fallback;
-}
-
-function normalizeQuestionMedia(question) {
-  const attachments = Array.isArray(question?.mediaAttachments)
-    ? question.mediaAttachments
-    : [];
-  const sortedAttachments = [...attachments].sort(
-    (left, right) =>
-      (left.displayOrder ?? left.orderIndex ?? 0) -
-      (right.displayOrder ?? right.orderIndex ?? 0),
-  );
-  const images = sortedAttachments.filter(
-    (item) =>
-      String(item.mediaType || "").toLowerCase() === "image" && mediaUrl(item),
-  );
-  const audios = sortedAttachments.filter(
-    (item) =>
-      String(item.mediaType || "").toLowerCase() === "audio" && mediaUrl(item),
-  );
-  const videos = sortedAttachments.filter(
-    (item) =>
-      String(item.mediaType || "").toLowerCase() === "video" && mediaUrl(item),
-  );
-
-  return { images, audios, videos };
-}
+import {
+  QuestionImagePreviewModal,
+  RestoreQuestionBankModal,
+} from "../components/QuestionBankDetailModals";
+import { QuestionBankFilters } from "../components/QuestionBankFilters";
+import {
+  canWriteQuestionBank,
+  normalizeQuestionMedia,
+  normalizeQuestionModules,
+  questionMediaName,
+  questionMediaUrl,
+} from "../utils/questionBankDetailUtils";
 
 export function AdminQuestionBankDetailPage() {
   const { bankId, courseId } = useParams();
@@ -175,8 +131,8 @@ export function AdminQuestionBankDetailPage() {
       try {
         const [scopeData, moduleData, questionPage] = isCourseQuestionsMode
           ? await Promise.all([
-              courseService.getAdmin(courseId),
-              courseService.getCourseContent(courseId),
+              courseAdminService.get(courseId),
+              courseContentService.getCourseContent(courseId),
               questionBankService.listCourseQuestions(courseId, {
                 search: search.trim() || undefined,
                 moduleId: moduleId === "all" ? undefined : moduleId,
@@ -188,7 +144,7 @@ export function AdminQuestionBankDetailPage() {
               const bankData = await questionBankService.getBank(bankId);
               const [legacyModules, legacyQuestions] = await Promise.all([
                 bankData?.courseId
-                  ? courseService.getCourseContent(bankData.courseId)
+                  ? courseContentService.getCourseContent(bankData.courseId)
                   : Promise.resolve([]),
                 questionBankService.listQuestions({
                   bankId,
@@ -216,7 +172,7 @@ export function AdminQuestionBankDetailPage() {
           setCourse(null);
           setBank(scopeData);
         }
-        setModules(normalizeModules(moduleData));
+        setModules(normalizeQuestionModules(moduleData));
         setItems(questionPage.items || []);
         setPageInfo({
           page: questionPage.page,
@@ -509,159 +465,32 @@ export function AdminQuestionBankDetailPage() {
 
       {activeTab === "questions" && (
         <section className="admin-card admin-card--flush admin-card--filterable">
-          {isCourseQuestionsMode ? (
-            <div
-              className="admin-toolbar admin-toolbar--filter-popover"
-              role="search"
-              aria-label="Question search and module filter"
-            >
-              <div className="admin-filter-bar question-module-filter-bar">
-                <div className="admin-filter-bar__search">
-                  <FormField
-                    id="question-list-search"
-                    aria-label="Search questions"
-                    placeholder="Search questions..."
-                    value={search}
-                    onChange={(event) => {
-                      setSearch(event.target.value);
-                      setPage(0);
-                    }}
-                    leftIcon={<Search size={16} />}
-                  />
-                </div>
-                <div className="admin-filter-bar__actions question-module-filter-bar__actions">
-                  <label
-                    className="question-module-filter"
-                    htmlFor="question-module-filter"
-                  >
-                    <span>Module</span>
-                    <select
-                      id="question-module-filter"
-                      className="admin-toolbar__select"
-                      value={moduleId}
-                      onChange={(event) => {
-                        setModuleId(event.target.value);
-                        setPage(0);
-                      }}
-                    >
-                      <option value="all">All modules</option>
-                      {modules.map((module) => (
-                        <option key={module.id} value={module.id}>
-                          {module.title}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <span className="admin-toolbar__meta" aria-live="polite">
-                    {pageInfo.totalItems} questions
-                  </span>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <AdminFilterToolbar
-              ariaLabel="Question search and filters"
-              search={
-                <FormField
-                  id="question-list-search"
-                  aria-label="Search questions"
-                  placeholder="Search questions..."
-                  value={search}
-                  onChange={(event) => {
-                    setSearch(event.target.value);
-                    setPage(0);
-                  }}
-                  leftIcon={<Search size={16} />}
-                />
-              }
-              fields={[
-                {
-                  name: "moduleId",
-                  label: "Module",
-                  type: "select",
-                  value: moduleId,
-                  defaultValue: "all",
-                  options: [
-                    { value: "all", label: "All modules" },
-                    ...modules.map((module) => ({
-                      value: module.id,
-                      label: module.title,
-                    })),
-                  ],
-                },
-                {
-                  name: "type",
-                  label: "Question type",
-                  type: "select",
-                  value: type,
-                  defaultValue: "all",
-                  options: [
-                    { value: "all", label: "All types" },
-                    {
-                      value: "multiple_choice",
-                      label: "Multiple choice",
-                    },
-                    {
-                      value: "true_false",
-                      label: "True/False",
-                    },
-                  ],
-                },
-                {
-                  name: "status",
-                  label: "Status",
-                  type: "select",
-                  value: status,
-                  defaultValue: "all",
-                  options: [
-                    { value: "all", label: "All statuses" },
-                    { value: "draft", label: "Draft" },
-                    { value: "approved", label: "Approved" },
-                    { value: "archived", label: "Archived" },
-                  ],
-                },
-                {
-                  name: "difficulty",
-                  label: "Difficulty",
-                  type: "select",
-                  value: difficulty,
-                  defaultValue: "all",
-                  options: [
-                    { value: "all", label: "All difficulties" },
-                    ...[1, 2, 3, 4, 5].map((level) => ({
-                      value: String(level),
-                      label: String(level),
-                    })),
-                  ],
-                },
-              ]}
-              activeFilterCount={
-                [
-                  moduleId !== "all",
-                  type !== "all",
-                  status !== "all",
-                  difficulty !== "all",
-                ].filter(Boolean).length
-              }
-              canClear={Boolean(
-                search.trim() ||
-                moduleId !== "all" ||
-                type !== "all" ||
-                status !== "all" ||
-                difficulty !== "all",
-              )}
-              resultLabel={`${pageInfo.totalItems} questions`}
-              onApply={(nextFilters) => {
-                setModuleId(nextFilters.moduleId);
-                setType(nextFilters.type);
-                setStatus(nextFilters.status);
-                setDifficulty(nextFilters.difficulty);
-                setPage(0);
-              }}
-              onClear={clearQuestionFilters}
-            />
-          )}
-
+          <QuestionBankFilters
+            courseMode={isCourseQuestionsMode}
+            modules={modules}
+            search={search}
+            moduleId={moduleId}
+            type={type}
+            status={status}
+            difficulty={difficulty}
+            resultCount={pageInfo.totalItems}
+            onSearchChange={(nextSearch) => {
+              setSearch(nextSearch);
+              setPage(0);
+            }}
+            onModuleChange={(nextModuleId) => {
+              setModuleId(nextModuleId);
+              setPage(0);
+            }}
+            onApply={(nextFilters) => {
+              setModuleId(nextFilters.moduleId);
+              setType(nextFilters.type);
+              setStatus(nextFilters.status);
+              setDifficulty(nextFilters.difficulty);
+              setPage(0);
+            }}
+            onClear={clearQuestionFilters}
+          />
           {loading ? (
             <div className="admin-loading">Loading questions...</div>
           ) : error ? (
@@ -825,7 +654,7 @@ export function AdminQuestionBankDetailPage() {
                         className={`question-card__image-gallery ${images.length === 1 ? "question-card__image-gallery--single" : ""}`}
                       >
                         {visibleImages.map((image, imageIndex) => {
-                          const url = mediaUrl(image);
+                          const url = questionMediaUrl(image);
                           const title = `Question ${questionNumber} image ${imageIndex + 1}`;
                           return (
                             <button
@@ -841,13 +670,13 @@ export function AdminQuestionBankDetailPage() {
                                 setImagePreview({
                                   url,
                                   title,
-                                  fileName: mediaName(image, title),
+                                  fileName: questionMediaName(image, title),
                                 })
                               }
                             >
                               <img
                                 src={url}
-                                alt={mediaName(image, title)}
+                                alt={questionMediaName(image, title)}
                                 className="question-card__image"
                               />
                               {imageIndex === visibleImages.length - 1 &&
@@ -867,7 +696,7 @@ export function AdminQuestionBankDetailPage() {
                         aria-label={`Question ${questionNumber} audio attachments`}
                       >
                         {audios.map((audio, audioIndex) => {
-                          const url = mediaUrl(audio);
+                          const url = questionMediaUrl(audio);
                           return (
                             <div
                               className="question-card__audio-player"
@@ -895,7 +724,7 @@ export function AdminQuestionBankDetailPage() {
                         aria-label={`Question ${questionNumber} video attachments`}
                       >
                         {videos.map((video, videoIndex) => {
-                          const url = mediaUrl(video);
+                          const url = questionMediaUrl(video);
                           return (
                             <div
                               className="question-card__video-player"
@@ -1057,27 +886,11 @@ export function AdminQuestionBankDetailPage() {
         onClose={() => setImportOpen(false)}
         onImported={() => setRefreshKey((key) => key + 1)}
       />
-      <Modal
-        open={Boolean(imagePreview)}
-        title={imagePreview?.title || "Question image"}
-        size="xl"
+      <QuestionImagePreviewModal
+        preview={imagePreview}
         onClose={() => setImagePreview(null)}
-      >
-        {imagePreview?.url && (
-          <div className="question-card__image-modal">
-            <img
-              src={imagePreview.url}
-              alt={imagePreview.title || "Question attachment"}
-            />
-            {imagePreview.fileName && (
-              <p className="question-card__media-modal-name">
-                {imagePreview.fileName}
-              </p>
-            )}
-          </div>
-        )}
-      </Modal>
-      <RestoreBankModal
+      />
+      <RestoreQuestionBankModal
         open={restoreModalOpen}
         bank={bank}
         onClose={() => setRestoreModalOpen(false)}
@@ -1087,76 +900,3 @@ export function AdminQuestionBankDetailPage() {
   );
 }
 
-function RestoreBankModal({ open, bank, onClose, onConfirm }) {
-  return (
-    <RestoreBankModalContent
-      key={open ? "open" : "closed"}
-      open={open}
-      bank={bank}
-      onClose={onClose}
-      onConfirm={onConfirm}
-    />
-  );
-}
-
-function RestoreBankModalContent({ open, bank, onClose, onConfirm }) {
-  const [targetStatus, setTargetStatus] = useState("draft");
-  return (
-    <Modal
-      open={open}
-      title="Restore question bank"
-      size="sm"
-      onClose={onClose}
-    >
-      <p style={{ marginTop: 0, color: "#475569" }}>
-        Restore <strong>{bank?.name || "this question bank"}</strong> so it can
-        be edited again. Choose the status to apply after restoring.
-      </p>
-      <div
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          gap: 8,
-          marginBottom: 18,
-        }}
-      >
-        <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <input
-            type="radio"
-            name="restore-target-detail"
-            value="draft"
-            checked={targetStatus === "draft"}
-            onChange={() => setTargetStatus("draft")}
-          />
-          <span>
-            Restore as <strong>Draft</strong> (still needs review)
-          </span>
-        </label>
-        <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <input
-            type="radio"
-            name="restore-target-detail"
-            value="approved"
-            checked={targetStatus === "approved"}
-            onChange={() => setTargetStatus("approved")}
-          />
-          <span>
-            Restore as <strong>Approved</strong> (ready to use)
-          </span>
-        </label>
-      </div>
-      <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
-        <Button type="button" variant="ghost" onClick={onClose}>
-          Cancel
-        </Button>
-        <Button
-          type="button"
-          leftIcon={<RotateCcw size={15} />}
-          onClick={() => onConfirm(targetStatus)}
-        >
-          Restore
-        </Button>
-      </div>
-    </Modal>
-  );
-}

@@ -4,7 +4,7 @@ import { ArrowDownUp, Plus, RefreshCw, Search } from "lucide-react";
 import { Button, Input, Modal, useToast } from "@/shared/components/ui";
 import Pagination from "@/shared/components/Pagination";
 import { useDebouncedValue } from "@/shared/hooks/useDebouncedValue";
-import { personalFlashcardService } from "@/services";
+import { personalFlashcardService } from "../services/personalFlashcardService";
 import { PersonalFlashcardSetFormModal } from "../components/PersonalFlashcardSetFormModal";
 import { PersonalFlashcardSetList } from "../components/PersonalFlashcardSetList";
 import { getErrorMessage } from "../utils/personal-flashcard-utils";

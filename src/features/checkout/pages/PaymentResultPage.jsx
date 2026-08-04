@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { CheckCircle2, Clock3, XCircle } from 'lucide-react'
 import { Button } from '@/shared/components/ui'
-import { orderService, paymentStatusService } from '@/services'
+import { checkoutService, paymentStatusService } from '../services/checkoutService'
 import '../payment-result.css'
 
 function getStatusCandidates(payment) {
@@ -74,7 +74,7 @@ export function PaymentResultPage() {
       setError(null)
 
       try {
-        const data = await orderService.get(orderId)
+        const data = await checkoutService.get(orderId)
 
         if (cancelled) return
 

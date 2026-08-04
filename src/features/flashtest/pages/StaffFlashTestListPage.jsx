@@ -13,10 +13,8 @@ import {
     Search,
     Trash2,
 } from "lucide-react";
-import {
-    assignmentService,
-    testService,
-} from "@/services/flashtest.service.js";
+import { assignmentService } from "@/features/assignment";
+import { testService } from "../services/testService";
 import Pagination from "@/shared/components/Pagination";
 import "../flashtest.css";
 

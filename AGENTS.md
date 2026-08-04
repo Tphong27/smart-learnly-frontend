@@ -2,6 +2,43 @@
 
 This file gives AI coding agents the minimum context and rules required before changing this repository.
 
+## Required shared organization rules
+
+Before reorganizing, refactoring, renaming, moving, or deleting frontend code,
+read `../AI_CODE_ORGANIZATION_RULES.md` in full. Its simplicity, dead-code
+evidence, small-batch, and verification rules are mandatory in addition to this
+file. In particular, do not split one screen into many trivial files, and do
+not delete dynamically loaded routes or assets based only on static imports.
+
+If the repository is opened without the parent workspace, these core rules
+still apply:
+
+- Preserve behavior and separate structural refactors from feature changes.
+- Prefer the fewest files, functions, layers, components, hooks, and
+  abstractions that keep each responsibility clear.
+- Keep a tiny one-use component or one-to-three-line helper inline unless it
+  represents a meaningful reusable UI or business rule.
+- Extract code only for reuse, meaningful state/effects, a distinct
+  responsibility, independent testing, or materially clearer flow.
+- Do not add pass-through components, hooks, services, managers, or utilities
+  with no independent responsibility.
+- Before deleting code, check imports, lazy routes, dynamic assets, scripts,
+  tests, mocks, docs, environment configuration, and backend API contracts.
+  Report uncertain candidates instead of deleting them.
+- Never delete uploads, secrets, deployment files, public routes, or unrelated
+  working-tree changes automatically.
+- Refactor one bounded feature at a time, then run targeted ESLint and
+  `npm run build`.
+- Use explicit feature role folders: `pages`, `components`, `hooks`,
+  `services`, `utils`, and feature-owned styles. Business API services belong
+  in `features/<domain>/services`; only shared API infrastructure such as
+  `api-client` remains in top-level `services`.
+- Add a concise Vietnamese documentation comment above every named production
+  function, React component, and custom hook. Business functions explain
+  purpose and important rules; trivial helpers need one sentence. Anonymous
+  callbacks do not need comments unless their behavior is non-obvious. Apply
+  this to every production file created or materially edited in the task.
+
 ## Repository responsibility
 
 This repository contains the frontend application for Smart Learnly Platform (SLP).

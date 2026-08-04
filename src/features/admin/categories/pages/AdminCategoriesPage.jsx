@@ -10,7 +10,7 @@ import {
     useToast,
 } from "@/shared/components/ui";
 import { AdminFilterToolbar } from "@/features/admin/components/AdminFilterToolbar";
-import { categoryService } from "@/services";
+import { categoryService } from "@/features/course";
 import { categorySchema } from "../schemas/category-schemas";
 import "../../admin-shared.css";
 

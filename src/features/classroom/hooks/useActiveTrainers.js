@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
-import { userService } from "@/services";
+import { adminUserService } from "@/features/admin/users/services/adminUserService";
 
 function fetchActiveTrainers() {
-  return userService.listActiveTrainers({
+  return adminUserService.listActiveTrainers({
     page: 0,
     size: 100,
   });

@@ -1,11 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
-import {
-  classService,
-  createTrainerLessonService,
-  createTrainerQuizService,
-  createTrainerFlashcardService,
-} from "@/services";
+import { classroomService } from "../services/classroomService";
+import { createTrainerLessonService } from "../services/trainerLessonService";
+import { createTrainerQuizService } from "../services/trainerQuizService";
+import { createTrainerFlashcardService } from "../services/trainerFlashcardService";
 import { LessonDetailEditor } from "@/features/course/components/lesson-editor/LessonDetailEditor";
 
 /**
@@ -27,7 +25,7 @@ export default function TrainerLessonDetailPage() {
 
     (async () => {
       try {
-        const classDetail = await classService.getTrainer(classId);
+        const classDetail = await classroomService.getTrainer(classId);
         if (!cancelled) {
           setCourseId(classDetail?.courseId || null);
           setLoadError("");

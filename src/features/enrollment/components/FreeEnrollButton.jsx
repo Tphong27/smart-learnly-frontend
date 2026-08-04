@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Button, useToast } from '@/shared/components/ui'
-import { enrollmentService, getAccessToken } from '@/services'
+import { getAccessToken } from '@/services'
+import { enrollmentService } from '../services/enrollmentService'
 
 export function FreeEnrollButton({ courseId, label = 'Enroll for free', onEnrolled, redirectTo = '/learning/courses', size = 'md' }) {
   const navigate = useNavigate()

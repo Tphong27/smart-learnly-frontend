@@ -1,11 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { BookOpen, CalendarDays, LoaderCircle, Search, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import {
-  classService,
-  courseService,
-  openingScheduleService,
-} from "@/services";
+import { classroomService } from "@/features/classroom";
+import { courseAdminService, courseCatalogService } from "@/features/course";
+import { openingScheduleService } from "@/features/opening-schedule";
 import {
   canViewClasses,
   normalizeRole,
@@ -103,12 +101,12 @@ export function HeaderCourseSearch({
          */
         const [courseResult, classResult] = await Promise.allSettled([
           isStaffSearch
-            ? courseService.listAdmin({
+            ? courseAdminService.list({
                 keyword: normalizedQuery,
                 page: 0,
                 size: 5,
               })
-            : courseService.getPublicCourses({
+            : courseCatalogService.list({
                 keyword: normalizedQuery,
                 page: 0,
                 size: 5,
@@ -117,12 +115,12 @@ export function HeaderCourseSearch({
           includesClassResults
             ? isStaffSearch
               ? normalizedRole === ROLES.TRAINER
-                ? classService.listTrainer({
+                ? classroomService.listTrainer({
                     keyword: normalizedQuery,
                     page: 0,
                     size: 5,
                   })
-                : classService.listAdmin({
+                : classroomService.listAdmin({
                     keyword: normalizedQuery,
                     page: 0,
                     size: 5,
@@ -242,7 +240,7 @@ export function HeaderCourseSearch({
         setSearchError("");
 
         try {
-          const assignedClasses = await classService.listTrainer({
+          const assignedClasses = await classroomService.listTrainer({
             courseId: course.id,
             page: 0,
             size: 100,

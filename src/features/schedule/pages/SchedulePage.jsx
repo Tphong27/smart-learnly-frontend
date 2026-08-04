@@ -6,7 +6,9 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { getCurrentUser, scheduleService, userService } from "@/services";
+import { getCurrentUser } from "@/services";
+import { scheduleService } from "../services/scheduleService";
+import { adminUserService } from "@/features/admin/users/services/adminUserService";
 import { normalizeRole, ROLES } from "@/shared/constants/roles";
 import { formatDate, formatTime } from "@/shared/utils/formatters";
 import { getGoogleMeetUrl } from "@/shared/utils/googleMeetUrl";
@@ -128,7 +130,7 @@ export function SchedulePage() {
 
     let active = true;
 
-    userService
+    adminUserService
       .listActiveTrainers({
         page: 0,
         size: 100,

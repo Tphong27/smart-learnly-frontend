@@ -4,7 +4,7 @@ import { EnrolledCourseCard } from "../components/EnrolledCourseCard";
 import { CourseFilters } from "../components/CourseFilters";
 import { CourseListToolbar } from "../components/CourseListToolbar";
 import { CourseListPage } from "./CourseListPage";
-import { courseService } from "@/services";
+import { enrollmentService } from "@/features/enrollment";
 import "../course.css";
 
 const TAB_ENROLLED = "enrolled";
@@ -45,7 +45,7 @@ export function MyCoursesPage() {
   useEffect(() => {
     let mounted = true;
 
-    courseService
+    enrollmentService
       .getMyCourses()
       .then((data) => {
         if (!mounted) return;

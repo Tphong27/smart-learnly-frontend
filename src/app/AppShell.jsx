@@ -5,6 +5,7 @@ import {
   useRoutes,
 } from "react-router-dom";
 import { PublicLayout } from "./layouts/PublicLayout";
+import { AppLayout } from "./layouts/AppLayout";
 import { AuthAwareLayout } from "./layouts/AuthAwareLayout";
 import { TraineeLayout } from "./layouts/TraineeLayout";
 import { TrainerLayout } from "./layouts/TrainerLayout";
@@ -22,9 +23,9 @@ import { getCurrentUser } from "@/services";
 import { HomePage } from "../features/home/HomePage";
 import {
   CourseDetailPage,
-  LearningWorkspacePage,
   TrainerProfilePage,
 } from "../features/course";
+import { LearningWorkspacePage } from "@/features/learning";
 import {
   LoginPage,
   RegisterPage,

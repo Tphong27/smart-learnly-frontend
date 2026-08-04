@@ -12,11 +12,9 @@ import {
   Search,
   X,
 } from "lucide-react";
-import {
-  assignmentService,
-  attemptService,
-  testService,
-} from "@/services/flashtest.service.js";
+import { assignmentService } from "@/features/assignment";
+import { attemptService } from "../services/attemptService";
+import { testService } from "../services/testService";
 import { getCurrentUser } from "@/services/api-client";
 import Pagination from "@/shared/components/Pagination";
 import { Modal } from "@/shared/components/ui";

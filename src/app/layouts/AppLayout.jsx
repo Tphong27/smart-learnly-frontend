@@ -4,7 +4,8 @@ import { Header } from "./Header";
 import { Sidebar } from "./Sidebar";
 import { TrainerLayout } from "./TrainerLayout";
 import { LayoutBackground } from "./LayoutBackground";
-import { authService, getCurrentUser } from "@/services";
+import { authService } from "@/features/auth";
+import { getCurrentUser } from "@/services";
 import {
     isRoleAllowed,
     normalizeRole,

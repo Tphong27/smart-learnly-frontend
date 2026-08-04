@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useToast } from '@/shared/components/ui'
-import { enrollmentService } from '@/services'
+import { enrollmentService } from '../services/enrollmentService'
 import { StatusBadge } from '@/shared/components/status'
 import { formatDate } from '@/shared/utils/formatters'
 import { DEFAULT_PAGE_SIZE } from '@/shared/constants/pagination'

@@ -16,3 +16,5 @@ export {
 } from "./pages/TraineeFlashTestTakePage";
 export { TraineeTestListPage } from "./pages/TraineeTestListPage";
 export { TraineeTestTakePage } from "./pages/TraineeTestTakePage";
+export { attemptService } from "./services/attemptService";
+export { testService } from "./services/testService";

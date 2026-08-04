@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Modal, Button, useToast } from "@/shared/components/ui";
 import { StatusBadge } from "@/shared/components/status";
-import { transactionService, orderService } from "@/services";
+import { checkoutService } from "../services/checkoutService";
 import { formatAmount, formatDateTime } from "@/shared/utils/formatters";
 import { downloadInvoice } from "@/features/checkout/utils/downloadInvoice";
 import "../invoice-detail-modal.css";
@@ -34,12 +34,12 @@ export function InvoiceDetailModal({ open, transactionId, onClose }) {
       setLoading(true);
       setError(null);
       try {
-        const data = await transactionService.getInvoice(transactionId);
+        const data = await checkoutService.getInvoice(transactionId);
         if (cancelled) return;
         setInvoice(data);
         if (data?.orderId) {
           try {
-            const orderData = await orderService.get(data.orderId);
+            const orderData = await checkoutService.get(data.orderId);
             if (!cancelled) setOrder(orderData);
           } catch {
             if (!cancelled) setOrder(null);

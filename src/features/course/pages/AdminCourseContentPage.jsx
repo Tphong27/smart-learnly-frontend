@@ -6,8 +6,8 @@ import {
     useSearchParams,
 } from "react-router-dom";
 import { Eye, Maximize2, Minimize2, RotateCcw } from "lucide-react";
-import { courseService } from "../../../services/course.service";
-import { flashcardService } from "../../../services/flashcard.service";
+import { courseContentService } from "../services/courseContentService";
+import { flashcardAuthoringService as flashcardService } from "@/features/flashcard";
 import { useToast } from "../../../shared/components/ui/Toast/useToast";
 import { Button } from "../../../shared/components/ui";
 import { CurriculumStructureEditor } from "../components/CurriculumStructureEditor";
@@ -63,7 +63,7 @@ export default function AdminCourseContentPage() {
         setLoadingSections(true);
         setLoadError("");
         try {
-            const data = await courseService.getCourseContent(courseId);
+            const data = await courseContentService.getCourseContent(courseId);
             const nextSections = Array.isArray(data) ? data : [];
 
             setSections(nextSections);
@@ -94,7 +94,7 @@ export default function AdminCourseContentPage() {
     const fetchLessonsForSection = useCallback(async (sectionId) => {
         setLoadingLessons((prev) => ({ ...prev, [sectionId]: true }));
         try {
-            const data = await courseService.getLessonsBySection(sectionId);
+            const data = await courseContentService.getLessonsBySection(sectionId);
             setSectionLessons((prev) => ({
                 ...prev,
                 [sectionId]: Array.isArray(data) ? data : [],
@@ -135,7 +135,7 @@ export default function AdminCourseContentPage() {
 
     const handleCreateSection = async ({ title }) => {
         try {
-            await courseService.createSection(courseId, {
+            await courseContentService.createSection(courseId, {
                 title,
             });
             showToast({
@@ -158,7 +158,7 @@ export default function AdminCourseContentPage() {
 
     const handleUpdateSection = async (sectionId, { title }) => {
         try {
-            await courseService.updateSection(sectionId, {
+            await courseContentService.updateSection(sectionId, {
                 title,
             });
             showToast({
@@ -182,7 +182,7 @@ export default function AdminCourseContentPage() {
         setSections((current) => current.filter((s) => s.id !== sectionId));
 
         try {
-            await courseService.deleteSection(sectionId);
+            await courseContentService.deleteSection(sectionId);
             showToast({
                 type: "success",
                 message: `Section “${sectionTitle}” deleted.`,
@@ -191,7 +191,7 @@ export default function AdminCourseContentPage() {
                     label: "Undo",
                     onClick: async () => {
                         try {
-                            await courseService.createSection(courseId, {
+                            await courseContentService.createSection(courseId, {
                                 title: target.title,
                                 sortOrder: target.sortOrder ?? 0,
                             });
@@ -234,7 +234,7 @@ export default function AdminCourseContentPage() {
         setSections(reordered);
 
         try {
-            await courseService.reorderSections(courseId, orderedIds);
+            await courseContentService.reorderSections(courseId, orderedIds);
             showToast({ type: "success", message: "Sections reordered." });
         } catch (error) {
             showToast({
@@ -291,7 +291,7 @@ export default function AdminCourseContentPage() {
                 return true;
             }
 
-            await courseService.createLesson(sectionId, {
+            await courseContentService.createLesson(sectionId, {
                 title: payload.title,
                 lessonType: mappedType,
                 isPreview: !!payload.isPreview,
@@ -325,7 +325,7 @@ export default function AdminCourseContentPage() {
                     await flashcardService.getAdminSetByLesson(lessonId);
                 await flashcardService.deleteSet(flashcardSet.id);
             } else {
-                await courseService.deleteLesson(lessonId);
+                await courseContentService.deleteLesson(lessonId);
             }
 
             showToast({
@@ -361,7 +361,7 @@ export default function AdminCourseContentPage() {
         setSectionLessons((prev) => ({ ...prev, [sectionId]: nextLessons }));
 
         try {
-            await courseService.reorderLessons(sectionId, orderedIds);
+            await courseContentService.reorderLessons(sectionId, orderedIds);
             showToast({ type: "success", message: "Lessons reordered." });
         } catch (error) {
             showToast({

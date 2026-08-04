@@ -11,7 +11,7 @@ import {
     PlayCircle,
 } from "lucide-react";
 import { Button, useToast } from "@/shared/components/ui";
-import { learningService } from "@/services";
+import { learningService } from "@/features/learning";
 import { LearningLessonMedia } from "../components/LearningLessonMedia";
 import { isLessonPublished } from "../utils/lesson-status";
 import "../../admin/admin-shared.css";

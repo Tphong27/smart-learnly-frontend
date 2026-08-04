@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Search } from "lucide-react";
-import { traineeProgressService } from "@/services";
+import { traineeProgressService } from "../services/traineeProgressService";
 import { ProgressBar } from "../components/ProgressBar";
 import { CourseProgressCard } from "../components/CourseProgressCard";
 import { TraineeProgressSkeleton } from "../components/TraineeProgressSkeleton";
@@ -30,12 +30,14 @@ const LEARNING_TYPES = {
   },
 };
 
+/** Chuẩn hóa chuỗi trước khi so sánh trong bộ lọc danh sách tiến độ. */
 function normalizeText(value) {
   return String(value || "")
     .trim()
     .toLowerCase();
 }
 
+/** Hiển thị tổng quan tiến độ, bộ lọc và danh sách khóa học của học viên. */
 export function TraineeProgressPage() {
   const [progress, setProgress] = useState(null);
   const [loading, setLoading] = useState(true);

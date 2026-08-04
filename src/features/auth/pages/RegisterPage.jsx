@@ -4,7 +4,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Eye, EyeOff, Mail, User, Lock } from "lucide-react";
 import { Form, FormField, Button, useToast } from "@/shared/components/ui";
-import { authService } from "@/services";
+import { authService } from "../services/authService";
 import { registerSchema } from "../schemas/auth-schemas";
 import { PasswordStrengthChecklist } from "../components/PasswordStrengthChecklist";
 import { OtpInput } from "../components/OtpInput";

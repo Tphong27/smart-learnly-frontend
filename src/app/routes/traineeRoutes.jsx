@@ -1,5 +1,6 @@
 import { Navigate } from "react-router-dom";
 import { RoleGuard } from "./RoleGuard";
+import { PlaceholderPage } from "./PlaceholderPage";
 import { ROLES } from "@/shared/constants/roles";
 import { TraineeLayout } from "../layouts/TraineeLayout";
 import {
@@ -19,26 +20,14 @@ import {
 import {
   CourseListPage,
   LearningFlashcardsPage,
-  LearningWorkspacePage,
 } from "@/features/course";
+import { LearningWorkspacePage } from "@/features/learning";
 import { TraineeDashboardPage } from "@/features/dashboard";
 import { TraineeProgressPage } from "@/features/progress";
 import { OpeningSchedulePage } from "@/features/opening-schedule";
 import { SchedulePage } from "@/features/schedule";
 
-function PlaceholderPage({ title }) {
-  return (
-    <section className="placeholder-page">
-      <span className="placeholder-page__eyebrow">Coming soon</span>
-      <h1 className="placeholder-page__title">{title}</h1>
-      <p className="placeholder-page__text">
-        This is a placeholder page for <strong>{title}</strong>. Content will be
-        added in future sprints.
-      </p>
-    </section>
-  );
-}
-
+/** Tạo cấu hình route dành cho học viên, giữ nguyên guard và URL công khai. */
 function getTraineeRoutes() {
   return [
     {

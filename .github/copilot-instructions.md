@@ -1,6 +1,7 @@
 # Smart Learnly Copilot instructions
 
 - Follow `AGENTS.md` and `AI-RULE-FE.md` for repository and implementation rules.
+- Apply the simplicity and dead-code evidence rules embedded in `AGENTS.md` before reorganizing or deleting code.
 - Before suggesting or editing UI, read `DESIGN_LANGUAGE.md` in full; it is the canonical visual source of truth.
 - Use `AI-UI-HANDOFF.md` when continuing unfinished UI work.
 - Preserve the current simple, flat e-learning direction and role-specific layouts.

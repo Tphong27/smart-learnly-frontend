@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, Save } from "lucide-react";
 import { Button, useToast } from "@/shared/components/ui";
-import { categoryService, courseService } from "@/services";
+import { categoryService } from "../services/categoryService";
+import { courseAdminService } from "../services/courseAdminService";
 import ThumbnailUploader from "@/features/course/components/ThumbnailUploader";
 import "@/features/course/components/ThumbnailUploader.css";
 import "../course-admin.css";
@@ -73,7 +74,7 @@ export default function AdminCourseFormPage() {
       if (!isEdit) return;
 
       try {
-        const detail = await courseService.getAdmin(courseId);
+        const detail = await courseAdminService.get(courseId);
         if (cancelled) return;
         setForm({
           categoryId: detail.categoryId || "",
@@ -152,11 +153,11 @@ export default function AdminCourseFormPage() {
       };
 
       if (isEdit) {
-        await courseService.update(courseId, payload);
+        await courseAdminService.update(courseId, payload);
         toast.success("Course updated successfully");
         navigate("/admin/courses", { replace: true });
       } else {
-        const created = await courseService.create(payload);
+        const created = await courseAdminService.create(payload);
         toast.success("Course created successfully");
         navigate(`/admin/courses/${created.id}/content`, { replace: true });
       }

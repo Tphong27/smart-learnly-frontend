@@ -1,7 +1,8 @@
 import { Copy } from 'lucide-react'
+import { useToast } from '@/shared/components/ui'
 import { PaymentStatusBadge } from './PaymentStatusBadge'
-import { VietQrBox } from './VietQrBox'
 
+/** Định dạng số tiền theo tiền tệ Việt Nam để hiển thị trong hướng dẫn thanh toán. */
 function formatMoney(value, currency = 'VND') {
   return new Intl.NumberFormat('vi-VN', {
     style: 'currency',
@@ -10,6 +11,7 @@ function formatMoney(value, currency = 'VND') {
   }).format(Number(value || 0))
 }
 
+/** Hiển thị một dòng thông tin thanh toán và nút sao chép khi được cho phép. */
 function InfoRow({ label, value, copyable, onCopy }) {
   return (
     <div className="payment-info-row">
@@ -31,7 +33,25 @@ function InfoRow({ label, value, copyable, onCopy }) {
   )
 }
 
-export function PaymentInstructionCard({ payment, onCopy }) {
+/**
+ * Hiển thị QR và toàn bộ thông tin người học cần dùng để chuyển khoản chính xác.
+ * Component tự xử lý sao chép số tài khoản và nội dung chuyển khoản.
+ */
+export function PaymentInstructionCard({ payment }) {
+  const toast = useToast()
+
+  /** Sao chép giá trị được chọn và thông báo kết quả cho người dùng. */
+  async function handleCopy(value) {
+    if (!value) return
+
+    try {
+      await navigator.clipboard.writeText(value)
+      toast.success('Copied.')
+    } catch {
+      toast.error('Could not copy.')
+    }
+  }
+
   return (
     <section className="payment-instruction-card">
       <div className="payment-instruction-card__header">
@@ -46,7 +66,13 @@ export function PaymentInstructionCard({ payment, onCopy }) {
       </div>
 
       <div className="payment-instruction-card__body">
-        <VietQrBox qrUrl={payment?.qrUrl} />
+        <div className="vietqr-box">
+          {payment?.qrUrl ? (
+            <img src={payment.qrUrl} alt="VietQR payment code" />
+          ) : (
+            <div className="vietqr-box__empty">QR code is unavailable</div>
+          )}
+        </div>
 
         <dl className="payment-instruction-card__info">
           <InfoRow
@@ -63,7 +89,7 @@ export function PaymentInstructionCard({ payment, onCopy }) {
             label="Account number"
             value={payment?.bankAccountNumber}
             copyable
-            onCopy={onCopy}
+            onCopy={handleCopy}
           />
 
           <InfoRow
@@ -75,7 +101,7 @@ export function PaymentInstructionCard({ payment, onCopy }) {
             label="Transfer content"
             value={payment?.transferContent || payment?.paymentCode}
             copyable
-            onCopy={onCopy}
+            onCopy={handleCopy}
           />
 
           <InfoRow
