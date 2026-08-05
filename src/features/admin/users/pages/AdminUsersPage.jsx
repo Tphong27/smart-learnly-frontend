@@ -12,8 +12,12 @@ import {
 } from "@/shared/components/ui";
 import { AdminFilterToolbar } from "@/features/admin/components/AdminFilterToolbar";
 import Pagination from "@/shared/components/Pagination";
-import { userService } from "@/services";
+import { adminUserService } from "../services/adminUserService";
 import { formatDateTime, formatLabel } from "@/shared/utils/formatters";
+import {
+    isValidOptionalVietnameseMobilePhone,
+    VIETNAMESE_MOBILE_PHONE_MESSAGE,
+} from "@/shared/utils/phone-validation";
 import { DEFAULT_PAGE_SIZE } from "@/shared/constants/pagination";
 import "../../admin-shared.css";
 
@@ -34,8 +38,10 @@ const userFormSchema = z.object({
     phoneNumber: z
         .string()
         .trim()
-        .max(20, "Phone number must be at most 20 characters")
-        .or(z.literal(""))
+        .refine(
+            isValidOptionalVietnameseMobilePhone,
+            VIETNAMESE_MOBILE_PHONE_MESSAGE,
+        )
         .optional(),
     role: z.enum(USER_ROLES, { message: "Role is required" }),
     status: z.enum(USER_STATUSES, { message: "Status is required" }),
@@ -90,10 +96,10 @@ function UserFormModal({ open, mode, initial, onClose, onSaved }) {
         try {
             const payload = buildPayload(values);
             if (mode === "edit") {
-                await userService.update(initial.id, payload);
+                await adminUserService.update(initial.id, payload);
                 toast.success("User updated successfully");
             } else {
-                await userService.create(payload);
+                await adminUserService.create(payload);
                 toast.success("User created successfully");
             }
             onSaved();
@@ -189,6 +195,11 @@ function UserFormModal({ open, mode, initial, onClose, onSaved }) {
 
                     <FormField
                         label="Phone number"
+                        type="tel"
+                        inputMode="tel"
+                        autoComplete="tel"
+                        placeholder="0901234567 or +84901234567"
+                        helperText="Use a Vietnamese mobile number beginning with 0 or +84."
                         registration={register("phoneNumber")}
                         error={errors.phoneNumber?.message}
                     />
@@ -237,7 +248,7 @@ function DeleteUserModal({ open, target, onClose, onConfirmed }) {
         setLoading(true);
         setError(null);
         try {
-            await userService.remove(target.id);
+            await adminUserService.remove(target.id);
             toast.success("User deleted");
             onConfirmed();
         } catch (err) {
@@ -339,7 +350,7 @@ export function AdminUsersPage() {
             setLoading(true);
             setError(null);
             try {
-                const data = await userService.listAdmin({
+                const data = await adminUserService.listAdmin({
                     page,
                     size: pageSize,
                     keyword: submittedKeyword,

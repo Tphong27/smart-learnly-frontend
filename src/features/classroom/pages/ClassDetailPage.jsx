@@ -13,7 +13,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { Button, Modal, useToast } from "@/shared/components/ui";
-import { classService } from "@/services";
+import { classroomService } from "../services/classroomService";
 import { canManageClasses, ROLES } from "@/shared/constants/roles";
 import { ClassStatusBadge } from "../components/ClassStatusBadge";
 import { ClassOverviewTab } from "../components/ClassOverviewTab";
@@ -113,8 +113,8 @@ export function ClassDetailPage({
     let mounted = true;
 
     const request = isTrainer
-      ? classService.getTrainer(classId)
-      : classService.getAdmin(classId);
+      ? classroomService.getTrainer(classId)
+      : classroomService.getAdmin(classId);
 
     request
       .then((data) => {
@@ -170,7 +170,7 @@ export function ClassDetailPage({
     setError("");
 
     try {
-      const cancelledClass = await classService.cancel(classId);
+      const cancelledClass = await classroomService.cancel(classId);
 
       setClassData(cancelledClass);
       setLifecycleDialog(null);
@@ -205,7 +205,7 @@ export function ClassDetailPage({
     setError("");
 
     try {
-      const restoredClass = await classService.restore(classId, restoreDates);
+      const restoredClass = await classroomService.restore(classId, restoreDates);
       setClassData(restoredClass);
       setLifecycleDialog(null);
 
@@ -228,7 +228,7 @@ export function ClassDetailPage({
     if (!confirmed) return;
 
     try {
-      await classService.delete(classId);
+      await classroomService.delete(classId);
       navigate(routeBase);
     } catch (err) {
       setError(err.message || "Can not delete class");
@@ -522,8 +522,8 @@ export function ClassDetailPage({
             </div>
 
             <p>
-              Future dates produce Upcoming. A date range containing today
-              produces Ongoing. Past dates produce Completed.
+              A class stays Upcoming through its start date, becomes Ongoing
+              on the following day, and becomes Completed after its end date.
             </p>
           </div>
         )}

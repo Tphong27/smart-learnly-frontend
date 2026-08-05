@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { useLocation, useParams } from "react-router-dom";
-import { courseService } from "@/services/course.service";
-import { flashcardService } from "@/services/flashcard.service";
+import { courseContentService } from "../services/courseContentService";
+import { flashcardAuthoringService as flashcardService } from "@/features/flashcard";
 import { LessonDetailEditor } from "@/features/course/components/lesson-editor/LessonDetailEditor";
 
 /**
@@ -25,10 +25,10 @@ export default function AdminLessonDetailPage() {
       courseId,
       backPath,
       services: {
-        getLessonDetail: (id) => courseService.getLessonDetail(id),
-        updateLesson: (id, payload) => courseService.updateLesson(id, payload),
+        getLessonDetail: (id) => courseContentService.getLessonDetail(id),
+        updateLesson: (id, payload) => courseContentService.updateLesson(id, payload),
         getLessonAuditLogs: (id, page, size) =>
-          courseService.getLessonAuditLogs(id, page, size),
+          courseContentService.getLessonAuditLogs(id, page, size),
         flashcardService,
       },
       features: {

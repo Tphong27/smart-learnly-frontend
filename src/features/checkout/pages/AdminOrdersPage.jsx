@@ -1,19 +1,20 @@
-import React, { useState, useEffect } from "react";
-import { adminMonitoringService } from "../../../services/admin-monitoring.service";
+import { useEffect, useState } from "react";
+import { checkoutMonitoringService } from "../services/checkoutMonitoringService";
 import { DataTable } from "../../../shared/components/DataTable";
-import { PaymentStatusBadge } from "../../checkout/components/PaymentStatusBadge";
+import { PaymentStatusBadge } from "../components/PaymentStatusBadge";
 import { formatAmount, formatDate } from "@/shared/utils/formatters";
-import { DEFAULT_PAGE_SIZE } from "@/shared/constants/pagination";
 
+/** Hiển thị danh sách order để Admin/TMO theo dõi trạng thái thanh toán. */
 export default function AdminOrdersPage() {
     const [orders, setOrders] = useState([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
+        /** Tải danh sách order và chuyển response phân trang về dữ liệu cho bảng. */
         const fetchOrders = async () => {
             try {
                 setLoading(true);
-                const data = await adminMonitoringService.getOrders();
+                const data = await checkoutMonitoringService.getOrders();
                 const rawOrders = Array.isArray(data?.items)
                     ? data.items
                     : Array.isArray(data?.content)

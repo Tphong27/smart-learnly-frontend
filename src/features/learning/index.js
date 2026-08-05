@@ -1,4 +1,2 @@
-export const learningFeature = {
-  name: 'Learning Workspace',
-  routeBase: '/learning',
-}
+export { LearningWorkspacePage } from "./pages/LearningWorkspacePage";
+export { learningService } from "./services/learningService";

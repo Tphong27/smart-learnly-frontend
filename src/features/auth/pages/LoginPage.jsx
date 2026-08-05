@@ -5,7 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { GoogleLogin } from "@react-oauth/google";
 import { Eye, EyeOff, Lock, Mail } from "lucide-react";
 import { Form, FormField, Button, useToast } from "@/shared/components/ui";
-import { authService } from "@/services";
+import { authService } from "../services/authService";
 import { normalizeRole, ROLES } from "@/shared/constants/roles";
 import { loginSchema } from "../schemas/auth-schemas";
 import { AuthPage, AuthCard } from "../components/AuthCard";

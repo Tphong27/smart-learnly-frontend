@@ -1,37 +1,52 @@
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { LayoutBackground } from "./LayoutBackground";
 import { TraineeHeader } from "./TraineeHeader";
-import { authService, getCurrentUser } from "@/services";
+import { authService } from "@/features/auth";
+import { getCurrentUser } from "@/services";
 import { SiteFooter } from "@/shared/components";
 import {
   isRoleAllowed,
   normalizeRole,
-  PERSONAL_FLASHCARD_STAFF_LAYOUT_ROLES,
   ROLES,
 } from "@/shared/constants/roles";
 import "./TrainerLayout.css";
 
 const STAFF_TABS = [
   {
+    label: "Category Management",
+    to: "/admin/categories",
+    roles: [ROLES.SME, ROLES.TMO],
+  },
+  {
+    label: "Course Management",
+    to: "/admin/courses",
+    roles: [ROLES.SME, ROLES.TMO],
+  },
+  {
+    label: "Transactions",
+    to: "/admin/transactions",
+    roles: [ROLES.TMO],
+  },
+  {
     label: "Classrooms",
     to: "/staff/classrooms",
-    roles: [ROLES.TRAINER, ROLES.TMO],
+    roles: [ROLES.TMO],
+  },
+  {
+    label: "Classrooms",
+    to: "/staff/classrooms",
+    roles: [ROLES.TRAINER],
   },
   {
     label: "Course Content",
     to: "/staff/courses",
     end: true,
-    roles: [ROLES.TRAINER, ROLES.TMO, ROLES.SME],
-  },
-  {
-    label: "Schedule",
-    to: "/staff/schedule",
-    roles: [ROLES.TRAINER, ROLES.TMO],
+    roles: [ROLES.TRAINER],
   },
   {
     label: "Flashcards",
     to: "/flashcards",
-    roles: PERSONAL_FLASHCARD_STAFF_LAYOUT_ROLES,
+    roles: [ROLES.TRAINER],
   },
 ];
 
@@ -72,6 +87,7 @@ function getInitials(name) {
 
 function isStaffPage(pathname) {
   return (
+    pathname.startsWith("/admin/") ||
     pathname.startsWith("/staff/") ||
     pathname.startsWith("/trainer/") ||
     pathname.startsWith("/sme/") ||

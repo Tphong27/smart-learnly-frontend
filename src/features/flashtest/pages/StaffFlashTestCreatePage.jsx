@@ -10,12 +10,10 @@ import {
   Save,
   X,
 } from "lucide-react";
-import { courseService } from "@/services/course.service";
-import { classService } from "@/services/class.service";
-import {
-  assignmentService,
-  testService,
-} from "@/services/flashtest.service.js";
+import { classroomService } from "@/features/classroom";
+import { courseAdminService, courseContentService } from "@/features/course";
+import { assignmentService } from "@/features/assignment";
+import { testService } from "../services/testService";
 import { useToast } from "@/shared/components/ui";
 import RichTextEditor from "@/shared/components/rich-text/RichTextEditor";
 import { AssignmentAiDraftPanel } from "@/features/assignment/components/AssignmentAiDraftPanel";
@@ -168,7 +166,7 @@ export function StaffFlashTestCreatePage({ variant = "flash" }) {
     let cancelled = false;
     async function loadCourses() {
       try {
-        const data = await courseService.listAdmin({
+        const data = await courseAdminService.list({
           page: 0,
           size: 100,
         });
@@ -192,7 +190,7 @@ export function StaffFlashTestCreatePage({ variant = "flash" }) {
       return undefined;
     }
     let cancelled = false;
-    courseService
+    courseContentService
       .getCourseContent(formData.courseId)
       .then((items) => {
         if (!cancelled) setModules(Array.isArray(items) ? items : []);
@@ -206,15 +204,12 @@ export function StaffFlashTestCreatePage({ variant = "flash" }) {
   }, [formData.courseId, testType]);
 
   useEffect(() => {
-    if (!isAssignmentMode) {
-      return undefined;
-    }
     let cancelled = false;
     async function loadClasses() {
       try {
         const [trainerClassesResult, assignmentClassesResult] =
           await Promise.allSettled([
-            classService.listTrainer({ page: 0, size: 100 }),
+            classroomService.listTrainer({ page: 0, size: 100 }),
             assignmentService.getClasses({
               ...(formData.courseId && {
                 courseId: formData.courseId,
@@ -229,8 +224,13 @@ export function StaffFlashTestCreatePage({ variant = "flash" }) {
           assignmentClassesResult.status === "fulfilled"
             ? assignmentClassesResult.value || []
             : [];
-        const sourceClasses =
-          trainerClasses.length > 0 ? trainerClasses : assignmentClasses;
+        const sourceClasses = Array.from(
+          new Map(
+            [...trainerClasses, ...assignmentClasses]
+              .filter((classItem) => getClassId(classItem))
+              .map((classItem) => [getClassId(classItem), classItem]),
+          ).values(),
+        );
         const data = sourceClasses.filter((classItem) => {
           const classId = getClassId(classItem);
           const classCourseId = classItem.courseId || classItem.course_id || "";
@@ -249,11 +249,11 @@ export function StaffFlashTestCreatePage({ variant = "flash" }) {
               current.classId &&
               data.some((item) => getClassId(item) === current.classId)
                 ? current.classId
-                : getClassId(data[0]) || "",
+                : "",
           }));
         }
       } catch (error) {
-        console.error("Failed to load assignment classes", error);
+        console.error("Failed to load assignable classes", error);
         if (!cancelled) setClasses([]);
       }
     }
@@ -261,7 +261,7 @@ export function StaffFlashTestCreatePage({ variant = "flash" }) {
     return () => {
       cancelled = true;
     };
-  }, [formData.courseId, isAssignmentMode]);
+  }, [formData.courseId]);
 
   useEffect(() => {
     if (!id) return undefined;
@@ -324,7 +324,7 @@ export function StaffFlashTestCreatePage({ variant = "flash" }) {
               test.curriculumSectionId || test.curriculum_section_id || "all",
             isPublished: test.isPublished !== false,
             courseId: test.courseId || test.course_id || "",
-            classId: routeClassId,
+            classId: test.classId || test.class_id || routeClassId,
             opensAt: toDateTimeLocal(test.opensAt),
             closesAt: toDateTimeLocal(test.closesAt),
             accessCode: test.accessCode || "",
@@ -364,7 +364,7 @@ export function StaffFlashTestCreatePage({ variant = "flash" }) {
     if (testType === "mcq" && !formData.courseId) {
       nextErrors.courseId = "Please choose a course.";
     }
-    if (isAssignmentMode && !formData.classId) {
+    if (!formData.classId) {
       nextErrors.classId = "Please choose a class.";
     }
     if (testType === "mcq" && selectedQuestions.length === 0) {
@@ -417,6 +417,7 @@ export function StaffFlashTestCreatePage({ variant = "flash" }) {
           durationMinutes: duration,
           description: formData.description,
           courseId: formData.courseId,
+          classId: formData.classId,
           curriculumSectionId:
             formData.moduleId === "all"
               ? undefined
@@ -550,21 +551,11 @@ export function StaffFlashTestCreatePage({ variant = "flash" }) {
           <div className="ft-ribbon__item">
             <BookOpen size={18} />
             <div>
-              <strong>Course</strong>
+              <strong>Class</strong>
               <span>
-                {isAssignmentMode
-                  ? classes.find((item) => item.id === formData.classId)
-                      ?.className || "Select class"
-                  : testType === "mcq"
-                    ? formData.courseId
-                      ? getCourseTitle(
-                          courses.find(
-                            (course) =>
-                              getCourseId(course) === formData.courseId,
-                          ),
-                        )
-                      : "Select course"
-                    : "Optional for essay"}
+                {classes.find(
+                  (item) => getClassId(item) === formData.classId,
+                )?.className || "Select class"}
               </span>
             </div>
           </div>
@@ -721,35 +712,72 @@ export function StaffFlashTestCreatePage({ variant = "flash" }) {
             </div>
           )}
 
+          {testType === "mcq" && isFlashMode && (
+            <label className="ft-field">
+              <span className="ft-label">Course</span>
+              <select
+                className="ft-input"
+                value={formData.courseId}
+                onChange={(event) =>
+                  updateFormData({
+                    courseId: event.target.value,
+                    classId: "",
+                    moduleId: "all",
+                  })
+                }
+              >
+                <option value="">Select a course</option>
+                {courses.map((course) => (
+                  <option key={getCourseId(course)} value={getCourseId(course)}>
+                    {getCourseTitle(course)}
+                  </option>
+                ))}
+              </select>
+              {validationErrors.courseId && (
+                <span className="ft-field-error">
+                  {validationErrors.courseId}
+                </span>
+              )}
+            </label>
+          )}
+
+          <label className="ft-field">
+            <span className="ft-label">Class</span>
+            <select
+              className="ft-input"
+              value={formData.classId}
+              onChange={(event) => {
+                const nextClassId = event.target.value;
+                const selectedClass = classes.find(
+                  (item) => getClassId(item) === nextClassId,
+                );
+                const selectedCourseId =
+                  selectedClass?.courseId || selectedClass?.course_id || "";
+                updateFormData({
+                  classId: nextClassId,
+                  ...(!formData.courseId && selectedCourseId
+                    ? { courseId: selectedCourseId }
+                    : {}),
+                });
+              }}
+              disabled={testType === "mcq" && !formData.courseId}
+            >
+              <option value="">Select a class</option>
+              {classes.map((item) => (
+                <option key={getClassId(item)} value={getClassId(item)}>
+                  {item.className || item.name || "Untitled class"}
+                </option>
+              ))}
+            </select>
+            {validationErrors.classId && (
+              <span className="ft-field-error">
+                {validationErrors.classId}
+              </span>
+            )}
+          </label>
+
           {testType === "essay" ? (
             <>
-              {isAssignmentMode && (
-                <label className="ft-field">
-                  <span className="ft-label">Class</span>
-                  <select
-                    className="ft-input"
-                    value={formData.classId}
-                    onChange={(event) =>
-                      updateFormData({
-                        classId: event.target.value,
-                      })
-                    }
-                  >
-                    <option value="">Select a class</option>
-                    {classes.map((item) => (
-                      <option key={getClassId(item)} value={getClassId(item)}>
-                        {item.className || item.name || "Untitled class"}
-                      </option>
-                    ))}
-                  </select>
-                  {validationErrors.classId && (
-                    <span className="ft-field-error">
-                      {validationErrors.classId}
-                    </span>
-                  )}
-                </label>
-              )}
-
               <label className="ft-field">
                 <span className="ft-label">Instructions</span>
                 <RichTextEditor

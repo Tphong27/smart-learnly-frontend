@@ -21,7 +21,9 @@ import {
   hasValidDiscount,
 } from "../utils/course-price";
 import { isLessonPublished } from "../utils/lesson-status";
-import { courseService, orderService, enrollmentService } from "@/services";
+import { enrollmentService } from "@/features/enrollment";
+import { courseCatalogService } from "../services/courseCatalogService";
+import { checkoutService } from "@/features/checkout";
 import { CourseReviewsSection } from "../components/CourseReviewsSection";
 import { ROLES } from "@/shared/constants/roles";
 import { getCurrentRole } from "@/shared/utils/auth";
@@ -72,7 +74,7 @@ export function CourseDetailPage() {
       setIsEnrolled(false);
 
       try {
-        const data = await courseService.getPublicDetail(slug);
+        const data = await courseCatalogService.getDetail(slug);
 
         if (cancelled) return;
 
@@ -82,7 +84,7 @@ export function CourseDetailPage() {
         // public course page for review without generating an avoidable 403.
         if (hasAccessToken() && getCurrentRole() === ROLES.TRAINEE) {
           try {
-            const enrolled = await courseService.isCourseEnrolled(
+            const enrolled = await enrollmentService.isCourseEnrolled(
               data?.id || data?.slug || slug,
             );
 
@@ -218,7 +220,7 @@ export function CourseDetailPage() {
     setBuyNowLoading(true);
 
     try {
-      const checkout = await orderService.checkoutCourse(courseId);
+      const checkout = await checkoutService.checkoutCourse(courseId);
 
       toast.success("Checkout created.");
 

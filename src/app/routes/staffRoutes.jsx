@@ -23,7 +23,6 @@ import {
   TrainerLessonDetailPage,
   ClassAnalyticsRedirect
 } from "@/features/classroom";
-import { SchedulePage } from "@/features/schedule";
 
 function PlaceholderPage({ title }) {
   return (
@@ -135,10 +134,6 @@ function getStaffRoutes() {
             {
               path: "classrooms",
               element: <StaffClassListPage />,
-            },
-            {
-              path: "schedule",
-              element: <SchedulePage />,
             },
             {
               path: "classrooms/create",

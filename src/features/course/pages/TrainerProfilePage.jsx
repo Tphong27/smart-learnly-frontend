@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { ArrowLeft, Mail, UserRound } from "lucide-react";
 import { useToast } from "@/shared/components/ui";
-import { userService } from "@/services";
+import { trainerProfileService } from "../services/trainerProfileService";
 import "../../admin/admin-shared.css";
 import "./CourseDetailPage.css";
 
@@ -21,7 +21,7 @@ export function TrainerProfilePage() {
       setError(null);
 
       try {
-        const data = await userService.getPublicTrainerProfile(trainerId);
+        const data = await trainerProfileService.getPublicProfile(trainerId);
 
         if (!cancelled) {
           setTrainer(data);

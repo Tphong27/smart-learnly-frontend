@@ -13,7 +13,8 @@ import {
   WalletCards,
 } from "lucide-react";
 import { Button, Form, useToast } from "@/shared/components/ui";
-import { categoryService, courseService, userService } from "@/services";
+import { categoryService, courseAdminService } from "@/features/course";
+import { adminUserService } from "@/features/admin/users/services/adminUserService";
 import ThumbnailUploader from "@/features/course/components/ThumbnailUploader";
 import { getCurrentUser } from "@/services/api-client";
 import { courseSchema } from "../schemas/course-schemas";
@@ -62,12 +63,12 @@ function buildPayload(values, mode, includeAssignment) {
         ? undefined
         : Number(values.discountedPrice),
     isFree: !!values.isFree,
-    status: values.status || "draft",
   };
   if (includeAssignment) {
     payload.assignedSmeId = values.assignedSmeId || null;
   }
   if (mode === "edit") {
+    payload.status = values.status || "draft";
     Object.keys(payload).forEach((k) => {
       if (payload[k] === undefined) delete payload[k];
     });
@@ -165,7 +166,7 @@ export function AdminCourseFormPage() {
       if (!isEdit) return;
 
       try {
-        const detail = await courseService.getAdmin(courseId);
+        const detail = await courseAdminService.get(courseId);
         if (cancelled) return;
         reset({
           categoryId: detail.categoryId || "",
@@ -212,15 +213,15 @@ export function AdminCourseFormPage() {
         canManageAssignment,
       );
       if (isEdit) {
-        await courseService.update(courseId, payload);
+        await courseAdminService.update(courseId, payload);
         toast.success("Course updated successfully");
         navigate(courseListPath, {
           replace: true,
         });
         return;
       } else {
-        const created = await courseService.create(payload);
-        toast.success("Course created successfully");
+        const created = await courseAdminService.create(payload);
+        toast.success("Course draft created successfully");
         navigate(`/admin/courses/${created.id}/content`, {
           replace: true,
         });
@@ -242,7 +243,7 @@ export function AdminCourseFormPage() {
 
     async function loadActiveSmes() {
       try {
-        const pageData = await userService.listActiveSmes({
+        const pageData = await adminUserService.listActiveSmes({
           page: 0,
           size: 100,
         });
@@ -749,23 +750,44 @@ export function AdminCourseFormPage() {
                   )}
                 </div>
 
-                <div className="sl-course-field sl-course-field--full">
-                  <label htmlFor="course-status">Course status</label>
-                  <select id="course-status" {...register("status")}>
-                    {STATUS_OPTIONS.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                  <p className="sl-course-field__helper">
-                    {courseStatus === "published"
-                      ? "Visible to learners in the course catalog."
-                      : courseStatus === "inactive"
-                        ? "Hidden from learners until reactivated."
-                        : "Only staff can view and edit this draft."}
-                  </p>
-                </div>
+                {isEdit ? (
+                  <div className="sl-course-field sl-course-field--full">
+                    <label htmlFor="course-status">Course status</label>
+                    <select id="course-status" {...register("status")}>
+                      {STATUS_OPTIONS.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                    <p className="sl-course-field__helper">
+                      {courseStatus === "published"
+                        ? "Visible to learners in the course catalog."
+                        : courseStatus === "inactive"
+                          ? "Hidden from learners until reactivated."
+                          : "Only staff can view and edit this draft."}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="sl-course-field sl-course-field--full">
+                    <p
+                      id="course-create-status-label"
+                      className="sl-course-field__label"
+                    >
+                      Course status
+                    </p>
+                    <div
+                      className="sl-course-editor__draft-status"
+                      aria-labelledby="course-create-status-label"
+                    >
+                      <strong>Draft</strong>
+                      <span>
+                        New courses stay private until you add the curriculum
+                        and publish them.
+                      </span>
+                    </div>
+                  </div>
+                )}
               </div>
             </section>
           </aside>
@@ -774,12 +796,14 @@ export function AdminCourseFormPage() {
         <footer className="sl-course-editor__actions">
           <p aria-live="polite">
             {isSubmitting
-              ? "Saving course..."
+              ? isEdit
+                ? "Saving course..."
+                : "Creating draft..."
               : isDirty
                 ? "Unsaved changes"
                 : isEdit
                   ? "All course details loaded"
-                  : "Complete the required fields to continue"}
+                  : "Enter a course title and category to create a draft"}
           </p>
           <div>
             <Button
@@ -795,7 +819,7 @@ export function AdminCourseFormPage() {
               loading={isSubmitting}
               leftIcon={<Save size={16} aria-hidden="true" />}
             >
-              {isEdit ? "Save changes" : "Create course"}
+              {isEdit ? "Save changes" : "Create draft"}
             </Button>
           </div>
         </footer>

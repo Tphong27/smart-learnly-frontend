@@ -8,7 +8,7 @@ import {
   X,
 } from "lucide-react";
 import { DragDropContext, Draggable, Droppable } from "@hello-pangea/dnd";
-import { flashcardService } from "@/services/flashcard.service";
+import { flashcardAuthoringService as flashcardService } from "@/features/flashcard";
 import { FlashcardImageInput } from "./FlashcardImageInput";
 import {
   getErrorMessage,

@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { CloudUpload, FileText, File as FileIcon } from "lucide-react";
-import { courseService } from "@/services/course.service";
+import { courseContentService } from "../../services/courseContentService";
 import {
   MATERIAL_DOC_EXTENSIONS,
   getFileExtension,
@@ -49,7 +49,7 @@ export function PdfMaterialUploader({
     setBusy(true);
     setPendingFile(file);
     try {
-      const uploaded = await courseService.uploadLessonMaterial(file);
+      const uploaded = await courseContentService.uploadLessonMaterial(file);
       onAttachmentUrlChange?.(uploaded.url);
       emitToast(`Successfully uploaded ${file.name}!`, "success");
     } catch (error) {

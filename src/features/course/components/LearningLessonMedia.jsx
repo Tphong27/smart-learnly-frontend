@@ -300,10 +300,10 @@ export function LearningLessonMedia({ lesson }) {
         if (lesson.videoUrl) {
             return (
                 <div
-                    className="learning-lesson-media learning-lesson-media--legacy"
-                    role="status"
+                    className="learning-lesson-media learning-lesson-media--invalid-video"
+                    role="alert"
                 >
-                    Legacy video source—replace with a YouTube URL.
+                    Invalid YouTube URL. Ask the instructor to update this lesson.
                 </div>
             );
         }

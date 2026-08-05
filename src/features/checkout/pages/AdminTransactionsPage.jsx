@@ -1,6 +1,6 @@
 import { Search, X } from "lucide-react";
 import { useEffect, useState } from "react";
-import { adminMonitoringService } from "../../../services/admin-monitoring.service";
+import { checkoutMonitoringService } from "../services/checkoutMonitoringService";
 import Pagination from "@/shared/components/Pagination";
 import { StatusBadge } from "@/shared/components/status";
 import { useDebouncedValue } from "@/shared/hooks/useDebouncedValue";
@@ -48,7 +48,7 @@ export default function AdminTransactionsPage() {
 
     async function loadFilterOptions() {
       try {
-        const data = await adminMonitoringService.getTransactionFilterOptions();
+        const data = await checkoutMonitoringService.getTransactionFilterOptions();
 
         if (cancelled) {
           return;
@@ -122,7 +122,7 @@ export default function AdminTransactionsPage() {
         }
 
         const data =
-          await adminMonitoringService.getTransactions(requestParams);
+          await checkoutMonitoringService.getTransactions(requestParams);
 
         if (cancelled) {
           return;

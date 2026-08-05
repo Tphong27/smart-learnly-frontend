@@ -4,7 +4,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Mail, MailCheck } from 'lucide-react'
 import { Form, FormField, Button, useToast } from '@/shared/components/ui'
-import { authService } from '@/services'
+import { authService } from '../services/authService'
 import { forgotPasswordSchema } from '../schemas/auth-schemas'
 import { AuthPage, AuthCard } from '../components/AuthCard'
 

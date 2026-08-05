@@ -722,7 +722,6 @@ function LessonCreateModal({
   const [lessonType, setLessonType] = useState(
     lessonTypeOptions?.[0]?.value || "video",
   );
-  const [isPreview, setIsPreview] = useState(false);
   const [status, setStatus] = useState("draft");
   const [durationMinutes, setDurationMinutes] = useState("");
   const [titleError, setTitleError] = useState("");
@@ -752,7 +751,7 @@ function LessonCreateModal({
       await onSubmit?.({
         title: trimmed,
         lessonType,
-        isPreview: showFlashcardFields ? false : isPreview,
+        isPreview: false,
         status: showFlashcardFields ? status : "draft",
         durationSeconds: showFlashcardFields ? durationSeconds : 0,
       });
@@ -925,21 +924,7 @@ function LessonCreateModal({
               </label>
             </div>
           </section>
-        ) : (
-          <label className="sl-cm-checkbox">
-            <input
-              type="checkbox"
-              checked={isPreview}
-              onChange={(event) => setIsPreview(event.target.checked)}
-            />
-            <span>
-              <span className="sl-cm-checkbox__title">Allow preview</span>
-              <span className="sl-cm-checkbox__desc">
-                Learners who have not purchased the course can still view this lesson.
-              </span>
-            </span>
-          </label>
-        )}
+        ) : null}
       </form>
     </Modal>
   );

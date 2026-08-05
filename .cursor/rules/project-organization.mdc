@@ -1,0 +1,7 @@
+---
+description: Mandatory Smart Learnly frontend organization rules
+alwaysApply: true
+---
+
+Read and follow `/AGENTS.md`, `/AI-RULE-FE.md`, and `/DESIGN_LANGUAGE.md`
+before changing frontend code. Their organization and UI rules are mandatory.

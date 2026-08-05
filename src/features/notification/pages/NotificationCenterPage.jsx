@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 import { Modal } from "@/shared/components/ui";
 import { NOTIFICATION_TYPES, notificationService } from "@/services";
-import { useNotifications } from "../NotificationProvider";
+import { useNotifications } from "../hooks/NotificationProvider";
 import {
   formatNotificationTime,
   getNotificationDestination,

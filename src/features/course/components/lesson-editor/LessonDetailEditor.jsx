@@ -1,11 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { courseService } from "@/services/course.service";
-import { assignmentService } from "@/services/flashtest.service";
-import { videoAiService } from "@/services/video-ai.service";
+import { courseContentService } from "../../services/courseContentService";
+import { assignmentService } from "@/features/assignment";
+import { videoAiService } from "../../services/videoAiService";
 import { Button, useToast } from "@/shared/components/ui";
 import RichTextEditor from "@/shared/components/rich-text/RichTextEditor";
-import { FlashcardLessonEditor } from "@/features/course/components/flashcards/FlashcardLessonEditor";
 import { AssignmentAiDraftPanel } from "@/features/assignment/components/AssignmentAiDraftPanel";
 import {
   sanitizeLessonHtml,
@@ -33,11 +32,7 @@ import {
   Save,
   History,
   Loader2,
-  ChevronLeft,
-  ChevronRight,
-  ChevronDown,
   CheckCircle2,
-  Circle,
   AlertCircle,
   CirclePlay,
   Paperclip,
@@ -47,6 +42,9 @@ import {
 import { QuizQuestionsPanel } from "../QuizQuestionManager";
 import { PdfMaterialUploader } from "./PdfMaterialUploader";
 import { LessonResourceUploader } from "./LessonResourceUploader";
+import { LessonAuditHistory } from "./LessonAuditHistory";
+import { LessonEditorSection } from "./LessonEditorSection";
+import { FlashcardLessonAuthoring } from "./FlashcardLessonAuthoring";
 import "../../course-admin.css";
 import "@/features/course/course-admin.css";
 import "@/features/course/course-lesson-editor.css";
@@ -71,104 +69,14 @@ function normalizeExactDurationSeconds(value) {
   return Math.round(duration);
 }
 
-function LessonEditorSection({
-  id,
-  step,
-  title,
-  description,
-  summary,
-  state = "incomplete",
-  stateLabel,
-  expanded,
-  onToggle,
-  className = "",
-  children,
-}) {
-  const StatusIcon =
-    state === "complete"
-      ? CheckCircle2
-      : state === "error"
-        ? AlertCircle
-        : state === "processing"
-          ? Loader2
-          : Circle;
-  const headingId = `${id}-heading`;
-  const panelId = `${id}-panel`;
-
-  return (
-    <section
-      className={[
-        "sl-lesson-step",
-        `sl-lesson-step--${state}`,
-        expanded ? "is-expanded" : "",
-        className,
-      ]
-        .filter(Boolean)
-        .join(" ")}
-    >
-      <h2 className="sl-lesson-step__heading" id={headingId}>
-        <button
-          type="button"
-          className="sl-lesson-step__trigger"
-          aria-expanded={expanded}
-          aria-controls={panelId}
-          onClick={onToggle}
-        >
-          <span className="sl-lesson-step__status-icon" aria-hidden="true">
-            <StatusIcon
-              size={20}
-              className={state === "processing" ? "animate-spin" : undefined}
-            />
-          </span>
-          <span className="sl-lesson-step__copy">
-            <strong>
-              {step}. {title}
-            </strong>
-            <span>{summary || description}</span>
-          </span>
-          <span className="sl-lesson-step__meta">
-            <span
-              className={`sl-lesson-step__state sl-lesson-step__state--${state}`}
-            >
-              {stateLabel}
-            </span>
-            <ChevronDown
-              size={19}
-              className="sl-lesson-step__chevron"
-              aria-hidden="true"
-            />
-          </span>
-        </button>
-      </h2>
-      {expanded && (
-        <div
-          id={panelId}
-          className="sl-lesson-step__content"
-          role="region"
-          aria-labelledby={headingId}
-        >
-          {children}
-        </div>
-      )}
-    </section>
-  );
-}
-
 /**
- * Shared lesson editor used by both admin (`/admin/courses/.../lessons/:lessonId`)
- * and trainer (`/trainer/classes/.../lessons/:lessonId`) pages.
- *
- * The parent page passes a `context` object which encapsulates:
- *  - mode: "admin" | "trainer" (informational)
- *  - lessonId, backPath
- *  - services: object exposing the same signatures as courseService for the
- *    fields consumed here plus quiz manager methods and a `flashcardService`
- *    object injected into <FlashcardLessonEditor />.
- *  - features: { audit, quizManager, flashcard } feature flags.
+ * Hiển thị trình soạn lesson dùng chung cho Admin và Trainer.
+ * Với Trainer, `classId` trong context giữ assignment đúng phạm vi lớp đang dạy.
  */
 export function LessonDetailEditor({ context }) {
   const {
     courseId,
+    classId,
     lessonId,
     backPath,
     services,
@@ -278,23 +186,6 @@ export function LessonDetailEditor({ context }) {
     return validationDetails || error?.message || fallbackMessage;
   }, []);
 
-  const formatDateTime = (isoString) => {
-    if (!isoString) return "---";
-    try {
-      const date = new Date(isoString);
-      return date.toLocaleString("en-US", {
-        month: "short",
-        day: "2-digit",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-      });
-    } catch {
-      return isoString;
-    }
-  };
-
   useEffect(() => {
     const fetchLessonDetail = async () => {
       try {
@@ -378,10 +269,11 @@ export function LessonDetailEditor({ context }) {
     }
 
     let cancelled = false;
+    /** Tải Daily Assignment của lesson, ưu tiên bản riêng của lớp Trainer đang mở. */
     async function loadLessonAssignment() {
       try {
         setAssignmentLoading(true);
-        const loaded = await assignmentService.getByLesson(lessonId);
+        const loaded = await assignmentService.getByLesson(lessonId, classId);
         if (cancelled) return;
         setAssignment(loaded);
         setAssignmentRubric(loaded?.rubric || "");
@@ -410,7 +302,7 @@ export function LessonDetailEditor({ context }) {
     return () => {
       cancelled = true;
     };
-  }, [lessonId, lessonType]);
+  }, [classId, lessonId, lessonType]);
 
   useEffect(() => {
     const fetchAuditLogs = async () => {
@@ -474,7 +366,7 @@ export function LessonDetailEditor({ context }) {
       }
 
       try {
-        const uploadedImage = await courseService.uploadSummaryImage(file);
+        const uploadedImage = await courseContentService.uploadSummaryImage(file);
         const uploadedUrl = uploadedImage?.url || uploadedImage?.data?.url;
 
         if (!uploadedUrl) {
@@ -508,7 +400,7 @@ export function LessonDetailEditor({ context }) {
       }
 
       try {
-        const uploadedVideo = await courseService.uploadSummaryVideo(file);
+        const uploadedVideo = await courseContentService.uploadSummaryVideo(file);
         const uploadedUrl = uploadedVideo?.url || uploadedVideo?.data?.url;
 
         if (!uploadedUrl) {
@@ -717,7 +609,7 @@ export function LessonDetailEditor({ context }) {
     if (!isQuiz && !isFlashcard && !materialComplete) {
       if (lessonType === "VIDEO") {
         const message = videoUrl.trim()
-          ? "Replace the video source with a valid HTTPS YouTube URL."
+          ? "Enter a valid HTTPS YouTube URL (youtube.com/watch?v= or youtu.be)."
           : "Add a YouTube URL before saving this video lesson.";
         setVideoSummaryError(message);
         showSaveNotice({
@@ -891,6 +783,7 @@ export function LessonDetailEditor({ context }) {
     }
   };
 
+  /** Lưu Daily Assignment và gắn bài vào đúng lớp khi thao tác từ workspace Trainer. */
   const saveLessonAssignment = async ({ title: nextTitle, description }) => {
     setAssignmentSaving(true);
     try {
@@ -908,6 +801,7 @@ export function LessonDetailEditor({ context }) {
           assignmentFile?.name ||
           existingAssignmentFile?.fileName,
         isFlashtest: false,
+        ...(classId && { classId }),
       };
 
       const saved = assignment?.id
@@ -939,18 +833,14 @@ export function LessonDetailEditor({ context }) {
   const parsedQuizContent = parseQuizContent(textContent);
   const sanitizedSummary = sanitizeLessonHtml(summary);
   const videoEmbedUrl = youtubeEmbedUrl(videoUrl);
-  const hasLegacyVideoSource = Boolean(videoUrl) && !videoEmbedUrl;
-  const unchangedLegacyVideo =
-    hasLegacyVideoSource &&
-    videoUrl.trim() === String(existingLessonData?.videoUrl || "").trim();
+  const hasInvalidYoutubeUrl = Boolean(videoUrl.trim()) && !videoEmbedUrl;
   const basicComplete = Boolean(title.trim());
   const descriptionComplete =
     lessonType === "QUIZ" ||
     lessonType === "FLASHCARD" ||
     !isEmptyLessonHtml(sanitizedSummary);
   const materialComplete = (() => {
-    if (lessonType === "VIDEO")
-      return Boolean(videoEmbedUrl || unchangedLegacyVideo);
+    if (lessonType === "VIDEO") return Boolean(videoEmbedUrl);
     if (lessonType === "PDF") return Boolean(uploadedFileUrl);
     if (lessonType === "QUIZ") {
       return (parsedQuizContent.questions || []).length > 0;
@@ -980,9 +870,9 @@ export function LessonDetailEditor({ context }) {
   const statusLabel = statusMeta?.label || status;
   const materialSummary = (() => {
     if (lessonType === "VIDEO") {
-      return videoUrl
-        ? `${resources.length} supporting resource${resources.length === 1 ? "" : "s"}`
-        : "Video is required";
+      if (!videoUrl.trim()) return "Video is required";
+      if (hasInvalidYoutubeUrl) return "Invalid YouTube URL";
+      return `${resources.length} supporting resource${resources.length === 1 ? "" : "s"}`;
     }
     if (lessonType === "PDF") {
       return uploadedFileUrl
@@ -1009,13 +899,7 @@ export function LessonDetailEditor({ context }) {
     existingLessonData?.module?.id ||
     "";
   const lessonMetadataFormId = "sl-cm-lesson-metadata-form";
-  const lessonSaveBarVisible =
-    activeTab === "edit" &&
-    (hasChanges ||
-      loading ||
-      assignmentSaving ||
-      saveNotice?.type === "saving" ||
-      saveNotice?.type === "error");
+  const lessonSaveBarVisible = activeTab === "edit";
   const lessonSaveBar = lessonSaveBarVisible ? (
     <div className="sl-cm-lesson-editor__sticky">
       <Button
@@ -1037,7 +921,7 @@ export function LessonDetailEditor({ context }) {
         type="submit"
         variant="primary"
         loading={loading}
-        disabled={editorBusy}
+        disabled={editorBusy || !hasChanges}
         form={lessonType === "FLASHCARD" ? lessonMetadataFormId : undefined}
         leftIcon={<Save size={16} />}
       >
@@ -1197,213 +1081,36 @@ export function LessonDetailEditor({ context }) {
 
       {activeTab === "edit" ? (
         lessonType === "FLASHCARD" && features.flashcard ? (
-          <div className="sl-cm-lesson-editor__accordion-form">
-            <div className="sl-cm-lesson-editor__steps">
-              <form
-                id={lessonMetadataFormId}
-                onSubmit={handleSave}
-                className="sl-cm-lesson-editor__metadata-form"
-                noValidate
-              >
-                <LessonEditorSection
-                  id="lesson-step-basic"
-                  step="1"
-                  title="Basic information"
-                  description="Edit the lesson metadata for this flashcard set."
-                  summary={`${typeLabel} - ${statusLabel} - ${durationMinutes ? `${durationMinutes} min` : "No duration"} - Preview ${isPreview ? "enabled" : "disabled"}`}
-                  state={
-                    basicComplete && settingsComplete
-                      ? "complete"
-                      : "incomplete"
-                  }
-                  stateLabel={
-                    basicComplete && settingsComplete
-                      ? "Complete"
-                      : "Incomplete"
-                  }
-                  expanded={expandedSection === "basic"}
-                  onToggle={() =>
-                    setExpandedSection((current) =>
-                      current === "basic" ? "" : "basic",
-                    )
-                  }
-                >
-                  <div className="sl-video-lesson-form__info-grid sl-video-lesson-form__info-grid--flashcard">
-                    <div className="sl-video-lesson-form__field">
-                      <label
-                        className="sl-cm-lesson-editor__field-label"
-                        htmlFor="lesson-title-input"
-                      >
-                        Lesson title <span className="required">*</span>
-                      </label>
-                      <input
-                        id="lesson-title-input"
-                        type="text"
-                        value={title}
-                        onChange={(event) => {
-                          setTitle(event.target.value);
-                          setTitleError("");
-                          markChanged();
-                        }}
-                        className="sl-cm-lesson-editor__field-control"
-                        aria-invalid={titleError ? "true" : undefined}
-                        aria-describedby={
-                          titleError ? "lesson-title-error" : undefined
-                        }
-                      />
-                      {titleError && (
-                        <p
-                          id="lesson-title-error"
-                          className="sl-cm-lesson-editor__field-help sl-cm-lesson-editor__field-help--error"
-                          role="alert"
-                        >
-                          {titleError}
-                        </p>
-                      )}
-                    </div>
-
-                    <div className="sl-video-lesson-form__field">
-                      <label
-                        className="sl-cm-lesson-editor__field-label"
-                        htmlFor="lesson-flashcard-type"
-                      >
-                        Type
-                      </label>
-                      <input
-                        id="lesson-flashcard-type"
-                        type="text"
-                        value={typeLabel}
-                        className="sl-cm-lesson-editor__field-control sl-cm-lesson-editor__field-control--readonly"
-                        readOnly
-                      />
-                    </div>
-
-                    <div className="sl-video-lesson-form__field">
-                      <label
-                        className="sl-cm-lesson-editor__field-label"
-                        htmlFor="lesson-flashcard-duration"
-                      >
-                        Estimated duration
-                      </label>
-                      <div className="sl-cm-lesson-editor__input-unit">
-                        <input
-                          id="lesson-flashcard-duration"
-                          type="number"
-                          min="0"
-                          inputMode="numeric"
-                          placeholder="Optional"
-                          aria-describedby="lesson-flashcard-duration-unit"
-                          value={durationMinutes}
-                          onChange={(event) => {
-                            updateDurationMinutes(event.target.value);
-                          }}
-                          className="sl-cm-lesson-editor__field-control"
-                        />
-                        <span id="lesson-flashcard-duration-unit">minutes</span>
-                      </div>
-                    </div>
-
-                    <fieldset className="sl-video-lesson-form__status-field">
-                      <legend className="sl-cm-lesson-editor__field-label">
-                        Status
-                      </legend>
-                      <div className="sl-video-lesson-form__status-options">
-                        {LESSON_STATUS_OPTIONS.map((option) => (
-                          <label
-                            key={option.value}
-                            className="sl-video-lesson-form__status-option"
-                          >
-                            <input
-                              type="radio"
-                              name="lesson-flashcard-status"
-                              value={option.value}
-                              checked={status === option.value}
-                              onChange={(event) => {
-                                setStatus(event.target.value);
-                                markChanged();
-                              }}
-                            />
-                            <span>{option.label}</span>
-                          </label>
-                        ))}
-                      </div>
-                    </fieldset>
-
-                    <label className="sl-cm-lesson-editor__preview-setting sl-video-lesson-form__preview-setting">
-                      <span className="sl-cm-lesson-editor__preview-copy">
-                        <strong>Preview lesson</strong>
-                        <small>
-                          Let learners view this lesson before enrolling.
-                        </small>
-                      </span>
-                      <span className="sl-cm-lesson-editor__switch">
-                        <input
-                          type="checkbox"
-                          checked={isPreview}
-                          onChange={(event) => {
-                            setIsPreview(event.target.checked);
-                            markChanged();
-                          }}
-                        />
-                        <span
-                          className="sl-cm-lesson-editor__switch-track"
-                          aria-hidden="true"
-                        />
-                      </span>
-                    </label>
-                  </div>
-                  <div className="sl-lesson-step__footer">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => openSection("material")}
-                    >
-                      Next: Flashcards
-                    </Button>
-                  </div>
-                </LessonEditorSection>
-              </form>
-              <LessonEditorSection
-                id="lesson-step-material"
-                step="2"
-                title="Flashcards"
-                description="Manage the flashcard set and its learning cards."
-                summary="Current cards and imports"
-                state="complete"
-                stateLabel="Editor ready"
-                expanded={expandedSection === "material"}
-                onToggle={() =>
-                  setExpandedSection((current) =>
-                    current === "material" ? "" : "material",
-                  )
-                }
-              >
-                <div className="flashcard-section-tabs" role="tablist">
-                  <span
-                    id="flashcard-current-tab"
-                    role="tab"
-                    aria-selected="true"
-                    aria-controls="flashcard-current-panel"
-                    className="flashcard-section-tabs__tab is-active"
-                  >
-                    Current Flashcards
-                  </span>
-                </div>
-                <FlashcardLessonEditor
-                  courseId={courseId}
-                  lessonId={lessonId}
-                  initialSetId={initialFlashcardSetId}
-                  defaultTitle={title}
-                  defaultModuleId={defaultFlashcardModuleId}
-                  activeSection="current"
-                  showToast={showToast}
-                  flashcardService={services.flashcardService}
-                  stagingEnabled={features.flashcardStaging !== false}
-                />
-              </LessonEditorSection>
-            </div>
-            {lessonSaveBar}
-          </div>
+          <FlashcardLessonAuthoring
+            lessonMetadataFormId={lessonMetadataFormId}
+            handleSave={handleSave}
+            typeLabel={typeLabel}
+            statusLabel={statusLabel}
+            durationMinutes={durationMinutes}
+            isPreview={isPreview}
+            setIsPreview={setIsPreview}
+            basicComplete={basicComplete}
+            settingsComplete={settingsComplete}
+            expandedSection={expandedSection}
+            setExpandedSection={setExpandedSection}
+            title={title}
+            setTitle={setTitle}
+            setTitleError={setTitleError}
+            markChanged={markChanged}
+            titleError={titleError}
+            updateDurationMinutes={updateDurationMinutes}
+            status={status}
+            setStatus={setStatus}
+            openSection={openSection}
+            courseId={courseId}
+            lessonId={lessonId}
+            initialFlashcardSetId={initialFlashcardSetId}
+            defaultFlashcardModuleId={defaultFlashcardModuleId}
+            showToast={showToast}
+            services={services}
+            features={features}
+            lessonSaveBar={lessonSaveBar}
+          />
         ) : (
           <form
             onSubmit={handleSave}
@@ -1479,6 +1186,9 @@ export function LessonDetailEditor({ context }) {
                       </div>
                     </div>
 
+                  </div>
+
+                  <div className="sl-video-lesson-form__settings-row">
                     <fieldset className="sl-video-lesson-form__status-field">
                       <legend className="sl-cm-lesson-editor__field-label">
                         Status
@@ -1504,30 +1214,30 @@ export function LessonDetailEditor({ context }) {
                         ))}
                       </div>
                     </fieldset>
-                  </div>
 
-                  <label className="sl-cm-lesson-editor__preview-setting sl-video-lesson-form__preview-setting">
-                    <span className="sl-cm-lesson-editor__preview-copy">
-                      <strong>Preview lesson</strong>
-                      <small>
-                        Let learners view this lesson before enrolling.
-                      </small>
-                    </span>
-                    <span className="sl-cm-lesson-editor__switch">
-                      <input
-                        type="checkbox"
-                        checked={isPreview}
-                        onChange={(event) => {
-                          setIsPreview(event.target.checked);
-                          markChanged();
-                        }}
-                      />
-                      <span
-                        className="sl-cm-lesson-editor__switch-track"
-                        aria-hidden="true"
-                      />
-                    </span>
-                  </label>
+                    <label className="sl-cm-lesson-editor__preview-setting sl-video-lesson-form__preview-setting">
+                      <span className="sl-cm-lesson-editor__preview-copy">
+                        <strong>Preview lesson</strong>
+                        <small>
+                          Let learners view this lesson before enrolling.
+                        </small>
+                      </span>
+                      <span className="sl-cm-lesson-editor__switch">
+                        <input
+                          type="checkbox"
+                          checked={isPreview}
+                          onChange={(event) => {
+                            setIsPreview(event.target.checked);
+                            markChanged();
+                          }}
+                        />
+                        <span
+                          className="sl-cm-lesson-editor__switch-track"
+                          aria-hidden="true"
+                        />
+                      </span>
+                    </label>
+                  </div>
                 </section>
 
                 <section className="sl-video-lesson-form__section">
@@ -1564,7 +1274,20 @@ export function LessonDetailEditor({ context }) {
                         markChanged();
                       }}
                       className="sl-cm-lesson-editor__field-control"
-                      aria-describedby="lesson-youtube-help lesson-youtube-error"
+                      aria-describedby={[
+                        "lesson-youtube-help",
+                        videoSummaryError ? "lesson-youtube-error" : "",
+                        hasInvalidYoutubeUrl
+                          ? "lesson-youtube-format-error"
+                          : "",
+                      ]
+                        .filter(Boolean)
+                        .join(" ")}
+                      aria-invalid={
+                        videoSummaryError || hasInvalidYoutubeUrl
+                          ? "true"
+                          : undefined
+                      }
                     />
                     <p
                       id="lesson-youtube-help"
@@ -1593,14 +1316,18 @@ export function LessonDetailEditor({ context }) {
                         allowFullScreen
                       />
                     </div>
-                  ) : hasLegacyVideoSource ? (
-                    <div className="sl-video-lesson-form__legacy" role="status">
+                  ) : hasInvalidYoutubeUrl ? (
+                    <div
+                      id="lesson-youtube-format-error"
+                      className="sl-video-lesson-form__url-error"
+                      role="alert"
+                    >
                       <AlertCircle size={19} aria-hidden="true" />
                       <div>
-                        <strong>Legacy video source</strong>
+                        <strong>Invalid YouTube URL</strong>
                         <p>
-                          This existing source is preserved until you replace it
-                          with a valid YouTube URL.
+                          Enter an HTTPS URL in youtube.com/watch?v=... or
+                          youtu.be/... format.
                         </p>
                       </div>
                     </div>
@@ -1634,13 +1361,13 @@ export function LessonDetailEditor({ context }) {
                       onClick={handleGenerateSummary}
                     >
                       {summaryGenerating
-                        ? "Getting transcript and generating summaryÃ¢â‚¬Â¦"
+                        ? "Getting transcript and generating summary..."
                         : "Generate summary"}
                     </Button>
                   </div>
                   {summaryGenerated && (
                     <p className="sl-video-lesson-form__ai-note" role="status">
-                      AI-generatedÃ¢â‚¬â€review before saving.
+                      AI-generated - review before saving.
                     </p>
                   )}
                   <RichTextEditor
@@ -2037,8 +1764,8 @@ export function LessonDetailEditor({ context }) {
                   }
                   summary={
                     lessonType === "ESSAY"
-                      ? `${statusLabel} Ã‚Â· Available until course end Ã‚Â· Preview ${isPreview ? "enabled" : "disabled"}`
-                      : `${statusLabel} Ã‚Â· ${durationMinutes ? `${durationMinutes} min` : "No duration"} Ã‚Â· Preview ${isPreview ? "enabled" : "disabled"}`
+                      ? `${statusLabel} \u00B7 Available until course end \u00B7 Preview ${isPreview ? "enabled" : "disabled"}`
+                      : `${statusLabel} \u00B7 ${durationMinutes ? `${durationMinutes} min` : "No duration"} \u00B7 Preview ${isPreview ? "enabled" : "disabled"}`
                   }
                   state={settingsComplete ? "complete" : "incomplete"}
                   stateLabel={settingsComplete ? "Complete" : "Incomplete"}
@@ -2141,294 +1868,15 @@ export function LessonDetailEditor({ context }) {
           </form>
         )
       ) : (
-        <div className="sl-cm-lesson-editor__audit">
-          <h3 className="sl-cm-lesson-editor__audit-title">Activity log</h3>
-
-          {historyLoading ? (
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "center",
-                alignItems: "center",
-                padding: "40px",
-                gap: "10px",
-                color: "#64748b",
-              }}
-            >
-              <Loader2 className="animate-spin" size={20} />
-              <span>Loading audit logs from the system...</span>
-            </div>
-          ) : editHistory.length === 0 ? (
-            <div
-              style={{
-                padding: "40px",
-                textAlign: "center",
-                color: "#94a3b8",
-              }}
-            >
-              No audit logs found for this lesson.
-            </div>
-          ) : (
-            <>
-              <div style={{ overflowX: "auto" }}>
-                <table
-                  style={{
-                    width: "100%",
-                    borderCollapse: "collapse",
-                    textAlign: "left",
-                    fontSize: "14px",
-                  }}
-                >
-                  <thead>
-                    <tr
-                      style={{
-                        borderBottom: "2px solid #edf2f7",
-                        color: "#64748b",
-                      }}
-                    >
-                      <th
-                        style={{
-                          padding: "12px 16px",
-                          fontWeight: "600",
-                        }}
-                      >
-                        Timestamp
-                      </th>
-                      <th
-                        style={{
-                          padding: "12px 16px",
-                          fontWeight: "600",
-                        }}
-                      >
-                        Actor (Email)
-                      </th>
-                      <th
-                        style={{
-                          padding: "12px 16px",
-                          fontWeight: "600",
-                        }}
-                      >
-                        Role
-                      </th>
-                      <th
-                        style={{
-                          padding: "12px 16px",
-                          fontWeight: "600",
-                        }}
-                      >
-                        Action / Summary
-                      </th>
-                      <th
-                        style={{
-                          padding: "12px 16px",
-                          fontWeight: "600",
-                        }}
-                      >
-                        Status
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {editHistory.map((log) => (
-                      <tr
-                        key={log.id}
-                        style={{
-                          borderBottom: "1px solid #edf2f7",
-                          color: "#334155",
-                        }}
-                      >
-                        <td
-                          style={{
-                            padding: "16px",
-                            color: "#64748b",
-                          }}
-                        >
-                          {formatDateTime(log.occurredAt)}
-                        </td>
-                        <td
-                          style={{
-                            padding: "16px",
-                            fontWeight: "500",
-                          }}
-                        >
-                          {log.actorEmail || "N/A"}
-                        </td>
-                        <td style={{ padding: "16px" }}>
-                          <span
-                            style={{
-                              padding: "4px 8px",
-                              backgroundColor: "#f1f5f9",
-                              borderRadius: "4px",
-                              fontSize: "12px",
-                              fontWeight: "500",
-                            }}
-                          >
-                            {log.actorRole}
-                          </span>
-                        </td>
-                        <td
-                          style={{
-                            padding: "16px",
-                            fontWeight: "500",
-                          }}
-                        >
-                          {log.summary}
-                        </td>
-                        <td style={{ padding: "16px" }}>
-                          <span
-                            style={{
-                              padding: "4px 8px",
-                              borderRadius: "4px",
-                              fontSize: "12px",
-                              fontWeight: "600",
-                              backgroundColor:
-                                log.result === "SUCCESS"
-                                  ? "#dcfce7"
-                                  : "#fee2e2",
-                              color:
-                                log.result === "SUCCESS"
-                                  ? "#15803d"
-                                  : "#b91c1c",
-                            }}
-                          >
-                            {log.result}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-
-              {totalElements > 0 && (
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    marginTop: "24px",
-                    paddingTop: "16px",
-                    borderTop: "1px solid #e2e8f0",
-                  }}
-                >
-                  <div
-                    style={{
-                      fontSize: "14px",
-                      color: "#64748b",
-                    }}
-                  >
-                    Showing{" "}
-                    <span
-                      style={{
-                        fontWeight: 600,
-                        color: "#334155",
-                      }}
-                    >
-                      {currentPage * pageSize + 1}
-                    </span>{" "}
-                    to{" "}
-                    <span
-                      style={{
-                        fontWeight: 600,
-                        color: "#334155",
-                      }}
-                    >
-                      {Math.min((currentPage + 1) * pageSize, totalElements)}
-                    </span>{" "}
-                    of{" "}
-                    <span
-                      style={{
-                        fontWeight: 600,
-                        color: "#334155",
-                      }}
-                    >
-                      {totalElements}
-                    </span>{" "}
-                    entries
-                  </div>
-
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "8px",
-                    }}
-                  >
-                    <button
-                      onClick={() =>
-                        setCurrentPage((prev) => Math.max(0, prev - 1))
-                      }
-                      disabled={currentPage === 0}
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "4px",
-                        padding: "6px 12px",
-                        border: "1px solid #cbd5e1",
-                        borderRadius: "6px",
-                        backgroundColor: currentPage === 0 ? "#f8fafc" : "#fff",
-                        color: currentPage === 0 ? "#94a3b8" : "#334155",
-                        cursor: currentPage === 0 ? "not-allowed" : "pointer",
-                        fontSize: "13px",
-                        fontWeight: "500",
-                        transition: "all 0.2s",
-                      }}
-                    >
-                      <ChevronLeft size={16} /> Previous
-                    </button>
-
-                    <div
-                      style={{
-                        fontSize: "13px",
-                        fontWeight: "500",
-                        color: "#475569",
-                        padding: "0 8px",
-                      }}
-                    >
-                      Page {currentPage + 1} of {totalPages}
-                    </div>
-
-                    <button
-                      onClick={() =>
-                        setCurrentPage((prev) =>
-                          Math.min(totalPages - 1, prev + 1),
-                        )
-                      }
-                      disabled={
-                        currentPage >= totalPages - 1 || totalPages === 0
-                      }
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "4px",
-                        padding: "6px 12px",
-                        border: "1px solid #cbd5e1",
-                        borderRadius: "6px",
-                        backgroundColor:
-                          currentPage >= totalPages - 1 || totalPages === 0
-                            ? "#f8fafc"
-                            : "#fff",
-                        color:
-                          currentPage >= totalPages - 1 || totalPages === 0
-                            ? "#94a3b8"
-                            : "#334155",
-                        cursor:
-                          currentPage >= totalPages - 1 || totalPages === 0
-                            ? "not-allowed"
-                            : "pointer",
-                        fontSize: "13px",
-                        fontWeight: "500",
-                        transition: "all 0.2s",
-                      }}
-                    >
-                      Next <ChevronRight size={16} />
-                    </button>
-                  </div>
-                </div>
-              )}
-            </>
-          )}
-        </div>
+        <LessonAuditHistory
+          historyLoading={historyLoading}
+          editHistory={editHistory}
+          currentPage={currentPage}
+          pageSize={pageSize}
+          totalElements={totalElements}
+          totalPages={totalPages}
+          onPageChange={setCurrentPage}
+        />
       )}
     </div>
   );

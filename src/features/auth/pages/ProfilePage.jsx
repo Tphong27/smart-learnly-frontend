@@ -13,7 +13,7 @@ import {
   UserRound,
 } from 'lucide-react'
 import { Form, FormField, Button, useToast } from '@/shared/components/ui'
-import { authService } from '@/services'
+import { authService } from '../services/authService'
 import { setAuthSession, getCurrentUser } from '@/services/api-client'
 import { profileSchema, changePasswordSchema } from '../schemas/auth-schemas'
 import { PasswordStrengthChecklist } from '../components/PasswordStrengthChecklist'
@@ -230,7 +230,9 @@ function ProfileInfoForm({ profile, onSaved }) {
           <FormField
             id="profile-phone"
             label="Phone number"
-            placeholder="e.g. +84901234567"
+            type="tel"
+            placeholder="0901234567 or +84901234567"
+            helperText="Use a Vietnamese mobile number beginning with 0 or +84."
             registration={register('phoneNumber')}
             error={errors.phoneNumber?.message}
             leftIcon={<Phone size={16} aria-hidden="true" />}

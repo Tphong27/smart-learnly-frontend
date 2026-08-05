@@ -7,9 +7,7 @@ import {
   Upload,
 } from "lucide-react";
 import { getCurrentUser } from "@/services";
-import {
-  flashcardService as defaultFlashcardService,
-} from "@/services/flashcard.service";
+import { flashcardAuthoringService as defaultFlashcardService } from "@/features/flashcard";
 import { isRoleAllowed, ROLES } from "@/shared/constants/roles";
 import { Modal } from "@/shared/components/ui";
 import {
@@ -19,7 +17,7 @@ import {
 } from "../../../flashcards-shared";
 import { FlashcardCardList } from "./FlashcardCardList";
 import { FlashcardPreview } from "./FlashcardPreview";
-import { ImportFlashcardsModal } from "./FlashcardStagingWorkspace";
+import { ImportFlashcardsModal } from "./FlashcardStagingTemporaryReview";
 import { useProgressiveVisibleItems } from "./useProgressiveVisibleItems";
 import {
   getErrorMessage,

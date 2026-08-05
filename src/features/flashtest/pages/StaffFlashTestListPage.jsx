@@ -13,10 +13,8 @@ import {
     Search,
     Trash2,
 } from "lucide-react";
-import {
-    assignmentService,
-    testService,
-} from "@/services/flashtest.service.js";
+import { assignmentService } from "@/features/assignment";
+import { testService } from "../services/testService";
 import Pagination from "@/shared/components/Pagination";
 import "../flashtest.css";
 
@@ -140,7 +138,10 @@ export function StaffFlashTestListPage({ variant = "flash" }) {
             const [testResult, assignmentResult] = await Promise.allSettled([
                 isAssignmentMode
                     ? Promise.resolve([])
-                    : testService.getMine({ ...(courseId && { courseId }) }),
+                    : testService.getMine({
+                          ...(courseId && { courseId }),
+                          ...(classId && { classId }),
+                      }),
                 isFlashMode || isAssignmentMode
                     ? assignmentService.getMine({
                           ...(courseId && { courseId }),
@@ -165,7 +166,7 @@ export function StaffFlashTestListPage({ variant = "flash" }) {
         } finally {
             setLoading(false);
         }
-    }, [courseId, isAssignmentMode, isFlashMode, itemFilter]);
+    }, [classId, courseId, isAssignmentMode, isFlashMode, itemFilter]);
 
     useEffect(() => {
         const timer = window.setTimeout(loadAllFlashTests, 0);

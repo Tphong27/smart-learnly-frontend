@@ -1,7 +1,8 @@
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { LayoutBackground } from "./LayoutBackground";
 import { TraineeHeader } from "./TraineeHeader";
-import { authService, getCurrentUser } from "@/services";
+import { authService } from "@/features/auth";
+import { getCurrentUser } from "@/services";
 import { SiteFooter } from "@/shared/components";
 import "./TraineeLayout.css";
 
@@ -12,28 +13,12 @@ const TRAINEE_TABS = [
     end: true,
   },
   {
-    label: "Progress",
-    to: "/learning/progress",
-  },
-  {
-    label: "Schedule",
-    to: "/learning/schedule",
-  },
-  {
     label: "My Tests",
     to: "/learning/tests",
   },
   {
     label: "Course Flashcards",
     to: "/learning/flashcards",
-  },
-  {
-    label: "Course Catalog",
-    to: "/learning/courses",
-  },
-  {
-    label: "Opening Class",
-    to: "/learning/opening-schedule",
   },
   {
     label: "Flashcards",

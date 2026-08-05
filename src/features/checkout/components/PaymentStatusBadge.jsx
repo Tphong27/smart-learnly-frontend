@@ -14,6 +14,7 @@ const STATUS_LABELS = {
   unknown: "Unknown",
 };
 
+/** Chuẩn hóa trạng thái backend và hiển thị nhãn thanh toán dễ đọc. */
 export function PaymentStatusBadge({ status }) {
   const normalizedStatus = String(status || "")
     .trim()

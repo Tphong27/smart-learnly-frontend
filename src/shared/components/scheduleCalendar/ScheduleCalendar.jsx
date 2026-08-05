@@ -2,17 +2,19 @@ import "./ScheduleCalendar.css";
 import { getClassTimeSlot } from "@/shared/constants/class-time-slots";
 
 const WEEK_DAYS = [
-  { key: "MONDAY", shortLabel: "MON", fullLabel: "Monday" },
-  { key: "TUESDAY", shortLabel: "TUE", fullLabel: "Tuesday" },
-  { key: "WEDNESDAY", shortLabel: "WED", fullLabel: "Wednesday" },
-  { key: "THURSDAY", shortLabel: "THU", fullLabel: "Thursday" },
-  { key: "FRIDAY", shortLabel: "FRI", fullLabel: "Friday" },
-  { key: "SATURDAY", shortLabel: "SAT", fullLabel: "Saturday" },
-  { key: "SUNDAY", shortLabel: "SUN", fullLabel: "Sunday" },
+  { key: "MONDAY", shortLabel: "MON" },
+  { key: "TUESDAY", shortLabel: "TUE" },
+  { key: "WEDNESDAY", shortLabel: "WED" },
+  { key: "THURSDAY", shortLabel: "THU" },
+  { key: "FRIDAY", shortLabel: "FRI" },
+  { key: "SATURDAY", shortLabel: "SAT" },
+  { key: "SUNDAY", shortLabel: "SUN" },
 ];
 
 function parseSchedule(scheduleDescription) {
-  if (!scheduleDescription) return [];
+  if (!scheduleDescription) {
+    return [];
+  }
 
   if (Array.isArray(scheduleDescription)) {
     return scheduleDescription;
@@ -30,120 +32,71 @@ function parseSchedule(scheduleDescription) {
   }
 }
 
-function getSlotsByDay(scheduleDescription) {
+function createScheduleRows(scheduleDescription) {
   const schedule = parseSchedule(scheduleDescription);
 
-  return WEEK_DAYS.reduce((result, day) => {
-    const matchedDay = schedule.find((item) => item.dayOfWeek === day.key);
+  return WEEK_DAYS.map((day) => {
+    const matchedDay = schedule.find(
+      (item) => item?.dayOfWeek === day.key,
+    );
 
-    const slots = Array.isArray(matchedDay?.slots)
-      ? matchedDay.slots
-          .map((slot) => getClassTimeSlot(slot?.startTime, slot?.endTime))
-          .filter(Boolean)
-      : [];
+    if (!Array.isArray(matchedDay?.slots)) {
+      return null;
+    }
 
-    result[day.key] = slots;
-    return result;
-  }, {});
+    const slotTexts = matchedDay.slots
+      .map((slot) =>
+        getClassTimeSlot(slot?.startTime, slot?.endTime),
+      )
+      .filter(Boolean)
+      .map(
+        (slot) =>
+          `${slot.label} - ${slot.startTime}–${slot.endTime}`,
+      );
+
+    if (slotTexts.length === 0) {
+      return null;
+    }
+
+    return {
+      dayKey: day.key,
+      dayLabel: day.shortLabel,
+      scheduleText: slotTexts.join(", "),
+    };
+  }).filter(Boolean);
 }
 
 export function ScheduleCalendar({
   scheduleDescription,
-  variant = "table",
   emptyText = "Schedule not available",
 }) {
-  const slotsByDay = getSlotsByDay(scheduleDescription);
+  const scheduleRows = createScheduleRows(scheduleDescription);
 
-  const scheduledDays = WEEK_DAYS.map((day) => ({
-    ...day,
-    slots: slotsByDay[day.key] || [],
-  })).filter((day) => day.slots.length > 0);
-
-  if (variant === "compact") {
-    if (scheduledDays.length === 0) {
-      return (
-        <span className="shared-schedule-calendar__compact-empty">
-          {emptyText}
-        </span>
-      );
-    }
-
+  if (scheduleRows.length === 0) {
     return (
-      <div className="shared-schedule-calendar shared-schedule-calendar--compact">
-        {scheduledDays.map((day) => (
-          <div className="shared-schedule-calendar__compact-day" key={day.key}>
-            <strong className="shared-schedule-calendar__compact-day-name">
-              {day.fullLabel}
-            </strong>
-
-            <div className="shared-schedule-calendar__compact-slots">
-              {day.slots.map((slot) => (
-                <span
-                  className="shared-schedule-calendar__compact-slot"
-                  key={`${day.key}-${slot.code}`}
-                >
-                  {slot.label}: {slot.startTime}–{slot.endTime}
-                </span>
-              ))}
-            </div>
-          </div>
-        ))}
-      </div>
+      <span className="shared-schedule-calendar__empty">
+        {emptyText}
+      </span>
     );
   }
 
   return (
     <div className="shared-schedule-calendar">
-      <div className="shared-schedule-calendar__scroll">
-        <table className="shared-schedule-calendar__table">
-          <thead>
-            <tr>
-              {WEEK_DAYS.map((day) => (
-                <th key={day.key}>
-                  <span className="shared-schedule-calendar__day-short">
-                    {day.shortLabel}
-                  </span>
+      {scheduleRows.map((row) => (
+        <div
+          key={row.dayKey}
+          className="shared-schedule-calendar__row"
+          title={`${row.dayLabel}: ${row.scheduleText}`}
+        >
+          <strong className="shared-schedule-calendar__day">
+            {row.dayLabel}:
+          </strong>
 
-                  <span className="shared-schedule-calendar__day-name">
-                    {day.fullLabel}
-                  </span>
-                </th>
-              ))}
-            </tr>
-          </thead>
-
-          <tbody>
-            <tr>
-              {WEEK_DAYS.map((day) => {
-                const slots = slotsByDay[day.key] || [];
-
-                return (
-                  <td key={day.key}>
-                    {slots.length > 0 ? (
-                      <div className="shared-schedule-calendar__slot-list">
-                        {slots.map((slot) => (
-                          <div
-                            className="shared-schedule-calendar__class-cell"
-                            key={`${day.key}-${slot.code}`}
-                          >
-                            <span>
-                              <strong>{slot.label}</strong>
-                              {" - "}
-                              {slot.startTime}–{slot.endTime}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <span className="shared-schedule-calendar__empty">-</span>
-                    )}
-                  </td>
-                );
-              })}
-            </tr>
-          </tbody>
-        </table>
-      </div>
+          <span className="shared-schedule-calendar__slots">
+            {row.scheduleText}
+          </span>
+        </div>
+      ))}
     </div>
   );
 }

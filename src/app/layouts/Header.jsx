@@ -2,7 +2,11 @@ import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { LogOut, User, ChevronDown, Menu } from "lucide-react";
 import { getDashboardPathByRole } from "@/app/routes/dashboard-path";
-import { normalizeRole } from "@/shared/constants/roles";
+import {
+  isRoleAllowed,
+  normalizeRole,
+  PROFILE_ROLES,
+} from "@/shared/constants/roles";
 import { SmartLearnlyMark } from "@/shared/components/SmartLearnlyMark";
 import { NotificationBell } from "@/features/notification";
 import "./Header.css";
@@ -39,6 +43,7 @@ export function Header({
   const initials = getInitials(displayName);
   const role = normalizeRole(user?.role);
   const dashboardPath = getDashboardPathByRole(role);
+  const canAccessProfile = isRoleAllowed(role, PROFILE_ROLES);
 
   useEffect(() => {
     function handleClick(event) {
@@ -181,18 +186,22 @@ export function Header({
 
                 <div className="user-menu__divider" />
 
-                <button
-                  type="button"
-                  onClick={() => {
-                    setOpen(false);
-                    navigate("/profile");
-                  }}
-                  className="app-header__user-menu-item"
-                >
-                  <User size={16} /> Profile
-                </button>
+                {canAccessProfile && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setOpen(false);
+                        navigate("/profile");
+                      }}
+                      className="app-header__user-menu-item"
+                    >
+                      <User size={16} /> Profile
+                    </button>
 
-                <div className="user-menu__divider" />
+                    <div className="user-menu__divider" />
+                  </>
+                )}
 
                 <button
                   type="button"

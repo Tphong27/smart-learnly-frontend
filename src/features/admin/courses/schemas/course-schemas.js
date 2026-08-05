@@ -3,7 +3,11 @@ import { z } from 'zod'
 const slugRule = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
 
 export const courseSchema = z.object({
-  categoryId: z.string({ message: 'Category is required' }).uuid('Category is invalid'),
+  categoryId: z
+    .string({ message: 'Category is required' })
+    .trim()
+    .min(1, 'Category is required')
+    .uuid('Category is invalid'),
   assignedSmeId: z
   .string()
   .uuid('Assigned SME is invalid')

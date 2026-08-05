@@ -2,199 +2,28 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { FileAudio, FileVideo, Image as ImageIcon, Plus, Trash2, X, AlertTriangle } from "lucide-react";
 import { Button, FormField, Modal, useToast } from "@/shared/components/ui";
-import { courseService, getCurrentUser, questionBankService } from "@/services";
+import { questionBankService } from "@/features/admin/question-bank";
+import { courseAdminService, courseContentService } from "@/features/course";
 import { isEmptyQuestionHtml, sanitizeQuestionHtml } from "@/shared/utils/htmlSanitizer";
 import { AnswerMediaRow } from "../components/AnswerMediaRow";
 import { QuestionMediaManager } from "../components/QuestionMediaManager";
 import { QuestionTextRichEditor } from "../components/QuestionTextRichEditor";
+import {
+  answerImageUrl,
+  blankAnswer,
+  buildAnswerContent,
+  canWriteQuestionBank,
+  mediaId,
+  normalizeAnswerMediaFromResponse,
+  normalizeAnswers,
+  normalizeModules,
+  normalizeQuestionMedia,
+  parseAnswerContent,
+  pendingMediaItem,
+  validateQuestionForm,
+} from "../utils/questionFormUtils";
 import "../../admin-shared.css";
 import "./question-bank.css";
-
-function canWriteQuestionBank() {
-  const role = getCurrentUser()?.role;
-  return role === "ADMIN" || role === "SME";
-}
-
-const blankAnswer = (index = 0) => ({
-  answerText: "",
-  correct: index === 0,
-  displayOrder: index + 1,
-  answerMedia: { image: null, audio: null, video: null },
-});
-
-function normalizeAnswers(type, answers) {
-  if (type === "true_false") {
-    return [
-      {
-        answerText: "True",
-        correct: answers?.[0]?.correct ?? true,
-        displayOrder: 1,
-      },
-      {
-        answerText: "False",
-        correct: answers?.[1]?.correct ?? false,
-        displayOrder: 2,
-      },
-    ];
-  }
-  return answers?.length
-    ? answers
-    : [blankAnswer(0), blankAnswer(1), blankAnswer(2), blankAnswer(3)];
-}
-
-function mediaId(item) {
-  return item?.attachmentId || item?.id || null;
-}
-
-function normalizeQuestionMedia(question) {
-  const attachments = Array.isArray(question?.mediaAttachments)
-    ? question.mediaAttachments
-    : [];
-  const images = attachments
-    .filter((item) => item.mediaType === "image")
-    .sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0))
-    .map((item) => ({
-      ...item,
-      localId: item.attachmentId || item.id,
-      source: "remote",
-    }));
-  const audios = attachments
-    .filter((item) => item.mediaType === "audio")
-    .sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0))
-    .map((item) => ({
-      ...item,
-      localId: item.attachmentId || item.id,
-      source: "remote",
-    }));
-  const videos = attachments
-    .filter((item) => item.mediaType === "video")
-    .sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0))
-    .map((item) => ({
-      ...item,
-      localId: item.attachmentId || item.id,
-      source: "remote",
-    }));
-  return { images, audios, videos };
-}
-function normalizeModules(payload) {
-  const root = payload?.data ?? payload;
-  const items = Array.isArray(root)
-    ? root
-    : (root?.items ?? root?.content ?? root?.sections ?? []);
-  return items
-    .map((item, index) => ({
-      id: item.moduleId || item.sectionId || item.id,
-      title: item.title || item.name || `Module ${index + 1}`,
-    }))
-    .filter((item) => item.id);
-}
-
-function pendingMediaItem(file, mediaType, previewUrl) {
-  return {
-    localId: `${mediaType}-${Date.now()}-${Math.random().toString(36).slice(2)}`,
-    mediaType,
-    file,
-    fileName: file.name,
-    previewUrl,
-    source: "pending",
-  };
-}
-
-function escapeHtml(value) {
-  return String(value || "")
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
-}
-
-function answerImageUrl(answer) {
-  return answer?.answerImage?.url || answer?.answerImage?.previewUrl || "";
-}
-
-function parseAnswerContent(value) {
-  const rawValue = String(value || "");
-  if (!/<[a-z][\s\S]*>/i.test(rawValue) || typeof DOMParser === "undefined") {
-    return { answerText: rawValue, answerImage: null };
-  }
-
-  const parser = new DOMParser();
-  const doc = parser.parseFromString(`<div>${rawValue}</div>`, "text/html");
-  const wrapper = doc.body.firstElementChild;
-  const image = wrapper?.querySelector('img[data-answer-image="true"], img');
-  const answerImage = image?.getAttribute("src")
-    ? {
-        url: image.getAttribute("src"),
-        fileName: image.getAttribute("alt") || "Answer image",
-        source: "remote",
-      }
-    : null;
-
-  if (image) image.remove();
-  const answerText = (wrapper?.textContent || "").replace(/\s+/g, " ").trim();
-  return { answerText, answerImage };
-}
-
-function buildAnswerContent(answer) {
-  const text = answer.answerText.trim();
-  const imageUrl = answerImageUrl(answer);
-  if (!imageUrl) return text;
-
-  const imageName = answer.answerImage?.fileName || "Answer image";
-  const textHtml = text ? `<p>${escapeHtml(text)}</p>` : "";
-  return `${textHtml}<p><img data-answer-image="true" src="${escapeHtml(imageUrl)}" alt="${escapeHtml(imageName)}" /></p>`;
-}
-
-function answerHasContent(answer) {
-  if (answer.answerText && answer.answerText.trim()) return true;
-  if (answerImageUrl(answer)) return true;
-  const media = answer.answerMedia || {};
-  return Boolean(media.image || media.audio || media.video);
-}
-
-function normalizeAnswerMediaFromResponse(answer) {
-  const empty = { image: null, audio: null, video: null };
-  if (!answer || !Array.isArray(answer.media)) return empty;
-  const next = { ...empty };
-  for (const item of answer.media) {
-    const type = item.mediaType;
-    if (type === "image" || type === "audio" || type === "video") {
-      next[type] = {
-        attachmentId: item.attachmentId || item.id,
-        mediaUrl: item.mediaUrl,
-        url: item.mediaUrl,
-        objectPath: item.objectKey,
-        fileName: item.fileName,
-        fileSize: item.size,
-        contentType: item.contentType,
-        source: "remote",
-      };
-    }
-  }
-  return next;
-}
-function validate(values) {
-  if (isEmptyQuestionHtml(values.questionText)) return "Question text is required.";
-  if (!values.moduleId) return "Module is required.";
-  if (!values.questionType) return "Question type is required.";
-  const answers = normalizeAnswers(values.questionType, values.answers);
-  if (answers.length < 2) return "At least two answers are required.";
-  if (values.questionType === "multiple_choice" && answers.length > 6)
-    return "Multiple choice supports 2 to 6 answers.";
-  if (answers.some((answer) => !answerHasContent(answer)))
-    return "Answer text or image must not be empty.";
-  if (answers.filter((answer) => answer.correct).length !== 1)
-    return "Exactly one correct answer is required.";
-  if (values.questionType === "true_false") {
-    const labels = answers.map((answer) =>
-      answer.answerText.trim().toLowerCase(),
-    );
-    if (!labels.includes("true") || !labels.includes("false"))
-      return "True/False answers must be True and False.";
-  }
-  return null;
-}
 
 export function AdminQuestionForm({
   bankId: bankIdProp,
@@ -270,8 +99,8 @@ export function AdminQuestionForm({
           });
           if (courseId) {
             const [courseData, moduleData] = await Promise.all([
-              courseService.getAdmin(courseId),
-              courseService.getCourseContent(courseId),
+              courseAdminService.get(courseId),
+              courseContentService.getCourseContent(courseId),
             ]);
             if (!cancelled) {
               setBank({
@@ -288,7 +117,7 @@ export function AdminQuestionForm({
               if (!cancelled) {
                 setBank(bankData);
                 if (bankData?.courseId) {
-                  const moduleData = await courseService.getCourseContent(bankData.courseId);
+                  const moduleData = await courseContentService.getCourseContent(bankData.courseId);
                   if (!cancelled) setModules(normalizeModules(moduleData));
                 }
               }
@@ -296,7 +125,7 @@ export function AdminQuestionForm({
           }
         } else {
           const bankData = courseId
-            ? await courseService.getAdmin(courseId)
+            ? await courseAdminService.get(courseId)
             : await questionBankService.getBank(bankId);
           if (!cancelled) {
             if (courseId) {
@@ -305,12 +134,12 @@ export function AdminQuestionForm({
                 courseId,
                 name: `${bankData?.title || "Course"} Questions`,
               });
-              const moduleData = await courseService.getCourseContent(courseId);
+              const moduleData = await courseContentService.getCourseContent(courseId);
               if (!cancelled) setModules(normalizeModules(moduleData));
             } else {
               setBank(bankData);
               if (bankData?.courseId) {
-                const moduleData = await courseService.getCourseContent(bankData.courseId);
+                const moduleData = await courseContentService.getCourseContent(bankData.courseId);
                 if (!cancelled) setModules(normalizeModules(moduleData));
               }
             }
@@ -626,7 +455,7 @@ export function AdminQuestionForm({
 
   async function handleSubmit(event) {
     event.preventDefault();
-    const validationError = validate(values);
+    const validationError = validateQuestionForm(values);
     if (validationError) {
       setError(validationError);
       return;

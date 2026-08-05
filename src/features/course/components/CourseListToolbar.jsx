@@ -190,6 +190,7 @@ export function CourseListToolbar({
               onChange={(event) => onSortChange?.(event.target.value)}
               aria-label="Sort courses"
             >
+              <option value="NEWEST">Newest</option>
               <option value="POPULAR">Most popular</option>
               <option value="PRICE_ASC">Price: low to high</option>
               <option value="PRICE_DESC">Price: high to low</option>

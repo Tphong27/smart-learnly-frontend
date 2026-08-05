@@ -2,9 +2,15 @@ import { useEffect, useState } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { Header } from "./Header";
 import { Sidebar } from "./Sidebar";
+import { TrainerLayout } from "./TrainerLayout";
 import { LayoutBackground } from "./LayoutBackground";
-import { authService, getCurrentUser } from "@/services";
-import { ROLES } from "@/shared/constants/roles";
+import { authService } from "@/features/auth";
+import { getCurrentUser } from "@/services";
+import {
+    isRoleAllowed,
+    normalizeRole,
+    ROLES,
+} from "@/shared/constants/roles";
 import "./AppLayout.css";
 
 export function AppLayout() {
@@ -23,6 +29,11 @@ export function AppLayout() {
     };
 
     const userRole = user.role || ROLES.TRAINEE;
+    const normalizedRole = normalizeRole(userRole);
+    const usesHorizontalStaffLayout = isRoleAllowed(normalizedRole, [
+        ROLES.SME,
+        ROLES.TMO,
+    ]);
     const searchParams = new URLSearchParams(location.search);
     const isCurriculumPage = /\/courses\/[^/]+\/content\/?$/.test(location.pathname);
     const focusMode = isCurriculumPage && searchParams.get("focus") === "1";
@@ -77,6 +88,10 @@ export function AppLayout() {
         } finally {
             navigate("/login", { replace: true });
         }
+    }
+
+    if (usesHorizontalStaffLayout && !focusMode) {
+        return <TrainerLayout />;
     }
 
     return (

@@ -18,7 +18,8 @@ import {
 } from "lucide-react";
 import { Button, Modal, useToast } from "@/shared/components/ui";
 import Pagination from "@/shared/components/Pagination";
-import { categoryService, courseService } from "@/services";
+import { classroomService } from "@/features/classroom";
+import { categoryService, courseAdminService } from "@/features/course";
 import { getCurrentUser } from "@/services/api-client";
 import { formatDate, formatPrice } from "@/shared/utils/formatters";
 import { DEFAULT_PAGE_SIZE } from "@/shared/constants/pagination";
@@ -82,7 +83,7 @@ function DeleteCourseModal({ open, target, onClose, onConfirmed }) {
     setError(null);
     setLoading(true);
     try {
-      await courseService.remove(target.id);
+      await courseAdminService.remove(target.id);
       toast.success("Course deleted");
       setLoading(false);
       onConfirmed(target);
@@ -195,7 +196,7 @@ function RowActionsMenu({
   const testsPath = `/staff/tests?courseId=${encodeURIComponent(course.id)}`;
   const classesBasePath = basePath.startsWith("/admin") ? "/admin/classrooms" : "/staff/classrooms";
   const classesPath = `${classesBasePath}?courseId=${encodeURIComponent(course.id)}`;
-  const showManageTest = basePath.startsWith("/staff") && canOpenMasterCurriculum;
+  const showManageTest = basePath.startsWith("/staff");
   const previewPath = `${basePath}/${course.id}/preview?returnTo=${encodeURIComponent(previewReturnPath)}`;
   const editPath = basePath.startsWith("/staff")
     ? `${basePath}/${course.id}/edit`
@@ -230,19 +231,19 @@ function RowActionsMenu({
               <FileQuestion size={14} aria-hidden="true" /> Manage questions
             </Link>
           </li>
-          {showManageTest ? (
-            <li role="none">
-              <Link
-                role="menuitem"
-                to={testsPath}
-                className="course-management__menu-item"
-                onClick={() => setOpen(false)}
-              >
-                <ClipboardCheck size={14} aria-hidden="true" /> Manage test
-              </Link>
-            </li>
-          ) : null}
         </>
+      ) : null}
+      {showManageTest ? (
+        <li role="none">
+          <Link
+            role="menuitem"
+            to={testsPath}
+            className="course-management__menu-item"
+            onClick={() => setOpen(false)}
+          >
+            <ClipboardCheck size={14} aria-hidden="true" /> Test management
+          </Link>
+        </li>
       ) : null}
       {canViewClasses ? (
         <li role="none">
@@ -360,6 +361,44 @@ export function AdminCoursesPage() {
     open: false,
     target: null,
   });
+  const [openingCourseId, setOpeningCourseId] = useState(null);
+
+  async function handleOpenCourse(course) {
+    if (!isTrainer) {
+      navigate(openCoursePath(course.id));
+      return;
+    }
+
+    if (openingCourseId) return;
+
+    setOpeningCourseId(course.id);
+    try {
+      const assignedClasses = await classroomService.listTrainer({
+        courseId: course.id,
+        page: 0,
+        size: 100,
+      });
+      const classes = assignedClasses.content || [];
+      const assignedClass =
+        classes.find((item) => String(item.status).toLowerCase() === "ongoing") ||
+        classes.find((item) => String(item.status).toLowerCase() === "upcoming") ||
+        classes[0];
+
+      if (!assignedClass?.id) {
+        throw new Error("No assigned class was found for this course.");
+      }
+
+      navigate(
+        `/staff/classrooms/${assignedClass.id}/workspace?tab=curriculum`,
+      );
+    } catch (error) {
+      toast.error(
+        error?.message || "Could not open the curriculum for this course.",
+      );
+    } finally {
+      setOpeningCourseId(null);
+    }
+  }
   const [pageRequest, setPageRequest] = useState(0);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [reloadRequest, setReloadRequest] = useState(0);
@@ -396,7 +435,7 @@ export function AdminCoursesPage() {
       setLoading(true);
       setError(null);
       try {
-        const data = await courseService.listAdmin({
+        const data = await courseAdminService.list({
           page: pageRequest,
           size: pageSize,
           keyword: debouncedKeyword,
@@ -666,20 +705,20 @@ export function AdminCoursesPage() {
                       </td>
                       <td data-label="Actions">
                         <div className="course-management__actions">
-                          <Link
-                            to={openCoursePath(course.id)}
+                          <button
+                            type="button"
                             className="course-management__action course-management__action--primary"
-                            title={
+                            title={isTrainer ? "Open curriculum" : "Open"}
+                            aria-label={
                               isTrainer
-                                ? "View classes"
-                                : canOpenMasterCurriculum
-                                  ? "Open master curriculum"
-                                  : "Open"
+                                ? `Open curriculum for ${course.title}`
+                                : `Open ${course.title}`
                             }
-                            aria-label={`Open ${course.title}`}
+                            disabled={Boolean(openingCourseId)}
+                            onClick={() => handleOpenCourse(course)}
                           >
-                            Open
-                          </Link>
+                            {openingCourseId === course.id ? "Opening..." : "Open"}
+                          </button>
                           <RowActionsMenu
                             course={course}
                             basePath={courseBasePath}
@@ -742,7 +781,12 @@ export function AdminCoursesPage() {
                       <CourseStatusBadge status={course.status} />
                     </div>
                     <div className="course-management__card-actions">
-                      <Button size="sm" onClick={() => navigate(openCoursePath(course.id))}>
+                      <Button
+                        size="sm"
+                        loading={openingCourseId === course.id}
+                        disabled={Boolean(openingCourseId)}
+                        onClick={() => handleOpenCourse(course)}
+                      >
                         Open
                       </Button>
                       <RowActionsMenu

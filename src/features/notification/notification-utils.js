@@ -1,4 +1,4 @@
-import { NOTIFICATION_TYPES } from "@/services";
+import { getCurrentUser, NOTIFICATION_TYPES } from "@/services";
 
 const TYPE_LABELS = Object.freeze({
   ENROLLMENT: "Enrollment",
@@ -15,6 +15,7 @@ const TYPE_LABELS = Object.freeze({
 });
 
 const TYPE_SET = new Set(NOTIFICATION_TYPES);
+const STAFF_ROLES = new Set(["TRAINER", "TMO", "SME"]);
 
 function hasControlCharacter(value) {
   for (let index = 0; index < value.length; index += 1) {
@@ -31,6 +32,98 @@ function getNotificationUrlBase() {
   }
 
   return new URL("http://localhost/");
+}
+
+function getCurrentRole() {
+  return String(getCurrentUser()?.role || "").trim().toUpperCase();
+}
+
+function getPayloadValue(notification, ...keys) {
+  const payload = notification?.payload;
+  if (!payload || typeof payload !== "object") return null;
+
+  for (const key of keys) {
+    const value = payload[key];
+    if (value != null && value !== "") return String(value);
+  }
+
+  return null;
+}
+
+function getPathId(pathname, prefix) {
+  if (!pathname.startsWith(prefix)) return null;
+  const tail = pathname.slice(prefix.length).split("/")[0];
+  return tail || null;
+}
+
+function resolveBackendActionRoute(safeActionUrl, notification) {
+  const role = getCurrentRole();
+  const [, pathname = safeActionUrl, queryAndHash = ""] =
+    safeActionUrl.match(/^([^?#]*)(.*)$/) || [];
+
+  const orderId = getPathId(pathname, "/orders/");
+  if (orderId) {
+    if (role === "ADMIN" || role === "TMO") return "/admin/orders";
+    return "/learning/transactions";
+  }
+
+  const learningClassId = getPathId(pathname, "/learning/classes/");
+  if (learningClassId) {
+    return `/opening-schedule/${learningClassId}${queryAndHash}`;
+  }
+
+  const classId = getPathId(pathname, "/classes/");
+  if (classId) {
+    if (role === "ADMIN") return `/admin/classrooms/${classId}/workspace`;
+    if (role === "TRAINER" || role === "TMO") {
+      return `/staff/classrooms/${classId}/workspace`;
+    }
+    return `/opening-schedule/${classId}${queryAndHash}`;
+  }
+
+  const assignmentId =
+    getPathId(pathname, "/assignments/") ||
+    getPayloadValue(notification, "assignmentId", "assignment_id");
+  if (getPathId(pathname, "/assignments/")) {
+    if (STAFF_ROLES.has(role)) {
+      return `/staff/assignments/monitor/${assignmentId}/essay`;
+    }
+    if (role === "TRAINEE") return "/learning/assignments";
+    return null;
+  }
+
+  const submissionId = getPathId(pathname, "/submissions/");
+  if (submissionId) {
+    if (STAFF_ROLES.has(role)) {
+      return assignmentId
+        ? `/staff/assignments/monitor/${assignmentId}/essay`
+        : "/staff/assignments";
+    }
+    if (role === "TRAINEE") return "/learning/assignments";
+    return null;
+  }
+
+  const testId =
+    getPathId(pathname, "/tests/") ||
+    getPayloadValue(notification, "testId", "test_id");
+  if (getPathId(pathname, "/tests/")) {
+    if (STAFF_ROLES.has(role)) return `/staff/tests/monitor/${testId}/mcq`;
+    if (role === "TRAINEE") return "/learning/tests";
+    return null;
+  }
+
+  const attemptId = getPathId(pathname, "/test-attempts/");
+  if (attemptId) {
+    if (testId && STAFF_ROLES.has(role)) {
+      return `/staff/tests/attempts/${testId}/${attemptId}`;
+    }
+    if (testId && role === "TRAINEE") {
+      return `/learning/tests/attempts/${testId}/${attemptId}`;
+    }
+    return role === "TRAINEE" ? "/learning/tests" : null;
+  }
+
+  return safeActionUrl;
 }
 
 export function normalizeNotificationType(type) {
@@ -87,12 +180,18 @@ export function resolveSafeNotificationActionUrl(actionUrl) {
   }
 }
 
-export function getNotificationDestination(notification) {
+export function getNotificationActionDestination(notification) {
   const safeActionUrl = resolveSafeNotificationActionUrl(
     notification?.actionUrl,
   );
 
-  if (safeActionUrl) return safeActionUrl;
+  if (!safeActionUrl) return null;
+  return resolveBackendActionRoute(safeActionUrl, notification);
+}
+
+export function getNotificationDestination(notification) {
+  const actionDestination = getNotificationActionDestination(notification);
+  if (actionDestination) return actionDestination;
   return notification?.id ? `/notifications/${notification.id}` : "/notifications";
 }
 

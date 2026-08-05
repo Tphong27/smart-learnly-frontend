@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { CloudUpload, FileText, Loader2, Trash2 } from "lucide-react";
-import { courseService } from "@/services/course.service";
+import { courseContentService } from "../../services/courseContentService";
 import "./lesson-material-uploader.css";
 
 const MAX_RESOURCES = 10;
@@ -61,7 +61,7 @@ export function LessonResourceUploader({
     setBusy(true);
     try {
       const uploadResults = await Promise.allSettled(
-        selectedFiles.map((file) => courseService.uploadLessonResource(file)),
+        selectedFiles.map((file) => courseContentService.uploadLessonResource(file)),
       );
       const uploaded = uploadResults
         .filter((result) => result.status === "fulfilled")

@@ -1,13 +1,32 @@
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Archive, Bell, Check, RefreshCw } from "lucide-react";
-import { useNotifications } from "../NotificationProvider";
+import {
+  Archive,
+  Bell,
+  BookOpen,
+  Check,
+  CheckCheck,
+  ChevronRight,
+  ClipboardCheck,
+  ClipboardList,
+  Clock3,
+  CreditCard,
+  Ellipsis,
+  GraduationCap,
+  Info,
+  MessageSquareText,
+  Sparkles,
+  TriangleAlert,
+  UserPlus,
+} from "lucide-react";
+import { useNotifications } from "../hooks/NotificationProvider";
 import {
   formatNotificationTime,
   getNotificationDestination,
   getNotificationPreview,
   getNotificationTypeLabel,
   isUnreadNotification,
+  normalizeNotificationType,
 } from "../notification-utils";
 import "./NotificationBell.css";
 
@@ -31,15 +50,48 @@ function getUnreadBadgeLabel(count) {
   return String(count);
 }
 
+const TYPE_VISUALS = Object.freeze({
+  ENROLLMENT: { icon: UserPlus, tone: "enrollment" },
+  PAYMENT: { icon: CreditCard, tone: "payment" },
+  ASSIGNMENT: { icon: ClipboardList, tone: "assignment" },
+  TEST: { icon: ClipboardCheck, tone: "test" },
+  FEEDBACK: { icon: MessageSquareText, tone: "feedback" },
+  SYSTEM: { icon: Info, tone: "system" },
+  AI_SUGGESTION: { icon: Sparkles, tone: "ai" },
+  CLASS_REMINDER: { icon: Clock3, tone: "class" },
+  CHURN_ALERT: { icon: TriangleAlert, tone: "alert" },
+  CLASS: { icon: GraduationCap, tone: "class" },
+  COURSE: { icon: BookOpen, tone: "course" },
+});
+
+function getNotificationVisual(type) {
+  return TYPE_VISUALS[normalizeNotificationType(type)] || TYPE_VISUALS.SYSTEM;
+}
+
 function NotificationDropdownItem({
   notification,
   mutating,
+  actionsOpen,
   onArchive,
+  onCloseActions,
   onMarkRead,
   onOpen,
+  onToggleActions,
 }) {
   const unread = isUnreadNotification(notification);
   const preview = getNotificationPreview(notification);
+  const actionsId = useId();
+  const { icon: TypeIcon, tone } = getNotificationVisual(notification.type);
+
+  function handleMarkRead() {
+    onCloseActions();
+    void onMarkRead(notification);
+  }
+
+  function handleArchive() {
+    onCloseActions();
+    void onArchive(notification);
+  }
 
   return (
     <li
@@ -47,53 +99,84 @@ function NotificationDropdownItem({
         unread ? " notification-dropdown__item--unread" : ""
       }`}
     >
+      {unread && (
+        <span className="notification-dropdown__unread-dot" aria-hidden="true" />
+      )}
+
       <button
         type="button"
         className="notification-dropdown__item-main"
         onClick={() => onOpen(notification)}
       >
-        <span className="notification-dropdown__item-topline">
-          <span className="notification-dropdown__type">
-            {getNotificationTypeLabel(notification.type)}
-          </span>
-          <span className="notification-dropdown__time">
-            {formatNotificationTime(notification.createdAt)}
-          </span>
+        <span
+          className={`notification-dropdown__type-icon notification-dropdown__type-icon--${tone}`}
+          aria-hidden="true"
+        >
+          <TypeIcon size={18} />
         </span>
-        <span className="notification-dropdown__title-row">
-          <strong>{notification.title}</strong>
-          {unread && (
-            <span className="notification-dropdown__unread-label">Unread</span>
+
+        <span className="notification-dropdown__item-copy">
+          <span className="notification-dropdown__item-topline">
+            <span className="notification-dropdown__type">
+              {getNotificationTypeLabel(notification.type)}
+            </span>
+            <span className="notification-dropdown__time">
+              {formatNotificationTime(notification.createdAt)}
+            </span>
+          </span>
+          <strong className="notification-dropdown__title">
+            {unread && (
+              <span className="notification-dropdown__sr-only">
+                Unread notification:{" "}
+              </span>
+            )}
+            {notification.title}
+          </strong>
+          {preview && (
+            <span className="notification-dropdown__preview">{preview}</span>
           )}
         </span>
-        {preview && (
-          <span className="notification-dropdown__preview">{preview}</span>
-        )}
       </button>
 
-      <div className="notification-dropdown__item-actions">
-        {unread && (
-          <button
-            type="button"
-            className="notification-dropdown__icon-action"
-            disabled={mutating}
-            onClick={() => onMarkRead(notification)}
-            aria-label={`Mark ${notification.title} as read`}
-            title="Mark read"
-          >
-            <Check size={14} aria-hidden="true" />
-          </button>
-        )}
+      <div
+        className="notification-dropdown__item-actions"
+        onBlur={(event) => {
+          if (!event.currentTarget.contains(event.relatedTarget)) {
+            onCloseActions();
+          }
+        }}
+      >
         <button
           type="button"
-          className="notification-dropdown__icon-action"
+          className="notification-dropdown__more-button"
           disabled={mutating}
-          onClick={() => onArchive(notification)}
-          aria-label={`Archive ${notification.title}`}
-          title="Archive"
+          onClick={onToggleActions}
+          aria-label={`More actions for ${notification.title}`}
+          aria-haspopup="menu"
+          aria-expanded={actionsOpen}
+          aria-controls={actionsOpen ? actionsId : undefined}
         >
-          <Archive size={14} aria-hidden="true" />
+          <Ellipsis size={18} aria-hidden="true" />
         </button>
+
+        {actionsOpen && (
+          <div
+            id={actionsId}
+            className="notification-dropdown__actions-menu"
+            role="menu"
+          >
+            {unread && (
+              <button type="button" role="menuitem" onClick={handleMarkRead}>
+                <Check size={15} aria-hidden="true" />
+                Mark as read
+              </button>
+            )}
+            <button type="button" role="menuitem" onClick={handleArchive}>
+              <Archive size={15} aria-hidden="true" />
+              Archive
+            </button>
+          </div>
+        )}
       </div>
     </li>
   );
@@ -108,6 +191,8 @@ export function NotificationBell({ variant = "app", onOpen }) {
   const routeRef = useRef(location.key);
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
+  const [activeFilter, setActiveFilter] = useState("all");
+  const [activeActionsId, setActiveActionsId] = useState(null);
   const [actionError, setActionError] = useState(null);
   const {
     unreadCount,
@@ -120,11 +205,14 @@ export function NotificationBell({ variant = "app", onOpen }) {
     markRead,
     recordClick,
     archive,
+    markAllRead,
     isNotificationMutating,
+    isBulkMutating,
   } = useNotifications();
 
   const closePanel = useCallback(({ returnFocus = true } = {}) => {
     setOpen(false);
+    setActiveActionsId(null);
     setActionError(null);
 
     if (returnFocus) {
@@ -146,6 +234,10 @@ export function NotificationBell({ variant = "app", onOpen }) {
     function handleKeyDown(event) {
       if (event.key === "Escape") {
         event.preventDefault();
+        if (activeActionsId) {
+          setActiveActionsId(null);
+          return;
+        }
         closePanel();
       }
     }
@@ -156,7 +248,7 @@ export function NotificationBell({ variant = "app", onOpen }) {
       document.removeEventListener("pointerdown", handlePointerDown);
       document.removeEventListener("keydown", handleKeyDown);
     };
-  }, [closePanel, open]);
+  }, [activeActionsId, closePanel, open]);
 
   useEffect(() => {
     if (routeRef.current === location.key) return;
@@ -202,6 +294,16 @@ export function NotificationBell({ variant = "app", onOpen }) {
     }
   }
 
+  async function handleMarkAllRead() {
+    setActionError(null);
+    setActiveActionsId(null);
+    try {
+      await markAllRead();
+    } catch (error) {
+      setActionError(error?.message || "Failed to mark notifications as read.");
+    }
+  }
+
   function handleRefresh() {
     void refreshUnread({ force: true });
     void refreshLatest({ force: true });
@@ -214,6 +316,12 @@ export function NotificationBell({ variant = "app", onOpen }) {
     closePanel({ returnFocus: false });
     navigate(destination);
   }
+
+  const visibleNotifications =
+    activeFilter === "unread"
+      ? latestNotifications.filter(isUnreadNotification)
+      : latestNotifications;
+  const markingAllRead = isBulkMutating("read-all");
 
   return (
     <div className={classes.wrapper} ref={rootRef}>
@@ -248,20 +356,51 @@ export function NotificationBell({ variant = "app", onOpen }) {
           <div className="notification-dropdown__header">
             <div>
               <strong id={panelTitleId}>Notifications</strong>
-              <span>Latest updates</span>
+              <span>
+                {unreadCount > 0
+                  ? `${unreadCount} unread update${unreadCount === 1 ? "" : "s"}`
+                  : "You're all caught up"}
+              </span>
             </div>
+            {unreadCount > 0 && (
+              <button
+                type="button"
+                className="notification-dropdown__mark-all"
+                onClick={handleMarkAllRead}
+                disabled={markingAllRead}
+              >
+                <CheckCheck size={16} aria-hidden="true" />
+                {markingAllRead ? "Marking..." : "Mark all read"}
+              </button>
+            )}
+          </div>
+
+          <div className="notification-dropdown__tabs" role="tablist">
             <button
               type="button"
-              className="notification-dropdown__retry"
-              onClick={handleRefresh}
-              disabled={latestLoading}
+              role="tab"
+              aria-selected={activeFilter === "all"}
+              className={activeFilter === "all" ? "is-active" : undefined}
+              onClick={() => {
+                setActiveFilter("all");
+                setActiveActionsId(null);
+              }}
             >
-              <RefreshCw
-                size={14}
-                className={latestLoading ? "notification-spin" : undefined}
-                aria-hidden="true"
-              />
-              Refresh
+              All
+              <span>{latestNotifications.length}</span>
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activeFilter === "unread"}
+              className={activeFilter === "unread" ? "is-active" : undefined}
+              onClick={() => {
+                setActiveFilter("unread");
+                setActiveActionsId(null);
+              }}
+            >
+              Unread
+              <span>{unreadCount}</span>
             </button>
           </div>
 
@@ -284,16 +423,28 @@ export function NotificationBell({ variant = "app", onOpen }) {
             <div className="notification-dropdown__state">
               No notifications yet.
             </div>
+          ) : visibleNotifications.length === 0 ? (
+            <div className="notification-dropdown__state">
+              <CheckCheck size={22} aria-hidden="true" />
+              No unread notifications.
+            </div>
           ) : (
             <ul className="notification-dropdown__list">
-              {latestNotifications.map((notification) => (
+              {visibleNotifications.map((notification) => (
                 <NotificationDropdownItem
                   key={notification.id}
                   notification={notification}
                   mutating={isNotificationMutating(notification.id)}
+                  actionsOpen={activeActionsId === notification.id}
                   onArchive={handleArchive}
+                  onCloseActions={() => setActiveActionsId(null)}
                   onMarkRead={handleMarkRead}
                   onOpen={handleOpenNotification}
+                  onToggleActions={() =>
+                    setActiveActionsId((current) =>
+                      current === notification.id ? null : notification.id,
+                    )
+                  }
                 />
               ))}
             </ul>
@@ -311,6 +462,7 @@ export function NotificationBell({ variant = "app", onOpen }) {
             onClick={() => closePanel({ returnFocus: false })}
           >
             View all notifications
+            <ChevronRight size={16} aria-hidden="true" />
           </Link>
         </div>
       )}

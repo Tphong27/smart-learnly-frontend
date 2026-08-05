@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { courseService } from "@/services";
+import { enrollmentService } from "@/features/enrollment";
+import { categoryService } from "../services/categoryService";
+import { courseCatalogService } from "../services/courseCatalogService";
 import { CourseCard } from "../components/CourseCard";
 import { CourseCatalogFilterMenu } from "../components/CourseCatalogFilterMenu";
 import {
@@ -77,6 +79,7 @@ export function CourseListPage({
   showFilters = true,
   detailState,
   excludeEnrolled = false,
+  defaultSort = "POPULAR",
   cardVariant = "default",
   showAdvancedFilters = false,
 }) {
@@ -107,7 +110,7 @@ export function CourseListPage({
   const priceRange = searchParams.get("priceRange") || "";
   const onSale = searchParams.get("onSale") === "true";
   const featured = searchParams.get("featured") === "true";
-  const sort = searchParams.get("sort") || "POPULAR";
+  const sort = searchParams.get("sort") || defaultSort;
   const requestedPage = Number(searchParams.get("page") || 0);
   const page =
     Number.isInteger(requestedPage) && requestedPage >= 0 ? requestedPage : 0;
@@ -118,7 +121,7 @@ export function CourseListPage({
 
     async function loadCategories() {
       try {
-        const data = await courseService.getCategories();
+        const data = await categoryService.listPublic();
         if (mounted) {
           setCategories(Array.isArray(data) ? data : []);
         }
@@ -151,7 +154,7 @@ export function CourseListPage({
       sort,
     }) {
       const enrolledIds = hasAccessToken()
-        ? await courseService.getMyEnrolledCourseIds()
+        ? await enrollmentService.getMyEnrolledCourseIds()
         : new Set();
 
       const allItems = [];
@@ -159,7 +162,7 @@ export function CourseListPage({
       let hasMorePages = true;
 
       while (hasMorePages) {
-        const pageData = await courseService.getPublicCoursesWithDetails({
+        const pageData = await courseCatalogService.listWithDetails({
           page: backendPage,
           size,
           keyword,
@@ -233,7 +236,7 @@ export function CourseListPage({
             sort,
           });
         } else {
-          data = await courseService.getPublicCoursesWithDetails({
+          data = await courseCatalogService.listWithDetails({
             page,
             size: pageSize,
             keyword,
@@ -288,13 +291,17 @@ export function CourseListPage({
       priceRange,
       onSale: onSale ? "true" : "",
       featured: featured ? "true" : "",
-      sort: sort === "POPULAR" ? "" : sort,
+      sort: sort === defaultSort ? "" : sort,
       page: String(page),
       ...nextValues,
     };
 
     Object.keys(next).forEach((key) => {
-      if (!next[key] || next[key] === "0" || next[key] === "POPULAR") {
+      if (
+        !next[key] ||
+        next[key] === "0" ||
+        (key === "sort" && next[key] === defaultSort)
+      ) {
         delete next[key];
       }
     });
@@ -339,7 +346,7 @@ export function CourseListPage({
 
   function handleSortChange(value) {
     updateQuery({
-      sort: value === "POPULAR" ? "" : value,
+      sort: value === defaultSort ? "" : value,
       page: "0",
     });
   }
@@ -371,7 +378,7 @@ export function CourseListPage({
       priceRange ||
       onSale ||
       featured ||
-      sort !== "POPULAR",
+      sort !== defaultSort,
   );
 
   function clearCatalogMenuFilters() {
@@ -400,10 +407,6 @@ export function CourseListPage({
       {showHero && (
         <section className="course-hero course-hero--catalog">
           <h1>Course Catalog</h1>
-          <p>
-            Explore practical courses and find the right next step for your
-            learning goals.
-          </p>
         </section>
       )}
 

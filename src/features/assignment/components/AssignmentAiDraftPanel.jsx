@@ -11,7 +11,7 @@ import {
   Sparkles,
   X,
 } from "lucide-react";
-import { assignmentService } from "@/services/flashtest.service";
+import { assignmentService } from "../services/assignmentService";
 import "./AssignmentAiDraftPanel.css";
 
 const DEFAULT_PROMPT =

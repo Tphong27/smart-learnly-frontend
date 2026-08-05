@@ -10,7 +10,7 @@ import {
     useToast,
 } from "@/shared/components/ui";
 import { AdminFilterToolbar } from "@/features/admin/components/AdminFilterToolbar";
-import { categoryService } from "@/services";
+import { categoryService } from "@/features/course";
 import { categorySchema } from "../schemas/category-schemas";
 import "../../admin-shared.css";
 
@@ -27,26 +27,16 @@ function formatDate(value) {
     }
 }
 
-function buildPayload(values) {
-    const sortRaw = values.sortOrder;
-    let sortOrder = 0;
-    if (typeof sortRaw === "number" && Number.isFinite(sortRaw)) {
-        sortOrder = sortRaw;
-    } else if (typeof sortRaw === "string" && sortRaw.trim() !== "") {
-        const parsed = Number(sortRaw);
-        if (Number.isFinite(parsed)) sortOrder = parsed;
-    }
-
+function buildPayload(values, { includeParent = true } = {}) {
     const payload = {
         name: values.name?.trim(),
         isActive: values.isActive ?? true,
-        sortOrder,
     };
     const slug = values.slug?.trim();
     if (slug) payload.slug = slug;
     const description = values.description?.trim();
     if (description) payload.description = description;
-    if (values.parentId) payload.parentId = values.parentId;
+    if (includeParent && values.parentId) payload.parentId = values.parentId;
     return payload;
 }
 
@@ -67,7 +57,6 @@ function CategoryFormModal({
             description: initial?.description ?? "",
             parentId: initial?.parentId ?? "",
             isActive: initial?.isActive ?? true,
-            sortOrder: initial?.sortOrder ?? 0,
         }),
         [initial],
     );
@@ -93,7 +82,9 @@ function CategoryFormModal({
     async function onSubmit(values) {
         setServerError(null);
         try {
-            const payload = buildPayload(values);
+            const payload = buildPayload(values, {
+                includeParent: mode !== "edit",
+            });
             if (mode === "edit") {
                 await categoryService.update(initial.id, payload);
                 toast.success("Category updated successfully");
@@ -119,7 +110,11 @@ function CategoryFormModal({
         <Modal
             open={open}
             title={mode === "edit" ? "Update category" : "Add new category"}
-            description="Manage the course category tree. The slug is auto-generated when left blank."
+            description={
+                mode === "edit"
+                    ? "Update the category details. The slug is auto-generated when left blank."
+                    : "Manage the course category tree. The slug is auto-generated when left blank."
+            }
             size="md"
             onClose={onClose}
         >
@@ -148,26 +143,30 @@ function CategoryFormModal({
                         helperText="Leave blank to auto-generate"
                     />
 
-                    <div className="input-field">
-                        <label
-                            className="input-field__label"
-                            htmlFor="category-parent"
-                        >
-                            Parent category
-                        </label>
-                        <select
-                            id="category-parent"
-                            className="admin-toolbar__select"
-                            {...register("parentId")}
-                        >
-                            <option value="">-- None (root category) --</option>
-                            {parentOptions.map((cat) => (
-                                <option key={cat.id} value={cat.id}>
-                                    {cat.name}
+                    {mode !== "edit" && (
+                        <div className="input-field">
+                            <label
+                                className="input-field__label"
+                                htmlFor="category-parent"
+                            >
+                                Parent category
+                            </label>
+                            <select
+                                id="category-parent"
+                                className="admin-toolbar__select"
+                                {...register("parentId")}
+                            >
+                                <option value="">
+                                    -- None (root category) --
                                 </option>
-                            ))}
-                        </select>
-                    </div>
+                                {parentOptions.map((cat) => (
+                                    <option key={cat.id} value={cat.id}>
+                                        {cat.name}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                    )}
 
                     <div className="admin-form-grid__full">
                         <div className="input-field">
@@ -195,16 +194,6 @@ function CategoryFormModal({
                             )}
                         </div>
                     </div>
-
-                    <FormField
-                        label="Display order"
-                        type="number"
-                        registration={register("sortOrder", {
-                            valueAsNumber: true,
-                        })}
-                        error={errors.sortOrder?.message}
-                        helperText="Smaller numbers appear first"
-                    />
 
                     <label
                         className="admin-checkbox"
@@ -451,7 +440,6 @@ export function AdminCategoriesPage() {
                                     <th>Slug</th>
                                     <th>Parent</th>
                                     <th>Status</th>
-                                    <th style={{ width: 110 }}>Order</th>
                                     <th>Updated</th>
                                     <th
                                         style={{
@@ -507,7 +495,6 @@ export function AdminCategoriesPage() {
                                                         : "Inactive"}
                                                 </span>
                                             </td>
-                                            <td>{cat.sortOrder ?? 0}</td>
                                             <td>
                                                 {formatDate(
                                                     cat.updatedAt ||

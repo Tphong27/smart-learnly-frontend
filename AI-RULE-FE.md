@@ -27,7 +27,8 @@ npm run preview
 
 1. Luôn đặt routing, layout, provider trong `src/app`.
 2. Luôn đặt feature code trong `src/features/<domain>`.
-3. Luôn đặt API service trong `src/services`.
+3. Đặt API service nghiệp vụ trong `src/features/<domain>/services`; chỉ giữ
+   hạ tầng dùng chung như `api-client` trong `src/services`.
 4. Luôn đặt component, util, constant dùng chung trong `src/shared`.
 5. Không tạo thư mục mới nếu feature đã có thư mục phù hợp.
 6. Không để page gọi API trực tiếp nếu đã có service layer.
@@ -37,17 +38,21 @@ Cấu trúc khuyến nghị cho một feature:
 ```text
 src/features/<domain>/
 ├── components/
+├── hooks/
 ├── pages/
 ├── schemas/
+├── services/
 ├── utils/
 └── index.js
 ```
 
 ## File naming
 
-1. File JS/JSX/CSS mới dùng kebab-case nếu không có convention khác rõ ràng.
-2. Component React export theo PascalCase.
-3. Service đặt tên `<domain>.service.js`.
+1. Page và component React dùng file PascalCase, ví dụ `CheckoutPage.jsx`.
+2. Hook và service dùng file camelCase, ví dụ `useCheckoutPayment.js` và
+   `checkoutService.js`.
+3. Component React export theo PascalCase; hook bắt đầu bằng `use` và service
+   kết thúc bằng `Service`.
 4. Schema đặt tên `<domain>-schemas.js`.
 5. Không tạo tên mơ hồ như `utils.js` nếu có thể đặt tên rõ hơn như `course-price.js`.
 
@@ -60,6 +65,10 @@ src/features/<domain>/
 5. Không thêm library UI mới khi shared components hiện tại xử lý được.
 6. Props phải rõ nghĩa, tránh truyền object quá lớn nếu chỉ cần vài field.
 7. Không dùng comment trang trí; chỉ comment khi logic khó hiểu hoặc có lý do nghiệp vụ.
+8. Mỗi function, component và custom hook có tên trong production code phải có
+   comment tiếng Việt ngắn ngay phía trên. Comment mô tả mục đích và quy tắc
+   nghiệp vụ; helper kỹ thuật đơn giản chỉ cần một câu. Không bắt buộc comment
+   anonymous callback nếu hành vi đã rõ.
 
 Ví dụ component đúng hướng:
 
@@ -90,8 +99,10 @@ export function FreeEnrollButton({ courseId, onEnrolled }) {
 
 1. Luôn gọi API qua `src/services/api-client.js`.
 2. Không import `axios` trực tiếp trong page/component.
-3. Mỗi domain có service riêng, ví dụ `category.service.js`, `course.service.js`, `order.service.js`.
-4. Service phải export qua `src/services/index.js` đúng một lần, không export trùng.
+3. Mỗi domain có service riêng trong feature, ví dụ
+   `src/features/checkout/services/checkoutService.js`.
+4. Service được export qua `index.js` của feature khi feature khác cần sử dụng;
+   không re-export lại qua nhiều barrel file.
 5. Luôn tôn trọng base URL đã cấu hình trong `api-client.js`.
 6. Luôn xử lý response theo format backend `ApiResponse<T>`; service nên trả về `data` đã unwrap.
 7. Không để component biết chi tiết endpoint nếu service đã che được.

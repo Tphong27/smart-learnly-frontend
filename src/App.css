@@ -888,6 +888,11 @@ a:hover {
     font-weight: 500;
 }
 
+.header-search__status--error {
+    color: var(--sl-danger, #b91c1c);
+    background: var(--sl-danger-soft, #fde7e7);
+}
+
 .header-search__spinner {
     color: #6d48eb;
     animation: header-search-spin 0.8s linear infinite;
