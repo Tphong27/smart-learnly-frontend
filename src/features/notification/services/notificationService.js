@@ -1,4 +1,7 @@
-import apiClient from "./api-client";
+/**
+ * Service gọi API notification từ backend.
+ */
+import apiClient from "@/services/api-client";
 
 export const NOTIFICATION_TYPES = Object.freeze([
   "ENROLLMENT",
@@ -17,14 +20,15 @@ export const NOTIFICATION_TYPES = Object.freeze([
 const NOTIFICATION_TYPE_SET = new Set(NOTIFICATION_TYPES);
 const NOTIFICATION_STATUSES = new Set(["all", "unread", "read"]);
 
+/** Trích xuất data từ API response chuẩn. */
 function unwrapApiResponse(response) {
   if (response && typeof response === "object" && "data" in response) {
     return response.data;
   }
-
   return response;
 }
 
+/** Chuẩn hóa type notification sang dạng hợp lệ. */
 function normalizeType(type) {
   const normalized = String(type || "")
     .trim()
@@ -34,6 +38,7 @@ function normalizeType(type) {
   return NOTIFICATION_TYPE_SET.has(normalized) ? normalized : null;
 }
 
+/** Chuẩn hóa một notification từ API. */
 function normalizeNotification(notification) {
   if (!notification || typeof notification !== "object") return notification;
   const payload =
@@ -61,6 +66,7 @@ function normalizeNotification(notification) {
   };
 }
 
+/** Chuẩn hóa page response. */
 function normalizePageResponse(page) {
   const payload = page && typeof page === "object" ? page : {};
   const items = Array.isArray(payload.items) ? payload.items : [];
@@ -78,6 +84,7 @@ function normalizePageResponse(page) {
   };
 }
 
+/** Chuẩn hóa params cho list API. */
 function normalizeListParams(params = {}) {
   const page = Number.isFinite(Number(params.page)) ? Number(params.page) : 0;
   const size = Number.isFinite(Number(params.size)) ? Number(params.size) : 20;
@@ -94,6 +101,7 @@ function normalizeListParams(params = {}) {
   };
 }
 
+/** Chuẩn hóa số notification chưa đọc. */
 function normalizeUnreadCount(payload) {
   const value = Number(unwrapApiResponse(payload)?.unreadCount ?? 0);
   return {
@@ -101,6 +109,7 @@ function normalizeUnreadCount(payload) {
   };
 }
 
+/** Chuẩn hóa số notification đã lưu trữ. */
 function normalizeArchivedCount(payload) {
   const value = Number(unwrapApiResponse(payload)?.archivedCount ?? 0);
   return {
@@ -109,6 +118,7 @@ function normalizeArchivedCount(payload) {
 }
 
 export const notificationService = {
+  /** Lấy danh sách notification của người dùng. */
   async list(params = {}) {
     const response = await apiClient.get("/notifications", {
       params: normalizeListParams(params),
@@ -116,16 +126,19 @@ export const notificationService = {
     return normalizePageResponse(unwrapApiResponse(response));
   },
 
+  /** Lấy số notification chưa đọc. */
   async unreadCount() {
     const response = await apiClient.get("/notifications/unread-count");
     return normalizeUnreadCount(response);
   },
 
+  /** Lấy chi tiết một notification. */
   async get(notificationId) {
     const response = await apiClient.get(`/notifications/${notificationId}`);
     return normalizeNotification(unwrapApiResponse(response));
   },
 
+  /** Đánh dấu notification là đã đọc. */
   async markRead(notificationId) {
     const response = await apiClient.patch(
       `/notifications/${notificationId}/read`,
@@ -133,6 +146,7 @@ export const notificationService = {
     return normalizeNotification(unwrapApiResponse(response));
   },
 
+  /** Ghi nhận thao tác click vào notification. */
   async recordClick(notificationId) {
     const response = await apiClient.patch(
       `/notifications/${notificationId}/clicked`,
@@ -140,6 +154,7 @@ export const notificationService = {
     return normalizeNotification(unwrapApiResponse(response));
   },
 
+  /** Lưu trữ một notification. */
   async archive(notificationId) {
     const response = await apiClient.patch(
       `/notifications/${notificationId}/archive`,
@@ -147,11 +162,13 @@ export const notificationService = {
     return normalizeNotification(unwrapApiResponse(response));
   },
 
+  /** Đánh dấu tất cả notification là đã đọc. */
   async markAllRead() {
     const response = await apiClient.patch("/notifications/read-all");
     return normalizeUnreadCount(response);
   },
 
+  /** Lưu trữ tất cả notification. */
   async archiveAll() {
     const response = await apiClient.patch("/notifications/archive-all");
     return normalizeArchivedCount(response);

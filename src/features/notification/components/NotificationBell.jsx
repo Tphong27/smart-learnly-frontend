@@ -19,7 +19,7 @@ import {
   TriangleAlert,
   UserPlus,
 } from "lucide-react";
-import { useNotifications } from "../NotificationProvider";
+import { useNotifications } from "../hooks/NotificationProvider";
 import {
   formatNotificationTime,
   getNotificationDestination,

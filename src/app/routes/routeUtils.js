@@ -1,5 +1,3 @@
-import React from "react";
-
 export function PlaceholderPage({ title }) {
   return (
     <section className="placeholder-page">

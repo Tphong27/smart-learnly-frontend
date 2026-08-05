@@ -12,13 +12,14 @@ import {
 import {
   getAccessToken,
   getCurrentUser,
-  notificationService,
-} from "@/services";
+} from "@/services/api-client";
+import { notificationService } from "../services/notificationService";
 import {
   isUnreadNotification,
   withNotificationRead,
-} from "./notification-utils";
+} from "../notification-utils";
 
+/** Số notification hiển thị trong danh sách gần đây. */
 const LATEST_NOTIFICATION_SIZE = 8;
 
 const NotificationContext = createContext(null);
@@ -80,6 +81,9 @@ function nowIso() {
   return new Date().toISOString();
 }
 
+/**
+ * Provider cung cấp context và state cho notification trong toàn bộ ứng dụng.
+ */
 export function NotificationProvider({ children }) {
   const authKey = getAuthKey();
   const [unreadState, setUnreadState] = useState(initialUnreadState);
@@ -551,6 +555,7 @@ export function NotificationProvider({ children }) {
   );
 }
 
+/** Hook để truy cập notification context. */
 export function useNotifications() {
   const context = useContext(NotificationContext);
   if (!context) {

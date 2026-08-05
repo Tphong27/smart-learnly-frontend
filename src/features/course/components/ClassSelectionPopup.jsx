@@ -20,15 +20,6 @@ function formatDate(value) {
   });
 }
 
-function getUnavailableReason(classItem) {
-  const status = String(classItem?.status || "").toUpperCase();
-  const availableSlots = Number(classItem?.availableSlots ?? 0);
-  if (status === "CANCELLED" || status === "COMPLETED") return "Lớp đã kết thúc";
-  if (availableSlots <= 0) return "Hết chỗ";
-  if (status === "ONGOING") return "Lớp đã bắt đầu";
-  return "Không khả dụng";
-}
-
 function ClassAvailabilityBadge({ classItem }) {
   const availableSlots = Number(classItem?.availableSlots ?? 0);
   if (availableSlots <= 0) {
@@ -138,10 +129,14 @@ export function ClassSelectionPopup({
   const closeButtonRef = useRef(null);
   const confirmButtonRef = useRef(null);
 
-  const [selectedClassId, setSelectedClassId] = useState(null);
+  const [selectedClassId, setSelectedClassId] = useState(checkoutClassId || null);
+  const prevCheckoutClassIdRef = useRef(checkoutClassId);
 
   useEffect(() => {
-    setSelectedClassId(checkoutClassId || null);
+    if (checkoutClassId && checkoutClassId !== prevCheckoutClassIdRef.current) {
+      prevCheckoutClassIdRef.current = checkoutClassId;
+      setSelectedClassId(checkoutClassId);
+    }
   }, [checkoutClassId]);
 
   const handleSelect = useCallback((classItem) => {
