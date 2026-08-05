@@ -153,10 +153,11 @@ function resumeStorageKeyForSet(setId) {
   return setId == null ? null : `flashcard:lastActiveCard:${setId}`;
 }
 
-function cardPositionStorageKey({ userKey, courseId, lessonId, setId }) {
+function cardPositionStorageKey({ userKey, courseId, lessonId, setId, classId }) {
   if (!userKey || !courseId || !setId) return null;
   const lessonPart = lessonId == null ? "lesson:none" : `lesson:${lessonId}`;
-  return `${CARD_POSITION_STORAGE_PREFIX}:${userKey}:${courseId}:${lessonPart}:set:${setId}`;
+  const classPart = classId == null ? "class:none" : `class:${classId}`;
+  return `${CARD_POSITION_STORAGE_PREFIX}:${userKey}:${courseId}:${classPart}:${lessonPart}:set:${setId}`;
 }
 
 function trackProgressStorageKey(userKey) {
@@ -682,6 +683,7 @@ export function FlashcardPractice({
   const cardResumeStorageKey = cardPositionStorageKey({
     userKey: positionUserKey,
     courseId: resolvedCourseId,
+    classId,
     lessonId: resolvedLessonId,
     setId: practiceSetKey,
   });

@@ -82,7 +82,8 @@ export function ClassCurriculumTab({ classId, readOnly = false }) {
 
   const stats = useMemo(() => computeStats(sections), [sections]);
 
-  const canEdit = !readOnly && customizationState === "DRAFT";
+  // Auto-draft: editor luôn cho phép sửa trực tiếp; backend tự tạo draft ở lần sửa đầu tiên.
+  const canEdit = !readOnly;
 
   // Tải curriculum hiệu lực của lớp và đồng bộ trạng thái loading/error.
   const loadCurriculum = useCallback(async () => {
@@ -128,13 +129,6 @@ export function ClassCurriculumTab({ classId, readOnly = false }) {
     },
     [loadCurriculum],
   );
-
-  // Khởi tạo curriculum draft riêng cho lớp từ bản đang kế thừa.
-  const handleInitDraft = () =>
-    runAction(
-      () => trainerCurriculumService.initializeDraft(classId),
-      "Draft initialized",
-    );
 
   // Xuất bản draft hiện tại để học viên của lớp sử dụng.
   const handlePublishDraft = () =>
@@ -244,11 +238,7 @@ export function ClassCurriculumTab({ classId, readOnly = false }) {
         ? "Published class customization"
         : "Inherited from master course";
 
-  // Trainer có thể init draft khi chưa có draft hiện hành (state INHERITED hoặc PUBLISHED).
-  const canInitializeDraft =
-    !readOnly &&
-    customizationState !== "DRAFT";
-
+  // Chỉ hiện nút publish khi có draft (trainer đã có thay đổi chưa xuất bản).
   const canPublishDraft = !readOnly && customizationState === "DRAFT";
 
   return (
@@ -272,19 +262,6 @@ export function ClassCurriculumTab({ classId, readOnly = false }) {
           </p>
         </div>
         <div className="sl-cm-header__actions">
-          {canInitializeDraft && (
-            <Button
-              type="button"
-              variant="create"
-              size="sm"
-              loading={actionLoading}
-              onClick={handleInitDraft}
-            >
-              {customizationState === "PUBLISHED"
-                ? "Start new draft"
-                : "Initialize draft"}
-            </Button>
-          )}
           {canPublishDraft && (
             <Button
               type="button"
@@ -293,7 +270,7 @@ export function ClassCurriculumTab({ classId, readOnly = false }) {
               loading={actionLoading}
               onClick={handlePublishDraft}
             >
-              Publish draft
+              Publish changes
             </Button>
           )}
         </div>
@@ -311,43 +288,26 @@ export function ClassCurriculumTab({ classId, readOnly = false }) {
         </p>
       )}
 
-      {customizationState === "INHERITED" || !customizationState ? (
-        <div className="sl-cm-workspace" style={{ textAlign: "center", padding: 32 }}>
-          <h3 className="sl-cm-header__title" style={{ marginTop: 0 }}>
-            Curriculum is inherited
-          </h3>
-          <p className="sl-cm-header__subtitle">
-            This class currently follows the master course curriculum. Click
-            &quot;Initialize draft&quot; above to create an editable class-specific
-            copy.
-          </p>
-        </div>
-      ) : (
-        <CurriculumStructureEditor
-          sections={sections}
-          getLessons={(section) => section?.lessons || []}
-          isSectionLessonsLoading={() => false}
-          stats={stats}
-          readOnly={!canEdit}
-          lessonTypeOptions={TRAINER_LESSON_TYPES}
-          lessonEditLabel="Edit lesson"
-          emptyMessage={
-            canEdit
-              ? "This class curriculum has no sections yet. Create the first one below."
-              : "This published curriculum has no sections yet."
-          }
-          emptyAddTitle="Add a new section"
-          emptyAddSubtitle="Organize class content so trainees can follow along."
-          onCreateSection={handleCreateSection}
-          onUpdateSection={handleUpdateSection}
-          onDeleteSection={handleDeleteSection}
-          onReorderSections={handleReorderSections}
-          onCreateLesson={handleCreateLesson}
-          onDeleteLesson={handleDeleteLesson}
-          onReorderLessons={handleReorderLessons}
-          onEditLesson={handleEditLesson}
-        />
-      )}
+      <CurriculumStructureEditor
+        sections={sections}
+        getLessons={(section) => section?.lessons || []}
+        isSectionLessonsLoading={() => false}
+        stats={stats}
+        readOnly={!canEdit}
+        lessonTypeOptions={TRAINER_LESSON_TYPES}
+        lessonEditLabel="Edit lesson"
+        emptyMessage="This class curriculum has no sections yet. Create the first one below."
+        emptyAddTitle="Add a new section"
+        emptyAddSubtitle="Organize class content so trainees can follow along."
+        onCreateSection={handleCreateSection}
+        onUpdateSection={handleUpdateSection}
+        onDeleteSection={handleDeleteSection}
+        onReorderSections={handleReorderSections}
+        onCreateLesson={handleCreateLesson}
+        onDeleteLesson={handleDeleteLesson}
+        onReorderLessons={handleReorderLessons}
+        onEditLesson={handleEditLesson}
+      />
     </div>
   );
 }
