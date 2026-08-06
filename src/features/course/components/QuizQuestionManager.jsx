@@ -226,7 +226,7 @@ export function QuizQuestionsPanel({
     const [saving, setSaving] = useState(false);
     const savingRef = useRef(false);
 
-    const [editIndex, setEditIndex] = useState(null); // null = đóng, -1 = thêm mới
+    const [editIndex, setEditIndex] = useState(null); // null = đóng
     const [deleteIndex, setDeleteIndex] = useState(null);
 
     const busy = loading || saving;
@@ -386,16 +386,10 @@ export function QuizQuestionsPanel({
     };
 
     const handleEditSubmit = (question) => {
-        const nextQuestions =
-            editIndex === -1
-                ? [...questions, question]
-                : questions.map((current, index) =>
-                      index === editIndex ? question : current,
-                  );
-        return persistQuestions(
-            nextQuestions,
-            editIndex === -1 ? "Question added." : "Question updated.",
+        const nextQuestions = questions.map((current, index) =>
+            index === editIndex ? question : current,
         );
+        return persistQuestions(nextQuestions, "Question updated.");
     };
 
     const handleConfirmDelete = async () => {
@@ -478,11 +472,7 @@ export function QuizQuestionsPanel({
             <QuizQuestionEditModal
                 key={editIndex == null ? "closed" : `edit-${editIndex}`}
                 open={editIndex != null}
-                question={
-                    editIndex != null && editIndex >= 0
-                        ? questions[editIndex]
-                        : null
-                }
+                question={editIndex != null ? questions[editIndex] : null}
                 onClose={() => setEditIndex(null)}
                 onSubmit={handleEditSubmit}
             />
