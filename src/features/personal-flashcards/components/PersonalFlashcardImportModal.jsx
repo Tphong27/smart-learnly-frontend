@@ -2,632 +2,778 @@ import { useMemo, useRef, useState } from "react";
 import { CheckCircle2, FileText, Sparkles, Upload, X } from "lucide-react";
 import { Button, Modal, useToast } from "@/shared/components/ui";
 import {
-  FlashcardCardList,
-  FlashcardSelectionToolbar,
+    FlashcardCardList,
+    FlashcardSelectionToolbar,
 } from "@/features/flashcards-shared";
 import { PersonalFlashcardCardFormModal } from "./PersonalFlashcardCardFormModal";
 import {
-  getErrorMessage,
-  moveItem,
-  normalizeCards,
-  withSequentialOrderIndices,
+    getErrorMessage,
+    moveItem,
+    normalizeCards,
+    withSequentialOrderIndices,
 } from "../utils/personal-flashcard-utils";
 import {
-  PERSONAL_IMPORT_DEFAULT_OPTIONS,
-  PERSONAL_IMPORT_DIFFICULTIES,
-  PERSONAL_IMPORT_LANGUAGES,
-  PERSONAL_PASTED_CARD_SEPARATOR_OPTIONS,
-  PERSONAL_PASTED_DEFAULT_VALUES,
-  PERSONAL_PASTED_FRONT_BACK_SEPARATOR_OPTIONS,
-  parsePersonalPastedFlashcards,
-  toBulkCreateCards,
-  toDraftCards,
-  validatePersonalImportOptions,
+    PERSONAL_IMPORT_DEFAULT_OPTIONS,
+    PERSONAL_IMPORT_LANGUAGES,
+    PERSONAL_PASTED_CARD_SEPARATOR_OPTIONS,
+    PERSONAL_PASTED_DEFAULT_VALUES,
+    PERSONAL_PASTED_FRONT_BACK_SEPARATOR_OPTIONS,
+    parsePersonalPastedFlashcards,
+    toBulkCreateCards,
+    toDraftCards,
+    validatePersonalImportOptions,
 } from "../utils/personal-flashcard-import-utils";
 
 function draftIds(cards) {
-  return cards.map((card) => card.id);
+    return cards.map((card) => card.id);
 }
 
+/** Hiển thị các tùy chọn chung còn lại khi nhập flashcard từ tài liệu. */
 function ImportSettings({ options, onChange, disabled }) {
-  return (
-    <div className="personal-flashcard-import__settings">
-      <label>
-        <span>Target cards</span>
-        <input
-          type="number"
-          min="1"
-          max="30"
-          value={options.desiredCount}
-          disabled={disabled}
-          onChange={(event) => onChange({ ...options, desiredCount: event.target.value })}
-        />
-        <small>Choose how many draft cards Gemini should try to generate.</small>
-      </label>
-      <label>
-        <span>Language</span>
-        <select
-          value={options.language}
-          disabled={disabled}
-          onChange={(event) => onChange({ ...options, language: event.target.value })}
-        >
-          {PERSONAL_IMPORT_LANGUAGES.map((language) => (
-            <option key={language.value} value={language.value}>{language.label}</option>
-          ))}
-        </select>
-      </label>
-      <label>
-        <span>Difficulty</span>
-        <select
-          value={options.difficulty}
-          disabled={disabled}
-          onChange={(event) => onChange({ ...options, difficulty: event.target.value })}
-        >
-          {PERSONAL_IMPORT_DIFFICULTIES.map((difficulty) => (
-            <option key={difficulty.value} value={difficulty.value}>{difficulty.label}</option>
-          ))}
-        </select>
-      </label>
-    </div>
-  );
+    return (
+        <div className="personal-flashcard-import__settings">
+            <label>
+                <span>Target cards</span>
+                <input
+                    type="number"
+                    min="1"
+                    max="30"
+                    value={options.desiredCount}
+                    disabled={disabled}
+                    onChange={(event) =>
+                        onChange({
+                            ...options,
+                            desiredCount: event.target.value,
+                        })
+                    }
+                />
+            </label>
+            <label>
+                <span>Language</span>
+                <select
+                    value={options.language}
+                    disabled={disabled}
+                    onChange={(event) =>
+                        onChange({ ...options, language: event.target.value })
+                    }
+                >
+                    {PERSONAL_IMPORT_LANGUAGES.map((language) => (
+                        <option key={language.value} value={language.value}>
+                            {language.label}
+                        </option>
+                    ))}
+                </select>
+            </label>
+        </div>
+    );
 }
 
-function PastedTextPanel({
-  values,
-  parsed,
-  busy,
-  saving,
-  onChange,
-  onImport,
-}) {
-  function updateValue(field, value) {
-    onChange({ ...values, [field]: value });
-  }
+function PastedTextPanel({ values, parsed, busy, saving, onChange, onImport }) {
+    function updateValue(field, value) {
+        onChange({ ...values, [field]: value });
+    }
 
-  function handleTextKeyDown(event) {
-    if (event.key !== "Tab" || event.shiftKey) return;
+    function handleTextKeyDown(event) {
+        if (event.key !== "Tab" || event.shiftKey) return;
 
-    event.preventDefault();
-    const textarea = event.currentTarget;
-    const selectionStart = textarea.selectionStart;
-    const selectionEnd = textarea.selectionEnd;
-    const nextText = `${textarea.value.slice(0, selectionStart)}\t${textarea.value.slice(selectionEnd)}`;
-    const nextCursorPosition = selectionStart + 1;
+        event.preventDefault();
+        const textarea = event.currentTarget;
+        const selectionStart = textarea.selectionStart;
+        const selectionEnd = textarea.selectionEnd;
+        const nextText = `${textarea.value.slice(0, selectionStart)}\t${textarea.value.slice(selectionEnd)}`;
+        const nextCursorPosition = selectionStart + 1;
 
-    updateValue("text", nextText);
-    window.requestAnimationFrame(() => {
-      textarea.selectionStart = nextCursorPosition;
-      textarea.selectionEnd = nextCursorPosition;
-    });
-  }
+        updateValue("text", nextText);
+        window.requestAnimationFrame(() => {
+            textarea.selectionStart = nextCursorPosition;
+            textarea.selectionEnd = nextCursorPosition;
+        });
+    }
 
-  return (
-    <form className="personal-flashcard-pasted-import" onSubmit={onImport} noValidate>
-      <label className="personal-flashcard-import__source" htmlFor="personal-flashcard-import-pasted-text">
-        <span>Pasted text</span>
-        <small>Paste one front/back pair per card. Empty rows are ignored.</small>
-        <textarea
-          id="personal-flashcard-import-pasted-text"
-          value={values.text}
-          rows={12}
-          disabled={busy}
-          onChange={(event) => updateValue("text", event.target.value)}
-          onKeyDown={handleTextKeyDown}
-          placeholder={"Term\tDefinition\nAnother term\tAnother definition"}
-        />
-      </label>
+    return (
+        <form
+            className="personal-flashcard-pasted-import"
+            onSubmit={onImport}
+            noValidate
+        >
+            <label
+                className="personal-flashcard-import__source"
+                htmlFor="personal-flashcard-import-pasted-text"
+            >
+                <span>Pasted text</span>
+                <textarea
+                    id="personal-flashcard-import-pasted-text"
+                    value={values.text}
+                    rows={12}
+                    disabled={busy}
+                    onChange={(event) =>
+                        updateValue("text", event.target.value)
+                    }
+                    onKeyDown={handleTextKeyDown}
+                    placeholder={
+                        "Term\tDefinition\nAnother term\tAnother definition"
+                    }
+                />
+            </label>
 
-      <div className="personal-flashcard-pasted-import__settings">
-        <label>
-          <span>Between front and back</span>
-          <select
-            value={values.frontBackSeparator}
-            disabled={busy}
-            onChange={(event) => updateValue("frontBackSeparator", event.target.value)}
-          >
-            {PERSONAL_PASTED_FRONT_BACK_SEPARATOR_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>{option.label}</option>
-            ))}
-          </select>
-        </label>
-        {values.frontBackSeparator === "custom" ? (
-          <label>
-            <span>Custom side separator</span>
-            <input
-              type="text"
-              value={values.customFrontBackSeparator}
-              disabled={busy}
-              onChange={(event) => updateValue("customFrontBackSeparator", event.target.value)}
-              placeholder="e.g. ::"
-            />
-          </label>
-        ) : null}
-        <label>
-          <span>Between cards</span>
-          <select
-            value={values.cardSeparator}
-            disabled={busy}
-            onChange={(event) => updateValue("cardSeparator", event.target.value)}
-          >
-            {PERSONAL_PASTED_CARD_SEPARATOR_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>{option.label}</option>
-            ))}
-          </select>
-        </label>
-        {values.cardSeparator === "custom" ? (
-          <label>
-            <span>Custom card separator</span>
-            <input
-              type="text"
-              value={values.customCardSeparator}
-              disabled={busy}
-              onChange={(event) => updateValue("customCardSeparator", event.target.value)}
-              placeholder="e.g. ---"
-            />
-          </label>
-        ) : null}
-      </div>
+            <div className="personal-flashcard-pasted-import__settings">
+                <label>
+                    <span>Between front and back</span>
+                    <select
+                        value={values.frontBackSeparator}
+                        disabled={busy}
+                        onChange={(event) =>
+                            updateValue(
+                                "frontBackSeparator",
+                                event.target.value,
+                            )
+                        }
+                    >
+                        {PERSONAL_PASTED_FRONT_BACK_SEPARATOR_OPTIONS.map(
+                            (option) => (
+                                <option key={option.value} value={option.value}>
+                                    {option.label}
+                                </option>
+                            ),
+                        )}
+                    </select>
+                </label>
+                {values.frontBackSeparator === "custom" ? (
+                    <label>
+                        <span>Custom side separator</span>
+                        <input
+                            type="text"
+                            value={values.customFrontBackSeparator}
+                            disabled={busy}
+                            onChange={(event) =>
+                                updateValue(
+                                    "customFrontBackSeparator",
+                                    event.target.value,
+                                )
+                            }
+                            placeholder="e.g. ::"
+                        />
+                    </label>
+                ) : null}
+                <label>
+                    <span>Between cards</span>
+                    <select
+                        value={values.cardSeparator}
+                        disabled={busy}
+                        onChange={(event) =>
+                            updateValue("cardSeparator", event.target.value)
+                        }
+                    >
+                        {PERSONAL_PASTED_CARD_SEPARATOR_OPTIONS.map(
+                            (option) => (
+                                <option key={option.value} value={option.value}>
+                                    {option.label}
+                                </option>
+                            ),
+                        )}
+                    </select>
+                </label>
+                {values.cardSeparator === "custom" ? (
+                    <label>
+                        <span>Custom card separator</span>
+                        <input
+                            type="text"
+                            value={values.customCardSeparator}
+                            disabled={busy}
+                            onChange={(event) =>
+                                updateValue(
+                                    "customCardSeparator",
+                                    event.target.value,
+                                )
+                            }
+                            placeholder="e.g. ---"
+                        />
+                    </label>
+                ) : null}
+            </div>
 
-      {parsed.configError ? (
-        <div className="personal-flashcard-form-error" role="alert">
-          {parsed.configError}
-        </div>
-      ) : null}
-
-      <div className="personal-flashcard-pasted-import__summary">
-        <span>{parsed.importableCards.length} ready</span>
-        <span>{parsed.duplicateRows.length} duplicate {parsed.duplicateRows.length === 1 ? "row" : "rows"}</span>
-        <span>{parsed.invalidRows.length} invalid {parsed.invalidRows.length === 1 ? "row" : "rows"}</span>
-      </div>
-
-      {parsed.invalidRows.length > 0 ? (
-        <div className="personal-flashcard-pasted-import__feedback">
-          <strong>Rows needing attention</strong>
-          <ul>
-            {parsed.invalidRows.map((row) => (
-              <li key={`${row.rowNumber}-${row.reason}-${row.text}`}>
-                <span>Row {row.rowNumber}: {row.reason}</span>
-                <code>{row.text}</code>
-              </li>
-            ))}
-          </ul>
-        </div>
-      ) : null}
-
-      {parsed.duplicateRows.length > 0 ? (
-        <div className="personal-flashcard-pasted-import__feedback personal-flashcard-pasted-import__feedback--duplicate">
-          <strong>Duplicate rows skipped</strong>
-          <ul>
-            {parsed.duplicateRows.map((row) => (
-              <li key={`${row.rowNumber}-${row.duplicateReason}-${row.clientId}`}>
-                <span>Row {row.rowNumber}: {row.duplicateReason}</span>
-                <code>{row.frontText} / {row.backText}</code>
-              </li>
-            ))}
-          </ul>
-        </div>
-      ) : null}
-
-      <div className="personal-flashcard-pasted-import__preview">
-        <h3>Parsed-card preview</h3>
-        {parsed.cards.length === 0 ? (
-          <p>No valid front/back pairs to preview yet.</p>
-        ) : (
-          <div className="personal-flashcard-pasted-import__list">
-            {parsed.cards.map((card) => (
-              <article
-                key={card.clientId}
-                className={[
-                  "personal-flashcard-pasted-import__row",
-                  card.importable ? "" : "is-duplicate",
-                ]
-                  .filter(Boolean)
-                  .join(" ")}
-              >
-                <span className="personal-flashcard-pasted-import__index">{card.rowNumber}</span>
-                <div>
-                  <strong>Front</strong>
-                  <p>{card.frontText}</p>
+            {parsed.configError ? (
+                <div className="personal-flashcard-form-error" role="alert">
+                    {parsed.configError}
                 </div>
-                <div>
-                  <strong>Back</strong>
-                  <p>{card.backText}</p>
-                </div>
-                <span className={card.importable ? "is-ready" : "is-skipped"}>
-                  {card.importable ? "Ready" : "Duplicate"}
+            ) : null}
+
+            <div className="personal-flashcard-pasted-import__summary">
+                <span>{parsed.importableCards.length} ready</span>
+                <span>
+                    {parsed.duplicateRows.length} duplicate{" "}
+                    {parsed.duplicateRows.length === 1 ? "row" : "rows"}
                 </span>
-              </article>
-            ))}
-          </div>
-        )}
-      </div>
+                <span>
+                    {parsed.invalidRows.length} invalid{" "}
+                    {parsed.invalidRows.length === 1 ? "row" : "rows"}
+                </span>
+            </div>
 
-      <div className="personal-flashcard-import__actions">
-        <div>
-          <Button
-            type="submit"
-            loading={saving}
-            disabled={busy || Boolean(parsed.configError) || parsed.importableCards.length === 0}
-            leftIcon={<Upload size={16} aria-hidden="true" />}
-          >
-            Import ready cards
-          </Button>
-          <p>
-            {parsed.invalidRows.length > 0
-              ? "Only valid non-duplicate rows are imported."
-              : "Ready cards import directly into this Personal set."}
-          </p>
-        </div>
-      </div>
-    </form>
-  );
+            {parsed.invalidRows.length > 0 ? (
+                <div className="personal-flashcard-pasted-import__feedback">
+                    <strong>Rows needing attention</strong>
+                    <ul>
+                        {parsed.invalidRows.map((row) => (
+                            <li
+                                key={`${row.rowNumber}-${row.reason}-${row.text}`}
+                            >
+                                <span>
+                                    Row {row.rowNumber}: {row.reason}
+                                </span>
+                                <code>{row.text}</code>
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+            ) : null}
+
+            {parsed.duplicateRows.length > 0 ? (
+                <div className="personal-flashcard-pasted-import__feedback personal-flashcard-pasted-import__feedback--duplicate">
+                    <strong>Duplicate rows skipped</strong>
+                    <ul>
+                        {parsed.duplicateRows.map((row) => (
+                            <li
+                                key={`${row.rowNumber}-${row.duplicateReason}-${row.clientId}`}
+                            >
+                                <span>
+                                    Row {row.rowNumber}: {row.duplicateReason}
+                                </span>
+                                <code>
+                                    {row.frontText} / {row.backText}
+                                </code>
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+            ) : null}
+
+            <div className="personal-flashcard-pasted-import__preview">
+                <h3>Parsed-card preview</h3>
+                {parsed.cards.length === 0 ? (
+                    <p>No valid front/back pairs to preview yet.</p>
+                ) : (
+                    <div className="personal-flashcard-pasted-import__list">
+                        {parsed.cards.map((card) => (
+                            <article
+                                key={card.clientId}
+                                className={[
+                                    "personal-flashcard-pasted-import__row",
+                                    card.importable ? "" : "is-duplicate",
+                                ]
+                                    .filter(Boolean)
+                                    .join(" ")}
+                            >
+                                <span className="personal-flashcard-pasted-import__index">
+                                    {card.rowNumber}
+                                </span>
+                                <div>
+                                    <strong>Front</strong>
+                                    <p>{card.frontText}</p>
+                                </div>
+                                <div>
+                                    <strong>Back</strong>
+                                    <p>{card.backText}</p>
+                                </div>
+                                <span
+                                    className={
+                                        card.importable
+                                            ? "is-ready"
+                                            : "is-skipped"
+                                    }
+                                >
+                                    {card.importable ? "Ready" : "Duplicate"}
+                                </span>
+                            </article>
+                        ))}
+                    </div>
+                )}
+            </div>
+
+            <div className="personal-flashcard-import__actions">
+                <div>
+                    <Button
+                        type="submit"
+                        loading={saving}
+                        disabled={
+                            busy ||
+                            Boolean(parsed.configError) ||
+                            parsed.importableCards.length === 0
+                        }
+                        leftIcon={<Upload size={16} aria-hidden="true" />}
+                    >
+                        Import ready cards
+                    </Button>
+                    <p>
+                        {parsed.invalidRows.length > 0
+                            ? "Only valid non-duplicate rows are imported."
+                            : "Ready cards import directly into this Personal set."}
+                    </p>
+                </div>
+            </div>
+        </form>
+    );
 }
 
 export function PersonalFlashcardImportModal({
-  open,
-  existingCards = [],
-  onClose,
-  onGenerateFromFile,
-  onConfirmSave,
-  onUpload,
+    open,
+    existingCards = [],
+    onClose,
+    onGenerateFromFile,
+    onConfirmSave,
+    onUpload,
 }) {
-  const toast = useToast();
-  const documentInputRef = useRef(null);
-  const [sourceMode, setSourceMode] = useState("text");
-  const [pastedValues, setPastedValues] = useState(PERSONAL_PASTED_DEFAULT_VALUES);
-  const [file, setFile] = useState(null);
-  const [options, setOptions] = useState(PERSONAL_IMPORT_DEFAULT_OPTIONS);
-  const [documentDrafts, setDocumentDrafts] = useState([]);
-  const [selectionMode, setSelectionMode] = useState(false);
-  const [selectedIds, setSelectedIds] = useState(() => new Set());
-  const [editingDraft, setEditingDraft] = useState(null);
-  const [generating, setGenerating] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
-
-  const parsedPastedCards = useMemo(
-    () => parsePersonalPastedFlashcards(pastedValues, existingCards),
-    [existingCards, pastedValues],
-  );
-  const normalizedDrafts = useMemo(() => normalizeCards(documentDrafts), [documentDrafts]);
-  const selectedSet = useMemo(() => new Set(selectedIds), [selectedIds]);
-  const busy = generating || saving;
-  const canClose = !busy && !editingDraft;
-  const hasDocumentDrafts = sourceMode === "file" && documentDrafts.length > 0;
-
-  function clearDocumentReview() {
-    setDocumentDrafts([]);
-    setSelectedIds(new Set());
-    setSelectionMode(false);
-    setEditingDraft(null);
-  }
-
-  function switchSourceMode(nextMode) {
-    if (nextMode === sourceMode || busy || editingDraft) return;
-    clearDocumentReview();
-    setError("");
-    setSourceMode(nextMode);
-  }
-
-  async function importPastedCards(event) {
-    event.preventDefault();
-    if (parsedPastedCards.configError) {
-      setError(parsedPastedCards.configError);
-      return;
-    }
-    if (!parsedPastedCards.importableCards.length) {
-      setError("Paste at least one non-duplicate front/back flashcard row.");
-      return;
-    }
-
-    setSaving(true);
-    setError("");
-    try {
-      const detail = await onConfirmSave(toBulkCreateCards(parsedPastedCards.importableCards));
-      toast.success(`Imported ${parsedPastedCards.importableCards.length} ready ${parsedPastedCards.importableCards.length === 1 ? "card" : "cards"}.`);
-      onClose(detail);
-    } catch (saveError) {
-      setError(getErrorMessage(saveError, "Unable to import ready flashcards."));
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  async function generateDocumentDrafts() {
-    const optionError = validatePersonalImportOptions(options);
-    const sourceError = !file ? "Choose a PDF or DOCX file." : null;
-    if (optionError || sourceError) {
-      setError(optionError || sourceError);
-      return;
-    }
-
-    setGenerating(true);
-    setError("");
-    try {
-      const response = await onGenerateFromFile({ ...options, file });
-      const nextDrafts = toDraftCards(response?.cards).map((card) => ({
-        ...card,
-        importMode: "file",
-      }));
-      setDocumentDrafts(withSequentialOrderIndices(nextDrafts));
-      setSelectedIds(new Set());
-      setSelectionMode(false);
-      toast.success(`Generated ${nextDrafts.length} draft ${nextDrafts.length === 1 ? "card" : "cards"}.`);
-    } catch (generateError) {
-      setError(getErrorMessage(generateError, "Unable to generate flashcards from this document."));
-    } finally {
-      setGenerating(false);
-    }
-  }
-
-  function toggleDraft(card) {
-    setSelectedIds((current) => {
-      const next = new Set(current);
-      if (next.has(card.id)) next.delete(card.id);
-      else next.add(card.id);
-      return next;
-    });
-  }
-
-  function deleteDraft(card) {
-    setDocumentDrafts((current) => current.filter((draft) => draft.id !== card.id));
-    setSelectedIds((current) => {
-      const next = new Set(current);
-      next.delete(card.id);
-      return next;
-    });
-  }
-
-  function deleteSelectedDrafts() {
-    const ids = new Set(selectedIds);
-    setDocumentDrafts((current) => current.filter((draft) => !ids.has(draft.id)));
-    setSelectedIds(new Set());
-    setSelectionMode(false);
-  }
-
-  function removeFile() {
-    setFile(null);
-    if (documentInputRef.current) {
-      documentInputRef.current.value = "";
-    }
-  }
-
-  function moveDraft({ fromVisibleIndex, toVisibleIndex }) {
-    setDocumentDrafts((current) =>
-      withSequentialOrderIndices(moveItem(current, fromVisibleIndex, toVisibleIndex)),
+    const toast = useToast();
+    const documentInputRef = useRef(null);
+    const [sourceMode, setSourceMode] = useState("text");
+    const [pastedValues, setPastedValues] = useState(
+        PERSONAL_PASTED_DEFAULT_VALUES,
     );
-  }
+    const [file, setFile] = useState(null);
+    const [options, setOptions] = useState(PERSONAL_IMPORT_DEFAULT_OPTIONS);
+    const [documentDrafts, setDocumentDrafts] = useState([]);
+    const [selectionMode, setSelectionMode] = useState(false);
+    const [selectedIds, setSelectedIds] = useState(() => new Set());
+    const [editingDraft, setEditingDraft] = useState(null);
+    const [generating, setGenerating] = useState(false);
+    const [saving, setSaving] = useState(false);
+    const [error, setError] = useState("");
 
-  async function saveDraftEdit(values) {
-    setDocumentDrafts((current) =>
-      current.map((draft) =>
-        draft.id === editingDraft.id
-          ? { ...draft, ...values }
-          : draft,
-      ),
+    const parsedPastedCards = useMemo(
+        () => parsePersonalPastedFlashcards(pastedValues, existingCards),
+        [existingCards, pastedValues],
     );
-    setEditingDraft(null);
-  }
+    const normalizedDrafts = useMemo(
+        () => normalizeCards(documentDrafts),
+        [documentDrafts],
+    );
+    const selectedSet = useMemo(() => new Set(selectedIds), [selectedIds]);
+    const busy = generating || saving;
+    const canClose = !busy && !editingDraft;
+    const hasDocumentDrafts =
+        sourceMode === "file" && documentDrafts.length > 0;
 
-  async function confirmDocumentSave() {
-    if (!documentDrafts.length) return;
-    setSaving(true);
-    setError("");
-    try {
-      const detail = await onConfirmSave(toBulkCreateCards(documentDrafts));
-      toast.success(`Saved ${documentDrafts.length} ${documentDrafts.length === 1 ? "card" : "cards"}.`);
-      onClose(detail);
-    } catch (saveError) {
-      setError(getErrorMessage(saveError, "Unable to save generated flashcards."));
-    } finally {
-      setSaving(false);
+    function clearDocumentReview() {
+        setDocumentDrafts([]);
+        setSelectedIds(new Set());
+        setSelectionMode(false);
+        setEditingDraft(null);
     }
-  }
 
-  return (
-    <Modal
-      open={open}
-      title="Import flashcards"
-      description="Paste ready front/back pairs or generate temporary drafts from a document."
-      size="xl"
-      closeDisabled={!canClose}
-      onClose={() => {
-        if (canClose) onClose();
-      }}
-      footer={(
-        <div className="personal-flashcard-modal-actions">
-          <Button type="button" variant="secondary" onClick={() => onClose()} disabled={!canClose}>
-            Cancel
-          </Button>
-          {hasDocumentDrafts ? (
-            <Button type="button" onClick={confirmDocumentSave} loading={saving} disabled={busy || documentDrafts.length === 0}>
-              Confirm save
-            </Button>
-          ) : null}
-        </div>
-      )}
-    >
-      <div className="personal-flashcard-import">
-        <div className="personal-flashcard-import__intro">
-          <span className="personal-flashcard-import__eyebrow">
-            {sourceMode === "text" ? <FileText size={14} aria-hidden="true" /> : <Sparkles size={14} aria-hidden="true" />}
-            {sourceMode === "text" ? "Delimiter import" : "Gemini document generator"}
-          </span>
-          <p>
-            {sourceMode === "text"
-              ? "Paste ready cards, choose separators, preview the parsed rows, and import valid cards directly."
-              : "Upload a PDF or DOCX, generate temporary drafts, review them, then save only the cards you want."}
-          </p>
-        </div>
+    function switchSourceMode(nextMode) {
+        if (nextMode === sourceMode || busy || editingDraft) return;
+        clearDocumentReview();
+        setError("");
+        setSourceMode(nextMode);
+    }
 
-        <div className="personal-flashcard-import__tabs" role="tablist" aria-label="Import source">
-          <button
-            type="button"
-            className={sourceMode === "text" ? "is-active" : ""}
-            onClick={() => switchSourceMode("text")}
-            disabled={busy || Boolean(editingDraft)}
-            role="tab"
-            aria-selected={sourceMode === "text"}
-          >
-            <FileText size={16} />
-            Pasted text
-          </button>
-          <button
-            type="button"
-            className={sourceMode === "file" ? "is-active" : ""}
-            onClick={() => switchSourceMode("file")}
-            disabled={busy || Boolean(editingDraft)}
-            role="tab"
-            aria-selected={sourceMode === "file"}
-          >
-            <Upload size={16} />
-            Document
-          </button>
-        </div>
+    async function importPastedCards(event) {
+        event.preventDefault();
+        if (parsedPastedCards.configError) {
+            setError(parsedPastedCards.configError);
+            return;
+        }
+        if (!parsedPastedCards.importableCards.length) {
+            setError(
+                "Paste at least one non-duplicate front/back flashcard row.",
+            );
+            return;
+        }
 
-        {sourceMode === "text" ? (
-          <PastedTextPanel
-            values={pastedValues}
-            parsed={parsedPastedCards}
-            busy={busy}
-            saving={saving}
-            onChange={(nextValues) => {
-              setPastedValues(nextValues);
-              setError("");
+        setSaving(true);
+        setError("");
+        try {
+            const detail = await onConfirmSave(
+                toBulkCreateCards(parsedPastedCards.importableCards),
+            );
+            toast.success(
+                `Imported ${parsedPastedCards.importableCards.length} ready ${parsedPastedCards.importableCards.length === 1 ? "card" : "cards"}.`,
+            );
+            onClose(detail);
+        } catch (saveError) {
+            setError(
+                getErrorMessage(
+                    saveError,
+                    "Unable to import ready flashcards.",
+                ),
+            );
+        } finally {
+            setSaving(false);
+        }
+    }
+
+    async function generateDocumentDrafts() {
+        const optionError = validatePersonalImportOptions(options);
+        const sourceError = !file ? "Choose a PDF or DOCX file." : null;
+        if (optionError || sourceError) {
+            setError(optionError || sourceError);
+            return;
+        }
+
+        setGenerating(true);
+        setError("");
+        try {
+            const response = await onGenerateFromFile({ ...options, file });
+            const nextDrafts = toDraftCards(response?.cards).map((card) => ({
+                ...card,
+                importMode: "file",
+            }));
+            setDocumentDrafts(withSequentialOrderIndices(nextDrafts));
+            setSelectedIds(new Set());
+            setSelectionMode(false);
+            toast.success(
+                `Generated ${nextDrafts.length} draft ${nextDrafts.length === 1 ? "card" : "cards"}.`,
+            );
+        } catch (generateError) {
+            setError(
+                getErrorMessage(
+                    generateError,
+                    "Unable to generate flashcards from this document.",
+                ),
+            );
+        } finally {
+            setGenerating(false);
+        }
+    }
+
+    function toggleDraft(card) {
+        setSelectedIds((current) => {
+            const next = new Set(current);
+            if (next.has(card.id)) next.delete(card.id);
+            else next.add(card.id);
+            return next;
+        });
+    }
+
+    function deleteDraft(card) {
+        setDocumentDrafts((current) =>
+            current.filter((draft) => draft.id !== card.id),
+        );
+        setSelectedIds((current) => {
+            const next = new Set(current);
+            next.delete(card.id);
+            return next;
+        });
+    }
+
+    function deleteSelectedDrafts() {
+        const ids = new Set(selectedIds);
+        setDocumentDrafts((current) =>
+            current.filter((draft) => !ids.has(draft.id)),
+        );
+        setSelectedIds(new Set());
+        setSelectionMode(false);
+    }
+
+    function removeFile() {
+        setFile(null);
+        if (documentInputRef.current) {
+            documentInputRef.current.value = "";
+        }
+    }
+
+    function moveDraft({ fromVisibleIndex, toVisibleIndex }) {
+        setDocumentDrafts((current) =>
+            withSequentialOrderIndices(
+                moveItem(current, fromVisibleIndex, toVisibleIndex),
+            ),
+        );
+    }
+
+    async function saveDraftEdit(values) {
+        setDocumentDrafts((current) =>
+            current.map((draft) =>
+                draft.id === editingDraft.id ? { ...draft, ...values } : draft,
+            ),
+        );
+        setEditingDraft(null);
+    }
+
+    async function confirmDocumentSave() {
+        if (!documentDrafts.length) return;
+        setSaving(true);
+        setError("");
+        try {
+            const detail = await onConfirmSave(
+                toBulkCreateCards(documentDrafts),
+            );
+            toast.success(
+                `Saved ${documentDrafts.length} ${documentDrafts.length === 1 ? "card" : "cards"}.`,
+            );
+            onClose(detail);
+        } catch (saveError) {
+            setError(
+                getErrorMessage(
+                    saveError,
+                    "Unable to save generated flashcards.",
+                ),
+            );
+        } finally {
+            setSaving(false);
+        }
+    }
+
+    return (
+        <Modal
+            open={open}
+            title="Import flashcards"
+            size="xl"
+            closeDisabled={!canClose}
+            onClose={() => {
+                if (canClose) onClose();
             }}
-            onImport={importPastedCards}
-          />
-        ) : (
-          <>
-            <div className="personal-flashcard-import__source">
-              <span>Document source</span>
-              <small>Upload a PDF or DOCX file. The generated cards stay temporary until you confirm save.</small>
-              <input
-                ref={documentInputRef}
-                id="personal-flashcard-import-document"
-                type="file"
-                className="personal-flashcard-import__file-input"
-                accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                disabled={busy}
-                onChange={(event) => {
-                  setFile(event.target.files?.[0] || null);
-                  setError("");
-                }}
-              />
-              <div className={`personal-flashcard-import__file-panel${file ? " has-file" : ""}`}>
-                <label
-                  className="personal-flashcard-import__file-picker"
-                  htmlFor="personal-flashcard-import-document"
-                >
-                  <Upload size={22} aria-hidden="true" />
-                  <span>
-                    <strong>{file ? "Document selected" : "Choose a document"}</strong>
-                    <small>{file ? file.name : "PDF or DOCX accepted"}</small>
-                  </span>
-                </label>
-                {file ? (
-                  <div className="personal-flashcard-import__selected-file">
-                    <CheckCircle2 size={16} aria-hidden="true" />
-                    <span title={file.name}>{file.name}</span>
+            footer={
+                <div className="personal-flashcard-modal-actions">
                     <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={removeFile}
-                      disabled={busy}
-                      leftIcon={<X size={14} aria-hidden="true" />}
+                        type="button"
+                        variant="secondary"
+                        onClick={() => onClose()}
+                        disabled={!canClose}
                     >
-                      Remove
+                        Cancel
                     </Button>
-                  </div>
-                ) : null}
-              </div>
-            </div>
-
-            <ImportSettings
-              options={options}
-              onChange={(nextOptions) => {
-                setOptions(nextOptions);
-                setError("");
-              }}
-              disabled={busy}
-            />
-
-            <div className="personal-flashcard-import__actions">
-              <div>
-                <Button
-                  type="button"
-                  onClick={generateDocumentDrafts}
-                  loading={generating}
-                  disabled={busy}
-                  leftIcon={<Sparkles size={16} aria-hidden="true" />}
+                    {hasDocumentDrafts ? (
+                        <Button
+                            type="button"
+                            onClick={confirmDocumentSave}
+                            loading={saving}
+                            disabled={busy || documentDrafts.length === 0}
+                        >
+                            Confirm save
+                        </Button>
+                    ) : null}
+                </div>
+            }
+        >
+            <div className="personal-flashcard-import">
+                <div
+                    className="personal-flashcard-import__tabs"
+                    role="tablist"
+                    aria-label="Import source"
                 >
-                  {documentDrafts.length ? "Regenerate drafts" : "Generate drafts"}
-                </Button>
-                <p>
-                  {documentDrafts.length
-                    ? "Regenerating replaces the current temporary document drafts."
-                    : "Drafts are editable before anything is saved to your set."}
-                </p>
-              </div>
+                    <button
+                        type="button"
+                        className={sourceMode === "text" ? "is-active" : ""}
+                        onClick={() => switchSourceMode("text")}
+                        disabled={busy || Boolean(editingDraft)}
+                        role="tab"
+                        aria-selected={sourceMode === "text"}
+                    >
+                        <FileText size={16} />
+                        Pasted text
+                    </button>
+                    <button
+                        type="button"
+                        className={sourceMode === "file" ? "is-active" : ""}
+                        onClick={() => switchSourceMode("file")}
+                        disabled={busy || Boolean(editingDraft)}
+                        role="tab"
+                        aria-selected={sourceMode === "file"}
+                    >
+                        <Upload size={16} />
+                        Document
+                    </button>
+                </div>
+
+                {sourceMode === "text" ? (
+                    <PastedTextPanel
+                        values={pastedValues}
+                        parsed={parsedPastedCards}
+                        busy={busy}
+                        saving={saving}
+                        onChange={(nextValues) => {
+                            setPastedValues(nextValues);
+                            setError("");
+                        }}
+                        onImport={importPastedCards}
+                    />
+                ) : (
+                    <>
+                        <div className="personal-flashcard-import__source">
+                            <span>Document source</span>
+                            <input
+                                ref={documentInputRef}
+                                id="personal-flashcard-import-document"
+                                type="file"
+                                className="personal-flashcard-import__file-input"
+                                accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                                disabled={busy}
+                                onChange={(event) => {
+                                    setFile(event.target.files?.[0] || null);
+                                    setError("");
+                                }}
+                            />
+                            <div
+                                className={`personal-flashcard-import__file-panel${file ? " has-file" : ""}`}
+                            >
+                                <label
+                                    className="personal-flashcard-import__file-picker"
+                                    htmlFor="personal-flashcard-import-document"
+                                >
+                                    <Upload size={22} aria-hidden="true" />
+                                    <span>
+                                        <strong>
+                                            {file
+                                                ? "Document selected"
+                                                : "Choose a document"}
+                                        </strong>
+                                        <small>
+                                            {file
+                                                ? file.name
+                                                : "Upload a PDF or DOCX file. The generated cards stay temporary until you confirm save."}
+                                        </small>
+                                    </span>
+                                </label>
+                                {file ? (
+                                    <div className="personal-flashcard-import__selected-file">
+                                        <CheckCircle2
+                                            size={16}
+                                            aria-hidden="true"
+                                        />
+                                        <span title={file.name}>
+                                            {file.name}
+                                        </span>
+                                        <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={removeFile}
+                                            disabled={busy}
+                                            leftIcon={
+                                                <X
+                                                    size={14}
+                                                    aria-hidden="true"
+                                                />
+                                            }
+                                        >
+                                            Remove
+                                        </Button>
+                                    </div>
+                                ) : null}
+                            </div>
+                        </div>
+
+                        <ImportSettings
+                            options={options}
+                            onChange={(nextOptions) => {
+                                setOptions(nextOptions);
+                                setError("");
+                            }}
+                            disabled={busy}
+                        />
+
+                        <div className="personal-flashcard-import__actions">
+                            <div>
+                                <Button
+                                    type="button"
+                                    onClick={generateDocumentDrafts}
+                                    loading={generating}
+                                    disabled={busy}
+                                    leftIcon={
+                                        <Sparkles
+                                            size={16}
+                                            aria-hidden="true"
+                                        />
+                                    }
+                                >
+                                    {documentDrafts.length
+                                        ? "Regenerate drafts"
+                                        : "Generate drafts"}
+                                </Button>
+                                <p>
+                                    {documentDrafts.length
+                                        ? "Regenerating replaces the current temporary document drafts."
+                                        : "Drafts are editable before anything is saved to your set."}
+                                </p>
+                            </div>
+                        </div>
+
+                        {documentDrafts.length > 0 && (
+                            <section
+                                className="personal-flashcard-import__review"
+                                aria-label="Generated flashcard review"
+                            >
+                                <header className="personal-flashcard-import__review-header">
+                                    <span>Review generated drafts</span>
+                                    <h3>
+                                        {documentDrafts.length} draft{" "}
+                                        {documentDrafts.length === 1
+                                            ? "card"
+                                            : "cards"}{" "}
+                                        ready
+                                    </h3>
+                                    <p>
+                                        Edit wording, remove weak cards, or drag
+                                        to reorder. Confirm save writes the
+                                        remaining drafts into this set.
+                                    </p>
+                                </header>
+                                <FlashcardSelectionToolbar
+                                    selectionMode={selectionMode}
+                                    selectedCount={selectedIds.size}
+                                    totalSelectableCount={documentDrafts.length}
+                                    bulkDeleteCount={selectedIds.size}
+                                    disabled={busy}
+                                    onEnterSelection={() =>
+                                        setSelectionMode(true)
+                                    }
+                                    onExitSelection={() => {
+                                        setSelectionMode(false);
+                                        setSelectedIds(new Set());
+                                    }}
+                                    onSelectAll={() =>
+                                        setSelectedIds(
+                                            new Set(draftIds(documentDrafts)),
+                                        )
+                                    }
+                                    onClearSelection={() =>
+                                        setSelectedIds(new Set())
+                                    }
+                                    onBulkDelete={deleteSelectedDrafts}
+                                    bulkDeleteDisabled={selectedIds.size === 0}
+                                />
+                                <FlashcardCardList
+                                    cards={normalizedDrafts}
+                                    disabled={busy}
+                                    selectionMode={selectionMode}
+                                    selectedCardIds={[...selectedSet]}
+                                    onToggleSelect={toggleDraft}
+                                    onSelect={() => {}}
+                                    onEdit={setEditingDraft}
+                                    onDelete={deleteDraft}
+                                    onMove={moveDraft}
+                                    renderCardMeta={(card) =>
+                                        card.sourceExcerpt ? (
+                                            <div className="flashcard-list-item__meta personal-flashcard-import__source-excerpt">
+                                                <p>
+                                                    <strong>Source:</strong>{" "}
+                                                    {card.sourceExcerpt}
+                                                </p>
+                                            </div>
+                                        ) : null
+                                    }
+                                />
+                            </section>
+                        )}
+                    </>
+                )}
+
+                {error && (
+                    <div className="personal-flashcard-form-error" role="alert">
+                        {error}
+                    </div>
+                )}
             </div>
 
-            {documentDrafts.length > 0 && (
-              <section className="personal-flashcard-import__review" aria-label="Generated flashcard review">
-                <header className="personal-flashcard-import__review-header">
-                  <span>Review generated drafts</span>
-                  <h3>{documentDrafts.length} draft {documentDrafts.length === 1 ? "card" : "cards"} ready</h3>
-                  <p>Edit wording, remove weak cards, or drag to reorder. Confirm save writes the remaining drafts into this set.</p>
-                </header>
-                <FlashcardSelectionToolbar
-                  selectionMode={selectionMode}
-                  selectedCount={selectedIds.size}
-                  totalSelectableCount={documentDrafts.length}
-                  bulkDeleteCount={selectedIds.size}
-                  disabled={busy}
-                  onEnterSelection={() => setSelectionMode(true)}
-                  onExitSelection={() => {
-                    setSelectionMode(false);
-                    setSelectedIds(new Set());
-                  }}
-                  onSelectAll={() => setSelectedIds(new Set(draftIds(documentDrafts)))}
-                  onClearSelection={() => setSelectedIds(new Set())}
-                  onBulkDelete={deleteSelectedDrafts}
-                  bulkDeleteDisabled={selectedIds.size === 0}
+            {editingDraft && (
+                <PersonalFlashcardCardFormModal
+                    open
+                    card={editingDraft}
+                    onClose={() => setEditingDraft(null)}
+                    onSave={saveDraftEdit}
+                    onUpload={onUpload}
                 />
-                <FlashcardCardList
-                  cards={normalizedDrafts}
-                  disabled={busy}
-                  selectionMode={selectionMode}
-                  selectedCardIds={[...selectedSet]}
-                  onToggleSelect={toggleDraft}
-                  onSelect={() => {}}
-                  onEdit={setEditingDraft}
-                  onDelete={deleteDraft}
-                  onMove={moveDraft}
-                  renderCardMeta={(card) => card.sourceExcerpt ? (
-                    <div className="flashcard-list-item__meta personal-flashcard-import__source-excerpt">
-                      <p><strong>Source:</strong> {card.sourceExcerpt}</p>
-                    </div>
-                  ) : null}
-                />
-              </section>
             )}
-          </>
-        )}
-
-        {error && <div className="personal-flashcard-form-error" role="alert">{error}</div>}
-      </div>
-
-      {editingDraft && (
-        <PersonalFlashcardCardFormModal
-          open
-          card={editingDraft}
-          onClose={() => setEditingDraft(null)}
-          onSave={saveDraftEdit}
-          onUpload={onUpload}
-        />
-      )}
-    </Modal>
-  );
+        </Modal>
+    );
 }

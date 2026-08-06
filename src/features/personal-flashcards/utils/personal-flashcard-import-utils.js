@@ -1,19 +1,12 @@
 export const PERSONAL_IMPORT_DEFAULT_OPTIONS = {
   desiredCount: 10,
   language: "auto",
-  difficulty: "medium",
 };
 
 export const PERSONAL_IMPORT_LANGUAGES = [
   { value: "auto", label: "Auto-detect" },
   { value: "vi", label: "Vietnamese" },
   { value: "en", label: "English" },
-];
-
-export const PERSONAL_IMPORT_DIFFICULTIES = [
-  { value: "easy", label: "Easy" },
-  { value: "medium", label: "Medium" },
-  { value: "hard", label: "Hard" },
 ];
 
 export const PERSONAL_PASTED_FRONT_BACK_SEPARATOR_OPTIONS = [
@@ -68,9 +61,6 @@ export function validatePersonalImportOptions(options = {}) {
   }
   if (!["auto", "vi", "en"].includes(options.language || "auto")) {
     return "Choose a supported language.";
-  }
-  if (!["easy", "medium", "hard"].includes(options.difficulty || "medium")) {
-    return "Choose a supported difficulty.";
   }
   return null;
 }

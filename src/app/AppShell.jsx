@@ -1,8 +1,8 @@
 import {
-  BrowserRouter,
-  Navigate,
-  useLocation,
-  useRoutes,
+    BrowserRouter,
+    Navigate,
+    useLocation,
+    useRoutes,
 } from "react-router-dom";
 import { PublicLayout } from "./layouts/PublicLayout";
 import { AppLayout } from "./layouts/AppLayout";
@@ -12,31 +12,28 @@ import { TrainerLayout } from "./layouts/TrainerLayout";
 import { ProtectedRoute } from "./routes/ProtectedRoute";
 import { RoleGuard } from "./routes/RoleGuard";
 import {
-  isRoleAllowed,
-  normalizeRole,
-  PERSONAL_FLASHCARD_ROLES,
-  PERSONAL_FLASHCARD_STAFF_LAYOUT_ROLES,
-  PROFILE_ROLES,
-  ROLES,
+    isRoleAllowed,
+    normalizeRole,
+    PERSONAL_FLASHCARD_ROLES,
+    PERSONAL_FLASHCARD_STAFF_LAYOUT_ROLES,
+    PROFILE_ROLES,
+    ROLES,
 } from "@/shared/constants/roles";
 import { getCurrentUser } from "@/services";
 import { HomePage } from "../features/home/HomePage";
-import {
-  CourseDetailPage,
-  TrainerProfilePage,
-} from "../features/course";
+import { CourseDetailPage, TrainerProfilePage } from "../features/course";
 import { LearningWorkspacePage } from "@/features/learning";
 import {
-  LoginPage,
-  RegisterPage,
-  ForgotPasswordPage,
-  ResetPasswordPage,
-  VerifyEmailPage,
-  ProfilePage,
+    LoginPage,
+    RegisterPage,
+    ForgotPasswordPage,
+    ResetPasswordPage,
+    VerifyEmailPage,
+    ProfilePage,
 } from "../features/auth";
 import {
-  OpeningScheduleDetailPage,
-  OpeningSchedulePage,
+    OpeningScheduleDetailPage,
+    OpeningSchedulePage,
 } from "../features/opening-schedule";
 import getTraineeRoutes from "./routes/traineeRoutes";
 import getStaffRoutes from "./routes/staffRoutes";
@@ -46,260 +43,272 @@ import { ForbiddenPage } from "./pages/error/ForbiddenPage";
 import { ServerErrorPage } from "./pages/error/ServerErrorPage";
 import { SiteFooter } from "@/shared/components/SiteFooter";
 import {
-  PersonalFlashcardLibraryPage,
-  PersonalFlashcardSetDetailPage,
-  PersonalFlashcardStudyPage,
+    PersonalFlashcardLibraryPage,
+    PersonalFlashcardSetDetailPage,
+    PersonalFlashcardStudyPage,
 } from "@/features/personal-flashcards";
 import {
-  NotificationCenterPage,
-  NotificationDetailPage,
-  NotificationProvider,
+    NotificationCenterPage,
+    NotificationDetailPage,
+    NotificationProvider,
 } from "@/features/notification";
 
 function PersonalFlashcardLayoutBoundary() {
-  const user = getCurrentUser();
-  const normalizedRole = normalizeRole(user?.role);
+    const user = getCurrentUser();
+    const normalizedRole = normalizeRole(user?.role);
 
-  if (normalizedRole === ROLES.TRAINEE) {
-    return <TraineeLayout />;
-  }
+    if (normalizedRole === ROLES.TRAINEE) {
+        return <TraineeLayout />;
+    }
 
-  if (isRoleAllowed(normalizedRole, PERSONAL_FLASHCARD_STAFF_LAYOUT_ROLES)) {
-    return <TrainerLayout />;
-  }
+    if (isRoleAllowed(normalizedRole, PERSONAL_FLASHCARD_STAFF_LAYOUT_ROLES)) {
+        return <TrainerLayout />;
+    }
 
-  return <Navigate to="/403" replace />;
+    return <Navigate to="/403" replace />;
 }
 
 function NotificationLayoutBoundary() {
-  const user = getCurrentUser();
-  const normalizedRole = normalizeRole(user?.role);
+    const user = getCurrentUser();
+    const normalizedRole = normalizeRole(user?.role);
 
-  if (normalizedRole === ROLES.TRAINEE) {
-    return <TraineeLayout />;
-  }
+    if (normalizedRole === ROLES.TRAINEE) {
+        return <TraineeLayout />;
+    }
 
-  if (normalizedRole === ROLES.ADMIN) {
+    if (normalizedRole === ROLES.ADMIN) {
+        return <AppLayout />;
+    }
+
+    if (isRoleAllowed(normalizedRole, [ROLES.TRAINER, ROLES.TMO, ROLES.SME])) {
+        return <TrainerLayout />;
+    }
+
     return <AppLayout />;
-  }
-
-  if (isRoleAllowed(normalizedRole, [ROLES.TRAINER, ROLES.TMO, ROLES.SME])) {
-    return <TrainerLayout />;
-  }
-
-  return <AppLayout />;
 }
 
 const appRoutes = [
-  {
-    path: "/",
-    element: (
-      <AuthAwareLayout>
-        <HomePage />
-      </AuthAwareLayout>
-    ),
-  },
-  {
-    path: "/login",
-    element: (
-      <PublicLayout>
-        <LoginPage />
-      </PublicLayout>
-    ),
-  },
-  {
-    path: "/register",
-    element: (
-      <PublicLayout>
-        <RegisterPage />
-      </PublicLayout>
-    ),
-  },
-  {
-    path: "/forgot-password",
-    element: (
-      <PublicLayout>
-        <ForgotPasswordPage />
-      </PublicLayout>
-    ),
-  },
-  {
-    path: "/reset-password",
-    element: (
-      <PublicLayout>
-        <ResetPasswordPage />
-      </PublicLayout>
-    ),
-  },
-  {
-    path: "/verify-email",
-    element: (
-      <PublicLayout>
-        <VerifyEmailPage />
-      </PublicLayout>
-    ),
-  },
-  {
-    path: "/courses/:courseId/preview",
-    element: (
-      <PublicLayout>
-        <LearningWorkspacePage mode="guest" />
-      </PublicLayout>
-    ),
-  },
-  {
-    path: "/courses/:courseId/learn",
-    element: (
-      <PublicLayout>
-        <LearningWorkspacePage previewMode={true} />
-      </PublicLayout>
-    ),
-  },
-  {
-    path: "/courses/:slug",
-    element: (
-      <AuthAwareLayout>
-        <CourseDetailPage />
-      </AuthAwareLayout>
-    ),
-  },
-  {
-    path: "/opening-schedule",
-    element: (
-      <AuthAwareLayout>
-        <OpeningSchedulePage />
-      </AuthAwareLayout>
-    ),
-  },
-  {
-    path: "/opening-schedule/:classId",
-    element: (
-      <AuthAwareLayout>
-        <OpeningScheduleDetailPage />
-      </AuthAwareLayout>
-    ),
-  },
-
-  {
-    path: "/trainers/:trainerId",
-    element: (
-      <PublicLayout>
-        <TrainerProfilePage />
-      </PublicLayout>
-    ),
-  },
-
-  // =========================================================
-  // BẢO VỆ CHẶT CHẼ: Cô lập không gian chạy của từng nhóm quyền
-  // =========================================================
-  {
-    element: <ProtectedRoute />,
-    children: [
-      // Admin Course Learning Preview - fullscreen, outside AppLayout
-      {
+    {
+        path: "/",
         element: (
-          <RoleGuard allowedRoles={[ROLES.ADMIN, ROLES.TMO, ROLES.SME]} />
+            <AuthAwareLayout>
+                <HomePage />
+            </AuthAwareLayout>
         ),
-        children: [
-          {
-            path: "/admin/courses/:courseId/preview",
-            element: <LearningWorkspacePage mode="admin-preview" />,
-          },
-        ],
-      },
-
-      // Staff learning preview - keep staff inside the /staff route space.
-      {
+    },
+    {
+        path: "/login",
         element: (
-          <RoleGuard allowedRoles={[ROLES.TRAINER, ROLES.TMO, ROLES.SME]} />
+            <PublicLayout>
+                <LoginPage />
+            </PublicLayout>
         ),
-        children: [
-          {
-            path: "/staff/courses/:courseId/preview",
-            element: <LearningWorkspacePage mode="admin-preview" />,
-          },
-        ],
-      },
+    },
+    {
+        path: "/register",
+        element: (
+            <PublicLayout>
+                <RegisterPage />
+            </PublicLayout>
+        ),
+    },
+    {
+        path: "/forgot-password",
+        element: (
+            <PublicLayout>
+                <ForgotPasswordPage />
+            </PublicLayout>
+        ),
+    },
+    {
+        path: "/reset-password",
+        element: (
+            <PublicLayout>
+                <ResetPasswordPage />
+            </PublicLayout>
+        ),
+    },
+    {
+        path: "/verify-email",
+        element: (
+            <PublicLayout>
+                <VerifyEmailPage />
+            </PublicLayout>
+        ),
+    },
+    {
+        path: "/courses/:courseId/preview",
+        element: (
+            <PublicLayout>
+                <LearningWorkspacePage mode="guest" />
+            </PublicLayout>
+        ),
+    },
+    {
+        path: "/courses/:courseId/learn",
+        element: (
+            <PublicLayout>
+                <LearningWorkspacePage previewMode={true} />
+            </PublicLayout>
+        ),
+    },
+    {
+        path: "/courses/:slug",
+        element: (
+            <AuthAwareLayout>
+                <CourseDetailPage />
+            </AuthAwareLayout>
+        ),
+    },
+    {
+        path: "/opening-schedule",
+        element: (
+            <AuthAwareLayout>
+                <OpeningSchedulePage />
+            </AuthAwareLayout>
+        ),
+    },
+    {
+        path: "/opening-schedule/:classId",
+        element: (
+            <AuthAwareLayout>
+                <OpeningScheduleDetailPage />
+            </AuthAwareLayout>
+        ),
+    },
 
-      // Profile dùng header ngang chung, không hiển thị welcome/tab bar theo role.
-      {
-        element: <RoleGuard allowedRoles={PROFILE_ROLES} />,
-        children: [
-          {
-            element: <TrainerLayout />,
-            children: [{ path: "/profile", element: <ProfilePage /> }],
-          },
-        ],
-      },
-      {
-        element: <NotificationLayoutBoundary />,
-        children: [
-          { path: "/notifications", element: <NotificationCenterPage /> },
-          {
-            path: "/notifications/:notificationId",
-            element: <NotificationDetailPage />,
-          },
-        ],
-      },
-      {
-        element: <RoleGuard allowedRoles={PERSONAL_FLASHCARD_ROLES} />,
-        children: [
-          {
-            element: <PersonalFlashcardLayoutBoundary />,
-            children: [
-              { path: "/flashcards", element: <PersonalFlashcardLibraryPage /> },
-              {
-                path: "/flashcards/:setId",
-                element: <PersonalFlashcardSetDetailPage />,
-              },
-              {
-                path: "/flashcards/:setId/study",
-                element: <PersonalFlashcardStudyPage />,
-              },
-            ],
-          },
-        ],
-      },
+    {
+        path: "/trainers/:trainerId",
+        element: (
+            <PublicLayout>
+                <TrainerProfilePage />
+            </PublicLayout>
+        ),
+    },
 
-      // Nhóm 2: Bung riêng cụm Trainee thông qua thực thi hàm
-      ...getTraineeRoutes(), // 🟩 ĐÃ SỬA: Gọi thực thi hàm với cặp ngoặc ()
+    // =========================================================
+    // BẢO VỆ CHẶT CHẼ: Cô lập không gian chạy của từng nhóm quyền
+    // =========================================================
+    {
+        element: <ProtectedRoute />,
+        children: [
+            // Admin Course Learning Preview - fullscreen, outside AppLayout
+            {
+                element: (
+                    <RoleGuard
+                        allowedRoles={[ROLES.ADMIN, ROLES.TMO, ROLES.SME]}
+                    />
+                ),
+                children: [
+                    {
+                        path: "/admin/courses/:courseId/preview",
+                        element: <LearningWorkspacePage mode="admin-preview" />,
+                    },
+                ],
+            },
 
-      // Nhóm 3: Bung riêng cụm Staff
-      ...getStaffRoutes(),
+            // Staff learning preview - keep staff inside the /staff route space.
+            {
+                element: (
+                    <RoleGuard
+                        allowedRoles={[ROLES.TRAINER, ROLES.TMO, ROLES.SME]}
+                    />
+                ),
+                children: [
+                    {
+                        path: "/staff/courses/:courseId/preview",
+                        element: <LearningWorkspacePage mode="admin-preview" />,
+                    },
+                ],
+            },
 
-      // Nhóm 4: Bung riêng toàn bộ cụm Admin
-      ...getAdminRoutes(),
-    ],
-  },
-  { path: "/403", element: <ForbiddenPage /> },
-  { path: "/500", element: <ServerErrorPage /> },
-  { path: "/404", element: <NotFoundPage /> },
-  { path: "*", element: <Navigate to="/404" replace /> },
+            // Profile dùng header ngang chung, không hiển thị welcome/tab bar theo role.
+            {
+                element: <RoleGuard allowedRoles={PROFILE_ROLES} />,
+                children: [
+                    {
+                        element: <TrainerLayout />,
+                        children: [
+                            { path: "/profile", element: <ProfilePage /> },
+                        ],
+                    },
+                ],
+            },
+            {
+                element: <NotificationLayoutBoundary />,
+                children: [
+                    {
+                        path: "/notifications",
+                        element: <NotificationCenterPage />,
+                    },
+                    {
+                        path: "/notifications/:notificationId",
+                        element: <NotificationDetailPage />,
+                    },
+                ],
+            },
+            {
+                element: <RoleGuard allowedRoles={PERSONAL_FLASHCARD_ROLES} />,
+                children: [
+                    {
+                        element: <PersonalFlashcardLayoutBoundary />,
+                        children: [
+                            {
+                                path: "/flashcards",
+                                element: <PersonalFlashcardLibraryPage />,
+                            },
+                            {
+                                path: "/flashcards/:setId",
+                                element: <PersonalFlashcardSetDetailPage />,
+                            },
+                            {
+                                path: "/flashcards/:setId/study",
+                                element: <PersonalFlashcardStudyPage />,
+                            },
+                        ],
+                    },
+                ],
+            },
+
+            // Nhóm 2: Bung riêng cụm Trainee thông qua thực thi hàm
+            ...getTraineeRoutes(),
+
+            // Nhóm 3: Bung riêng cụm Staff
+            ...getStaffRoutes(),
+
+            // Nhóm 4: Bung riêng toàn bộ cụm Admin
+            ...getAdminRoutes(),
+        ],
+    },
+    { path: "/403", element: <ForbiddenPage /> },
+    { path: "/500", element: <ServerErrorPage /> },
+    { path: "/404", element: <NotFoundPage /> },
+    { path: "*", element: <Navigate to="/404" replace /> },
 ];
 
 function AppRoutes() {
-  return useRoutes(appRoutes);
+    return useRoutes(appRoutes);
 }
 
 function RoutedApp() {
-  const { pathname } = useLocation();
-  const showPublicFooter =
-    pathname === "/" ||
-    /^\/courses\/[^/]+$/.test(pathname) ||
-    /^\/trainers\/[^/]+$/.test(pathname);
+    const { pathname } = useLocation();
+    const showPublicFooter =
+        pathname === "/" ||
+        /^\/courses\/[^/]+$/.test(pathname) ||
+        /^\/trainers\/[^/]+$/.test(pathname);
 
-  return (
-    <NotificationProvider>
-      <AppRoutes />
-      {showPublicFooter && <SiteFooter />}
-    </NotificationProvider>
-  );
+    return (
+        <NotificationProvider>
+            <AppRoutes />
+            {showPublicFooter && <SiteFooter />}
+        </NotificationProvider>
+    );
 }
 
 export function AppShell() {
-  return (
-    <BrowserRouter>
-      <RoutedApp />
-    </BrowserRouter>
-  );
+    return (
+        <BrowserRouter>
+            <RoutedApp />
+        </BrowserRouter>
+    );
 }

@@ -29,8 +29,6 @@
 
 .admin-card {
     background: #ffffff;
-    border: 1px solid var(--line, #e7ecf4);
-    border-radius: 2px;
     padding: 22px;
     box-shadow: none;
 }
@@ -47,11 +45,8 @@
 .admin-toolbar {
     display: flex;
     flex-wrap: wrap;
-    gap: 12px;
     align-items: center;
     justify-content: space-between;
-    padding: 14px 18px;
-    border-bottom: 1px solid var(--line, #e7ecf4);
 }
 
 .admin-toolbar__filters {
@@ -146,8 +141,10 @@
     box-shadow: none;
 }
 
-.admin-filter-bar__search .input-field__control:hover:not(:disabled):not(:focus),
-.admin-filter-bar__search > .admin-toolbar__search:hover:not(:disabled):not(:focus) {
+.admin-filter-bar__search
+    .input-field__control:hover:not(:disabled):not(:focus),
+.admin-filter-bar__search
+    > .admin-toolbar__search:hover:not(:disabled):not(:focus) {
     border-color: var(--ink, #2d2f31);
     background: var(--surface, #f7f9fa);
 }

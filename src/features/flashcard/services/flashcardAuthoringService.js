@@ -17,14 +17,12 @@ function toGenerationFormData({
   file,
   desiredCount,
   language,
-  difficulty,
   generationMode,
 }) {
   const formData = new FormData();
   formData.append("file", file);
   appendIfPresent(formData, "desiredCount", desiredCount);
   appendIfPresent(formData, "language", language);
-  appendIfPresent(formData, "difficulty", difficulty);
   appendIfPresent(formData, "generationMode", generationMode);
   return formData;
 }

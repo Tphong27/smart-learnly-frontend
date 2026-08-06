@@ -199,7 +199,6 @@ function UserFormModal({ open, mode, initial, onClose, onSaved }) {
                         inputMode="tel"
                         autoComplete="tel"
                         placeholder="0901234567 or +84901234567"
-                        helperText="Use a Vietnamese mobile number beginning with 0 or +84."
                         registration={register("phoneNumber")}
                         error={errors.phoneNumber?.message}
                     />

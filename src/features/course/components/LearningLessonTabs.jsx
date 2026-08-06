@@ -20,7 +20,6 @@ import {
 } from "lucide-react";
 import { fileNameFromUrl, isHtmlContent } from "../utils/lesson-content";
 import { LearningQuizPlayer } from "./LearningQuizPlayer";
-import { FlashcardPractice } from "./flashcards/FlashcardPractice";
 import { assignmentService } from "@/features/assignment";
 import { getCurrentUser } from "@/services/api-client";
 import DOMPurify from "dompurify";
@@ -143,31 +142,12 @@ function AssignmentRichContent({ content }) {
 
 function OverviewContent({
   lesson,
-  courseId,
   classId,
   workspaceMode,
-  flashcardProgressUserKey,
-  flashcardPositionUserKey,
   onQuizCompleted,
-  onFlashcardCompleted,
   onEssayCompleted,
 }) {
   const type = (lesson?.lessonType || "").toUpperCase();
-
-  if (type === "FLASHCARD") {
-    return (
-      <FlashcardPractice
-        lessonId={getLessonId(lesson)}
-        courseId={courseId}
-        classId={classId}
-        adminMode={workspaceMode === "admin-preview"}
-        readOnly={workspaceMode !== "student"}
-        progressUserKey={flashcardProgressUserKey}
-        positionUserKey={flashcardPositionUserKey}
-        onCompleted={() => onFlashcardCompleted?.(getLessonId(lesson))}
-      />
-    );
-  }
 
   if (type === "QUIZ" && lesson?.content) {
     return (
@@ -836,7 +816,6 @@ function ResourcesContent({ lesson }) {
 
 export function LearningLessonTabs({
   lesson,
-  courseId,
   classId,
   activeTab,
   onTabChange,
@@ -847,10 +826,7 @@ export function LearningLessonTabs({
   canGoNext = true,
   isActivityLesson = false,
   workspaceMode = "student",
-  flashcardProgressUserKey,
-  flashcardPositionUserKey,
   onQuizCompleted,
-  onFlashcardCompleted,
   onEssayCompleted,
 }) {
   const resources = Array.isArray(lesson?.resources) ? lesson.resources : [];
@@ -882,13 +858,9 @@ export function LearningLessonTabs({
           <div className="tab-overview">
             <OverviewContent
               lesson={lesson}
-              courseId={courseId}
               classId={classId}
               workspaceMode={workspaceMode}
-              flashcardProgressUserKey={flashcardProgressUserKey}
-              flashcardPositionUserKey={flashcardPositionUserKey}
               onQuizCompleted={onQuizCompleted}
-              onFlashcardCompleted={onFlashcardCompleted}
               onEssayCompleted={onEssayCompleted}
             />
           </div>

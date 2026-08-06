@@ -157,6 +157,7 @@ function MomentumRing({ value }) {
   );
 }
 
+/** Hiển thị không gian học tập và các khóa học của học viên. */
 export function TraineeDashboardPage() {
   const [courses, setCourses] = useState([]);
   const [progress, setProgress] = useState(null);
@@ -370,30 +371,6 @@ export function TraineeDashboardPage() {
                 View course
               </Button>
             </div>
-          </div>
-        </section>
-      )}
-
-      {!loading && !error && courses.length > 0 && (
-        <section
-          className="trainee-dashboard-summary"
-          aria-label="Learning summary"
-        >
-          <div>
-            <span>Enrolled courses</span>
-            <strong>{courses.length}</strong>
-          </div>
-          <div>
-            <span>Active learning</span>
-            <strong>{dashboard.activeCourses.length}</strong>
-          </div>
-          <div>
-            <span>Courses completed</span>
-            <strong>{dashboard.completedCourses}</strong>
-          </div>
-          <div>
-            <span>Average progress</span>
-            <strong>{dashboard.overallProgress}%</strong>
           </div>
         </section>
       )}
