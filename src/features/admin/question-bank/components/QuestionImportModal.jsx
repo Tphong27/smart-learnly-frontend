@@ -36,7 +36,7 @@ import {
 } from './QuestionImportPreview'
 import './question-import-modal.css'
 
-export function QuestionImportModal({ open, bank, courseId, existingQuestions = [], onClose, onImported }) {
+export function QuestionImportModal({ open, variant = 'modal', bank, courseId, existingQuestions = [], onClose, onImported }) {
   const toast = useToast()
   const isCourseQuestionsMode = Boolean(courseId)
   const fileInputRef = useRef(null)
@@ -693,14 +693,8 @@ export function QuestionImportModal({ open, bank, courseId, existingQuestions = 
     )
   }
 
-  return (
-    <Modal
-      open={open}
-      title="Import questions"
-      size="xl"
-      closeOnOverlayClick={!submitting && !parsing}
-      onClose={submitting || parsing ? undefined : handleClose}
-    >
+  const importContent = (
+    <>
       {isArchived && (
         <div className="auth-card__alert" style={{ marginBottom: 14 }}>
           This question bank is archived. Import is disabled.
@@ -972,6 +966,32 @@ export function QuestionImportModal({ open, bank, courseId, existingQuestions = 
           </>
         )}
       </div>
+    </>
+  )
+
+  if (variant === 'inline') {
+    return (
+      <section className="question-import question-import--inline">
+        <div className="question-import__inline-header">
+          <h3 className="question-import__inline-title">Import questions</h3>
+          <Button type="button" variant="ghost" onClick={handleClose} disabled={submitting || parsing}>
+            Close
+          </Button>
+        </div>
+        {importContent}
+      </section>
+    )
+  }
+
+  return (
+    <Modal
+      open={open}
+      title="Import questions"
+      size="xl"
+      closeOnOverlayClick={!submitting && !parsing}
+      onClose={submitting || parsing ? undefined : handleClose}
+    >
+      {importContent}
     </Modal>
   )
 }

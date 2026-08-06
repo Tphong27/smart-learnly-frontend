@@ -4,7 +4,7 @@ import { classroomService } from "../services/classroomService";
 import { createTrainerLessonService } from "../services/trainerLessonService";
 import { createTrainerQuizService } from "../services/trainerQuizService";
 import { createTrainerFlashcardService } from "../services/trainerFlashcardService";
-import { LessonDetailEditor } from "@/features/course/components/lesson-editor/LessonDetailEditor";
+import { LessonDetailTabs } from "@/features/course/components/lesson-editor/LessonDetailTabs";
 
 /**
  * Trainer lesson detail page — mirror of AdminLessonDetailPage but
@@ -106,5 +106,5 @@ export default function TrainerLessonDetailPage() {
     );
   }
 
-  return <LessonDetailEditor context={context} />;
+  return <LessonDetailTabs context={context} />;
 }

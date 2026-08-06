@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { useLocation, useParams } from "react-router-dom";
 import { courseContentService } from "../services/courseContentService";
 import { flashcardAuthoringService as flashcardService } from "@/features/flashcard";
-import { LessonDetailEditor } from "@/features/course/components/lesson-editor/LessonDetailEditor";
+import { LessonDetailTabs } from "@/features/course/components/lesson-editor/LessonDetailTabs";
 
 /**
  * Admin/staff course lesson editor.
@@ -41,5 +41,5 @@ export default function AdminLessonDetailPage() {
     [backPath, courseId, lessonId],
   );
 
-  return <LessonDetailEditor context={context} />;
+  return <LessonDetailTabs context={context} />;
 }

@@ -258,6 +258,37 @@
   padding-right: 4px;
 }
 
+/* ── Inline (full-width) variant: đưa import ra khỏi modal, list full height ── */
+
+.question-import--inline {
+  padding: 20px;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  background: #ffffff;
+}
+
+.question-import--inline .question-import__table-wrap,
+.question-import--inline .question-import__cards {
+  max-height: none;
+}
+
+.question-import__inline-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #eef2f7;
+}
+
+.question-import__inline-title {
+  margin: 0;
+  color: var(--ink, #14213d);
+  font-size: 18px;
+  font-weight: 700;
+}
+
 .question-import__question-card {
   border: 1px solid #e2e8f0;
   border-radius: 8px;

@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from "react";
-import { Pencil, Trash2, Plus, Upload, CheckCircle2 } from "lucide-react";
+import { useContext, useEffect, useRef, useState } from "react";
+import { Pencil, Trash2, CheckCircle2, ClipboardList } from "lucide-react";
 import { Button, Modal, useToast } from "@/shared/components/ui";
 import { courseContentService } from "../services/courseContentService";
 import { normalizeLessonStatus } from "@/features/course/utils/lesson-status";
@@ -14,8 +14,7 @@ import {
     getOptionText,
 } from "../utils/quiz-question-schema";
 import { QuizQuestionEditModal } from "./QuizQuestionEditModal";
-import { QuizImportModal } from "./QuizImportModal";
-import { CourseQuestionImportPanel } from "./quiz-import/CourseQuestionImportPanel";
+import { QuizImportContext } from "./lesson-editor/quiz-import-context";
 import "@/features/admin/admin-shared.css";
 import "./quiz-question-manager.css";
 
@@ -219,17 +218,15 @@ export function QuizQuestionsPanel({
     service = courseContentService,
 }) {
     const toast = useToast();
+    const { setBridge, openQuestionList } = useContext(QuizImportContext);
 
     const [questions, setQuestions] = useState([]);
-    const [sourceCourseId, setSourceCourseId] = useState("");
     const [errors, setErrors] = useState([]);
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
     const savingRef = useRef(false);
 
-    const [editIndex, setEditIndex] = useState(null); // null = đóng, -1 = thêm mới
-    const [importOpen, setImportOpen] = useState(false);
-    const [bankImportOpen, setBankImportOpen] = useState(false);
+    const [editIndex, setEditIndex] = useState(null); // null = đóng
     const [deleteIndex, setDeleteIndex] = useState(null);
 
     const busy = loading || saving;
@@ -246,6 +243,15 @@ export function QuizQuestionsPanel({
         [onBusyChange],
     );
 
+    // Reset bridge khi panel unmount (ví dụ đổi lesson type) để tab Question
+    // list không còn giữ dữ liệu/import của quiz cũ.
+    useEffect(
+        () => () => {
+            setBridge({ existingQuestions: [], import: null });
+        },
+        [setBridge],
+    );
+
     // Load câu hỏi hiện có khi lessonId đổi.
     useEffect(() => {
         if (!lessonId) return;
@@ -259,7 +265,6 @@ export function QuizQuestionsPanel({
                 const parsed = parseQuizContent(data?.content || "");
                 if (!cancelled) {
                     setQuestions(parsed.questions || []);
-                    setSourceCourseId(data?.courseId || "");
                 }
             } catch (error) {
                 if (!cancelled) {
@@ -357,21 +362,34 @@ export function QuizQuestionsPanel({
             `Imported ${importedQuestions.length} question(s).`,
         );
 
+    // Bridge cho tab Question list: đăng ký khi câu hỏi quiz thay đổi để tab
+    // đó check trùng và import về đúng quiz này. Giữ handler mới nhất qua ref
+    // (cập nhật trong effect) và chỉ setBridge khi `questions` đổi để tránh
+    // vòng lặp render.
+    const handleImportedRef = useRef(handleImported);
+    useEffect(() => {
+        handleImportedRef.current = handleImported;
+    });
+
+    const lastQuestionsRef = useRef(null);
+    useEffect(() => {
+        if (lastQuestionsRef.current === questions) return;
+        lastQuestionsRef.current = questions;
+        setBridge({
+            existingQuestions: questions,
+            import: handleImportedRef.current,
+        });
+    }, [questions, setBridge]);
+
     const openEdit = (index) => {
         if (!mutationDisabled) setEditIndex(index);
     };
 
     const handleEditSubmit = (question) => {
-        const nextQuestions =
-            editIndex === -1
-                ? [...questions, question]
-                : questions.map((current, index) =>
-                      index === editIndex ? question : current,
-                  );
-        return persistQuestions(
-            nextQuestions,
-            editIndex === -1 ? "Question added." : "Question updated.",
+        const nextQuestions = questions.map((current, index) =>
+            index === editIndex ? question : current,
         );
+        return persistQuestions(nextQuestions, "Question updated.");
     };
 
     const handleConfirmDelete = async () => {
@@ -396,30 +414,21 @@ export function QuizQuestionsPanel({
                         </span>
                     </div>
                     <div className="quiz-question-panel__actions">
-                        <Button
-                            variant="secondary"
-                            leftIcon={<Upload size={15} />}
-                            onClick={() => setImportOpen(true)}
-                            disabled={mutationDisabled || bankImportOpen}
-                        >
-                            Import Excel/CSV
-                        </Button>
-                        <Button
-                            variant="secondary"
-                            leftIcon={<Upload size={15} />}
-                            onClick={() => setBankImportOpen(true)}
+                        <button
+                            type="button"
+                            className="quiz-question-panel__import-nav"
+                            onClick={openQuestionList}
                             disabled={mutationDisabled}
+                            title="Open question list to import"
                         >
-                            Import from question bank
-                        </Button>
-                        <Button
-                            variant="secondary"
-                            leftIcon={<Plus size={15} />}
-                            onClick={() => openEdit(-1)}
-                            disabled={mutationDisabled || bankImportOpen}
-                        >
-                            Add question
-                        </Button>
+                            <ClipboardList
+                                size={18}
+                                className="quiz-question-panel__import-nav-icon"
+                            />
+                            <span className="quiz-question-panel__import-label">
+                                Import from question bank
+                            </span>
+                        </button>
                     </div>
                 </div>
 
@@ -439,8 +448,8 @@ export function QuizQuestionsPanel({
 
                         {questions.length === 0 ? (
                             <div className="admin-empty">
-                                No questions yet. Import Excel, import from
-                                question list, or add manually.
+                                No questions yet. Open the "Question list" tab to
+                                import questions.
                             </div>
                         ) : (
                             <div className="quiz-question-card-list">
@@ -460,35 +469,12 @@ export function QuizQuestionsPanel({
                 )}
             </section>
 
-            {bankImportOpen && (
-                <CourseQuestionImportPanel
-                    open
-                    courseId={sourceCourseId}
-                    existingQuestions={questions}
-                    onImport={handleImported}
-                    onClose={() => setBankImportOpen(false)}
-                />
-            )}
-
             <QuizQuestionEditModal
                 key={editIndex == null ? "closed" : `edit-${editIndex}`}
                 open={editIndex != null}
-                question={
-                    editIndex != null && editIndex >= 0
-                        ? questions[editIndex]
-                        : null
-                }
+                question={editIndex != null ? questions[editIndex] : null}
                 onClose={() => setEditIndex(null)}
                 onSubmit={handleEditSubmit}
-            />
-
-            <QuizImportModal
-                key={importOpen ? "import-open" : "import-closed"}
-                open={importOpen}
-                onClose={() => setImportOpen(false)}
-                existingQuestions={questions}
-                courseId={sourceCourseId}
-                onImport={handleImported}
             />
 
             <Modal
