@@ -19,7 +19,6 @@ import {
 } from "@/features/flashtest";
 import {
   CourseListPage,
-  LearningFlashcardsPage,
 } from "@/features/course";
 import { LearningWorkspacePage } from "@/features/learning";
 import { TraineeDashboardPage } from "@/features/dashboard";
@@ -99,10 +98,6 @@ function getTraineeRoutes() {
             {
               path: "tests/attempts/:testId/:attemptId",
               element: <TestAttemptDetailPage />,
-            },
-            {
-              path: "flashcards",
-              element: <LearningFlashcardsPage />,
             },
             {
               path: "ai-chatbot",

@@ -125,18 +125,17 @@ export const personalFlashcardService = {
         sourceText: String(values.sourceText ?? ""),
         desiredCount: Number(values.desiredCount ?? 10),
         language: values.language || "auto",
-        difficulty: values.difficulty || "medium",
       }),
     );
   },
 
   /** Sinh thẻ nháp từ tệp tài liệu người dùng tải lên. */
-  async generateFromFile(setId, { file, desiredCount = 10, language = "auto", difficulty = "medium" } = {}) {
+  async generateFromFile(setId, { file, desiredCount = 10, language = "auto" } = {}) {
     const formData = new FormData();
     if (file) formData.append("file", file);
     return unwrap(
       await apiClient.post(`${BASE_PATH}/${setId}/imports/generate-from-file`, formData, {
-        params: { desiredCount, language, difficulty },
+        params: { desiredCount, language },
       }),
     );
   },

@@ -1,5 +1,6 @@
 const COURSE_ROWS = 3;
 
+/** Hiển thị skeleton trong khi dữ liệu trainee dashboard đang tải. */
 export function TraineeDashboardSkeleton() {
     return (
         <div
@@ -60,18 +61,6 @@ export function TraineeDashboardSkeleton() {
                         <span className="sl-loading-skeleton trainee-dashboard-skeleton__button" />
                     </div>
                 </div>
-            </section>
-
-            <section
-                className="trainee-dashboard-summary trainee-dashboard-skeleton__summary"
-                aria-hidden="true"
-            >
-                {[0, 1, 2, 3].map((item) => (
-                    <div key={item}>
-                        <span className="sl-loading-skeleton trainee-dashboard-skeleton__line trainee-dashboard-skeleton__line--summary-label" />
-                        <span className="sl-loading-skeleton trainee-dashboard-skeleton__summary-value" />
-                    </div>
-                ))}
             </section>
 
             <section

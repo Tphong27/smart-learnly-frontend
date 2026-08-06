@@ -1,7 +1,6 @@
 import {
   BarChart3,
   CalendarDays,
-  BookOpen,
   ClipboardCheck,
   CreditCard,
   FolderTree,
@@ -140,12 +139,6 @@ const navItems = [
     label: "My Tests",
     path: "/learning/tests",
     icon: ClipboardCheck,
-    roles: [ROLES.TRAINEE],
-  },
-  {
-    label: "Flashcards",
-    path: "/learning/flashcards",
-    icon: BookOpen,
     roles: [ROLES.TRAINEE],
   },
   // {

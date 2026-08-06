@@ -1,4 +1,4 @@
-import { defineConfig } from "vite";
+import { defineConfig } from "vitest/config";
 import react from "@vitejs/plugin-react";
 import { fileURLToPath, URL } from "node:url";
 
@@ -24,6 +24,20 @@ export default defineConfig({
   build: {
     commonjsOptions: {
       include: [/pdfjs-dist/, /node_modules/],
+    },
+  },
+  test: {
+    environment: "jsdom",
+    setupFiles: "./src/test/setup.js",
+    include: ["src/**/*.integration.test.{js,jsx}"],
+    reporters: ["default", "junit"],
+    outputFile: {
+      junit: "reports/integration-junit.xml",
+    },
+    coverage: {
+      provider: "v8",
+      reporter: ["text", "html", "json-summary"],
+      reportsDirectory: "reports/coverage",
     },
   },
 });

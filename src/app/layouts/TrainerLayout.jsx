@@ -4,177 +4,182 @@ import { TraineeHeader } from "./TraineeHeader";
 import { authService } from "@/features/auth";
 import { getCurrentUser } from "@/services";
 import { SiteFooter } from "@/shared/components";
-import {
-  isRoleAllowed,
-  normalizeRole,
-  ROLES,
-} from "@/shared/constants/roles";
+import { isRoleAllowed, normalizeRole, ROLES } from "@/shared/constants/roles";
 import "./TrainerLayout.css";
 
 const STAFF_TABS = [
-  {
-    label: "Category Management",
-    to: "/admin/categories",
-    roles: [ROLES.SME, ROLES.TMO],
-  },
-  {
-    label: "Course Management",
-    to: "/admin/courses",
-    roles: [ROLES.SME, ROLES.TMO],
-  },
-  {
-    label: "Transactions",
-    to: "/admin/transactions",
-    roles: [ROLES.TMO],
-  },
-  {
-    label: "Classrooms",
-    to: "/staff/classrooms",
-    roles: [ROLES.TMO],
-  },
-  {
-    label: "Classrooms",
-    to: "/staff/classrooms",
-    roles: [ROLES.TRAINER],
-  },
-  {
-    label: "Course Content",
-    to: "/staff/courses",
-    end: true,
-    roles: [ROLES.TRAINER],
-  },
-  {
-    label: "Flashcards",
-    to: "/flashcards",
-    roles: [ROLES.TRAINER],
-  },
+    {
+        label: "Category Management",
+        to: "/admin/categories",
+        roles: [ROLES.SME, ROLES.TMO],
+    },
+    {
+        label: "Course Management",
+        to: "/admin/courses",
+        roles: [ROLES.SME, ROLES.TMO],
+    },
+    {
+        label: "Transactions",
+        to: "/admin/transactions",
+        roles: [ROLES.TMO],
+    },
+    {
+        label: "Classrooms",
+        to: "/staff/classrooms",
+        roles: [ROLES.TMO],
+    },
+    {
+        label: "Classrooms",
+        to: "/staff/classrooms",
+        roles: [ROLES.TRAINER],
+    },
+    {
+        label: "Course Content",
+        to: "/staff/courses",
+        end: true,
+        roles: [ROLES.TRAINER],
+    },
+    {
+        label: "Flashcards",
+        to: "/flashcards",
+        roles: [ROLES.TRAINER],
+    },
 ];
 
 function getDisplayName(user) {
-  return (
-    user?.fullName ||
-    [user?.firstName, user?.lastName].filter(Boolean).join(" ") ||
-    user?.email ||
-    "Trainer"
-  );
+    return (
+        user?.fullName ||
+        [user?.firstName, user?.lastName].filter(Boolean).join(" ") ||
+        user?.email ||
+        "Trainer"
+    );
 }
 
 function getFirstName(name) {
-  return name.trim().split(/\s+/)[0] || "Trainer";
+    return name.trim().split(/\s+/)[0] || "Trainer";
 }
 
 function getRoleLabel(role) {
-  const labels = {
-    [ROLES.TRAINEE]: "Learner",
-    [ROLES.TRAINER]: "Trainer",
-    [ROLES.SME]: "SME",
-    [ROLES.TMO]: "TMO",
-    [ROLES.ADMIN]: "Admin",
-    [ROLES.GUEST]: "Guest",
-  };
-  return labels[role?.toLowerCase()] || labels[role] || "User";
+    const labels = {
+        [ROLES.TRAINEE]: "Trainee",
+        [ROLES.TRAINER]: "Trainer",
+        [ROLES.SME]: "SME",
+        [ROLES.TMO]: "TMO",
+        [ROLES.ADMIN]: "Admin",
+        [ROLES.GUEST]: "Guest",
+    };
+    return labels[role?.toLowerCase()] || labels[role] || "User";
 }
 
 function getInitials(name) {
-  return name
-    .split(" ")
-    .filter(Boolean)
-    .map((part) => part[0])
-    .join("")
-    .slice(0, 2)
-    .toUpperCase();
+    return name
+        .split(" ")
+        .filter(Boolean)
+        .map((part) => part[0])
+        .join("")
+        .slice(0, 2)
+        .toUpperCase();
 }
 
 function isStaffPage(pathname) {
-  return (
-    pathname.startsWith("/admin/") ||
-    pathname.startsWith("/staff/") ||
-    pathname.startsWith("/trainer/") ||
-    pathname.startsWith("/sme/") ||
-    pathname.startsWith("/tmo/") ||
-    pathname === "/flashcards" ||
-    pathname.startsWith("/flashcards/")
-  );
+    return (
+        pathname.startsWith("/admin/") ||
+        pathname.startsWith("/staff/") ||
+        pathname.startsWith("/trainer/") ||
+        pathname.startsWith("/sme/") ||
+        pathname.startsWith("/tmo/") ||
+        pathname === "/flashcards" ||
+        pathname.startsWith("/flashcards/")
+    );
 }
 
 export function TrainerLayout({ children }) {
-  const location = useLocation();
-  const navigate = useNavigate();
+    const location = useLocation();
+    const navigate = useNavigate();
 
-  const storedUser = getCurrentUser();
-  const user = storedUser ?? {
-    fullName: "Trainer",
-    email: "",
-    role: ROLES.TRAINER,
-  };
+    const storedUser = getCurrentUser();
+    const user = storedUser ?? {
+        fullName: "Trainer",
+        email: "",
+        role: ROLES.TRAINER,
+    };
 
-  const displayName = getDisplayName(user);
-  const showStaffNavigation = isStaffPage(location.pathname);
+    const displayName = getDisplayName(user);
+    const showStaffNavigation = isStaffPage(location.pathname);
 
-  const normalizedRole = normalizeRole(user.role);
+    const normalizedRole = normalizeRole(user.role);
 
-  const visibleTabs = STAFF_TABS.filter((tab) =>
-    isRoleAllowed(normalizedRole, tab.roles),
-  );
+    const visibleTabs = STAFF_TABS.filter((tab) =>
+        isRoleAllowed(normalizedRole, tab.roles),
+    );
 
-  async function handleLogout() {
-    try {
-      await authService.logout();
-    } finally {
-      navigate("/login", { replace: true });
+    async function handleLogout() {
+        try {
+            await authService.logout();
+        } finally {
+            navigate("/login", { replace: true });
+        }
     }
-  }
 
-  return (
-    <LayoutBackground className="trainer-layout">
-      <a className="trainer-skip-link" href="#trainer-main-content">
-        Skip to main content
-      </a>
+    return (
+        <LayoutBackground className="trainer-layout">
+            <a className="trainer-skip-link" href="#trainer-main-content">
+                Skip to main content
+            </a>
 
-      <TraineeHeader
-        user={user}
-        onLogout={handleLogout}
-        roleLabel={getRoleLabel(user.role)}
-      />
+            <TraineeHeader
+                user={user}
+                onLogout={handleLogout}
+                roleLabel={getRoleLabel(user.role)}
+            />
 
-      {showStaffNavigation && (
-        <section className="trainer-shell-intro" aria-label="Staff overview">
-          <div className="trainer-welcome">
-            <span className="trainer-welcome__avatar" aria-hidden="true">
-              {getInitials(displayName)}
-            </span>
-            <div>
-              <h1>Welcome, {getFirstName(displayName)}</h1>
-              <p>Manage your courses, classrooms, and training materials.</p>
-            </div>
-          </div>
+            {showStaffNavigation && (
+                <section
+                    className="trainer-shell-intro"
+                    aria-label="Staff overview"
+                >
+                    <div className="trainer-welcome">
+                        <span
+                            className="trainer-welcome__avatar"
+                            aria-hidden="true"
+                        >
+                            {getInitials(displayName)}
+                        </span>
+                        <div>
+                            <h1>Welcome, {getFirstName(displayName)}</h1>
+                            <p>
+                                Manage your courses, classrooms, and training
+                                materials.
+                            </p>
+                        </div>
+                    </div>
 
-          <nav className="trainer-nav" aria-label="Staff navigation">
-            {visibleTabs.map((tab) => (
-              <NavLink
-                key={tab.to}
-                to={tab.to}
-                end={tab.end}
-                className={({ isActive }) =>
-                  `trainer-nav__link${isActive ? " is-active" : ""}`
-                }
-              >
-                {tab.label}
-              </NavLink>
-            ))}
-          </nav>
-        </section>
-      )}
+                    <nav className="trainer-nav" aria-label="Staff navigation">
+                        {visibleTabs.map((tab) => (
+                            <NavLink
+                                key={tab.to}
+                                to={tab.to}
+                                end={tab.end}
+                                className={({ isActive }) =>
+                                    `trainer-nav__link${isActive ? " is-active" : ""}`
+                                }
+                            >
+                                {tab.label}
+                            </NavLink>
+                        ))}
+                    </nav>
+                </section>
+            )}
 
-      <main
-        id="trainer-main-content"
-        className="trainer-layout__content"
-        tabIndex={-1}
-      >
-        {children || <Outlet />}
-      </main>
+            <main
+                id="trainer-main-content"
+                className="trainer-layout__content"
+                tabIndex={-1}
+            >
+                {children || <Outlet />}
+            </main>
 
-      <SiteFooter />
-    </LayoutBackground>
-  );
+            <SiteFooter />
+        </LayoutBackground>
+    );
 }

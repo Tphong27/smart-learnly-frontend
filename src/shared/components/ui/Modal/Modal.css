@@ -115,7 +115,7 @@
 
 .modal__header {
     display: flex;
-    align-items: flex-start;
+    align-items: center;
     justify-content: space-between;
     gap: 16px;
 
@@ -136,7 +136,9 @@
     background: transparent;
     color: var(--sl-muted, #64708a);
     cursor: pointer;
-    transition: background 0.15s ease, color 0.15s ease;
+    transition:
+        background 0.15s ease,
+        color 0.15s ease;
 }
 
 .modal__header .modal__close:hover {

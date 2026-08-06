@@ -3,7 +3,6 @@ export { CourseDetailPage } from './pages/CourseDetailPage'
 export { TrainerProfilePage } from "./pages/TrainerProfilePage";
 export { CoursePreviewLessonsPage } from './pages/CoursePreviewLessonsPage'
 export { MyCoursesPage } from './pages/MyCoursesPage'
-export { LearningFlashcardsPage } from './pages/LearningFlashcardsPage'
 export { CourseCard } from './components/CourseCard'
 export { EnrolledCourseCard } from "./components/EnrolledCourseCard";
 export { categoryService } from "./services/categoryService";
