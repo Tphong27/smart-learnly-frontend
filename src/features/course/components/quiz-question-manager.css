@@ -445,19 +445,7 @@
     font-size: 12px;
 }
 
-/* ── Question bank import modal ──────────────────────────────────────────── */
-
-.quiz-question-bank-modal {
-    max-height: min(820px, calc(100dvh - 40px));
-}
-
-.quiz-question-bank-modal .modal__body {
-    padding: 20px 22px;
-}
-
-.quiz-question-bank-modal .modal__footer {
-    align-items: center;
-}
+/* ── Question bank import panel ───────────────────────────────────────────── */
 
 .quiz-question-bank-import {
     display: flex;
@@ -704,15 +692,6 @@
 }
 
 @media (max-width: 520px) {
-    .quiz-question-bank-modal .modal__body {
-        padding: 16px;
-    }
-
-    .quiz-question-bank-modal .modal__footer {
-        display: grid;
-        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    }
-
     .quiz-question-bank-import__toolbar {
         grid-template-columns: 1fr;
     }
@@ -921,7 +900,7 @@
     font-size: 13px;
 }
 
-/* ── Lesson detail 2-tab wrapper (Lesson / Question list) ─────────────────── */
+/* ── Lesson detail wrapper (Lesson editor + inline import) ────────────────── */
 
 .quiz-lesson-detail-tabs {
   display: flex;
@@ -932,6 +911,55 @@
 
 .quiz-lesson-detail-tabs__pane {
   min-width: 0;
+}
+
+/* ── Import from question list: inline section (không modal) ──────────────── */
+
+.quiz-question-bank-import--inline {
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  background: #ffffff;
+  padding: 18px;
+}
+
+.quiz-question-bank-import__inline-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #eef2f7;
+}
+
+.quiz-question-bank-import__inline-title {
+  margin: 0;
+  color: var(--ink, #14213d);
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.quiz-question-bank-import__inline-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid #eef2f7;
+}
+
+.quiz-question-bank-import__footer-summary {
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.quiz-question-bank-import__footer-actions {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 /* ── Import-from-question-bank control (icon above label) ─────────────────── */

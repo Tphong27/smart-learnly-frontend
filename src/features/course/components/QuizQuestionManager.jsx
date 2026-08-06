@@ -426,7 +426,7 @@ export function QuizQuestionsPanel({
                                 className="quiz-question-panel__import-nav-icon"
                             />
                             <span className="quiz-question-panel__import-label">
-                                Import from question bank
+                                Import from question list
                             </span>
                         </button>
                     </div>

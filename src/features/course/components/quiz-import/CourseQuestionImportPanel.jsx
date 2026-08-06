@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Search } from "lucide-react";
 import Pagination from "@/shared/components/Pagination";
-import { Button, Modal } from "@/shared/components/ui";
+import { Button } from "@/shared/components/ui";
 import { courseContentService } from "../../services/courseContentService";
 import { questionBankService } from "@/features/admin/question-bank";
 import { sanitizeQuestionHtml } from "@/shared/utils/htmlSanitizer";
@@ -79,7 +79,6 @@ function buildDuplicateQuestionIds(prepared, selectedQuestions) {
 }
 
 export function CourseQuestionImportPanel({
-    open = true,
     courseId,
     existingQuestions = [],
     onImport,
@@ -394,44 +393,21 @@ export function CourseQuestionImportPanel({
         filters.moduleId !== "all";
 
     return (
-        <Modal
-            open={open}
-            size="xl"
-            className="quiz-question-bank-modal"
-            title="Import from question bank"
-            description="Select questions from this course to add to the quiz. Archived questions are excluded."
-            onClose={onClose}
-            closeDisabled={importing}
-            closeLabel="Close question bank"
-            footer={
-                <>
-                    <div
-                        className="quiz-question-bank-import__footer-summary"
-                        aria-live="polite"
-                    >
-                        <strong>{selectedQuestions.length}</strong> selected
-                    </div>
-                    <Button
-                        type="button"
-                        variant="secondary"
-                        onClick={onClose}
-                        disabled={importing}
-                    >
-                        Cancel
-                    </Button>
-                    <Button
-                        type="button"
-                        variant="primary"
-                        onClick={() => importQuestions(selectedQuestions)}
-                        loading={importing}
-                        loadingLabel="Importing..."
-                        disabled={!canImportSelected}
-                    >
-                        Import questions ({selectedQuestions.length})
-                    </Button>
-                </>
-            }
-        >
+        <section className="quiz-question-bank-import quiz-question-bank-import--inline">
+            <div className="quiz-question-bank-import__inline-header">
+                <h3 className="quiz-question-bank-import__inline-title">
+                    Import from question list
+                </h3>
+                <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={onClose}
+                    disabled={importing}
+                >
+                    Close
+                </Button>
+            </div>
+
             <div className="quiz-question-bank-import">
                 <div className="quiz-question-bank-import__toolbar">
                     <label className="quiz-question-import__field quiz-question-bank-import__field--search">
@@ -704,6 +680,35 @@ export function CourseQuestionImportPanel({
                     }}
                 />
             </div>
-        </Modal>
+
+            <div className="quiz-question-bank-import__inline-footer">
+                <div
+                    className="quiz-question-bank-import__footer-summary"
+                    aria-live="polite"
+                >
+                    <strong>{selectedQuestions.length}</strong> selected
+                </div>
+                <div className="quiz-question-bank-import__footer-actions">
+                    <Button
+                        type="button"
+                        variant="secondary"
+                        onClick={onClose}
+                        disabled={importing}
+                    >
+                        Cancel
+                    </Button>
+                    <Button
+                        type="button"
+                        variant="primary"
+                        onClick={() => importQuestions(selectedQuestions)}
+                        loading={importing}
+                        loadingLabel="Importing..."
+                        disabled={!canImportSelected}
+                    >
+                        Import questions ({selectedQuestions.length})
+                    </Button>
+                </div>
+            </div>
+        </section>
     );
 }
