@@ -924,6 +924,56 @@
   font-size: 13px;
 }
 
+/* ── Lesson detail 2-tab wrapper (Lesson / Question list) ─────────────────── */
+
+.quiz-lesson-detail-tabs {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px;
+}
+
+.quiz-lesson-detail-tabs__pane {
+  min-width: 0;
+}
+
+/* ── Import-from-question-bank control (icon above label) ─────────────────── */
+
+.quiz-question-panel__import-nav {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 12px;
+  border: 1px solid #dde4ee;
+  border-radius: 12px;
+  background: #ffffff;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.quiz-question-panel__import-nav:hover:not(:disabled) {
+  border-color: var(--blue, #2768ee);
+  background: #f8faff;
+}
+
+.quiz-question-panel__import-nav:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.quiz-question-panel__import-nav-icon {
+  color: var(--blue, #2768ee);
+}
+
+.quiz-question-panel__import-label {
+  color: #334155;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.3;
+  text-align: center;
+}
+
 @media (max-width: 720px) {
   .quiz-question-card__header {
     flex-direction: column;
