@@ -463,6 +463,17 @@ export function AdminQuestionBankDetailPage() {
         </div>
       </nav>
 
+      {importOpen && (
+        <QuestionImportModal
+          variant="inline"
+          bank={bank}
+          courseId={isCourseQuestionsMode ? courseId : undefined}
+          existingQuestions={items}
+          onClose={() => setImportOpen(false)}
+          onImported={() => setRefreshKey((key) => key + 1)}
+        />
+      )}
+
       {activeTab === "questions" && (
         <section className="admin-card admin-card--flush admin-card--filterable">
           <QuestionBankFilters
@@ -877,14 +888,6 @@ export function AdminQuestionBankDetailPage() {
         questionId={questionFormModal?.questionId}
         onClose={closeQuestionFormModal}
         onSaved={handleQuestionSaved}
-      />
-      <QuestionImportModal
-        open={importOpen}
-        bank={bank}
-        courseId={isCourseQuestionsMode ? courseId : undefined}
-        existingQuestions={items}
-        onClose={() => setImportOpen(false)}
-        onImported={() => setRefreshKey((key) => key + 1)}
       />
       <QuestionImagePreviewModal
         preview={imagePreview}
