@@ -209,8 +209,6 @@ function RowActionsMenu({
   const editPath = basePath.startsWith("/staff")
     ? `${basePath}/${course.id}/edit`
     : detailsPath;
-  const detailsActionPath = canEditDetails ? editPath : detailsPath;
-
   const menu = open ? (
     <ul
       ref={menuRef}
@@ -335,7 +333,6 @@ export function AdminCoursesPage() {
   const canOpenMasterCurriculum = !isTrainer;
   const canCreate = canManageCourses;
   const canDelete = canManageCourses;
-  const canEditDetails = !isSme;
   const openCoursePath = (courseId) => {
     if (isTrainer) {
       return `/staff/classrooms?courseId=${encodeURIComponent(courseId)}`;
