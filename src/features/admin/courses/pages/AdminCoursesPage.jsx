@@ -41,6 +41,7 @@ const LEVEL_FILTERS = [
   { value: "advanced", label: "Advanced" },
 ];
 
+/** Chuẩn hóa level khóa học thành nhãn hiển thị trong bảng. */
 function formatLevel(level) {
   if (!level) return "Not set";
   return String(level)
@@ -48,6 +49,7 @@ function formatLevel(level) {
     .replace(/\b\w/g, (character) => character.toUpperCase());
 }
 
+/** Hiển thị trạng thái khóa học bằng badge thống nhất. */
 function CourseStatusBadge({ status }) {
   const normalized = (status || "").toLowerCase();
   const labels = {
@@ -63,6 +65,7 @@ function CourseStatusBadge({ status }) {
   );
 }
 
+/** Hiển thị ảnh đại diện khóa học hoặc icon mặc định khi chưa có ảnh. */
 function CourseThumbnail({ course }) {
   const imageUrl = course.thumbnailUrl || course.avatarUrl;
   return (
@@ -72,11 +75,13 @@ function CourseThumbnail({ course }) {
   );
 }
 
+/** Xác nhận thao tác xóa mềm khóa học trước khi gửi API. */
 function DeleteCourseModal({ open, target, onClose, onConfirmed }) {
   const toast = useToast();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
+  /** Gửi yêu cầu xóa khóa học và báo kết quả cho danh sách cha. */
   async function handleConfirm() {
     if (!target) return;
 
@@ -120,11 +125,13 @@ function DeleteCourseModal({ open, target, onClose, onConfirmed }) {
   );
 }
 
+/** Hiển thị menu thao tác theo quyền của từng role trên một khóa học. */
 function RowActionsMenu({
   course,
   basePath,
   canViewClasses,
   canOpenMasterCurriculum = true,
+  canEditDetails = true,
   canDelete,
   previewReturnPath,
   onRequestDelete,
@@ -161,6 +168,7 @@ function RowActionsMenu({
 
     const frame = window.requestAnimationFrame(updateMenuPosition);
 
+    /** Đóng menu khi người dùng bấm ra ngoài vùng thao tác. */
     function handlePointerDown(event) {
       if (
         !triggerRef.current?.contains(event.target) &&
@@ -170,6 +178,7 @@ function RowActionsMenu({
       }
     }
 
+    /** Đóng menu bằng phím Escape và trả focus về nút mở menu. */
     function handleKey(event) {
       if (event.key === "Escape") {
         setOpen(false);
@@ -198,9 +207,11 @@ function RowActionsMenu({
   const classesPath = `${classesBasePath}?courseId=${encodeURIComponent(course.id)}`;
   const showManageTest = basePath.startsWith("/staff");
   const previewPath = `${basePath}/${course.id}/preview?returnTo=${encodeURIComponent(previewReturnPath)}`;
+  const detailsPath = `${basePath}/${course.id}`;
   const editPath = basePath.startsWith("/staff")
     ? `${basePath}/${course.id}/edit`
-    : `${basePath}/${course.id}`;
+    : detailsPath;
+  const detailsActionPath = canEditDetails ? editPath : detailsPath;
 
   const menu = open ? (
     <ul
@@ -271,11 +282,16 @@ function RowActionsMenu({
       <li role="none">
         <Link
           role="menuitem"
-          to={editPath}
+          to={detailsActionPath}
           className="course-management__menu-item"
           onClick={() => setOpen(false)}
         >
-          <Edit2 size={14} aria-hidden="true" /> Edit
+          {canEditDetails ? (
+            <Edit2 size={14} aria-hidden="true" />
+          ) : (
+            <Eye size={14} aria-hidden="true" />
+          )}
+          {canEditDetails ? "Edit" : "View details"}
         </Link>
       </li>
       {canDelete ? (
@@ -317,6 +333,7 @@ function RowActionsMenu({
   );
 }
 
+/** Quản lý và duyệt danh sách khóa học theo quyền hiện tại. */
 export function AdminCoursesPage() {
   const toast = useToast();
   const navigate = useNavigate();
@@ -335,12 +352,13 @@ export function AdminCoursesPage() {
   const canOpenMasterCurriculum = !isTrainer;
   const canCreate = canManageCourses;
   const canDelete = canManageCourses;
+  const canEditDetails = !isSme;
   const openCoursePath = (courseId) => {
     if (isTrainer) {
       return `/staff/classrooms?courseId=${encodeURIComponent(courseId)}`;
     }
-    if (isAssignedOnlyRole) {
-      return `${courseBasePath}/${courseId}/edit`;
+    if (isSme) {
+      return `${courseBasePath}/${courseId}`;
     }
     return `${courseBasePath}/${courseId}/content`;
   };
@@ -363,6 +381,7 @@ export function AdminCoursesPage() {
   });
   const [openingCourseId, setOpeningCourseId] = useState(null);
 
+  /** Mở course theo workflow phù hợp với role hiện tại. */
   async function handleOpenCourse(course) {
     if (!isTrainer) {
       navigate(openCoursePath(course.id));
@@ -431,6 +450,7 @@ export function AdminCoursesPage() {
   useEffect(() => {
     let cancelled = false;
 
+    /** Tải danh sách khóa học từ backend với filter server-side. */
     async function loadCourses() {
       setLoading(true);
       setError(null);
@@ -480,6 +500,7 @@ export function AdminCoursesPage() {
       levelFilter !== "all",
   );
 
+  /** Đưa toàn bộ bộ lọc danh sách về trạng thái mặc định. */
   function clearFilters() {
     setKeyword("");
     setDebouncedKeyword("");
@@ -489,11 +510,13 @@ export function AdminCoursesPage() {
     setPageRequest(0);
   }
 
+  /** Cập nhật một filter và quay về trang đầu tiên. */
   function changeFilter(setter, value) {
     setter(value);
     setPageRequest(0);
   }
 
+  /** Làm mới danh sách sau khi xóa khóa học thành công. */
   function handleDeleted() {
     setDeleteState({ open: false, target: null });
     if (items.length === 1 && pageRequest > 0) {
@@ -510,7 +533,9 @@ export function AdminCoursesPage() {
           <h1>Course management</h1>
           <p>
             {isAssignedOnlyRole
-              ? "Review and update the courses assigned to you."
+              ? isSme
+                ? "Review the courses assigned to you."
+                : "Review and update the courses assigned to you."
               : "Create, publish, and maintain the learning experiences available on the platform."}
           </p>
         </div>
@@ -724,6 +749,7 @@ export function AdminCoursesPage() {
                             basePath={courseBasePath}
                             canViewClasses={canViewClasses}
                             canOpenMasterCurriculum={canOpenMasterCurriculum}
+                            canEditDetails={canEditDetails}
                             canDelete={canDelete}
                             previewReturnPath={previewReturnPath}
                             onRequestDelete={(c) =>
@@ -794,6 +820,7 @@ export function AdminCoursesPage() {
                         basePath={courseBasePath}
                         canViewClasses={canViewClasses}
                         canOpenMasterCurriculum={canOpenMasterCurriculum}
+                        canEditDetails={canEditDetails}
                         canDelete={canDelete}
                         previewReturnPath={previewReturnPath}
                         onRequestDelete={(c) =>

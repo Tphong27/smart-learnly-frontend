@@ -10,6 +10,7 @@ import {
   ROLES,
 } from "@/shared/constants/roles";
 
+/** Hiển thị thumbnail nhỏ cho gợi ý course hoặc class trong ô tìm kiếm. */
 function SuggestionThumbnail({ imageUrl, type = "course" }) {
   const [imageFailed, setImageFailed] = useState(false);
 
@@ -35,6 +36,7 @@ function SuggestionThumbnail({ imageUrl, type = "course" }) {
   );
 }
 
+/** Cung cấp ô tìm kiếm header và điều hướng kết quả theo role hiện tại. */
 export function HeaderCourseSearch({
   catalogPath = "/",
   catalogHash = "#courses",
@@ -178,6 +180,7 @@ export function HeaderCourseSearch({
   ]);
 
   useEffect(() => {
+    /** Đóng popover khi người dùng bấm ra ngoài vùng tìm kiếm. */
     function handlePointerDown(event) {
       if (!searchRef.current?.contains(event.target)) {
         setIsOpen(false);
@@ -191,6 +194,7 @@ export function HeaderCourseSearch({
     };
   }, []);
 
+  /** Tạo URL catalog với keyword hiện tại để xem toàn bộ kết quả. */
   function getCatalogUrl() {
     const separator = catalogPath.includes("?") ? "&" : "?";
 
@@ -201,6 +205,7 @@ export function HeaderCourseSearch({
     );
   }
 
+  /** Điều hướng sang catalog khi submit keyword thủ công. */
   function submitSearch() {
     if (!hasSearchQuery) {
       return;
@@ -225,6 +230,7 @@ export function HeaderCourseSearch({
     setIsOpen(false);
   }
 
+  /** Điều hướng khi chọn một course, tôn trọng quyền và role hiện tại. */
   async function selectCourse(course) {
     const courseIdentifier = course.slug || course.id;
 
@@ -276,7 +282,7 @@ export function HeaderCourseSearch({
 
       navigate(
         normalizedRole === ROLES.SME
-          ? `/staff/courses/${course.id}/edit`
+          ? `/staff/courses/${course.id}`
           : `/staff/courses/${course.id}/content`,
       );
       setIsOpen(false);
@@ -294,6 +300,7 @@ export function HeaderCourseSearch({
     setIsOpen(false);
   }
 
+  /** Điều hướng khi chọn một class trong kết quả tìm kiếm. */
   function selectClass(classItem) {
     const classId = classItem?.id || classItem?.classId;
 
@@ -317,6 +324,7 @@ export function HeaderCourseSearch({
     setIsOpen(false);
   }
 
+  /** Chọn gợi ý đang active bằng bàn phím. */
   function selectActiveSuggestion() {
     if (!isStaffSearch && activeOption === 0) {
       submitSearch();
@@ -339,6 +347,7 @@ export function HeaderCourseSearch({
     }
   }
 
+  /** Xử lý điều hướng bàn phím trong ô tìm kiếm header. */
   function handleKeyDown(event) {
     if (event.key === "Escape") {
       setIsOpen(false);
@@ -385,6 +394,7 @@ export function HeaderCourseSearch({
     }
   }
 
+  /** Xóa keyword và reset trạng thái gợi ý. */
   function clearSearch() {
     setQuery("");
     setCourses([]);

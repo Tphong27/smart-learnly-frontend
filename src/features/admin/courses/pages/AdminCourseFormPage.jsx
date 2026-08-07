@@ -35,6 +35,7 @@ const LEVEL_OPTIONS = [
   { value: "advanced", label: "Advanced" },
 ];
 
+/** Tạo payload course từ form và chỉ gửi các trường hợp lệ theo mode. */
 function buildPayload(values, mode, includeAssignment) {
   const thumbnailUrl = values.thumbnailUrl?.trim();
   const payload = {
@@ -76,6 +77,7 @@ function buildPayload(values, mode, includeAssignment) {
   return payload;
 }
 
+/** Hiển thị form tạo/sửa course; SME chỉ được xem detail ở chế độ read-only. */
 export function AdminCourseFormPage() {
   const params = useParams();
   const navigate = useNavigate();
@@ -96,6 +98,7 @@ export function AdminCourseFormPage() {
   const isTrainer = currentRole === "trainer";
   const isSme = currentRole === "sme";
   const isAssignedOnlyRole = isTrainer || isSme;
+  const isReadOnly = isSme && isEdit;
 
   const canManageAssignment = currentRole === "admin" || currentRole === "tmo";
   const isStaffRoute = location.pathname.startsWith("/staff/");
@@ -154,6 +157,7 @@ export function AdminCourseFormPage() {
 
   useEffect(() => {
     let cancelled = false;
+    /** Tải category và course detail cần thiết cho form. */
     async function loadAll() {
       try {
         const cats = await categoryService.list({ active: true });
@@ -205,6 +209,11 @@ export function AdminCourseFormPage() {
   }, [isFree, setValue]);
 
   async function onSubmit(values) {
+    if (isReadOnly) {
+      setServerError("SME can view course details but cannot edit them.");
+      return;
+    }
+
     setServerError(null);
     try {
       const payload = buildPayload(
@@ -241,6 +250,7 @@ export function AdminCourseFormPage() {
 
     let cancelled = false;
 
+    /** Tải danh sách SME active để Admin/TMO gán người phụ trách course. */
     async function loadActiveSmes() {
       try {
         const pageData = await adminUserService.listActiveSmes({
@@ -300,11 +310,19 @@ export function AdminCourseFormPage() {
 
         <div className="sl-course-editor__heading-row">
           <div>
-            <h1>{isEdit ? "Update course" : "Create new course"}</h1>
+            <h1>
+              {isReadOnly
+                ? "Course details"
+                : isEdit
+                  ? "Update course"
+                  : "Create new course"}
+            </h1>
             <p>
-              {isEdit
-                ? "Update the course information learners see in the catalog."
-                : "Add the course information first, then build its curriculum."}
+              {isReadOnly
+                ? "View the assigned course information without changing catalog details."
+                : isEdit
+                  ? "Update the course information learners see in the catalog."
+                  : "Add the course information first, then build its curriculum."}
             </p>
           </div>
           {isEdit && (
@@ -358,6 +376,7 @@ export function AdminCourseFormPage() {
                     id="course-title"
                     type="text"
                     placeholder="e.g. Mastering React from A to Z"
+                    disabled={isReadOnly}
                     {...register("title")}
                     aria-invalid={Boolean(errors.title) || undefined}
                     aria-describedby={
@@ -381,6 +400,7 @@ export function AdminCourseFormPage() {
 
                     <select
                       id="course-assigned-sme"
+                      disabled={isReadOnly}
                       {...register("assignedSmeId")}
                       aria-invalid={Boolean(errors.assignedSmeId) || undefined}
                     >
@@ -394,7 +414,7 @@ export function AdminCourseFormPage() {
                     </select>
 
                     <p className="sl-course-field__helper">
-                      The selected SME can view and edit this course.
+                      The selected SME can view this course detail.
                     </p>
 
                     {errors.assignedSmeId ? (
@@ -414,6 +434,7 @@ export function AdminCourseFormPage() {
                     type="text"
                     maxLength={500}
                     placeholder="Summarize the course in one or two sentences"
+                    disabled={isReadOnly}
                     {...register("shortDescription")}
                     aria-invalid={Boolean(errors.shortDescription) || undefined}
                     aria-describedby={
@@ -447,6 +468,7 @@ export function AdminCourseFormPage() {
                     id="course-description"
                     rows={8}
                     placeholder="Explain what the course covers and who it is for"
+                    disabled={isReadOnly}
                     {...register("description")}
                     aria-invalid={Boolean(errors.description) || undefined}
                     aria-describedby={
@@ -474,6 +496,7 @@ export function AdminCourseFormPage() {
                       id="course-slug"
                       type="text"
                       placeholder="react-from-zero"
+                      disabled={isReadOnly}
                       {...register("slug")}
                       aria-invalid={Boolean(errors.slug) || undefined}
                       aria-describedby={
@@ -522,6 +545,7 @@ export function AdminCourseFormPage() {
                     id="course-outcomes"
                     rows={7}
                     placeholder="Add one learning outcome per line"
+                    disabled={isReadOnly}
                     {...register("outcomes")}
                   />
                   <p className="sl-course-field__helper">
@@ -535,6 +559,7 @@ export function AdminCourseFormPage() {
                     id="course-requirements"
                     rows={7}
                     placeholder="Add one requirement per line"
+                    disabled={isReadOnly}
                     {...register("requirements")}
                   />
                   <p className="sl-course-field__helper">
@@ -560,16 +585,43 @@ export function AdminCourseFormPage() {
                 </div>
               </div>
               <input type="hidden" {...register("thumbnailUrl")} />
-              <ThumbnailUploader
-                key={thumbnailUrl || "empty-thumbnail"}
-                value={thumbnailUrl}
-                onUploadSuccess={(url) => {
-                  setValue("thumbnailUrl", url, {
-                    shouldDirty: true,
-                    shouldValidate: true,
-                  });
-                }}
-              />
+              {isReadOnly ? (
+                <div className="thumbnail-uploader-container">
+                  <div
+                    className={`dropzone-box${
+                      thumbnailUrl ? " has-preview" : ""
+                    }`}
+                    aria-label="Course thumbnail"
+                  >
+                    {thumbnailUrl ? (
+                      <div className="modern-preview-wrapper">
+                        <img
+                          src={thumbnailUrl}
+                          alt="Course thumbnail"
+                          className="modern-preview-img"
+                        />
+                      </div>
+                    ) : (
+                      <div className="upload-empty-state">
+                        <div className="upload-text-instruction">
+                          <p className="main-text">No thumbnail uploaded.</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <ThumbnailUploader
+                  key={thumbnailUrl || "empty-thumbnail"}
+                  value={thumbnailUrl}
+                  onUploadSuccess={(url) => {
+                    setValue("thumbnailUrl", url, {
+                      shouldDirty: true,
+                      shouldValidate: true,
+                    });
+                  }}
+                />
+              )}
               {errors.thumbnailUrl && (
                 <p className="sl-course-field__error" role="alert">
                   {errors.thumbnailUrl.message}
@@ -598,6 +650,7 @@ export function AdminCourseFormPage() {
                   </label>
                   <select
                     id="course-category"
+                    disabled={isReadOnly}
                     {...register("categoryId")}
                     aria-invalid={Boolean(errors.categoryId) || undefined}
                     aria-describedby={
@@ -624,7 +677,11 @@ export function AdminCourseFormPage() {
 
                 <div className="sl-course-field sl-course-field--full">
                   <label htmlFor="course-level">Level</label>
-                  <select id="course-level" {...register("level")}>
+                  <select
+                    id="course-level"
+                    disabled={isReadOnly}
+                    {...register("level")}
+                  >
                     {LEVEL_OPTIONS.map((option) => (
                       <option key={option.value} value={option.value}>
                         {option.label}
@@ -639,6 +696,7 @@ export function AdminCourseFormPage() {
                     id="course-language"
                     type="text"
                     placeholder="e.g. en or vi"
+                    disabled={isReadOnly}
                     {...register("language")}
                     aria-invalid={Boolean(errors.language) || undefined}
                     aria-describedby={
@@ -673,7 +731,11 @@ export function AdminCourseFormPage() {
               </div>
 
               <label className="sl-course-editor__free-option">
-                <input type="checkbox" {...register("isFree")} />
+                <input
+                  type="checkbox"
+                  disabled={isReadOnly}
+                  {...register("isFree")}
+                />
                 <span>
                   <strong>Free course</strong>
                   <small>Learners can enrol without paying.</small>
@@ -688,7 +750,7 @@ export function AdminCourseFormPage() {
                     type="number"
                     min="0"
                     inputMode="numeric"
-                    disabled={isFree}
+                    disabled={isFree || isReadOnly}
                     {...register("price", { valueAsNumber: true })}
                     aria-invalid={Boolean(errors.price) || undefined}
                     aria-describedby={
@@ -722,7 +784,7 @@ export function AdminCourseFormPage() {
                     type="number"
                     min="0"
                     inputMode="numeric"
-                    disabled={isFree}
+                    disabled={isFree || isReadOnly}
                     {...register("discountedPrice", {
                       valueAsNumber: true,
                     })}
@@ -753,7 +815,11 @@ export function AdminCourseFormPage() {
                 {isEdit ? (
                   <div className="sl-course-field sl-course-field--full">
                     <label htmlFor="course-status">Course status</label>
-                    <select id="course-status" {...register("status")}>
+                    <select
+                      id="course-status"
+                      disabled={isReadOnly}
+                      {...register("status")}
+                    >
                       {STATUS_OPTIONS.map((option) => (
                         <option key={option.value} value={option.value}>
                           {option.label}
@@ -765,7 +831,9 @@ export function AdminCourseFormPage() {
                         ? "Visible to learners in the course catalog."
                         : courseStatus === "inactive"
                           ? "Hidden from learners until reactivated."
-                          : "Only staff can view and edit this draft."}
+                          : isReadOnly
+                            ? "Only staff with edit permission can update this draft."
+                            : "Only staff can view and edit this draft."}
                     </p>
                   </div>
                 ) : (
@@ -795,7 +863,9 @@ export function AdminCourseFormPage() {
 
         <footer className="sl-course-editor__actions">
           <p aria-live="polite">
-            {isSubmitting
+            {isReadOnly
+              ? "View-only access for assigned SME"
+              : isSubmitting
               ? isEdit
                 ? "Saving course..."
                 : "Creating draft..."
@@ -812,15 +882,17 @@ export function AdminCourseFormPage() {
               onClick={() => navigate(courseListPath)}
               disabled={isSubmitting}
             >
-              Cancel
+              {isReadOnly ? "Back" : "Cancel"}
             </Button>
-            <Button
-              type="submit"
-              loading={isSubmitting}
-              leftIcon={<Save size={16} aria-hidden="true" />}
-            >
-              {isEdit ? "Save changes" : "Create draft"}
-            </Button>
+            {!isReadOnly ? (
+              <Button
+                type="submit"
+                loading={isSubmitting}
+                leftIcon={<Save size={16} aria-hidden="true" />}
+              >
+                {isEdit ? "Save changes" : "Create draft"}
+              </Button>
+            ) : null}
           </div>
         </footer>
       </Form>
