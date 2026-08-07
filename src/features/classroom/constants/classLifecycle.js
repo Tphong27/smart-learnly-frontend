@@ -21,7 +21,9 @@ export function getClassEditPolicy(currentStatus) {
     readOnly,
     lockCourse: readOnly || ongoing,
     lockStartDate: readOnly || ongoing,
-    lockPrice: readOnly || ongoing,
+    // Giá có thể đổi cả khi lớp ONGOING; backend vẫn chặn nếu đã có
+    // ghi danh/thanh toán (commercial history).
+    lockPrice: readOnly,
     lockTrainer: readOnly,
     lockMeetingUrl: readOnly,
     lockEndDate: readOnly,

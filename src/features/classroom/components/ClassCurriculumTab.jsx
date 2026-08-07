@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { AlertCircle, Loader } from "lucide-react";
 import { Button } from "@/shared/components/ui";
 import { trainerCurriculumService } from "../services/trainerCurriculumService";
+import { createTrainerFlashcardService } from "../services/trainerFlashcardService";
 import { CurriculumStructureEditor } from "@/features/course/components/CurriculumStructureEditor";
 // Dùng cùng design system với master course content (sl-cm-*).
 import "@/features/course/course-admin.css";
@@ -12,6 +13,7 @@ const TRAINER_LESSON_TYPES = [
   { value: "pdf", label: "Reading Material (PDF)" },
   { value: "rich_text", label: "Rich Text" },
   { value: "quiz", label: "Quiz" },
+  { value: "flashcard", label: "Flashcard" },
   { value: "essay", label: "Essay" },
 ];
 
@@ -174,12 +176,38 @@ export function ClassCurriculumTab({ classId, readOnly = false }) {
   const handleCreateLesson = (sectionId, payload) => {
     let lessonType = String(payload.lessonType || "video").toLowerCase();
     if (lessonType === "document") lessonType = "pdf";
-    if (lessonType === "flashcard") {
-      setError("Flashcard lessons cannot be created here yet.");
-      return Promise.resolve();
-    }
     const section = sections.find((s) => s.id === sectionId);
     const nextSortOrder = section ? (section.lessons || []).length : 0;
+
+    // Flashcard dùng luồng 2 bước: tạo lesson trong class draft, rồi gắn flashcard set.
+    if (lessonType === "flashcard") {
+      return runAction(async () => {
+        const created = await trainerCurriculumService.createLesson(classId, sectionId, {
+          title: payload.title,
+          lessonType,
+          type: lessonType,
+          isPreview: Boolean(payload.isPreview),
+          status: payload.status || "draft",
+          durationSeconds: payload.durationSeconds || 0,
+          sortOrder: nextSortOrder,
+          resources: [],
+        });
+        const lessonId = created?.id || created?.lessonId;
+        if (!lessonId) {
+          throw new Error("Could not create flashcard lesson");
+        }
+        const flashcardService = createTrainerFlashcardService(classId, lessonId);
+        await flashcardService.createLesson({
+          title: payload.title,
+          description: payload.description || "",
+          isPreview: Boolean(payload.isPreview),
+          status: payload.status || "draft",
+          durationSeconds: payload.durationSeconds || 0,
+          sortOrder: 0,
+        });
+        return trainerCurriculumService.getCurriculum(classId);
+      }, "Flashcard lesson added");
+    }
 
     return runAction(async () => {
       await trainerCurriculumService.createLesson(classId, sectionId, {
@@ -295,6 +323,7 @@ export function ClassCurriculumTab({ classId, readOnly = false }) {
         stats={stats}
         readOnly={!canEdit}
         lessonTypeOptions={TRAINER_LESSON_TYPES}
+        enableFlashcardCreateFields
         lessonEditLabel="Edit lesson"
         emptyMessage="This class curriculum has no sections yet. Create the first one below."
         emptyAddTitle="Add a new section"

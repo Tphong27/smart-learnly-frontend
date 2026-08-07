@@ -236,14 +236,6 @@ export function createClassFormSchema({
           );
         }
 
-        if (Number(data.price) !== Number(initialData?.price)) {
-          addIssue(
-            context,
-            ["price"],
-            "Class price cannot be changed while the class is ongoing",
-          );
-        }
-
         if (data.endDate < getTodayDateKey()) {
           addIssue(
             context,
