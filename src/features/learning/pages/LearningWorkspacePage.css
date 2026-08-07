@@ -1309,6 +1309,110 @@
     color: var(--lw-text);
 }
 
+.learning-quiz-launch {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: 18px;
+    align-items: center;
+    width: min(100%, 880px);
+    margin: 0 auto;
+    padding: 22px;
+    border: 1px solid rgba(15, 23, 42, 0.12);
+    border-radius: 8px;
+    background: #ffffff;
+    box-shadow: 0 14px 34px rgba(15, 23, 42, 0.08);
+}
+
+.learning-quiz-launch__icon {
+    display: grid;
+    place-items: center;
+    width: 46px;
+    height: 46px;
+    border-radius: 8px;
+    color: #ffffff;
+    background: #2563eb;
+}
+
+.learning-quiz-launch__body {
+    min-width: 0;
+}
+
+.learning-quiz-launch__eyebrow {
+    display: block;
+    margin-bottom: 4px;
+    font-size: 0.75rem;
+    font-weight: 800;
+    letter-spacing: 0;
+    text-transform: uppercase;
+    color: #2563eb;
+}
+
+.learning-quiz-launch__body h2 {
+    margin: 0;
+    color: #0f172a;
+    font-size: 1.35rem;
+    line-height: 1.25;
+}
+
+.learning-quiz-launch__body p {
+    margin: 6px 0 0;
+    color: #64748b;
+    line-height: 1.5;
+}
+
+.learning-quiz-launch__button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 42px;
+    padding: 0 16px;
+    border: 0;
+    border-radius: 8px;
+    color: #ffffff;
+    background: #2563eb;
+    font-weight: 800;
+    cursor: pointer;
+}
+
+.learning-quiz-launch__button:hover {
+    background: #1d4ed8;
+}
+
+.learning-quiz-launch__button:disabled {
+    cursor: wait;
+    opacity: 0.72;
+}
+
+.learning-quiz-launch__score {
+    display: grid;
+    gap: 2px;
+    justify-items: end;
+    min-width: 112px;
+    padding: 10px 14px;
+    border-radius: 8px;
+    background: #eff6ff;
+    color: #1d4ed8;
+}
+
+.learning-quiz-launch__score span {
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0;
+    text-transform: uppercase;
+}
+
+.learning-quiz-launch__score strong {
+    color: #0f172a;
+    font-size: 1.45rem;
+    line-height: 1;
+}
+
+.learning-quiz-launch__score small {
+    color: #64748b;
+    font-weight: 700;
+}
+
 .assignment-view__header {
     padding-bottom: 28px;
     border-bottom: 1px solid var(--lw-border);
@@ -3639,6 +3743,15 @@ button.assignment-file:focus-visible,
 }
 
 @media (max-width: 600px) {
+    .learning-quiz-launch {
+        grid-template-columns: 1fr;
+        align-items: start;
+    }
+
+    .learning-quiz-launch__button {
+        width: 100%;
+    }
+
     .learning-workspace__topbar {
         gap: 6px;
         padding: 0 8px;

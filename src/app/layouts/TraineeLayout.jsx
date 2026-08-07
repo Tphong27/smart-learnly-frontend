@@ -17,6 +17,10 @@ const TRAINEE_TABS = [
         to: "/learning/tests",
     },
     {
+        label: "Assignment",
+        to: "/learning/assignments",
+    },
+    {
         label: "Flashcards",
         to: "/flashcards",
     },

@@ -34,6 +34,14 @@ function getClassId(classItem) {
   return classItem?.id || classItem?.classId || "";
 }
 
+function getModuleId(module) {
+  return module?.id || module?.moduleId || module?.sectionId || "";
+}
+
+function getModuleTitle(module) {
+  return module?.title || module?.name || module?.moduleTitle || "Untitled module";
+}
+
 function getQuestionId(question) {
   return question?.id || question?.questionId || "";
 }
@@ -193,7 +201,9 @@ export function StaffFlashTestCreatePage({ variant = "flash" }) {
     courseContentService
       .getCourseContent(formData.courseId)
       .then((items) => {
-        if (!cancelled) setModules(Array.isArray(items) ? items : []);
+        if (!cancelled) {
+          setModules((Array.isArray(items) ? items : []).filter(getModuleId));
+        }
       })
       .catch(() => {
         if (!cancelled) setModules([]);
@@ -872,8 +882,8 @@ export function StaffFlashTestCreatePage({ variant = "flash" }) {
                 >
                   <option value="all">All modules</option>
                   {modules.map((module) => (
-                    <option key={module.id} value={module.id}>
-                      {module.title || module.name || "Untitled module"}
+                    <option key={getModuleId(module)} value={getModuleId(module)}>
+                      {getModuleTitle(module)}
                     </option>
                   ))}
                 </select>

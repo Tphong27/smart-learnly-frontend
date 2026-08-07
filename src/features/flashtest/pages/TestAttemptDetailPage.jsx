@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, CheckCircle, RefreshCw, XCircle } from "lucide-react";
+import { ArrowLeft, CheckCircle, Eye, RefreshCw, XCircle } from "lucide-react";
 import { attemptService } from "../services/attemptService";
 import { testService } from "../services/testService";
 import {
@@ -126,6 +126,11 @@ export function TestAttemptDetailPage() {
   const [error, setError] = useState("");
   const [attempt, setAttempt] = useState(location.state?.attempt || {});
   const studentName = location.state?.studentName || attempt?.studentName || "";
+  const resultKicker = location.state?.resultKicker || "Test result";
+  const resultMode = location.state?.resultMode || "";
+  const hideAnswerReview = resultMode === "quiz";
+  const contextClassId = location.state?.classId || null;
+  const backPath = location.state?.backPath || "";
 
   const questionTotal = useMemo(
     () => getQuestionTotal(attempt, { questions }),
@@ -145,9 +150,12 @@ export function TestAttemptDetailPage() {
     try {
       const [testData, attemptData, questionMappings, answerData] = await Promise.all([
         testService.getById(testId).catch(() => null),
-        attemptService.getById(attemptId),
-        testService.getLearnerQuestions(testId),
-        attemptService.getStudentAnswers(attemptId),
+        attemptService.getById(
+          attemptId,
+          contextClassId ? { classId: contextClassId } : {},
+        ),
+        hideAnswerReview ? Promise.resolve([]) : testService.getLearnerQuestions(testId),
+        hideAnswerReview ? Promise.resolve([]) : attemptService.getStudentAnswers(attemptId),
       ]);
       setTest(testData);
       setAttempt(attemptData || {});
@@ -159,54 +167,64 @@ export function TestAttemptDetailPage() {
     } finally {
       setLoading(false);
     }
-  }, [attemptId, testId]);
+  }, [attemptId, contextClassId, hideAnswerReview, testId]);
 
   useEffect(() => {
     const timer = window.setTimeout(loadDetail, 0);
     return () => window.clearTimeout(timer);
   }, [loadDetail]);
 
+  const handleBack = () => {
+    if (backPath) {
+      navigate(backPath);
+      return;
+    }
+    navigate(-1);
+  };
+
   return (
     <section className="ft-page ft-page--monitor ft-attempt-detail-page">
-      <header className="ft-monitor-hero">
-        <div className="ft-monitor-hero__content">
-          <span className="ft-page-kicker">Attempt detail</span>
-          <h1 className="ft-page-title">
+      <div className="ft-result-panel ft-result-panel--attempt-detail">
+        <div className="ft-result-panel__icon">
+          <Eye size={24} />
+        </div>
+        <div className="ft-result-panel__body">
+          <span className="ft-page-kicker">{resultKicker}</span>
+          <h2>
             {test?.title || test?.name || "Test attempt"}
-          </h1>
-          <p className="ft-page-subtitle">
-            {studentName || "Trainee"} - Attempt answers and correct options.
+          </h2>
+          <p>
+            Status: <strong>{attempt?.status || "SUBMITTED"}</strong>
+            {studentName ? ` - ${studentName}` : ""}
           </p>
-          <div className="ft-monitor-hero__meta">
+          <div className="ft-result-panel__meta">
             <span>
-              Score {score.score}/10
-              {score.percentage != null ? ` (${score.percentage}%)` : ""}
+              {questionTotal || questions.length || "--"} questions
             </span>
-            <span>{questionTotal || questions.length} questions</span>
+            {attempt?.endTime || attempt?.submittedAt ? (
+              <span>
+                {new Date(attempt.endTime || attempt.submittedAt).toLocaleString()}
+              </span>
+            ) : null}
           </div>
         </div>
-        <div className="ft-toolbar ft-monitor-hero__actions">
+        <div className="ft-result-panel__score">
+          <span>Score</span>
+          <strong>{score.score}</strong>
+          {score.percentage != null && <small>{score.percentage}%</small>}
+        </div>
+        <div className="ft-result-panel__actions">
           <button
-            className="ft-icon-button"
+            className="ft-button ft-button--primary"
             type="button"
-            title="Back"
-            onClick={() => navigate(-1)}
+            onClick={handleBack}
           >
-            <ArrowLeft size={18} />
-          </button>
-          <button
-            className="ft-button ft-button--secondary"
-            type="button"
-            disabled={loading}
-            onClick={loadDetail}
-          >
-            <RefreshCw size={16} className={loading ? "ft-spin" : ""} />
-            Refresh
+            <ArrowLeft size={16} /> Back
           </button>
         </div>
-      </header>
+      </div>
 
-      {loading ? (
+      {hideAnswerReview ? null : loading ? (
         <div className="ft-empty">
           <RefreshCw size={28} className="ft-spin" />
           <strong>Loading attempt detail...</strong>
@@ -214,106 +232,114 @@ export function TestAttemptDetailPage() {
       ) : error ? (
         <div className="ft-alert">{error}</div>
       ) : (
-        <div className="ft-attempt-detail-list">
-          {questions.map((question, index) => {
-            const currentQuestionId = questionId(question);
-            const studentAnswer = answers.find(
-              (item) => questionId(item) === currentQuestionId,
-            );
-            const selectedId = selectedAnswerId(studentAnswer);
-            const gradedCorrect = booleanOrNull(
-              studentAnswer?.isCorrect ??
-                studentAnswer?.is_correct ??
-                studentAnswer?.correct,
-            );
-            const awardedScore = numberOrNull(
-              studentAnswer?.scoreAwarded ?? studentAnswer?.score_awarded,
-            );
-            const gradedCorrectAnswerId =
-              studentAnswer?.correctAnswerId ||
-              studentAnswer?.correct_answer_id ||
-              "";
-            const answerOptions = question.answers || question.options || [];
-            const correctAnswer = answerOptions.find(
-              (answer) =>
-                String(answerId(answer)) === String(gradedCorrectAnswerId) ||
-                answer.correct ||
-                answer.isCorrect,
-            );
-            const isCorrect =
-              gradedCorrect ??
-              (awardedScore != null
-                ? awardedScore > 0
-                : Boolean(
-                    selectedId &&
-                      correctAnswer &&
-                      String(selectedId) === String(answerId(correctAnswer)),
-                  ));
-            const resultLabel = selectedId
-              ? isCorrect
-                ? "Correct"
-                : "Incorrect"
-              : "No answer";
+        <section className="ft-attempt-review">
+          <div className="ft-attempt-review__header">
+            <div>
+              <span className="ft-page-kicker">Answer review</span>
+              <h2>Question details</h2>
+            </div>
+          </div>
+          <div className="ft-attempt-detail-list">
+            {questions.map((question, index) => {
+              const currentQuestionId = questionId(question);
+              const studentAnswer = answers.find(
+                (item) => questionId(item) === currentQuestionId,
+              );
+              const selectedId = selectedAnswerId(studentAnswer);
+              const gradedCorrect = booleanOrNull(
+                studentAnswer?.isCorrect ??
+                  studentAnswer?.is_correct ??
+                  studentAnswer?.correct,
+              );
+              const awardedScore = numberOrNull(
+                studentAnswer?.scoreAwarded ?? studentAnswer?.score_awarded,
+              );
+              const gradedCorrectAnswerId =
+                studentAnswer?.correctAnswerId ||
+                studentAnswer?.correct_answer_id ||
+                "";
+              const answerOptions = question.answers || question.options || [];
+              const correctAnswer = answerOptions.find(
+                (answer) =>
+                  String(answerId(answer)) === String(gradedCorrectAnswerId) ||
+                  answer.correct ||
+                  answer.isCorrect,
+              );
+              const isCorrect =
+                gradedCorrect ??
+                (awardedScore != null
+                  ? awardedScore > 0
+                  : Boolean(
+                      selectedId &&
+                        correctAnswer &&
+                        String(selectedId) === String(answerId(correctAnswer)),
+                    ));
+              const resultLabel = selectedId
+                ? isCorrect
+                  ? "Correct"
+                  : "Incorrect"
+                : "No answer";
 
-            return (
-              <div className="ft-attempt-question" key={currentQuestionId || index}>
-                <div className="ft-attempt-question__title">
-                  <div className="ft-attempt-question__heading">
-                    <span className="ft-attempt-question__eyebrow">
-                      Question {index + 1}
-                    </span>
-                    <div
-                      className="ft-attempt-question__text"
-                      dangerouslySetInnerHTML={{
-                        __html: sanitizeQuestionHtml(questionText(question)),
-                      }}
-                    />
-                  </div>
-                  <span
-                    className={`ft-badge ${
-                      isCorrect ? "ft-status--submitted" : "ft-status--expired"
-                    }`}
-                  >
-                    {isCorrect ? <CheckCircle size={14} /> : <XCircle size={14} />}
-                    {resultLabel}
-                  </span>
-                </div>
-                <div className="ft-attempt-answers">
-                  {answerOptions.map((answer, answerIndex) => {
-                    const id = answerId(answer);
-                    const selected = String(selectedId || "") === String(id);
-                    const correct =
-                      String(id) === String(gradedCorrectAnswerId) ||
-                      answer.correct ||
-                      answer.isCorrect ||
-                      (isCorrect && selected);
-                    return (
+              return (
+                <div className="ft-attempt-question" key={currentQuestionId || index}>
+                  <div className="ft-attempt-question__title">
+                    <div className="ft-attempt-question__heading">
+                      <span className="ft-attempt-question__eyebrow">
+                        Question {index + 1}
+                      </span>
                       <div
-                        className={`ft-attempt-answer ${
-                          correct ? "is-correct" : ""
-                        } ${selected ? "is-selected" : ""}`}
-                        key={id || answerIndex}
-                      >
-                        <span
-                          dangerouslySetInnerHTML={{
-                            __html: sanitizeAnswerHtml(answerText(answer)),
-                          }}
-                        />
-                        <div className="ft-attempt-answer__tags">
-                          {selected && <strong>Selected</strong>}
-                          {correct && <strong>Answer</strong>}
+                        className="ft-attempt-question__text"
+                        dangerouslySetInnerHTML={{
+                          __html: sanitizeQuestionHtml(questionText(question)),
+                        }}
+                      />
+                    </div>
+                    <span
+                      className={`ft-badge ${
+                        isCorrect ? "ft-status--submitted" : "ft-status--expired"
+                      }`}
+                    >
+                      {isCorrect ? <CheckCircle size={14} /> : <XCircle size={14} />}
+                      {resultLabel}
+                    </span>
+                  </div>
+                  <div className="ft-attempt-answers">
+                    {answerOptions.map((answer, answerIndex) => {
+                      const id = answerId(answer);
+                      const selected = String(selectedId || "") === String(id);
+                      const correct =
+                        String(id) === String(gradedCorrectAnswerId) ||
+                        answer.correct ||
+                        answer.isCorrect ||
+                        (isCorrect && selected);
+                      return (
+                        <div
+                          className={`ft-attempt-answer ${
+                            correct ? "is-correct" : ""
+                          } ${selected ? "is-selected" : ""}`}
+                          key={id || answerIndex}
+                        >
+                          <span
+                            dangerouslySetInnerHTML={{
+                              __html: sanitizeAnswerHtml(answerText(answer)),
+                            }}
+                          />
+                          <div className="ft-attempt-answer__tags">
+                            {selected && <strong>Selected</strong>}
+                            {correct && <strong>Answer</strong>}
+                          </div>
                         </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
-            );
-          })}
-          {questions.length === 0 && (
-            <p className="ft-muted">No questions found for this test.</p>
-          )}
-        </div>
+              );
+            })}
+            {questions.length === 0 && (
+              <p className="ft-muted">No questions found for this test.</p>
+            )}
+          </div>
+        </section>
       )}
     </section>
   );

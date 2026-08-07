@@ -10,6 +10,7 @@ export const attemptService = {
     assignmentId = null,
     studentName = "",
     accessCode = "",
+    classId = null,
   ) {
     const response = await apiClient.post("/test-attempts/start", {
       testId,
@@ -17,6 +18,7 @@ export const attemptService = {
       assignmentId,
       studentName,
       accessCode,
+      classId,
     });
     return unwrap(response);
   },
@@ -31,9 +33,10 @@ export const attemptService = {
   },
 
   /** Lấy lịch sử làm một đề của một học viên. */
-  async getHistory(testId, studentId) {
+  async getHistory(testId, studentId, params = {}) {
     const response = await apiClient.get(
       `/test-attempts/test/${testId}/student/${studentId}`,
+      { params },
     );
     return normalizeList(response);
   },
@@ -45,8 +48,10 @@ export const attemptService = {
   },
 
   /** Lấy chi tiết một lượt làm bài. */
-  async getById(attemptId) {
-    const response = await apiClient.get(`/test-attempts/${attemptId}`);
+  async getById(attemptId, params = {}) {
+    const response = await apiClient.get(`/test-attempts/${attemptId}`, {
+      params,
+    });
     return unwrap(response);
   },
 

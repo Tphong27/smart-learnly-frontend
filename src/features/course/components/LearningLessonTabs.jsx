@@ -21,6 +21,7 @@ import {
 import { fileNameFromUrl, isHtmlContent } from "../utils/lesson-content";
 import { LearningQuizPlayer } from "./LearningQuizPlayer";
 import { assignmentService } from "@/features/assignment";
+import { attemptService } from "@/features/flashtest/services/attemptService";
 import { getCurrentUser } from "@/services/api-client";
 import DOMPurify from "dompurify";
 
@@ -35,6 +36,42 @@ function getLessonId(lesson) {
   return lesson?.lessonId ?? lesson?.id ?? null;
 }
 
+function numberOrNull(value) {
+  if (value == null || value === "") return null;
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
+}
+
+function isFinalAttempt(status) {
+  return ["SUBMITTED", "GRADED", "EXPIRED", "TIMEOUT"].includes(
+    String(status || "").toUpperCase(),
+  );
+}
+
+function formatQuizScore(attempt) {
+  const percentage = numberOrNull(attempt?.percentage);
+  const rawScore = numberOrNull(attempt?.score);
+  const totalQuestions = numberOrNull(attempt?.totalQuestions);
+  if (percentage != null) {
+    return {
+      score: Number.isInteger(percentage / 10)
+        ? String(percentage / 10)
+        : (percentage / 10).toFixed(1),
+      percentage: Math.round(percentage),
+    };
+  }
+  if (rawScore != null && totalQuestions) {
+    const computedPercentage = (rawScore / totalQuestions) * 100;
+    return {
+      score: Number.isInteger(computedPercentage / 10)
+        ? String(computedPercentage / 10)
+        : (computedPercentage / 10).toFixed(1),
+      percentage: Math.round(computedPercentage),
+    };
+  }
+  return { score: rawScore ?? "--", percentage: null };
+}
+
 const ASSIGNMENT_FILE_TYPES = [
   ".pdf",
   ".doc",
@@ -46,6 +83,120 @@ const ASSIGNMENT_FILE_TYPES = [
   ".jpeg",
   ".zip",
 ];
+
+function QuizLessonLaunch({ lesson, classId, onQuizCompleted, onQuizStart }) {
+  const [latestAttempt, setLatestAttempt] = useState(null);
+  const [loadingResult, setLoadingResult] = useState(false);
+  const testId = lesson?.testId || lesson?.test_id;
+  const lessonId = getLessonId(lesson);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadQuizResult() {
+      if (!testId) {
+        setLatestAttempt(null);
+        return;
+      }
+      const currentUser = getCurrentUser();
+      const studentId =
+        currentUser?.id || currentUser?.userId || currentUser?.accountId;
+      if (!studentId) return;
+
+      setLoadingResult(true);
+      try {
+        const history = await attemptService.getHistory(
+          testId,
+          studentId,
+          classId ? { classId } : {},
+        );
+        if (cancelled) return;
+        const completed = (history || [])
+          .filter((attempt) => isFinalAttempt(attempt?.status))
+          .sort(
+            (a, b) =>
+              new Date(b?.endTime || b?.updatedAt || b?.createdAt || 0) -
+              new Date(a?.endTime || a?.updatedAt || a?.createdAt || 0),
+          );
+        const latest = completed[0] || null;
+        setLatestAttempt(latest);
+        if (latest && lessonId) {
+          onQuizCompleted?.(lessonId);
+        }
+      } catch {
+        if (!cancelled) setLatestAttempt(null);
+      } finally {
+        if (!cancelled) setLoadingResult(false);
+      }
+    }
+
+    loadQuizResult();
+    return () => {
+      cancelled = true;
+    };
+  }, [lessonId, onQuizCompleted, testId]);
+
+  if (!testId) {
+    return (
+      <article className="learning-quiz-launch">
+        <div className="learning-quiz-launch__icon">
+          <AlertCircle size={24} aria-hidden="true" />
+        </div>
+        <div className="learning-quiz-launch__body">
+          <span className="learning-quiz-launch__eyebrow">Quiz lesson</span>
+          <h2>{lesson.title || "Quiz"}</h2>
+          <p>This quiz has not been linked to a test yet.</p>
+        </div>
+      </article>
+    );
+  }
+
+  if (latestAttempt) {
+    const score = formatQuizScore(latestAttempt);
+    return (
+      <article className="learning-quiz-launch learning-quiz-launch--completed">
+        <div className="learning-quiz-launch__icon">
+          <CheckCircle2 size={24} aria-hidden="true" />
+        </div>
+        <div className="learning-quiz-launch__body">
+          <span className="learning-quiz-launch__eyebrow">Quiz completed</span>
+          <h2>{lesson.title || "Quiz"}</h2>
+          <p>Your latest quiz result is shown below.</p>
+        </div>
+        <div className="learning-quiz-launch__score">
+          <span>Score</span>
+          <strong>{score.score}/10</strong>
+          {score.percentage != null && <small>{score.percentage}%</small>}
+        </div>
+      </article>
+    );
+  }
+
+  return (
+    <article className="learning-quiz-launch">
+      <div className="learning-quiz-launch__icon">
+        <ArrowRight size={24} aria-hidden="true" />
+      </div>
+      <div className="learning-quiz-launch__body">
+        <span className="learning-quiz-launch__eyebrow">Quiz lesson</span>
+        <h2>{lesson.title || "Quiz"}</h2>
+        <p>
+          {loadingResult
+            ? "Checking your quiz result..."
+            : "Open this quiz in the full-screen test workspace."}
+        </p>
+      </div>
+      <button
+        type="button"
+        className="learning-quiz-launch__button"
+        onClick={() => onQuizStart?.(lesson)}
+        disabled={loadingResult}
+      >
+        Start quiz
+        <ArrowRight size={18} aria-hidden="true" />
+      </button>
+    </article>
+  );
+}
 
 function formatAssignmentDate(value) {
   if (!value) return null;
@@ -145,17 +296,18 @@ function OverviewContent({
   classId,
   workspaceMode,
   onQuizCompleted,
+  onQuizStart,
   onEssayCompleted,
 }) {
   const type = (lesson?.lessonType || "").toUpperCase();
 
-  if (type === "QUIZ" && lesson?.content) {
+  if (type === "QUIZ") {
     return (
-      <LearningQuizPlayer
-        content={lesson.content}
-        lessonTitle={lesson.title}
-        durationSeconds={lesson.durationSeconds}
-        onCompleted={() => onQuizCompleted?.(getLessonId(lesson))}
+      <QuizLessonLaunch
+        lesson={lesson}
+        classId={classId}
+        onQuizCompleted={onQuizCompleted}
+        onQuizStart={onQuizStart}
       />
     );
   }
@@ -412,7 +564,8 @@ function EssayLessonContent({ lesson, classId, readOnly = false, onCompleted }) 
   const assignmentClosed =
     isPastDate(assignment?.lockoutDate) ||
     (isPastDate(assignment?.dueDate) && !assignment?.allowLateSubmission);
-  const canSubmit = !readOnly && !assignmentClosed && Boolean(assignment?.id);
+  const canSubmit =
+    !readOnly && !assignmentClosed && !hasResult && Boolean(assignment?.id);
   const assignmentContent = assignment?.description || lesson?.content;
   const supplementalInstructions =
     assignment?.description &&
@@ -827,6 +980,7 @@ export function LearningLessonTabs({
   isActivityLesson = false,
   workspaceMode = "student",
   onQuizCompleted,
+  onQuizStart,
   onEssayCompleted,
 }) {
   const resources = Array.isArray(lesson?.resources) ? lesson.resources : [];
@@ -861,6 +1015,7 @@ export function LearningLessonTabs({
               classId={classId}
               workspaceMode={workspaceMode}
               onQuizCompleted={onQuizCompleted}
+              onQuizStart={onQuizStart}
               onEssayCompleted={onEssayCompleted}
             />
           </div>

@@ -148,7 +148,8 @@ function renderAnswerMedia(answer) {
 export function StudentTakeTestPage({
   listPath = "/learning/flashtests",
   accessStoragePrefix = "flashAccess",
-  resultKicker = "Flash test result",
+  resultKicker: defaultResultKicker = "Flash test result",
+  resultDetailPath = "/learning/tests/attempts",
 } = {}) {
   const { id, type } = useParams();
   const navigate = useNavigate();
@@ -172,11 +173,41 @@ export function StudentTakeTestPage({
   const [submitWarning, setSubmitWarning] = useState(null);
   const [completedResult, setCompletedResult] = useState(null);
   const [activeQuestionIndex, setActiveQuestionIndex] = useState(0);
+  const effectiveListPath = location.state?.resultBackPath || listPath;
+  const resultKicker = location.state?.resultKicker || defaultResultKicker;
+  const contextClassId = location.state?.classId || null;
 
   const accessCode =
     location.state?.accessCode ||
     window.sessionStorage.getItem(`${accessStoragePrefix}:${normalizedType}:${id}`) ||
     "";
+
+  const openAttemptResult = useCallback(
+    (attemptResult, { replace = false } = {}) => {
+      const resultAttemptId = attemptResult?.id || attemptResult?.attemptId;
+      if (!resultAttemptId) return;
+      navigate(`${resultDetailPath}/${id}/${resultAttemptId}`, {
+        replace,
+        state: {
+          attempt: attemptResult,
+          studentName: student.name,
+          backPath: effectiveListPath,
+          resultKicker,
+          resultMode: location.state?.resultMode || null,
+          classId: contextClassId,
+        },
+      });
+    },
+    [
+      effectiveListPath,
+      id,
+      location.state?.resultMode,
+      navigate,
+      resultDetailPath,
+      resultKicker,
+      student.name,
+    ],
+  );
 
   const publishMonitor = useCallback(
     (payload) => {
@@ -222,20 +253,20 @@ export function StudentTakeTestPage({
           setCompletedResult(null);
           setSubmitWarning(null);
           setActiveQuestionIndex(0);
-          const test = await testService.getById(id);
+          const test = await testService.getById(
+            id,
+            contextClassId ? { classId: contextClassId } : {},
+          );
           const started = await attemptService.start(
             id,
             student.id,
             null,
             student.name,
             accessCode,
+            contextClassId,
           );
           if (isCompletedAttempt(started.status)) {
-            setTestData(test);
-            setAttempt(started);
-            setCompletedResult(started);
-            setQuestions([]);
-            setTimeLeft(0);
+            openAttemptResult(started, { replace: true });
             return;
           }
           const mappings = await testService.getLearnerQuestions(id);
@@ -321,7 +352,16 @@ export function StudentTakeTestPage({
       }
     }
     init();
-  }, [accessCode, id, normalizedType, publishMonitor, student.id, student.name]);
+  }, [
+    accessCode,
+    id,
+    normalizedType,
+    openAttemptResult,
+    publishMonitor,
+    contextClassId,
+    student.id,
+    student.name,
+  ]);
 
   const handleDownloadCurrentSubmission = async () => {
     if (!submission?.fileUrl) return;
@@ -433,8 +473,10 @@ export function StudentTakeTestPage({
       if (normalizedType === "mcq") {
         const result = await attemptService.submit(attempt.id, {
           forceSubmit: true,
+          classId: contextClassId,
         });
         setCompletedResult(result);
+        openAttemptResult(result);
         publishMonitor({
           attemptId: attempt.id,
           status: result.status,
@@ -464,7 +506,7 @@ export function StudentTakeTestPage({
         });
       }
       if (normalizedType === "essay") {
-        navigate(listPath);
+        navigate(effectiveListPath);
       }
     } catch (submitError) {
       submittedRef.current = false;
@@ -479,8 +521,9 @@ export function StudentTakeTestPage({
     id,
     ensureEssayStarted,
     navigate,
-    listPath,
+    effectiveListPath,
     normalizedType,
+    openAttemptResult,
     publishMonitor,
     questions,
     student.id,

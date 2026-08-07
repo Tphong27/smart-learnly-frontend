@@ -1468,9 +1468,30 @@
 }
 
 .ft-take-workspace {
-  width: min(1280px, calc(100vw - 32px));
+  width: 100vw;
+  max-width: none;
   min-height: 100vh;
-  padding: 18px 0 32px;
+  min-height: 100dvh;
+  margin: 0;
+  padding: 16px;
+  background: #f8fafc;
+  overflow-x: hidden;
+}
+
+.ft-take-workspace .ft-take-header {
+  margin-bottom: 14px;
+}
+
+.ft-take-workspace .ft-question-layout {
+  min-height: calc(100vh - 132px);
+  min-height: calc(100dvh - 132px);
+}
+
+.ft-take-workspace .ft-question-card,
+.ft-take-workspace .ft-upload-panel {
+  min-height: calc(100vh - 132px);
+  min-height: calc(100dvh - 132px);
+  overflow: auto;
 }
 
 .ft-timer {
@@ -1555,6 +1576,44 @@
 .ft-result-panel__actions {
   display: flex;
   justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.ft-result-panel__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.ft-result-panel__meta span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  border: 1px solid #d9d2fb;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 800;
+  padding: 4px 10px;
+}
+
+.ft-result-panel--attempt-detail {
+  margin-bottom: 18px;
+}
+
+.ft-attempt-review {
+  display: grid;
+  gap: 14px;
+}
+
+.ft-attempt-review__header h2 {
+  margin: 4px 0 0;
+  color: #0f172a;
+  font-size: 22px;
+  line-height: 1.2;
 }
 
 .ft-question-layout {
@@ -1566,9 +1625,12 @@
 
 .ft-question-sidebar {
   position: sticky;
-  top: 98px;
+  top: 94px;
   display: grid;
   gap: 12px;
+  max-height: calc(100vh - 112px);
+  max-height: calc(100dvh - 112px);
+  overflow: auto;
   border: 1px solid #e2e8f0;
   border-radius: 8px;
   background: #ffffff;
@@ -2480,8 +2542,19 @@
     grid-template-columns: 1fr;
   }
 
+  .ft-take-workspace {
+    padding: 10px;
+  }
+
+  .ft-take-workspace .ft-question-layout,
+  .ft-take-workspace .ft-question-card,
+  .ft-take-workspace .ft-upload-panel {
+    min-height: auto;
+  }
+
   .ft-question-sidebar {
     position: static;
+    max-height: none;
   }
 
   .ft-random-picker,
