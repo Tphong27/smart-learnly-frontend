@@ -1,12 +1,11 @@
 import { useCallback, useEffect, useId, useRef, useState } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
   Archive,
   Bell,
   BookOpen,
   Check,
   CheckCheck,
-  ChevronRight,
   ClipboardCheck,
   ClipboardList,
   Clock3,
@@ -45,6 +44,7 @@ const VARIANT_CLASSES = {
   },
 };
 
+/** Rút gọn số lượng chưa đọc để badge trên chuông luôn vừa kích thước. */
 function getUnreadBadgeLabel(count) {
   if (count > 99) return "99+";
   return String(count);
@@ -64,10 +64,12 @@ const TYPE_VISUALS = Object.freeze({
   COURSE: { icon: BookOpen, tone: "course" },
 });
 
+/** Chọn icon và tone hiển thị cho từng loại notification trong dropdown. */
 function getNotificationVisual(type) {
   return TYPE_VISUALS[normalizeNotificationType(type)] || TYPE_VISUALS.SYSTEM;
 }
 
+/** Hiển thị một notification trong dropdown và các thao tác nhanh của nó. */
 function NotificationDropdownItem({
   notification,
   mutating,
@@ -182,6 +184,7 @@ function NotificationDropdownItem({
   );
 }
 
+/** Hiển thị chuông notification và popover danh sách cập nhật gần nhất. */
 export function NotificationBell({ variant = "app", onOpen }) {
   const classes = VARIANT_CLASSES[variant] || VARIANT_CLASSES.app;
   const panelTitleId = useId();
@@ -312,9 +315,13 @@ export function NotificationBell({ variant = "app", onOpen }) {
   function handleOpenNotification(notification) {
     const destination = getNotificationDestination(notification);
     setActionError(null);
+    setActiveActionsId(null);
     void recordClick(notification).catch(() => {});
-    closePanel({ returnFocus: false });
-    navigate(destination);
+
+    if (destination) {
+      closePanel({ returnFocus: false });
+      navigate(destination);
+    }
   }
 
   const visibleNotifications =
@@ -455,15 +462,6 @@ export function NotificationBell({ variant = "app", onOpen }) {
               {actionError}
             </div>
           )}
-
-          <Link
-            to="/notifications"
-            className="notification-dropdown__view-all"
-            onClick={() => closePanel({ returnFocus: false })}
-          >
-            View all notifications
-            <ChevronRight size={16} aria-hidden="true" />
-          </Link>
         </div>
       )}
     </div>

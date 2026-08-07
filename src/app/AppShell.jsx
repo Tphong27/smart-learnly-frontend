@@ -5,7 +5,6 @@ import {
     useRoutes,
 } from "react-router-dom";
 import { PublicLayout } from "./layouts/PublicLayout";
-import { AppLayout } from "./layouts/AppLayout";
 import { AuthAwareLayout } from "./layouts/AuthAwareLayout";
 import { TraineeLayout } from "./layouts/TraineeLayout";
 import { TrainerLayout } from "./layouts/TrainerLayout";
@@ -47,12 +46,9 @@ import {
     PersonalFlashcardSetDetailPage,
     PersonalFlashcardStudyPage,
 } from "@/features/personal-flashcards";
-import {
-    NotificationCenterPage,
-    NotificationDetailPage,
-    NotificationProvider,
-} from "@/features/notification";
+import { NotificationProvider } from "@/features/notification";
 
+/** Chọn layout flashcard cá nhân theo role hiện tại của người dùng. */
 function PersonalFlashcardLayoutBoundary() {
     const user = getCurrentUser();
     const normalizedRole = normalizeRole(user?.role);
@@ -66,25 +62,6 @@ function PersonalFlashcardLayoutBoundary() {
     }
 
     return <Navigate to="/403" replace />;
-}
-
-function NotificationLayoutBoundary() {
-    const user = getCurrentUser();
-    const normalizedRole = normalizeRole(user?.role);
-
-    if (normalizedRole === ROLES.TRAINEE) {
-        return <TraineeLayout />;
-    }
-
-    if (normalizedRole === ROLES.ADMIN) {
-        return <AppLayout />;
-    }
-
-    if (isRoleAllowed(normalizedRole, [ROLES.TRAINER, ROLES.TMO, ROLES.SME])) {
-        return <TrainerLayout />;
-    }
-
-    return <AppLayout />;
 }
 
 const appRoutes = [
@@ -235,19 +212,6 @@ const appRoutes = [
                 ],
             },
             {
-                element: <NotificationLayoutBoundary />,
-                children: [
-                    {
-                        path: "/notifications",
-                        element: <NotificationCenterPage />,
-                    },
-                    {
-                        path: "/notifications/:notificationId",
-                        element: <NotificationDetailPage />,
-                    },
-                ],
-            },
-            {
                 element: <RoleGuard allowedRoles={PERSONAL_FLASHCARD_ROLES} />,
                 children: [
                     {
@@ -286,10 +250,12 @@ const appRoutes = [
     { path: "*", element: <Navigate to="/404" replace /> },
 ];
 
+/** Render cây route chính của ứng dụng. */
 function AppRoutes() {
     return useRoutes(appRoutes);
 }
 
+/** Bọc routes với notification provider và footer public theo path hiện tại. */
 function RoutedApp() {
     const { pathname } = useLocation();
     const showPublicFooter =
@@ -305,6 +271,7 @@ function RoutedApp() {
     );
 }
 
+/** Khởi tạo BrowserRouter cho toàn bộ ứng dụng frontend. */
 export function AppShell() {
     return (
         <BrowserRouter>

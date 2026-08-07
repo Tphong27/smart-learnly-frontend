@@ -18,7 +18,6 @@ export const NOTIFICATION_TYPES = Object.freeze([
 ]);
 
 const NOTIFICATION_TYPE_SET = new Set(NOTIFICATION_TYPES);
-const NOTIFICATION_STATUSES = new Set(["all", "unread", "read"]);
 
 /** Trích xuất data từ API response chuẩn. */
 function unwrapApiResponse(response) {
@@ -88,16 +87,10 @@ function normalizePageResponse(page) {
 function normalizeListParams(params = {}) {
   const page = Number.isFinite(Number(params.page)) ? Number(params.page) : 0;
   const size = Number.isFinite(Number(params.size)) ? Number(params.size) : 20;
-  const status = NOTIFICATION_STATUSES.has(params.status)
-    ? params.status
-    : "all";
-  const type = normalizeType(params.type);
 
   return {
     page,
     size,
-    status,
-    ...(type ? { type } : {}),
   };
 }
 
@@ -106,14 +99,6 @@ function normalizeUnreadCount(payload) {
   const value = Number(unwrapApiResponse(payload)?.unreadCount ?? 0);
   return {
     unreadCount: Number.isFinite(value) ? Math.max(0, value) : 0,
-  };
-}
-
-/** Chuẩn hóa số notification đã lưu trữ. */
-function normalizeArchivedCount(payload) {
-  const value = Number(unwrapApiResponse(payload)?.archivedCount ?? 0);
-  return {
-    archivedCount: Number.isFinite(value) ? Math.max(0, value) : 0,
   };
 }
 
@@ -130,12 +115,6 @@ export const notificationService = {
   async unreadCount() {
     const response = await apiClient.get("/notifications/unread-count");
     return normalizeUnreadCount(response);
-  },
-
-  /** Lấy chi tiết một notification. */
-  async get(notificationId) {
-    const response = await apiClient.get(`/notifications/${notificationId}`);
-    return normalizeNotification(unwrapApiResponse(response));
   },
 
   /** Đánh dấu notification là đã đọc. */
@@ -168,9 +147,4 @@ export const notificationService = {
     return normalizeUnreadCount(response);
   },
 
-  /** Lưu trữ tất cả notification. */
-  async archiveAll() {
-    const response = await apiClient.patch("/notifications/archive-all");
-    return normalizeArchivedCount(response);
-  },
 };
