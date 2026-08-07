@@ -1,15 +1,18 @@
 import apiClient from '@/services/api-client'
 
+/** Lấy phần dữ liệu nghiệp vụ từ ApiResponse hoặc axios response. */
 function unwrap(response) {
   return response?.data ?? response
 }
 
+/** Chuẩn hóa các API trả về mảng thành danh sách an toàn cho UI. */
 function normalizeList(response) {
   const data = unwrap(response)
   const items = data?.items ?? data?.content ?? data?.data ?? data
   return Array.isArray(items) ? items : []
 }
 
+/** Chuẩn hóa response phân trang câu hỏi theo một shape thống nhất. */
 function normalizePage(response) {
   const data = unwrap(response)
   const items = data?.items ?? data?.content ?? data?.questions ?? []
@@ -22,22 +25,16 @@ function normalizePage(response) {
   }
 }
 
-function normalizeAiDraftSources(response) {
-  const data = unwrap(response)
-  const items = data?.items ?? data?.sources ?? data?.content ?? data?.data ?? data
-  return Array.isArray(items) ? items : []
-}
-
+/** Chuẩn hóa batch AI draft khi backend bọc thêm trường batch. */
 function normalizeAiDraftBatch(response) {
   const data = unwrap(response)
   return data?.batch ?? data
 }
 
+/** Xác định request cần multipart khi có file tài liệu đính kèm. */
 function hasMixedAiDraftSources(payload = {}) {
   return (
-    (Array.isArray(payload.files) && payload.files.length > 0)
-    || (Array.isArray(payload.pastedTextSources) && payload.pastedTextSources.length > 0)
-    || (Array.isArray(payload.transcriptContentIds) && payload.transcriptContentIds.length > 0)
+    Array.isArray(payload.files) && payload.files.length > 0
   )
 }
 
@@ -212,16 +209,6 @@ export const questionBankService = {
     return response
   },
 
-  async listAiDraftSources(bankId) {
-    const response = await apiClient.get(`/admin/question-banks/${bankId}/ai-drafts/sources`)
-    return normalizeAiDraftSources(response)
-  },
-
-  async listCourseAiDraftSources(courseId) {
-    const response = await apiClient.get(`/admin/courses/${courseId}/questions/ai-drafts/sources`)
-    return normalizeAiDraftSources(response)
-  },
-
   async getAiDraftSourceCapabilities(bankId) {
     const response = await apiClient.get(`/admin/question-banks/${bankId}/ai-drafts/source-capabilities`)
     return unwrap(response)
@@ -230,6 +217,16 @@ export const questionBankService = {
   async getCourseAiDraftSourceCapabilities(courseId) {
     const response = await apiClient.get(`/admin/courses/${courseId}/questions/ai-drafts/source-capabilities`)
     return unwrap(response)
+  },
+
+  async listAiDraftBatches(bankId) {
+    const response = await apiClient.get(`/admin/question-banks/${bankId}/ai-drafts`)
+    return normalizeList(response)
+  },
+
+  async listCourseAiDraftBatches(courseId) {
+    const response = await apiClient.get(`/admin/courses/${courseId}/questions/ai-drafts`)
+    return normalizeList(response)
   },
 
   async createAiDraftBatch(bankId, payload) {
