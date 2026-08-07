@@ -3,24 +3,30 @@ import { useNavigate, useParams } from "react-router-dom";
 import {
   ArrowLeft,
   CheckCircle2,
-  Clipboard,
+  Edit2,
   FileText,
   Info,
-  Plus,
   Sparkles,
-  Trash2,
   Upload,
-  Video,
   X,
 } from "lucide-react";
-import { Button, useToast } from "@/shared/components/ui";
+import { Button, Modal, useToast } from "@/shared/components/ui";
 import { questionBankService } from "@/features/admin/question-bank";
 import { getCurrentUser } from "@/services/api-client";
 import { courseAdminService, courseContentService } from "@/features/course";
 import { formatDate } from "@/shared/utils/formatters";
+import { sanitizeQuestionHtml } from "@/shared/utils/htmlSanitizer";
 import {
-  normalizeAiSource,
+  aiQuestionTypeLabel,
+  canDraftBeSelected,
+  normalizeAiBatch,
+  validationStatusLabel,
 } from "../utils/aiQuestionDrafts";
+import {
+  buildDraftPayload,
+  createAiDraftFormValues,
+  getDraftValidationError,
+} from "../utils/aiQuestionDraftReview";
 import "../../admin-shared.css";
 import "./question-bank.css";
 
@@ -45,11 +51,13 @@ const DEFAULT_CAPABILITIES = {
   acceptedDocumentExtensions: ["pdf", "docx", "txt"],
 };
 
+/** Kiem tra role duoc phep tao va review AI question draft. */
 function canWriteQuestionBank() {
   const role = getCurrentUser()?.role;
   return role === "ADMIN" || role === "SME";
 }
 
+/** Chuan hoa module course thanh danh sach option cho form AI generate. */
 function normalizeModules(payload) {
   const root = payload?.data ?? payload;
   const items = Array.isArray(root)
@@ -63,6 +71,7 @@ function normalizeModules(payload) {
     .filter((item) => item.id);
 }
 
+/** Tao idempotency key de tranh tao trung batch khi nguoi dung submit lai. */
 function createIdempotencyKey() {
   if (typeof crypto !== "undefined" && crypto.randomUUID) {
     return crypto.randomUUID();
@@ -70,18 +79,13 @@ function createIdempotencyKey() {
   return `ai-draft-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
-function sourceKindLabel(kind) {
-  if (kind === "transcript") return "Transcript";
-  if (kind === "temporary_file") return "Document";
-  if (kind === "pasted_text") return "Pasted text";
-  return "Source";
-}
-
+/** Lay phan mo rong file de validate dinh dang tai lieu. */
 function fileExtension(fileName = "") {
   const index = fileName.lastIndexOf(".");
   return index >= 0 ? fileName.slice(index + 1).toLowerCase() : "";
 }
 
+/** Dinh dang kich thuoc file thanh chuoi ngan gon cho UI. */
 function formatBytes(value) {
   const bytes = Number(value || 0);
   if (bytes < 1024) return `${bytes} B`;
@@ -89,14 +93,22 @@ function formatBytes(value) {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-function newPastedTextItem() {
-  return {
-    id: createIdempotencyKey(),
-    sourceName: "",
-    text: "",
-  };
+/** Tao khoa on dinh cho selection cua draft nam trong mot batch cu the. */
+function draftSelectionKey(batchId, draftId) {
+  return `${batchId}:${draftId}`;
 }
 
+/** Gop batch moi vao danh sach hien co va tranh trung batch theo id. */
+function mergeDraftBatches(batches) {
+  const seen = new Set();
+  return batches.filter((batch) => {
+    if (!batch?.id || seen.has(batch.id)) return false;
+    seen.add(batch.id);
+    return true;
+  });
+}
+
+/** Trang tao AI question draft va hien thi lai cac draft da luu cua course. */
 export function AdminAiQuestionDraftCreatePage() {
   const { bankId, courseId } = useParams();
   const navigate = useNavigate();
@@ -106,10 +118,9 @@ export function AdminAiQuestionDraftCreatePage() {
   const fileInputRef = useRef(null);
   const [bank, setBank] = useState(null);
   const [modules, setModules] = useState([]);
-  const [sources, setSources] = useState([]);
   const [capabilities, setCapabilities] = useState(DEFAULT_CAPABILITIES);
-  const [selectedTranscriptIds, setSelectedTranscriptIds] = useState([]);
-  const [pastedTextSources, setPastedTextSources] = useState([]);
+  const [draftBatches, setDraftBatches] = useState([]);
+  const [selectedDraftKeys, setSelectedDraftKeys] = useState([]);
   const [files, setFiles] = useState([]);
   const [fileErrors, setFileErrors] = useState([]);
   const [questionTypes, setQuestionTypes] = useState([
@@ -122,14 +133,20 @@ export function AdminAiQuestionDraftCreatePage() {
   const [generationInstruction, setGenerationInstruction] = useState("");
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [mutatingDrafts, setMutatingDrafts] = useState(false);
   const [error, setError] = useState(null);
+  const [actionError, setActionError] = useState(null);
+  const [editDraftRow, setEditDraftRow] = useState(null);
+  const [editError, setEditError] = useState(null);
   const [idempotencyKey, setIdempotencyKey] = useState(() =>
     createIdempotencyKey(),
   );
 
   useEffect(() => {
     let cancelled = false;
-    (async () => {
+
+    /** Nap setup tao AI draft cung danh sach batch da co tu backend. */
+    async function loadSetup() {
       setLoading(true);
       setError(null);
       try {
@@ -146,21 +163,14 @@ export function AdminAiQuestionDraftCreatePage() {
               updatedAt: bankData?.updatedAt,
             }
           : bankData;
-        setBank(normalizedBank);
-        setLanguage("en");
-
         const resolvedCourseId = isCourseQuestionsMode
           ? courseId
           : bankData?.courseId;
-        const [moduleData, sourceData, capabilityData] = await Promise.all([
+
+        const [moduleData, capabilityData, batchData] = await Promise.all([
           resolvedCourseId
             ? courseContentService.getCourseContent(resolvedCourseId)
             : Promise.resolve([]),
-          isCourseQuestionsMode
-            ? questionBankService
-                .listCourseAiDraftSources(courseId)
-                .catch(() => [])
-            : questionBankService.listAiDraftSources(bankId),
           isCourseQuestionsMode
             ? questionBankService
                 .getCourseAiDraftSourceCapabilities(courseId)
@@ -168,14 +178,20 @@ export function AdminAiQuestionDraftCreatePage() {
             : questionBankService
                 .getAiDraftSourceCapabilities(bankId)
                 .catch(() => DEFAULT_CAPABILITIES),
+          isCourseQuestionsMode
+            ? questionBankService
+                .listCourseAiDraftBatches(courseId)
+                .catch(() => [])
+            : questionBankService.listAiDraftBatches(bankId).catch(() => []),
         ]);
         if (cancelled) return;
+        setBank(normalizedBank);
+        setLanguage("en");
         setModules(normalizeModules(moduleData));
         setCapabilities({ ...DEFAULT_CAPABILITIES, ...(capabilityData || {}) });
-        const normalizedSources = sourceData
-          .map(normalizeAiSource)
-          .filter((source) => source.id);
-        setSources(normalizedSources);
+        setDraftBatches(
+          batchData.map(normalizeAiBatch).filter((batch) => batch.id),
+        );
       } catch (err) {
         if (!cancelled) {
           setError(err?.message || "Could not load AI generation setup.");
@@ -183,69 +199,46 @@ export function AdminAiQuestionDraftCreatePage() {
       } finally {
         if (!cancelled) setLoading(false);
       }
-    })();
+    }
+
+    loadSetup();
     return () => {
       cancelled = true;
     };
   }, [bankId, courseId, isCourseQuestionsMode]);
 
-  const transcriptSources = useMemo(
+  const draftRows = useMemo(
     () =>
-      sources.filter((source) => source.kind === "transcript" && source.ready),
-    [sources],
+      draftBatches.flatMap((batch) =>
+        (batch.drafts || []).map((draft) => ({
+          batch,
+          draft,
+          key: draftSelectionKey(batch.id, draft.id),
+        })),
+      ),
+    [draftBatches],
   );
 
-  const selectedSourcesCount =
-    selectedTranscriptIds.length +
-    pastedTextSources.filter((item) => item.text.trim()).length +
-    files.length;
+  const selectableDraftRows = useMemo(
+    () => draftRows.filter(({ draft }) => canDraftBeSelected(draft)),
+    [draftRows],
+  );
 
-  const pastedTextErrors = useMemo(() => {
-    const errors = new Map();
-    pastedTextSources.forEach((item) => {
-      const length = item.text.trim().length;
-      if (length > 0 && length < capabilities.minTextCharacters) {
-        errors.set(
-          item.id,
-          `At least ${capabilities.minTextCharacters} characters are required.`,
-        );
-      } else if (length > capabilities.maxPastedTextCharacters) {
-        errors.set(
-          item.id,
-          `Maximum ${capabilities.maxPastedTextCharacters.toLocaleString()} characters.`,
-        );
-      }
-    });
-    return errors;
-  }, [capabilities, pastedTextSources]);
+  const selectedDraftRows = useMemo(
+    () => draftRows.filter((row) => selectedDraftKeys.includes(row.key)),
+    [draftRows, selectedDraftKeys],
+  );
 
-  const totalEstimatedCharacters = useMemo(() => {
-    const pasted = pastedTextSources.reduce(
-      (sum, item) => sum + item.text.trim().length,
-      0,
-    );
-    const transcripts = transcriptSources
-      .filter((source) => selectedTranscriptIds.includes(source.id))
-      .reduce(
-        (sum, source) => sum + Number(source.normalizedCharCount || 0),
-        0,
-      );
-    return pasted + transcripts;
-  }, [pastedTextSources, selectedTranscriptIds, transcriptSources]);
-
+  const selectedSourcesCount = files.length;
   const trimmedInstruction = generationInstruction.trim();
   const instructionTooLong = trimmedInstruction.length > 2000;
   const sourceCountExceeded =
     selectedSourcesCount > capabilities.maxSourcesPerBatch;
-  const contentBudgetExceeded =
-    totalEstimatedCharacters > capabilities.maxNormalizedCharactersPerBatch;
   const canSubmit =
     writable &&
     !loading &&
     !submitting &&
     !sourceCountExceeded &&
-    !contentBudgetExceeded &&
-    pastedTextErrors.size === 0 &&
     fileErrors.length === 0 &&
     questionTypes.length > 0 &&
     Boolean(moduleId) &&
@@ -256,14 +249,25 @@ export function AdminAiQuestionDraftCreatePage() {
     !instructionTooLong &&
     bank?.status !== "archived";
 
-  function toggleTranscript(sourceId) {
-    setSelectedTranscriptIds((current) =>
-      current.includes(sourceId)
-        ? current.filter((id) => id !== sourceId)
-        : [...current, sourceId],
+  /** Tai lai danh sach AI draft batch sau khi tao hoac add vao list chinh. */
+  async function refreshDraftBatches() {
+    const batchData = isCourseQuestionsMode
+      ? await questionBankService.listCourseAiDraftBatches(courseId)
+      : await questionBankService.listAiDraftBatches(bankId);
+    const normalizedBatches = batchData
+      .map(normalizeAiBatch)
+      .filter((batch) => batch.id);
+    setDraftBatches(normalizedBatches);
+    setSelectedDraftKeys((current) =>
+      current.filter((key) =>
+        normalizedBatches.some((batch) =>
+          batch.drafts.some((draft) => key === draftSelectionKey(batch.id, draft.id)),
+        ),
+      ),
     );
   }
 
+  /** Bat tat mot loai cau hoi ma backend se chia deu so luong generate. */
   function toggleQuestionType(type) {
     setQuestionTypes((current) =>
       current.includes(type)
@@ -272,24 +276,7 @@ export function AdminAiQuestionDraftCreatePage() {
     );
   }
 
-  function addPastedText() {
-    setPastedTextSources((current) => [...current, newPastedTextItem()]);
-  }
-
-  function updatePastedText(itemId, patch) {
-    setPastedTextSources((current) =>
-      current.map((item) =>
-        item.id === itemId ? { ...item, ...patch } : item,
-      ),
-    );
-  }
-
-  function removePastedText(itemId) {
-    setPastedTextSources((current) =>
-      current.filter((item) => item.id !== itemId),
-    );
-  }
-
+  /** Them file tai lieu va validate extension, kich thuoc truoc khi submit. */
   function addFiles(nextFiles) {
     const incoming = Array.from(nextFiles || []);
     const accepted = [];
@@ -311,6 +298,7 @@ export function AdminAiQuestionDraftCreatePage() {
     if (fileInputRef.current) fileInputRef.current.value = "";
   }
 
+  /** Xoa mot file tai lieu khoi request generate hien tai. */
   function removeFile(index) {
     setFiles((current) =>
       current.filter((_, itemIndex) => itemIndex !== index),
@@ -318,6 +306,25 @@ export function AdminAiQuestionDraftCreatePage() {
     setFileErrors([]);
   }
 
+  /** Bat tat selection cua mot AI draft da du dieu kien add vao list chinh. */
+  function toggleDraftSelection(key) {
+    setSelectedDraftKeys((current) =>
+      current.includes(key)
+        ? current.filter((item) => item !== key)
+        : [...current, key],
+    );
+  }
+
+  /** Chon nhanh hoac bo chon tat ca draft hop le dang hien thi. */
+  function toggleAllSelectableDrafts() {
+    const selectableKeys = selectableDraftRows.map((row) => row.key);
+    const allSelected =
+      selectableKeys.length > 0 &&
+      selectableKeys.every((key) => selectedDraftKeys.includes(key));
+    setSelectedDraftKeys(allSelected ? [] : selectableKeys);
+  }
+
+  /** Tao batch AI moi va giu nguoi dung o lai man hinh danh sach draft. */
   async function handleSubmit(event) {
     event.preventDefault();
     if (!canSubmit) {
@@ -327,57 +334,113 @@ export function AdminAiQuestionDraftCreatePage() {
       return;
     }
 
-    const trimmedPastedSources = pastedTextSources
-      .map((item, index) => ({
-        sourceName: item.sourceName.trim() || `Pasted text ${index + 1}`,
-        text: item.text.trim(),
-      }))
-      .filter((item) => item.text);
-
     setSubmitting(true);
     setError(null);
+    setActionError(null);
     try {
-      const createBatch = isCourseQuestionsMode
-        ? questionBankService.createCourseAiDraftBatch(courseId, {
-            transcriptContentIds: selectedTranscriptIds,
-            pastedTextSources: trimmedPastedSources,
-            files,
-            questionTypes,
-            requestedCount,
-            moduleId,
-            language,
-            generationInstruction: trimmedInstruction || null,
-            idempotencyKey,
-          })
-        : questionBankService.createAiDraftBatch(bankId, {
-            transcriptContentIds: selectedTranscriptIds,
-            pastedTextSources: trimmedPastedSources,
-            files,
-            questionTypes,
-            requestedCount,
-            moduleId,
-            language,
-            generationInstruction: trimmedInstruction || null,
-            idempotencyKey,
-          });
-      const batch = await createBatch;
-      const batchId = batch?.batchId || batch?.id;
+      const payload = {
+        files,
+        questionTypes,
+        requestedCount,
+        moduleId,
+        language,
+        generationInstruction: trimmedInstruction || null,
+        idempotencyKey,
+      };
+      const batch = isCourseQuestionsMode
+        ? await questionBankService.createCourseAiDraftBatch(courseId, payload)
+        : await questionBankService.createAiDraftBatch(bankId, payload);
+      const normalizedBatch = normalizeAiBatch(batch);
       toast.success("AI draft batch created");
       setIdempotencyKey(createIdempotencyKey());
-      navigate(
-        batchId
-          ? isCourseQuestionsMode
-            ? `/admin/courses/${courseId}/questions/ai-drafts/${batchId}`
-            : `/admin/question-banks/${bankId}/ai-drafts/${batchId}`
-          : isCourseQuestionsMode
-            ? `/admin/courses/${courseId}/questions`
-            : `/admin/question-banks/${bankId}`,
+      setFiles([]);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      setDraftBatches((current) =>
+        mergeDraftBatches([normalizedBatch, ...current]),
       );
+      await refreshDraftBatches().catch(() => undefined);
     } catch (err) {
       setError(err?.message || "Could not create AI draft batch.");
       toast.error(err?.message || "Could not create AI draft batch.");
     } finally {
       setSubmitting(false);
+    }
+  }
+
+  /** Add cac draft da chon vao question list chinh, neu chua chon thi quay ve list. */
+  async function handleSelectAndReturn() {
+    if (selectedDraftRows.length === 0) {
+      navigate(backPath);
+      return;
+    }
+
+    setMutatingDrafts(true);
+    setActionError(null);
+    try {
+      const rowsByBatch = new Map();
+      selectedDraftRows.forEach((row) => {
+        const rows = rowsByBatch.get(row.batch.id) || [];
+        rows.push(row.draft);
+        rowsByBatch.set(row.batch.id, rows);
+      });
+
+      await Promise.all(
+        Array.from(rowsByBatch.entries()).map(([batchId, drafts]) =>
+          isCourseQuestionsMode
+            ? questionBankService.addSelectedCourseAiDrafts(courseId, batchId, drafts)
+            : questionBankService.addSelectedAiDrafts(bankId, batchId, drafts),
+        ),
+      );
+      toast.success("Selected drafts processed");
+      navigate(backPath);
+    } catch (err) {
+      setActionError(err?.message || "Could not add selected drafts.");
+      toast.error(err?.message || "Could not add selected drafts.");
+      await refreshDraftBatches().catch(() => undefined);
+    } finally {
+      setMutatingDrafts(false);
+    }
+  }
+
+  /** Luu noi dung draft duoc sua truc tiep tu modal trong man AI Generating. */
+  async function handleEditSave(values) {
+    const validationError = getDraftValidationError(values);
+    if (validationError) {
+      setEditError(validationError);
+      return;
+    }
+    if (!editDraftRow?.batch?.id) return;
+
+    setMutatingDrafts(true);
+    setEditError(null);
+    setActionError(null);
+    try {
+      if (isCourseQuestionsMode) {
+        await questionBankService.updateCourseAiDraft(
+          courseId,
+          editDraftRow.batch.id,
+          values.id,
+          buildDraftPayload(values),
+        );
+      } else {
+        await questionBankService.updateAiDraft(
+          bankId,
+          editDraftRow.batch.id,
+          values.id,
+          buildDraftPayload(values),
+        );
+      }
+      toast.success("Draft updated");
+      setEditDraftRow(null);
+      await refreshDraftBatches();
+    } catch (err) {
+      const message =
+        err?.message || "Draft may have been updated by someone else. Please reload and try again.";
+      setEditError(message);
+      toast.error(err?.message || "Could not update draft.");
+      await refreshDraftBatches().catch(() => undefined);
+    } finally {
+      setMutatingDrafts(false);
     }
   }
 
@@ -416,6 +479,9 @@ export function AdminAiQuestionDraftCreatePage() {
   const backPath = isCourseQuestionsMode
     ? `/admin/courses/${courseId}/questions`
     : `/admin/question-banks/${bankId}`;
+  const allSelectableSelected =
+    selectableDraftRows.length > 0 &&
+    selectableDraftRows.every((row) => selectedDraftKeys.includes(row.key));
 
   return (
     <div className="admin-page ai-drafts-page">
@@ -445,6 +511,15 @@ export function AdminAiQuestionDraftCreatePage() {
           role="alert"
         >
           {error}
+        </section>
+      )}
+
+      {actionError && (
+        <section
+          className="ai-drafts-alert ai-drafts-alert--danger"
+          role="alert"
+        >
+          {actionError}
         </section>
       )}
 
@@ -515,91 +590,6 @@ export function AdminAiQuestionDraftCreatePage() {
             </div>
 
             <SourceSection
-              icon={<Clipboard size={18} />}
-              title="Pasted text"
-              description={`Each item needs ${capabilities.minTextCharacters}-${capabilities.maxPastedTextCharacters.toLocaleString()} characters.`}
-              action={
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  leftIcon={<Plus size={15} />}
-                  onClick={addPastedText}
-                  disabled={submitting}
-                >
-                  Add text
-                </Button>
-              }
-            >
-              {pastedTextSources.length === 0 ? (
-                <div className="admin-empty ai-drafts-empty">
-                  No pasted text added.
-                </div>
-              ) : (
-                pastedTextSources.map((item, index) => (
-                  <div className="ai-pasted-source" key={item.id}>
-                    <div className="ai-pasted-source__header">
-                      <label
-                        className="input-field__label"
-                        htmlFor={`ai-pasted-name-${item.id}`}
-                      >
-                        Source name
-                      </label>
-                      <button
-                        type="button"
-                        className="admin-table__icon-btn admin-table__icon-btn--danger"
-                        onClick={() => removePastedText(item.id)}
-                        aria-label={`Remove pasted text ${index + 1}`}
-                        disabled={submitting}
-                      >
-                        <Trash2 size={15} />
-                      </button>
-                    </div>
-                    <input
-                      id={`ai-pasted-name-${item.id}`}
-                      className="admin-toolbar__input"
-                      value={item.sourceName}
-                      onChange={(event) =>
-                        updatePastedText(item.id, {
-                          sourceName: event.target.value,
-                        })
-                      }
-                      disabled={submitting}
-                      placeholder={`Pasted text ${index + 1}`}
-                    />
-                    <label
-                      className="input-field__label"
-                      htmlFor={`ai-pasted-text-${item.id}`}
-                    >
-                      Source text
-                    </label>
-                    <textarea
-                      id={`ai-pasted-text-${item.id}`}
-                      className={`admin-textarea ${pastedTextErrors.has(item.id) ? "admin-textarea--error" : ""}`}
-                      rows={7}
-                      value={item.text}
-                      onChange={(event) =>
-                        updatePastedText(item.id, { text: event.target.value })
-                      }
-                      disabled={submitting}
-                    />
-                    <div className="ai-drafts-counter">
-                      <span
-                        className={
-                          pastedTextErrors.has(item.id) ? "is-danger" : ""
-                        }
-                      >
-                        {pastedTextErrors.get(item.id) ||
-                          "This text will be snapshotted for retry and audit."}
-                      </span>
-                      <strong>{item.text.trim().length.toLocaleString()}</strong>
-                    </div>
-                  </div>
-                ))
-              )}
-            </SourceSection>
-
-            <SourceSection
               icon={<Upload size={18} />}
               title="Documents"
               description={`PDF, DOCX, or TXT up to ${formatBytes(capabilities.maxDocumentBytes)} each.`}
@@ -657,48 +647,22 @@ export function AdminAiQuestionDraftCreatePage() {
               )}
             </SourceSection>
 
-            <SourceSection
-              icon={<Video size={18} />}
-              title="Video transcripts"
-              description="Published course-level transcripts from Smart Learnly video lessons."
-              emptyText="No published video transcripts are available for this course."
-            >
-              {transcriptSources.map((source) => (
-                <SourceRow
-                  key={source.id}
-                  source={source}
-                  checked={selectedTranscriptIds.includes(source.id)}
-                  disabled={submitting}
-                  onChange={() => toggleTranscript(source.id)}
-                />
-              ))}
-            </SourceSection>
-
             <div className="ai-drafts-notice">
               <Info size={16} />
               <span>
-                Selected sources are snapshotted for retry. Document originals are
+                Source material is optional. Uploaded document originals are
                 stored for audit and can be downloaded after review authorization.
               </span>
             </div>
           </div>
         </details>
 
-        {(sourceCountExceeded || contentBudgetExceeded) && (
+        {sourceCountExceeded && (
           <div
             className="ai-drafts-alert ai-drafts-alert--danger"
             role="alert"
           >
-            {sourceCountExceeded && (
-              <p>Use at most {capabilities.maxSourcesPerBatch} sources.</p>
-            )}
-            {contentBudgetExceeded && (
-              <p>
-                Selected text/transcripts exceed{" "}
-                {capabilities.maxNormalizedCharactersPerBatch.toLocaleString()}{" "}
-                characters.
-              </p>
-            )}
+            <p>Use at most {capabilities.maxSourcesPerBatch} sources.</p>
           </div>
         )}
 
@@ -756,8 +720,10 @@ export function AdminAiQuestionDraftCreatePage() {
             <Button
               type="button"
               variant="secondary"
-              to={backPath}
-              disabled={submitting}
+              onClick={handleSelectAndReturn}
+              loading={mutatingDrafts}
+              disabled={submitting || mutatingDrafts}
+              loadingLabel="Adding..."
             >
               Select & Return
             </Button>
@@ -765,6 +731,25 @@ export function AdminAiQuestionDraftCreatePage() {
         </div>
 
         <div className="admin-card admin-card--flush ai-generating-table-card">
+          <div className="ai-drafts-toolbar">
+            <div>
+              <strong>Generated questions</strong>
+              <span>
+                {selectedDraftRows.length} selected - {selectableDraftRows.length} can be added
+              </span>
+            </div>
+            <div className="ai-drafts-toolbar__actions">
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={toggleAllSelectableDrafts}
+                disabled={selectableDraftRows.length === 0 || mutatingDrafts}
+              >
+                {allSelectableSelected ? "Clear selection" : "Select valid drafts"}
+              </Button>
+            </div>
+          </div>
           <div className="admin-table-wrap">
             <table className="admin-table ai-generated-table">
               <thead>
@@ -777,13 +762,30 @@ export function AdminAiQuestionDraftCreatePage() {
                 </tr>
               </thead>
               <tbody>
-                <tr>
-                  <td colSpan="5">
-                    <div className="admin-empty ai-drafts-empty">
-                      Generated questions will appear after AI Generate finishes.
-                    </div>
-                  </td>
-                </tr>
+                {draftRows.length === 0 ? (
+                  <tr>
+                    <td colSpan="5">
+                      <div className="admin-empty ai-drafts-empty">
+                        Generated draft questions will be saved here after AI Generate finishes.
+                      </div>
+                    </td>
+                  </tr>
+                ) : (
+                  draftRows.map((row) => (
+                    <DraftListRow
+                      key={row.key}
+                      row={row}
+                      selected={selectedDraftKeys.includes(row.key)}
+                      selectable={canDraftBeSelected(row.draft)}
+                      mutating={mutatingDrafts}
+                      onToggle={() => toggleDraftSelection(row.key)}
+                      onEdit={() => {
+                        setEditError(null);
+                        setEditDraftRow(row);
+                      }}
+                    />
+                  ))
+                )}
               </tbody>
             </table>
           </div>
@@ -792,7 +794,8 @@ export function AdminAiQuestionDraftCreatePage() {
         <div className="ai-drafts-footnote">
           <CheckCircle2 size={15} />
           <span>
-            Created questions will be saved as draft after human review.
+            Generated questions stay in this draft list until a reviewer selects
+            them into the official question list.
           </span>
         </div>
         {bank?.updatedAt && (
@@ -801,10 +804,26 @@ export function AdminAiQuestionDraftCreatePage() {
           </p>
         )}
       </form>
+
+      {editDraftRow && (
+        <EditDraftModal
+          key={`${editDraftRow.draft.id}-${editDraftRow.draft.version}`}
+          draft={editDraftRow.draft}
+          modules={modules}
+          mutating={mutatingDrafts}
+          error={editError}
+          onClose={() => {
+            setEditDraftRow(null);
+            setEditError(null);
+          }}
+          onSave={handleEditSave}
+        />
+      )}
     </div>
   );
 }
 
+/** Nhom mot khu vuc source material va hien empty state neu can. */
 function SourceSection({
   icon,
   title,
@@ -837,39 +856,223 @@ function SourceSection({
   );
 }
 
-function SourceRow({ source, checked, disabled, onChange }) {
+/** Hien thi mot draft AI trong danh sach co the chon dua vao question list. */
+function DraftListRow({
+  row,
+  selected,
+  selectable,
+  mutating,
+  onToggle,
+  onEdit,
+}) {
+  const { batch, draft } = row;
+  const accepted = draft.status === "accepted";
+  const rejected = draft.status === "rejected";
+  const editable = draft.status === "generated_draft";
+
   return (
-    <label className="ai-source-row">
-      <input
-        type="checkbox"
-        checked={checked}
-        onChange={onChange}
-        disabled={disabled}
-      />
-      <span className="ai-source-row__icon" aria-hidden="true">
-        {source.kind === "transcript" ? (
-          <Video size={18} />
-        ) : (
-          <FileText size={18} />
+    <tr className={`ai-generated-table__row ai-generated-table__row--${draft.validationStatus}`}>
+      <td className="ai-generated-table__select">
+        <input
+          type="checkbox"
+          checked={selected}
+          disabled={!selectable || mutating}
+          onChange={onToggle}
+          aria-label={`Select draft ${draft.rowNumber}`}
+        />
+      </td>
+      <td className="ai-generated-table__content">
+        <div className="ai-draft-row__meta">
+          <span>Batch {String(batch.id).slice(0, 8)}</span>
+          <span>Draft {draft.rowNumber}</span>
+        </div>
+        <div
+          className="ai-draft-row__question question-rich-text-viewer"
+          dangerouslySetInnerHTML={{
+            __html: sanitizeQuestionHtml(draft.questionText),
+          }}
+        />
+      </td>
+      <td>{aiQuestionTypeLabel(draft.questionType)}</td>
+      <td className="ai-generated-table__status">
+        <strong>{accepted ? "Accepted" : rejected ? "Rejected" : draft.status}</strong>
+        <span className={`admin-status admin-status--ai-${draft.validationStatus}`}>
+          {validationStatusLabel(draft.validationStatus)}
+        </span>
+        <span className={`admin-status admin-status--ai-${batch.status}`}>
+          {batch.status}
+        </span>
+      </td>
+      <td>
+        <Button
+          type="button"
+          variant="secondary"
+          size="sm"
+          leftIcon={<Edit2 size={15} />}
+          onClick={onEdit}
+          disabled={!editable || mutating}
+        >
+          Edit
+        </Button>
+      </td>
+    </tr>
+  );
+}
+
+/** Modal xem va sua chi tiet mot AI draft ngay tren man AI Generating. */
+function EditDraftModal({ draft, modules, mutating, error, onClose, onSave }) {
+  const [values, setValues] = useState(() => createAiDraftFormValues(draft));
+
+  /** Cap nhat noi dung mot dap an trong form edit draft. */
+  function updateAnswer(index, answerText) {
+    setValues((current) => ({
+      ...current,
+      answers: current.answers.map((answer, answerIndex) =>
+        answerIndex === index ? { ...answer, answerText } : answer,
+      ),
+    }));
+  }
+
+  /** Danh dau duy nhat mot dap an dung cho draft dang sua. */
+  function setCorrect(index) {
+    setValues((current) => ({
+      ...current,
+      answers: current.answers.map((answer, answerIndex) => ({
+        ...answer,
+        correct: answerIndex === index,
+      })),
+    }));
+  }
+
+  return (
+    <Modal
+      open={Boolean(draft)}
+      title="Edit AI draft"
+      size="xl"
+      closeOnOverlayClick={false}
+      onClose={onClose}
+    >
+      <form
+        className="ai-draft-edit-form"
+        onSubmit={(event) => {
+          event.preventDefault();
+          onSave(values);
+        }}
+      >
+        {error && (
+          <section className="ai-drafts-alert ai-drafts-alert--danger" role="alert">
+            {error}
+          </section>
         )}
-      </span>
-      <span className="ai-source-row__body">
-        <strong>{source.title}</strong>
-        <span>
-          {source.lessonTitle || sourceKindLabel(source.kind)} ·{" "}
-          {source.chunkCount || "--"} chunks
-          {source.normalizedCharCount
-            ? ` · ${source.normalizedCharCount.toLocaleString()} chars`
-            : ""}
-        </span>
-        <span>
-          Checksum: {source.checksum || "--"}
-          {source.version ? ` · Version: ${source.version}` : ""}
-        </span>
-      </span>
-      <span className="admin-status admin-status--approved">
-        {sourceKindLabel(source.kind)}
-      </span>
-    </label>
+
+        <div className="ai-drafts-fieldset">
+          <span className="input-field__label">Question type</span>
+          <p className="ai-drafts-readonly-value">
+            {aiQuestionTypeLabel(values.questionType)} cannot be changed in MVP.
+          </p>
+        </div>
+
+        <div className="ai-drafts-fieldset">
+          <label className="input-field__label" htmlFor="ai-list-edit-question-text">
+            Question text
+          </label>
+          <textarea
+            id="ai-list-edit-question-text"
+            className="admin-textarea"
+            rows={5}
+            value={values.questionText}
+            onChange={(event) =>
+              setValues((current) => ({
+                ...current,
+                questionText: event.target.value,
+              }))
+            }
+            disabled={mutating}
+          />
+        </div>
+
+        <div className="ai-drafts-fieldset">
+          <label className="input-field__label" htmlFor="ai-list-edit-module">
+            Module
+          </label>
+          <select
+            id="ai-list-edit-module"
+            className="admin-toolbar__select"
+            value={values.moduleId || ""}
+            onChange={(event) =>
+              setValues((current) => ({
+                ...current,
+                moduleId: event.target.value,
+              }))
+            }
+            disabled={mutating}
+          >
+            <option value="">Select module</option>
+            {modules.map((module) => (
+              <option key={module.id} value={module.id}>
+                {module.title}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="ai-drafts-fieldset">
+          <span className="input-field__label">Answers</span>
+          <div className="ai-draft-edit-answers">
+            {values.answers.map((answer, index) => (
+              <div className="ai-draft-edit-answer" key={answer.answerId || answer.id || index}>
+                <input
+                  type="radio"
+                  name="ai-list-draft-correct-answer"
+                  checked={answer.correct}
+                  onChange={() => setCorrect(index)}
+                  aria-label={`Mark answer ${index + 1} correct`}
+                  disabled={mutating}
+                />
+                <textarea
+                  className="admin-textarea"
+                  rows={2}
+                  value={answer.answerText}
+                  disabled={mutating || values.questionType === "true_false"}
+                  onChange={(event) => updateAnswer(index, event.target.value)}
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="ai-drafts-fieldset">
+          <label className="input-field__label" htmlFor="ai-list-edit-explanation">
+            Explanation
+          </label>
+          <textarea
+            id="ai-list-edit-explanation"
+            className="admin-textarea"
+            rows={4}
+            value={values.explanation}
+            onChange={(event) =>
+              setValues((current) => ({
+                ...current,
+                explanation: event.target.value,
+              }))
+            }
+            disabled={mutating}
+          />
+        </div>
+
+        <div className="ai-drafts-notice">
+          Editing question text or correct answer can require evidence review before this draft can be added.
+        </div>
+
+        <div className="ai-drafts-actions">
+          <Button type="button" variant="ghost" onClick={onClose} disabled={mutating}>
+            Cancel
+          </Button>
+          <Button type="submit" loading={mutating} loadingLabel="Saving...">
+            Save draft
+          </Button>
+        </div>
+      </form>
+    </Modal>
   );
 }
