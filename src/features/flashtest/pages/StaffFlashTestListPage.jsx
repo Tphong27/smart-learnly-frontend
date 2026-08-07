@@ -15,6 +15,8 @@ import {
 } from "lucide-react";
 import { assignmentService } from "@/features/assignment";
 import { testService } from "../services/testService";
+import { getCurrentUser } from "@/services/api-client";
+import { normalizeRole, ROLES } from "@/shared/constants/roles";
 import Pagination from "@/shared/components/Pagination";
 import "../flashtest.css";
 
@@ -51,6 +53,24 @@ function getClassId(item) {
     return item?.classId || item?.class_id || "";
 }
 
+function getCourseId(item) {
+    return item?.courseId || item?.course_id || "";
+}
+
+function getCurriculumEssayEditPath(item, fallbackCourseId, fallbackClassId) {
+    const lessonId = getLessonId(item);
+    if (!lessonId) return null;
+    const rowClassId = getClassId(item) || fallbackClassId;
+    if (rowClassId) {
+        return `/trainer/classes/${rowClassId}/curriculum/lessons/${lessonId}`;
+    }
+    const rowCourseId = getCourseId(item) || fallbackCourseId;
+    if (rowCourseId) {
+        return `/staff/courses/${rowCourseId}/lessons/${lessonId}`;
+    }
+    return null;
+}
+
 function getDuration(item) {
     if (item.durationMinutes ?? item.duration_minutes ?? item.duration) {
         return item.durationMinutes ?? item.duration_minutes ?? item.duration;
@@ -71,8 +91,11 @@ function formatDate(value) {
 export function StaffFlashTestListPage({ variant = "flash" }) {
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
+    const currentUser = useMemo(() => getCurrentUser(), []);
+    const currentRole = normalizeRole(currentUser?.role);
     const isFlashMode = variant === "flash";
     const isAssignmentMode = variant === "assignment";
+    const canCreateItems = currentRole !== ROLES.TMO;
     const courseId = searchParams.get("courseId") || "";
     const classId = searchParams.get("classId") || "";
     const basePath = isAssignmentMode
@@ -360,12 +383,14 @@ export function StaffFlashTestListPage({ variant = "flash" }) {
                             className={loading ? "ft-spin" : ""}
                         />
                     </button>
-                    <Link
-                        to={`${basePath}/create${pathQuery}`}
-                        className="ft-button ft-button--primary"
-                    >
-                        <Plus size={16} /> {createLabel}
-                    </Link>
+                    {canCreateItems && (
+                        <Link
+                            to={`${basePath}/create${pathQuery}`}
+                            className="ft-button ft-button--primary"
+                        >
+                            <Plus size={16} /> {createLabel}
+                        </Link>
+                    )}
                 </div>
             </header>
 
@@ -444,12 +469,14 @@ export function StaffFlashTestListPage({ variant = "flash" }) {
                         </span>
                         <strong>{emptyTitle}</strong>
                         <p className="ft-muted">{emptyDescription}</p>
-                        <Link
-                            to={`${basePath}/create${pathQuery}`}
-                            className="ft-button ft-button--primary"
-                        >
-                            <Plus size={16} /> {createLabel}
-                        </Link>
+                        {canCreateItems && (
+                            <Link
+                                to={`${basePath}/create${pathQuery}`}
+                                className="ft-button ft-button--primary"
+                            >
+                                <Plus size={16} /> {createLabel}
+                            </Link>
+                        )}
                     </div>
                 ) : rows.length === 0 ? (
                     <div className="ft-empty">
@@ -482,8 +509,14 @@ export function StaffFlashTestListPage({ variant = "flash" }) {
                                 {paginatedRows.map((item) => {
                                     const type = item.flashType;
                                     const isEssay = type === "essay";
-                                    const lessonId = getLessonId(item);
-                                    const rowClassId = getClassId(item);
+                                    const curriculumEssayEditPath =
+                                        showCurriculumEssays
+                                            ? getCurriculumEssayEditPath(
+                                                  item,
+                                                  courseId,
+                                                  classId,
+                                              )
+                                            : null;
                                     const dueDate =
                                         item.dueDate || item.due_date;
                                     const expired =
@@ -551,10 +584,8 @@ export function StaffFlashTestListPage({ variant = "flash" }) {
                                                 <div className="ft-table-actions">
                                                     <Link
                                                         to={
-                                                            showCurriculumEssays &&
-                                                            lessonId &&
-                                                            rowClassId
-                                                                ? `/trainer/classes/${rowClassId}/curriculum/lessons/${lessonId}`
+                                                            curriculumEssayEditPath
+                                                                ? curriculumEssayEditPath
                                                                 : `${basePath}/edit/${item.id}/${type}${pathQuery}`
                                                         }
                                                         className="ft-icon-button"

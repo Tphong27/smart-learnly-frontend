@@ -141,6 +141,12 @@ const navItems = [
     icon: ClipboardCheck,
     roles: [ROLES.TRAINEE],
   },
+  {
+    label: "Assignment",
+    path: "/learning/assignments",
+    icon: ClipboardCheck,
+    roles: [ROLES.TRAINEE],
+  },
   // {
   //   label: "Flash Tests Management",
   //   path: "/learning/flashtests",

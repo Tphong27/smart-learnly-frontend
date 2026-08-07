@@ -529,6 +529,7 @@ export function LearningQuizPlayer({
   content,
   lessonTitle,
   durationSeconds,
+  onStart,
   onCompleted,
 }) {
   const quizData = useMemo(() => {
@@ -543,8 +544,12 @@ export function LearningQuizPlayer({
   const [answers, setAnswers] = useState({});
 
   const handleStart = useCallback(() => {
+    if (onStart) {
+      onStart();
+      return;
+    }
     setPhase("taking");
-  }, []);
+  }, [onStart]);
 
   // Đa năng: single/fill thay thế giá trị; multiple toggle index trong mảng.
   const handleSelectAnswer = useCallback(

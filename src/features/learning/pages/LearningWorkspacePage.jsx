@@ -4,6 +4,7 @@ import {
   useNavigate,
   Link,
   useSearchParams,
+  useLocation,
 } from "react-router-dom";
 import {
   CheckSquare2,
@@ -118,6 +119,7 @@ export function LearningWorkspacePage({
 }) {
   const { courseId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const requestedReturnTo = searchParams.get("returnTo");
   const requestedLessonId = searchParams.get("lessonId");
@@ -469,6 +471,31 @@ export function LearningWorkspacePage({
     nextLesson,
   ]);
 
+  const handleStartQuiz = useCallback(
+    (lesson) => {
+      const testId = lesson?.testId || lesson?.test_id;
+      const lessonId = getLessonId(lesson);
+      if (!testId) {
+        setError("This quiz is not linked to a test yet.");
+        return;
+      }
+      const backParams = new URLSearchParams(searchParams);
+      if (lessonId) backParams.set("lessonId", lessonId);
+      if (resolvedClassId) backParams.set("classId", resolvedClassId);
+      const backQuery = backParams.toString();
+      const backPath = `${location.pathname}${backQuery ? `?${backQuery}` : ""}`;
+      navigate(`/learning/tests/take/${testId}/mcq`, {
+        state: {
+          resultBackPath: backPath,
+          resultKicker: "Quiz result",
+          resultMode: "quiz",
+          classId: resolvedClassId,
+        },
+      });
+    },
+    [location.pathname, navigate, resolvedClassId, searchParams],
+  );
+
   if (loading) {
     return (
       <div className="learning-workspace">
@@ -724,6 +751,7 @@ export function LearningWorkspacePage({
                   isActivityLesson={isActivityLesson}
                   workspaceMode={mode}
                   onQuizCompleted={markLessonCompleted}
+                  onQuizStart={handleStartQuiz}
                   onEssayCompleted={markLessonCompleted}
                 />
               </div>

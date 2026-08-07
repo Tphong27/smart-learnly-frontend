@@ -51,31 +51,31 @@ export const courseContentService = {
 
   // Tải toàn bộ module và lesson của khóa học cho trình soạn nội dung.
   async getCourseContent(courseId) {
-    const response = await apiClient.get(`/admin/courses/${courseId}/modules`);
+    const response = await apiClient.get(`/admin/courses/${courseId}/sections`);
     return unwrap(response);
   },
 
   // Tạo module mới trong khóa học.
   async createSection(courseId, payload) {
-    const response = await apiClient.post(`/admin/courses/${courseId}/modules`, payload);
+    const response = await apiClient.post(`/admin/courses/${courseId}/sections`, payload);
     return unwrap(response);
   },
 
   // Cập nhật tên và metadata của module.
   async updateSection(sectionId, payload) {
-    const response = await apiClient.put(`/admin/modules/${sectionId}`, payload);
+    const response = await apiClient.put(`/admin/sections/${sectionId}`, payload);
     return unwrap(response);
   },
 
   // Xóa module khỏi curriculum khóa học.
   async deleteSection(sectionId) {
-    const response = await apiClient.delete(`/admin/modules/${sectionId}`);
+    const response = await apiClient.delete(`/admin/sections/${sectionId}`);
     return unwrap(response);
   },
 
   // Lưu thứ tự module mới của khóa học.
   async reorderSections(courseId, orderedIds) {
-    const response = await apiClient.put(`/admin/courses/${courseId}/modules/order`, {
+    const response = await apiClient.put(`/admin/courses/${courseId}/sections/order`, {
       orderedIds,
     });
     return unwrap(response);
@@ -83,7 +83,7 @@ export const courseContentService = {
 
   // Tạo lesson mới trong module đã chọn.
   async createLesson(sectionId, payload) {
-    const response = await apiClient.post(`/admin/modules/${sectionId}/lessons`, payload);
+    const response = await apiClient.post(`/admin/sections/${sectionId}/lessons`, payload);
     return unwrap(response);
   },
 
@@ -109,7 +109,7 @@ export const courseContentService = {
 
   // Lưu thứ tự lesson mới trong một module.
   async reorderLessons(sectionId, orderedIds) {
-    const response = await apiClient.put(`/admin/modules/${sectionId}/lessons/order`, {
+    const response = await apiClient.put(`/admin/sections/${sectionId}/lessons/order`, {
       orderedIds,
     });
     return unwrap(response);
@@ -117,7 +117,7 @@ export const courseContentService = {
 
   // Tải danh sách lesson của module và luôn trả về mảng.
   async getLessonsBySection(sectionId) {
-    const response = await apiClient.get(`/admin/modules/${sectionId}/lessons`);
+    const response = await apiClient.get(`/admin/sections/${sectionId}/lessons`);
     const data = unwrap(response);
     return Array.isArray(data) ? data : data?.items || data?.content || [];
   },

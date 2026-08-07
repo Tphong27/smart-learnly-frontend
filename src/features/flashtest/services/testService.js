@@ -22,8 +22,8 @@ export const testService = {
   },
 
   /** Lấy chi tiết một đề kiểm tra. */
-  async getById(id) {
-    const response = await apiClient.get(`/tests/${id}`);
+  async getById(id, params = {}) {
+    const response = await apiClient.get(`/tests/${id}`, { params });
     return unwrap(response);
   },
 
