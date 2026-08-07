@@ -14,7 +14,6 @@ import {
     AdminAiQuestionDraftCreatePage,
     AdminAiQuestionDraftReviewPage,
 } from "@/features/admin";
-import AdminOrdersPage from "@/features/checkout/pages/AdminOrdersPage";
 import AdminTransactionsPage from "@/features/checkout/pages/AdminTransactionsPage";
 import AdminCourseContentPage from "@/features/course/pages/AdminCourseContentPage";
 import AdminLessonDetailPage from "@/features/course/pages/AdminLessonDetailPage";
@@ -175,7 +174,6 @@ function getAdminRoutes() {
                         <RoleGuard allowedRoles={[ROLES.ADMIN, ROLES.TMO]} />
                     ),
                     children: [
-                        { path: "orders", element: <AdminOrdersPage /> },
                         {
                             path: "transactions",
                             element: <AdminTransactionsPage />,
