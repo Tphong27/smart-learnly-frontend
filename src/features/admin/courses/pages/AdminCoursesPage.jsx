@@ -328,7 +328,12 @@ export function AdminCoursesPage() {
     if (isTrainer) {
       return `/staff/classrooms?courseId=${encodeURIComponent(courseId)}`;
     }
-    // Mọi role (admin/tmo/sme) mở course đều vào trình soạn curriculum (content);
+    // SME luôn mở course theo nhánh admin (`/admin/courses`) để thấy đúng master
+    // curriculum, không theo nhánh riêng của trainer (`/staff/courses`).
+    if (isSme) {
+      return `/admin/courses/${courseId}/content`;
+    }
+    // Admin/TMO mở course vào trình soạn curriculum (content);
     // `/admin/courses/:courseId/edit` không tồn tại trong adminRoutes.
     return `${courseBasePath}/${courseId}/content`;
   };

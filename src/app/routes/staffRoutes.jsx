@@ -212,7 +212,7 @@ function getStaffRoutes() {
     },
     {
       path: "/sme/dashboard",
-      element: <Navigate to="/staff/courses" replace />,
+      element: <Navigate to="/admin/courses" replace />,
     },
     {
       path: "/tmo/dashboard",
