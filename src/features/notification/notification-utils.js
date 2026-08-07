@@ -17,6 +17,7 @@ const TYPE_LABELS = Object.freeze({
 const TYPE_SET = new Set(NOTIFICATION_TYPES);
 const STAFF_ROLES = new Set(["TRAINER", "TMO", "SME"]);
 
+/** Kiểm tra chuỗi URL có chứa control character không an toàn hay không. */
 function hasControlCharacter(value) {
   for (let index = 0; index < value.length; index += 1) {
     const code = value.charCodeAt(index);
@@ -26,6 +27,7 @@ function hasControlCharacter(value) {
   return false;
 }
 
+/** Lấy base URL hiện tại để chuẩn hóa action URL tương đối. */
 function getNotificationUrlBase() {
   if (typeof document !== "undefined" && document.baseURI) {
     return new URL("/", document.baseURI);
@@ -34,10 +36,12 @@ function getNotificationUrlBase() {
   return new URL("http://localhost/");
 }
 
+/** Lấy role hiện tại để map action URL backend sang route frontend phù hợp. */
 function getCurrentRole() {
   return String(getCurrentUser()?.role || "").trim().toUpperCase();
 }
 
+/** Lấy giá trị đầu tiên tồn tại trong payload notification. */
 function getPayloadValue(notification, ...keys) {
   const payload = notification?.payload;
   if (!payload || typeof payload !== "object") return null;
@@ -50,12 +54,14 @@ function getPayloadValue(notification, ...keys) {
   return null;
 }
 
+/** Trích xuất id trong path dựa trên prefix cố định. */
 function getPathId(pathname, prefix) {
   if (!pathname.startsWith(prefix)) return null;
   const tail = pathname.slice(prefix.length).split("/")[0];
   return tail || null;
 }
 
+/** Map action URL từ backend sang route frontend theo role hiện tại. */
 function resolveBackendActionRoute(safeActionUrl, notification) {
   const role = getCurrentRole();
   const [, pathname = safeActionUrl, queryAndHash = ""] =
@@ -126,6 +132,7 @@ function resolveBackendActionRoute(safeActionUrl, notification) {
   return safeActionUrl;
 }
 
+/** Chuẩn hóa type notification về enum frontend đang hỗ trợ. */
 export function normalizeNotificationType(type) {
   const normalized = String(type || "")
     .trim()
@@ -135,18 +142,22 @@ export function normalizeNotificationType(type) {
   return TYPE_SET.has(normalized) ? normalized : "SYSTEM";
 }
 
+/** Trả về nhãn hiển thị cho type notification. */
 export function getNotificationTypeLabel(type) {
   return TYPE_LABELS[normalizeNotificationType(type)] || "System";
 }
 
+/** Xác định trạng thái đọc của notification. */
 export function getNotificationReadState(notification) {
   return notification?.readAt ? "read" : "unread";
 }
 
+/** Kiểm tra notification còn chưa đọc hay không. */
 export function isUnreadNotification(notification) {
   return !notification?.readAt;
 }
 
+/** Tạo bản sao notification đã được đánh dấu đọc/xem. */
 export function withNotificationRead(notification, timestamp) {
   if (!notification) return notification;
 
@@ -157,6 +168,7 @@ export function withNotificationRead(notification, timestamp) {
   };
 }
 
+/** Chuẩn hóa action URL và chặn URL ngoài origin hoặc không an toàn. */
 export function resolveSafeNotificationActionUrl(actionUrl) {
   if (typeof actionUrl !== "string") return null;
 
@@ -180,6 +192,7 @@ export function resolveSafeNotificationActionUrl(actionUrl) {
   }
 }
 
+/** Lấy route đích từ actionUrl của notification nếu có. */
 export function getNotificationActionDestination(notification) {
   const safeActionUrl = resolveSafeNotificationActionUrl(
     notification?.actionUrl,
@@ -189,18 +202,21 @@ export function getNotificationActionDestination(notification) {
   return resolveBackendActionRoute(safeActionUrl, notification);
 }
 
+/** Lấy route đích khi click notification; notification không có actionUrl thì không điều hướng. */
 export function getNotificationDestination(notification) {
   const actionDestination = getNotificationActionDestination(notification);
   if (actionDestination) return actionDestination;
-  return notification?.id ? `/notifications/${notification.id}` : "/notifications";
+  return null;
 }
 
+/** Rút gọn nội dung notification để hiển thị trong dropdown. */
 export function getNotificationPreview(notification) {
   const body = String(notification?.body || "").replace(/\s+/g, " ").trim();
   if (!body) return "";
   return body.length > 140 ? `${body.slice(0, 137)}...` : body;
 }
 
+/** Định dạng thời gian notification theo khoảng cách tương đối. */
 export function formatNotificationTime(value) {
   if (!value) return "Unknown time";
 

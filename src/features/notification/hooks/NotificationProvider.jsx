@@ -38,6 +38,7 @@ const initialLatestState = {
   loaded: false,
 };
 
+/** Tạo khóa phiên để reset notification state khi user/token thay đổi. */
 function getAuthKey() {
   const token = getAccessToken();
   if (!token) return null;
@@ -46,21 +47,25 @@ function getAuthKey() {
   return user?.id || user?.userId || user?.accountId || user?.email || token;
 }
 
+/** Lấy message lỗi thân thiện với fallback ổn định. */
 function getErrorMessage(error, fallback) {
   return error?.message || fallback;
 }
 
+/** Chuẩn hóa số lượng notification chưa đọc về số không âm. */
 function clampUnreadCount(value) {
   const count = Number(value);
   return Number.isFinite(count) ? Math.max(0, count) : 0;
 }
 
+/** Cập nhật một notification trong danh sách hiện tại. */
 function updateNotification(items, notificationId, updater) {
   return items.map((item) =>
     item.id === notificationId ? updater(item) : item,
   );
 }
 
+/** Gộp notification đã lưu từ backend vào danh sách hiện tại. */
 function applyNotification(items, notification) {
   if (!notification?.id) return items;
   let found = false;
@@ -73,10 +78,12 @@ function applyNotification(items, notification) {
   return found ? nextItems : items;
 }
 
+/** Loại một notification khỏi danh sách hiện tại. */
 function removeNotification(items, notificationId) {
   return items.filter((item) => item.id !== notificationId);
 }
 
+/** Lấy timestamp ISO dùng cho optimistic update. */
 function nowIso() {
   return new Date().toISOString();
 }
@@ -200,7 +207,7 @@ export function NotificationProvider({ children }) {
     }));
 
     const request = notificationService
-      .list({ page: 0, size: LATEST_NOTIFICATION_SIZE, status: "all" })
+      .list({ page: 0, size: LATEST_NOTIFICATION_SIZE })
       .then((page) => {
         if (latestRequestIdRef.current === requestId) {
           latestItemsRef.current = page.items;
@@ -476,34 +483,6 @@ export function NotificationProvider({ children }) {
     [beginBulkMutation, synchronizeAfterMutation],
   );
 
-  const archiveAll = useCallback(
-    () =>
-      beginBulkMutation("archive-all", async () => {
-        const previousUnread = unreadCountRef.current;
-        const previousItems = latestItemsRef.current;
-
-        setUnreadState((current) => ({ ...current, count: 0 }));
-        setLatestState((current) => ({ ...current, items: [] }));
-
-        try {
-          const response = await notificationService.archiveAll();
-          synchronizeAfterMutation();
-          return response;
-        } catch (error) {
-          setUnreadState((current) => ({
-            ...current,
-            count: previousUnread,
-          }));
-          setLatestState((current) => ({
-            ...current,
-            items: previousItems,
-          }));
-          throw error;
-        }
-      }),
-    [beginBulkMutation, synchronizeAfterMutation],
-  );
-
   const value = useMemo(
     () => ({
       unreadCount: unreadState.count,
@@ -522,14 +501,12 @@ export function NotificationProvider({ children }) {
       recordClick,
       archive,
       markAllRead,
-      archiveAll,
       isNotificationMutating: (notificationId) =>
         pendingNotificationIds.has(notificationId),
       isBulkMutating: (action) => pendingBulkActions.has(action),
     }),
     [
       archive,
-      archiveAll,
       latestState.error,
       latestState.items,
       latestState.loaded,

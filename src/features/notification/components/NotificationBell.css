@@ -458,33 +458,12 @@
   line-height: 1.45;
 }
 
-.notification-dropdown__view-all {
-  min-height: 50px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 5px;
-  border-top: 1px solid var(--sl-line-soft, #e8eaed);
-  color: var(--sl-purple, #5624d0);
-  background: #ffffff;
-  font-size: 13px;
-  font-weight: 900;
-  text-decoration: none;
-  transition: color 160ms ease, background-color 160ms ease;
-}
-
-.notification-dropdown__view-all:hover {
-  color: var(--sl-purple-dark, #401b9c);
-  background: var(--sl-purple-soft, #f3f0fa);
-}
-
 .notification-dropdown__mark-all:focus-visible,
 .notification-dropdown__tabs button:focus-visible,
 .notification-dropdown__state-action:focus-visible,
 .notification-dropdown__item-main:focus-visible,
 .notification-dropdown__more-button:focus-visible,
-.notification-dropdown__actions-menu button:focus-visible,
-.notification-dropdown__view-all:focus-visible {
+.notification-dropdown__actions-menu button:focus-visible {
   position: relative;
   z-index: 6;
   outline: 3px solid rgba(86, 36, 208, 0.28);
@@ -555,8 +534,7 @@
   .notification-dropdown__tabs button,
   .notification-dropdown__state-action,
   .notification-dropdown__more-button,
-  .notification-dropdown__actions-menu button,
-  .notification-dropdown__view-all {
+  .notification-dropdown__actions-menu button {
     transition: none;
   }
 }
