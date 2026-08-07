@@ -253,29 +253,6 @@ export function OpeningScheduleDetailPage() {
 
             <h1 className="opening-detail__title">{classItem.className}</h1>
 
-            <p className="opening-detail__lede">
-              Join this scheduled offline class and access the associated course
-              learning content after registration.
-            </p>
-
-            <div className="opening-detail__meta">
-              <span className="opening-detail__meta-item">
-                <UserRound size={15} aria-hidden="true" />
-                {classItem.trainerName || "Trainer not assigned"}
-              </span>
-
-              <span className="opening-detail__meta-item">
-                <CalendarDays size={15} aria-hidden="true" />
-                {formatDate(classItem.startDate, "vi-VN", DETAIL_DATE_OPTIONS)}
-                {" – "}
-                {formatDate(classItem.endDate, "vi-VN", DETAIL_DATE_OPTIONS)}
-              </span>
-
-              <span className="opening-detail__meta-item">
-                <Users size={15} aria-hidden="true" />
-                {availableSlots} places remaining
-              </span>
-            </div>
           </section>
 
           <section className="opening-detail__section">

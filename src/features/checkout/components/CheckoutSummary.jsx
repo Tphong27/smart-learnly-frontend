@@ -33,21 +33,6 @@ function formatMoney(
   }).format(amount);
 }
 
-/** Định dạng ngày theo ngôn ngữ Việt Nam và giữ nguyên dữ liệu nếu ngày không hợp lệ. */
-function formatDate(value) {
-  if (!value) {
-    return "-";
-  }
-
-  const date = new Date(value);
-
-  if (Number.isNaN(date.getTime())) {
-    return value;
-  }
-
-  return date.toLocaleDateString("vi-VN");
-}
-
 /** Hiển thị tóm tắt sản phẩm, order, cổng thanh toán và tổng tiền cần trả. */
 export function CheckoutSummary({
   payment,
@@ -95,45 +80,6 @@ export function CheckoutSummary({
 
             <strong>
               {expectedCourse.className}
-            </strong>
-          </div>
-        )}
-
-      {isClassCheckout &&
-        expectedCourse?.trainerName && (
-          <div className="checkout-summary__row">
-            <span>Trainer</span>
-
-            <strong>
-              {expectedCourse.trainerName}
-            </strong>
-          </div>
-        )}
-
-      {isClassCheckout &&
-        expectedCourse?.startDate && (
-          <div className="checkout-summary__row">
-            <span>Opening date</span>
-
-            <strong>
-              {formatDate(
-                expectedCourse.startDate,
-              )}
-            </strong>
-          </div>
-        )}
-
-      {isClassCheckout &&
-        expectedCourse
-          ?.scheduleDescription && (
-          <div className="checkout-summary__row">
-            <span>Schedule</span>
-
-            <strong>
-              {
-                expectedCourse
-                  .scheduleDescription
-              }
             </strong>
           </div>
         )}

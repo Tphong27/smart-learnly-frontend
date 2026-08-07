@@ -326,10 +326,6 @@ function EditionClassForm({ mode, initialData, classId, routeBase }) {
               </span>
             )}
 
-            <small id="meetingUrlHelp">
-              Generate a real Google Meet space automatically, or paste an
-              existing Google Meet URL manually.
-            </small>
           </div>
         </div>
 
