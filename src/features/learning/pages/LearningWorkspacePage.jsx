@@ -124,14 +124,16 @@ export function LearningWorkspacePage({
   const requestedReturnTo = searchParams.get("returnTo");
   const requestedLessonId = searchParams.get("lessonId");
   const requestedClassId = searchParams.get("classId");
+  const [contentClassId, setContentClassId] = useState(null);
+  /** Class thực tế đang học: ưu tiên classId từ URL, fallback class backend tự resolve. */
+  const effectiveClassId = requestedClassId || contentClassId || null;
   const workspaceUserKey = useMemo(
     () => getUserPreferenceKey(getCurrentUser()),
     [],
   );
   const lessonResumeStorageKey = useMemo(
-    () =>
-      lessonPositionStorageKey(workspaceUserKey, courseId, requestedClassId),
-    [courseId, requestedClassId, workspaceUserKey],
+    () => lessonPositionStorageKey(workspaceUserKey, courseId, effectiveClassId),
+    [courseId, effectiveClassId, workspaceUserKey],
   );
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -210,6 +212,10 @@ export function LearningWorkspacePage({
 
         if (!cancelled) {
           setData(result);
+
+          // Lấy class mà backend đã tự resolve (khi URL không kèm classId)
+          // để các thao tác sau như progress, resume, flashcard dùng đúng scope.
+          setContentClassId(result?.curriculum?.classId || null);
 
           const loadedLessons = filterPublishedSections(
             result?.sections || [],
@@ -354,7 +360,7 @@ export function LearningWorkspacePage({
         await learningService.updateLessonProgress(
           lessonId,
           nextCompleted,
-          resolvedClassId,
+          effectiveClassId,
           courseId,
         );
       } catch (err) {
@@ -379,7 +385,7 @@ export function LearningWorkspacePage({
         });
       }
     },
-    [completedLessonIds, courseId, mode, resolvedClassId, updatingLessonIds],
+    [completedLessonIds, courseId, mode, effectiveClassId, updatingLessonIds],
   );
 
   const activeLessonIdForNote = getLessonId(activeLesson);
@@ -415,7 +421,7 @@ export function LearningWorkspacePage({
         await learningService.updateLessonProgress(
           lessonId,
           true,
-          resolvedClassId,
+          effectiveClassId,
           courseId,
         );
       } catch (err) {
@@ -428,7 +434,7 @@ export function LearningWorkspacePage({
         setError(err?.message || "Failed to update lesson progress");
       }
     },
-    [completedLessonIds, courseId, mode, resolvedClassId],
+    [completedLessonIds, courseId, mode, effectiveClassId],
   );
 
   /** Kiểm tra điều kiện hoàn thành và chuyển học viên đến lesson kế tiếp. */
@@ -740,7 +746,7 @@ export function LearningWorkspacePage({
                 <LearningLessonTabs
                   key={`tabs-${getLessonId(activeLesson)}`}
                   lesson={activeLesson}
-                  classId={resolvedClassId}
+                  classId={effectiveClassId}
                   activeTab={activeLessonTab}
                   onTabChange={setActiveLessonTab}
                   note={activeLessonNote}

@@ -18,7 +18,6 @@ import {
 } from "lucide-react";
 import { Button, Modal, useToast } from "@/shared/components/ui";
 import Pagination from "@/shared/components/Pagination";
-import { classroomService } from "@/features/classroom";
 import { categoryService, courseAdminService } from "@/features/course";
 import { getCurrentUser } from "@/services/api-client";
 import { formatDate, formatPrice } from "@/shared/utils/formatters";
@@ -131,7 +130,7 @@ function RowActionsMenu({
   basePath,
   canViewClasses,
   canOpenMasterCurriculum = true,
-  canEditDetails = true,
+  canEdit,
   canDelete,
   previewReturnPath,
   onRequestDelete,
@@ -200,7 +199,6 @@ function RowActionsMenu({
     };
   }, [open, updateMenuPosition]);
 
-  const contentPath = `${basePath}/${course.id}/content`;
   const questionsPath = `/admin/courses/${course.id}/questions`;
   const testsPath = `/staff/tests?courseId=${encodeURIComponent(course.id)}`;
   const classesBasePath = basePath.startsWith("/admin") ? "/admin/classrooms" : "/staff/classrooms";
@@ -221,28 +219,16 @@ function RowActionsMenu({
       style={menuPosition}
     >
       {canOpenMasterCurriculum ? (
-        <>
-          <li role="none">
-            <Link
-              role="menuitem"
-              to={contentPath}
-              className="course-management__menu-item"
-              onClick={() => setOpen(false)}
-            >
-              <BookOpen size={14} aria-hidden="true" /> Open master curriculum
-            </Link>
-          </li>
-          <li role="none">
-            <Link
-              role="menuitem"
-              to={questionsPath}
-              className="course-management__menu-item"
-              onClick={() => setOpen(false)}
-            >
-              <FileQuestion size={14} aria-hidden="true" /> Manage questions
-            </Link>
-          </li>
-        </>
+        <li role="none">
+          <Link
+            role="menuitem"
+            to={questionsPath}
+            className="course-management__menu-item"
+            onClick={() => setOpen(false)}
+          >
+            <FileQuestion size={14} aria-hidden="true" /> Manage questions
+          </Link>
+        </li>
       ) : null}
       {showManageTest ? (
         <li role="none">
@@ -279,21 +265,18 @@ function RowActionsMenu({
           <Eye size={14} aria-hidden="true" /> Preview
         </Link>
       </li>
-      <li role="none">
-        <Link
-          role="menuitem"
-          to={detailsActionPath}
-          className="course-management__menu-item"
-          onClick={() => setOpen(false)}
-        >
-          {canEditDetails ? (
-            <Edit2 size={14} aria-hidden="true" />
-          ) : (
-            <Eye size={14} aria-hidden="true" />
-          )}
-          {canEditDetails ? "Edit" : "View details"}
-        </Link>
-      </li>
+      {canEdit ? (
+        <li role="none">
+          <Link
+            role="menuitem"
+            to={editPath}
+            className="course-management__menu-item"
+            onClick={() => setOpen(false)}
+          >
+            <Edit2 size={14} aria-hidden="true" /> Edit
+          </Link>
+        </li>
+      ) : null}
       {canDelete ? (
         <li role="none">
           <button
@@ -357,9 +340,13 @@ export function AdminCoursesPage() {
     if (isTrainer) {
       return `/staff/classrooms?courseId=${encodeURIComponent(courseId)}`;
     }
+    // SME luôn mở course theo nhánh admin (`/admin/courses`) để thấy đúng master
+    // curriculum, không theo nhánh riêng của trainer (`/staff/courses`).
     if (isSme) {
-      return `${courseBasePath}/${courseId}`;
+      return `/admin/courses/${courseId}/content`;
     }
+    // Admin/TMO mở course vào trình soạn curriculum (content);
+    // `/admin/courses/:courseId/edit` không tồn tại trong adminRoutes.
     return `${courseBasePath}/${courseId}/content`;
   };
 
@@ -379,44 +366,9 @@ export function AdminCoursesPage() {
     open: false,
     target: null,
   });
-  const [openingCourseId, setOpeningCourseId] = useState(null);
 
-  /** Mở course theo workflow phù hợp với role hiện tại. */
-  async function handleOpenCourse(course) {
-    if (!isTrainer) {
-      navigate(openCoursePath(course.id));
-      return;
-    }
-
-    if (openingCourseId) return;
-
-    setOpeningCourseId(course.id);
-    try {
-      const assignedClasses = await classroomService.listTrainer({
-        courseId: course.id,
-        page: 0,
-        size: 100,
-      });
-      const classes = assignedClasses.content || [];
-      const assignedClass =
-        classes.find((item) => String(item.status).toLowerCase() === "ongoing") ||
-        classes.find((item) => String(item.status).toLowerCase() === "upcoming") ||
-        classes[0];
-
-      if (!assignedClass?.id) {
-        throw new Error("No assigned class was found for this course.");
-      }
-
-      navigate(
-        `/staff/classrooms/${assignedClass.id}/workspace?tab=curriculum`,
-      );
-    } catch (error) {
-      toast.error(
-        error?.message || "Could not open the curriculum for this course.",
-      );
-    } finally {
-      setOpeningCourseId(null);
-    }
+  function handleOpenCourse(course) {
+    navigate(openCoursePath(course.id));
   }
   const [pageRequest, setPageRequest] = useState(0);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
@@ -733,23 +685,18 @@ export function AdminCoursesPage() {
                           <button
                             type="button"
                             className="course-management__action course-management__action--primary"
-                            title={isTrainer ? "Open curriculum" : "Open"}
-                            aria-label={
-                              isTrainer
-                                ? `Open curriculum for ${course.title}`
-                                : `Open ${course.title}`
-                            }
-                            disabled={Boolean(openingCourseId)}
+                            title="Open"
+                            aria-label={`Open ${course.title}`}
                             onClick={() => handleOpenCourse(course)}
                           >
-                            {openingCourseId === course.id ? "Opening..." : "Open"}
+                            Open
                           </button>
                           <RowActionsMenu
                             course={course}
                             basePath={courseBasePath}
                             canViewClasses={canViewClasses}
                             canOpenMasterCurriculum={canOpenMasterCurriculum}
-                            canEditDetails={canEditDetails}
+                            canEdit={canManageCourses}
                             canDelete={canDelete}
                             previewReturnPath={previewReturnPath}
                             onRequestDelete={(c) =>
@@ -807,12 +754,7 @@ export function AdminCoursesPage() {
                       <CourseStatusBadge status={course.status} />
                     </div>
                     <div className="course-management__card-actions">
-                      <Button
-                        size="sm"
-                        loading={openingCourseId === course.id}
-                        disabled={Boolean(openingCourseId)}
-                        onClick={() => handleOpenCourse(course)}
-                      >
+                      <Button size="sm" onClick={() => handleOpenCourse(course)}>
                         Open
                       </Button>
                       <RowActionsMenu
@@ -820,7 +762,7 @@ export function AdminCoursesPage() {
                         basePath={courseBasePath}
                         canViewClasses={canViewClasses}
                         canOpenMasterCurriculum={canOpenMasterCurriculum}
-                        canEditDetails={canEditDetails}
+                        canEdit={canManageCourses}
                         canDelete={canDelete}
                         previewReturnPath={previewReturnPath}
                         onRequestDelete={(c) =>
