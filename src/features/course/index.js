@@ -1,6 +1,5 @@
 export { CourseListPage } from './pages/CourseListPage'
 export { CourseDetailPage } from './pages/CourseDetailPage'
-export { TrainerProfilePage } from "./pages/TrainerProfilePage";
 export { CoursePreviewLessonsPage } from './pages/CoursePreviewLessonsPage'
 export { MyCoursesPage } from './pages/MyCoursesPage'
 export { CourseCard } from './components/CourseCard'

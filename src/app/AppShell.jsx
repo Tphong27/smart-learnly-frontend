@@ -20,7 +20,7 @@ import {
 } from "@/shared/constants/roles";
 import { getCurrentUser } from "@/services";
 import { HomePage } from "../features/home/HomePage";
-import { CourseDetailPage, TrainerProfilePage } from "../features/course";
+import { CourseDetailPage} from "../features/course";
 import { LearningWorkspacePage } from "@/features/learning";
 import {
     LoginPage,
@@ -151,15 +151,6 @@ const appRoutes = [
             <AuthAwareLayout>
                 <OpeningScheduleDetailPage />
             </AuthAwareLayout>
-        ),
-    },
-
-    {
-        path: "/trainers/:trainerId",
-        element: (
-            <PublicLayout>
-                <TrainerProfilePage />
-            </PublicLayout>
         ),
     },
 

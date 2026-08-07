@@ -144,7 +144,7 @@ export function InvoiceDetailModal({ open, transactionId, onClose }) {
           </section>
 
           <section>
-            <h3 className="invoice-detail__section-title">Purchased class</h3>
+            <h3 className="invoice-detail__section-title">Purchased</h3>
 
             {purchasedItem ? (
               <div className="invoice-detail__purchased-card">
@@ -154,7 +154,7 @@ export function InvoiceDetailModal({ open, transactionId, onClose }) {
                   </strong>
 
                   <span className="invoice-detail__class-name">
-                    Class: {purchasedItem.className || "--"}
+                    {"Class: " + (purchasedItem.className)}
                   </span>
                 </div>
 
