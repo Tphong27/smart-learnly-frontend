@@ -1,4 +1,5 @@
 import { Button } from "@/shared/components/ui";
+import { QUESTION_TYPE_OPTIONS } from "../utils/questionFormUtils";
 
 /** Hiển thị trạng thái validation của một import row. */
 export function QuestionImportStatusBadge({ row }) {
@@ -28,6 +29,12 @@ export function QuestionImportSummary({ parsedRows }) {
 }
 
 /** Form chỉnh một import row và trả thay đổi về modal để re-validation toàn batch. */
+/** Cho biet correct answer nen dung select mot dap an hay text nhieu dap an. */
+function usesTextCorrectAnswer(type) {
+  return type === "multiple_choice";
+}
+
+/** Form chinh mot import row va tra thay doi ve modal de re-validation toan batch. */
 export function QuestionImportRowEditor({
   draft,
   row,
@@ -67,31 +74,43 @@ export function QuestionImportRowEditor({
             value={draft.questionType}
             onChange={(event) => onFieldChange("questionType", event.target.value)}
           >
-            <option value="multiple_choice">Multiple choice</option>
-            <option value="true_false">True/False</option>
+            {QUESTION_TYPE_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
           </select>
         </label>
         <label className="question-import__field-label">
           Correct answer
-          <select
-            className="question-import__select"
-            value={draft.correctAnswer}
-            onChange={(event) => onFieldChange("correctAnswer", event.target.value)}
-          >
-            {draft.questionType === "true_false" ? (
-              <>
-                <option value="True">True</option>
-                <option value="False">False</option>
-              </>
-            ) : (
-              <>
-                <option value="">Choose answer</option>
-                {["A", "B", "C", "D", "E", "F"].map((letter) => (
-                  <option key={letter} value={letter}>{letter}</option>
-                ))}
-              </>
-            )}
-          </select>
+          {usesTextCorrectAnswer(draft.questionType) ? (
+            <input
+              className="question-import__input"
+              value={draft.correctAnswer}
+              onChange={(event) => onFieldChange("correctAnswer", event.target.value)}
+              placeholder="A,C"
+            />
+          ) : (
+            <select
+              className="question-import__select"
+              value={draft.correctAnswer}
+              onChange={(event) => onFieldChange("correctAnswer", event.target.value)}
+            >
+              {draft.questionType === "true_false" ? (
+                <>
+                  <option value="True">True</option>
+                  <option value="False">False</option>
+                </>
+              ) : (
+                <>
+                  <option value="">Choose answer</option>
+                  {["A", "B", "C", "D", "E", "F"].map((letter) => (
+                    <option key={letter} value={letter}>{letter}</option>
+                  ))}
+                </>
+              )}
+            </select>
+          )}
         </label>
         <label className="question-import__field-label">
           Difficulty

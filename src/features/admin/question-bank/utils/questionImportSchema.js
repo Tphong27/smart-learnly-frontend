@@ -18,7 +18,7 @@ export const IMPORT_COLUMNS = [
   { key: 'audio_files', label: 'Audio URLs', required: false },
 ]
 
-export const ALLOWED_TYPES = ['multiple_choice', 'true_false']
+export const ALLOWED_TYPES = ['single_choice', 'multiple_choice', 'true_false']
 
 export const ALLOWED_BLOOM_LEVELS = [
   'remember',
@@ -33,7 +33,7 @@ export const SAMPLE_QUESTION_BANK_JSON = JSON.stringify(
   [
     {
       questionText: 'What is the capital of France?',
-      questionType: 'multiple_choice',
+      questionType: 'single_choice',
       options: ['Paris', 'London', 'Berlin', 'Madrid'],
       correctAnswer: 'A',
       explanation: 'Paris has been the capital of France for centuries.',
@@ -42,6 +42,20 @@ export const SAMPLE_QUESTION_BANK_JSON = JSON.stringify(
       moduleId: null,
       media: {
         images: ['https://example.com/question-diagram.png'],
+        audios: [],
+      },
+    },
+    {
+      questionText: 'Which Spring stereotypes can register beans?',
+      questionType: 'multiple_choice',
+      options: ['@Component', '@Service', '@Repository', '@BeanFactory'],
+      correctAnswer: 'A,B,C',
+      explanation: '@Component, @Service, and @Repository are component-scanned stereotypes.',
+      difficulty: 3,
+      bloomLevel: 'understand',
+      moduleId: null,
+      media: {
+        images: [],
         audios: [],
       },
     },
@@ -198,7 +212,7 @@ function normalizeJsonQuestion(rawQuestion) {
   if (!Array.isArray(rawOptions)) {
     errors.push('Options must be an array')
   } else if (options.length > 6) {
-    errors.push('Multiple choice questions support 2 to 6 answers')
+    errors.push('Choice questions support 2 to 6 answers')
   }
 
   const mapped = {
@@ -252,6 +266,37 @@ function parseOptions(row) {
     if (row[key]) options.push(row[key])
   }
   return options
+}
+
+/** Tach correct_answer dang A,C thanh danh sach chu cai dap an khong trung lap. */
+function parseCorrectAnswerLetters(value) {
+  const raw = String(value ?? '').trim().toUpperCase()
+  if (!raw) return []
+  return raw
+    .split(/[\s,;]+/)
+    .map((item) => item.trim())
+    .filter(Boolean)
+}
+
+/** Kiem tra cac chu cai correct_answer co nam trong danh sach option da khai bao. */
+function validateCorrectAnswerLetters(letters, options) {
+  const errors = []
+  const unique = new Set()
+  for (const letter of letters) {
+    if (letter.length !== 1 || !/[A-F]/.test(letter)) {
+      errors.push('Correct answer must use letters A, B, C, D, E, or F')
+      continue
+    }
+    if (unique.has(letter)) {
+      errors.push('Correct answer contains duplicate letters')
+      continue
+    }
+    unique.add(letter)
+    if (letter.charCodeAt(0) - 65 >= options.length) {
+      errors.push('Correct answer refers to an option that was not provided')
+    }
+  }
+  return errors
 }
 
 function toEditableMappedRow(row) {
@@ -344,7 +389,7 @@ function collectRowErrors(row, rowNumber, existingTexts) {
   if (!questionType) {
     errors.push('Question type is required')
   } else if (!ALLOWED_TYPES.includes(questionType)) {
-    errors.push('Question type must be multiple_choice or true_false')
+    errors.push('Question type must be single_choice, multiple_choice, or true_false')
   } else {
     resolvedType = questionType
   }
@@ -353,7 +398,7 @@ function collectRowErrors(row, rowNumber, existingTexts) {
   if (options.length < 2) {
     errors.push('At least two answers are required')
   } else if (options.length > 6) {
-    errors.push('Multiple choice questions support 2 to 6 answers')
+    errors.push('Choice questions support 2 to 6 answers')
   }
   for (let i = 0; i < options.length; i += 1) {
     if (!options[i]) errors.push(`Answer ${String.fromCharCode(65 + i)} is required`)
@@ -377,16 +422,19 @@ function collectRowErrors(row, rowNumber, existingTexts) {
     if (lowered !== 'true' && lowered !== 'false') {
       errors.push('Correct answer for true/false must be True or False')
     }
-  } else if (resolvedType === 'multiple_choice') {
-    if (correctRaw.length !== 1) {
-      errors.push('Correct answer must be a single letter A-F')
+  } else if (resolvedType === 'single_choice') {
+    const letters = parseCorrectAnswerLetters(correctRaw)
+    if (letters.length !== 1) {
+      errors.push('Single choice correct answer must be one letter A-F')
     } else {
-      const letter = correctRaw.toUpperCase()
-      if (!/[A-F]/.test(letter)) {
-        errors.push('Correct answer must be A, B, C, D, E, or F')
-      } else if (letter.charCodeAt(0) - 65 >= options.length) {
-        errors.push('Correct answer refers to an option that was not provided')
-      }
+      errors.push(...validateCorrectAnswerLetters(letters, options))
+    }
+  } else if (resolvedType === 'multiple_choice') {
+    const letters = parseCorrectAnswerLetters(correctRaw)
+    if (letters.length < 2) {
+      errors.push('Multiple choice correct answer must include at least two letters, such as A,C')
+    } else {
+      errors.push(...validateCorrectAnswerLetters(letters, options))
     }
   }
 
@@ -561,7 +609,7 @@ export function downloadTemplate() {
   const sampleRows = [
     {
       question_text: 'What is the capital of France?',
-      question_type: 'multiple_choice',
+      question_type: 'single_choice',
       option_a: 'Paris',
       option_b: 'London',
       option_c: 'Berlin',
@@ -574,6 +622,23 @@ export function downloadTemplate() {
       bloom_level: 'remember',
       module_id: '',
       image_files: 'https://example.com/question-diagram.png',
+      audio_files: '',
+    },
+    {
+      question_text: 'Which Spring stereotypes can register beans?',
+      question_type: 'multiple_choice',
+      option_a: '@Component',
+      option_b: '@Service',
+      option_c: '@Repository',
+      option_d: '@BeanFactory',
+      option_e: '',
+      option_f: '',
+      correct_answer: 'A,B,C',
+      explanation: '@Component, @Service, and @Repository are component-scanned stereotypes.',
+      difficulty: '3',
+      bloom_level: 'understand',
+      module_id: '',
+      image_files: '',
       audio_files: '',
     },
     {
@@ -602,8 +667,8 @@ export function downloadTemplate() {
   const rules = [
     ['Question Import Rules'],
     ['Required columns', 'question_text, question_type, option_a, option_b, correct_answer'],
-    ['Question types', 'multiple_choice or true_false'],
-    ['Correct answer', 'Multiple choice uses A-F; true_false uses True or False'],
+    ['Question types', 'single_choice, multiple_choice, or true_false'],
+    ['Correct answer', 'single_choice uses one letter A-F; multiple_choice uses comma-separated letters like A,C; true_false uses True or False'],
     ['Difficulty', '1-5, or easy/medium/hard aliases'],
     ['Image media', 'Use image_files with http/https URLs only; separate multiple URLs with semicolons; max 5 per question'],
     ['Audio media', 'Use audio_files with http/https URLs only; separate multiple URLs with semicolons; max 3 per question'],

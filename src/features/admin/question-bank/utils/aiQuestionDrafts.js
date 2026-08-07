@@ -152,7 +152,9 @@ export function canDraftBeSelected(draft) {
 }
 
 export function aiQuestionTypeLabel(type) {
-  return type === "true_false" ? "True/False" : "Multiple choice"
+  if (type === "single_choice") return "Single choice"
+  if (type === "true_false") return "True/False"
+  return "Multiple choice"
 }
 
 export function validationStatusLabel(status) {

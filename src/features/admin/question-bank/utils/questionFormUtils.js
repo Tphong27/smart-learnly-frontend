@@ -1,6 +1,19 @@
 import { getCurrentUser } from "@/services/api-client";
 import { isEmptyQuestionHtml } from "@/shared/utils/htmlSanitizer";
 
+export const QUESTION_TYPE_OPTIONS = [
+  { value: "single_choice", label: "Single choice" },
+  { value: "multiple_choice", label: "Multiple choice" },
+  { value: "true_false", label: "True/False" },
+];
+
+/** Tao nhan hien thi thong nhat cho cac loai cau hoi trong Question Bank. */
+export function questionTypeLabel(type) {
+  if (type === "single_choice") return "Single choice";
+  if (type === "true_false") return "True/False";
+  return "Multiple choice";
+}
+
 /** Cho biết người dùng hiện tại có quyền tạo hoặc sửa question bank hay không. */
 export function canWriteQuestionBank() {
   const role = getCurrentUser()?.role;
@@ -174,14 +187,26 @@ export function validateQuestionForm(values) {
   if (!values.questionType) return "Question type is required.";
   const answers = normalizeAnswers(values.questionType, values.answers);
   if (answers.length < 2) return "At least two answers are required.";
-  if (values.questionType === "multiple_choice" && answers.length > 6) {
-    return "Multiple choice supports 2 to 6 answers.";
+  if (
+    (values.questionType === "single_choice" ||
+      values.questionType === "multiple_choice") &&
+    answers.length > 6
+  ) {
+    return "Choice questions support 2 to 6 answers.";
   }
   if (answers.some((answer) => !answerHasContent(answer))) {
     return "Answer text or image must not be empty.";
   }
-  if (answers.filter((answer) => answer.correct).length !== 1) {
+  const correctCount = answers.filter((answer) => answer.correct).length;
+  if (
+    (values.questionType === "single_choice" ||
+      values.questionType === "true_false") &&
+    correctCount !== 1
+  ) {
     return "Exactly one correct answer is required.";
+  }
+  if (values.questionType === "multiple_choice" && correctCount < 2) {
+    return "Multiple choice requires at least two correct answers.";
   }
   if (values.questionType === "true_false") {
     const labels = answers.map((answer) => answer.answerText.trim().toLowerCase());

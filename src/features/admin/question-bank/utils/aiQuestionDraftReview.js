@@ -74,7 +74,7 @@ export function getDraftValidationError(values) {
   if (!questionText) return "Question text is required.";
   if (!values.moduleId) return "Module is required.";
   const answers = sortedDraftAnswers(values);
-  if (values.questionType === "multiple_choice") {
+  if (values.questionType === "single_choice" || values.questionType === "multiple_choice") {
     if (answers.length < 2 || answers.length > 6) return "MCQ needs 2 to 6 answers.";
     if (answers.some((answer) => !String(answer.answerText || "").trim())) {
       return "Answer text must not be empty.";
@@ -86,8 +86,16 @@ export function getDraftValidationError(values) {
       return "True/False answers must be exactly True and False.";
     }
   }
-  if (answers.filter((answer) => answer.correct).length !== 1) {
+  const correctCount = answers.filter((answer) => answer.correct).length;
+  if (
+    (values.questionType === "single_choice" ||
+      values.questionType === "true_false") &&
+    correctCount !== 1
+  ) {
     return "Exactly one correct answer is required.";
+  }
+  if (values.questionType === "multiple_choice" && correctCount < 2) {
+    return "Multiple choice requires at least two correct answers.";
   }
   return null;
 }

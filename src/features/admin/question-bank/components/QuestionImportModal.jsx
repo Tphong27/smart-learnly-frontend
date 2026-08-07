@@ -6,6 +6,7 @@ import {
   buildImportPayload,
   downloadTemplate,
   IMPORT_COLUMNS,
+  ALLOWED_TYPES,
   parseImportFile,
   parseImportJson,
   revalidateImportRows,
@@ -259,9 +260,11 @@ export function QuestionImportModal({ open, variant = 'modal', bank, courseId, e
         const nextOptions = value === 'true_false'
           ? ['True', 'False', '', '', '', '']
           : current.options
-        const nextCorrectAnswer = value === 'true_false' && !['True', 'False'].includes(current.correctAnswer)
-          ? 'True'
-          : current.correctAnswer
+        const nextCorrectAnswer = value === 'true_false'
+          ? ['True', 'False'].includes(current.correctAnswer) ? current.correctAnswer : 'True'
+          : value === 'multiple_choice' && current.correctAnswer && !current.correctAnswer.includes(',')
+            ? current.correctAnswer
+            : current.correctAnswer
         return { ...current, questionType: value, options: nextOptions, correctAnswer: nextCorrectAnswer }
       }
       return { ...current, [field]: value }
@@ -409,7 +412,9 @@ export function QuestionImportModal({ open, variant = 'modal', bank, courseId, e
         providerErrors: [],
         answers: question.answers.map((answer, currentAnswerIndex) => ({
           ...answer,
-          correct: currentAnswerIndex === answerIndex,
+          correct: question.questionType === 'multiple_choice'
+            ? currentAnswerIndex === answerIndex ? !answer.correct : answer.correct
+            : currentAnswerIndex === answerIndex,
         })),
       }
     }))
@@ -621,8 +626,11 @@ export function QuestionImportModal({ open, variant = 'modal', bank, courseId, e
                     value={question.questionType}
                     onChange={(event) => setImageType(questionIndex, event.target.value)}
                   >
-                    <option value="multiple_choice">Multiple choice</option>
-                    <option value="true_false">True/False</option>
+                    {ALLOWED_TYPES.map((type) => (
+                      <option key={type} value={type}>
+                        {type === 'single_choice' ? 'Single choice' : type === 'true_false' ? 'True/False' : 'Multiple choice'}
+                      </option>
+                    ))}
                   </select>
                 </label>
                 <label className="question-import__field-label">
@@ -641,7 +649,7 @@ export function QuestionImportModal({ open, variant = 'modal', bank, courseId, e
                 {question.answers.map((answer, answerIndex) => (
                   <div className="question-import__answer-row" key={answerIndex}>
                     <input
-                      type="radio"
+                      type={question.questionType === 'multiple_choice' ? 'checkbox' : 'radio'}
                       checked={Boolean(answer.correct)}
                       onChange={() => setImageCorrect(questionIndex, answerIndex)}
                       aria-label={`Mark answer ${answerIndex + 1} correct`}
@@ -652,14 +660,14 @@ export function QuestionImportModal({ open, variant = 'modal', bank, courseId, e
                       onChange={(event) => updateImageAnswer(questionIndex, answerIndex, { answerText: event.target.value })}
                       placeholder={`Answer ${answerIndex + 1}`}
                     />
-                    {question.questionType === 'multiple_choice' && question.answers.length > 2 && (
+                    {question.questionType !== 'true_false' && question.answers.length > 2 && (
                       <Button type="button" variant="ghost" size="sm" onClick={() => removeImageAnswer(questionIndex, answerIndex)}>
                         Remove
                       </Button>
                     )}
                   </div>
                 ))}
-                {question.questionType === 'multiple_choice' && question.answers.length < 6 && (
+                {question.questionType !== 'true_false' && question.answers.length < 6 && (
                   <Button type="button" variant="secondary" size="sm" onClick={() => addImageAnswer(questionIndex)}>
                     Add answer
                   </Button>
@@ -776,7 +784,7 @@ export function QuestionImportModal({ open, variant = 'modal', bank, courseId, e
             <>
               <p className="question-import__intro">
                 Paste a JSON array using the native question fields. Quiz lesson JSON fields such as title,
-                correct_answers, single_choice, and fill_in_the_blank are not supported here.
+                correct_answers, and fill_in_the_blank are not supported here.
               </p>
 
               <div className="question-import__sample">
