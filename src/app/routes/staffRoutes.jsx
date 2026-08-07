@@ -24,6 +24,7 @@ import {
   ClassAnalyticsRedirect
 } from "@/features/classroom";
 
+/** Hiển thị trang tạm cho các khu vực staff chưa triển khai. */
 function PlaceholderPage({ title }) {
   return (
     <section className="placeholder-page">
@@ -37,6 +38,7 @@ function PlaceholderPage({ title }) {
   );
 }
 
+/** Khai báo route staff theo từng nhóm quyền Trainer, TMO và SME. */
 function getStaffRoutes() {
   return [
     {
@@ -51,8 +53,17 @@ function getStaffRoutes() {
           children: [
             { path: "courses", element: <AdminCoursesPage /> },
             {
-              path: "courses/:courseId/edit",
+              path: "courses/:courseId",
               element: <AdminCourseFormPage />,
+            },
+            {
+              element: <RoleGuard allowedRoles={[ROLES.TRAINER, ROLES.TMO]} />,
+              children: [
+                {
+                  path: "courses/:courseId/edit",
+                  element: <AdminCourseFormPage />,
+                },
+              ],
             },
             // Master curriculum authoring: chỉ SME/TMO (và admin routes riêng).
             // Trainer customize theo class tại /staff/classrooms/:classId/workspace?tab=curriculum.
