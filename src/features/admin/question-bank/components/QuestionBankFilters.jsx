@@ -1,6 +1,7 @@
 import { Search } from "lucide-react";
 import { AdminFilterToolbar } from "@/features/admin/components/AdminFilterToolbar";
 import { FormField } from "@/shared/components/ui";
+import { QUESTION_TYPE_OPTIONS } from "../utils/questionFormUtils";
 
 /** Hiển thị bộ lọc đơn giản cho course questions hoặc đầy đủ cho question bank. */
 export function QuestionBankFilters({
@@ -85,8 +86,7 @@ export function QuestionBankFilters({
           defaultValue: "all",
           options: [
             { value: "all", label: "All types" },
-            { value: "multiple_choice", label: "Multiple choice" },
-            { value: "true_false", label: "True/False" },
+            ...QUESTION_TYPE_OPTIONS,
           ],
         },
         {

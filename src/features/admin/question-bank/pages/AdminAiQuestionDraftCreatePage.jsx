@@ -32,6 +32,7 @@ import "./question-bank.css";
 
 const MAX_REQUESTED_COUNT = 20;
 const QUESTION_TYPE_OPTIONS = [
+  { value: "single_choice", label: "Single choice" },
   { value: "multiple_choice", label: "Multiple choice" },
   { value: "true_false", label: "True/False" },
 ];
@@ -124,6 +125,7 @@ export function AdminAiQuestionDraftCreatePage() {
   const [files, setFiles] = useState([]);
   const [fileErrors, setFileErrors] = useState([]);
   const [questionTypes, setQuestionTypes] = useState([
+    "single_choice",
     "multiple_choice",
     "true_false",
   ]);
@@ -933,13 +935,18 @@ function EditDraftModal({ draft, modules, mutating, error, onClose, onSave }) {
     }));
   }
 
-  /** Danh dau duy nhat mot dap an dung cho draft dang sua. */
+  /** Cap nhat dap an dung theo quy tac single choice hoac multiple choice. */
   function setCorrect(index) {
     setValues((current) => ({
       ...current,
       answers: current.answers.map((answer, answerIndex) => ({
         ...answer,
-        correct: answerIndex === index,
+        correct:
+          current.questionType === "multiple_choice"
+            ? answerIndex === index
+              ? !answer.correct
+              : answer.correct
+            : answerIndex === index,
       })),
     }));
   }
@@ -1022,7 +1029,7 @@ function EditDraftModal({ draft, modules, mutating, error, onClose, onSave }) {
             {values.answers.map((answer, index) => (
               <div className="ai-draft-edit-answer" key={answer.answerId || answer.id || index}>
                 <input
-                  type="radio"
+                  type={values.questionType === "multiple_choice" ? "checkbox" : "radio"}
                   name="ai-list-draft-correct-answer"
                   checked={answer.correct}
                   onChange={() => setCorrect(index)}

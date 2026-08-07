@@ -63,7 +63,7 @@ export function normalizeImageQuestion(question, index) {
     clientImportId: question?.clientImportId || `tmp-${index + 1}`,
     questionNumber: question?.questionNumber || index + 1,
     questionText: question?.questionText || "",
-    questionType: question?.questionType || "multiple_choice",
+    questionType: question?.questionType || "single_choice",
     answers: answers.map((answer, answerIndex) => ({
       answerText: answer?.answerText || "",
       correct: Boolean(answer?.correct || answer?.isCorrect),
@@ -109,16 +109,20 @@ export function validateImageQuestion(question) {
   const type = question.questionType;
   const answers = Array.isArray(question.answers) ? question.answers : [];
   if (!text) errors.push("Question text is required");
-  if (!["multiple_choice", "true_false"].includes(type)) {
-    errors.push("Question type must be multiple_choice or true_false");
+  if (!["single_choice", "multiple_choice", "true_false"].includes(type)) {
+    errors.push("Question type must be single_choice, multiple_choice, or true_false");
   }
   if (answers.length < 2) errors.push("At least two answers are required");
-  if (type === "multiple_choice" && answers.length > 6) {
-    errors.push("Multiple choice supports 2 to 6 answers");
+  if ((type === "single_choice" || type === "multiple_choice") && answers.length > 6) {
+    errors.push("Choice questions support 2 to 6 answers");
   }
   if (answers.some((answer) => !answer.answerText?.trim())) errors.push("Answer text is required");
-  if (answers.filter((answer) => answer.correct).length !== 1) {
+  const correctCount = answers.filter((answer) => answer.correct).length;
+  if ((type === "single_choice" || type === "true_false") && correctCount !== 1) {
     errors.push("Exactly one correct answer is required");
+  }
+  if (type === "multiple_choice" && correctCount < 2) {
+    errors.push("Multiple choice requires at least two correct answers");
   }
   if (type === "true_false") {
     if (answers.length !== 2) errors.push("True/false must have exactly two answers");
@@ -177,7 +181,7 @@ export function getImportRowEditValues(row) {
   const options = Array.isArray(data.options) ? data.options : [];
   return {
     questionText: data.questionText || "",
-    questionType: data.questionType || "multiple_choice",
+    questionType: data.questionType || "single_choice",
     options: Array.from({ length: 6 }, (_, index) => options[index] || ""),
     correctAnswer: data.correctAnswer || "",
     explanation: data.explanation || "",

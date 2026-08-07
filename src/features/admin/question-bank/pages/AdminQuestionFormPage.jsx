@@ -20,6 +20,7 @@ import {
   normalizeQuestionMedia,
   parseAnswerContent,
   pendingMediaItem,
+  QUESTION_TYPE_OPTIONS,
   validateQuestionForm,
 } from "../utils/questionFormUtils";
 import "../../admin-shared.css";
@@ -48,12 +49,12 @@ export function AdminQuestionForm({
   const [error, setError] = useState(null);
   const [values, setValues] = useState({
     questionText: "",
-    questionType: "multiple_choice",
+    questionType: "single_choice",
     difficulty: "",
     status: "draft",
     explanation: "",
     moduleId: "",
-    answers: normalizeAnswers("multiple_choice"),
+    answers: normalizeAnswers("single_choice"),
   });
   const pendingPreviewUrls = useRef(new Set());
   const [imageMedia, setImageMedia] = useState([]);
@@ -82,13 +83,13 @@ export function AdminQuestionForm({
           setRemovedAttachmentIds([]);
           setValues({
             questionText: question.questionText || "",
-            questionType: question.questionType || "multiple_choice",
+            questionType: question.questionType || "single_choice",
             difficulty: question.difficulty ? String(question.difficulty) : "",
             status: question.status || "draft",
             explanation: question.explanation || "",
             moduleId: question.moduleId || "",
             answers: normalizeAnswers(
-              question.questionType || "multiple_choice",
+              question.questionType || "single_choice",
               (question.answers || []).map((answer, index) => ({
                 ...parseAnswerContent(answer.answerText),
                 correct: Boolean(answer.correct || answer.isCorrect),
@@ -189,7 +190,12 @@ export function AdminQuestionForm({
       ...current,
       answers: current.answers.map((answer, answerIndex) => ({
         ...answer,
-        correct: answerIndex === index,
+        correct:
+          current.questionType === "multiple_choice"
+            ? answerIndex === index
+              ? !answer.correct
+              : answer.correct
+            : answerIndex === index,
       })),
     }));
   }
@@ -686,8 +692,11 @@ export function AdminQuestionForm({
                   value={values.questionType}
                   onChange={(event) => setType(event.target.value)}
                 >
-                  <option value="multiple_choice">Multiple choice</option>
-                  <option value="true_false">True/False</option>
+                  {QUESTION_TYPE_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
                 </select>
               </div>
               <div className="input-field">
@@ -756,7 +765,7 @@ export function AdminQuestionForm({
           <section className="question-authoring-block">
             <div className="question-authoring-block__header">
               <h2>Answers</h2>
-              {values.questionType === "multiple_choice" && (
+              {values.questionType !== "true_false" && (
                 <Button
                   type="button"
                   size="sm"
@@ -777,7 +786,7 @@ export function AdminQuestionForm({
                   >
                     <label className="question-authoring-answer__choice">
                       <input
-                        type="radio"
+                        type={values.questionType === "multiple_choice" ? "checkbox" : "radio"}
                         name="correct-answer"
                         checked={answer.correct}
                         onChange={() => setCorrect(index)}
@@ -829,7 +838,7 @@ export function AdminQuestionForm({
                       ) : null}
                     </div>
                     <div className="question-authoring-answer__actions">
-                      {values.questionType === "multiple_choice" && (
+                      {values.questionType !== "true_false" && (
                         <button
                           type="button"
                           className="admin-table__icon-btn admin-table__icon-btn--danger"

@@ -25,6 +25,7 @@ import { DEFAULT_PAGE_SIZE } from "@/shared/constants/pagination";
 import "../../admin-shared.css";
 import "./question-bank.css";
 import { QuestionImportModal } from "../components/QuestionImportModal";
+import { questionTypeLabel } from "../utils/questionFormUtils";
 import { AdminQuestionFormModal } from "./AdminQuestionFormPage";
 import {
   QuestionImagePreviewModal,
@@ -544,9 +545,7 @@ export function AdminQuestionBankDetailPage() {
                         </td>
                         <td>{moduleLabel}</td>
                         <td>
-                          {question.questionType === "true_false"
-                            ? "True/False"
-                            : "Multiple choice"}
+                          {questionTypeLabel(question.questionType)}
                         </td>
                         <td>
                           <span
@@ -650,9 +649,7 @@ export function AdminQuestionBankDetailPage() {
                     </div>
                     <div className="question-card__meta">
                       <span>
-                        {question.questionType === "true_false"
-                          ? "True/False"
-                          : "Multiple choice"}
+                        {questionTypeLabel(question.questionType)}
                       </span>
                       <span>Difficulty: {question.difficulty ?? "--"}</span>
                       <span>

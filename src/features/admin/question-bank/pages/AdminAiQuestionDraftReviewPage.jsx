@@ -768,12 +768,16 @@ function EditDraftModal({ draft, modules, mutating, onClose, onSave }) {
     }))
   }
 
+  /** Cap nhat dap an dung theo quy tac single choice hoac multiple choice. */
   function setCorrect(index) {
     setValues((current) => ({
       ...current,
       answers: current.answers.map((answer, answerIndex) => ({
         ...answer,
-        correct: answerIndex === index,
+        correct:
+          current.questionType === "multiple_choice"
+            ? answerIndex === index ? !answer.correct : answer.correct
+            : answerIndex === index,
       })),
     }))
   }
@@ -850,7 +854,7 @@ function EditDraftModal({ draft, modules, mutating, onClose, onSave }) {
             {values.answers.map((answer, index) => (
               <div className="ai-draft-edit-answer" key={answer.answerId || answer.id || index}>
                 <input
-                  type="radio"
+                  type={values.questionType === "multiple_choice" ? "checkbox" : "radio"}
                   name="ai-draft-correct-answer"
                   checked={answer.correct}
                   onChange={() => setCorrect(index)}
