@@ -240,7 +240,7 @@ export function FlashcardLessonAuthoring({
                 />
               </LessonEditorSection>
             </div>
-            {lessonSaveBar}
+            {expandedSection === "basic" ? lessonSaveBar : null}
           </div>
 
   );

@@ -42,6 +42,7 @@ const STAFF_TABS = [
     {
         label: "Flashcards",
         to: "/flashcards",
+        end: true,
         roles: [ROLES.TRAINER],
     },
 ];
@@ -85,11 +86,11 @@ function isStaffPage(pathname) {
     return (
         pathname.startsWith("/admin/") ||
         pathname.startsWith("/staff/") ||
+        pathname === "/flashcards" ||
+        pathname.startsWith("/flashcards/") ||
         pathname.startsWith("/trainer/") ||
         pathname.startsWith("/sme/") ||
-        pathname.startsWith("/tmo/") ||
-        pathname === "/flashcards" ||
-        pathname.startsWith("/flashcards/")
+        pathname.startsWith("/tmo/")
     );
 }
 

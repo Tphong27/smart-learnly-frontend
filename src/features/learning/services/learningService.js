@@ -46,4 +46,24 @@ export const learningService = {
     );
     return unwrap(response);
   },
+
+  /** Láº¥y bá»™ flashcard gáº¯n vá»›i lesson Ä‘ang hiá»ƒn thá»‹ trong workspace há»c. */
+  async getLessonFlashcards(courseId, lessonId, classId) {
+    const response = await apiClient.get(
+      `/learning/courses/${courseId}/lessons/${lessonId}/flashcards`,
+      {
+        params: classId ? { classId } : {},
+      },
+    );
+    return unwrap(response);
+  },
+
+  /** LÆ°u káº¿t quáº£ Ã´n tháº» trong luá»“ng flashcard cá»§a course/lesson. */
+  async submitFlashcardProgress(cardId, result) {
+    const response = await apiClient.post(
+      `/learning/flashcards/${cardId}/progress`,
+      { result },
+    );
+    return unwrap(response);
+  },
 };

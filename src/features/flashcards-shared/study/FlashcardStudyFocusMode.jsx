@@ -1,4 +1,3 @@
-import { useEffect } from "react";
 import { Minimize2 } from "lucide-react";
 import { FlashcardPreview } from "../components/FlashcardPreview";
 import "../flashcards-shared.css";
@@ -14,19 +13,11 @@ export function FlashcardStudyFocusMode({
   onShuffle,
   onClose,
   emptyMessage,
+  renderCardOverlay,
   renderControls,
   renderActions,
   suppressGenericGeneratedExplanation = true,
 }) {
-  useEffect(() => {
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-
-    return () => {
-      document.body.style.overflow = previousOverflow;
-    };
-  }, []);
-
   return (
     <div className="flashcard-focus-mode" role="presentation">
       <section
@@ -62,6 +53,7 @@ export function FlashcardStudyFocusMode({
             onShuffle={onShuffle}
             emptyMessage={emptyMessage}
             className="flashcard-preview--focus"
+            renderCardOverlay={renderCardOverlay}
             renderControls={renderControls}
             renderActions={renderActions}
             suppressGenericGeneratedExplanation={suppressGenericGeneratedExplanation}

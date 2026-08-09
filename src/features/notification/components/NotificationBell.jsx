@@ -199,6 +199,7 @@ export function NotificationBell({ variant = "app", onOpen }) {
   const [actionError, setActionError] = useState(null);
   const {
     unreadCount,
+    activeNotificationCount,
     latestNotifications,
     latestLoading,
     latestError,
@@ -208,6 +209,7 @@ export function NotificationBell({ variant = "app", onOpen }) {
     markRead,
     recordClick,
     archive,
+    archiveAll,
     markAllRead,
     isNotificationMutating,
     isBulkMutating,
@@ -268,8 +270,8 @@ export function NotificationBell({ variant = "app", onOpen }) {
   useEffect(() => {
     if (!open) return;
     void refreshUnread({ force: true });
-    void refreshLatest({ force: true });
-  }, [open, refreshLatest, refreshUnread]);
+    void refreshLatest({ force: true, status: activeFilter });
+  }, [activeFilter, open, refreshLatest, refreshUnread]);
 
   function handleToggle() {
     setOpen((current) => {
@@ -307,9 +309,26 @@ export function NotificationBell({ variant = "app", onOpen }) {
     }
   }
 
+  async function handleArchiveAll() {
+    setActionError(null);
+    setActiveActionsId(null);
+    if (
+      !window.confirm(
+        "Archive all active notifications? Archived notifications will be removed from this dropdown.",
+      )
+    ) {
+      return;
+    }
+    try {
+      await archiveAll();
+    } catch (error) {
+      setActionError(error?.message || "Failed to archive notifications.");
+    }
+  }
+
   function handleRefresh() {
     void refreshUnread({ force: true });
-    void refreshLatest({ force: true });
+    void refreshLatest({ force: true, status: activeFilter });
   }
 
   function handleOpenNotification(notification) {
@@ -324,11 +343,9 @@ export function NotificationBell({ variant = "app", onOpen }) {
     }
   }
 
-  const visibleNotifications =
-    activeFilter === "unread"
-      ? latestNotifications.filter(isUnreadNotification)
-      : latestNotifications;
+  const visibleNotifications = latestNotifications;
   const markingAllRead = isBulkMutating("read-all");
+  const archivingAll = isBulkMutating("archive-all");
 
   return (
     <div className={classes.wrapper} ref={rootRef}>
@@ -369,17 +386,30 @@ export function NotificationBell({ variant = "app", onOpen }) {
                   : "You're all caught up"}
               </span>
             </div>
-            {unreadCount > 0 && (
-              <button
-                type="button"
-                className="notification-dropdown__mark-all"
-                onClick={handleMarkAllRead}
-                disabled={markingAllRead}
-              >
-                <CheckCheck size={16} aria-hidden="true" />
-                {markingAllRead ? "Marking..." : "Mark all read"}
-              </button>
-            )}
+            <div className="notification-dropdown__bulk-actions">
+              {unreadCount > 0 && (
+                <button
+                  type="button"
+                  className="notification-dropdown__mark-all"
+                  onClick={handleMarkAllRead}
+                  disabled={markingAllRead || archivingAll}
+                >
+                  <CheckCheck size={16} aria-hidden="true" />
+                  {markingAllRead ? "Marking..." : "Mark all read"}
+                </button>
+              )}
+              {activeNotificationCount > 0 && (
+                <button
+                  type="button"
+                  className="notification-dropdown__mark-all"
+                  onClick={handleArchiveAll}
+                  disabled={archivingAll || markingAllRead}
+                >
+                  <Archive size={16} aria-hidden="true" />
+                  {archivingAll ? "Archiving..." : "Archive all"}
+                </button>
+              )}
+            </div>
           </div>
 
           <div className="notification-dropdown__tabs" role="tablist">
@@ -394,7 +424,7 @@ export function NotificationBell({ variant = "app", onOpen }) {
               }}
             >
               All
-              <span>{latestNotifications.length}</span>
+              <span>{activeNotificationCount}</span>
             </button>
             <button
               type="button"
@@ -426,14 +456,14 @@ export function NotificationBell({ variant = "app", onOpen }) {
                 Retry
               </button>
             </div>
-          ) : latestNotifications.length === 0 ? (
+          ) : activeFilter === "all" && activeNotificationCount === 0 ? (
             <div className="notification-dropdown__state">
               No notifications yet.
             </div>
           ) : visibleNotifications.length === 0 ? (
             <div className="notification-dropdown__state">
               <CheckCheck size={22} aria-hidden="true" />
-              No unread notifications.
+              You're all caught up.
             </div>
           ) : (
             <ul className="notification-dropdown__list">
