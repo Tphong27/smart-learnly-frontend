@@ -257,12 +257,6 @@ export function PersonalFlashcardCardEditor({
         .join(" ")}
       aria-labelledby="personal-flashcard-cards-heading"
     >
-      <header className="personal-flashcard-card-editor__header">
-        <div>
-          <h2 id="personal-flashcard-cards-heading">Cards</h2>
-          <p>{displayCards.length} active {displayCards.length === 1 ? "card" : "cards"}</p>
-        </div>
-      </header>
 
       <div className="personal-flashcard-card-editor__toolbar">
         <FlashcardSelectionToolbar

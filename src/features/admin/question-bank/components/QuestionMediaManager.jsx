@@ -11,7 +11,6 @@ function clampMoveIndex(targetIndex, length) {
 
 const MEDIA_CONFIG = {
   image: {
-    label: 'Images',
     empty: 'No images attached',
     accept: 'image/jpeg,image/png,image/webp',
     allowedTypes: ['image/jpeg', 'image/png', 'image/webp'],
@@ -22,7 +21,6 @@ const MEDIA_CONFIG = {
     Icon: ImagePlus,
   },
   audio: {
-    label: 'Audio',
     empty: 'No audio attached',
     accept: 'audio/mpeg,audio/mp4,audio/x-m4a,audio/wav,audio/x-wav',
     allowedTypes: ['audio/mpeg', 'audio/mp4', 'audio/x-m4a', 'audio/wav', 'audio/x-wav'],
@@ -33,7 +31,6 @@ const MEDIA_CONFIG = {
     Icon: FileAudio,
   },
   video: {
-    label: 'Video',
     empty: 'No video attached',
     accept: 'video/mp4,video/mpeg,video/webm,video/quicktime,video/x-matroska,video/x-msvideo,video/x-ms-wmv,video/3gpp,video/x-flv,.mp4,.mov,.mkv,.avi,.wmv,.3gp,.flv,.webm,.mpg,.mpeg',
     allowedTypes: [
