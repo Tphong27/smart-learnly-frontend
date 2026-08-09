@@ -667,7 +667,7 @@ export function TraineeFlashTestListPage({ variant = "flash" }) {
                     }}
                     aria-label="Assignment source"
                   >
-                    <option value="daily">Daily Assignment</option>
+                    <option value="daily">Class Assignment</option>
                     <option value="curriculum">Essay in Course</option>
                   </select>
                 </label>
@@ -744,7 +744,7 @@ export function TraineeFlashTestListPage({ variant = "flash" }) {
               {isAssignmentMode
                 ? assignmentView === "curriculum"
                   ? "No essay lessons available"
-                  : "No daily assignments available"
+                  : "No class assignments available"
                 : isFlashMode
                   ? "No flash tests available"
                   : "No tests available"}
@@ -802,7 +802,7 @@ export function TraineeFlashTestListPage({ variant = "flash" }) {
                   const typeLabel = isEssay
                     ? isCurriculumEssay(item)
                       ? "Essay in Course"
-                      : "Daily Assignment"
+                      : "Class Assignment"
                     : "MCQ";
                   const TypeIcon = isEssay ? FileText : CheckSquare;
                   const duration = getDurationMinutes(item);

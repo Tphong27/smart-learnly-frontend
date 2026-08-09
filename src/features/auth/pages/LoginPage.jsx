@@ -6,17 +6,19 @@ import { GoogleLogin } from "@react-oauth/google";
 import { Eye, EyeOff, Lock, Mail } from "lucide-react";
 import { Form, FormField, Button, useToast } from "@/shared/components/ui";
 import { authService } from "../services/authService";
-import { normalizeRole, ROLES } from "@/shared/constants/roles";
 import { loginSchema } from "../schemas/auth-schemas";
 import { AuthPage, AuthCard } from "../components/AuthCard";
 import { SocialDivider } from "../components/SocialDivider";
-import { isPathAllowedForRole } from "@/app/routes/dashboard-path";
-
+import {
+    getDashboardPathByRole,
+    isPathAllowedForRole,
+} from "@/app/routes/dashboard-path";
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 const isGoogleConfigured = Boolean(
     GOOGLE_CLIENT_ID && GOOGLE_CLIENT_ID !== "__SET_ME__",
 );
 
+/** Xác định đường dẫn an toàn sau khi người dùng đăng nhập thành công. */
 function getRedirectPath(location, user) {
     const requested = location.state?.from?.pathname;
 
@@ -24,15 +26,7 @@ function getRedirectPath(location, user) {
         return requested;
     }
 
-    const role = normalizeRole(user?.role);
-
-    if (role === ROLES.ADMIN) return "/admin/dashboard";
-    if (role === ROLES.TMO) return "/admin/courses";
-    if (role === ROLES.SME) return "/admin/courses";
-    if (role === ROLES.TRAINER) return "/staff/courses";
-    if (role === ROLES.TRAINEE) return "/dashboard";
-
-    return "/learning/courses";
+    return getDashboardPathByRole(user?.role);
 }
 
 export function LoginPage() {

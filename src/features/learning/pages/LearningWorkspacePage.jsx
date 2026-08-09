@@ -24,6 +24,7 @@ import { LearningLessonTabs } from "@/features/course/components/LearningLessonT
 import { getCurrentUser } from "@/services";
 import { learningService } from "../services/learningService";
 import { filterPublishedSections } from "@/features/course/utils/lesson-status";
+import { getDashboardPathByRole } from "@/app/routes/dashboard-path";
 import "./LearningWorkspacePage.css";
 
 const LAST_LESSON_STORAGE_PREFIX = "smartLearnly:learningWorkspace:lastLesson";
@@ -120,6 +121,7 @@ export function LearningWorkspacePage({
   const { courseId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
+  const dashboardPath = getDashboardPathByRole(getCurrentUser()?.role);
   const [searchParams, setSearchParams] = useSearchParams();
   const requestedReturnTo = searchParams.get("returnTo");
   const requestedLessonId = searchParams.get("lessonId");
@@ -132,7 +134,8 @@ export function LearningWorkspacePage({
     [],
   );
   const lessonResumeStorageKey = useMemo(
-    () => lessonPositionStorageKey(workspaceUserKey, courseId, effectiveClassId),
+    () =>
+      lessonPositionStorageKey(workspaceUserKey, courseId, effectiveClassId),
     [courseId, effectiveClassId, workspaceUserKey],
   );
   const [data, setData] = useState(null);
@@ -447,9 +450,12 @@ export function LearningWorkspacePage({
       activeLesson?.lessonType || "",
     ).toUpperCase();
 
-    const isActivityLesson = ["QUIZ", "FLASHCARD", "ESSAY", "ASSIGNMENT"].includes(
-      currentLessonType,
-    );
+    const isActivityLesson = [
+      "QUIZ",
+      "FLASHCARD",
+      "ESSAY",
+      "ASSIGNMENT",
+    ].includes(currentLessonType);
     const isCompleted = currentLessonId
       ? completedLessonIds.has(currentLessonId)
       : false;
@@ -563,9 +569,12 @@ export function LearningWorkspacePage({
 
   const currentLessonId = getLessonId(activeLesson);
 
-  const isActivityLesson = ["QUIZ", "FLASHCARD", "ESSAY", "ASSIGNMENT"].includes(
-    String(activeLesson?.lessonType || "").toUpperCase(),
-  );
+  const isActivityLesson = [
+    "QUIZ",
+    "FLASHCARD",
+    "ESSAY",
+    "ASSIGNMENT",
+  ].includes(String(activeLesson?.lessonType || "").toUpperCase());
 
   const canGoNext =
     !!nextLesson &&
@@ -608,22 +617,14 @@ export function LearningWorkspacePage({
         Skip to lesson content
       </a>
       <header className="learning-workspace__topbar">
-        {isAdminPreview ? (
-          <span className="learning-workspace__brand learning-workspace__brand--static">
-            <BookOpen size={24} aria-hidden="true" />
-            <span>Smart Learnly</span>
-          </span>
-        ) : (
-          <button
-            type="button"
-            className="learning-workspace__brand"
-            onClick={handleLeaveWorkspace}
-            aria-label="Leave course player"
-          >
-            <BookOpen size={24} aria-hidden="true" />
-            <span>Smart Learnly</span>
-          </button>
-        )}
+        <button
+          type="button"
+          className="learning-workspace__brand"
+          onClick={() => navigate(dashboardPath)}
+        >
+          <BookOpen size={24} aria-hidden="true" />
+          <span>Smart Learnly</span>
+        </button>
 
         <span
           className="learning-workspace__topbar-divider"
@@ -696,25 +697,25 @@ export function LearningWorkspacePage({
               aria-hidden="true"
             >
               <circle
-              className="learning-workspace__progress-ring-track"
-              cx="18"
-              cy="18"
-              r="15.5"
-              pathLength="100"
+                className="learning-workspace__progress-ring-track"
+                cx="18"
+                cy="18"
+                r="15.5"
+                pathLength="100"
               />
               <circle
-              className="learning-workspace__progress-ring-value"
-              cx="18"
-              cy="18"
-              r="15.5"
-              pathLength="100"
-              strokeDashoffset={100 - progressPercent}
+                className="learning-workspace__progress-ring-value"
+                cx="18"
+                cy="18"
+                r="15.5"
+                pathLength="100"
+                strokeDashoffset={100 - progressPercent}
               />
             </svg>
             <div className="learning-workspace__progress-copy">
               <strong>Your progress</strong>
               <span>
-              {progressPercent}% · {completedCount}/{totalLessonCount} lessons
+                {progressPercent}% · {completedCount}/{totalLessonCount} lessons
               </span>
             </div>
           </div>
