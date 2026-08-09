@@ -19,7 +19,6 @@ import {
   X,
 } from "lucide-react";
 import { fileNameFromUrl, isHtmlContent } from "../utils/lesson-content";
-import { LearningQuizPlayer } from "./LearningQuizPlayer";
 import { assignmentService } from "@/features/assignment";
 import { attemptService } from "@/features/flashtest/services/attemptService";
 import { getCurrentUser } from "@/services/api-client";
@@ -133,7 +132,7 @@ function QuizLessonLaunch({ lesson, classId, onQuizCompleted, onQuizStart }) {
     return () => {
       cancelled = true;
     };
-  }, [lessonId, onQuizCompleted, testId]);
+  }, [classId, lessonId, onQuizCompleted, testId]);
 
   if (!testId) {
     return (

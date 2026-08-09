@@ -64,12 +64,12 @@ export function useAuthWizard({ totalSteps = 2, basePath = "/register" }) {
     setDataState((prev) => ({ ...prev, ...patch }));
   }
 
-  function goToStep(stepNumber) {
+  const goToStep = useCallback((stepNumber) => {
     const clamped = Math.min(Math.max(stepNumber, 1), totalSteps);
     const params = new URLSearchParams(searchParams);
     params.set("step", String(clamped));
     setSearchParams(params, { replace: false });
-  }
+  }, [searchParams, setSearchParams, totalSteps]);
 
   const goNext = useCallback(() => {
     if (currentStep < totalSteps) goToStep(currentStep + 1);

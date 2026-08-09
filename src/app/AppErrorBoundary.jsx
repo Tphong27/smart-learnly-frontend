@@ -16,7 +16,6 @@ export class AppErrorBoundary extends React.Component {
     }
 
     componentDidCatch(error, info) {
-        // eslint-disable-next-line no-console
         console.error("AppErrorBoundary caught", error, info);
     }
 
@@ -49,8 +48,7 @@ export class AppErrorBoundary extends React.Component {
                     justifyContent: "flex-start",
                     gap: 12,
                     padding: "40px 24px",
-                    fontFamily:
-                        "'Lato', ui-sans-serif, system-ui, sans-serif",
+                    fontFamily: "'Lato', ui-sans-serif, system-ui, sans-serif",
                     color: "#17233e",
                     background: "#f7f9fc",
                     overflowY: "auto",
