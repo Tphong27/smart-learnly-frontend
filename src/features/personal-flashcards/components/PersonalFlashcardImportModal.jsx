@@ -92,15 +92,14 @@ function PastedTextPanel({ values, parsed, busy, saving, onChange, onImport }) {
 
     return (
         <form
-            className="personal-flashcard-pasted-import"
+            className="personal-flashcard-pasted-import personal-flashcard-import__panel-body"
             onSubmit={onImport}
             noValidate
         >
-            <label
-                className="personal-flashcard-import__source"
-                htmlFor="personal-flashcard-import-pasted-text"
-            >
-                <span>Pasted text</span>
+            <div className="personal-flashcard-import__field personal-flashcard-import__source">
+                <label htmlFor="personal-flashcard-import-pasted-text">
+                    Pasted text
+                </label>
                 <textarea
                     id="personal-flashcard-import-pasted-text"
                     value={values.text}
@@ -114,11 +113,11 @@ function PastedTextPanel({ values, parsed, busy, saving, onChange, onImport }) {
                         "Term\tDefinition\nAnother term\tAnother definition"
                     }
                 />
-            </label>
+            </div>
 
             <div className="personal-flashcard-pasted-import__settings">
-                <label>
-                    <span>Between front and back</span>
+                <label className="personal-flashcard-import__field">
+                    Between front and back
                     <select
                         value={values.frontBackSeparator}
                         disabled={busy}
@@ -139,8 +138,8 @@ function PastedTextPanel({ values, parsed, busy, saving, onChange, onImport }) {
                     </select>
                 </label>
                 {values.frontBackSeparator === "custom" ? (
-                    <label>
-                        <span>Custom side separator</span>
+                    <label className="personal-flashcard-import__field">
+                        Custom side separator
                         <input
                             type="text"
                             value={values.customFrontBackSeparator}
@@ -155,8 +154,8 @@ function PastedTextPanel({ values, parsed, busy, saving, onChange, onImport }) {
                         />
                     </label>
                 ) : null}
-                <label>
-                    <span>Between cards</span>
+                <label className="personal-flashcard-import__field">
+                    Between cards
                     <select
                         value={values.cardSeparator}
                         disabled={busy}
@@ -174,8 +173,8 @@ function PastedTextPanel({ values, parsed, busy, saving, onChange, onImport }) {
                     </select>
                 </label>
                 {values.cardSeparator === "custom" ? (
-                    <label>
-                        <span>Custom card separator</span>
+                    <label className="personal-flashcard-import__field">
+                        Custom card separator
                         <input
                             type="text"
                             value={values.customCardSeparator}
@@ -249,7 +248,7 @@ function PastedTextPanel({ values, parsed, busy, saving, onChange, onImport }) {
             ) : null}
 
             <div className="personal-flashcard-pasted-import__preview">
-                <h3>Parsed-card preview</h3>
+                <h4>Preview</h4>
                 {parsed.cards.length === 0 ? (
                     <p>No valid front/back pairs to preview yet.</p>
                 ) : (
@@ -267,23 +266,27 @@ function PastedTextPanel({ values, parsed, busy, saving, onChange, onImport }) {
                                 <span className="personal-flashcard-pasted-import__index">
                                     {card.rowNumber}
                                 </span>
-                                <div>
+                                <div className="personal-flashcard-pasted-import__side">
                                     <strong>Front</strong>
                                     <p>{card.frontText}</p>
                                 </div>
-                                <div>
+                                <div className="personal-flashcard-pasted-import__side">
                                     <strong>Back</strong>
                                     <p>{card.backText}</p>
                                 </div>
-                                <span
-                                    className={
-                                        card.importable
-                                            ? "is-ready"
-                                            : "is-skipped"
-                                    }
-                                >
-                                    {card.importable ? "Ready" : "Duplicate"}
-                                </span>
+                                <div className="personal-flashcard-pasted-import__row-status">
+                                    <span
+                                        className={
+                                            card.importable
+                                                ? "personal-flashcard-pasted-import__status"
+                                                : "personal-flashcard-pasted-import__status personal-flashcard-pasted-import__status--skip"
+                                        }
+                                    >
+                                        {card.importable
+                                            ? "Ready"
+                                            : "Duplicate"}
+                                    </span>
+                                </div>
                             </article>
                         ))}
                     </div>
@@ -291,25 +294,23 @@ function PastedTextPanel({ values, parsed, busy, saving, onChange, onImport }) {
             </div>
 
             <div className="personal-flashcard-import__actions">
-                <div>
-                    <Button
-                        type="submit"
-                        loading={saving}
-                        disabled={
-                            busy ||
-                            Boolean(parsed.configError) ||
-                            parsed.importableCards.length === 0
-                        }
-                        leftIcon={<Upload size={16} aria-hidden="true" />}
-                    >
-                        Import ready cards
-                    </Button>
-                    <p>
-                        {parsed.invalidRows.length > 0
-                            ? "Only valid non-duplicate rows are imported."
-                            : "Ready cards import directly into this Personal set."}
-                    </p>
-                </div>
+                <span>
+                    {parsed.invalidRows.length > 0
+                        ? "Only valid non-duplicate rows are imported."
+                        : "Ready cards import directly into this Personal set."}
+                </span>
+                <Button
+                    type="submit"
+                    loading={saving}
+                    disabled={
+                        busy ||
+                        Boolean(parsed.configError) ||
+                        parsed.importableCards.length === 0
+                    }
+                    leftIcon={<Upload size={16} aria-hidden="true" />}
+                >
+                    Import ready cards
+                </Button>
             </div>
         </form>
     );
@@ -517,7 +518,9 @@ export function PersonalFlashcardImportModal({
         <Modal
             open={open}
             title="Import flashcards"
+            description="Choose a source and review the result before importing."
             size="xl"
+            className="personal-flashcard-import-modal"
             closeDisabled={!canClose}
             onClose={() => {
                 if (canClose) onClose();
@@ -557,10 +560,11 @@ export function PersonalFlashcardImportModal({
                         onClick={() => switchSourceMode("text")}
                         disabled={busy || Boolean(editingDraft)}
                         role="tab"
+                        id="personal-flashcard-import-tab-text"
+                        aria-controls="personal-flashcard-import-panel-text"
                         aria-selected={sourceMode === "text"}
                     >
-                        <FileText size={16} />
-                        Pasted text
+                        Pasted Text
                     </button>
                     <button
                         type="button"
@@ -568,102 +572,137 @@ export function PersonalFlashcardImportModal({
                         onClick={() => switchSourceMode("file")}
                         disabled={busy || Boolean(editingDraft)}
                         role="tab"
+                        id="personal-flashcard-import-tab-document"
+                        aria-controls="personal-flashcard-import-panel-document"
                         aria-selected={sourceMode === "file"}
                     >
-                        <Upload size={16} />
                         Document
                     </button>
                 </div>
 
                 {sourceMode === "text" ? (
-                    <PastedTextPanel
-                        values={pastedValues}
-                        parsed={parsedPastedCards}
-                        busy={busy}
-                        saving={saving}
-                        onChange={(nextValues) => {
-                            setPastedValues(nextValues);
-                            setError("");
-                        }}
-                        onImport={importPastedCards}
-                    />
-                ) : (
-                    <>
-                        <div className="personal-flashcard-import__source">
-                            <span>Document source</span>
-                            <input
-                                ref={documentInputRef}
-                                id="personal-flashcard-import-document"
-                                type="file"
-                                className="personal-flashcard-import__file-input"
-                                accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                                disabled={busy}
-                                onChange={(event) => {
-                                    setFile(event.target.files?.[0] || null);
-                                    setError("");
-                                }}
-                            />
-                            <div
-                                className={`personal-flashcard-import__file-panel${file ? " has-file" : ""}`}
-                            >
-                                <label
-                                    className="personal-flashcard-import__file-picker"
-                                    htmlFor="personal-flashcard-import-document"
-                                >
-                                    <Upload size={22} aria-hidden="true" />
-                                    <span>
-                                        <strong>
-                                            {file
-                                                ? "Document selected"
-                                                : "Choose a document"}
-                                        </strong>
-                                        <small>
-                                            {file
-                                                ? file.name
-                                                : "Upload a PDF or DOCX file. The generated cards stay temporary until you confirm save."}
-                                        </small>
-                                    </span>
-                                </label>
-                                {file ? (
-                                    <div className="personal-flashcard-import__selected-file">
-                                        <CheckCircle2
-                                            size={16}
-                                            aria-hidden="true"
-                                        />
-                                        <span title={file.name}>
-                                            {file.name}
-                                        </span>
-                                        <Button
-                                            type="button"
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={removeFile}
-                                            disabled={busy}
-                                            leftIcon={
-                                                <X
-                                                    size={14}
-                                                    aria-hidden="true"
-                                                />
-                                            }
-                                        >
-                                            Remove
-                                        </Button>
-                                    </div>
-                                ) : null}
-                            </div>
+                    <section
+                        id="personal-flashcard-import-panel-text"
+                        className="personal-flashcard-import__panel"
+                        role="tabpanel"
+                        aria-labelledby="personal-flashcard-import-tab-text"
+                    >
+                        <div className="personal-flashcard-import__panel-header">
+                            <h3>Pasted Text</h3>
                         </div>
-
-                        <ImportSettings
-                            options={options}
-                            onChange={(nextOptions) => {
-                                setOptions(nextOptions);
+                        <PastedTextPanel
+                            values={pastedValues}
+                            parsed={parsedPastedCards}
+                            busy={busy}
+                            saving={saving}
+                            onChange={(nextValues) => {
+                                setPastedValues(nextValues);
                                 setError("");
                             }}
-                            disabled={busy}
+                            onImport={importPastedCards}
                         />
+                    </section>
+                ) : (
+                    <section
+                        id="personal-flashcard-import-panel-document"
+                        className="personal-flashcard-import__panel"
+                        role="tabpanel"
+                        aria-labelledby="personal-flashcard-import-tab-document"
+                    >
+                        <div className="personal-flashcard-import__panel-header">
+                            <h3>Document</h3>
+                        </div>
+                        <div className="personal-flashcard-import__panel-body">
+                            <div className="personal-flashcard-import__source">
+                                <input
+                                    ref={documentInputRef}
+                                    id="personal-flashcard-import-document"
+                                    type="file"
+                                    className="personal-flashcard-import__file-input"
+                                    accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                                    disabled={busy}
+                                    onChange={(event) => {
+                                        setFile(
+                                            event.target.files?.[0] || null,
+                                        );
+                                        setError("");
+                                    }}
+                                />
+                                <div
+                                    className={`personal-flashcard-import__file-panel${file ? " has-file" : ""}`}
+                                >
+                                    <label
+                                        className="personal-flashcard-import__file-picker"
+                                        htmlFor="personal-flashcard-import-document"
+                                    >
+                                        <FileText
+                                            size={22}
+                                            aria-hidden="true"
+                                        />
+                                        <span>
+                                            <strong>
+                                                {file
+                                                    ? "Document selected"
+                                                    : "Upload DOCX or PDF"}
+                                            </strong>
+                                            <small>
+                                                {file
+                                                    ? file.name
+                                                    : "Generated cards stay temporary until you confirm save."}
+                                            </small>
+                                        </span>
+                                    </label>
+                                    {file ? (
+                                        <div className="personal-flashcard-import__selected-file">
+                                            <CheckCircle2
+                                                size={16}
+                                                aria-hidden="true"
+                                            />
+                                            <span title={file.name}>
+                                                {file.name}
+                                            </span>
+                                            <Button
+                                                type="button"
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={removeFile}
+                                                disabled={busy}
+                                                leftIcon={
+                                                    <X
+                                                        size={14}
+                                                        aria-hidden="true"
+                                                    />
+                                                }
+                                            >
+                                                Remove
+                                            </Button>
+                                        </div>
+                                    ) : null}
+                                </div>
+                            </div>
 
-                        <div className="personal-flashcard-import__actions">
-                            <div>
+                            <ImportSettings
+                                options={options}
+                                onChange={(nextOptions) => {
+                                    setOptions(nextOptions);
+                                    setError("");
+                                }}
+                                disabled={busy}
+                            />
+
+                            <p className="personal-flashcard-import__helper">
+                                The system reads the document and creates
+                                editable draft flashcards for this Personal set.
+                            </p>
+
+                            <div className="personal-flashcard-import__actions">
+                                <span>
+                                    {documentDrafts.length
+                                        ? "Regenerating replaces the current temporary document drafts."
+                                        : file
+                                          ? "Ready to create cards"
+                                          : "No file selected"}
+                                </span>
                                 <Button
                                     type="button"
                                     onClick={generateDocumentDrafts}
@@ -680,11 +719,6 @@ export function PersonalFlashcardImportModal({
                                         ? "Regenerate drafts"
                                         : "Generate drafts"}
                                 </Button>
-                                <p>
-                                    {documentDrafts.length
-                                        ? "Regenerating replaces the current temporary document drafts."
-                                        : "Drafts are editable before anything is saved to your set."}
-                                </p>
                             </div>
                         </div>
 
@@ -755,7 +789,7 @@ export function PersonalFlashcardImportModal({
                                 />
                             </section>
                         )}
-                    </>
+                    </section>
                 )}
 
                 {error && (

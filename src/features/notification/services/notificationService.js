@@ -87,10 +87,15 @@ function normalizePageResponse(page) {
 function normalizeListParams(params = {}) {
   const page = Number.isFinite(Number(params.page)) ? Number(params.page) : 0;
   const size = Number.isFinite(Number(params.size)) ? Number(params.size) : 20;
+  const status = ["all", "unread", "read"].includes(params.status)
+    ? params.status
+    : "all";
 
   return {
     page,
     size,
+    status,
+    ...(normalizeType(params.type) ? { type: normalizeType(params.type) } : {}),
   };
 }
 
@@ -144,6 +149,12 @@ export const notificationService = {
   /** Đánh dấu tất cả notification là đã đọc. */
   async markAllRead() {
     const response = await apiClient.patch("/notifications/read-all");
+    return normalizeUnreadCount(response);
+  },
+
+  /** LÆ°u trá»¯ táº¥t cáº£ notification Ä‘ang active. */
+  async archiveAll() {
+    const response = await apiClient.patch("/notifications/archive-all");
     return normalizeUnreadCount(response);
   },
 

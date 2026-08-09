@@ -170,6 +170,7 @@ export function FlashcardPreview({
   onShuffle,
   emptyMessage = "No cards available.",
   className = "",
+  renderCardOverlay,
   renderControls,
   renderActions,
   contentLayout = "default",
@@ -281,6 +282,7 @@ export function FlashcardPreview({
       className={[
         "flashcard-preview",
         contentLayout === "management" ? "flashcard-preview--management" : "",
+        renderCardOverlay ? "flashcard-preview--with-card-overlay" : "",
         className,
       ]
         .filter(Boolean)
@@ -310,6 +312,7 @@ export function FlashcardPreview({
             suppressGenericGeneratedExplanation={suppressGenericGeneratedExplanation}
           />
         </button>
+        {renderCardOverlay?.(controlState)}
       </div>
 
       {!showNavigation ? null : renderControls ? (

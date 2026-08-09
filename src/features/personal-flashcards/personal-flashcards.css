@@ -240,19 +240,32 @@
 }
 
 .personal-flashcard-card-editor {
-    overflow: hidden;
+    overflow: visible;
 }
 
-.personal-flashcard-card-editor--with-fixed-preview-bar {
-    padding-bottom: calc(82px + env(safe-area-inset-bottom, 0px));
+.personal-flashcard-card-editor--with-panel-preview-bar
+    .personal-flashcard-card-editor__list {
+    padding-bottom: 84px;
 }
 
-/* Keep the shared fixed preview bar aligned to this centered workspace. */
-.personal-flashcard-card-editor .flashcard-current-preview-bar {
+.personal-flashcard-card-editor__preview-bar {
+    position: sticky;
+    bottom: max(8px, env(safe-area-inset-bottom, 0px));
+    z-index: 5;
+    margin-top: 12px;
+    padding: 0 20px 16px;
+    pointer-events: none;
+}
+
+.personal-flashcard-card-editor__preview-bar
+    .flashcard-current-preview-bar {
+    position: relative;
     right: auto;
-    left: 50%;
-    width: min(1116px, calc(100vw - 64px));
-    transform: translateX(-50%);
+    bottom: auto;
+    left: auto;
+    width: 100%;
+    transform: none;
+    pointer-events: auto;
 }
 
 .personal-flashcard-card-editor__header,
@@ -749,6 +762,289 @@
     color: var(--muted);
 }
 
+.personal-flashcard-import-modal {
+    max-width: min(1100px, calc(100vw - 48px));
+    max-height: calc(100dvh - 48px);
+}
+
+.personal-flashcard-import-modal .modal__header {
+    align-items: flex-start;
+    padding: 20px 22px 16px;
+}
+
+.personal-flashcard-import-modal .modal__body {
+    padding: 0 22px 20px;
+}
+
+.personal-flashcard-import-modal .modal__footer {
+    background: #ffffff;
+}
+
+.personal-flashcard-import {
+    display: flex;
+    min-height: 0;
+    flex-direction: column;
+    gap: 18px;
+}
+
+.personal-flashcard-import__tabs {
+    display: flex;
+    grid-template-columns: none;
+    align-items: center;
+    gap: 20px;
+    border-bottom: 1px solid var(--line);
+    padding: 0;
+}
+
+.personal-flashcard-import__tabs button {
+    position: relative;
+    justify-content: center;
+    width: auto;
+    min-height: 44px;
+    border: 0;
+    border-bottom: 2px solid transparent;
+    border-radius: 0;
+    background: transparent;
+    color: var(--muted);
+    font-size: 14px;
+    font-weight: 800;
+    padding: 0 0 10px;
+}
+
+.personal-flashcard-import__tabs button:hover:not(:disabled),
+.personal-flashcard-import__tabs button:focus-visible {
+    border-color: transparent;
+    background: transparent;
+    color: var(--ink);
+}
+
+.personal-flashcard-import__tabs button.is-active {
+    border-color: var(--primary);
+    background: transparent;
+    color: var(--primary);
+    box-shadow: none;
+}
+
+.personal-flashcard-import__panel {
+    min-height: 0;
+    border: 0;
+    background: transparent;
+}
+
+.personal-flashcard-import__panel-header {
+    padding: 0 0 12px;
+    border-bottom: 1px solid var(--line);
+}
+
+.personal-flashcard-import__panel-header h3 {
+    margin: 0;
+    color: var(--ink);
+    font-size: 20px;
+    font-weight: 800;
+}
+
+.personal-flashcard-import__panel-body {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding-top: 14px;
+}
+
+.personal-flashcard-import__field,
+.personal-flashcard-import__settings label,
+.personal-flashcard-pasted-import__settings label {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 6px;
+    color: var(--ink);
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.personal-flashcard-import__source textarea,
+.personal-flashcard-import__settings input,
+.personal-flashcard-import__settings select,
+.personal-flashcard-pasted-import__settings input,
+.personal-flashcard-pasted-import__settings select {
+    border-radius: 8px;
+    color: var(--ink);
+    padding: 10px 12px;
+}
+
+.personal-flashcard-import__source textarea {
+    min-height: 280px;
+}
+
+.personal-flashcard-import__settings {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.personal-flashcard-import__helper {
+    margin: -2px 0 0;
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 1.5;
+}
+
+.personal-flashcard-import__file-picker {
+    min-height: 120px;
+    border-radius: 8px;
+}
+
+.personal-flashcard-import__selected-file {
+    border-radius: 8px;
+}
+
+.personal-flashcard-import__actions {
+    align-items: center;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    padding: 0;
+}
+
+.personal-flashcard-import__actions span {
+    color: var(--muted);
+}
+
+.personal-flashcard-pasted-import__summary {
+    color: var(--ink);
+}
+
+.personal-flashcard-pasted-import__summary span {
+    border: 0;
+    border-radius: 999px;
+    background: var(--surface);
+    padding: 6px 10px;
+}
+
+.personal-flashcard-pasted-import__feedback {
+    border-color: #fed7aa;
+    border-radius: 8px;
+    background: #fff7ed;
+    color: #9a3412;
+}
+
+.personal-flashcard-pasted-import__feedback--duplicate {
+    border-color: color-mix(in srgb, var(--primary) 22%, #ffffff);
+    background: var(--sl-purple-soft);
+    color: var(--primary);
+}
+
+.personal-flashcard-pasted-import__feedback code {
+    overflow-wrap: anywhere;
+    border-radius: 6px;
+    color: #7c2d12;
+    text-overflow: initial;
+    white-space: normal;
+}
+
+.personal-flashcard-pasted-import__feedback--duplicate code {
+    color: var(--primary-dark);
+}
+
+.personal-flashcard-pasted-import__preview {
+    gap: 10px;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    padding: 0;
+}
+
+.personal-flashcard-pasted-import__preview h4 {
+    margin: 0;
+    color: var(--ink);
+    font-size: 15px;
+    font-weight: 800;
+}
+
+.personal-flashcard-pasted-import__row {
+    grid-template-columns: 34px minmax(0, 1fr) minmax(0, 1fr) auto;
+    align-items: stretch;
+    border: 0;
+    border-top: 1px solid var(--line);
+    border-radius: 0;
+    background: transparent;
+    padding: 12px 0;
+}
+
+.personal-flashcard-pasted-import__row.is-duplicate {
+    border-color: #fed7aa;
+    background: #fffaf5;
+}
+
+.personal-flashcard-pasted-import__index {
+    width: 28px;
+    height: 28px;
+    min-height: 28px;
+    background: var(--surface);
+    color: var(--muted);
+}
+
+.personal-flashcard-pasted-import__side {
+    min-width: 0;
+}
+
+.personal-flashcard-pasted-import__side + .personal-flashcard-pasted-import__side {
+    border-left: 1px solid var(--line);
+    padding-left: 12px;
+}
+
+.personal-flashcard-pasted-import__side strong {
+    display: block;
+    margin: 0;
+    color: var(--muted);
+    font-size: 11px;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+}
+
+.personal-flashcard-pasted-import__side p {
+    margin: 6px 0 0;
+    overflow-wrap: anywhere;
+    color: var(--ink);
+    font-size: 14px;
+    line-height: 1.45;
+}
+
+.personal-flashcard-pasted-import__row-status {
+    display: flex;
+    align-items: flex-start;
+    justify-content: flex-end;
+}
+
+.personal-flashcard-pasted-import__status {
+    display: inline-flex;
+    align-items: center;
+    min-height: 24px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: var(--surface);
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 800;
+    padding: 4px 8px;
+    white-space: nowrap;
+}
+
+.personal-flashcard-pasted-import__status--skip {
+    border-color: #fed7aa;
+    background: #fff7ed;
+    color: #c2410c;
+}
+
+.personal-flashcard-import__review {
+    margin-top: 2px;
+    border-top: 1px solid var(--line);
+    padding-top: 14px;
+}
+
+.personal-flashcard-import__review-header {
+    border-radius: 8px;
+}
+
 .personal-flashcard-study-player {
     max-width: 1040px;
     margin: 0 auto;
@@ -792,12 +1088,14 @@
         flex-direction: column;
     }
 
-    .personal-flashcard-card-editor--with-fixed-preview-bar {
-        padding-bottom: calc(112px + env(safe-area-inset-bottom, 0px));
+    .personal-flashcard-card-editor--with-panel-preview-bar
+        .personal-flashcard-card-editor__list {
+        padding-bottom: 112px;
     }
 
-    .personal-flashcard-card-editor .flashcard-current-preview-bar {
-        width: calc(100vw - 32px);
+    .personal-flashcard-card-editor__preview-bar {
+        padding-right: 12px;
+        padding-left: 12px;
     }
 
     .personal-flashcard-import__settings {
@@ -811,10 +1109,22 @@
 
     .personal-flashcard-import__tabs {
         grid-template-columns: 1fr;
+        gap: 16px;
     }
 
     .personal-flashcard-import__actions {
         align-items: stretch;
+    }
+
+    .personal-flashcard-pasted-import__side + .personal-flashcard-pasted-import__side {
+        border-top: 1px solid var(--line);
+        border-left: 0;
+        padding-top: 10px;
+        padding-left: 0;
+    }
+
+    .personal-flashcard-pasted-import__row-status {
+        justify-content: flex-start;
     }
 
     .personal-flashcard-import__actions > div,

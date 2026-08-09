@@ -52,6 +52,13 @@
   min-width: 0;
 }
 
+.notification-dropdown__bulk-actions {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
 .app-header__notification-panel.notification-dropdown
   .notification-dropdown__header
   strong,

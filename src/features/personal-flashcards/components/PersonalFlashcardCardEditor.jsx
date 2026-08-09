@@ -250,7 +250,7 @@ export function PersonalFlashcardCardEditor({
       className={[
         "personal-flashcard-card-editor",
         showPreviewBar
-          ? "personal-flashcard-card-editor--with-fixed-preview-bar"
+          ? "personal-flashcard-card-editor--with-panel-preview-bar"
           : "",
       ]
         .filter(Boolean)
@@ -326,13 +326,15 @@ export function PersonalFlashcardCardEditor({
       )}
 
       {showPreviewBar && (
-        <FlashcardPreviewBar
-          activeCard={activeCard}
-          activeIndex={activeIndex}
-          totalCards={displayCards.length}
-          onOpenPreview={() => setPreviewOpen(true)}
-          triggerRef={previewTriggerRef}
-        />
+        <div className="personal-flashcard-card-editor__preview-bar">
+          <FlashcardPreviewBar
+            activeCard={activeCard}
+            activeIndex={activeIndex}
+            totalCards={displayCards.length}
+            onOpenPreview={() => setPreviewOpen(true)}
+            triggerRef={previewTriggerRef}
+          />
+        </div>
       )}
 
       {previewOpen && activeCard && (

@@ -19,9 +19,9 @@ import {
   X,
 } from "lucide-react";
 import { fileNameFromUrl, isHtmlContent } from "../utils/lesson-content";
-import { LearningQuizPlayer } from "./LearningQuizPlayer";
 import { assignmentService } from "@/features/assignment";
 import { attemptService } from "@/features/flashtest/services/attemptService";
+import { FlashcardPractice } from "./flashcards/FlashcardPractice";
 import { getCurrentUser } from "@/services/api-client";
 import DOMPurify from "dompurify";
 
@@ -133,7 +133,7 @@ function QuizLessonLaunch({ lesson, classId, onQuizCompleted, onQuizStart }) {
     return () => {
       cancelled = true;
     };
-  }, [lessonId, onQuizCompleted, testId]);
+  }, [classId, lessonId, onQuizCompleted, testId]);
 
   if (!testId) {
     return (
@@ -293,10 +293,14 @@ function AssignmentRichContent({ content }) {
 
 function OverviewContent({
   lesson,
+  courseId,
   classId,
   workspaceMode,
+  flashcardProgressUserKey,
+  flashcardPositionUserKey,
   onQuizCompleted,
   onQuizStart,
+  onFlashcardCompleted,
   onEssayCompleted,
 }) {
   const type = (lesson?.lessonType || "").toUpperCase();
@@ -319,6 +323,21 @@ function OverviewContent({
         classId={classId}
         readOnly={workspaceMode !== "student"}
         onCompleted={() => onEssayCompleted?.(getLessonId(lesson))}
+      />
+    );
+  }
+
+  if (type === "FLASHCARD") {
+    return (
+      <FlashcardPractice
+        lessonId={getLessonId(lesson)}
+        courseId={courseId}
+        classId={classId}
+        adminMode={workspaceMode === "admin-preview"}
+        readOnly={workspaceMode !== "student"}
+        progressUserKey={flashcardProgressUserKey}
+        positionUserKey={flashcardPositionUserKey}
+        onCompleted={() => onFlashcardCompleted?.(getLessonId(lesson))}
       />
     );
   }
@@ -969,6 +988,7 @@ function ResourcesContent({ lesson }) {
 
 export function LearningLessonTabs({
   lesson,
+  courseId,
   classId,
   activeTab,
   onTabChange,
@@ -979,8 +999,11 @@ export function LearningLessonTabs({
   canGoNext = true,
   isActivityLesson = false,
   workspaceMode = "student",
+  flashcardProgressUserKey,
+  flashcardPositionUserKey,
   onQuizCompleted,
   onQuizStart,
+  onFlashcardCompleted,
   onEssayCompleted,
 }) {
   const resources = Array.isArray(lesson?.resources) ? lesson.resources : [];
@@ -1012,10 +1035,14 @@ export function LearningLessonTabs({
           <div className="tab-overview">
             <OverviewContent
               lesson={lesson}
+              courseId={courseId}
               classId={classId}
               workspaceMode={workspaceMode}
+              flashcardProgressUserKey={flashcardProgressUserKey}
+              flashcardPositionUserKey={flashcardPositionUserKey}
               onQuizCompleted={onQuizCompleted}
               onQuizStart={onQuizStart}
+              onFlashcardCompleted={onFlashcardCompleted}
               onEssayCompleted={onEssayCompleted}
             />
           </div>

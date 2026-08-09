@@ -33,6 +33,8 @@ const initialUnreadState = {
 
 const initialLatestState = {
   items: [],
+  totalItems: 0,
+  status: "all",
   loading: false,
   error: null,
   loaded: false,
@@ -95,6 +97,7 @@ export function NotificationProvider({ children }) {
   const authKey = getAuthKey();
   const [unreadState, setUnreadState] = useState(initialUnreadState);
   const [latestState, setLatestState] = useState(initialLatestState);
+  const [activeTotalItems, setActiveTotalItems] = useState(0);
   const [pendingNotificationIds, setPendingNotificationIds] = useState(
     () => new Set(),
   );
@@ -109,6 +112,9 @@ export function NotificationProvider({ children }) {
   const pendingBulkPromisesRef = useRef(new Map());
   const unreadCountRef = useRef(0);
   const latestItemsRef = useRef([]);
+  const latestTotalItemsRef = useRef(0);
+  const activeTotalItemsRef = useRef(0);
+  const latestStatusRef = useRef("all");
   const latestLoadedRef = useRef(false);
 
   useEffect(() => {
@@ -117,8 +123,19 @@ export function NotificationProvider({ children }) {
 
   useEffect(() => {
     latestItemsRef.current = latestState.items;
+    latestTotalItemsRef.current = latestState.totalItems;
+    latestStatusRef.current = latestState.status;
     latestLoadedRef.current = latestState.loaded;
-  }, [latestState.items, latestState.loaded]);
+  }, [
+    latestState.items,
+    latestState.loaded,
+    latestState.status,
+    latestState.totalItems,
+  ]);
+
+  useEffect(() => {
+    activeTotalItemsRef.current = activeTotalItems;
+  }, [activeTotalItems]);
 
   const resetState = useCallback(() => {
     unreadRequestRef.current = null;
@@ -127,9 +144,13 @@ export function NotificationProvider({ children }) {
     pendingBulkPromisesRef.current = new Map();
     unreadCountRef.current = 0;
     latestItemsRef.current = [];
+    latestTotalItemsRef.current = 0;
+    activeTotalItemsRef.current = 0;
+    latestStatusRef.current = "all";
     latestLoadedRef.current = false;
     setUnreadState(initialUnreadState);
     setLatestState(initialLatestState);
+    setActiveTotalItems(0);
     setPendingNotificationIds(new Set());
     setPendingBulkActions(new Set());
   }, []);
@@ -188,7 +209,7 @@ export function NotificationProvider({ children }) {
     return request;
   }, []);
 
-  const refreshLatest = useCallback(async ({ force = false } = {}) => {
+  const refreshLatest = useCallback(async ({ force = false, status = "all" } = {}) => {
     if (!getAccessToken()) {
       setLatestState(initialLatestState);
       return null;
@@ -202,18 +223,27 @@ export function NotificationProvider({ children }) {
     latestRequestIdRef.current = requestId;
     setLatestState((current) => ({
       ...current,
+      items: current.status === status ? current.items : [],
+      status,
       loading: true,
       error: null,
     }));
 
     const request = notificationService
-      .list({ page: 0, size: LATEST_NOTIFICATION_SIZE })
+      .list({ page: 0, size: LATEST_NOTIFICATION_SIZE, status })
       .then((page) => {
         if (latestRequestIdRef.current === requestId) {
           latestItemsRef.current = page.items;
+          latestTotalItemsRef.current = page.totalItems;
+          if (status === "all") {
+            activeTotalItemsRef.current = page.totalItems;
+            setActiveTotalItems(page.totalItems);
+          }
           latestLoadedRef.current = true;
           setLatestState({
             items: page.items,
+            totalItems: page.totalItems,
+            status,
             loading: false,
             error: null,
             loaded: true,
@@ -226,6 +256,7 @@ export function NotificationProvider({ children }) {
           latestLoadedRef.current = true;
           setLatestState((current) => ({
             ...current,
+            status,
             loading: false,
             error: getErrorMessage(error, "Failed to load notifications."),
             loaded: true,
@@ -246,7 +277,7 @@ export function NotificationProvider({ children }) {
   const synchronizeAfterMutation = useCallback(() => {
     setMutationVersion((value) => value + 1);
     void refreshUnread({ force: true });
-    void refreshLatest({ force: true });
+    void refreshLatest({ force: true, status: latestStatusRef.current });
   }, [refreshLatest, refreshUnread]);
 
   useEffect(() => {
@@ -263,7 +294,7 @@ export function NotificationProvider({ children }) {
       if (!getAccessToken()) return;
       void refreshUnread({ force: true });
       if (latestLoadedRef.current) {
-        void refreshLatest({ force: true });
+        void refreshLatest({ force: true, status: latestStatusRef.current });
       }
     }
 
@@ -337,7 +368,7 @@ export function NotificationProvider({ children }) {
           ...current,
           items: updateNotification(current.items, notification.id, (item) =>
             withNotificationRead(item, timestamp),
-          ),
+          ).filter((item) => current.status !== "unread" || isUnreadNotification(item)),
         }));
 
         try {
@@ -382,7 +413,7 @@ export function NotificationProvider({ children }) {
           items: updateNotification(current.items, notification.id, (item) => ({
             ...withNotificationRead(item, timestamp),
             clickedAt: item.clickedAt || timestamp,
-          })),
+          })).filter((item) => current.status !== "unread" || isUnreadNotification(item)),
         }));
 
         try {
@@ -413,6 +444,8 @@ export function NotificationProvider({ children }) {
       beginNotificationMutation(notification?.id, async () => {
         const previousUnread = unreadCountRef.current;
         const previousItems = latestItemsRef.current;
+        const previousTotalItems = latestTotalItemsRef.current;
+        const previousActiveTotalItems = activeTotalItemsRef.current;
         const wasUnread = isUnreadNotification(notification);
 
         if (wasUnread) {
@@ -424,7 +457,9 @@ export function NotificationProvider({ children }) {
         setLatestState((current) => ({
           ...current,
           items: removeNotification(current.items, notification.id),
+          totalItems: Math.max(0, current.totalItems - 1),
         }));
+        setActiveTotalItems((current) => Math.max(0, current - 1));
 
         try {
           const saved = await notificationService.archive(notification.id);
@@ -438,7 +473,9 @@ export function NotificationProvider({ children }) {
           setLatestState((current) => ({
             ...current,
             items: previousItems,
+            totalItems: previousTotalItems,
           }));
+          setActiveTotalItems(previousActiveTotalItems);
           throw error;
         }
       }),
@@ -455,9 +492,11 @@ export function NotificationProvider({ children }) {
         setUnreadState((current) => ({ ...current, count: 0 }));
         setLatestState((current) => ({
           ...current,
-          items: current.items.map((item) =>
-            withNotificationRead(item, timestamp),
-          ),
+          items:
+            current.status === "unread"
+              ? []
+              : current.items.map((item) => withNotificationRead(item, timestamp)),
+          totalItems: current.status === "unread" ? 0 : current.totalItems,
         }));
 
         try {
@@ -483,12 +522,54 @@ export function NotificationProvider({ children }) {
     [beginBulkMutation, synchronizeAfterMutation],
   );
 
+  const archiveAll = useCallback(
+    () =>
+      beginBulkMutation("archive-all", async () => {
+        const previousUnread = unreadCountRef.current;
+        const previousItems = latestItemsRef.current;
+        const previousTotalItems = latestTotalItemsRef.current;
+        const previousActiveTotalItems = activeTotalItemsRef.current;
+
+        setUnreadState((current) => ({ ...current, count: 0 }));
+        setLatestState((current) => ({
+          ...current,
+          items: [],
+          totalItems: 0,
+        }));
+        setActiveTotalItems(0);
+
+        try {
+          const response = await notificationService.archiveAll();
+          setUnreadState((current) => ({
+            ...current,
+            count: clampUnreadCount(response.unreadCount),
+          }));
+          synchronizeAfterMutation();
+          return response;
+        } catch (error) {
+          setUnreadState((current) => ({
+            ...current,
+            count: previousUnread,
+          }));
+          setLatestState((current) => ({
+            ...current,
+            items: previousItems,
+            totalItems: previousTotalItems,
+          }));
+          setActiveTotalItems(previousActiveTotalItems);
+          throw error;
+        }
+      }),
+    [beginBulkMutation, synchronizeAfterMutation],
+  );
+
   const value = useMemo(
     () => ({
       unreadCount: unreadState.count,
       unreadLoading: unreadState.loading,
       unreadError: unreadState.error,
       latestNotifications: latestState.items,
+      activeNotificationCount: activeTotalItems,
       latestLoading: latestState.loading,
       latestError: latestState.error,
       latestLoaded: latestState.loaded,
@@ -500,6 +581,7 @@ export function NotificationProvider({ children }) {
       markRead,
       recordClick,
       archive,
+      archiveAll,
       markAllRead,
       isNotificationMutating: (notificationId) =>
         pendingNotificationIds.has(notificationId),
@@ -507,6 +589,7 @@ export function NotificationProvider({ children }) {
     }),
     [
       archive,
+      archiveAll,
       latestState.error,
       latestState.items,
       latestState.loaded,
@@ -519,6 +602,7 @@ export function NotificationProvider({ children }) {
       recordClick,
       refreshLatest,
       refreshUnread,
+      activeTotalItems,
       unreadState.count,
       unreadState.error,
       unreadState.loading,

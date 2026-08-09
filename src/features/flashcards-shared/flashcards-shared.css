@@ -1054,6 +1054,8 @@
   display: flex;
   flex-direction: column;
   gap: 16px;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .flashcard-study-preview {
@@ -1061,6 +1063,9 @@
 }
 
 .flashcard-preview__stage {
+  position: relative;
+  width: 100%;
+  min-width: 0;
   min-height: 330px;
   perspective: 1200px;
 }
@@ -1071,15 +1076,22 @@
 
 .flashcard-preview__card {
   position: relative;
+  display: block;
   width: 100%;
+  min-width: 0;
   min-height: 330px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: transparent;
+  box-sizing: border-box;
   cursor: pointer;
   font: inherit;
+  padding: 0;
+  text-align: inherit;
+  transform-origin: center;
   transform-style: preserve-3d;
   transition: transform 0.35s ease;
+  will-change: transform;
 }
 
 .flashcard-study-preview .flashcard-preview__card {
@@ -1103,6 +1115,7 @@
   padding: 52px 28px 28px;
   border-radius: 8px;
   background: #ffffff;
+  -webkit-backface-visibility: hidden;
   backface-visibility: hidden;
   box-sizing: border-box;
   text-align: center;
@@ -1110,6 +1123,10 @@
 
 .flashcard-study-preview .flashcard-preview__face {
   gap: 12px;
+}
+
+.flashcard-preview__face--front {
+  transform: rotateY(0deg);
 }
 
 .flashcard-preview__face--back {
@@ -1289,6 +1306,8 @@
   position: fixed;
   inset: 0;
   z-index: 1400;
+  overflow: hidden;
+  overscroll-behavior: contain;
   background: var(--surface);
   color: var(--ink);
 }
@@ -1299,6 +1318,7 @@
   height: 100%;
   min-height: 0;
   flex-direction: column;
+  overflow: hidden;
 }
 
 .flashcard-focus-mode__header {
@@ -1342,14 +1362,23 @@
   flex: 1 1 auto;
   align-items: center;
   justify-content: center;
+  min-width: 0;
   min-height: 0;
+  overflow-x: hidden;
   overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 28px;
 }
 
 .flashcard-preview--focus {
   width: min(100%, 1080px);
+  max-width: 100%;
   gap: 18px;
+  overflow-x: hidden;
+}
+
+.flashcard-preview--focus .flashcard-preview__stage {
+  overflow: hidden;
 }
 
 .flashcard-preview--focus .flashcard-preview__stage,

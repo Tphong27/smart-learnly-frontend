@@ -11,6 +11,7 @@ import {
   PlayCircle,
   FileText,
   HelpCircle,
+  Layers,
   Menu,
   X,
   ChevronDown,
@@ -47,6 +48,7 @@ function LessonIcon({ type, size = 16 }) {
   const t = (type || "").toLowerCase();
   if (t.includes("video")) return <PlayCircle size={size} />;
   if (t.includes("quiz")) return <HelpCircle size={size} />;
+  if (t.includes("flashcard")) return <Layers size={size} />;
   return <FileText size={size} />;
 }
 
@@ -55,9 +57,7 @@ function groupLessonsBySection(data) {
   return filterPublishedSections(data?.sections || [])
     .map((section) => ({
       ...section,
-      lessons: (section.lessons || []).filter(
-        (lesson) => String(lesson?.lessonType || "").toUpperCase() !== "FLASHCARD",
-      ),
+      lessons: section.lessons || [],
     }))
     .filter((section) => section.lessons.length > 0);
 }
@@ -147,6 +147,7 @@ export function LearningWorkspacePage({
   const [updatingLessonIds, setUpdatingLessonIds] = useState(() => new Set());
   const [lessonNotesById, setLessonNotesById] = useState({});
   const resolvedClassId = requestedClassId || null;
+  const flashcardProgressUserKey = mode === "student" ? workspaceUserKey : null;
 
   useEffect(() => {
     const narrowLayout = window.matchMedia("(max-width: 1024px)");
@@ -446,7 +447,7 @@ export function LearningWorkspacePage({
       activeLesson?.lessonType || "",
     ).toUpperCase();
 
-    const isActivityLesson = ["QUIZ", "ESSAY", "ASSIGNMENT"].includes(
+    const isActivityLesson = ["QUIZ", "FLASHCARD", "ESSAY", "ASSIGNMENT"].includes(
       currentLessonType,
     );
     const isCompleted = currentLessonId
@@ -459,7 +460,7 @@ export function LearningWorkspacePage({
           ? "Please submit the quiz before moving to the next lesson."
           : ["ESSAY", "ASSIGNMENT"].includes(currentLessonType)
             ? "Please submit the assignment before moving to the next lesson."
-            : "Please complete this activity before moving to the next lesson.",
+            : "Please complete all flashcards before moving to the next lesson.",
       );
       return;
     }
@@ -562,7 +563,7 @@ export function LearningWorkspacePage({
 
   const currentLessonId = getLessonId(activeLesson);
 
-  const isActivityLesson = ["QUIZ", "ESSAY", "ASSIGNMENT"].includes(
+  const isActivityLesson = ["QUIZ", "FLASHCARD", "ESSAY", "ASSIGNMENT"].includes(
     String(activeLesson?.lessonType || "").toUpperCase(),
   );
 
@@ -746,6 +747,7 @@ export function LearningWorkspacePage({
                 <LearningLessonTabs
                   key={`tabs-${getLessonId(activeLesson)}`}
                   lesson={activeLesson}
+                  courseId={courseId}
                   classId={effectiveClassId}
                   activeTab={activeLessonTab}
                   onTabChange={setActiveLessonTab}
@@ -756,8 +758,11 @@ export function LearningWorkspacePage({
                   canGoNext={canGoNext}
                   isActivityLesson={isActivityLesson}
                   workspaceMode={mode}
+                  flashcardProgressUserKey={flashcardProgressUserKey}
+                  flashcardPositionUserKey={workspaceUserKey}
                   onQuizCompleted={markLessonCompleted}
                   onQuizStart={handleStartQuiz}
+                  onFlashcardCompleted={markLessonCompleted}
                   onEssayCompleted={markLessonCompleted}
                 />
               </div>

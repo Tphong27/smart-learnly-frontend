@@ -5,6 +5,7 @@ function isEditableShortcutTarget(target) {
   const tagName = target.tagName.toLowerCase();
   return (
     target.isContentEditable ||
+    Boolean(target.closest("[contenteditable]")) ||
     tagName === "input" ||
     tagName === "textarea" ||
     tagName === "select"
@@ -40,10 +41,14 @@ function hasModalDialogOpen() {
 export function useFlashcardStudyKeyboard({
   enabled = true,
   allowWhenDialogOpen = false,
+  ignoreInteractiveTargets = false,
+  useArrowNavigation = true,
   canGoPrevious,
   canGoNext,
   onPrevious,
   onNext,
+  onArrowLeft,
+  onArrowRight,
   onFlip,
   onExitFocus,
 }) {
@@ -55,8 +60,25 @@ export function useFlashcardStudyKeyboard({
       if (event.ctrlKey || event.altKey || event.metaKey) return;
       if (isEditableShortcutTarget(event.target)) return;
       if (!allowWhenDialogOpen && hasModalDialogOpen()) return;
+      if (
+        ignoreInteractiveTargets &&
+        isInteractiveActivationTarget(event.target) &&
+        (event.key === "ArrowRight" ||
+          event.key === "ArrowLeft" ||
+          event.key === " " ||
+          event.key === "Spacebar" ||
+          event.key === "Enter")
+      ) {
+        return;
+      }
 
       if (event.key === "ArrowRight") {
+        if (onArrowRight) {
+          event.preventDefault();
+          onArrowRight(event);
+          return;
+        }
+        if (!useArrowNavigation) return;
         if (!canGoNext) return;
         event.preventDefault();
         onNext?.();
@@ -64,6 +86,12 @@ export function useFlashcardStudyKeyboard({
       }
 
       if (event.key === "ArrowLeft") {
+        if (onArrowLeft) {
+          event.preventDefault();
+          onArrowLeft(event);
+          return;
+        }
+        if (!useArrowNavigation) return;
         if (!canGoPrevious) return;
         event.preventDefault();
         onPrevious?.();
@@ -95,9 +123,13 @@ export function useFlashcardStudyKeyboard({
     canGoNext,
     canGoPrevious,
     enabled,
+    ignoreInteractiveTargets,
+    onArrowLeft,
+    onArrowRight,
     onExitFocus,
     onFlip,
     onNext,
     onPrevious,
+    useArrowNavigation,
   ]);
 }
