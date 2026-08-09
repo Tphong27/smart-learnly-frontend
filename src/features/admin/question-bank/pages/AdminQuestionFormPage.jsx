@@ -655,9 +655,6 @@ export function AdminQuestionForm({
         )}
         <form className="question-authoring-form" onSubmit={handleSubmit}>
           <section className="question-authoring-block question-authoring-block--metadata">
-            <div className="question-authoring-block__header">
-              <h2>Settings</h2>
-            </div>
             <div className="question-authoring-meta-grid">
               <div className="input-field">
                 <label className="input-field__label" htmlFor="question-module">
@@ -948,7 +945,7 @@ export function AdminQuestionForm({
               Cancel
             </Button>
             <Button type="submit" loading={submitting}>
-              {editing ? "Update question" : "Create question"}
+              Save
             </Button>
           </div>
         </form>

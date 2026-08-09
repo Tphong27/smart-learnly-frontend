@@ -145,7 +145,6 @@ export function AdminCourseFormPage() {
 
   const isFree = useWatch({ control, name: "isFree" });
   const thumbnailUrl = useWatch({ control, name: "thumbnailUrl" });
-  const courseStatus = useWatch({ control, name: "status" });
 
   useEffect(() => {
     if (isAssignedOnlyRole && !isEdit) {
@@ -317,13 +316,7 @@ export function AdminCourseFormPage() {
                   ? "Update course"
                   : "Create new course"}
             </h1>
-            <p>
-              {isReadOnly
-                ? "View the assigned course information without changing catalog details."
-                : isEdit
-                  ? "Update the course information learners see in the catalog."
-                  : "Add the course information first, then build its curriculum."}
-            </p>
+
           </div>
           {isEdit && (
             <Button
@@ -363,7 +356,6 @@ export function AdminCourseFormPage() {
                 </span>
                 <div>
                   <h2 id="course-information-heading">Course information</h2>
-                  <p>Give learners a clear overview of the course.</p>
                 </div>
               </div>
 
@@ -413,10 +405,6 @@ export function AdminCourseFormPage() {
                       ))}
                     </select>
 
-                    <p className="sl-course-field__helper">
-                      The selected SME can view this course detail.
-                    </p>
-
                     {errors.assignedSmeId ? (
                       <p className="sl-course-field__error" role="alert">
                         {errors.assignedSmeId.message}
@@ -443,12 +431,6 @@ export function AdminCourseFormPage() {
                         : "course-short-description-help"
                     }
                   />
-                  <p
-                    id="course-short-description-help"
-                    className="sl-course-field__helper"
-                  >
-                    This appears on course cards and search results.
-                  </p>
                   {errors.shortDescription && (
                     <p
                       id="course-short-description-error"
@@ -506,9 +488,6 @@ export function AdminCourseFormPage() {
                       }
                     />
                   </div>
-                  <p id="course-slug-help" className="sl-course-field__helper">
-                    Leave blank to generate it automatically from the title.
-                  </p>
                   {errors.slug && (
                     <p
                       id="course-slug-error"
@@ -532,7 +511,6 @@ export function AdminCourseFormPage() {
                 </span>
                 <div>
                   <h2 id="course-learning-heading">Learning details</h2>
-                  <p>Set expectations before learners enrol.</p>
                 </div>
               </div>
 
@@ -548,9 +526,6 @@ export function AdminCourseFormPage() {
                     disabled={isReadOnly}
                     {...register("outcomes")}
                   />
-                  <p className="sl-course-field__helper">
-                    Use clear, action-oriented outcomes.
-                  </p>
                 </div>
 
                 <div className="sl-course-field">
@@ -562,9 +537,6 @@ export function AdminCourseFormPage() {
                     disabled={isReadOnly}
                     {...register("requirements")}
                   />
-                  <p className="sl-course-field__helper">
-                    Leave blank if no prior knowledge is required.
-                  </p>
                 </div>
               </div>
             </section>
@@ -639,7 +611,6 @@ export function AdminCourseFormPage() {
                 </span>
                 <div>
                   <h2 id="course-organization-heading">Organization</h2>
-                  <p>Help learners find the right course.</p>
                 </div>
               </div>
 
@@ -726,7 +697,6 @@ export function AdminCourseFormPage() {
                 </span>
                 <div>
                   <h2 id="course-pricing-heading">Pricing and visibility</h2>
-                  <p>Set access and catalog availability.</p>
                 </div>
               </div>
 
@@ -759,11 +729,6 @@ export function AdminCourseFormPage() {
                         : "course-price-help"
                     }
                   />
-                  <p id="course-price-help" className="sl-course-field__helper">
-                    {isFree
-                      ? "Price is disabled for a free course."
-                      : "Enter the standard course price."}
-                  </p>
                   {errors.price && (
                     <p
                       id="course-price-error"
@@ -795,12 +760,6 @@ export function AdminCourseFormPage() {
                         : "course-discount-help"
                     }
                   />
-                  <p
-                    id="course-discount-help"
-                    className="sl-course-field__helper"
-                  >
-                    Leave blank if there is no discount.
-                  </p>
                   {errors.discountedPrice && (
                     <p
                       id="course-discount-error"
@@ -826,15 +785,6 @@ export function AdminCourseFormPage() {
                         </option>
                       ))}
                     </select>
-                    <p className="sl-course-field__helper">
-                      {courseStatus === "published"
-                        ? "Visible to learners in the course catalog."
-                        : courseStatus === "inactive"
-                          ? "Hidden from learners until reactivated."
-                          : isReadOnly
-                            ? "Only staff with edit permission can update this draft."
-                            : "Only staff can view and edit this draft."}
-                    </p>
                   </div>
                 ) : (
                   <div className="sl-course-field sl-course-field--full">

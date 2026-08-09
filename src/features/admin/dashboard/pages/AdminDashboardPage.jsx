@@ -227,7 +227,6 @@ export function AdminDashboardPage() {
                     <div className="dashboard-section-grid">
                         <DashboardSectionCard
                             title="Selected range activity"
-                            description="Created or reviewed items inside the selected date range."
                             items={[
                                 { label: "new_users", value: users.newInRange },
                                 {
@@ -258,7 +257,6 @@ export function AdminDashboardPage() {
                         />
                         <DashboardSectionCard
                             title="Operational attention"
-                            description="Items that may need admin or content team follow-up."
                             items={[
                                 {
                                     label: "pending_verify_users",
@@ -293,7 +291,6 @@ export function AdminDashboardPage() {
                         />
                         <DashboardSectionCard
                             title="Content health"
-                            description="Publishing status across course content."
                             items={[
                                 { label: "modules", value: content.modules },
                                 {
@@ -312,7 +309,6 @@ export function AdminDashboardPage() {
                         />
                         <DashboardSectionCard
                             title="User status"
-                            description="Active, pending, inactive, and banned accounts."
                             items={[
                                 { label: "active", value: users.active },
                                 {
@@ -325,7 +321,6 @@ export function AdminDashboardPage() {
                         />
                         <DashboardSectionCard
                             title="Course status"
-                            description="Current publishing state across course catalog."
                             items={[
                                 {
                                     label: "published",
@@ -337,7 +332,6 @@ export function AdminDashboardPage() {
                         />
                         <DashboardSectionCard
                             title="Class status"
-                            description="Operational class lifecycle summary."
                             items={[
                                 { label: "upcoming", value: classes.upcoming },
                                 { label: "ongoing", value: classes.ongoing },
@@ -353,7 +347,6 @@ export function AdminDashboardPage() {
                         />
                         <DashboardSectionCard
                             title="Question review health"
-                            description="Course question and review workflow status."
                             items={[
                                 {
                                     label: "approved_questions",

@@ -110,11 +110,6 @@ function CategoryFormModal({
         <Modal
             open={open}
             title={mode === "edit" ? "Update category" : "Add new category"}
-            description={
-                mode === "edit"
-                    ? "Update the category details. The slug is auto-generated when left blank."
-                    : "Manage the course category tree. The slug is auto-generated when left blank."
-            }
             size="md"
             onClose={onClose}
         >
@@ -140,7 +135,6 @@ function CategoryFormModal({
                         placeholder="e.g. web-programming"
                         registration={register("slug")}
                         error={errors.slug?.message}
-                        helperText="Leave blank to auto-generate"
                     />
 
                     {mode !== "edit" && (
@@ -216,7 +210,7 @@ function CategoryFormModal({
                         Cancel
                     </Button>
                     <Button type="submit" loading={isSubmitting}>
-                        {mode === "edit" ? "Update" : "Create"}
+                        Save
                     </Button>
                 </div>
             </Form>

@@ -480,13 +480,6 @@ export function AdminCoursesPage() {
       <header className="sl-cm-header course-management__header">
         <div>
           <h1>Course management</h1>
-          <p>
-            {isAssignedOnlyRole
-              ? isSme
-                ? "Review the courses assigned to you."
-                : "Review and update the courses assigned to you."
-              : "Create, publish, and maintain the learning experiences available on the platform."}
-          </p>
         </div>
 
         {canCreate ? (
