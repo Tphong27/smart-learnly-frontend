@@ -199,6 +199,7 @@ export function StudentTakeTestPage({
       });
     },
     [
+      contextClassId,
       effectiveListPath,
       id,
       location.state?.resultMode,
@@ -517,6 +518,7 @@ export function StudentTakeTestPage({
   }, [
     attempt,
     answers,
+    contextClassId,
     file,
     id,
     ensureEssayStarted,
