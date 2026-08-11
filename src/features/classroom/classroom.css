@@ -38,7 +38,7 @@
 
 .class-filters {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 240px;
+  grid-template-columns: minmax(0, 1fr) 260px 220px;
   align-items: start;
   gap: 12px;
 
@@ -129,60 +129,12 @@
   box-shadow: 0 0 0 3px rgba(86, 36, 208, 0.14);
 }
 
-.class-filters__course-chip {
+.class-filters__error {
   grid-column: 1 / -1;
-
-  width: fit-content;
-  max-width: 100%;
-
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px;
-
-  margin-top: 2px;
-  padding: 0;
-
-  border: 0;
-  border-radius: 0;
-
-  color: var(--muted, #6a6f73);
-  background: transparent;
-
-  font-family: "Lato", sans-serif;
+  margin: 0;
+  color: #b42318;
   font-size: 13px;
   line-height: 1.4;
-}
-
-.class-filters__course-chip strong {
-  min-width: 0;
-  max-width: min(420px, 65vw);
-
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-
-  color: var(--primary-dark, #401b9c);
-  font-weight: 700;
-}
-
-.class-filters__course-chip button {
-  border: 0;
-  padding: 0;
-
-  color: var(--primary, #5624d0);
-  background: transparent;
-
-  font: inherit;
-  font-weight: 700;
-  text-decoration: underline;
-  text-underline-offset: 3px;
-
-  cursor: pointer;
-}
-
-.class-filters__course-chip button:hover {
-  color: var(--primary-dark, #401b9c);
 }
 
 /* =========================================================
@@ -1904,11 +1856,10 @@
     flex-direction: column;
   }
 
-  .trainer-class-workspace
-  .workspace-header__actions {
-  width: 100%;
-  justify-content: flex-start;
-  flex-wrap: wrap;
+  .trainer-class-workspace .workspace-header__actions {
+    width: 100%;
+    justify-content: flex-start;
+    flex-wrap: wrap;
   }
 
   .class-analytics-summary {
@@ -1923,17 +1874,16 @@
     align-items: flex-start;
     flex-direction: column;
   }
+
   .class-detail-list.class-overview-info {
     grid-template-columns: 1fr;
     row-gap: 16px;
   }
+
   .class-filters {
     grid-template-columns: 1fr;
   }
 
-  .class-filters__course-chip {
-    grid-column: 1;
-  }
   .classes-grid {
     grid-template-columns: 1fr;
   }

@@ -1,78 +1,31 @@
 import { Search } from "lucide-react";
 import { useEffect, useState } from "react";
-import { courseAdminService } from "@/features/course";
 
+/** Hiển thị bộ lọc tên lớp, khóa học và trạng thái lớp. */
 export function ClassListFilters({
-  initialCourseId = "",
-  onClearCourseFilter,
+  courseId = "",
+  courseOptions = [],
+  courseOptionsLoading = false,
+  courseOptionsError = "",
+  onCourseChange,
   onFilterChange,
 }) {
   const [filters, setFilters] = useState({
     keyword: "",
     status: "",
   });
-  const [courseInfo, setCourseInfo] = useState({
-    courseId: "",
-    title: "",
-    loaded: false,
-  });
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
-      onFilterChange?.({
-        ...filters,
-        courseId: initialCourseId,
-      });
+      onFilterChange?.(filters);
     }, 350);
 
     return () => {
       window.clearTimeout(timeoutId);
     };
-  }, [filters, initialCourseId, onFilterChange]);
+  }, [filters, onFilterChange]);
 
-  useEffect(() => {
-    if (!initialCourseId) {
-      return undefined;
-    }
-
-    let cancelled = false;
-
-    async function fetchCourseTitle() {
-      try {
-        const course = await courseAdminService.get(initialCourseId);
-
-        if (cancelled) {
-          return;
-        }
-
-        setCourseInfo({
-          courseId: initialCourseId,
-          title:
-            course?.title?.trim() ||
-            course?.name?.trim() ||
-            "Course unavailable",
-          loaded: true,
-        });
-      } catch {
-        if (cancelled) {
-          return;
-        }
-
-        setCourseInfo({
-          courseId: initialCourseId,
-          title: "Course unavailable",
-          loaded: true,
-        });
-      }
-    }
-
-    fetchCourseTitle();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [initialCourseId]);
-
+  /** Cập nhật một điều kiện lọc nội bộ. */
   function updateFilter(key, value) {
     setFilters((current) => {
       if (current[key] === value) {
@@ -86,11 +39,6 @@ export function ClassListFilters({
     });
   }
 
-  const displayedCourseTitle =
-    courseInfo.courseId === initialCourseId && courseInfo.loaded
-      ? courseInfo.title
-      : "Loading...";
-
   return (
     <div className="class-filters">
       <label className="class-filters__item">
@@ -102,14 +50,36 @@ export function ClassListFilters({
           type="search"
           placeholder="Search by class name..."
           value={filters.keyword}
-          onChange={(event) => updateFilter("keyword", event.target.value)}
+          onChange={(event) =>
+            updateFilter("keyword", event.target.value)
+          }
           className="class-filters__input"
         />
       </label>
 
       <select
+        value={courseId}
+        onChange={(event) => onCourseChange?.(event.target.value)}
+        className="class-filters__select"
+        aria-label="Filter classes by course"
+        disabled={courseOptionsLoading}
+      >
+        <option value="">
+          {courseOptionsLoading ? "Loading courses..." : "All Courses"}
+        </option>
+
+        {courseOptions.map((course) => (
+          <option key={course.id} value={course.id}>
+            {course.title || course.name || "Untitled course"}
+          </option>
+        ))}
+      </select>
+
+      <select
         value={filters.status}
-        onChange={(event) => updateFilter("status", event.target.value)}
+        onChange={(event) =>
+          updateFilter("status", event.target.value)
+        }
         className="class-filters__select"
         aria-label="Filter classes by status"
       >
@@ -120,20 +90,10 @@ export function ClassListFilters({
         <option value="cancelled">Cancelled</option>
       </select>
 
-      {initialCourseId && (
-        <div className="class-filters__course-chip">
-          <span>Filtered by course:</span>
-
-          <strong title={displayedCourseTitle}>{displayedCourseTitle}</strong>
-
-          <button
-            type="button"
-            onClick={onClearCourseFilter}
-            aria-label="Clear course filter"
-          >
-            Clear
-          </button>
-        </div>
+      {courseOptionsError && (
+        <p className="class-filters__error" role="status">
+          {courseOptionsError}
+        </p>
       )}
     </div>
   );

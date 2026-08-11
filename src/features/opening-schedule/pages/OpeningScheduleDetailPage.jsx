@@ -368,18 +368,10 @@ export function OpeningScheduleDetailPage() {
             </span>
 
             <div className="opening-detail__price-block">
-              <span>Class tuition</span>
-
               <strong className="opening-detail__price">
                 {formatPrice(classItem.price, isFreeClass)}
               </strong>
             </div>
-
-            <p className="opening-detail__sidecard-copy">
-              {isFreeClass
-                ? "Registration is free and grants access to this class's course content."
-                : "Payment registers you for this offline class and grants access to its course content."}
-            </p>
 
             <button
               type="button"

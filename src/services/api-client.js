@@ -1,107 +1,142 @@
-import axios from 'axios'
+import axios from "axios";
 
 const API_BASE_URL =
-  import.meta.env.VITE_API_URL
-  || import.meta.env.VITE_API_BASE_URL
-  || 'http://localhost:8080/api/v1'
+  import.meta.env.VITE_API_URL ||
+  import.meta.env.VITE_API_BASE_URL ||
+  "http://localhost:8080/api/v1";
 
-const ACCESS_TOKEN_KEY = 'accessToken'
-const USER_KEY = 'user'
+const ACCESS_TOKEN_KEY = "accessToken";
+const USER_KEY = "user";
 
-let isRefreshing = false
-let failedQueue = []
+let isRefreshing = false;
+let failedQueue = [];
 
 function processQueue(error, token = null) {
   failedQueue.forEach((promise) => {
     if (error) {
-      promise.reject(error)
+      promise.reject(error);
     } else {
-      promise.resolve(token)
+      promise.resolve(token);
     }
-  })
+  });
 
-  failedQueue = []
+  failedQueue = [];
 }
 
 export function getAccessToken() {
-  const token = localStorage.getItem(ACCESS_TOKEN_KEY)
+  const token = localStorage.getItem(ACCESS_TOKEN_KEY);
   // Loại bỏ triệt để chuỗi rác lọt vào hệ thống
-  if (!token || token === 'undefined' || token === 'null') {
-    return null
+  if (!token || token === "undefined" || token === "null") {
+    return null;
   }
-  return token
+  return token;
 }
 
 function normalizeUser(user) {
-  if (!user) return user
+  if (!user) return user;
   return {
     ...user,
-    role: typeof user.role === 'string' ? user.role.toUpperCase() : user.role,
-  }
+    role: typeof user.role === "string" ? user.role.toUpperCase() : user.role,
+  };
 }
 
 export function setAuthSession({ accessToken, user }) {
   if (accessToken) {
-    localStorage.setItem(ACCESS_TOKEN_KEY, accessToken)
+    localStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
   }
 
   if (user) {
-    localStorage.setItem(USER_KEY, JSON.stringify(normalizeUser(user)))
+    localStorage.setItem(USER_KEY, JSON.stringify(normalizeUser(user)));
   }
 }
 
 export function clearAuthSession() {
-  localStorage.removeItem(ACCESS_TOKEN_KEY)
-  localStorage.removeItem(USER_KEY)
+  localStorage.removeItem(ACCESS_TOKEN_KEY);
+  localStorage.removeItem(USER_KEY);
 }
 
 export function getCurrentUser() {
-  const rawUser = localStorage.getItem(USER_KEY)
+  const rawUser = localStorage.getItem(USER_KEY);
 
-  if (!rawUser) return null
+  if (!rawUser) return null;
 
   try {
-    return JSON.parse(rawUser)
+    return JSON.parse(rawUser);
   } catch {
-    clearAuthSession()
-    return null
+    clearAuthSession();
+    return null;
   }
 }
 
 function redirectToLogin() {
-  if (window.location.pathname !== '/login') {
-    window.location.href = '/login'
+  if (window.location.pathname !== "/login") {
+    window.location.href = "/login";
   }
 }
 
 function normalizeApiError(error) {
-  const responseData = error.response?.data;
+  const responseData = error?.response?.data;
+  const status = error?.response?.status;
 
-  if (!responseData) {
-    return {
-      code: "UNKNOWN_ERROR",
-      message: "An unknown error occurred. Please try again.",
-      originalError: error,
-    };
+  // Không normalize lại lỗi đã được interceptor xử lý trước đó.
+  if (error?.code && error?.message && !error?.response) {
+    return error;
   }
 
-  if (responseData.error) {
+  if (typeof responseData === "string") {
+    const message = responseData.trim();
+
     return {
-      ...responseData.error,
+      code: status ? `HTTP_${status}` : "UNKNOWN_ERROR",
+      status,
       message:
-        responseData.error.message ||
-        responseData.message ||
-        "An unknown error occurred. Please try again.",
+        message ||
+        error?.message ||
+        "The server returned an empty error response.",
       originalError: error,
     };
   }
+
+  if (!responseData || typeof responseData !== "object") {
+    return {
+      code: status ? `HTTP_${status}` : "UNKNOWN_ERROR",
+      status,
+      message:
+        error?.message ||
+        (status
+          ? `The request failed with HTTP status ${status}.`
+          : "An unknown error occurred. Please try again."),
+      originalError: error,
+    };
+  }
+
+  const nestedError =
+    responseData.error && typeof responseData.error === "object"
+      ? responseData.error
+      : null;
+
+  const fieldMessage = Array.isArray(responseData.errors)
+    ? responseData.errors
+        .map((item) => item?.message)
+        .filter(Boolean)
+        .join(" ")
+    : "";
 
   return {
     ...responseData,
+    ...(nestedError || {}),
+    code:
+      nestedError?.code ||
+      responseData.code ||
+      (status ? `HTTP_${status}` : "UNKNOWN_ERROR"),
+    status: responseData.status ?? status,
     message:
+      nestedError?.message ||
       responseData.message ||
       responseData.errorMessage ||
       responseData.detail ||
+      fieldMessage ||
+      error?.message ||
       "An unknown error occurred. Please try again.",
     originalError: error,
   };
@@ -113,9 +148,9 @@ export const apiClient = axios.create({
   timeout: 30000,
   withCredentials: true,
   headers: {
-    'Content-Type': 'application/json',
+    "Content-Type": "application/json",
   },
-})
+});
 
 // Cấu hình instance phục vụ riêng việc làm mới token
 const refreshClient = axios.create({
@@ -123,139 +158,143 @@ const refreshClient = axios.create({
   timeout: 30000,
   withCredentials: true,
   headers: {
-    'Content-Type': 'application/json',
+    "Content-Type": "application/json",
   },
-})
+});
 
 // Neo bằng "/" đứng trước "auth" để tránh khớp nhầm các path như "/oauth/google".
-const PUBLIC_AUTH_ENDPOINTS = /\/auth\/(login|register|google|refresh|logout|forgot-password|reset-password|verify-email|resend-verification)/
-const PUBLIC_COURSE_ENDPOINTS = /courses\/[^/]+\/(preview|preview-lessons)(?:\/[^/]+)?$/
+const PUBLIC_AUTH_ENDPOINTS =
+  /\/auth\/(login|register|google|refresh|logout|forgot-password|reset-password|verify-email|resend-verification)/;
+const PUBLIC_COURSE_ENDPOINTS =
+  /courses\/[^/]+\/(preview|preview-lessons)(?:\/[^/]+)?$/;
 
 function removeAuthorizationHeader(config) {
-  if (!config.headers) return
+  if (!config.headers) return;
 
-  if (typeof config.headers.delete === 'function') {
-    config.headers.delete('Authorization')
-    config.headers.delete('authorization')
+  if (typeof config.headers.delete === "function") {
+    config.headers.delete("Authorization");
+    config.headers.delete("authorization");
   }
 
-  delete config.headers.Authorization
-  delete config.headers.authorization
+  delete config.headers.Authorization;
+  delete config.headers.authorization;
 }
 
 apiClient.interceptors.request.use(
   (config) => {
-    const url = config?.url || ''
-    const isPublicAuth = PUBLIC_AUTH_ENDPOINTS.test(url)
-    const isPublicCourseEndpoint = PUBLIC_COURSE_ENDPOINTS.test(url)
-    const shouldSkipAuthorization = config?.skipAuthorization === true
+    const url = config?.url || "";
+    const isPublicAuth = PUBLIC_AUTH_ENDPOINTS.test(url);
+    const isPublicCourseEndpoint = PUBLIC_COURSE_ENDPOINTS.test(url);
+    const shouldSkipAuthorization = config?.skipAuthorization === true;
     const isFormData =
-      typeof FormData !== 'undefined' && config?.data instanceof FormData
+      typeof FormData !== "undefined" && config?.data instanceof FormData;
 
     if (isFormData && config.headers) {
-      if (typeof config.headers?.delete === 'function') {
-        config.headers.delete('Content-Type')
-        config.headers.delete('content-type')
+      if (typeof config.headers?.delete === "function") {
+        config.headers.delete("Content-Type");
+        config.headers.delete("content-type");
       }
-      delete config.headers['Content-Type']
-      delete config.headers['content-type']
+      delete config.headers["Content-Type"];
+      delete config.headers["content-type"];
     }
 
     // Public requests must never carry a stale or invalid bearer token.
     if (isPublicAuth || isPublicCourseEndpoint || shouldSkipAuthorization) {
-      removeAuthorizationHeader(config)
-      return config
+      removeAuthorizationHeader(config);
+      return config;
     }
 
-    const accessToken = getAccessToken()
+    const accessToken = getAccessToken();
     if (accessToken) {
-      config.headers.Authorization = `Bearer ${accessToken}`
+      config.headers.Authorization = `Bearer ${accessToken}`;
     } else {
-      removeAuthorizationHeader(config)
+      removeAuthorizationHeader(config);
     }
-    return config
+    return config;
   },
   (error) => Promise.reject(error),
-)
+);
 
 apiClient.interceptors.response.use(
   (response) => response.data,
   async (error) => {
-    const originalRequest = error.config
-    
+    const originalRequest = error.config;
+
     if (!error.response) {
       const isTimeout =
-        error.code === 'ECONNABORTED' ||
-        String(error.message || '').toLowerCase().includes('timeout')
+        error.code === "ECONNABORTED" ||
+        String(error.message || "")
+          .toLowerCase()
+          .includes("timeout");
       return Promise.reject({
-        code: isTimeout ? 'REQUEST_TIMEOUT' : 'NETWORK_ERROR',
+        code: isTimeout ? "REQUEST_TIMEOUT" : "NETWORK_ERROR",
         message: isTimeout
-          ? 'The request took too long to finish. Please try again with a smaller file or shorter prompt.'
-          : 'Can not connect to server. Please check your internet connection.',
+          ? "The request took too long to finish. Please try again with a smaller file or shorter prompt."
+          : "Can not connect to server. Please check your internet connection.",
         originalError: error,
-      })
+      });
     }
 
-    const status = error.response?.status
-    const url = originalRequest?.url || ''
-    const isAuthEndpoint = PUBLIC_AUTH_ENDPOINTS.test(url)
-    const shouldSkipAuthRedirect = originalRequest?.skipAuthRedirect === true
-    const shouldSkipAuthorization = originalRequest?.skipAuthorization === true
+    const status = error.response?.status;
+    const url = originalRequest?.url || "";
+    const isAuthEndpoint = PUBLIC_AUTH_ENDPOINTS.test(url);
+    const shouldSkipAuthRedirect = originalRequest?.skipAuthRedirect === true;
+    const shouldSkipAuthorization = originalRequest?.skipAuthorization === true;
 
     // Xử lý tự động Refresh Token khi hết hạn (Mã 401)
     if (
-      status === 401
-      && !originalRequest._retry
-      && !isAuthEndpoint
-      && !shouldSkipAuthRedirect
-      && !shouldSkipAuthorization
+      status === 401 &&
+      !originalRequest._retry &&
+      !isAuthEndpoint &&
+      !shouldSkipAuthRedirect &&
+      !shouldSkipAuthorization
     ) {
-      originalRequest._retry = true
+      originalRequest._retry = true;
 
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
-          failedQueue.push({ resolve, reject })
+          failedQueue.push({ resolve, reject });
         })
           .then((newAccessToken) => {
-            originalRequest.headers.Authorization = `Bearer ${newAccessToken}`
-            return apiClient(originalRequest)
+            originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
+            return apiClient(originalRequest);
           })
-          .catch((queueError) => Promise.reject(queueError))
+          .catch((queueError) => Promise.reject(queueError));
       }
 
-      isRefreshing = true
+      isRefreshing = true;
 
       try {
-        const refreshResponse = await refreshClient.post('/auth/refresh')
-        const responseData = refreshResponse.data?.data || refreshResponse.data
+        const refreshResponse = await refreshClient.post("/auth/refresh");
+        const responseData = refreshResponse.data?.data || refreshResponse.data;
 
-        const newAccessToken = responseData.accessToken
+        const newAccessToken = responseData.accessToken;
 
         if (!newAccessToken) {
-          throw new Error('Invalid refresh token response')
+          throw new Error("Invalid refresh token response");
         }
 
         setAuthSession({
           accessToken: newAccessToken,
           user: responseData.user || getCurrentUser(),
-        })
+        });
 
-        processQueue(null, newAccessToken)
+        processQueue(null, newAccessToken);
 
-        originalRequest.headers.Authorization = `Bearer ${newAccessToken}`
-        return apiClient(originalRequest)
+        originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
+        return apiClient(originalRequest);
       } catch (refreshError) {
-        processQueue(refreshError, null)
-        clearAuthSession()
-        redirectToLogin()
-        return Promise.reject(refreshError)
+        processQueue(refreshError, null);
+        clearAuthSession();
+        redirectToLogin();
+        return Promise.reject(refreshError);
       } finally {
-        isRefreshing = false
+        isRefreshing = false;
       }
     }
 
     return Promise.reject(normalizeApiError(error));
   },
-)
+);
 
-export default apiClient
+export default apiClient;

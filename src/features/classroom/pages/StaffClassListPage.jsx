@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { AlertCircle, Loader, Plus } from "lucide-react";
 import { Button } from "@/shared/components/ui";
 import { classroomService } from "../services/classroomService";
+import { courseAdminService } from "@/features/course";
 import { canManageClasses, ROLES } from "@/shared/constants/roles";
 import { ClassListFilters } from "../components/ClassListFilters";
 import { getCurrentRole } from "@/shared/utils/auth";
@@ -21,6 +22,11 @@ export function StaffClassListPage({ routeBase = "/staff/classrooms" }) {
   const [classes, setClasses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [courseResource, setCourseResource] = useState({
+    loading: true,
+    items: [],
+    error: "",
+  });
 
   const [filters, setFilters] = useState({
     page: 0,
@@ -36,6 +42,76 @@ export function StaffClassListPage({ routeBase = "/staff/classrooms" }) {
   });
 
   const [refreshKey, setRefreshKey] = useState(0);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    /** Tải toàn bộ khóa học trong phạm vi role hiện tại để dựng filter. */
+    async function loadCourseOptions() {
+      try {
+        setCourseResource({
+          loading: true,
+          items: [],
+          error: "",
+        });
+
+        const firstPage = await courseAdminService.list({
+          page: 0,
+          size: 100,
+        });
+
+        const allCourses = [...(firstPage.items || [])];
+        const totalPages = Math.max(1, firstPage.totalPages || 1);
+
+        for (let page = 1; page < totalPages; page += 1) {
+          const nextPage = await courseAdminService.list({
+            page,
+            size: 100,
+          });
+
+          allCourses.push(...(nextPage.items || []));
+        }
+
+        if (cancelled) {
+          return;
+        }
+
+        const uniqueCourses = Array.from(
+          new Map(
+            allCourses
+              .filter((course) => course?.id)
+              .map((course) => [course.id, course]),
+          ).values(),
+        ).sort((left, right) =>
+          String(left.title || left.name || "").localeCompare(
+            String(right.title || right.name || ""),
+          ),
+        );
+
+        setCourseResource({
+          loading: false,
+          items: uniqueCourses,
+          error: "",
+        });
+      } catch (loadError) {
+        if (cancelled) {
+          return;
+        }
+
+        setCourseResource({
+          loading: false,
+          items: [],
+          error: loadError?.message || "Could not load courses for the filter.",
+        });
+      }
+    }
+
+    loadCourseOptions();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     let mounted = true;
@@ -103,11 +179,20 @@ export function StaffClassListPage({ routeBase = "/staff/classrooms" }) {
     });
   }, []);
 
-  const handleClearCourseFilter = useCallback(() => {
-    const nextParams = new URLSearchParams(searchParams);
-    nextParams.delete("courseId");
-    setSearchParams(nextParams, { replace: true });
-  }, [searchParams, setSearchParams]);
+  const handleCourseChange = useCallback(
+    (nextCourseId) => {
+      const nextParams = new URLSearchParams(searchParams);
+
+      if (nextCourseId) {
+        nextParams.set("courseId", nextCourseId);
+      } else {
+        nextParams.delete("courseId");
+      }
+
+      setSearchParams(nextParams, { replace: true });
+    },
+    [searchParams, setSearchParams],
+  );
 
   async function handleDeleteClass(classId) {
     const confirmed = window.confirm(
@@ -141,11 +226,6 @@ export function StaffClassListPage({ routeBase = "/staff/classrooms" }) {
       <div className="section-header">
         <div>
           <h1>{pageTitle}</h1>
-          {isTrainer && (
-            <p className="section-header__subtitle">
-              View the classes assigned to your trainer account.
-            </p>
-          )}
         </div>
 
         {isClassManager && (
@@ -160,8 +240,11 @@ export function StaffClassListPage({ routeBase = "/staff/classrooms" }) {
       </div>
 
       <ClassListFilters
-        initialCourseId={courseIdFilter}
-        onClearCourseFilter={handleClearCourseFilter}
+        courseId={courseIdFilter}
+        courseOptions={courseResource.items}
+        courseOptionsLoading={courseResource.loading}
+        courseOptionsError={courseResource.error}
+        onCourseChange={handleCourseChange}
         onFilterChange={handleFilterChange}
       />
 
