@@ -260,55 +260,6 @@
   line-height: 1.5;
 }
 
-.payment-status {
-  min-height: 28px;
-  width: fit-content;
-  flex: 0 0 auto;
-  align-self: flex-start;
-
-  display: inline-flex;
-  align-items: center;
-
-  padding: 4px 10px;
-  border-radius: 999px;
-
-  background: var(--surface, #f7f9fa);
-  color: var(--muted, #6a6f73);
-
-  font-size: 12px;
-  font-weight: 800;
-  line-height: 1;
-  white-space: nowrap;
-}
-
-.payment-status--success,
-.payment-status--completed,
-.payment-status--paid,
-.payment-status--matched {
-  background: var(--sl-success-soft, #e7f8ee);
-  color: var(--sl-success, #168c76);
-}
-
-.payment-status--failed,
-.payment-status--expired,
-.payment-status--cancelled,
-.payment-status--mismatched {
-  background: var(--sl-danger-soft, #fde7e7);
-  color: var(--sl-danger, #b91c1c);
-}
-
-.payment-status--pending,
-.payment-status--processing,
-.payment-status--waiting_payment {
-  background: var(--sl-warning-soft, #fff5d6);
-  color: var(--sl-warning, #b76e00);
-}
-
-.payment-status--refunded {
-  background: var(--sl-info-soft, #f0ecff);
-  color: var(--sl-info, #5b42bd);
-}
-
 .checkout-warning {
   padding: 14px 16px;
 

@@ -1,132 +1,209 @@
 import { useEffect, useState } from "react";
-import { Modal, Button, useToast } from "@/shared/components/ui";
-import { checkoutService } from "../services/checkoutService";
+import { Search } from "lucide-react";
+import { useToast } from "@/shared/components/ui";
+import { useDebouncedValue } from "@/shared/hooks/useDebouncedValue";
 import { StatusBadge } from "@/shared/components/status";
 import Pagination from "@/shared/components/Pagination";
-import { InvoiceDetailModal } from "../components/InvoiceDetailModal";
+import { DEFAULT_PAGE_SIZE } from "@/shared/constants/pagination";
 import {
   formatAmount,
   formatDate,
+  formatLabel,
   truncateId,
 } from "@/shared/utils/formatters";
-import { DEFAULT_PAGE_SIZE } from "@/shared/constants/pagination";
+import { checkoutService } from "../services/checkoutService";
+import { checkoutMonitoringService } from "../services/checkoutMonitoringService";
+import { InvoiceDetailModal } from "../components/InvoiceDetailModal";
+import "@/features/course/course-admin.css";
+import "@/features/admin/courses/pages/AdminCoursesPage.css";
 import "../../enrollment/pages/history-page.css";
 import "../checkout.css";
 
-function CancelOrderModal({ open, target, onClose, onConfirmed }) {
-  const toast = useToast();
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-
-  async function handleConfirm() {
-    if (!target?.orderId) return;
-    setError(null);
-    setLoading(true);
-    try {
-      await checkoutService.cancel(target.orderId);
-      toast.success("Order cancelled successfully");
-      onConfirmed(target);
-    } catch (err) {
-      setError(err?.message || "Could not cancel this order.");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  return (
-    <Modal
-      open={open}
-      title="Confirm order cancellation"
-      size="sm"
-      onClose={loading ? undefined : onClose}
-    >
-      <p className="transaction-page__confirm-content">
-        Are you sure you want to cancel order{" "}
-        <strong>{target?.invoiceNumber || truncateId(target?.orderId)}</strong>?
-        This will release any pending payment session and cannot be undone.
-      </p>
-      {error && (
-        <div className="auth-card__alert transaction-page__confirm-error">
-          {error}
-        </div>
-      )}
-      <div className="transaction-page__confirm-actions">
-        <Button
-          type="button"
-          variant="ghost"
-          onClick={onClose}
-          disabled={loading}
-        >
-          Keep order
-        </Button>
-        <Button
-          type="button"
-          variant="danger"
-          onClick={handleConfirm}
-          loading={loading}
-        >
-          Cancel order
-        </Button>
-      </div>
-    </Modal>
-  );
-}
-
 export function MyTransactionsPage() {
   const toast = useToast();
+
   const [items, setItems] = useState([]);
   const [page, setPage] = useState(0);
+  const [pageRequest, setPageRequest] = useState(0);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [totalPages, setTotalPages] = useState(0);
   const [totalItems, setTotalItems] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [pageRequest, setPageRequest] = useState(0);
   const [invoiceTarget, setInvoiceTarget] = useState(null);
-  const [cancelTarget, setCancelTarget] = useState(null);
-  const [refreshKey, setRefreshKey] = useState(0);
+
+  const [keyword, setKeyword] = useState("");
+  const [status, setStatus] = useState("");
+  const [statusOptions, setStatusOptions] = useState([]);
+
+  const normalizedKeyword = keyword.trim();
+  const debouncedKeyword = useDebouncedValue(normalizedKeyword);
+
+  const hasFilters = Boolean(normalizedKeyword || status);
 
   useEffect(() => {
     let cancelled = false;
-    (async () => {
+
+    async function loadFilterOptions() {
+      try {
+        const options =
+          await checkoutMonitoringService.getTransactionFilterOptions();
+
+        if (cancelled) {
+          return;
+        }
+
+        setStatusOptions(
+          Array.isArray(options?.statuses) ? options.statuses : [],
+        );
+      } catch (requestError) {
+        if (cancelled) {
+          return;
+        }
+
+        setStatusOptions([]);
+
+        const message =
+          requestError?.message || "Could not load transaction filter options.";
+
+        toast.error(message);
+      }
+    }
+
+    loadFilterOptions();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [toast]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadTransactions() {
       setLoading(true);
       setError(null);
+
       try {
         const data = await checkoutService.listTransactions({
           page: pageRequest,
           size: pageSize,
+          keyword: debouncedKeyword || undefined,
+          status: status || undefined,
         });
-        if (cancelled) return;
-        setItems(data.items || []);
-        setTotalPages(data.totalPages || 0);
-        setTotalItems(data.totalItems || 0);
-        setPage(data.page ?? pageRequest);
-      } catch (err) {
-        if (cancelled) return;
-        const message = err?.message || "Could not load transactions.";
+
+        if (cancelled) {
+          return;
+        }
+
+        setItems(Array.isArray(data?.items) ? data.items : []);
+        setPage(data?.page ?? pageRequest);
+        setTotalPages(data?.totalPages ?? 0);
+        setTotalItems(data?.totalItems ?? 0);
+      } catch (requestError) {
+        if (cancelled) {
+          return;
+        }
+
+        const message = requestError?.message || "Could not load transactions.";
+
+        setItems([]);
+        setTotalPages(0);
+        setTotalItems(0);
         setError(message);
         toast.error(message);
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
-    })();
+    }
+
+    /*
+     * Không gửi request bằng keyword cũ trong khoảng thời gian
+     * useDebouncedValue đang chờ cập nhật.
+     */
+    if (normalizedKeyword === debouncedKeyword) {
+      loadTransactions();
+    }
+
     return () => {
       cancelled = true;
     };
-  }, [pageRequest, pageSize, toast, refreshKey]);
+  }, [
+    debouncedKeyword,
+    normalizedKeyword,
+    pageRequest,
+    pageSize,
+    status,
+    toast,
+  ]);
+
+  function handleKeywordChange(event) {
+    setKeyword(event.target.value);
+    setPageRequest(0);
+  }
+
+  function handleStatusChange(nextStatus) {
+    setStatus(nextStatus);
+    setPageRequest(0);
+  }
 
   return (
     <div className="history-page checkout-history-page">
       <header className="history-page__header">
         <h1>Transaction history</h1>
       </header>
+
       <section className="history-card">
-        <div className="history-toolbar">
-          <strong className="transaction-page__section-title">
-            Payment records
-          </strong>
+        <div className="course-management__filters">
+          <label className="course-management__field course-management__field--search">
+            <span className="course-management__control course-management__search">
+              <Search size={18} aria-hidden="true" />
+
+              <input
+                type="search"
+                value={keyword}
+                placeholder="Search transaction or order"
+                onChange={handleKeywordChange}
+              />
+            </span>
+          </label>
+        </div>
+
+        <div className="course-management__status-bar">
+          <div className="course-management__tabs">
+            <button
+              type="button"
+              className={`course-management__tab${
+                status === "" ? " is-active" : ""
+              }`}
+              aria-pressed={status === ""}
+              onClick={() => handleStatusChange("")}
+            >
+              All
+            </button>
+
+            {statusOptions.map((statusOption) => {
+              const selected = status === statusOption;
+
+              return (
+                <button
+                  key={statusOption}
+                  type="button"
+                  className={`course-management__tab${
+                    selected ? " is-active" : ""
+                  }`}
+                  aria-pressed={selected}
+                  onClick={() => handleStatusChange(statusOption)}
+                >
+                  {formatLabel(statusOption)}
+                </button>
+              );
+            })}
+          </div>
           <span className="history-toolbar__count">
-            {totalItems} record{totalItems === 1 ? "" : "s"}
+            {totalItems} {totalItems === 1 ? "record" : "records"}
           </span>
         </div>
 
@@ -135,67 +212,80 @@ export function MyTransactionsPage() {
         ) : error ? (
           <div className="history-error">{error}</div>
         ) : items.length === 0 ? (
-          <div className="history-empty">You have no payment records yet.</div>
+          <div className="history-empty">
+            {hasFilters
+              ? "No transactions match the selected filters."
+              : "You have no payment records yet."}
+          </div>
         ) : (
           <div className="history-table-wrap">
-          <table className="history-table">
-            <thead>
-              <tr>
-                <th>Invoice / Order</th>
-                <th>Gateway</th>
-                <th>Amount</th>
-                <th>Status</th>
-                <th>Created</th>
-                <th>Paid at</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {items.map((tx) => {
-                const isPaid = (tx.status || "").toUpperCase() === "SUCCESS";
-                const isPending = (tx.status || "").toUpperCase() === "PENDING";
-                return (
-                  <tr key={tx.id}>
-                    <td>
-                      <strong>{tx.invoiceNumber || "--"}</strong>
-                      {tx.orderId && (
-                        <div className="transaction-page__meta">
-                          order: {truncateId(tx.orderId)}
-                        </div>
-                      )}
-                    </td>
-                    <td>{tx.paymentGateway || "--"}</td>
-                    <td>{formatAmount(tx.amount, tx.currency)}</td>
-                    <td>
-                      <StatusBadge status={tx.status} />
-                    </td>
-                    <td>{formatDate(tx.createdAt)}</td>
-                    <td>{tx.paidAt ? formatDate(tx.paidAt) : "--"}</td>
-                    <td className="transaction-page__action-cell">
-                      {isPaid && (
-                        <button
-                          type="button"
-                          className="history-table__link transaction-page__action-btn"
-                          onClick={() => setInvoiceTarget(tx.id)}
-                        >
-                          View invoice
-                        </button>
-                      )}
-                      {isPending && tx.orderId && (
-                        <button
-                          type="button"
-                          className="history-table__link transaction-page__action-btn transaction-page__action-btn--danger"
-                          onClick={() => setCancelTarget(tx)}
-                        >
-                          Cancel order
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+            <table className="history-table">
+              <thead>
+                <tr>
+                  <th>Invoice / Order</th>
+                  <th>Gateway</th>
+                  <th>Amount</th>
+                  <th>Status</th>
+                  <th>Created</th>
+                  <th>Paid at</th>
+                  <th>
+                    <span className="sr-only">Invoice action</span>
+                  </th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {items.map((transaction) => {
+                  const isPaid =
+                    String(transaction.status || "").toUpperCase() ===
+                    "SUCCESS";
+
+                  return (
+                    <tr key={transaction.id}>
+                      <td>
+                        <strong>{transaction.invoiceNumber || "--"}</strong>
+
+                        {transaction.orderId && (
+                          <div className="transaction-page__meta">
+                            order: {truncateId(transaction.orderId)}
+                          </div>
+                        )}
+                      </td>
+
+                      <td>{transaction.paymentGateway || "--"}</td>
+
+                      <td>
+                        {formatAmount(transaction.amount, transaction.currency)}
+                      </td>
+
+                      <td>
+                        <StatusBadge status={transaction.status} />
+                      </td>
+
+                      <td>{formatDate(transaction.createdAt)}</td>
+
+                      <td>{formatDate(transaction.paidAt)}</td>
+
+                      <td className="transaction-page__action-cell">
+                        {isPaid ? (
+                          <button
+                            type="button"
+                            className="history-table__link transaction-page__action-btn"
+                            onClick={() => setInvoiceTarget(transaction.id)}
+                          >
+                            View invoice
+                          </button>
+                        ) : (
+                          <span className="transaction-page__empty-value">
+                            --
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         )}
 
@@ -214,19 +304,11 @@ export function MyTransactionsPage() {
           }}
         />
       </section>
+
       <InvoiceDetailModal
         open={Boolean(invoiceTarget)}
         transactionId={invoiceTarget}
         onClose={() => setInvoiceTarget(null)}
-      />
-      <CancelOrderModal
-        open={Boolean(cancelTarget)}
-        target={cancelTarget}
-        onClose={() => setCancelTarget(null)}
-        onConfirmed={() => {
-          setCancelTarget(null);
-          setRefreshKey((k) => k + 1);
-        }}
       />
     </div>
   );

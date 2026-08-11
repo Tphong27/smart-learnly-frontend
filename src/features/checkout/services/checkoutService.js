@@ -1,4 +1,5 @@
 import apiClient from "@/services/api-client";
+import { toNumber } from "@/shared/utils/formatters";
 
 const SUCCESS_STATUSES = ["SUCCESS", "PAID", "MATCHED"];
 const PROBLEM_STATUSES = ["FAILED", "EXPIRED", "CANCELLED", "MISMATCHED", "REFUNDED"];
@@ -12,16 +13,6 @@ function normalizeStatus(status) {
 /** Lấy phần data nghiệp vụ ra khỏi ApiResponse hoặc giữ nguyên payload đã được unwrap. */
 function unwrap(response) {
   return response?.data ?? response;
-}
-
-/** Chuyển giá trị API thành number an toàn cho phần hiển thị tiền. */
-function toNumber(value, fallback = 0) {
-  if (value === null || value === undefined || value === "") {
-    return fallback;
-  }
-
-  const numberValue = Number(value);
-  return Number.isNaN(numberValue) ? fallback : numberValue;
 }
 
 /** Chuẩn hóa response tạo checkout thành model thanh toán dùng thống nhất trên frontend. */
@@ -123,12 +114,6 @@ export const checkoutService = {
   /** Tải chi tiết order và chuẩn hóa trạng thái thanh toán liên quan. */
   async get(orderId) {
     const response = await apiClient.get(`/orders/${orderId}`);
-    return normalizeOrderPayment(response);
-  },
-
-  /** Hủy một order PENDING thuộc về người dùng hiện tại. */
-  async cancel(orderId) {
-    const response = await apiClient.post(`/orders/${orderId}/cancel`);
     return normalizeOrderPayment(response);
   },
 
