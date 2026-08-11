@@ -1,13 +1,8 @@
 import apiClient from "@/services/api-client";
 
-// Bóc envelope HTTP một lớp nếu interceptor chưa trả thẳng payload.
-function unwrap(response) {
-  return response?.data ?? response;
-}
-
 // Bóc payload question trong ApiResponse backend.
 function unwrapData(response) {
-  const root = unwrap(response);
+  const root = response?.data ?? response;
   return root?.data ?? root;
 }
 

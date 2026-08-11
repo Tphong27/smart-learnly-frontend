@@ -19,31 +19,9 @@
     padding: 20px clamp(16px, 2vw, 28px) 36px;
 }
 
-.sl-cm-page--focus {
-    min-height: 100dvh;
-    padding: 24px clamp(16px, 3vw, 44px) 40px;
-    background: #ffffff;
-}
-
-.sl-cm-page--curriculum:not(.sl-cm-page--focus) > .sl-cm-header {
+.sl-cm-page--curriculum > .sl-cm-header {
     padding-bottom: 24px;
     border-bottom: 1px solid #d9dbe5;
-}
-
-.sl-cm-page--focus > .sl-cm-header {
-    position: sticky;
-    top: 0;
-    z-index: 35;
-    margin: -24px calc(clamp(16px, 3vw, 44px) * -1) 0;
-    padding: 16px clamp(16px, 3vw, 44px);
-    border-bottom: 1px solid var(--sl-line);
-    background: rgba(255, 255, 255, 0.94);
-    backdrop-filter: blur(14px);
-    -webkit-backdrop-filter: blur(14px);
-}
-
-.sl-cm-focus-escape {
-    align-self: flex-end;
 }
 
 .sl-cm-header {
@@ -1530,18 +1508,6 @@
         letter-spacing: 0.04em;
         color: var(--sl-muted);
         margin-bottom: 2px;
-    }
-}
-
-@media (max-width: 700px) {
-    .sl-cm-page--focus {
-        padding: 16px 12px 28px;
-    }
-
-    .sl-cm-page--focus > .sl-cm-header {
-        position: static;
-        margin: -16px -12px 0;
-        padding: 14px 12px;
     }
 }
 

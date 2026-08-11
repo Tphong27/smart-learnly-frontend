@@ -40,10 +40,12 @@ export const testService = {
   },
 
   /** Kiểm tra mã truy cập trước khi học viên làm đề. */
-  async verifyAccessCode(id, accessCode) {
-    const response = await apiClient.post(`/tests/${id}/access-code/verify`, {
-      accessCode,
-    });
+  async verifyAccessCode(id, accessCode, params = {}) {
+    const response = await apiClient.post(
+      `/tests/${id}/access-code/verify`,
+      { accessCode },
+      { params },
+    );
     return unwrap(response);
   },
 

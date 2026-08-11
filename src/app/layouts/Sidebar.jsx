@@ -91,12 +91,6 @@ const navItems = [
     icon: Users,
     roles: [ROLES.TRAINER, ROLES.TMO],
   },
-  {
-    label: "Reports & Analytics",
-    path: "/staff/reports",
-    icon: BarChart3,
-    roles: [ROLES.TMO],
-  },
   // {
   //   label: "Flash Tests Management",
   //   path: "/staff/flashtests",
@@ -155,6 +149,7 @@ const navItems = [
   // },
 ];
 
+/** Hiển thị menu điều hướng phù hợp với role và trạng thái thu gọn của ứng dụng. */
 export function Sidebar({
   userRole,
   open = false,

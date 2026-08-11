@@ -1,13 +1,8 @@
 import apiClient from "@/services/api-client";
 
-// Bóc payload nghiệp vụ khỏi envelope chuẩn của backend.
-function unwrap(response) {
-  return response?.data ?? response;
-}
-
 // Chuẩn hóa page catalog để page luôn nhận cùng một cấu trúc.
 function normalizePage(payload) {
-  const data = unwrap(payload);
+  const data = payload?.data ?? payload;
   const items = data?.content ?? data?.items ?? data?.courses ?? data?.data ?? [];
 
   return {

@@ -266,7 +266,19 @@ function SectionRow({
   dragHandleProps,
 }) {
   const [isExpanded, setIsExpanded] = useState(true);
+  const [isCreatingLesson, setIsCreatingLesson] = useState(false);
   const sortedLessons = useMemo(() => sortByOrder(lessons), [lessons]);
+
+  /** Mở luồng tạo lesson và khóa nút để tránh tạo trùng khi API đang chạy. */
+  async function handleAddLesson() {
+    setIsExpanded(true);
+    setIsCreatingLesson(true);
+    try {
+      await onOpenCreateLesson?.(section);
+    } finally {
+      setIsCreatingLesson(false);
+    }
+  }
 
   const totalDurationMinutes = sortedLessons.reduce(
     (sum, lesson) => sum + Math.floor((lesson?.durationSeconds || 0) / 60),
@@ -349,12 +361,11 @@ function SectionRow({
             <button
               type="button"
               className="sl-cm-btn sl-cm-btn--secondary sl-cm-btn--sm"
-              onClick={() => {
-                setIsExpanded(true);
-                onOpenCreateLesson?.(section);
-              }}
+              onClick={handleAddLesson}
+              disabled={isCreatingLesson}
             >
-              <Plus size={14} aria-hidden="true" /> Add lesson
+              <Plus size={14} aria-hidden="true" />
+              {isCreatingLesson ? "Opening..." : "Add lesson"}
             </button>
             <KebabMenu
               label={`Module ${index + 1} actions`}
@@ -1098,6 +1109,7 @@ export function CurriculumStructureEditor({
   onDeleteSection,
   onReorderSections,
   onCreateLesson,
+  openLessonEditorOnCreate = false,
   onDeleteLesson,
   onReorderLessons,
   onEditLesson,
@@ -1205,6 +1217,24 @@ export function CurriculumStructureEditor({
     setIsSectionModalOpen(true);
   }, []);
 
+  /** Tạo draft trực tiếp cho master curriculum hoặc mở modal ở luồng lớp hiện tại. */
+  const openCreateLesson = useCallback(
+    (section) => {
+      if (openLessonEditorOnCreate) {
+        return onCreateLesson?.(section.id, {
+          title: "Untitled lesson",
+          lessonType: "rich_text",
+          isPreview: false,
+          status: "draft",
+          durationSeconds: 0,
+        });
+      }
+      setLessonModalSection(section);
+      return undefined;
+    },
+    [onCreateLesson, openLessonEditorOnCreate],
+  );
+
   const handleDragEnd = useCallback((result) => {
     if (!result.destination) return;
 
@@ -1278,7 +1308,7 @@ export function CurriculumStructureEditor({
         showManageQuestions={showManageQuestions}
         lessonEditLabel={lessonEditLabel}
         onDragEnd={handleDragEnd}
-        onOpenCreateLesson={setLessonModalSection}
+        onOpenCreateLesson={openCreateLesson}
         onOpenCreateSection={openCreateSection}
         onEditSection={setEditingSection}
         onDeleteSection={requestDeleteSection}

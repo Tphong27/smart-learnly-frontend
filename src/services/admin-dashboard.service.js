@@ -1,9 +1,5 @@
 import apiClient from './api-client'
 
-function unwrap(response) {
-  return response?.data ?? response
-}
-
 function cleanParams(params = {}) {
   return Object.fromEntries(
     Object.entries(params).filter(([, value]) => value !== '' && value !== null && value !== undefined),
@@ -82,6 +78,6 @@ export const adminDashboardService = {
       params: cleanParams(params),
     })
 
-    return normalizeOverview(unwrap(response))
+    return normalizeOverview(response?.data ?? response)
   },
 }

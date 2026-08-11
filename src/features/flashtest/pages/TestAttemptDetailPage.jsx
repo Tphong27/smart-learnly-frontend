@@ -1,5 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useLocation, useNavigate, useParams } from "react-router-dom";
+import {
+  useLocation,
+  useNavigate,
+  useParams,
+  useSearchParams,
+} from "react-router-dom";
 import { ArrowLeft, CheckCircle, Eye, RefreshCw, XCircle } from "lucide-react";
 import { attemptService } from "../services/attemptService";
 import { testService } from "../services/testService";
@@ -119,6 +124,7 @@ export function TestAttemptDetailPage() {
   const { testId, attemptId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
   const [test, setTest] = useState(null);
   const [questions, setQuestions] = useState([]);
   const [answers, setAnswers] = useState([]);
@@ -129,7 +135,8 @@ export function TestAttemptDetailPage() {
   const resultKicker = location.state?.resultKicker || "Test result";
   const resultMode = location.state?.resultMode || "";
   const hideAnswerReview = resultMode === "quiz";
-  const contextClassId = location.state?.classId || null;
+  const contextClassId =
+    location.state?.classId || searchParams.get("classId") || null;
   const backPath = location.state?.backPath || "";
 
   const questionTotal = useMemo(
@@ -149,7 +156,12 @@ export function TestAttemptDetailPage() {
     setError("");
     try {
       const [testData, attemptData, questionMappings, answerData] = await Promise.all([
-        testService.getById(testId).catch(() => null),
+        testService
+          .getById(
+            testId,
+            contextClassId ? { classId: contextClassId } : {},
+          )
+          .catch(() => null),
         attemptService.getById(
           attemptId,
           contextClassId ? { classId: contextClassId } : {},

@@ -1,10 +1,5 @@
 import apiClient from "@/services/api-client";
 
-/** Lấy payload nghiệp vụ từ response chuẩn của API. */
-function unwrap(response) {
-  return response?.data ?? response;
-}
-
 /** Chuyển giá trị API sang số hợp lệ, có giá trị dự phòng khi dữ liệu thiếu. */
 function toNumber(value, fallback = 0) {
   const number = Number(value);
@@ -80,7 +75,7 @@ export const traineeProgressService = {
   /** Lấy và chuẩn hóa toàn bộ tiến độ của học viên đang đăng nhập. */
   async getMyProgress() {
     const response = await apiClient.get("/learning/progress/my");
-    const data = unwrap(response);
+    const data = response?.data ?? response;
 
     const courses = Array.isArray(data?.courses)
       ? data.courses.map(normalizeCourse)

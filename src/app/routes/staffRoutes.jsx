@@ -1,4 +1,3 @@
-/* eslint-disable react-refresh/only-export-components */
 import { Navigate } from "react-router-dom";
 import { RoleGuard } from "./RoleGuard";
 import { ROLES } from "@/shared/constants/roles";
@@ -23,20 +22,6 @@ import {
   TrainerLessonDetailPage,
   ClassAnalyticsRedirect
 } from "@/features/classroom";
-
-/** Hiển thị trang tạm cho các khu vực staff chưa triển khai. */
-function PlaceholderPage({ title }) {
-  return (
-    <section className="placeholder-page">
-      <span className="placeholder-page__eyebrow">Coming soon</span>
-      <h1 className="placeholder-page__title">{title}</h1>
-      <p className="placeholder-page__text">
-        This is a placeholder page for <strong>{title}</strong>. Content will be
-        added in future sprints.
-      </p>
-    </section>
-  );
-}
 
 /** Khai báo route staff theo từng nhóm quyền Trainer, TMO và SME. */
 function getStaffRoutes() {
@@ -99,10 +84,6 @@ function getStaffRoutes() {
             {
               path: "tests/attempts/:testId/:attemptId",
               element: <TestAttemptDetailPage />,
-            },
-            {
-              path: "flashcards",
-              element: <PlaceholderPage title="Flashcards Management" />,
             },
             {
               path: "flashtests",
@@ -173,26 +154,6 @@ function getStaffRoutes() {
             {
               path: "classrooms/:classId/workspace",
               element: <ClassDetailPage />,
-            },
-          ],
-        },
-        // NHÓM RIÊNG 2: Chỉ TMO và SME vào được cấu hình Bot AI
-        {
-          element: <RoleGuard allowedRoles={[ROLES.TMO, ROLES.SME]} />,
-          children: [
-            {
-              path: "ai-chatbot",
-              element: <PlaceholderPage title="AI Chatbot Config" />,
-            },
-          ],
-        },
-        // NHÓM RIÊNG 3: Chỉ duy nhất TMO xem được báo cáo doanh thu/hệ thống
-        {
-          element: <RoleGuard allowedRoles={[ROLES.TMO]} />,
-          children: [
-            {
-              path: "reports",
-              element: <PlaceholderPage title="Reports & Analytics" />,
             },
           ],
         },

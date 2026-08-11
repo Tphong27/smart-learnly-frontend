@@ -497,14 +497,20 @@ export function LearningWorkspacePage({
       if (resolvedClassId) backParams.set("classId", resolvedClassId);
       const backQuery = backParams.toString();
       const backPath = `${location.pathname}${backQuery ? `?${backQuery}` : ""}`;
-      navigate(`/learning/tests/take/${testId}/mcq`, {
-        state: {
-          resultBackPath: backPath,
-          resultKicker: "Quiz result",
-          resultMode: "quiz",
-          classId: resolvedClassId,
+      const takeParams = new URLSearchParams();
+      if (resolvedClassId) takeParams.set("classId", resolvedClassId);
+      const takeQuery = takeParams.toString();
+      navigate(
+        `/learning/tests/take/${testId}/mcq${takeQuery ? `?${takeQuery}` : ""}`,
+        {
+          state: {
+            resultBackPath: backPath,
+            resultKicker: "Quiz result",
+            resultMode: "quiz",
+            classId: resolvedClassId,
+          },
         },
-      });
+      );
     },
     [location.pathname, navigate, resolvedClassId, searchParams],
   );

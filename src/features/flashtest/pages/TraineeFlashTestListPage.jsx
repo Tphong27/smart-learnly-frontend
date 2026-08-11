@@ -20,6 +20,7 @@ import Pagination from "@/shared/components/Pagination";
 import { Modal } from "@/shared/components/ui";
 import "../flashtest.css";
 
+/** Nhận diện bài flash test từ các biến thể tên trường của API. */
 function isFlashTest(item) {
   return (
     item?.isFlashtest === true ||
@@ -28,6 +29,7 @@ function isFlashTest(item) {
   );
 }
 
+/** Nhận diện bài test thường, không thuộc nhóm flash test. */
 function isRegularTest(item) {
   return !isFlashTest(item);
 }
@@ -42,18 +44,21 @@ function getTrainerFeedback(submission) {
   return submission?.trainerFeedback ?? submission?.trainer_feedback ?? "";
 }
 
+/** Xác định attempt trắc nghiệm đã kết thúc và được tính là hoàn thành. */
 function isCompletedStatus(status) {
   return ["SUBMITTED", "GRADED", "EXPIRED", "TIMEOUT"].includes(
     String(status || "").toUpperCase(),
   );
 }
 
+/** Xác định submission tự luận đã được nộp hoặc chấm. */
 function isCompletedAssignmentStatus(status) {
   return ["SUBMITTED", "GRADED", "LATE"].includes(
     String(status || "").toUpperCase(),
   );
 }
 
+/** Lấy mốc thời gian phù hợp nhất để sắp xếp attempt. */
 function getAttemptTime(attempt) {
   return new Date(
     attempt?.submittedAt ||
@@ -68,12 +73,14 @@ function getAttemptTime(attempt) {
   ).getTime();
 }
 
+/** Chuyển giá trị số hợp lệ hoặc trả về null để tránh lan truyền NaN. */
 function numberOrNull(value) {
   if (value == null || value === "") return null;
   const number = Number(value);
   return Number.isFinite(number) ? number : null;
 }
 
+/** Tìm tổng số câu hỏi từ các response tương thích cũ và mới. */
 function getQuestionTotal(...sources) {
   for (const source of sources) {
     const total =
@@ -88,6 +95,7 @@ function getQuestionTotal(...sources) {
   return null;
 }
 
+/** Tính thời lượng hiển thị của assessment theo phút. */
 function getDurationMinutes(item) {
   const explicitDuration =
     numberOrNull(item?.durationMinutes) ??
@@ -107,12 +115,14 @@ function getDurationMinutes(item) {
     : null;
 }
 
+/** Chuẩn hóa điểm về thang 10 và định dạng ngắn gọn. */
 function formatScoreValue(value) {
   if (!Number.isFinite(value)) return "--";
   const score = Math.max(0, Math.min(10, value));
   return Number.isInteger(score) ? String(score) : score.toFixed(1);
 }
 
+/** Quy đổi kết quả trắc nghiệm về thang điểm 10. */
 function formatMcqScore(attempt, questionTotal) {
   const percentage = numberOrNull(attempt?.percentage);
   const rawScore = numberOrNull(attempt?.score);
@@ -126,12 +136,14 @@ function formatMcqScore(attempt, questionTotal) {
   return "--";
 }
 
+/** Kiểm tra một mốc thời gian đã hết hạn tại thời điểm tham chiếu. */
 function isPastDate(value, referenceMs) {
   if (!value) return false;
   const time = new Date(value).getTime();
   return Number.isFinite(time) && time <= referenceMs;
 }
 
+/** Lấy hạn dùng mã truy cập từ response xác thực hoặc dữ liệu danh sách. */
 function getAccessExpiresAt(item, result) {
   return (
     result?.expiresAt ||
@@ -145,11 +157,23 @@ function getAccessExpiresAt(item, result) {
   );
 }
 
+/** Phân loại assessment theo một trạng thái duy nhất, ưu tiên hoàn thành trước hết hạn. */
+function getAssessmentState(item, result, referenceMs) {
+  if (result?.taken) return "done";
+  const dueDate = item?.dueDate || item?.due_date;
+  if (item?.flashType === "essay" && isPastDate(dueDate, referenceMs)) {
+    return "expired";
+  }
+  return "ready";
+}
+
+/** Hiển thị danh sách test, flash test hoặc assignment dành cho trainee. */
 export function TraineeFlashTestListPage({ variant = "flash" }) {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const isFlashMode = variant === "flash";
   const isAssignmentMode = variant === "assignment";
+  const showsFeedbackColumn = isAssignmentMode || isFlashMode;
   const courseId = searchParams.get("courseId") || "";
   const classId = searchParams.get("classId") || "";
   const takePath = isAssignmentMode
@@ -204,6 +228,7 @@ export function TraineeFlashTestListPage({ variant = "flash" }) {
       ? "Practice with trainer-published MCQ and essay work while your progress stays visible."
       : "";
 
+  /** Tải assessment khả dụng và trạng thái attempt/submission của trainee. */
   const loadAvailableTests = useCallback(async () => {
     setLoading(true);
     try {
@@ -260,7 +285,11 @@ export function TraineeFlashTestListPage({ variant = "flash" }) {
           // The list only needs attempt summaries. Fetching every question for
           // every historical test created an N+1 burst that could exhaust the
           // API connection pool and delay starting the selected assessment.
-          const attempts = await attemptService.getHistory(test.id, studentId);
+          const attempts = await attemptService.getHistory(
+            test.id,
+            studentId,
+            classId ? { classId } : {},
+          );
           const questionTotal = getQuestionTotal(test, ...(attempts || []));
           const sortedAttempts = attempts.sort(
             (a, b) => getAttemptTime(b) - getAttemptTime(a),
@@ -360,29 +389,18 @@ export function TraineeFlashTestListPage({ variant = "flash" }) {
   const total = assessmentItems.length;
 
   const filterCounts = useMemo(() => {
+    const states = assessmentItems.map((item) =>
+      getAssessmentState(
+        item,
+        resultMap[`${item.flashType}-${item.id}`],
+        nowMs,
+      ),
+    );
     return {
       all: assessmentItems.length,
-      ready: assessmentItems.filter((item) => {
-        const result = resultMap[`${item.flashType}-${item.id}`];
-        if (result?.taken) return false;
-        const dueDate = item.dueDate || item.due_date;
-        if (
-          item.flashType === "essay" &&
-          dueDate &&
-          new Date(dueDate).getTime() <= nowMs
-        )
-          return false;
-        return true;
-      }).length,
-      done: assessmentItems.filter((item) =>
-        Boolean(resultMap[`${item.flashType}-${item.id}`]?.taken),
-      ).length,
-      expired: assessmentItems.filter((item) => {
-        if (item.flashType !== "essay") return false;
-        const dueDate = item.dueDate || item.due_date;
-        if (!dueDate) return false;
-        return new Date(dueDate).getTime() <= nowMs;
-      }).length,
+      ready: states.filter((state) => state === "ready").length,
+      done: states.filter((state) => state === "done").length,
+      expired: states.filter((state) => state === "expired").length,
     };
   }, [assessmentItems, resultMap, nowMs]);
 
@@ -406,29 +424,32 @@ export function TraineeFlashTestListPage({ variant = "flash" }) {
     }
 
     if (filterTab === "ready") {
-      items = items.filter((item) => {
-        const result = resultMap[`${item.flashType}-${item.id}`];
-        if (result?.taken) return false;
-        const dueDate = item.dueDate || item.due_date;
-        if (
-          item.flashType === "essay" &&
-          dueDate &&
-          new Date(dueDate).getTime() <= nowMs
-        )
-          return false;
-        return true;
-      });
+      items = items.filter(
+        (item) =>
+          getAssessmentState(
+            item,
+            resultMap[`${item.flashType}-${item.id}`],
+            nowMs,
+          ) === "ready",
+      );
     } else if (filterTab === "done") {
-      items = items.filter((item) =>
-        Boolean(resultMap[`${item.flashType}-${item.id}`]?.taken),
+      items = items.filter(
+        (item) =>
+          getAssessmentState(
+            item,
+            resultMap[`${item.flashType}-${item.id}`],
+            nowMs,
+          ) === "done",
       );
     } else if (filterTab === "expired") {
-      items = items.filter((item) => {
-        if (item.flashType !== "essay") return false;
-        const dueDate = item.dueDate || item.due_date;
-        if (!dueDate) return false;
-        return new Date(dueDate).getTime() <= nowMs;
-      });
+      items = items.filter(
+        (item) =>
+          getAssessmentState(
+            item,
+            resultMap[`${item.flashType}-${item.id}`],
+            nowMs,
+          ) === "expired",
+      );
     }
 
     return items;
@@ -442,6 +463,7 @@ export function TraineeFlashTestListPage({ variant = "flash" }) {
     [currentPage, filteredRows, pageSize],
   );
 
+  /** Mở bước xác thực mã hoặc chuyển thẳng tới bài tự luận. */
   const openAccessModal = (item, isEssay) => {
     const dueDate = item?.dueDate || item?.due_date;
     if (isEssay && dueDate && new Date(dueDate).getTime() <= nowMs) {
@@ -458,28 +480,39 @@ export function TraineeFlashTestListPage({ variant = "flash" }) {
     setAccessError("");
   };
 
+  /** Đóng modal mã truy cập và làm sạch trạng thái nhập. */
   const closeAccessModal = () => {
     setAccessModal({ open: false, item: null, isEssay: false });
     setAccessCode("");
     setAccessError("");
   };
 
+  /** Mở hoặc đóng lịch sử attempt của một bài trắc nghiệm. */
   const toggleAttemptHistory = (key) => {
     setExpandedResultKey((current) => (current === key ? "" : key));
   };
 
+  /** Điều hướng tới màn hình xem chi tiết câu trả lời của attempt. */
   const openAttemptDetail = (item, attempt) => {
     const attemptId = attempt?.id || attempt?.attemptId;
     const testId = attempt?.testId || item?.id;
     if (!attemptId || !testId) return;
-    navigate(`/learning/tests/attempts/${testId}/${attemptId}`, {
-      state: {
-        attempt,
-        studentName: currentUser?.name || currentUser?.fullName || "Trainee",
+    const detailParams = new URLSearchParams();
+    if (classId) detailParams.set("classId", classId);
+    const detailQuery = detailParams.toString();
+    navigate(
+      `/learning/tests/attempts/${testId}/${attemptId}${detailQuery ? `?${detailQuery}` : ""}`,
+      {
+        state: {
+          attempt,
+          studentName: currentUser?.name || currentUser?.fullName || "Trainee",
+          classId: classId || null,
+        },
       },
-    });
+    );
   };
 
+  /** Hiển thị lịch sử attempt ngay dưới hàng assessment đang mở rộng. */
   const renderAttemptList = (item, result) => {
     const attempts = Array.isArray(result?.attempts) ? result.attempts : [];
     return (
@@ -528,6 +561,7 @@ export function TraineeFlashTestListPage({ variant = "flash" }) {
     );
   };
 
+  /** Xác thực mã truy cập trước khi bắt đầu bài trắc nghiệm. */
   const handleVerifyAccessCode = async () => {
     const code = accessCode.trim();
     if (!code) {
@@ -553,7 +587,11 @@ export function TraineeFlashTestListPage({ variant = "flash" }) {
     try {
       const result = accessModal.isEssay
         ? await assignmentService.verifyAccessCode(item.id, code)
-        : await testService.verifyAccessCode(item.id, code);
+        : await testService.verifyAccessCode(
+            item.id,
+            code,
+            classId ? { classId } : {},
+          );
       if (!result?.valid) {
         setAccessError("The code is incorrect or has expired.");
         return;
@@ -569,9 +607,15 @@ export function TraineeFlashTestListPage({ variant = "flash" }) {
         `${accessStoragePrefix}:${type}:${item.id}`,
         code,
       );
-      navigate(`${takePath}/${item.id}/${type}`, {
-        state: { accessCode: code },
-      });
+      const takeParams = new URLSearchParams();
+      if (classId) takeParams.set("classId", classId);
+      const takeQuery = takeParams.toString();
+      navigate(
+        `${takePath}/${item.id}/${type}${takeQuery ? `?${takeQuery}` : ""}`,
+        {
+          state: { accessCode: code, classId: classId || null },
+        },
+      );
     } catch (verifyError) {
       setAccessError(verifyError.message || "Could not verify this code.");
     } finally {
@@ -699,7 +743,7 @@ export function TraineeFlashTestListPage({ variant = "flash" }) {
                   <th>Due Date</th>
                   <th>Score</th>
                   <th>Status</th>
-                  {isAssignmentMode && <th>Feedback</th>}
+                  {showsFeedbackColumn && <th>Feedback</th>}
                   <th className="ft-tests-action-column">Action</th>
                 </tr>
               </thead>
@@ -721,7 +765,7 @@ export function TraineeFlashTestListPage({ variant = "flash" }) {
                     <td>
                       <span className="ft-skeleton" style={{ width: 40 }} />
                     </td>
-                    {isAssignmentMode && (
+                    {showsFeedbackColumn && (
                       <td>
                         <span className="ft-skeleton" style={{ width: 70 }} />
                       </td>
@@ -776,7 +820,7 @@ export function TraineeFlashTestListPage({ variant = "flash" }) {
                   <th>Due Date</th>
                   <th>Score</th>
                   <th>Status</th>
-                  {isAssignmentMode && <th>Feedback</th>}
+                  {showsFeedbackColumn && <th>Feedback</th>}
                   <th className="ft-tests-action-column">Action</th>
                 </tr>
               </thead>
@@ -785,15 +829,19 @@ export function TraineeFlashTestListPage({ variant = "flash" }) {
                   const key = `${item.flashType}-${item.id}`;
                   const result = resultMap[key];
                   const isEssay = item.flashType === "essay";
-                  const taken = Boolean(result?.taken);
+                  const assessmentState = getAssessmentState(
+                    item,
+                    result,
+                    nowMs,
+                  );
+                  const taken = assessmentState === "done";
                   const hasAttemptHistory =
                     !isEssay &&
                     Array.isArray(result?.attempts) &&
                     result.attempts.length > 0;
                   const expanded = expandedResultKey === key;
                   const dueDate = item.dueDate || item.due_date;
-                  const expired =
-                    isEssay && dueDate && new Date(dueDate).getTime() <= nowMs;
+                  const expired = assessmentState === "expired";
                   const statusLabel = taken
                     ? "Completed"
                     : expired
@@ -849,7 +897,7 @@ export function TraineeFlashTestListPage({ variant = "flash" }) {
                             {statusLabel}
                           </span>
                         </td>
-                        {isAssignmentMode && (
+                        {showsFeedbackColumn && (
                           <td>
                             {isEssay && result?.trainerFeedback ? (
                               <button
@@ -905,7 +953,7 @@ export function TraineeFlashTestListPage({ variant = "flash" }) {
                       </tr>
                       {hasAttemptHistory && expanded && (
                         <tr className="ft-expanded-row">
-                          <td colSpan={isAssignmentMode ? 8 : 7}>
+                          <td colSpan={showsFeedbackColumn ? 8 : 7}>
                             {renderAttemptList(item, result)}
                           </td>
                         </tr>
