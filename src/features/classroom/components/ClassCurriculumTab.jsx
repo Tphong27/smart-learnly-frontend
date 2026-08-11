@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import { AlertCircle, Loader } from "lucide-react";
 import { Button } from "@/shared/components/ui";
 import { trainerCurriculumService } from "../services/trainerCurriculumService";
-import { createTrainerFlashcardService } from "../services/trainerFlashcardService";
 import { CurriculumStructureEditor } from "@/features/course/components/CurriculumStructureEditor";
 // Dùng cùng design system với master course content (sl-cm-*).
 import "@/features/course/course-admin.css";
@@ -172,17 +171,17 @@ export function ClassCurriculumTab({ classId, readOnly = false }) {
       return trainerCurriculumService.getCurriculum(classId);
     }, "Sections reordered");
 
-  // Chuẩn hóa dữ liệu editor và tạo lesson ở cuối section đã chọn.
+  /** Chuẩn hóa dữ liệu editor và tạo lesson ở cuối section đã chọn. */
   const handleCreateLesson = (sectionId, payload) => {
     let lessonType = String(payload.lessonType || "video").toLowerCase();
     if (lessonType === "document") lessonType = "pdf";
     const section = sections.find((s) => s.id === sectionId);
     const nextSortOrder = section ? (section.lessons || []).length : 0;
 
-    // Flashcard dùng luồng 2 bước: tạo lesson trong class draft, rồi gắn flashcard set.
+    // Backend tạo lesson và flashcard set trong cùng transaction để không sinh lesson mồ côi.
     if (lessonType === "flashcard") {
       return runAction(async () => {
-        const created = await trainerCurriculumService.createLesson(classId, sectionId, {
+        await trainerCurriculumService.createLesson(classId, sectionId, {
           title: payload.title,
           lessonType,
           type: lessonType,
@@ -191,19 +190,6 @@ export function ClassCurriculumTab({ classId, readOnly = false }) {
           durationSeconds: payload.durationSeconds || 0,
           sortOrder: nextSortOrder,
           resources: [],
-        });
-        const lessonId = created?.id || created?.lessonId;
-        if (!lessonId) {
-          throw new Error("Could not create flashcard lesson");
-        }
-        const flashcardService = createTrainerFlashcardService(classId, lessonId);
-        await flashcardService.createLesson({
-          title: payload.title,
-          description: payload.description || "",
-          isPreview: Boolean(payload.isPreview),
-          status: payload.status || "draft",
-          durationSeconds: payload.durationSeconds || 0,
-          sortOrder: 0,
         });
         return trainerCurriculumService.getCurriculum(classId);
       }, "Flashcard lesson added");

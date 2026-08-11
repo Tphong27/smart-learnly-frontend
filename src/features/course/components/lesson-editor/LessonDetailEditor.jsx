@@ -104,6 +104,7 @@ export function LessonDetailEditor({ context }) {
   const [pageLoading, setPageLoading] = useState(true);
   const [textContent, setTextContent] = useState("");
   const [lessonType, setLessonType] = useState("VIDEO");
+  const [persistedLessonType, setPersistedLessonType] = useState("");
   const [existingLessonData, setExistingLessonData] = useState(null);
 
   const [videoUrl, setVideoUrl] = useState("");
@@ -225,25 +226,28 @@ export function LessonDetailEditor({ context }) {
             lessonData.lessonType || lessonData.type || "VIDEO",
           ).toUpperCase();
 
+          let normalizedLessonType;
           if (typeFromServer === "PDF" || typeFromServer === "DOCUMENT") {
-            setLessonType("PDF");
+            normalizedLessonType = "PDF";
           } else if (typeFromServer === "QUIZ") {
-            setLessonType("QUIZ");
+            normalizedLessonType = "QUIZ";
           } else if (typeFromServer === "FLASHCARD") {
-            setLessonType("FLASHCARD");
+            normalizedLessonType = "FLASHCARD";
           } else if (
             typeFromServer === "RICH_TEXT" ||
             typeFromServer === "TEXT"
           ) {
-            setLessonType("RICH_TEXT");
+            normalizedLessonType = "RICH_TEXT";
           } else if (
             typeFromServer === "ESSAY" ||
             typeFromServer === "ASSIGNMENT"
           ) {
-            setLessonType("ESSAY");
+            normalizedLessonType = "ESSAY";
           } else {
-            setLessonType("VIDEO");
+            normalizedLessonType = "VIDEO";
           }
+          setLessonType(normalizedLessonType);
+          setPersistedLessonType(normalizedLessonType);
 
           const loadedResources =
             lessonData.resources || lessonData.attachments || [];
@@ -726,6 +730,7 @@ export function LessonDetailEditor({ context }) {
           ...savedLesson,
         }));
       }
+      setPersistedLessonType(lessonType);
 
       if (lessonType === "ESSAY") {
         const assignmentSaved = await saveLessonAssignment({
@@ -1105,6 +1110,7 @@ export function LessonDetailEditor({ context }) {
             courseId={courseId}
             lessonId={lessonId}
             initialFlashcardSetId={initialFlashcardSetId}
+            flashcardSetReady={persistedLessonType === "FLASHCARD"}
             defaultFlashcardModuleId={defaultFlashcardModuleId}
             showToast={showToast}
             services={services}

@@ -3,9 +3,8 @@ import {
     useLocation,
     useParams,
     useNavigate,
-    useSearchParams,
 } from "react-router-dom";
-import { Eye, Maximize2, Minimize2, RotateCcw } from "lucide-react";
+import { Eye, RotateCcw } from "lucide-react";
 import { courseContentService } from "../services/courseContentService";
 import { flashcardAuthoringService as flashcardService } from "@/features/flashcard";
 import { useToast } from "../../../shared/components/ui/Toast/useToast";
@@ -13,16 +12,17 @@ import { Button } from "../../../shared/components/ui";
 import { CurriculumStructureEditor } from "../components/CurriculumStructureEditor";
 import "../course-admin.css";
 
+/** Lấy thông báo API dễ hiểu và dùng fallback khi backend không trả message. */
 function getApiErrorMessage(error, fallback) {
     return error?.message || error?.response?.data?.message || fallback;
 }
 
+/** Điều phối màn curriculum và mở Lesson Editor ngay sau khi tạo draft mới. */
 export default function AdminCourseContentPage() {
     const params = useParams();
     const courseId = params.courseId || params.id;
     const navigate = useNavigate();
     const location = useLocation();
-    const [searchParams, setSearchParams] = useSearchParams();
     const { showToast: emitToast } = useToast();
     const isStaffRoute = location.pathname.startsWith("/staff/");
     const courseBasePath = isStaffRoute ? "/staff/courses" : "/admin/courses";
@@ -32,16 +32,9 @@ export default function AdminCourseContentPage() {
     const courseContentPath = `${courseBasePath}/${courseId}/content`;
     const coursePreviewPath = `${courseBasePath}/${courseId}/preview`;
     const lessonBasePath = `${courseBasePath}/${courseId}/lessons`;
-    const focusMode = searchParams.get("focus") === "1";
-    const pageClassName = `sl-cm-page sl-cm-page--curriculum${focusMode ? " sl-cm-page--focus" : ""}`;
+    const pageClassName = "sl-cm-page sl-cm-page--curriculum";
 
-    function toggleFocusMode() {
-        const nextParams = new URLSearchParams(searchParams);
-        if (focusMode) nextParams.delete("focus");
-        else nextParams.set("focus", "1");
-        setSearchParams(nextParams, { replace: true });
-    }
-
+    /** Chuẩn hóa cả hai cách gọi toast đang tồn tại trong feature course. */
     const showToast = useCallback(
         (messageOrOptions, type) => {
             if (messageOrOptions && typeof messageOrOptions === "object") {
@@ -59,6 +52,7 @@ export default function AdminCourseContentPage() {
     const [loadError, setLoadError] = useState("");
     const [loadingLessons, setLoadingLessons] = useState({});
 
+    /** Tải curriculum và đồng bộ lesson đã được nhúng sẵn theo từng module. */
     const fetchSections = useCallback(async () => {
         setLoadingSections(true);
         setLoadError("");
@@ -91,6 +85,7 @@ export default function AdminCourseContentPage() {
         }
     }, [courseId, showToast]);
 
+    /** Tải lesson của một module khi response curriculum chưa chứa danh sách này. */
     const fetchLessonsForSection = useCallback(async (sectionId) => {
         setLoadingLessons((prev) => ({ ...prev, [sectionId]: true }));
         try {
@@ -133,6 +128,7 @@ export default function AdminCourseContentPage() {
         });
     }, [sections, sectionLessons, fetchLessonsForSection]);
 
+    /** Tạo module rồi làm mới curriculum. */
     const handleCreateSection = async ({ title }) => {
         try {
             await courseContentService.createSection(courseId, {
@@ -156,6 +152,7 @@ export default function AdminCourseContentPage() {
         }
     };
 
+    /** Cập nhật tên module rồi làm mới curriculum. */
     const handleUpdateSection = async (sectionId, { title }) => {
         try {
             await courseContentService.updateSection(sectionId, {
@@ -173,6 +170,7 @@ export default function AdminCourseContentPage() {
         }
     };
 
+    /** Xóa module theo kiểu optimistic và cung cấp thao tác hoàn tác bằng tạo lại. */
     const handleDeleteSection = async (sectionId, sectionTitle) => {
         const previousSections = sections;
         const target = sections.find((s) => s.id === sectionId);
@@ -226,6 +224,7 @@ export default function AdminCourseContentPage() {
         }
     };
 
+    /** Lưu thứ tự module mới và khôi phục dữ liệu server nếu request thất bại. */
     const handleReorderSections = async (orderedIds) => {
         const reordered = orderedIds
             .map((id) => sections.find((s) => s.id === id))
@@ -248,6 +247,7 @@ export default function AdminCourseContentPage() {
         }
     };
 
+    /** Tạo lesson draft và mở editor bằng ID thật do backend trả về. */
     const handleCreateLesson = async (sectionId, payload) => {
         try {
             let mappedType = String(payload.lessonType).toLowerCase();
@@ -291,7 +291,7 @@ export default function AdminCourseContentPage() {
                 return true;
             }
 
-            await courseContentService.createLesson(sectionId, {
+            const createdLesson = await courseContentService.createLesson(sectionId, {
                 title: payload.title,
                 lessonType: mappedType,
                 isPreview: !!payload.isPreview,
@@ -300,8 +300,14 @@ export default function AdminCourseContentPage() {
                 sortOrder: 0,
             });
 
+            const createdLessonId = createdLesson?.id || createdLesson?.lessonId;
+            if (!createdLessonId) {
+                throw new Error("Created lesson ID was not returned.");
+            }
+
             showToast({ type: "success", message: "Lesson added." });
             fetchLessonsForSection(sectionId);
+            navigate(`${lessonBasePath}/${createdLessonId}`);
             return true;
         } catch (error) {
             showToast({
@@ -315,6 +321,7 @@ export default function AdminCourseContentPage() {
         }
     };
 
+    /** Xóa lesson thường hoặc flashcard set tương ứng rồi cập nhật danh sách tại chỗ. */
     const handleDeleteLesson = async (lessonId, lessonTitle, lesson = null) => {
         try {
             const isFlashcard =
@@ -352,6 +359,7 @@ export default function AdminCourseContentPage() {
         }
     };
 
+    /** Lưu thứ tự lesson mới trong module và đồng bộ lại khi API lỗi. */
     const handleReorderLessons = async (sectionId, orderedIds) => {
         const currentLessons = sectionLessons[sectionId] || [];
         const nextLessons = orderedIds
@@ -375,6 +383,7 @@ export default function AdminCourseContentPage() {
         }
     };
 
+    /** Mở Lesson Editor cho lesson đã tồn tại. */
     const handleEditLesson = useCallback(
         (lesson) => {
             if (!lesson?.id) {
@@ -421,15 +430,6 @@ export default function AdminCourseContentPage() {
     if (loadingSections) {
         return (
             <div className={pageClassName} role="status" aria-live="polite">
-                {focusMode && (
-                    <button
-                        type="button"
-                        className="sl-cm-btn sl-cm-btn--secondary sl-cm-focus-escape"
-                        onClick={toggleFocusMode}
-                    >
-                        <Minimize2 size={16} aria-hidden="true" /> Exit focus
-                    </button>
-                )}
                 <div className="sl-cm-workspace" aria-busy="true">
                     <div
                         className="sl-cm-skeleton"
@@ -455,15 +455,6 @@ export default function AdminCourseContentPage() {
     if (loadError) {
         return (
             <div className={pageClassName}>
-                {focusMode && (
-                    <button
-                        type="button"
-                        className="sl-cm-btn sl-cm-btn--secondary sl-cm-focus-escape"
-                        onClick={toggleFocusMode}
-                    >
-                        <Minimize2 size={16} aria-hidden="true" /> Exit focus
-                    </button>
-                )}
                 <div className="sl-cm-workspace sl-cm-load-error" role="alert">
                     <h1 className="sl-cm-header__title">
                         Curriculum unavailable
@@ -506,19 +497,6 @@ export default function AdminCourseContentPage() {
                     </p>
                 </div>
                 <div className="sl-cm-header__actions">
-                    <button
-                        type="button"
-                        className="sl-cm-btn sl-cm-btn--secondary"
-                        onClick={toggleFocusMode}
-                        aria-pressed={focusMode}
-                    >
-                        {focusMode ? (
-                            <Minimize2 size={16} aria-hidden="true" />
-                        ) : (
-                            <Maximize2 size={16} aria-hidden="true" />
-                        )}
-                        {focusMode ? "Exit focus" : "Focus mode"}
-                    </button>
                     <a
                         className="sl-cm-btn sl-cm-btn--secondary"
                         href={`${coursePreviewPath}?returnTo=${encodeURIComponent(courseContentPath)}`}
@@ -542,6 +520,7 @@ export default function AdminCourseContentPage() {
                 onDeleteSection={handleDeleteSection}
                 onReorderSections={handleReorderSections}
                 onCreateLesson={handleCreateLesson}
+                openLessonEditorOnCreate
                 onDeleteLesson={handleDeleteLesson}
                 onReorderLessons={handleReorderLessons}
                 onEditLesson={handleEditLesson}

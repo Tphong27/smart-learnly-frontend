@@ -1,13 +1,9 @@
 import apiClient from "@/services/api-client";
 
-/** Lấy payload nghiệp vụ ra khỏi ApiResponse của backend. */
-function unwrapApiResponse(response) {
-  return response?.data ?? response;
-}
-
 /** Gửi GET qua API client chuẩn và trả payload nghiệp vụ đã unwrap. */
 async function get(path, params) {
-  return unwrapApiResponse(await apiClient.get(path, { params }));
+  const response = await apiClient.get(path, { params });
+  return response?.data ?? response;
 }
 
 export const checkoutMonitoringService = {

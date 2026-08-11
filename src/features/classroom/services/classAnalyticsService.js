@@ -1,17 +1,5 @@
 import apiClient from "@/services/api-client";
 
-// Bóc envelope HTTP một lớp nếu interceptor chưa trả thẳng payload.
-function unwrap(response) {
-  return response?.data ?? response;
-}
-
-// Bóc payload analytics trong ApiResponse backend.
-function unwrapData(response) {
-  const root = unwrap(response);
-
-  return root?.data ?? root;
-}
-
 // Chuẩn hóa bộ lọc analytics thành query params ổn định.
 function buildAnalyticsParams(params = {}) {
   const keyword = String(params.keyword ?? "").trim();
@@ -36,7 +24,8 @@ async function getAnalytics(basePath, classId, params) {
     params: buildAnalyticsParams(params),
   });
 
-  return unwrapData(response);
+  const root = response?.data ?? response;
+  return root?.data ?? root;
 }
 
 export const classAnalyticsService = {

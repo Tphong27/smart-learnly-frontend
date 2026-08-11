@@ -1,13 +1,8 @@
 import apiClient from "@/services/api-client";
 
-/** Lấy payload ra khỏi một lớp ApiResponse. */
-function unwrap(response) {
-  return response?.data ?? response;
-}
-
 /** Lấy payload người dùng kể cả khi backend bọc hai lớp data. */
 function unwrapData(response) {
-  const root = unwrap(response);
+  const root = response?.data ?? response;
   return root?.data ?? root;
 }
 

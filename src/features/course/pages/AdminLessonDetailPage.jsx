@@ -27,12 +27,10 @@ export default function AdminLessonDetailPage() {
       services: {
         getLessonDetail: (id) => courseContentService.getLessonDetail(id),
         updateLesson: (id, payload) => courseContentService.updateLesson(id, payload),
-        getLessonAuditLogs: (id, page, size) =>
-          courseContentService.getLessonAuditLogs(id, page, size),
         flashcardService,
       },
       features: {
-        audit: true,
+        audit: false,
         quizManager: true,
         flashcard: true,
         flashcardStaging: true,

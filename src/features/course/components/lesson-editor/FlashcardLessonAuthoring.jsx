@@ -28,6 +28,7 @@ export function FlashcardLessonAuthoring({
   courseId,
   lessonId,
   initialFlashcardSetId,
+  flashcardSetReady,
   defaultFlashcardModuleId,
   showToast,
   services,
@@ -206,9 +207,13 @@ export function FlashcardLessonAuthoring({
                 step="2"
                 title="Flashcards"
                 description="Manage the flashcard set and its learning cards."
-                summary="Current cards and imports"
-                state="complete"
-                stateLabel="Editor ready"
+                summary={
+                  flashcardSetReady
+                    ? "Current cards and imports"
+                    : "Save the lesson before adding cards"
+                }
+                state={flashcardSetReady ? "complete" : "incomplete"}
+                stateLabel={flashcardSetReady ? "Editor ready" : "Save required"}
                 expanded={expandedSection === "material"}
                 onToggle={() =>
                   setExpandedSection((current) =>
@@ -216,31 +221,40 @@ export function FlashcardLessonAuthoring({
                   )
                 }
               >
-                <div className="flashcard-section-tabs" role="tablist">
-                  <span
-                    id="flashcard-current-tab"
-                    role="tab"
-                    aria-selected="true"
-                    aria-controls="flashcard-current-panel"
-                    className="flashcard-section-tabs__tab is-active"
-                  >
-                    Current Flashcards
-                  </span>
-                </div>
-                <FlashcardLessonEditor
-                  courseId={courseId}
-                  lessonId={lessonId}
-                  initialSetId={initialFlashcardSetId}
-                  defaultTitle={title}
-                  defaultModuleId={defaultFlashcardModuleId}
-                  activeSection="current"
-                  showToast={showToast}
-                  flashcardService={services.flashcardService}
-                  stagingEnabled={features.flashcardStaging !== false}
-                />
+                {flashcardSetReady ? (
+                  <>
+                    <div className="flashcard-section-tabs" role="tablist">
+                      <span
+                        id="flashcard-current-tab"
+                        role="tab"
+                        aria-selected="true"
+                        aria-controls="flashcard-current-panel"
+                        className="flashcard-section-tabs__tab is-active"
+                      >
+                        Current Flashcards
+                      </span>
+                    </div>
+                    <FlashcardLessonEditor
+                      courseId={courseId}
+                      lessonId={lessonId}
+                      initialSetId={initialFlashcardSetId}
+                      defaultTitle={title}
+                      defaultModuleId={defaultFlashcardModuleId}
+                      activeSection="current"
+                      showToast={showToast}
+                      flashcardService={services.flashcardService}
+                      stagingEnabled={features.flashcardStaging !== false}
+                    />
+                  </>
+                ) : (
+                  <div className="flashcard-staging__notice" role="status">
+                    Save the lesson changes first. The flashcard set will be
+                    created automatically, then you can add or import cards.
+                  </div>
+                )}
               </LessonEditorSection>
             </div>
-            {expandedSection === "basic" ? lessonSaveBar : null}
+            {lessonSaveBar}
           </div>
 
   );

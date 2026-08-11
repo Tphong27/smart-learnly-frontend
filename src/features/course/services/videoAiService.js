@@ -25,20 +25,14 @@ const VIDEO_AI_TIMEOUT_MS = resolveVideoAiTimeoutMs(
   import.meta.env.VITE_VIDEO_AI_TIMEOUT_MS,
 );
 
-/** Trích dữ liệu nghiệp vụ từ cấu trúc response chuẩn của API. */
-function unwrap(response) {
-  return response?.data ?? response;
-}
-
 export const videoAiService = {
   /** Gửi URL YouTube để backend tạo tóm tắt bằng AI. */
   async generateSummary(youtubeUrl) {
-    return unwrap(
-      await apiClient.post(
-        "/video-summary/generate",
-        { youtubeUrl },
-        { timeout: VIDEO_AI_TIMEOUT_MS },
-      ),
+    const response = await apiClient.post(
+      "/video-summary/generate",
+      { youtubeUrl },
+      { timeout: VIDEO_AI_TIMEOUT_MS },
     );
+    return response?.data ?? response;
   },
 };

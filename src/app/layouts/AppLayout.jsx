@@ -13,6 +13,7 @@ import {
 } from "@/shared/constants/roles";
 import "./AppLayout.css";
 
+/** Hiển thị application shell phù hợp với role và giữ navigation nhất quán. */
 export function AppLayout() {
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [sidebarCollapsed, setSidebarCollapsed] = useState(() =>
@@ -34,10 +35,6 @@ export function AppLayout() {
         ROLES.SME,
         ROLES.TMO,
     ]);
-    const searchParams = new URLSearchParams(location.search);
-    const isCurriculumPage = /\/courses\/[^/]+\/content\/?$/.test(location.pathname);
-    const focusMode = isCurriculumPage && searchParams.get("focus") === "1";
-
     const workspaceLabel = (() => {
         const path = location.pathname;
         if (/\/courses\/[^/]+\/questions/.test(path)) return "Course Questions";
@@ -71,6 +68,7 @@ export function AppLayout() {
         };
     }, [sidebarOpen]);
 
+    /** Thu gọn hoặc mở sidebar và ghi nhớ lựa chọn của người dùng. */
     function handleToggleCollapsed() {
         setSidebarCollapsed((current) => {
             const next = !current;
@@ -82,6 +80,7 @@ export function AppLayout() {
         });
     }
 
+    /** Đăng xuất rồi luôn đưa người dùng về trang login. */
     async function handleLogout() {
         try {
             await authService.logout();
@@ -90,13 +89,13 @@ export function AppLayout() {
         }
     }
 
-    if (usesHorizontalStaffLayout && !focusMode) {
+    if (usesHorizontalStaffLayout) {
         return <TrainerLayout />;
     }
 
     return (
         <LayoutBackground
-            className={`app-layout-shell${sidebarCollapsed ? " app-layout-shell--sidebar-collapsed" : ""}${focusMode ? " app-layout-shell--focus" : ""}`}
+            className={`app-layout-shell${sidebarCollapsed ? " app-layout-shell--sidebar-collapsed" : ""}`}
         >
             <a className="app-skip-link" href="#app-main-content">
                 Skip to main content

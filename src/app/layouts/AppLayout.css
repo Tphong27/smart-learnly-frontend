@@ -368,22 +368,6 @@
     padding: 0;
 }
 
-/* Focus mode keeps curriculum controls visible while removing shell chrome. */
-.app-layout-shell--focus {
-    display: block;
-}
-
-.app-layout-shell--focus > .app-sidebar,
-.app-layout-shell--focus > .app-sidebar-overlay,
-.app-layout-shell--focus .app-header--embedded {
-    display: none;
-}
-
-.app-layout-shell--focus .app-layout-shell__workspace {
-    display: block;
-    min-height: 100dvh;
-}
-
 /* --- Responsive --- */
 @media (max-width: 1024px) {
     .app-layout-shell,
@@ -462,9 +446,6 @@
         display: none;
     }
 
-    .app-layout-shell--focus .app-layout-shell__workspace {
-        display: block;
-    }
 }
 
 @media (max-width: 700px) {

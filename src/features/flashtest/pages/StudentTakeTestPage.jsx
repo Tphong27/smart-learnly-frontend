@@ -1,6 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Client } from "@stomp/stompjs";
-import { useLocation, useNavigate, useParams } from "react-router-dom";
+import {
+  useLocation,
+  useNavigate,
+  useParams,
+  useSearchParams,
+} from "react-router-dom";
 import {
   ArrowLeft,
   CheckCircle,
@@ -154,6 +159,7 @@ export function StudentTakeTestPage({
   const { id, type } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
   const normalizedType =
     type === "assignment" || type === "essay" ? "essay" : "mcq";
   const student = getStudent();
@@ -175,7 +181,8 @@ export function StudentTakeTestPage({
   const [activeQuestionIndex, setActiveQuestionIndex] = useState(0);
   const effectiveListPath = location.state?.resultBackPath || listPath;
   const resultKicker = location.state?.resultKicker || defaultResultKicker;
-  const contextClassId = location.state?.classId || null;
+  const contextClassId =
+    location.state?.classId || searchParams.get("classId") || null;
 
   const accessCode =
     location.state?.accessCode ||
@@ -186,17 +193,23 @@ export function StudentTakeTestPage({
     (attemptResult, { replace = false } = {}) => {
       const resultAttemptId = attemptResult?.id || attemptResult?.attemptId;
       if (!resultAttemptId) return;
-      navigate(`${resultDetailPath}/${id}/${resultAttemptId}`, {
-        replace,
-        state: {
-          attempt: attemptResult,
-          studentName: student.name,
-          backPath: effectiveListPath,
-          resultKicker,
-          resultMode: location.state?.resultMode || null,
-          classId: contextClassId,
+      const resultParams = new URLSearchParams();
+      if (contextClassId) resultParams.set("classId", contextClassId);
+      const resultQuery = resultParams.toString();
+      navigate(
+        `${resultDetailPath}/${id}/${resultAttemptId}${resultQuery ? `?${resultQuery}` : ""}`,
+        {
+          replace,
+          state: {
+            attempt: attemptResult,
+            studentName: student.name,
+            backPath: effectiveListPath,
+            resultKicker,
+            resultMode: location.state?.resultMode || null,
+            classId: contextClassId,
+          },
         },
-      });
+      );
     },
     [
       contextClassId,
