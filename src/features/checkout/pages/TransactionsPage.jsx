@@ -17,8 +17,6 @@ import "../checkout.css";
 
 const EMPTY_FILTER_OPTIONS = {
   statuses: [],
-  paymentGateways: [],
-  currencies: [],
 };
 
 export function TransactionsPage({ mode = "personal" }) {
@@ -28,14 +26,11 @@ export function TransactionsPage({ mode = "personal" }) {
 
   const [keyword, setKeyword] = useState("");
   const [status, setStatus] = useState("");
-  const [paymentGateway, setPaymentGateway] = useState("");
-  const [currency, setCurrency] = useState("");
 
   const normalizedKeyword = keyword.trim();
   const debouncedKeyword = useDebouncedValue(normalizedKeyword);
 
   const [filterOptions, setFilterOptions] = useState(EMPTY_FILTER_OPTIONS);
-  const [filterOptionsLoading, setFilterOptionsLoading] = useState(true);
 
   const [items, setItems] = useState([]);
   const [page, setPage] = useState(0);
@@ -47,9 +42,7 @@ export function TransactionsPage({ mode = "personal" }) {
   const [error, setError] = useState("");
   const [invoiceTarget, setInvoiceTarget] = useState(null);
 
-  const hasFilters = Boolean(
-    normalizedKeyword || status || paymentGateway || currency,
-  );
+  const hasFilters = Boolean(normalizedKeyword || status);
 
   useEffect(() => {
     let cancelled = false;
@@ -65,10 +58,6 @@ export function TransactionsPage({ mode = "personal" }) {
 
         setFilterOptions({
           statuses: Array.isArray(data?.statuses) ? data.statuses : [],
-          paymentGateways: Array.isArray(data?.paymentGateways)
-            ? data.paymentGateways
-            : [],
-          currencies: Array.isArray(data?.currencies) ? data.currencies : [],
         });
       } catch (requestError) {
         if (cancelled) {
@@ -87,10 +76,6 @@ export function TransactionsPage({ mode = "personal" }) {
             "Error fetching transaction filter options:",
             requestError,
           );
-        }
-      } finally {
-        if (!cancelled) {
-          setFilterOptionsLoading(false);
         }
       }
     }
@@ -116,8 +101,6 @@ export function TransactionsPage({ mode = "personal" }) {
           size: pageSize,
           keyword: debouncedKeyword || undefined,
           status: status || undefined,
-          paymentGateway: paymentGateway || undefined,
-          currency: currency || undefined,
         };
 
         const data =
@@ -172,13 +155,11 @@ export function TransactionsPage({ mode = "personal" }) {
       cancelled = true;
     };
   }, [
-    currency,
     debouncedKeyword,
     isManagement,
     normalizedKeyword,
     pageRequest,
     pageSize,
-    paymentGateway,
     status,
     toast,
   ]);
@@ -204,8 +185,6 @@ export function TransactionsPage({ mode = "personal" }) {
     prepareRequestChange();
     setKeyword("");
     setStatus("");
-    setPaymentGateway("");
-    setCurrency("");
     setPageRequest(0);
   }
 
@@ -246,45 +225,6 @@ export function TransactionsPage({ mode = "personal" }) {
                 aria-label="Search transactions"
                 onChange={handleKeywordChange}
               />
-            </span>
-          </label>
-          <label className="course-management__field">
-            <span className="course-management__control course-management__select">
-              <select
-                value={paymentGateway}
-                disabled={filterOptionsLoading}
-                onChange={(event) =>
-                  changeFilter(setPaymentGateway, event.target.value)
-                }
-              >
-                <option value="">All gateways</option>
-
-                {filterOptions.paymentGateways.map((gateway) => (
-                  <option key={gateway} value={gateway}>
-                    {formatLabel(gateway)}
-                  </option>
-                ))}
-              </select>
-            </span>
-          </label>
-
-          <label className="course-management__field">
-            <span className="course-management__control course-management__select">
-              <select
-                value={currency}
-                disabled={filterOptionsLoading}
-                onChange={(event) =>
-                  changeFilter(setCurrency, event.target.value)
-                }
-              >
-                <option value="">All currencies</option>
-
-                {filterOptions.currencies.map((currencyOption) => (
-                  <option key={currencyOption} value={currencyOption}>
-                    {currencyOption}
-                  </option>
-                ))}
-              </select>
             </span>
           </label>
 

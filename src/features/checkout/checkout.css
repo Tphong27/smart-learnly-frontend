@@ -398,8 +398,38 @@
    ========================================================= */
 
 .transaction-page .course-management__filters {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 16px;
+
   padding: 20px 20px 16px;
   border-bottom: 1px solid var(--sl-line-soft, #e8eaed);
+}
+
+.transaction-page
+  .course-management__filters
+  .course-management__field--search {
+  width: 100%;
+  min-width: 0;
+  max-width: none;
+}
+
+.transaction-page
+  .course-management__filters
+  .course-management__search {
+  width: 100%;
+  min-width: 0;
+  max-width: none;
+  box-sizing: border-box;
+}
+
+.transaction-page
+  .course-management__filters
+  .course-management__search input {
+  flex: 1 1 auto;
+  width: 100%;
+  min-width: 0;
 }
 
 /* =========================================================
