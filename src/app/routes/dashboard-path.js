@@ -77,7 +77,11 @@ export function isPathAllowedForRole(pathname, role) {
   ];
 
   for (const { prefix, match, allow } of restrictedPrefixes) {
-    if (match ? match.test(pathname) : pathname === prefix || pathname.startsWith(`${prefix}/`)) {
+    if (
+      match
+        ? match.test(pathname)
+        : pathname === prefix || pathname.startsWith(`${prefix}/`)
+    ) {
       return isRoleAllowed(normalizedRole, allow);
     }
   }

@@ -5,7 +5,7 @@ import { ROLES } from "@/shared/constants/roles";
 import { TraineeLayout } from "../layouts/TraineeLayout";
 import {
   CheckoutPage,
-  MyTransactionsPage,
+  TransactionsPage,
   PaymentResultPage,
 } from "@/features/checkout";
 import { MyEnrollmentsPage } from "@/features/enrollment";
@@ -17,9 +17,7 @@ import {
   TraineeTestTakePage,
   TestAttemptDetailPage,
 } from "@/features/flashtest";
-import {
-  CourseListPage,
-} from "@/features/course";
+import { CourseListPage } from "@/features/course";
 import { LearningWorkspacePage } from "@/features/learning";
 import { TraineeDashboardPage } from "@/features/dashboard";
 import { OpeningSchedulePage } from "@/features/opening-schedule";
@@ -82,7 +80,10 @@ function getTraineeRoutes() {
               ),
             },
             { path: "enrollments", element: <MyEnrollmentsPage /> },
-            { path: "transactions", element: <MyTransactionsPage /> },
+            {
+              path: "transactions",
+              element: <TransactionsPage mode="personal" />,
+            },
             {
               path: "progress",
               element: <Navigate to="/dashboard" replace />,

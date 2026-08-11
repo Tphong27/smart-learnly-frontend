@@ -2,7 +2,13 @@ import apiClient from "@/services/api-client";
 import { toNumber } from "@/shared/utils/formatters";
 
 const SUCCESS_STATUSES = ["SUCCESS", "PAID", "MATCHED"];
-const PROBLEM_STATUSES = ["FAILED", "EXPIRED", "CANCELLED", "MISMATCHED", "REFUNDED"];
+const PROBLEM_STATUSES = [
+  "FAILED",
+  "EXPIRED",
+  "CANCELLED",
+  "MISMATCHED",
+  "REFUNDED",
+];
 const FINAL_STATUSES = [...SUCCESS_STATUSES, ...PROBLEM_STATUSES];
 
 /** Chuẩn hóa trạng thái để việc so sánh không phụ thuộc chữ hoa/thường. */
@@ -117,29 +123,57 @@ export const checkoutService = {
     return normalizeOrderPayment(response);
   },
 
-  /** Tải lịch sử giao dịch của người dùng hiện tại theo phân trang và bộ lọc. */
-  async listTransactions({ page = 0, size = 20, keyword, status } = {}) {
+  /** Tải giao dịch theo quyền người dùng hiện tại và các bộ lọc được hỗ trợ. */
+  async listTransactions({
+    page = 0,
+    size = 20,
+    keyword,
+    status,
+    paymentGateway,
+    currency,
+  } = {}) {
     const response = await apiClient.get("/transactions", {
       params: {
         page,
         size,
         keyword: keyword || undefined,
         status: status || undefined,
+        paymentGateway: paymentGateway || undefined,
+        currency: currency || undefined,
       },
     });
 
-    return unwrap(response) || {
-      items: [],
-      page: 0,
-      size,
-      totalItems: 0,
-      totalPages: 0,
+    return (
+      unwrap(response) || {
+        items: [],
+        page: 0,
+        size,
+        totalItems: 0,
+        totalPages: 0,
+      }
+    );
+  },
+
+  /** Tải các giá trị bộ lọc giao dịch đang có. */
+  async getTransactionFilterOptions() {
+    const response = await apiClient.get("/transactions/filter-options");
+
+    const data = unwrap(response);
+
+    return {
+      statuses: Array.isArray(data?.statuses) ? data.statuses : [],
+      paymentGateways: Array.isArray(data?.paymentGateways)
+        ? data.paymentGateways
+        : [],
+      currencies: Array.isArray(data?.currencies) ? data.currencies : [],
     };
   },
 
   /** Tải dữ liệu hóa đơn của một giao dịch đã thanh toán thành công. */
   async getInvoice(transactionId) {
-    const response = await apiClient.get(`/transactions/${transactionId}/invoice`);
+    const response = await apiClient.get(
+      `/transactions/${transactionId}/invoice`,
+    );
     return unwrap(response);
   },
 };

@@ -1,3 +1,7 @@
+/* =========================================================
+   1. Checkout page layout and header
+   ========================================================= */
+
 .checkout-page {
   width: min(1180px, calc(100% - 48px));
   margin: 0 auto;
@@ -17,6 +21,7 @@
 
 .checkout-page__header h1 {
   margin: 4px 0 6px;
+
   color: var(--ink, #2d2f31);
   font-size: clamp(28px, 3vw, 36px);
   font-weight: 800;
@@ -26,6 +31,7 @@
 
 .checkout-page__header p {
   margin: 0;
+
   color: var(--muted, #6a6f73);
   font-size: 15px;
   line-height: 1.5;
@@ -52,6 +58,11 @@
   align-items: start;
   gap: 24px;
 }
+
+
+/* =========================================================
+   2. Payment instruction and QR code
+   ========================================================= */
 
 .payment-instruction-card,
 .checkout-summary {
@@ -80,6 +91,7 @@
 .payment-instruction-card__header h2,
 .checkout-summary h2 {
   margin: 0;
+
   color: var(--ink, #2d2f31);
   font-size: 24px;
   font-weight: 800;
@@ -88,6 +100,7 @@
 
 .payment-instruction-card__header p {
   margin: 6px 0 0;
+
   color: var(--muted, #6a6f73);
   font-size: 15px;
   line-height: 1.5;
@@ -122,6 +135,7 @@
   width: 100%;
   max-width: 340px;
   height: auto;
+
   object-fit: contain;
 }
 
@@ -130,6 +144,11 @@
   font-size: 14px;
   text-align: center;
 }
+
+
+/* =========================================================
+   3. Payment information
+   ========================================================= */
 
 .payment-instruction-card__info {
   min-width: 0;
@@ -194,6 +213,7 @@
 
   background: var(--sl-purple-soft, #f3f0fa);
   color: var(--primary, #5624d0);
+
   cursor: pointer;
 }
 
@@ -206,6 +226,11 @@
   outline: 2px solid var(--primary, #5624d0);
   outline-offset: 2px;
 }
+
+
+/* =========================================================
+   4. Checkout order summary
+   ========================================================= */
 
 .checkout-summary {
   position: sticky;
@@ -260,9 +285,13 @@
   line-height: 1.5;
 }
 
+
+/* =========================================================
+   5. Checkout warning, loading and error states
+   ========================================================= */
+
 .checkout-warning {
   padding: 14px 16px;
-
   border: 1px solid #ead28c;
   border-radius: 8px;
 
@@ -275,7 +304,6 @@
 
 .checkout-page__state {
   padding: 32px 24px;
-
   border: 1px solid var(--line, #d1d7dc);
   border-radius: 8px;
 
@@ -290,7 +318,11 @@
   color: var(--sl-danger, #b91c1c);
 }
 
-/* Transaction pages inside checkout feature */
+
+/* =========================================================
+   6. Legacy transaction history containers
+   ========================================================= */
+
 .checkout-history-page {
   width: min(1180px, calc(100% - 48px));
   margin: 0 auto;
@@ -314,7 +346,191 @@
   min-width: 760px;
 }
 
-/* Admin order page */
+
+/* =========================================================
+   7. Shared transaction page layout
+   ========================================================= */
+
+.transaction-page {
+  width: 100%;
+  min-height: 100%;
+  padding: 24px;
+
+  color: var(--ink, #2d2f31);
+}
+
+.transaction-page__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  margin-bottom: 20px;
+}
+
+.transaction-page__header h1 {
+  margin: 0;
+
+  color: var(--ink, #2d2f31);
+  font-size: 28px;
+  font-weight: 800;
+  line-height: 1.25;
+}
+
+
+/* =========================================================
+   8. Transaction panel and outer border
+   ========================================================= */
+
+.transaction-page__panel {
+  width: 100%;
+  overflow: hidden;
+
+  border: 1px solid var(--line, #d1d7dc);
+  border-radius: 8px;
+
+  background: #fff;
+  box-shadow: none;
+}
+
+
+/* =========================================================
+   9. Transaction filters
+   ========================================================= */
+
+.transaction-page .course-management__filters {
+  padding: 20px 20px 16px;
+  border-bottom: 1px solid var(--sl-line-soft, #e8eaed);
+}
+
+/* =========================================================
+   10. Transaction status tabs and result count
+   ========================================================= */
+
+.transaction-page .course-management__status-bar {
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--sl-line-soft, #e8eaed);
+}
+
+.transaction-page__result-count {
+  flex-shrink: 0;
+  margin: 0;
+
+  color: var(--muted, #6a6f73);
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.transaction-page__result-count strong {
+  color: var(--ink, #2d2f31);
+}
+
+
+/* =========================================================
+   11. Transaction table
+   ========================================================= */
+
+.transaction-page .course-management__table-wrap {
+  width: 100%;
+  min-height: 220px;
+  overflow-x: auto;
+
+  border-top: 1px solid var(--sl-line-soft, #e8eaed);
+}
+
+.transaction-page .history-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.transaction-page .history-table {
+  width: 100%;
+  min-width: 760px;
+
+  border-collapse: collapse;
+  border-spacing: 0;
+}
+
+.transaction-page .history-table th,
+.transaction-page .history-table td {
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--sl-line-soft, #e8eaed);
+
+  text-align: left;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.transaction-page .history-table th {
+  background: var(--surface, #f7f9fa);
+  color: var(--muted, #6a6f73);
+
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.transaction-page .history-table td {
+  color: #344054;
+  font-size: 14px;
+}
+
+.transaction-page .history-table tbody tr:hover {
+  background: #fafbfc;
+}
+
+.transaction-page .history-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+
+/* =========================================================
+   12. Transaction table content and actions
+   ========================================================= */
+
+.transaction-page__meta {
+  margin-top: 4px;
+
+  color: #98a2b3;
+  font-size: 12px;
+}
+
+.transaction-page__action-cell {
+  text-align: right !important;
+}
+
+.transaction-page__action-btn {
+  white-space: nowrap;
+}
+
+.transaction-page__empty-value {
+  color: #98a2b3;
+}
+
+
+/* =========================================================
+   13. Transaction loading, empty and error states
+   ========================================================= */
+
+.transaction-page .course-management__state {
+  min-height: 220px;
+  padding: 32px 20px;
+}
+
+
+/* =========================================================
+   14. Transaction pagination
+   ========================================================= */
+
+.transaction-page .pagination {
+  padding: 16px 20px;
+}
+
+
+/* =========================================================
+   15. Admin order management page
+   ========================================================= */
+
 .checkout-admin-page {
   width: min(1440px, calc(100% - 48px));
   margin: 0 auto;
@@ -334,7 +550,6 @@
 
 .checkout-admin-page__card {
   overflow-x: auto;
-
   border: 1px solid var(--line, #d1d7dc);
   border-radius: 8px;
   background: #fff;
@@ -362,6 +577,15 @@
   text-transform: uppercase;
 }
 
+.checkout-admin-page .data-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+
+/* =========================================================
+   16. Responsive styles — tablets
+   ========================================================= */
+
 @media (max-width: 1024px) {
   .checkout-page,
   .checkout-history-page,
@@ -382,7 +606,41 @@
   .checkout-summary {
     position: static;
   }
+
+  .transaction-page {
+    padding: 18px;
+  }
+
+  .transaction-page .course-management__filters {
+    grid-template-columns: 1fr;
+  }
+
+  .transaction-page .course-management__status-bar {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 12px;
+  }
 }
+
+@media (max-width: 760px) {
+  .payment-instruction-card__body {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+
+  .vietqr-box {
+    min-height: 320px;
+  }
+
+  .vietqr-box img {
+    max-width: 320px;
+  }
+}
+
+
+/* =========================================================
+   17. Responsive styles — mobile
+   ========================================================= */
 
 @media (max-width: 640px) {
   .checkout-page,
@@ -419,20 +677,17 @@
   .checkout-summary__row > strong {
     max-width: 62%;
   }
-}
 
-@media (max-width: 760px) {
-  .payment-instruction-card__body {
-    grid-template-columns: 1fr;
-    gap: 24px;
+  .transaction-page {
+    padding: 14px;
   }
 
-  .vietqr-box {
-    min-height: 320px;
+  .transaction-page__header h1 {
+    font-size: 24px;
   }
 
-  .vietqr-box img {
-    max-width: 320px;
+  .transaction-page__panel {
+    border-radius: 8px;
   }
 }
 
