@@ -192,6 +192,11 @@ function normalizeProgressPayload(payload, fallbackResult) {
   };
 }
 
+function isLessonCompletedPayload(payload) {
+  const data = payload?.data ?? payload ?? {};
+  return data.lessonCompleted === true;
+}
+
 function applyProgressToCards(cards, cardId, savedProgress) {
   const targetKey = cardKey(cardId);
   return cards.map((card) =>
@@ -595,17 +600,6 @@ export function FlashcardPractice({
     setActiveCardForFilter,
   ]);
 
-  const allCardsKnown = useMemo(
-    () => cards.length > 0 && cards.every((card) => progressStatus(card) === "known"),
-    [cards],
-  );
-
-  useEffect(() => {
-    if (!canTrackProgress || !lessonId || completionNotified || !allCardsKnown) return;
-    setCompletionNotified(true);
-    onCompleted?.(lessonId);
-  }, [allCardsKnown, canTrackProgress, completionNotified, lessonId, onCompleted]);
-
   const progressCounts = useMemo(
     () => ({
       all: queues.all.length,
@@ -718,10 +712,12 @@ export function FlashcardPractice({
       );
 
       try {
-        const savedProgress = normalizeProgressPayload(
-          await learningService.submitFlashcardProgress(card.id, result),
+        const response = await learningService.submitFlashcardProgress(
+          card.id,
           result,
+          classId,
         );
+        const savedProgress = normalizeProgressPayload(response, result);
         const nextCards = applyProgressToCards(cardsRef.current, card.id, savedProgress);
         const nextQueues = buildQueues(nextCards);
         const nextQueue = getQueueForFilter(nextQueues, activeFilter, orderedIdsByFilter);
@@ -749,6 +745,11 @@ export function FlashcardPractice({
             closeFocusMode();
           }
         }
+
+        if (isLessonCompletedPayload(response) && !completionNotified) {
+          setCompletionNotified(true);
+          onCompleted?.(lessonId);
+        }
       } catch (error) {
         cardsRef.current = previousCards;
         setFlashcardSet((currentSet) =>
@@ -763,9 +764,13 @@ export function FlashcardPractice({
     [
       activeFilter,
       canTrackProgress,
+      classId,
+      completionNotified,
       currentQueue,
+      lessonId,
       orderedIdsByFilter,
       closeFocusMode,
+      onCompleted,
       setActiveCardForFilter,
     ],
   );

@@ -256,7 +256,7 @@ export function CourseProgressCard({ course }) {
             completed={flashcard.completed}
             total={flashcard.total}
             percent={flashcard.percent}
-            to={getScopedListPath("/flashcards", course)}
+            to={learningPath}
           />
 
           <ProgressMetric
