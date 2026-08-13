@@ -1,24 +1,4 @@
-import { getCurrentUser } from "@/services/api-client";
-
-/** Cho biết người dùng hiện tại có quyền review và xuất bản AI question draft hay không. */
-export function canReviewAiQuestionDrafts() {
-  const role = getCurrentUser()?.role;
-  return role === "ADMIN" || role === "SME";
-}
-
-/** Chuẩn hóa response curriculum thành danh sách module cho form review. */
-export function normalizeDraftModules(payload) {
-  const root = payload?.data ?? payload;
-  const items = Array.isArray(root)
-    ? root
-    : (root?.items ?? root?.content ?? root?.sections ?? []);
-  return items
-    .map((item, index) => ({
-      id: item.moduleId || item.sectionId || item.id,
-      title: item.title || item.name || `Module ${index + 1}`,
-    }))
-    .filter((item) => item.id);
-}
+import { isEmptyQuestionHtml } from "@/shared/utils/htmlSanitizer";
 
 /** Tạo nhãn dễ đọc cho loại source của AI draft batch. */
 export function sourceKindLabel(kind) {
@@ -34,23 +14,6 @@ export function formatBytes(value) {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
-
-/** Định dạng khoảng thời gian evidence transcript thành mm:ss-mm:ss. */
-export function formatEvidenceTime(startMs, endMs) {
-  if (startMs == null && endMs == null) return null;
-  return `${formatMillis(startMs)}-${formatMillis(endMs)}`;
-}
-
-/** Đổi millisecond sang chuỗi phút và giây. */
-function formatMillis(value) {
-  const seconds = Math.floor(Math.max(0, Number(value || 0)) / 1000);
-  return `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
-}
-
-/** Cho biết draft đang là bản gốc hay đã được người review chỉnh sửa. */
-export function draftEditStatusLabel(draft) {
-  return Number(draft?.version || 0) > 0 ? "Edited" : "Original";
 }
 
 /** Sắp xếp answer theo displayOrder trước khi hiển thị hoặc lưu. */
@@ -70,9 +33,7 @@ export function createAiDraftFormValues(draft) {
 
 /** Kiểm tra nội dung draft do người review chỉnh trước khi gọi API. */
 export function getDraftValidationError(values) {
-  const questionText = values.questionText.trim();
-  if (!questionText) return "Question text is required.";
-  if (!values.moduleId) return "Module is required.";
+  if (isEmptyQuestionHtml(values.questionText)) return "Question text is required.";
   const answers = sortedDraftAnswers(values);
   if (values.questionType === "single_choice" || values.questionType === "multiple_choice") {
     if (answers.length < 2 || answers.length > 6) return "MCQ needs 2 to 6 answers.";

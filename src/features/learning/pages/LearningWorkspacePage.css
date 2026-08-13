@@ -1337,16 +1337,6 @@
     min-width: 0;
 }
 
-.learning-quiz-launch__eyebrow {
-    display: block;
-    margin-bottom: 4px;
-    font-size: 0.75rem;
-    font-weight: 800;
-    letter-spacing: 0;
-    text-transform: uppercase;
-    color: #2563eb;
-}
-
 .learning-quiz-launch__body h2 {
     margin: 0;
     color: #0f172a;
@@ -2150,89 +2140,6 @@ button.assignment-file:focus-visible,
 .tab-resources__item-actions {
     color: var(--lw-text-muted);
     flex-shrink: 0;
-}
-
-/* Tab: Q&A */
-.tab-qa {
-    padding: 28px 48px;
-}
-
-.tab-qa__placeholder {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 12px;
-    padding: 48px;
-    color: var(--lw-text-faint);
-    text-align: center;
-}
-
-.tab-qa__placeholder h4 {
-    margin: 0;
-    font-size: 16px;
-    font-weight: 600;
-    color: var(--lw-text-muted);
-}
-
-.tab-qa__placeholder p {
-    margin: 0;
-    font-size: 14px;
-    max-width: 400px;
-    line-height: 1.6;
-}
-
-/* Tab: Notes */
-.tab-notes {
-    padding: 28px 48px;
-}
-
-.tab-notes__placeholder {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 8px;
-    padding: 24px 0 16px;
-    color: var(--lw-text-faint);
-    text-align: center;
-}
-
-.tab-notes__placeholder h4 {
-    margin: 0;
-    font-size: 15px;
-    font-weight: 600;
-    color: var(--lw-text-muted);
-}
-
-.tab-notes__placeholder p {
-    margin: 0;
-    font-size: 13px;
-}
-
-.tab-notes__textarea {
-    width: 100%;
-    padding: 14px 16px;
-    border: 1px solid var(--lw-border);
-    border-radius: 10px;
-    font-family: var(--lw-font);
-    font-size: 14px;
-    line-height: 1.6;
-    color: var(--lw-text);
-    background: var(--lw-surface);
-    resize: vertical;
-    box-sizing: border-box;
-    transition:
-        border-color 0.15s,
-        box-shadow 0.15s;
-}
-
-.tab-notes__textarea:focus {
-    outline: none;
-    border-color: var(--lw-accent);
-    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
-}
-
-.tab-notes__textarea::placeholder {
-    color: var(--lw-text-faint);
 }
 
 /* ─── PDF Viewer ──────────────────────────────────────────────────────────── */
@@ -3707,9 +3614,7 @@ button.assignment-file:focus-visible,
         padding: 0 16px;
     }
     .tab-overview,
-    .tab-resources,
-    .tab-qa,
-    .tab-notes {
+    .tab-resources {
         padding: 16px;
     }
     .lesson-tabs__footer {

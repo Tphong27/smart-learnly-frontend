@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { FileAudio, FileVideo, ImagePlus, Loader2, X } from 'lucide-react'
-import { useToast } from '@/shared/components/ui'
+import { IconButton, Modal, useToast } from '@/shared/components/ui'
 
 const MEDIA_CONFIG = {
   image: {
@@ -43,16 +43,19 @@ const MEDIA_CONFIG = {
   },
 }
 
+/** Lấy URL media hoặc preview cục bộ của attachment. */
 function itemUrl(item) {
   if (!item) return null
   return item.previewUrl || item.mediaUrl || item.url || null
 }
 
+/** Lấy tên attachment an toàn cho UI và accessible label. */
 function itemName(item) {
   if (!item) return 'Attachment'
   return item.fileName || item.originalFileName || item.file?.name || 'Attachment'
 }
 
+/** Quản lý một media image/audio/video cho từng answer row. */
 export function AnswerMediaRow({
   media,
   disabled,
@@ -79,16 +82,19 @@ export function AnswerMediaRow({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [media?.video?.previewUrl, media?.video?.url])
 
+  /** Mở preview video của đáp án hiện tại. */
   function openPreview() {
     const url = itemUrl(media?.video)
     if (!url) return
     setPreviewUrl(url)
   }
 
+  /** Đóng preview video. */
   function closePreview() {
     setPreviewUrl(null)
   }
 
+  /** Kiểm tra loại/kích thước và chuyển file hợp lệ cho uploader. */
   function handleFile(mediaType, event) {
     const file = event.target.files?.[0]
     event.target.value = ''
@@ -105,6 +111,7 @@ export function AnswerMediaRow({
     onUpload?.(mediaType, file)
   }
 
+  /** Hiển thị tile media theo loại cùng action loại bỏ. */
   function renderTile(mediaType, item) {
     const config = MEDIA_CONFIG[mediaType]
     const Icon = config.Icon
@@ -146,15 +153,14 @@ export function AnswerMediaRow({
           <strong>{itemName(item)}</strong>
           <span>{config.label}{item.uploading ? ' / Uploading...' : ''}</span>
         </div>
-        <button
-          type="button"
+        <IconButton
+          icon={<X size={14} />}
+          label={`Remove ${config.label.toLowerCase()}`}
+          variant="danger"
           className="answer-media-tile__remove admin-table__icon-btn admin-table__icon-btn--danger"
           disabled={disabled}
           onClick={() => onRemove?.(mediaType, item)}
-          aria-label={`Remove ${config.label.toLowerCase()}`}
-        >
-          <X size={14} />
-        </button>
+        />
       </div>
     )
   }
@@ -194,21 +200,24 @@ export function AnswerMediaRow({
           {renderTile('video', media?.video)}
         </div>
       ) : null}
-      {previewUrl ? (
-        <div className="answer-media-preview-overlay" role="dialog" aria-modal="true">
-          <button
-            type="button"
-            className="answer-media-preview-overlay__close"
-            onClick={closePreview}
-            aria-label="Close preview"
+      <Modal
+        open={Boolean(previewUrl)}
+        title="Answer video preview"
+        size="xl"
+        onClose={closePreview}
+      >
+        {previewUrl ? (
+          <video
+            className="answer-media-preview-video"
+            controls
+            autoPlay
+            preload="metadata"
+            src={previewUrl}
           >
-            <X size={18} />
-          </button>
-          <video controls autoPlay preload="metadata" src={previewUrl}>
             <track kind="captions" />
           </video>
-        </div>
-      ) : null}
+        ) : null}
+      </Modal>
     </div>
   )
 }

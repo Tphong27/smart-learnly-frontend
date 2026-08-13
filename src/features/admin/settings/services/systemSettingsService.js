@@ -1,9 +1,5 @@
 import apiClient from '@/services/api-client'
-
-/** Lấy payload cấu hình ra khỏi ApiResponse của backend. */
-function unwrap(response) {
-  return response?.data ?? response
-}
+import { unwrapApiData as unwrap } from '@/services/api-response'
 
 export const systemSettingsService = {
   /** Tải cấu hình gửi email dành cho admin. */

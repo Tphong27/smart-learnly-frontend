@@ -1,8 +1,5 @@
 import apiClient from './api-client'
-
-function unwrap(response) {
-  return response?.data ?? response
-}
+import { unwrapApiData as unwrap } from './api-response'
 
 function cleanParams(params = {}) {
   return Object.fromEntries(

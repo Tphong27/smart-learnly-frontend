@@ -1,17 +1,6 @@
 import apiClient from "@/services/api-client";
-
-// Bóc payload flashcard trong ApiResponse backend.
-function unwrapData(response) {
-  const root = response?.data ?? response;
-  return root?.data ?? root;
-}
-
-// Chặn request thiếu định danh trước khi tạo URL API.
-function requireId(value, label) {
-  if (!value) {
-    throw new Error(`${label} is required`);
-  }
-}
+import { unwrapNestedApiData as unwrapData } from "@/services/api-response";
+import { requireTrainerResourceId } from "./trainerServiceUtils";
 
 // Đọc set ID từ các biến thể response flashcard hiện tại.
 function readSetId(payload) {
@@ -21,8 +10,8 @@ function readSetId(payload) {
 
 // Tạo service flashcard giới hạn theo lớp/lesson và ghi nhớ set đang mở.
 export function createTrainerFlashcardService(classId, lessonId) {
-  requireId(classId, "Class ID");
-  requireId(lessonId, "Lesson ID");
+  requireTrainerResourceId(classId, "Class ID");
+  requireTrainerResourceId(lessonId, "Lesson ID");
 
   const basePath = `/trainer/classes/${classId}/curriculum/lessons/${lessonId}/flashcards`;
   let activeSetId = null;
@@ -37,7 +26,7 @@ export function createTrainerFlashcardService(classId, lessonId) {
   // Ưu tiên set ID tường minh, nếu thiếu thì dùng set gần nhất đã tải.
   function resolveSetId(explicitSetId) {
     const setId = explicitSetId || activeSetId;
-    requireId(setId, "Flashcard set ID");
+    requireTrainerResourceId(setId, "Flashcard set ID");
     return setId;
   }
 
@@ -50,11 +39,15 @@ export function createTrainerFlashcardService(classId, lessonId) {
       return data;
     },
 
-    // Tải một flashcard set theo ID trong phạm vi lesson trainer.
+    // Xác minh cache set bằng endpoint lesson-scoped vì backend không có GET theo set ID.
     async getAdminSet(setId) {
       const resolved = resolveSetId(setId);
-      const response = await apiClient.get(`${basePath}/set/${resolved}`);
+      const response = await apiClient.get(`${basePath}/set`);
       const data = unwrapData(response);
+      const loadedSetId = readSetId(data);
+      if (loadedSetId && loadedSetId !== resolved) {
+        throw new Error("The cached flashcard set does not belong to this lesson.");
+      }
       rememberSet(data);
       return data;
     },
@@ -99,7 +92,7 @@ export function createTrainerFlashcardService(classId, lessonId) {
 
     // Cập nhật card trong set đang mở.
     async updateCard(cardId, payload) {
-      requireId(cardId, "Flashcard card ID");
+      requireTrainerResourceId(cardId, "Flashcard card ID");
       const resolved = resolveSetId();
       const response = await apiClient.patch(
         `${basePath}/set/${resolved}/cards/${cardId}`,
@@ -110,7 +103,7 @@ export function createTrainerFlashcardService(classId, lessonId) {
 
     // Xóa card khỏi set đang mở.
     async deleteCard(cardId) {
-      requireId(cardId, "Flashcard card ID");
+      requireTrainerResourceId(cardId, "Flashcard card ID");
       const resolved = resolveSetId();
       await apiClient.delete(`${basePath}/set/${resolved}/cards/${cardId}`);
       return true;
@@ -126,6 +119,18 @@ export function createTrainerFlashcardService(classId, lessonId) {
       const data = unwrapData(response);
       rememberSet(data);
       return data;
+    },
+
+    // Tải ảnh card lên endpoint được kiểm tra quyền theo class và lesson.
+    async uploadImage(setId, file) {
+      const resolved = resolveSetId(setId);
+      const formData = new FormData();
+      formData.append("file", file);
+      const response = await apiClient.post(
+        `${basePath}/set/${resolved}/images`,
+        formData,
+      );
+      return unwrapData(response);
     },
   };
 }

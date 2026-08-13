@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { CloudUpload, FileText, File as FileIcon } from "lucide-react";
+import { FileText, File as FileIcon, Loader2 } from "lucide-react";
 import { courseContentService } from "../../services/courseContentService";
 import {
   MATERIAL_DOC_EXTENSIONS,
@@ -22,15 +22,18 @@ export function PdfMaterialUploader({
   const [uploading, setUploading] = useState(false);
   const [pendingFile, setPendingFile] = useState(null);
 
+  /** Chuyển kết quả upload thành toast theo API chung của lesson editor. */
   const emitToast = (message, type) => {
     if (typeof showToast === "function") showToast(message, type);
   };
 
+  /** Đồng bộ trạng thái upload cục bộ với trạng thái khóa form ở component cha. */
   const setBusy = (value) => {
     setUploading(value);
     if (typeof onBusyChange === "function") onBusyChange(value);
   };
 
+  /** Kiểm tra định dạng và kích thước trước khi gửi tài liệu lên backend. */
   const doUpload = async (file) => {
     const extension = getFileExtension(file.name);
     if (!MATERIAL_DOC_EXTENSIONS.includes(extension)) {
@@ -63,7 +66,9 @@ export function PdfMaterialUploader({
     }
   };
 
+  /** Cho phép khu vực upload nhận file bằng thao tác kéo thả. */
   const handleDragOver = (e) => e.preventDefault();
+  /** Nhận file đầu tiên được thả vào khu vực tài liệu. */
   const handleDrop = (e) => {
     e.preventDefault();
     if (
@@ -75,6 +80,7 @@ export function PdfMaterialUploader({
       doUpload(e.dataTransfer.files[0]);
     }
   };
+  /** Nhận file được chọn từ hộp thoại hệ thống. */
   const handleSelect = (e) => {
     if (e.target.files && e.target.files.length > 0) {
       doUpload(e.target.files[0]);
@@ -82,6 +88,7 @@ export function PdfMaterialUploader({
     }
   };
 
+  /** Lấy tên file dễ đọc từ URL tài liệu đã lưu. */
   const getFileNameFromUrl = (url) => {
     if (!url) return "";
     return url.substring(url.lastIndexOf("/") + 1);
@@ -90,84 +97,47 @@ export function PdfMaterialUploader({
   const hasFile = Boolean(pendingFile || attachmentUrl);
 
   return (
-    <div
+    <div className="sl-document-uploader">
+      <button
+      type="button"
+      className={`sl-document-uploader__dropzone${hasFile ? " is-ready" : ""}`}
       onDragOver={handleDragOver}
       onDrop={handleDrop}
       onClick={() => !uploading && !disabled && inputRef.current?.click()}
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        justifyContent: "center",
-        alignItems: "center",
-        gap: "16px",
-        height: "300px",
-        borderRadius: "16px",
-        border: hasFile ? "2px solid #10b981" : "2px dashed #cbd5e1",
-        backgroundColor: hasFile ? "#f0fdf4" : "#fff",
-        cursor: uploading || disabled ? "wait" : "pointer",
-        textAlign: "center",
-        padding: "40px",
-      }}
+      disabled={uploading || disabled}
+      aria-describedby="lesson-document-upload-help"
     >
       {uploading ? (
         <>
-          <CloudUpload size={48} color="#2563eb" />
-          <p style={{ margin: 0, color: "#2563eb" }}>Uploading...</p>
+          <Loader2 className="animate-spin" size={28} aria-hidden="true" />
+          <strong>Uploading document...</strong>
         </>
       ) : hasFile ? (
         <>
-          <FileIcon size={48} color="#10b981" />
-          <p
-            style={{
-              margin: 0,
-              fontSize: "16px",
-              fontWeight: "600",
-              color: "#065f46",
-            }}
-          >
+          <FileIcon size={28} aria-hidden="true" />
+          <strong>
             {pendingFile ? pendingFile.name : getFileNameFromUrl(attachmentUrl)}
-          </p>
-          <p style={{ margin: 0, fontSize: "13px", color: "#059669" }}>
-            Click to replace
-          </p>
+          </strong>
+          <span>Document uploaded · Click to replace</span>
         </>
       ) : (
         <>
-          <div
-            style={{
-              width: "48px",
-              height: "48px",
-              backgroundColor: "#e2e8f0",
-              borderRadius: "12px",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <FileText size={24} color="#64748b" />
-          </div>
-          <p
-            style={{
-              margin: 0,
-              fontSize: "16px",
-              fontWeight: "600",
-              color: "#1e293b",
-            }}
-          >
-            Drag and drop or{" "}
-            <span style={{ color: "#2563eb", fontWeight: 700 }}>Browse</span>
-          </p>
-          <p style={{ margin: 0, fontSize: "12px", color: "#64748b" }}>
-            PDF, DOC, DOCX (max 50MB)
-          </p>
+          <FileText size={28} aria-hidden="true" />
+          <strong>Upload document</strong>
+          <span>Drag and drop or browse your device</span>
         </>
       )}
+      </button>
+      <p id="lesson-document-upload-help" className="sl-document-uploader__help">
+        PDF, DOC, or DOCX · Maximum 50 MB
+      </p>
       <input
         type="file"
         ref={inputRef}
         onChange={handleSelect}
         disabled={uploading || disabled}
-        style={{ display: "none" }}
+        className="sl-material-visually-hidden"
+        tabIndex={-1}
         accept=".pdf,.doc,.docx"
       />
     </div>

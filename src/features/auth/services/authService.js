@@ -2,11 +2,7 @@ import apiClient, {
   clearAuthSession,
   setAuthSession,
 } from '@/services/api-client'
-
-/** Lấy payload nghiệp vụ ra khỏi ApiResponse của backend. */
-function unwrap(response) {
-  return response?.data ?? response
-}
+import { unwrapApiData as unwrap } from '@/services/api-response'
 
 export const authService = {
   /** Đăng ký tài khoản mới và bắt đầu luồng xác thực email. */

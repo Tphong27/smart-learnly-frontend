@@ -1,6 +1,11 @@
 import { useState } from "react";
 import { RotateCcw } from "lucide-react";
-import { Button, Modal } from "@/shared/components/ui";
+import {
+  Button,
+  FormActions,
+  Modal,
+  RadioGroup,
+} from "@/shared/components/ui";
 
 /** Hiển thị ảnh question ở kích thước lớn mà không thay đổi dữ liệu. */
 export function QuestionImagePreviewModal({ preview, onClose }) {
@@ -41,33 +46,21 @@ function RestoreQuestionBankModalContent({ open, bank, onClose, onConfirm }) {
   const [targetStatus, setTargetStatus] = useState("draft");
   return (
     <Modal open={open} title="Restore question bank" size="sm" onClose={onClose}>
-      <p style={{ marginTop: 0, color: "#475569" }}>
+      <p className="question-bank-restore__description">
         Restore <strong>{bank?.name || "this question bank"}</strong> so it can
         be edited again. Choose the status to apply after restoring.
       </p>
-      <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 18 }}>
-        <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <input
-            type="radio"
-            name="restore-target-detail"
-            value="draft"
-            checked={targetStatus === "draft"}
-            onChange={() => setTargetStatus("draft")}
-          />
-          <span>Restore as <strong>Draft</strong> (still needs review)</span>
-        </label>
-        <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <input
-            type="radio"
-            name="restore-target-detail"
-            value="approved"
-            checked={targetStatus === "approved"}
-            onChange={() => setTargetStatus("approved")}
-          />
-          <span>Restore as <strong>Approved</strong> (ready to use)</span>
-        </label>
-      </div>
-      <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
+      <RadioGroup
+        legend="Status after restoring"
+        name="restore-target-detail"
+        value={targetStatus}
+        options={[
+          { value: "draft", label: "Draft — still needs review" },
+          { value: "approved", label: "Approved — ready to use" },
+        ]}
+        onChange={setTargetStatus}
+      />
+      <FormActions>
         <Button type="button" variant="ghost" onClick={onClose}>Cancel</Button>
         <Button
           type="button"
@@ -76,7 +69,7 @@ function RestoreQuestionBankModalContent({ open, bank, onClose, onConfirm }) {
         >
           Restore
         </Button>
-      </div>
+      </FormActions>
     </Modal>
   );
 }

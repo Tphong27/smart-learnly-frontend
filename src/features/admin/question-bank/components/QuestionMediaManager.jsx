@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { ArrowDown, ArrowDownToLine, ArrowUp, ArrowUpToLine, Eye, FileAudio, FileVideo, ImagePlus, Trash2, Upload } from 'lucide-react'
-import { Button, Modal, useToast } from '@/shared/components/ui'
+import { Button, IconButton, Modal, useToast } from '@/shared/components/ui'
 
+/** Giới hạn vị trí di chuyển media trong phạm vi danh sách. */
 function clampMoveIndex(targetIndex, length) {
   if (length <= 0) return 0
   if (targetIndex < 0) return 0
@@ -11,6 +12,7 @@ function clampMoveIndex(targetIndex, length) {
 
 const MEDIA_CONFIG = {
   image: {
+    label: 'Images',
     empty: 'No images attached',
     accept: 'image/jpeg,image/png,image/webp',
     allowedTypes: ['image/jpeg', 'image/png', 'image/webp'],
@@ -21,6 +23,7 @@ const MEDIA_CONFIG = {
     Icon: ImagePlus,
   },
   audio: {
+    label: 'Audio',
     empty: 'No audio attached',
     accept: 'audio/mpeg,audio/mp4,audio/x-m4a,audio/wav,audio/x-wav',
     allowedTypes: ['audio/mpeg', 'audio/mp4', 'audio/x-m4a', 'audio/wav', 'audio/x-wav'],
@@ -31,6 +34,7 @@ const MEDIA_CONFIG = {
     Icon: FileAudio,
   },
   video: {
+    label: 'Video',
     empty: 'No video attached',
     accept: 'video/mp4,video/mpeg,video/webm,video/quicktime,video/x-matroska,video/x-msvideo,video/x-ms-wmv,video/3gpp,video/x-flv,.mp4,.mov,.mkv,.avi,.wmv,.3gp,.flv,.webm,.mpg,.mpeg',
     allowedTypes: [
@@ -52,14 +56,17 @@ const MEDIA_CONFIG = {
   },
 }
 
+/** Lấy URL preview hoặc URL media đã lưu. */
 function itemUrl(item) {
   return item.previewUrl || item.mediaUrl || item.url || null
 }
 
+/** Lấy tên file media an toàn cho UI. */
 function itemName(item) {
   return item.fileName || item.originalFileName || item.file?.name || 'Attachment'
 }
 
+/** Định dạng kích thước file theo đơn vị dễ đọc. */
 function formatBytes(value) {
   const bytes = Number(value || 0)
   if (!bytes) return null
@@ -68,6 +75,7 @@ function formatBytes(value) {
   return bytes + ' B'
 }
 
+/** Ghép nhãn vị trí, kích thước và nguồn import của media. */
 function mediaMetaLabel(item, index) {
   const parts = []
   parts.push(index === 0 ? 'Primary' : item.source === 'pending' ? 'Pending upload' : 'Attached')
@@ -77,7 +85,8 @@ function mediaMetaLabel(item, index) {
   return parts.join(' / ')
 }
 
-export function QuestionMediaManager({ mediaType, items, disabled, onAddFiles, onRemove, onMoveTo }) {
+/** Quản lý danh sách media của question, cho phép khóa riêng thao tác thêm file. */
+export function QuestionMediaManager({ mediaType, items, disabled, addDisabled = false, onAddFiles, onRemove, onMoveTo }) {
   const config = MEDIA_CONFIG[mediaType]
   const toast = useToast()
   const Icon = config.Icon
@@ -85,6 +94,7 @@ export function QuestionMediaManager({ mediaType, items, disabled, onAddFiles, o
   const [previewItem, setPreviewItem] = useState(null)
   const previewUrl = previewItem ? itemUrl(previewItem) : null
 
+  /** Di chuyển media tới vị trí hợp lệ khi editor không bị khóa. */
   function requestMoveTo(index, targetIndex) {
     if (disabled || items.length < 2) return
     const safeTarget = clampMoveIndex(targetIndex, items.length)
@@ -92,6 +102,7 @@ export function QuestionMediaManager({ mediaType, items, disabled, onAddFiles, o
     onMoveTo(index, safeTarget)
   }
 
+  /** Kiểm tra số lượng, MIME type và kích thước trước khi upload. */
   function validateFiles(files) {
     if (!files.length) return []
     if (files.length > remainingSlots) {
@@ -113,6 +124,7 @@ export function QuestionMediaManager({ mediaType, items, disabled, onAddFiles, o
     return validFiles
   }
 
+  /** Chuẩn hóa FileList và chuyển các file hợp lệ cho caller. */
   function handleFiles(event) {
     const validFiles = validateFiles(Array.from(event.target.files || []))
     event.target.value = ''
@@ -131,7 +143,7 @@ export function QuestionMediaManager({ mediaType, items, disabled, onAddFiles, o
           variant="secondary"
           size="sm"
           leftIcon={<Upload size={14} />}
-          disabled={disabled || remainingSlots === 0}
+          disabled={disabled || addDisabled || remainingSlots === 0}
         >
           Add
           <input
@@ -139,7 +151,7 @@ export function QuestionMediaManager({ mediaType, items, disabled, onAddFiles, o
             accept={config.accept}
             multiple
             hidden
-            disabled={disabled || remainingSlots === 0}
+            disabled={disabled || addDisabled || remainingSlots === 0}
             onChange={handleFiles}
           />
         </Button>
@@ -201,11 +213,11 @@ export function QuestionMediaManager({ mediaType, items, disabled, onAddFiles, o
                   </>
                 )}
                 <div className="question-media-manager__actions">
-                  <button type="button" className="admin-table__icon-btn" disabled={disabled || index === 0} onClick={() => requestMoveTo(index, 0)} aria-label="Move media to primary"><ArrowUpToLine size={15} /></button>
-                  <button type="button" className="admin-table__icon-btn" disabled={disabled || index === 0} onClick={() => requestMoveTo(index, index - 1)} aria-label="Move media up"><ArrowUp size={15} /></button>
-                  <button type="button" className="admin-table__icon-btn" disabled={disabled || index === items.length - 1} onClick={() => requestMoveTo(index, index + 1)} aria-label="Move media down"><ArrowDown size={15} /></button>
-                  <button type="button" className="admin-table__icon-btn" disabled={disabled || index === items.length - 1} onClick={() => requestMoveTo(index, items.length - 1)} aria-label="Move media to end"><ArrowDownToLine size={15} /></button>
-                  <button type="button" className="admin-table__icon-btn admin-table__icon-btn--danger" disabled={disabled} onClick={() => onRemove(item)} aria-label="Remove media"><Trash2 size={15} /></button>
+                  <IconButton icon={<ArrowUpToLine size={15} />} label="Move media to primary" disabled={disabled || index === 0} onClick={() => requestMoveTo(index, 0)} />
+                  <IconButton icon={<ArrowUp size={15} />} label="Move media up" disabled={disabled || index === 0} onClick={() => requestMoveTo(index, index - 1)} />
+                  <IconButton icon={<ArrowDown size={15} />} label="Move media down" disabled={disabled || index === items.length - 1} onClick={() => requestMoveTo(index, index + 1)} />
+                  <IconButton icon={<ArrowDownToLine size={15} />} label="Move media to end" disabled={disabled || index === items.length - 1} onClick={() => requestMoveTo(index, items.length - 1)} />
+                  <IconButton icon={<Trash2 size={15} />} label="Remove media" variant="danger" disabled={disabled} onClick={() => onRemove(item)} />
                 </div>
               </div>
             )

@@ -8,6 +8,7 @@ const toastIcons = {
   info: Info,
 }
 
+/** Hiển thị danh sách toast có icon, action tùy chọn và nút đóng accessible. */
 export function ToastContainer({ toasts, onRemove }) {
   return (
     <div className="toast-container" aria-live="polite" aria-atomic="true">
@@ -18,7 +19,7 @@ export function ToastContainer({ toasts, onRemove }) {
           <div
             key={toast.id}
             className={`toast toast--${toast.type}`}
-            role="status"
+            role={toast.type === 'error' ? 'alert' : 'status'}
           >
             <div className="toast__icon">
               <Icon size={20} />

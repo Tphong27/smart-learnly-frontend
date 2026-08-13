@@ -1,32 +1,31 @@
 import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Edit2, Plus, Search, Trash2 } from "lucide-react";
+import { Edit2, Plus, Trash2 } from "lucide-react";
 import {
     Button,
+    Alert,
+    Checkbox,
+    DataTable,
+    ErrorState,
     Form,
+    FormActions,
     FormField,
+    IconButton,
     Modal,
+    SearchInput,
+    Select,
+    Textarea,
     useToast,
 } from "@/shared/components/ui";
+import { StatusBadge } from "@/shared/components/status";
 import { AdminFilterToolbar } from "@/features/admin/components/AdminFilterToolbar";
 import { categoryService } from "@/features/course";
+import { formatDate } from "@/shared/utils/formatters";
 import { categorySchema } from "../schemas/category-schemas";
 import "../../admin-shared.css";
 
-function formatDate(value) {
-    if (!value) return "--";
-    try {
-        return new Date(value).toLocaleDateString("en-GB", {
-            day: "2-digit",
-            month: "2-digit",
-            year: "numeric",
-        });
-    } catch {
-        return "--";
-    }
-}
-
+/** Chuẩn hóa dữ liệu category trước khi gửi API và chỉ đính kèm field có giá trị. */
 function buildPayload(values, { includeParent = true } = {}) {
     const payload = {
         name: values.name?.trim(),
@@ -40,6 +39,7 @@ function buildPayload(values, { includeParent = true } = {}) {
     return payload;
 }
 
+/** Hiển thị form tạo hoặc chỉnh sửa category trong modal dùng chung. */
 function CategoryFormModal({
     open,
     mode,
@@ -79,6 +79,7 @@ function CategoryFormModal({
         reset(defaultValues);
     }, [open, defaultValues, reset]);
 
+    /** Lưu category theo mode create/edit và giữ lỗi API trong modal. */
     async function onSubmit(values) {
         setServerError(null);
         try {
@@ -114,9 +115,9 @@ function CategoryFormModal({
             onClose={onClose}
         >
             {serverError && (
-                <div className="auth-card__alert" style={{ marginBottom: 16 }}>
+                <Alert tone="danger">
                     {serverError}
-                </div>
+                </Alert>
             )}
 
             <Form onSubmit={handleSubmit(onSubmit)}>
@@ -138,18 +139,11 @@ function CategoryFormModal({
                     />
 
                     {mode !== "edit" && (
-                        <div className="input-field">
-                            <label
-                                className="input-field__label"
-                                htmlFor="category-parent"
-                            >
-                                Parent category
-                            </label>
-                            <select
-                                id="category-parent"
-                                className="admin-toolbar__select"
-                                {...register("parentId")}
-                            >
+                        <Select
+                            id="category-parent"
+                            label="Parent category"
+                            {...register("parentId")}
+                        >
                                 <option value="">
                                     -- None (root category) --
                                 </option>
@@ -158,71 +152,46 @@ function CategoryFormModal({
                                         {cat.name}
                                     </option>
                                 ))}
-                            </select>
-                        </div>
+                        </Select>
                     )}
 
                     <div className="admin-form-grid__full">
-                        <div className="input-field">
-                            <label
-                                className="input-field__label"
-                                htmlFor="category-description"
-                            >
-                                Description
-                            </label>
-                            <textarea
-                                id="category-description"
-                                className={
-                                    "admin-textarea" +
-                                    (errors.description
-                                        ? " admin-textarea--error"
-                                        : "")
-                                }
-                                rows={3}
-                                {...register("description")}
-                            />
-                            {errors.description && (
-                                <p className="input-field__error">
-                                    {errors.description.message}
-                                </p>
-                            )}
-                        </div>
+                        <Textarea
+                            id="category-description"
+                            label="Description"
+                            rows={3}
+                            error={errors.description?.message}
+                            {...register("description")}
+                        />
                     </div>
 
-                    <label
-                        className="admin-checkbox"
-                        style={{ alignSelf: "center", marginTop: 8 }}
-                    >
-                        <input type="checkbox" {...register("isActive")} />
-                        Active
-                    </label>
+                    <Checkbox
+                        className="admin-form-checkbox"
+                        label="Active"
+                        {...register("isActive")}
+                    />
                 </div>
 
-                <div
-                    style={{
-                        display: "flex",
-                        justifyContent: "flex-end",
-                        gap: 10,
-                        marginTop: 18,
-                    }}
-                >
+                <FormActions>
                     <Button type="button" variant="ghost" onClick={onClose}>
                         Cancel
                     </Button>
                     <Button type="submit" loading={isSubmitting}>
                         Save
                     </Button>
-                </div>
+                </FormActions>
             </Form>
         </Modal>
     );
 }
 
+/** Xác nhận xóa category và chặn thao tác lặp trong lúc API đang xử lý. */
 function DeleteConfirmModal({ open, target, onClose, onConfirmed }) {
     const toast = useToast();
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
 
+    /** Xóa category đang chọn sau khi người dùng xác nhận. */
     async function handleConfirm() {
         if (!target) return;
         setError(null);
@@ -291,6 +260,7 @@ function DeleteConfirmModal({ open, target, onClose, onConfirmed }) {
     );
 }
 
+/** Điều phối danh sách, tìm kiếm, filter và mutation category của admin. */
 export function AdminCategoriesPage() {
     const toast = useToast();
     const [items, setItems] = useState([]);
@@ -347,21 +317,98 @@ export function AdminCategoriesPage() {
         };
     }, [refreshKey, activeFilter, submittedKeyword, toast]);
 
+    /** Đóng form và tải lại danh sách sau khi lưu thành công. */
     function handleSaved() {
         setFormState({ open: false, mode: "create", initial: null });
         setRefreshKey((k) => k + 1);
     }
 
+    /** Đóng xác nhận và tải lại danh sách sau khi xóa thành công. */
     function handleDeleted() {
         setDeleteState({ open: false, target: null });
         setRefreshKey((k) => k + 1);
     }
 
+    /** Xóa toàn bộ điều kiện tìm kiếm và trạng thái category. */
     function clearCategoryFilters() {
         setKeyword("");
         setSubmittedKeyword("");
         setActiveFilter("all");
     }
+
+    const categoryColumns = useMemo(
+        () => [
+            {
+                key: "name",
+                header: "Name",
+                render: (category) => <strong>{category.name}</strong>,
+            },
+            {
+                key: "slug",
+                header: "Slug",
+                render: (category) => <code>{category.slug}</code>,
+            },
+            {
+                key: "parent",
+                header: "Parent",
+                render: (category) =>
+                    items.find((item) => item.id === category.parentId)?.name || "--",
+            },
+            {
+                key: "status",
+                header: "Status",
+                render: (category) => (
+                    <StatusBadge
+                        status={category.isActive ? "active" : "inactive"}
+                        label={category.isActive ? "Active" : "Inactive"}
+                        tone={category.isActive ? "success" : "neutral"}
+                    />
+                ),
+            },
+            {
+                key: "updatedAt",
+                header: "Updated",
+                render: (category) =>
+                    formatDate(category.updatedAt || category.createdAt, "en-GB", {
+                        day: "2-digit",
+                        month: "2-digit",
+                        year: "numeric",
+                    }),
+            },
+            {
+                key: "actions",
+                header: "Actions",
+                render: (category) => (
+                    <div className="admin-table__actions">
+                        <IconButton
+                            label={`Edit ${category.name}`}
+                            icon={<Edit2 size={15} />}
+                            variant="ghost"
+                            onClick={() =>
+                                setFormState({
+                                    open: true,
+                                    mode: "edit",
+                                    initial: category,
+                                })
+                            }
+                        />
+                        <IconButton
+                            label={`Delete ${category.name}`}
+                            icon={<Trash2 size={15} />}
+                            variant="danger"
+                            onClick={() =>
+                                setDeleteState({
+                                    open: true,
+                                    target: category,
+                                })
+                            }
+                        />
+                    </div>
+                ),
+            },
+        ],
+        [items],
+    );
 
     return (
         <div className="admin-page">
@@ -387,13 +434,12 @@ export function AdminCategoriesPage() {
                 <AdminFilterToolbar
                     ariaLabel="Category search and filters"
                     search={
-                        <FormField
+                        <SearchInput
                             id="admin-category-search"
-                            aria-label="Search categories"
+                            ariaLabel="Search categories"
                             placeholder="Search by name or slug..."
                             value={keyword}
-                            onChange={(event) => setKeyword(event.target.value)}
-                            leftIcon={<Search size={16} />}
+                            onChange={setKeyword}
                         />
                     }
                     fields={[
@@ -419,123 +465,34 @@ export function AdminCategoriesPage() {
                     onClear={clearCategoryFilters}
                 />
 
-                <div className="admin-table-wrap">
-                    {loading ? (
-                        <div className="admin-loading">Loading...</div>
-                    ) : error ? (
-                        <div className="admin-error">{error}</div>
-                    ) : items.length === 0 ? (
-                        <div className="admin-empty">No categories yet.</div>
+                {error ? (
+                        <ErrorState
+                            title="Could not load categories"
+                            description={error}
+                            action={
+                                <Button variant="secondary" onClick={() => setRefreshKey((key) => key + 1)}>
+                                    Retry
+                                </Button>
+                            }
+                        />
                     ) : (
-                        <table className="admin-table">
-                            <thead>
-                                <tr>
-                                    <th>Name</th>
-                                    <th>Slug</th>
-                                    <th>Parent</th>
-                                    <th>Status</th>
-                                    <th>Updated</th>
-                                    <th
-                                        style={{
-                                            width: 110,
-                                            textAlign: "right",
-                                        }}
-                                    >
-                                        Actions
-                                    </th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {items.map((cat) => {
-                                    const parent = items.find(
-                                        (p) => p.id === cat.parentId,
-                                    );
-                                    return (
-                                        <tr key={cat.id}>
-                                            <td>
-                                                <strong>{cat.name}</strong>
-                                            </td>
-                                            <td>
-                                                <code
-                                                    style={{ color: "#64708a" }}
-                                                >
-                                                    {cat.slug}
-                                                </code>
-                                            </td>
-                                            <td>
-                                                {parent ? (
-                                                    parent.name
-                                                ) : (
-                                                    <span
-                                                        style={{
-                                                            color: "#94a3b8",
-                                                        }}
-                                                    >
-                                                        --
-                                                    </span>
-                                                )}
-                                            </td>
-                                            <td>
-                                                <span
-                                                    className={
-                                                        "admin-status admin-status--" +
-                                                        (cat.isActive
-                                                            ? "active"
-                                                            : "inactive")
-                                                    }
-                                                >
-                                                    {cat.isActive
-                                                        ? "Active"
-                                                        : "Inactive"}
-                                                </span>
-                                            </td>
-                                            <td>
-                                                {formatDate(
-                                                    cat.updatedAt ||
-                                                        cat.createdAt,
-                                                )}
-                                            </td>
-                                            <td>
-                                                <div
-                                                    className="admin-table__actions"
-                                                    style={{ float: "right" }}
-                                                >
-                                                    <button
-                                                        type="button"
-                                                        className="admin-table__icon-btn"
-                                                        title="Edit"
-                                                        onClick={() =>
-                                                            setFormState({
-                                                                open: true,
-                                                                mode: "edit",
-                                                                initial: cat,
-                                                            })
-                                                        }
-                                                    >
-                                                        <Edit2 size={15} />
-                                                    </button>
-                                                    <button
-                                                        type="button"
-                                                        className="admin-table__icon-btn admin-table__icon-btn--danger"
-                                                        title="Delete"
-                                                        onClick={() =>
-                                                            setDeleteState({
-                                                                open: true,
-                                                                target: cat,
-                                                            })
-                                                        }
-                                                    >
-                                                        <Trash2 size={15} />
-                                                    </button>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    );
-                                })}
-                            </tbody>
-                        </table>
+                        <DataTable
+                            ariaLabel="Category data"
+                            columns={categoryColumns}
+                            rows={items}
+                            loading={loading}
+                            loadingLabel="Loading categories..."
+                            emptyTitle="No categories found"
+                            emptyDescription="Create a category or clear the current filters."
+                            emptyAction={
+                                keyword.trim() || activeFilter !== "all" ? (
+                                    <Button variant="secondary" onClick={clearCategoryFilters}>
+                                        Clear filters
+                                    </Button>
+                                ) : null
+                            }
+                        />
                     )}
-                </div>
             </section>
 
             {formState.open && (

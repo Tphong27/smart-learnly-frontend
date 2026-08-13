@@ -1,6 +1,14 @@
 import { useRef, useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
-import { Modal, Button } from "@/shared/components/ui";
+import {
+  Alert,
+  Button,
+  IconButton,
+  Input,
+  Modal,
+  Select,
+  Textarea,
+} from "@/shared/components/ui";
 import { courseContentService } from "../services/courseContentService";
 import {
   QUESTION_TYPES,
@@ -17,6 +25,7 @@ const TYPE_OPTIONS = [
   QUESTION_TYPES.FILL,
 ];
 
+/** Chuẩn hóa option cũ dạng chuỗi hoặc object về state editor thống nhất. */
 function toOptionState(option) {
   if (typeof option === "string") return { text: option, media: null };
   if (option && typeof option === "object") {
@@ -28,6 +37,7 @@ function toOptionState(option) {
   return { text: "", media: null };
 }
 
+/** Tạo state form mới hoặc sao chép dữ liệu câu hỏi hiện có để chỉnh sửa. */
 function buildInitialState(question) {
   if (!question) {
     return {
@@ -58,6 +68,7 @@ function buildInitialState(question) {
   };
 }
 
+/** Chuyển response upload thành media object đúng quiz schema. */
 function buildMediaFromUpload(uploaded, type) {
   return normalizeMedia({
     type,
@@ -69,6 +80,7 @@ function buildMediaFromUpload(uploaded, type) {
   });
 }
 
+/** Quản lý ảnh tùy chọn cho question hoặc answer option. */
 function MediaUploader({
   label,
   media,
@@ -79,6 +91,7 @@ function MediaUploader({
 }) {
   const [uploading, setUploading] = useState(false);
 
+  /** Kiểm tra file ảnh và báo trạng thái upload về editor cha. */
   const handleFileChange = async (event) => {
     const file = event.target.files?.[0];
     event.target.value = "";
@@ -113,16 +126,13 @@ function MediaUploader({
           <span>
             {media.type === "video" ? "Video" : media.type === "audio" ? "Audio" : "Image"}: {media.fileName || media.url || media.objectPath}
           </span>
-          <button
-            type="button"
-            className="quiz-question-edit-form__icon-btn quiz-question-edit-form__icon-btn--danger"
+          <IconButton
+            icon={<Trash2 size={16} />}
+            label={`Remove ${label.toLowerCase()}`}
+            variant="danger"
             onClick={() => onChange(null)}
-            title="Remove media"
-            aria-label={`Remove ${label.toLowerCase()}`}
             disabled={disabled || uploading}
-          >
-            <Trash2 size={16} />
-          </button>
+          />
         </div>
       ) : (
         <p className="quiz-question-edit-form__hint">Optional. Leave empty for text-only content. Only images are supported.</p>
@@ -138,6 +148,7 @@ function MediaUploader({
   );
 }
 
+/** Serialize option editor state về dạng ngắn khi không có media. */
 function serializeOption(option) {
   const text = option.text.trim();
   const media = normalizeMedia(option.media);
@@ -160,6 +171,7 @@ export function QuizQuestionEditModal({ open, question, onClose, onSubmit }) {
   const uploadBusy = activeUploads > 0;
   const formBusy = submitting || uploadBusy;
 
+  /** Theo dõi đồng thời nhiều media upload để khóa save đến khi hoàn tất. */
   const handleUploadingChange = (isUploading) => {
     const nextCount = Math.max(
       0,
@@ -174,6 +186,7 @@ export function QuizQuestionEditModal({ open, question, onClose, onSubmit }) {
     form.type === QUESTION_TYPES.MULTIPLE;
   const isFill = form.type === QUESTION_TYPES.FILL;
 
+  /** Chuyển question type và tái tạo answer state tương thích khi cần. */
   const handleTypeChange = (newType) => {
     setForm((prev) => {
       const wasChoice =
@@ -196,7 +209,7 @@ export function QuizQuestionEditModal({ open, question, onClose, onSubmit }) {
     });
   };
 
-  // ── Choice option helpers ────────────────────────────────────────────────
+  /** Cập nhật text của một choice option theo vị trí hiện tại. */
   const updateOptionText = (idx, value) => {
     setForm((prev) => {
       const options = prev.options.map((option, i) =>
@@ -206,6 +219,7 @@ export function QuizQuestionEditModal({ open, question, onClose, onSubmit }) {
     });
   };
 
+  /** Cập nhật media của một choice option theo vị trí hiện tại. */
   const updateOptionMedia = (idx, media) => {
     setForm((prev) => {
       const options = prev.options.map((option, i) =>
@@ -215,9 +229,11 @@ export function QuizQuestionEditModal({ open, question, onClose, onSubmit }) {
     });
   };
 
+  /** Thêm option rỗng trong giới hạn được kiểm soát ở giao diện. */
   const addOption = () => {
     setForm((prev) => ({ ...prev, options: [...prev.options, toOptionState("")] }));
   };
+  /** Xóa option và đánh lại chỉ số correct answer để giữ schema hợp lệ. */
   const removeOption = (idx) => {
     setForm((prev) => {
       if (prev.options.length <= 2) return prev;
@@ -230,6 +246,7 @@ export function QuizQuestionEditModal({ open, question, onClose, onSubmit }) {
     });
   };
 
+  /** Chọn một đáp án cho single choice hoặc toggle nhiều đáp án cho multiple choice. */
   const toggleCorrect = (optionNumber) => {
     setForm((prev) => {
       if (prev.type === QUESTION_TYPES.SINGLE) {
@@ -243,7 +260,7 @@ export function QuizQuestionEditModal({ open, question, onClose, onSubmit }) {
     });
   };
 
-  // ── Fill answer helpers ──────────────────────────────────────────────────
+  /** Cập nhật một accepted answer của câu hỏi điền khuyết. */
   const updateFillAnswer = (idx, value) => {
     setForm((prev) => ({
       ...prev,
@@ -252,12 +269,14 @@ export function QuizQuestionEditModal({ open, question, onClose, onSubmit }) {
       ),
     }));
   };
+  /** Thêm accepted answer rỗng cho câu hỏi điền khuyết. */
   const addFillAnswer = () => {
     setForm((prev) => ({
       ...prev,
       correct_answers: [...prev.correct_answers, ""],
     }));
   };
+  /** Xóa accepted answer nhưng luôn giữ ít nhất một dòng. */
   const removeFillAnswer = (idx) => {
     setForm((prev) => {
       if (prev.correct_answers.length <= 1) return prev;
@@ -268,6 +287,7 @@ export function QuizQuestionEditModal({ open, question, onClose, onSubmit }) {
     });
   };
 
+  /** Chuyển state editor thành question payload đúng theo từng loại câu hỏi. */
   const buildQuestion = () => {
     const base = {
       title: form.title.trim(),
@@ -293,6 +313,7 @@ export function QuizQuestionEditModal({ open, question, onClose, onSubmit }) {
     };
   };
 
+  /** Validate question, chờ media hoàn tất rồi giao payload cho manager lưu. */
   const handleSubmit = async () => {
     if (submittingRef.current) return;
     if (activeUploadsRef.current > 0) {
@@ -352,11 +373,9 @@ export function QuizQuestionEditModal({ open, question, onClose, onSubmit }) {
       footer={footer}
     >
       <div className="quiz-question-edit-form">
-        <label className="quiz-question-edit-form__label">
-          Question title <span className="quiz-question-edit-form__hint">(optional if media exists)</span>
-        </label>
-        <textarea
-          className="quiz-question-edit-form__textarea"
+        <Textarea
+          label="Question title"
+          helperText="Optional if question media is provided."
           rows={2}
           value={form.title}
           onChange={(e) =>
@@ -375,9 +394,9 @@ export function QuizQuestionEditModal({ open, question, onClose, onSubmit }) {
           onUploadingChange={handleUploadingChange}
         />
 
-        <label className="quiz-question-edit-form__label">Explanation</label>
-        <textarea
-          className="quiz-question-edit-form__textarea"
+        <Textarea
+          label="Explanation"
+          helperText="Optional explanation shown after answering."
           rows={2}
           value={form.explain_question}
           onChange={(e) =>
@@ -387,9 +406,8 @@ export function QuizQuestionEditModal({ open, question, onClose, onSubmit }) {
           disabled={formBusy}
         />
 
-        <label className="quiz-question-edit-form__label">Question type</label>
-        <select
-          className="quiz-question-edit-form__select"
+        <Select
+          label="Question type"
           value={form.type}
           onChange={(e) => handleTypeChange(e.target.value)}
           disabled={formBusy}
@@ -399,7 +417,7 @@ export function QuizQuestionEditModal({ open, question, onClose, onSubmit }) {
               {QUESTION_TYPE_LABELS[type]}
             </option>
           ))}
-        </select>
+        </Select>
 
         {isChoice && (
           <div className="quiz-question-edit-form__options">
@@ -426,10 +444,9 @@ export function QuizQuestionEditModal({ open, question, onClose, onSubmit }) {
                     name="quiz-edit-correct"
                     disabled={formBusy}
                   />
-                  <div style={{ flex: 1 }}>
-                    <input
+                  <div className="quiz-question-edit-form__option-content">
+                    <Input
                       type="text"
-                      className="quiz-question-edit-form__option-input"
                       value={opt.text}
                       onChange={(e) => updateOptionText(idx, e.target.value)}
                       placeholder={`Option ${optionNumber} text (optional if media exists)`}
@@ -445,29 +462,26 @@ export function QuizQuestionEditModal({ open, question, onClose, onSubmit }) {
                     />
                   </div>
                   {form.options.length > 2 && (
-                    <button
-                      type="button"
-                      className="quiz-question-edit-form__icon-btn"
+                    <IconButton
+                      icon={<Trash2 size={16} />}
+                      label={`Remove option ${optionNumber}`}
                       onClick={() => removeOption(idx)}
-                      title="Remove option"
-                      aria-label={`Remove option ${optionNumber}`}
                       disabled={formBusy}
-                    >
-                      <Trash2 size={16} />
-                    </button>
+                    />
                   )}
                 </div>
               );
             })}
             {form.options.length < 6 && (
-              <button
+              <Button
                 type="button"
-                className="quiz-question-edit-form__add-btn"
+                variant="secondary"
+                leftIcon={<Plus size={15} />}
                 onClick={addOption}
                 disabled={formBusy}
               >
-                <Plus size={15} /> Add option
-              </button>
+                Add option
+              </Button>
             )}
           </div>
         )}
@@ -482,47 +496,38 @@ export function QuizQuestionEditModal({ open, question, onClose, onSubmit }) {
             </label>
             {form.correct_answers.map((ans, idx) => (
               <div key={idx} className="quiz-question-edit-form__option-row">
-                <input
+                <Input
                   type="text"
-                  className="quiz-question-edit-form__option-input"
+                  className="quiz-question-edit-form__option-content"
                   value={ans}
                   onChange={(e) => updateFillAnswer(idx, e.target.value)}
                   placeholder={`Answer ${idx + 1}`}
                   disabled={formBusy}
                 />
                 {form.correct_answers.length > 1 && (
-                  <button
-                    type="button"
-                    className="quiz-question-edit-form__icon-btn"
+                  <IconButton
+                    icon={<Trash2 size={16} />}
+                    label={`Remove answer ${idx + 1}`}
                     onClick={() => removeFillAnswer(idx)}
-                    title="Remove answer"
-                    aria-label={`Remove answer ${idx + 1}`}
                     disabled={formBusy}
-                  >
-                    <Trash2 size={16} />
-                  </button>
+                  />
                 )}
               </div>
             ))}
-            <button
+            <Button
               type="button"
-              className="quiz-question-edit-form__add-btn"
+              variant="secondary"
+              leftIcon={<Plus size={15} />}
               onClick={addFillAnswer}
               disabled={formBusy}
             >
-              <Plus size={15} /> Add answer
-            </button>
+              Add answer
+            </Button>
           </div>
         )}
 
         {error && (
-          <p
-            className="quiz-question-edit-form__error"
-            role="alert"
-            aria-live="assertive"
-          >
-            {error}
-          </p>
+          <Alert tone="danger">{error}</Alert>
         )}
       </div>
     </Modal>

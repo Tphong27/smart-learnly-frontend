@@ -1,9 +1,5 @@
 import apiClient from "@/services/api-client";
-
-// Bóc payload nghiệp vụ khỏi envelope chuẩn của backend.
-function unwrap(response) {
-  return response?.data ?? response;
-}
+import { unwrapApiData as unwrap } from "@/services/api-response";
 
 export const categoryService = {
   // Tải danh sách category quản trị theo keyword, trạng thái và category cha.

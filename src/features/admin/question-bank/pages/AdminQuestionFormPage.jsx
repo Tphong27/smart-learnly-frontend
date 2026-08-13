@@ -1,9 +1,19 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { FileAudio, FileVideo, Image as ImageIcon, Plus, Trash2, X, AlertTriangle } from "lucide-react";
-import { Button, FormField, Modal, useToast } from "@/shared/components/ui";
+import { FileAudio, FileVideo, Image as ImageIcon, Plus, Trash2, X } from "lucide-react";
+import {
+  Alert,
+  Button,
+  FormField,
+  IconButton,
+  LoadingState,
+  Modal,
+  Select,
+  Tabs,
+  useToast,
+} from "@/shared/components/ui";
 import { questionBankService } from "@/features/admin/question-bank";
-import { courseAdminService, courseContentService } from "@/features/course";
+import { courseAdminService } from "@/features/course";
 import { isEmptyQuestionHtml, sanitizeQuestionHtml } from "@/shared/utils/htmlSanitizer";
 import { AnswerMediaRow } from "../components/AnswerMediaRow";
 import { QuestionMediaManager } from "../components/QuestionMediaManager";
@@ -16,7 +26,6 @@ import {
   mediaId,
   normalizeAnswerMediaFromResponse,
   normalizeAnswers,
-  normalizeModules,
   normalizeQuestionMedia,
   parseAnswerContent,
   pendingMediaItem,
@@ -26,40 +35,59 @@ import {
 import "../../admin-shared.css";
 import "./question-bank.css";
 
+const EMPTY_QUESTION_FORM_VALUES = {
+  questionText: "",
+  questionType: "single_choice",
+  difficulty: "",
+  status: "draft",
+  explanation: "",
+  answers: [],
+};
+
+/** Chuẩn hóa initial values để cùng một AdminQuestionForm dùng được cho API và import draft. */
+function createInitialQuestionFormValues(initialValues) {
+  const merged = { ...EMPTY_QUESTION_FORM_VALUES, ...(initialValues || {}) };
+  return {
+    ...merged,
+    answers: normalizeAnswers(merged.questionType, merged.answers),
+  };
+}
+
+/** Form tạo/sửa question dùng chung cho dữ liệu API và import draft cục bộ. */
 export function AdminQuestionForm({
   bankId: bankIdProp,
   courseId: courseIdProp,
+  moduleId: moduleIdProp,
   questionId: questionIdProp,
+  initialValues,
+  initialMedia,
+  draftMode = false,
+  submitLabel,
   onCancel,
   onSaved,
+  onDraftSubmit,
   framed = true,
 }) {
   const params = useParams();
   const bankId = bankIdProp ?? params.bankId;
   const courseId = courseIdProp ?? params.courseId;
+  const lockedModuleId = moduleIdProp ?? params.moduleId;
   const questionId = questionIdProp ?? params.questionId;
   const navigate = useNavigate();
   const toast = useToast();
   const writable = canWriteQuestionBank();
   const editing = Boolean(questionId);
   const [bank, setBank] = useState(null);
-  const [modules, setModules] = useState([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
-  const [values, setValues] = useState({
-    questionText: "",
-    questionType: "single_choice",
-    difficulty: "",
-    status: "draft",
-    explanation: "",
-    moduleId: "",
-    answers: normalizeAnswers("single_choice"),
-  });
+  const [values, setValues] = useState(() =>
+    createInitialQuestionFormValues(initialValues),
+  );
   const pendingPreviewUrls = useRef(new Set());
-  const [imageMedia, setImageMedia] = useState([]);
-  const [audioMedia, setAudioMedia] = useState([]);
-  const [videoMedia, setVideoMedia] = useState([]);
+  const [imageMedia, setImageMedia] = useState(() => initialMedia?.images || []);
+  const [audioMedia, setAudioMedia] = useState(() => initialMedia?.audios || []);
+  const [videoMedia, setVideoMedia] = useState(() => initialMedia?.videos || []);
   const [removedAttachmentIds, setRemovedAttachmentIds] = useState([]);
   const [activeMediaTab, setActiveMediaTab] = useState("image");
   const [uploadingAnswerIndex, setUploadingAnswerIndex] = useState(null);
@@ -73,7 +101,11 @@ export function AdminQuestionForm({
       try {
         if (editing) {
           const question = courseId
-            ? await questionBankService.getCourseQuestion(courseId, questionId)
+            ? await questionBankService.getModuleQuestion(
+                courseId,
+                lockedModuleId,
+                questionId,
+              )
             : await questionBankService.getQuestion(questionId);
           if (cancelled) return;
           const normalizedMedia = normalizeQuestionMedia(question);
@@ -87,7 +119,6 @@ export function AdminQuestionForm({
             difficulty: question.difficulty ? String(question.difficulty) : "",
             status: question.status || "draft",
             explanation: question.explanation || "",
-            moduleId: question.moduleId || "",
             answers: normalizeAnswers(
               question.questionType || "single_choice",
               (question.answers || []).map((answer, index) => ({
@@ -99,17 +130,13 @@ export function AdminQuestionForm({
             ),
           });
           if (courseId) {
-            const [courseData, moduleData] = await Promise.all([
-              courseAdminService.get(courseId),
-              courseContentService.getCourseContent(courseId),
-            ]);
+            const courseData = await courseAdminService.get(courseId);
             if (!cancelled) {
               setBank({
                 id: null,
                 courseId,
                 name: `${courseData?.title || "Course"} Questions`,
               });
-              setModules(normalizeModules(moduleData));
             }
           } else {
             const resolvedBankId = question.bankId || question.questionBankId;
@@ -117,10 +144,6 @@ export function AdminQuestionForm({
               const bankData = await questionBankService.getBank(resolvedBankId);
               if (!cancelled) {
                 setBank(bankData);
-                if (bankData?.courseId) {
-                  const moduleData = await courseContentService.getCourseContent(bankData.courseId);
-                  if (!cancelled) setModules(normalizeModules(moduleData));
-                }
               }
             }
           }
@@ -135,14 +158,8 @@ export function AdminQuestionForm({
                 courseId,
                 name: `${bankData?.title || "Course"} Questions`,
               });
-              const moduleData = await courseContentService.getCourseContent(courseId);
-              if (!cancelled) setModules(normalizeModules(moduleData));
             } else {
               setBank(bankData);
-              if (bankData?.courseId) {
-                const moduleData = await courseContentService.getCourseContent(bankData.courseId);
-                if (!cancelled) setModules(normalizeModules(moduleData));
-              }
             }
           }
         }
@@ -156,19 +173,21 @@ export function AdminQuestionForm({
     return () => {
       cancelled = true;
     };
-  }, [bankId, courseId, editing, questionId]);
+  }, [bankId, courseId, editing, lockedModuleId, questionId]);
 
   const returnBankId = useMemo(
     () => bank?.bankId || bank?.id || bankId,
     [bank, bankId],
   );
   const returnPath = courseId
-    ? `/admin/courses/${courseId}/questions`
+    ? `/admin/courses/${courseId}/modules/${lockedModuleId}/questions`
     : `/admin/question-banks/${returnBankId}`;
 
+  /** Bọc nội dung bằng admin page khi form không nằm trong modal. */
   const renderFrame = (content) =>
     framed ? <div className="admin-page">{content}</div> : content;
 
+  /** Đóng form qua callback hoặc quay về danh sách question. */
   function handleCancel() {
     if (onCancel) {
       onCancel();
@@ -177,6 +196,7 @@ export function AdminQuestionForm({
     navigate(returnPath);
   }
 
+  /** Đổi loại question và chuẩn hóa lại đáp án tương ứng. */
   function setType(nextType) {
     setValues((current) => ({
       ...current,
@@ -185,6 +205,7 @@ export function AdminQuestionForm({
     }));
   }
 
+  /** Cập nhật đáp án đúng theo quy tắc single hoặc multiple choice. */
   function setCorrect(index) {
     setValues((current) => ({
       ...current,
@@ -200,6 +221,7 @@ export function AdminQuestionForm({
     }));
   }
 
+  /** Cập nhật nội dung text của một đáp án. */
   function updateAnswer(index, answerText) {
     setValues((current) => ({
       ...current,
@@ -209,6 +231,7 @@ export function AdminQuestionForm({
     }));
   }
 
+  /** Cập nhật ảnh draft cũ của một đáp án. */
   function updateAnswerImage(index, answerImage) {
     setValues((current) => ({
       ...current,
@@ -218,6 +241,7 @@ export function AdminQuestionForm({
     }));
   }
 
+  /** Gỡ ảnh draft và thu hồi preview URL liên quan. */
   function removeAnswerImage(index) {
     const currentImage = values.answers[index]?.answerImage;
     if (currentImage?.previewUrl) {
@@ -227,6 +251,7 @@ export function AdminQuestionForm({
     updateAnswerImage(index, null);
   }
 
+  /** Thêm đáp án mới khi chưa đạt giới hạn. */
   function addAnswer() {
     setValues((current) => {
       if (current.answers.length >= 6) return current;
@@ -237,6 +262,7 @@ export function AdminQuestionForm({
     });
   }
 
+  /** Xóa đáp án và bảo đảm luôn còn ít nhất một đáp án đúng. */
   function removeAnswer(index) {
     setValues((current) => {
       const nextAnswers = current.answers.filter(
@@ -263,6 +289,7 @@ export function AdminQuestionForm({
     [],
   );
 
+  /** Trả về setter state tương ứng với loại media question. */
   function mediaSetter(mediaType) {
     if (mediaType === "image") return setImageMedia;
     if (mediaType === "audio") return setAudioMedia;
@@ -270,6 +297,7 @@ export function AdminQuestionForm({
     throw new Error(`Unsupported media type: ${mediaType}`);
   }
 
+  /** Thêm file media mới vào hàng đợi upload của question. */
   function addMediaFiles(mediaType, files) {
     const nextItems = files.map((file) => {
       const previewUrl = URL.createObjectURL(file);
@@ -279,6 +307,7 @@ export function AdminQuestionForm({
     mediaSetter(mediaType)((current) => [...current, ...nextItems]);
   }
 
+  /** Áp dụng cập nhật media cho đúng đáp án và loại media. */
   function applyAnswerMediaUpdate(index, mediaType, updater) {
     setValues((current) => ({
       ...current,
@@ -296,6 +325,7 @@ export function AdminQuestionForm({
     }));
   }
 
+  /** Upload media của đáp án và đồng bộ trạng thái hiển thị. */
   function handleAnswerMediaUpload(index, mediaType, file) {
     let previousItem = null;
     setValues((current) => {
@@ -321,6 +351,7 @@ export function AdminQuestionForm({
     setUploadingAnswerMediaType(mediaType);
   }
 
+  /** Gỡ media của đáp án và ghi nhận attachment cần xóa. */
   function handleAnswerMediaRemove(index, mediaType) {
     const current = values.answers[index]?.answerMedia?.[mediaType];
     if (current?.previewUrl) {
@@ -335,6 +366,7 @@ export function AdminQuestionForm({
     applyAnswerMediaUpdate(index, mediaType, () => null);
   }
 
+  /** Đồng bộ media đáp án mới sau khi question đã có ID. */
   function syncAnswerMediaAfterSave(savedQuestion) {
     const answers = savedQuestion?.answers || [];
     if (!answers.length) return Promise.resolve();
@@ -360,6 +392,7 @@ export function AdminQuestionForm({
     ));
   }
 
+  /** Xóa các attachment đáp án đã được người dùng gỡ khỏi form. */
   async function syncRemovedAnswerMedia(savedQuestionId) {
     if (!removedAttachmentIds.length) return;
     const answers = await questionBankService
@@ -385,6 +418,7 @@ export function AdminQuestionForm({
     );
   }
 
+  /** Gỡ media question và thu hồi preview URL nếu là file local. */
   function removeMedia(mediaType, item) {
     const attachmentId = mediaId(item);
     if (attachmentId) {
@@ -401,6 +435,7 @@ export function AdminQuestionForm({
     );
   }
 
+  /** Đổi vị trí media question trong danh sách hiện tại. */
   function moveMediaTo(mediaType, fromIndex, toIndex) {
     mediaSetter(mediaType)((current) => {
       if (fromIndex < 0 || fromIndex >= current.length) return current;
@@ -413,6 +448,7 @@ export function AdminQuestionForm({
     });
   }
 
+  /** Đồng bộ upload, xóa và thứ tự của một loại media question. */
   async function syncMediaType(savedQuestionId, mediaType, items) {
     const pendingItems = items.filter((item) => item.source === "pending");
     let uploadedIds = [];
@@ -446,6 +482,7 @@ export function AdminQuestionForm({
     }
   }
 
+  /** Đồng bộ toàn bộ image, audio và video của question. */
   async function syncQuestionMedia(savedQuestionId) {
     if (!savedQuestionId) return;
     for (const attachmentId of removedAttachmentIds) {
@@ -459,8 +496,35 @@ export function AdminQuestionForm({
     await syncMediaType(savedQuestionId, "video", videoMedia);
   }
 
+  /** Kiểm tra form, lưu question và đồng bộ toàn bộ attachment. */
   async function handleSubmit(event) {
     event.preventDefault();
+    if (draftMode) {
+      setSubmitting(true);
+      setError(null);
+      const cleanQuestionText = sanitizeQuestionHtml(values.questionText).trim();
+      const cleanExplanation = sanitizeQuestionHtml(values.explanation).trim();
+      try {
+        await onDraftSubmit?.({
+          values: {
+            ...values,
+            questionText: cleanQuestionText,
+            explanation: isEmptyQuestionHtml(cleanExplanation) ? "" : cleanExplanation,
+          },
+          media: {
+            images: imageMedia,
+            audios: audioMedia,
+            videos: videoMedia,
+          },
+        });
+      } catch (err) {
+        setError(err?.message || "Could not update the imported question.");
+      } finally {
+        setSubmitting(false);
+      }
+      return;
+    }
+
     const validationError = validateQuestionForm(values);
     if (validationError) {
       setError(validationError);
@@ -481,7 +545,6 @@ export function AdminQuestionForm({
       difficulty: values.difficulty ? Number(values.difficulty) : null,
       status: values.status,
       explanation: isEmptyQuestionHtml(cleanExplanation) ? null : cleanExplanation,
-      moduleId: values.moduleId || null,
       answers: normalizeAnswers(values.questionType, values.answers).map(
         (answer, index) => ({
           answerText: buildAnswerContent(answer),
@@ -494,14 +557,23 @@ export function AdminQuestionForm({
       let savedQuestion;
       if (editing) {
         savedQuestion = courseId
-          ? await questionBankService.updateCourseQuestion(courseId, questionId, payload)
+          ? await questionBankService.updateModuleQuestion(
+              courseId,
+              lockedModuleId,
+              questionId,
+              payload,
+            )
           : await questionBankService.updateQuestion(
               questionId,
               payload,
             );
       } else {
         savedQuestion = courseId
-          ? await questionBankService.createCourseQuestion(courseId, payload)
+          ? await questionBankService.createModuleQuestion(
+              courseId,
+              lockedModuleId,
+              payload,
+            )
           : await questionBankService.createQuestion(payload);
       }
       const savedQuestionId =
@@ -566,7 +638,7 @@ export function AdminQuestionForm({
   if (loading)
     return (
       <div className="admin-page">
-        <div className="admin-loading">Loading question form...</div>
+        <LoadingState label="Loading question form..." />
       </div>
     );
 
@@ -587,41 +659,23 @@ export function AdminQuestionForm({
               >
                 Back
               </Button>
-              <h1 className="admin-page__title" style={{ marginTop: 8 }}>
+              <h1 className="admin-page__title question-authoring-page-title">
                 Cannot edit question
               </h1>
             </div>
           </header>
         )}
-        <section
-          className="admin-card"
-          style={{
-            borderLeft: "4px solid #f59e0b",
-            background: "#fffbeb",
-          }}
-          role="alert"
+        <Alert
+          tone="warning"
+          title={`The question collection "${bank?.name || ""}" is archived.`}
+          action={
+            <Button to={returnPath} variant="secondary" size="sm">
+              Back to questions
+            </Button>
+          }
         >
-          <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
-            <AlertTriangle size={20} style={{ color: "#b45309", flexShrink: 0, marginTop: 2 }} />
-            <div>
-              <strong style={{ color: "#92400e" }}>
-                The question collection "{bank?.name || ""}" is archived.
-              </strong>
-              <p style={{ margin: "4px 0 8px", color: "#78350f", fontSize: 14 }}>
-                Restore it before editing any of its questions.
-              </p>
-              <Button
-                to={
-                  returnPath
-                }
-                variant="secondary"
-                size="sm"
-              >
-                Back to questions
-              </Button>
-            </div>
-          </div>
-        </section>
+          Restore it before editing any of its questions.
+        </Alert>
       </div>
     );
   }
@@ -640,7 +694,7 @@ export function AdminQuestionForm({
           >
             Back
           </Button>
-          <h1 className="admin-page__title" style={{ marginTop: 8 }}>
+          <h1 className="admin-page__title question-authoring-page-title">
             {editing ? "Edit question" : "Create question"}
           </h1>
         </div>
@@ -649,43 +703,16 @@ export function AdminQuestionForm({
 
       <section className={framed ? "admin-card" : "question-authoring-modal-body"}>
         {error && (
-          <div className="auth-card__alert" style={{ marginBottom: 16 }}>
+          <Alert tone="danger" title="Question could not be saved">
             {error}
-          </div>
+          </Alert>
         )}
         <form className="question-authoring-form" onSubmit={handleSubmit}>
           <section className="question-authoring-block question-authoring-block--metadata">
             <div className="question-authoring-meta-grid">
-              <div className="input-field">
-                <label className="input-field__label" htmlFor="question-module">
-                  Module
-                </label>
-                <select
-                  id="question-module"
-                  className="admin-toolbar__select"
-                  value={values.moduleId}
-                  onChange={(event) =>
-                    setValues((current) => ({
-                      ...current,
-                      moduleId: event.target.value,
-                    }))
-                  }
-                >
-                  <option value="">Unassigned - select a module</option>
-                  {modules.map((module) => (
-                    <option key={module.id} value={module.id}>
-                      {module.title}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="input-field">
-                <label className="input-field__label" htmlFor="question-type">
-                  Question type
-                </label>
-                <select
+              <Select
                   id="question-type"
-                  className="admin-toolbar__select"
+                  label="Question type"
                   value={values.questionType}
                   onChange={(event) => setType(event.target.value)}
                 >
@@ -694,18 +721,10 @@ export function AdminQuestionForm({
                       {option.label}
                     </option>
                   ))}
-                </select>
-              </div>
-              <div className="input-field">
-                <label
-                  className="input-field__label"
-                  htmlFor="question-difficulty"
-                >
-                  Difficulty
-                </label>
-                <select
+              </Select>
+              <Select
                   id="question-difficulty"
-                  className="admin-toolbar__select"
+                  label="Difficulty"
                   value={values.difficulty}
                   onChange={(event) =>
                     setValues((current) => ({
@@ -714,22 +733,21 @@ export function AdminQuestionForm({
                     }))
                   }
                 >
+                  {values.difficulty && !["1", "2", "3", "4", "5"].includes(String(values.difficulty)) && (
+                    <option value={values.difficulty}>{values.difficulty}</option>
+                  )}
                   <option value="">Not set</option>
                   <option value="1">1 - Easy</option>
                   <option value="2">2</option>
                   <option value="3">3 - Medium</option>
                   <option value="4">4</option>
                   <option value="5">5 - Hard</option>
-                </select>
-              </div>
-              <div className="input-field">
-                <label className="input-field__label" htmlFor="question-status">
-                  Status
-                </label>
-                <select
+              </Select>
+              <Select
                   id="question-status"
-                  className="admin-toolbar__select"
+                  label="Status"
                   value={values.status}
+                  disabled={draftMode}
                   onChange={(event) =>
                     setValues((current) => ({
                       ...current,
@@ -739,8 +757,7 @@ export function AdminQuestionForm({
                 >
                   <option value="draft">Draft</option>
                   <option value="approved">Approved</option>
-                </select>
-              </div>
+              </Select>
             </div>
           </section>
           <section className="question-authoring-block">
@@ -801,7 +818,7 @@ export function AdminQuestionForm({
                       />
                       <AnswerMediaRow
                         media={answer.answerMedia || { image: null, audio: null, video: null }}
-                        disabled={submitting || values.status === "archived"}
+                        disabled={draftMode || submitting || values.status === "archived"}
                         uploading={
                           uploadingAnswerIndex === index ? uploadingAnswerMediaType : null
                         }
@@ -822,28 +839,24 @@ export function AdminQuestionForm({
                             <strong>{answer.answerImage.fileName || "Answer image"}</strong>
                             {answer.answerImage.uploading ? <span>Uploading...</span> : null}
                           </div>
-                          <button
-                            type="button"
-                            className="admin-table__icon-btn admin-table__icon-btn--danger"
+                          <IconButton
+                            icon={<X size={15} />}
+                            label="Remove answer image"
+                            variant="danger"
                             onClick={() => removeAnswerImage(index)}
                             disabled={submitting || uploadingAnswerIndex === index}
-                            aria-label="Remove answer image"
-                          >
-                            <X size={15} />
-                          </button>
+                          />
                         </div>
                       ) : null}
                     </div>
                     <div className="question-authoring-answer__actions">
                       {values.questionType !== "true_false" && (
-                        <button
-                          type="button"
-                          className="admin-table__icon-btn admin-table__icon-btn--danger"
+                        <IconButton
+                          icon={<Trash2 size={15} />}
+                          label="Remove answer"
+                          variant="danger"
                           onClick={() => removeAnswer(index)}
-                          aria-label="Remove answer"
-                        >
-                          <Trash2 size={15} />
-                        </button>
+                        />
                       )}
                     </div>
                   </div>
@@ -856,41 +869,39 @@ export function AdminQuestionForm({
             <div className="question-authoring-block__header">
               <h2>Media</h2>
             </div>
-            <div className="question-authoring-media-tabs" role="tablist" aria-label="Question media type">
-              <button
-                type="button"
-                className={`question-authoring-media-tab ${activeMediaTab === "image" ? "is-active" : ""}`}
-                role="tab"
-                aria-selected={activeMediaTab === "image"}
-                onClick={() => setActiveMediaTab("image")}
-              >
-                <ImageIcon size={15} /> Images <span>{imageMedia.length}</span>
-              </button>
-              <button
-                type="button"
-                className={`question-authoring-media-tab ${activeMediaTab === "audio" ? "is-active" : ""}`}
-                role="tab"
-                aria-selected={activeMediaTab === "audio"}
-                onClick={() => setActiveMediaTab("audio")}
-              >
-                <FileAudio size={15} /> Audio <span>{audioMedia.length}</span>
-              </button>
-              <button
-                type="button"
-                className={`question-authoring-media-tab ${activeMediaTab === "video" ? "is-active" : ""}`}
-                role="tab"
-                aria-selected={activeMediaTab === "video"}
-                onClick={() => setActiveMediaTab("video")}
-              >
-                <FileVideo size={15} /> Video <span>{videoMedia.length}</span>
-              </button>
-            </div>
+            <Tabs
+              variant="compact"
+              ariaLabel="Question media type"
+              value={activeMediaTab}
+              onChange={setActiveMediaTab}
+              items={[
+                {
+                  value: "image",
+                  label: "Images",
+                  icon: <ImageIcon size={15} />,
+                  count: imageMedia.length,
+                },
+                {
+                  value: "audio",
+                  label: "Audio",
+                  icon: <FileAudio size={15} />,
+                  count: audioMedia.length,
+                },
+                {
+                  value: "video",
+                  label: "Video",
+                  icon: <FileVideo size={15} />,
+                  count: videoMedia.length,
+                },
+              ]}
+            />
             <div className="question-authoring-media-panel">
               {activeMediaTab === "image" ? (
                 <QuestionMediaManager
                   mediaType="image"
                   items={imageMedia}
                   disabled={submitting || values.status === "archived"}
+                  addDisabled={draftMode}
                   onAddFiles={(files) => addMediaFiles("image", files)}
                   onRemove={(item) => removeMedia("image", item)}
                   onMoveTo={(from, to) => moveMediaTo("image", from, to)}
@@ -900,6 +911,7 @@ export function AdminQuestionForm({
                   mediaType="audio"
                   items={audioMedia}
                   disabled={submitting || values.status === "archived"}
+                  addDisabled={draftMode}
                   onAddFiles={(files) => addMediaFiles("audio", files)}
                   onRemove={(item) => removeMedia("audio", item)}
                   onMoveTo={(from, to) => moveMediaTo("audio", from, to)}
@@ -909,6 +921,7 @@ export function AdminQuestionForm({
                   mediaType="video"
                   items={videoMedia}
                   disabled={submitting || values.status === "archived"}
+                  addDisabled={draftMode}
                   onAddFiles={(files) => addMediaFiles("video", files)}
                   onRemove={(item) => removeMedia("video", item)}
                   onMoveTo={(from, to) => moveMediaTo("video", from, to)}
@@ -945,7 +958,7 @@ export function AdminQuestionForm({
               Cancel
             </Button>
             <Button type="submit" loading={submitting}>
-              Save
+              {submitLabel || "Save"}
             </Button>
           </div>
         </form>
@@ -954,20 +967,28 @@ export function AdminQuestionForm({
   );
 }
 
+/** Bọc AdminQuestionForm trong modal dùng chung cho create, edit và import draft. */
 export function AdminQuestionFormModal({
   open,
+  title,
   bankId,
   courseId,
+  moduleId,
   questionId,
+  initialValues,
+  initialMedia,
+  draftMode = false,
+  submitLabel,
   onClose,
   onSaved,
+  onDraftSubmit,
 }) {
   const editing = Boolean(questionId);
 
   return (
     <Modal
       open={open}
-      title={editing ? "Edit question" : "Create question"}
+      title={title || (editing ? "Edit question" : "Create question")}
       size="xl"
       closeOnOverlayClick={false}
       onClose={onClose}
@@ -975,15 +996,22 @@ export function AdminQuestionFormModal({
       <AdminQuestionForm
         bankId={bankId}
         courseId={courseId}
+        moduleId={moduleId}
         questionId={questionId}
+        initialValues={initialValues}
+        initialMedia={initialMedia}
+        draftMode={draftMode}
+        submitLabel={submitLabel}
         framed={false}
         onCancel={onClose}
         onSaved={onSaved}
+        onDraftSubmit={onDraftSubmit}
       />
     </Modal>
   );
 }
 
+/** Render AdminQuestionForm dưới dạng trang độc lập. */
 export function AdminQuestionFormPage() {
   return <AdminQuestionForm />;
 }

@@ -2,9 +2,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
-    AlertCircle,
-    Eye,
-    EyeOff,
     Lock,
     Phone,
     ShieldCheck,
@@ -12,7 +9,17 @@ import {
     User,
     UserRound,
 } from "lucide-react";
-import { Form, FormField, Button, useToast } from "@/shared/components/ui";
+import {
+    Alert,
+    Button,
+    ErrorState,
+    Form,
+    FormField,
+    PasswordField,
+    Tabs,
+    Textarea,
+    useToast,
+} from "@/shared/components/ui";
 import { authService } from "../services/authService";
 import { setAuthSession, getCurrentUser } from "@/services/api-client";
 import { profileSchema, changePasswordSchema } from "../schemas/auth-schemas";
@@ -24,9 +31,27 @@ const TABS = {
     PASSWORD: "password",
 };
 
+const PROFILE_TABS = [
+    {
+        value: TABS.INFO,
+        label: "Personal information",
+        icon: <UserRound size={18} />,
+        id: "profile-tab-info",
+        panelId: "profile-panel-info",
+    },
+    {
+        value: TABS.PASSWORD,
+        label: "Change Password",
+        icon: <ShieldCheck size={18} />,
+        id: "profile-tab-password",
+        panelId: "profile-panel-password",
+    },
+];
+
 const AVATAR_TYPES = ["image/jpeg", "image/png", "image/webp"];
 const MAX_AVATAR_SIZE = 5 * 1024 * 1024;
 
+/** Rút gọn tên người dùng thành tối đa hai ký tự cho avatar dự phòng. */
 function getInitials(fullName) {
     if (!fullName) return "?";
     const parts = fullName.trim().split(/\s+/);
@@ -35,6 +60,7 @@ function getInitials(fullName) {
     return (first + last).toUpperCase() || "?";
 }
 
+/** Kiểm tra và tải ảnh đại diện, đồng thời đồng bộ phiên đăng nhập hiện tại. */
 function ProfileAvatarUploader({ profile, onUploaded }) {
     const toast = useToast();
     const inputRef = useRef(null);
@@ -49,6 +75,7 @@ function ProfileAvatarUploader({ profile, onUploaded }) {
         };
     }, [previewUrl]);
 
+    /** Từ chối file không hợp lệ trước khi gửi và giải phóng preview sau upload. */
     async function uploadFile(file) {
         if (!file) return;
 
@@ -143,6 +170,7 @@ function ProfileAvatarUploader({ profile, onUploaded }) {
     );
 }
 
+/** Quản lý form thông tin cá nhân và chỉ cho lưu khi dữ liệu đã thay đổi. */
 function ProfileInfoForm({ profile, onSaved }) {
     const toast = useToast();
     const [serverError, setServerError] = useState(null);
@@ -178,6 +206,7 @@ function ProfileInfoForm({ profile, onSaved }) {
 
     const bioValue = useWatch({ control, name: "bio" }) ?? "";
 
+    /** Chuẩn hóa giá trị trống trước khi cập nhật hồ sơ và phiên người dùng. */
     async function onSubmit(values) {
         setServerError(null);
         try {
@@ -219,13 +248,13 @@ function ProfileInfoForm({ profile, onSaved }) {
             </header>
 
             {serverError && (
-                <div className="profile-alert" role="alert">
-                    <AlertCircle size={19} aria-hidden="true" />
-                    <div>
-                        <strong>Profile could not be updated</strong>
-                        <p>{serverError}</p>
-                    </div>
-                </div>
+                <Alert
+                    tone="danger"
+                    title="Profile could not be updated"
+                    className="profile-panel__alert"
+                >
+                    {serverError}
+                </Alert>
             )}
 
             <Form className="profile-form" onSubmit={handleSubmit(onSubmit)}>
@@ -257,43 +286,17 @@ function ProfileInfoForm({ profile, onSaved }) {
                         inputMode="tel"
                     />
 
-                    <div className="input-field profile-form__full">
-                        <div className="profile-form__label-row">
-                            <label
-                                className="input-field__label"
-                                htmlFor="profile-bio"
-                            >
-                                Bio
-                            </label>
-                            <span>{bioValue.length} / 1000</span>
-                        </div>
-                        <textarea
-                            id="profile-bio"
-                            className={[
-                                "profile-textarea",
-                                errors.bio ? "profile-textarea--error" : "",
-                            ]
-                                .filter(Boolean)
-                                .join(" ")}
-                            maxLength={1000}
-                            rows={6}
-                            placeholder="Tell learners and colleagues a little about yourself"
-                            aria-invalid={Boolean(errors.bio) || undefined}
-                            aria-describedby={
-                                errors.bio ? "profile-bio-error" : undefined
-                            }
-                            {...register("bio")}
-                        />
-                        {errors.bio && (
-                            <p
-                                id="profile-bio-error"
-                                className="input-field__error"
-                                role="alert"
-                            >
-                                {errors.bio.message}
-                            </p>
-                        )}
-                    </div>
+                    <Textarea
+                        id="profile-bio"
+                        label="Bio"
+                        className="profile-form__full"
+                        maxLength={1000}
+                        rows={6}
+                        placeholder="Tell learners and colleagues a little about yourself"
+                        error={errors.bio?.message}
+                        helperText={`${bioValue.length} / 1000 characters`}
+                        {...register("bio")}
+                    />
                 </div>
 
                 <div className="profile-form__actions">
@@ -327,10 +330,10 @@ function ProfileInfoForm({ profile, onSaved }) {
     );
 }
 
+/** Đổi mật khẩu với validation, chỉ báo độ mạnh và khả năng hiện/ẩn từng trường. */
 function ChangePasswordForm() {
     const toast = useToast();
     const [serverError, setServerError] = useState(null);
-    const [show, setShow] = useState({ cur: false, next: false, conf: false });
 
     const {
         register,
@@ -350,6 +353,7 @@ function ChangePasswordForm() {
 
     const newPasswordValue = useWatch({ control, name: "newPassword" }) ?? "";
 
+    /** Gửi thông tin đổi mật khẩu và xóa các giá trị nhạy cảm khi thành công. */
     async function onSubmit(values) {
         setServerError(null);
         try {
@@ -368,9 +372,7 @@ function ChangePasswordForm() {
         >
             <header className="profile-panel__header">
                 <div>
-                    <h2 id="profile-password-heading">
-                        Password &amp; security
-                    </h2>
+                    <h2 id="profile-password-heading">Change Password</h2>
                     <p>
                         Choose a strong, unique password to protect your
                         account.
@@ -379,87 +381,41 @@ function ChangePasswordForm() {
             </header>
 
             {serverError && (
-                <div className="profile-alert" role="alert">
-                    <AlertCircle size={19} aria-hidden="true" />
-                    <div>
-                        <strong>Password could not be changed</strong>
-                        <p>{serverError}</p>
-                    </div>
-                </div>
+                <Alert
+                    tone="danger"
+                    title="Password could not be changed"
+                    className="profile-panel__alert"
+                >
+                    {serverError}
+                </Alert>
             )}
 
             <Form
                 className="profile-form profile-form--password"
                 onSubmit={handleSubmit(onSubmit)}
             >
-                <FormField
+                <PasswordField
                     id="profile-current-password"
                     label="Current password"
-                    type={show.cur ? "text" : "password"}
                     required
                     registration={register("currentPassword")}
                     error={errors.currentPassword?.message}
                     leftIcon={<Lock size={16} aria-hidden="true" />}
-                    rightIcon={
-                        <button
-                            type="button"
-                            className="profile-password-toggle"
-                            onClick={() =>
-                                setShow((state) => ({
-                                    ...state,
-                                    cur: !state.cur,
-                                }))
-                            }
-                            aria-label={
-                                show.cur
-                                    ? "Hide current password"
-                                    : "Show current password"
-                            }
-                            aria-pressed={show.cur}
-                        >
-                            {show.cur ? (
-                                <EyeOff size={17} />
-                            ) : (
-                                <Eye size={17} />
-                            )}
-                        </button>
-                    }
+                    showLabel="Show current password"
+                    hideLabel="Hide current password"
                     autoComplete="current-password"
                 />
 
                 <div className="profile-password-group">
-                    <FormField
+                    <PasswordField
                         id="profile-new-password"
                         label="New password"
-                        type={show.next ? "text" : "password"}
                         required
                         registration={register("newPassword")}
                         error={errors.newPassword?.message}
                         leftIcon={<Lock size={16} aria-hidden="true" />}
-                        rightIcon={
-                            <button
-                                type="button"
-                                className="profile-password-toggle"
-                                onClick={() =>
-                                    setShow((state) => ({
-                                        ...state,
-                                        next: !state.next,
-                                    }))
-                                }
-                                aria-label={
-                                    show.next
-                                        ? "Hide new password"
-                                        : "Show new password"
-                                }
-                                aria-pressed={show.next}
-                            >
-                                {show.next ? (
-                                    <EyeOff size={17} />
-                                ) : (
-                                    <Eye size={17} />
-                                )}
-                            </button>
-                        }
+                        showLabel="Show new password"
+                        hideLabel="Hide new password"
                         autoComplete="new-password"
                     />
                     <div className="profile-password-requirements">
@@ -468,38 +424,15 @@ function ChangePasswordForm() {
                     </div>
                 </div>
 
-                <FormField
+                <PasswordField
                     id="profile-confirm-password"
                     label="Confirm new password"
-                    type={show.conf ? "text" : "password"}
                     required
                     registration={register("confirmPassword")}
                     error={errors.confirmPassword?.message}
                     leftIcon={<Lock size={16} aria-hidden="true" />}
-                    rightIcon={
-                        <button
-                            type="button"
-                            className="profile-password-toggle"
-                            onClick={() =>
-                                setShow((state) => ({
-                                    ...state,
-                                    conf: !state.conf,
-                                }))
-                            }
-                            aria-label={
-                                show.conf
-                                    ? "Hide password confirmation"
-                                    : "Show password confirmation"
-                            }
-                            aria-pressed={show.conf}
-                        >
-                            {show.conf ? (
-                                <EyeOff size={17} />
-                            ) : (
-                                <Eye size={17} />
-                            )}
-                        </button>
-                    }
+                    showLabel="Show password confirmation"
+                    hideLabel="Hide password confirmation"
                     autoComplete="new-password"
                 />
 
@@ -514,6 +447,7 @@ function ChangePasswordForm() {
     );
 }
 
+/** Hiển thị hồ sơ hiện tại với hai khu vực chỉnh thông tin và đổi mật khẩu. */
 export function ProfilePage() {
     const toast = useToast();
     const [profile, setProfile] = useState(null);
@@ -553,23 +487,6 @@ export function ProfilePage() {
         [profile?.fullName],
     );
 
-    function handleTabKeyDown(event) {
-        if (
-            event.key !== "ArrowUp" &&
-            event.key !== "ArrowDown" &&
-            event.key !== "ArrowLeft" &&
-            event.key !== "ArrowRight"
-        ) {
-            return;
-        }
-        event.preventDefault();
-        const nextTab = activeTab === TABS.INFO ? TABS.PASSWORD : TABS.INFO;
-        setActiveTab(nextTab);
-        window.requestAnimationFrame(() => {
-            document.getElementById(`profile-tab-${nextTab}`)?.focus();
-        });
-    }
-
     if (loading) {
         return (
             <div
@@ -589,18 +506,20 @@ export function ProfilePage() {
     if (error && !profile) {
         return (
             <div className="profile-page">
-                <div className="profile-error-state" role="alert">
-                    <AlertCircle size={28} aria-hidden="true" />
-                    <h1>Could not load profile</h1>
-                    <p>{error}</p>
-                    <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => window.location.reload()}
-                    >
-                        Try again
-                    </Button>
-                </div>
+                <ErrorState
+                    className="profile-error-state"
+                    title="Could not load profile"
+                    description={error}
+                    action={
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => window.location.reload()}
+                        >
+                            Try again
+                        </Button>
+                    }
+                />
             </div>
         );
     }
@@ -609,7 +528,7 @@ export function ProfilePage() {
         <div className="profile-page">
             <header className="profile-page__heading">
                 <div>
-                    <h1>Profile &amp; security</h1>
+                    <h1>Profile</h1>
                 </div>
             </header>
 
@@ -641,54 +560,15 @@ export function ProfilePage() {
                         </div>
                     </div>
 
-                    <nav
+                    <Tabs
                         className="profile-tabs"
-                        role="tablist"
-                        aria-label="Profile settings"
-                    >
-                        <button
-                            id="profile-tab-info"
-                            type="button"
-                            role="tab"
-                            aria-selected={activeTab === TABS.INFO}
-                            aria-controls="profile-panel-info"
-                            tabIndex={activeTab === TABS.INFO ? 0 : -1}
-                            className={[
-                                "profile-tabs__btn",
-                                activeTab === TABS.INFO
-                                    ? "profile-tabs__btn--active"
-                                    : "",
-                            ]
-                                .filter(Boolean)
-                                .join(" ")}
-                            onClick={() => setActiveTab(TABS.INFO)}
-                            onKeyDown={handleTabKeyDown}
-                        >
-                            <UserRound size={18} aria-hidden="true" />
-                            <span>Personal information</span>
-                        </button>
-                        <button
-                            id="profile-tab-password"
-                            type="button"
-                            role="tab"
-                            aria-selected={activeTab === TABS.PASSWORD}
-                            aria-controls="profile-panel-password"
-                            tabIndex={activeTab === TABS.PASSWORD ? 0 : -1}
-                            className={[
-                                "profile-tabs__btn",
-                                activeTab === TABS.PASSWORD
-                                    ? "profile-tabs__btn--active"
-                                    : "",
-                            ]
-                                .filter(Boolean)
-                                .join(" ")}
-                            onClick={() => setActiveTab(TABS.PASSWORD)}
-                            onKeyDown={handleTabKeyDown}
-                        >
-                            <ShieldCheck size={18} aria-hidden="true" />
-                            <span>Password &amp; security</span>
-                        </button>
-                    </nav>
+                        items={PROFILE_TABS}
+                        value={activeTab}
+                        onChange={setActiveTab}
+                        ariaLabel="Profile settings"
+                        orientation="vertical"
+                        variant="navigation"
+                    />
                 </aside>
 
                 <main className="profile-content">

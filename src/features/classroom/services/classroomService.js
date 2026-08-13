@@ -1,10 +1,5 @@
 import apiClient from "@/services/api-client";
-
-// Bóc tiếp trường data nghiệp vụ trong ApiResponse backend.
-function unwrapData(response) {
-  const root = response?.data ?? response;
-  return root?.data ?? root;
-}
+import { unwrapNestedApiData as unwrapData } from "@/services/api-response";
 
 // Chuẩn hóa page lớp học để list admin/trainer dùng cùng cấu trúc.
 function normalizePage(response) {

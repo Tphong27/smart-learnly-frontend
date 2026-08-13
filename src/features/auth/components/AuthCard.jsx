@@ -2,8 +2,17 @@ import { ArrowUpRight } from "lucide-react";
 import { Link } from "react-router-dom";
 import { AuroraBackground } from "./AuroraBackground";
 import { SmartLearnlyMark } from "@/shared/components/SmartLearnlyMark";
+import { Alert } from "@/shared/components/ui";
 import "./AuthCard.css";
 
+const ALERT_TONES = {
+    error: "danger",
+    info: "info",
+    success: "success",
+    warning: "warning",
+};
+
+/** Hiển thị nhận diện Smart Learnly với tone phù hợp nền của trang xác thực. */
 function BrandLogo({ tone = "light" }) {
     return (
         <span className={`auth-brand auth-brand--${tone}`}>
@@ -15,6 +24,7 @@ function BrandLogo({ tone = "light" }) {
     );
 }
 
+/** Cung cấp shell thống nhất cho toàn bộ trang đăng nhập và khôi phục tài khoản. */
 export function AuthPage({ children }) {
     return (
         <div className="auth-page">
@@ -34,6 +44,7 @@ export function AuthPage({ children }) {
     );
 }
 
+/** Hiển thị nội dung xác thực, feedback semantic và liên kết hỗ trợ trong một panel. */
 export function AuthCard({
     title,
     subtitle,
@@ -57,11 +68,12 @@ export function AuthCard({
             {title && <h1 className="auth-card__title">{title}</h1>}
             {subtitle && <p className="auth-card__subtitle">{subtitle}</p>}
             {alert && (
-                <div
-                    className={`auth-card__alert auth-card__alert--${alert.type || "error"}`}
+                <Alert
+                    tone={ALERT_TONES[alert.type] || "danger"}
+                    className="auth-card__alert"
                 >
                     {alert.message}
-                </div>
+                </Alert>
             )}
             {children}
             {footer && <div className="auth-card__footer">{footer}</div>}

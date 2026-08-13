@@ -517,3 +517,46 @@
     justify-content: flex-start;
   }
 }
+.question-import__selection-summary {
+  padding: 14px 0;
+}
+
+.question-import__preview-empty {
+  padding: 18px 0;
+}
+
+.question-import__column--row {
+  width: 60px;
+}
+
+.question-import__column--type,
+.question-import__column--media {
+  width: 110px;
+}
+
+.question-import__column--options {
+  width: 80px;
+}
+
+.question-import__column--correct {
+  width: 100px;
+}
+
+.question-import__column--status {
+  width: 130px;
+}
+
+.question-import__column--actions {
+  width: 96px;
+}
+
+.question-import__question-cell {
+  max-width: 280px;
+}
+
+.question-import__ready {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--sl-success);
+}

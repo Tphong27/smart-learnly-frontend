@@ -15,15 +15,17 @@ import { assignmentService } from "../services/assignmentService";
 import "./AssignmentAiDraftPanel.css";
 
 const DEFAULT_PROMPT =
-  "Hay tao noi dung bai assignment dua tren tai lieu nay va kem tieu chi cham diem.";
+  "Hãy tạo một bài tập dựa trên nội dung bài học hiện tại và kèm tiêu chí đánh giá.";
 const UNSUPPORTED_SOURCE_MESSAGE = "Only PDF or DOCX files can be uploaded.";
 const MIN_THINKING_MS = 700;
+/** Kiểm tra nhanh định dạng nguồn trước khi gửi file lên backend. */
 function isSupportedSourceFile(file) {
   if (!file?.name) return false;
   const extension = file.name.split(".").pop()?.toLowerCase();
   return extension === "pdf" || extension === "docx";
 }
 
+/** Hỗ trợ trainer tạo và áp dụng bản nháp assignment từ lời nhắn hoặc tài liệu nguồn. */
 export function AssignmentAiDraftPanel({
   mode = "assignment",
   currentTitle = "",
@@ -43,6 +45,7 @@ export function AssignmentAiDraftPanel({
   const [sourceCacheKey, setSourceCacheKey] = useState("");
   const [cachedSourceName, setCachedSourceName] = useState("");
 
+  /** Xóa dữ liệu phiên AI khi người dùng đổi lesson hoặc đóng luồng hiện tại. */
   function resetDraftState({ keepOpen = true } = {}) {
     setMessage(DEFAULT_PROMPT);
     setFile(null);
@@ -67,6 +70,7 @@ export function AssignmentAiDraftPanel({
     return () => window.clearTimeout(timer);
   }, [location.key]);
 
+  /** Gửi yêu cầu tạo draft và chuyển content/rubric về editor để trainer duyệt. */
   async function handleGenerate() {
     const trimmed = message.trim();
     if (!trimmed) {
@@ -114,6 +118,7 @@ export function AssignmentAiDraftPanel({
     }
   }
 
+  /** Sao chép phần nội dung draft đang hiển thị. */
   async function handleCopy() {
     if (!reply) return;
     try {
@@ -125,6 +130,7 @@ export function AssignmentAiDraftPanel({
     }
   }
 
+  /** Gỡ cả file mới chọn và source đã cache khỏi phiên AI hiện tại. */
   function removeSource() {
     setFile(null);
     setSourceCacheKey("");
@@ -134,6 +140,7 @@ export function AssignmentAiDraftPanel({
     }
   }
 
+  /** Cho phép gửi prompt bằng Ctrl/Cmd + Enter mà không cản thao tác xuống dòng thường. */
   function handleComposerKeyDown(event) {
     if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) {
       event.preventDefault();
@@ -169,8 +176,8 @@ export function AssignmentAiDraftPanel({
                   </span>
                 </div>
                 <span>
-                  Build assignment content and grading rubrics with AI. Max 5
-                  questions per prompt
+                  Build assignment content and grading rubrics with AI. Up to
+                  5 drafts per request
                 </span>
               </div>
             </div>

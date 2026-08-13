@@ -17,8 +17,10 @@ import { classroomService } from "../services/classroomService";
 import { canManageClasses, ROLES } from "@/shared/constants/roles";
 import { ClassStatusBadge } from "../components/ClassStatusBadge";
 import { ClassOverviewTab } from "../components/ClassOverviewTab";
-import { ClassCurriculumTab } from "../components/ClassCurriculumTab";
 import { ClassAnalyticsTab } from "../components/ClassAnalyticsTab";
+import { useClassCurriculum, TRAINER_LESSON_TYPES } from "../hooks/useClassCurriculum";
+import { CurriculumAuthoringLayout } from "@/features/course/components/CurriculumAuthoringLayout";
+import { CurriculumStructureEditor } from "@/features/course/components/CurriculumStructureEditor";
 import { getCurrentRole } from "@/shared/utils/auth";
 import { toDateInputValue } from "@/shared/utils/date";
 import {
@@ -26,6 +28,7 @@ import {
   normalizeClassStatus,
 } from "../constants/classLifecycle";
 
+/** Điều phối workspace lớp và mở curriculum cho Trainer hoặc người quản lý lớp. */
 export function ClassDetailPage({
   routeBase = "/staff/classrooms",
   coursePreviewBase = "/staff/courses",
@@ -38,6 +41,8 @@ export function ClassDetailPage({
   const isTrainer = userRole === ROLES.TRAINER;
   const isTmo = userRole === ROLES.TMO;
   const isClassManager = canManageClasses(userRole);
+  const canOpenClassCurriculum = isTrainer || isClassManager;
+  const canEditClassCurriculum = isTrainer || userRole === ROLES.ADMIN;
 
   const [classData, setClassData] = useState(null);
   const [searchParams, setSearchParams] = useSearchParams();
@@ -45,9 +50,18 @@ export function ClassDetailPage({
   const activeTab =
     requestedTab === "analytics"
       ? "analytics"
-      : requestedTab === "curriculum" && isTrainer
+      : requestedTab === "curriculum" && canOpenClassCurriculum
         ? "curriculum"
         : "overview";
+
+  const classCurriculum = useClassCurriculum({
+    classId,
+    courseId: classData?.courseId,
+    routeBase,
+    courseBasePath: coursePreviewBase,
+    enabled: activeTab === "curriculum" && canOpenClassCurriculum,
+    readOnly: !canEditClassCurriculum,
+  });
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -316,7 +330,7 @@ export function ClassDetailPage({
                 leftIcon={<ClipboardList size={17} />}
                 onClick={openAssignments}
               >
-                Assignment
+                {isTmo ? "View assignments" : "Assignment"}
               </Button>
             )}
 
@@ -385,7 +399,7 @@ export function ClassDetailPage({
           Overview
         </button>
 
-        {isTrainer && (
+        {canOpenClassCurriculum && (
           <button
             type="button"
             role="tab"
@@ -421,8 +435,53 @@ export function ClassDetailPage({
       <div className="class-workspace-panel">
         {activeTab === "analytics" ? (
           <ClassAnalyticsTab classId={classId} isTrainer={isTrainer} />
-        ) : activeTab === "curriculum" && isTrainer ? (
-          <ClassCurriculumTab classId={classId} />
+        ) : activeTab === "curriculum" && canOpenClassCurriculum ? (
+          <CurriculumAuthoringLayout
+            embedded
+            loading={classCurriculum.loading}
+            error={classCurriculum.loadError}
+            errorTitle="Class curriculum unavailable"
+            onRetry={classCurriculum.reload}
+            context={classCurriculum.contextLabel}
+            headerActions={
+              classCurriculum.canPublish ? (
+                <Button
+                  type="button"
+                  variant="save"
+                  size="sm"
+                  loading={classCurriculum.actionLoading}
+                  onClick={classCurriculum.publishDraft}
+                >
+                  Publish changes
+                </Button>
+              ) : null
+            }
+          >
+            <CurriculumStructureEditor
+              sections={classCurriculum.sections}
+              getLessons={(section) => section?.lessons || []}
+              isSectionLessonsLoading={() => false}
+              stats={classCurriculum.stats}
+              readOnly={!classCurriculum.canEdit}
+              lessonTypeOptions={TRAINER_LESSON_TYPES}
+              enableFlashcardCreateFields
+              lessonEditLabel={canEditClassCurriculum ? "Edit lesson" : "View lesson"}
+              emptyMessage="This class curriculum has no modules yet."
+              emptyAddTitle="Add a new module"
+              emptyAddSubtitle="Organise class content so trainees can follow along."
+              onCreateSection={classCurriculum.createSection}
+              onUpdateSection={classCurriculum.updateSection}
+              onDeleteSection={classCurriculum.deleteSection}
+              onReorderSections={classCurriculum.reorderSections}
+              onCreateLesson={classCurriculum.createLesson}
+              showManageQuestions={canEditClassCurriculum}
+              onManageQuestions={classCurriculum.manageLessonQuestions}
+              openLessonEditorOnCreate
+              onDeleteLesson={classCurriculum.deleteLesson}
+              onReorderLessons={classCurriculum.reorderLessons}
+              onEditLesson={classCurriculum.editLesson}
+            />
+          </CurriculumAuthoringLayout>
         ) : (
           <ClassOverviewTab
             classData={classData}

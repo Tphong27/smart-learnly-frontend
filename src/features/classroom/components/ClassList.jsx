@@ -3,6 +3,7 @@ import { ClassStatusBadge } from "./ClassStatusBadge";
 import { formatCapacity, formatDate, formatVnd } from "../utils/classFormatter";
 import "@/features/admin/courses/pages/AdminCoursesPage.css";
 
+/** Chuẩn hóa các nhãn bắt buộc để bảng và card lớp dùng cùng dữ liệu. */
 function resolveClassItem(classItem) {
   return {
     ...classItem,
@@ -13,6 +14,7 @@ function resolveClassItem(classItem) {
   };
 }
 
+/** Hiển thị các thao tác lớp phù hợp với quyền xem và quản lý hiện tại. */
 function ClassActions({
   classItem,
   isClassManager,
@@ -34,7 +36,7 @@ function ClassActions({
         <Eye size={17} strokeWidth={2.2} aria-hidden="true" />
       </button>
 
-      {isTrainer && (
+      {(isTrainer || isClassManager) && (
         <button
           type="button"
           className="course-management__action"
@@ -71,6 +73,7 @@ function ClassActions({
   );
 }
 
+/** Hiển thị danh sách lớp responsive và dùng chung nhóm hành động cho mọi role. */
 export function ClassList({
   classes,
   isClassManager,

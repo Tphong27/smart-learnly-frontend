@@ -85,7 +85,7 @@ Purple is an accent, not a page background. Do not introduce a competing blue pr
 - Keep the public/home header structure: logo, prominent course search, Categories, notification, and user control.
 - Categories sits between search and notification and opens a dropdown.
 - Do not add a second category navigation row below the header.
-- Under the header, keep the welcome area and the horizontal trainee navigation: Dashboard, Progress, Course Catalog, My Tests, Flashcards.
+- Under the header, keep the welcome area and the horizontal trainee navigation: Dashboard, Assignment, Flashcards.
 - The active trainee destination uses text weight and a short underline, not a long full-width border.
 
 ### Admin, TMO, SME, and Trainer workspaces
@@ -99,6 +99,10 @@ Purple is an accent, not a page background. Do not introduce a competing blue pr
 - Mobile uses a drawer/overlay instead of the desktop collapsed interaction.
 
 ## Component rules
+
+API React và quy tắc chọn component chi tiết được định nghĩa trong
+`UI_COMPONENT_STANDARDS.md`. Feature mới phải compose từ các primitive đó thay
+vì tạo thêm một hệ button, feedback, form, table hoặc pagination riêng.
 
 ### Buttons
 
@@ -242,3 +246,4 @@ Before changing UI:
 - `src/app/layouts/AppLayout.css` — admin/staff sidebar and workspace shell.
 - `src/app/layouts/LayoutBackground.css` — shared grid background.
 - `src/shared/components/Pagination.css` — shared pagination.
+- `UI_COMPONENT_STANDARDS.md` — canonical React component APIs and migration rules.

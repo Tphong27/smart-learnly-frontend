@@ -1,25 +1,3 @@
-import { getCurrentUser } from "@/services";
-
-/** Cho biết người dùng hiện tại có quyền sửa question bank hay không. */
-export function canWriteQuestionBank() {
-  const role = getCurrentUser()?.role;
-  return role === "ADMIN" || role === "SME";
-}
-
-/** Chuẩn hóa response curriculum thành danh sách module dùng cho bộ lọc. */
-export function normalizeQuestionModules(payload) {
-  const root = payload?.data ?? payload;
-  const items = Array.isArray(root)
-    ? root
-    : (root?.items ?? root?.content ?? root?.sections ?? []);
-  return items
-    .map((item, index) => ({
-      id: item.moduleId || item.sectionId || item.id,
-      title: item.title || item.name || `Module ${index + 1}`,
-    }))
-    .filter((item) => item.id);
-}
-
 /** Lấy URL media từ các dạng response attachment đang được backend hỗ trợ. */
 export function questionMediaUrl(item) {
   return item?.mediaUrl || item?.fileUrl || item?.url || null;

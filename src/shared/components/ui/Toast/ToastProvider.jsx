@@ -2,15 +2,18 @@ import { useCallback, useMemo, useState } from 'react'
 import { ToastContext } from './ToastContext'
 import { ToastContainer } from './ToastContainer'
 
+/** Cung cấp hàng đợi toast dùng chung và tự đóng theo thời lượng cấu hình. */
 export function ToastProvider({ children }) {
   const [toasts, setToasts] = useState([])
 
+  /** Xóa một toast theo ID ổn định. */
   const removeToast = useCallback((id) => {
     setToasts((currentToasts) =>
       currentToasts.filter((toast) => toast.id !== id),
     )
   }, [])
 
+  /** Thêm toast semantic và lên lịch tự đóng nếu duration lớn hơn 0. */
   const showToast = useCallback(
     ({ type = 'info', message, title, duration = 3000, action }) => {
       const id =

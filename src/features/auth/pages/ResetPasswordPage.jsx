@@ -1,28 +1,27 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { useForm } from 'react-hook-form'
+import { useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Eye, EyeOff, Lock } from 'lucide-react'
-import { Form, FormField, Button, useToast } from '@/shared/components/ui'
+import { Lock } from 'lucide-react'
+import { Button, Form, PasswordField, useToast } from '@/shared/components/ui'
 import { authService } from '../services/authService'
 import { resetPasswordSchema } from '../schemas/auth-schemas'
 import { AuthPage, AuthCard } from '../components/AuthCard'
 import { PasswordStrengthChecklist } from '../components/PasswordStrengthChecklist'
 
+/** Đặt mật khẩu mới từ reset token và điều hướng về đăng nhập khi thành công. */
 export function ResetPasswordPage() {
   const navigate = useNavigate()
   const toast = useToast()
   const [searchParams] = useSearchParams()
   const initialToken = searchParams.get('token') ?? ''
   const [serverError, setServerError] = useState(null)
-  const [showPassword, setShowPassword] = useState(false)
-  const [showConfirm, setShowConfirm] = useState(false)
 
   const {
     register,
     handleSubmit,
     setValue,
-    watch,
+    control,
     formState: { errors, isSubmitting },
   } = useForm({
     resolver: zodResolver(resetPasswordSchema),
@@ -40,8 +39,9 @@ export function ResetPasswordPage() {
     }
   }, [initialToken, setValue])
 
-  const passwordValue = watch('newPassword') ?? ''
+  const passwordValue = useWatch({ control, name: 'newPassword' }) ?? ''
 
+  /** Gửi reset token cùng mật khẩu mới và hiển thị lỗi phục hồi khi thất bại. */
   async function onSubmit(values) {
     setServerError(null)
     try {
@@ -91,24 +91,13 @@ export function ResetPasswordPage() {
           <input type="hidden" {...register('token')} />
 
           <div>
-            <FormField
+            <PasswordField
               label="New password"
-              type={showPassword ? 'text' : 'password'}
               placeholder="At least 8 characters"
               required
               registration={register('newPassword')}
               error={errors.newPassword?.message}
               leftIcon={<Lock size={16} />}
-              rightIcon={
-                <button
-                  type="button"
-                  onClick={() => setShowPassword((s) => !s)}
-                  aria-label={showPassword ? 'Hide password' : 'Show password'}
-                  className="auth-toggle-eye"
-                >
-                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                </button>
-              }
               autoComplete="new-password"
             />
             <div style={{ marginTop: 12 }}>
@@ -116,24 +105,15 @@ export function ResetPasswordPage() {
             </div>
           </div>
 
-          <FormField
+          <PasswordField
             label="Confirm new password"
-            type={showConfirm ? 'text' : 'password'}
             placeholder="Re-enter your new password"
             required
             registration={register('confirmPassword')}
             error={errors.confirmPassword?.message}
             leftIcon={<Lock size={16} />}
-            rightIcon={
-              <button
-                type="button"
-                onClick={() => setShowConfirm((s) => !s)}
-                aria-label={showConfirm ? 'Hide password' : 'Show password'}
-                className="auth-toggle-eye"
-              >
-                {showConfirm ? <EyeOff size={16} /> : <Eye size={16} />}
-              </button>
-            }
+            showLabel="Show password confirmation"
+            hideLabel="Hide password confirmation"
             autoComplete="new-password"
           />
 

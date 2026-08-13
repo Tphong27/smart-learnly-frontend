@@ -1,5 +1,19 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { FileText, RefreshCw, Search, Upload, X } from "lucide-react";
+import Pagination from "@/shared/components/Pagination";
+import { StatusBadge } from "@/shared/components/status";
+import {
+  Alert,
+  Button,
+  Checkbox,
+  FilterBar,
+  IconButton,
+  Input,
+  SearchInput,
+  Select,
+  Table,
+  Textarea,
+} from "@/shared/components/ui";
 import { courseContentService } from "../../services/courseContentService";
 import { flashcardAuthoringService as flashcardService } from "@/features/flashcard";
 import { getErrorMessage } from "./flashcard-utils";
@@ -34,34 +48,31 @@ export function GenerationSettings({ values, onChange, prefix }) {
   return (
     <>
       <div className="flashcard-staging__settings">
-        <div className="flashcard-field">
-          <label htmlFor={`${prefix}-count`}>Target cards</label>
-          <input
-            id={`${prefix}-count`}
-            type="number"
-            inputMode="numeric"
-            value={values.desiredCount}
-            onChange={(event) =>
-              onChange({ ...values, desiredCount: event.target.value })
-            }
-          />
-        </div>
-        <div className="flashcard-field">
-          <label htmlFor={`${prefix}-language`}>Language</label>
-          <select
-            id={`${prefix}-language`}
-            value={values.language}
-            onChange={(event) =>
-              onChange({ ...values, language: event.target.value })
-            }
-          >
-            {LANGUAGES.map((language) => (
-              <option key={language.value} value={language.value}>
-                {language.label}
-              </option>
-            ))}
-          </select>
-        </div>
+        <Input
+          id={`${prefix}-count`}
+          label="Target cards"
+          type="number"
+          min="1"
+          inputMode="numeric"
+          value={values.desiredCount}
+          onChange={(event) =>
+            onChange({ ...values, desiredCount: event.target.value })
+          }
+        />
+        <Select
+          id={`${prefix}-language`}
+          label="Language"
+          value={values.language}
+          onChange={(event) =>
+            onChange({ ...values, language: event.target.value })
+          }
+        >
+          {LANGUAGES.map((language) => (
+            <option key={language.value} value={language.value}>
+              {language.label}
+            </option>
+          ))}
+        </Select>
       </div>
       <p className="flashcard-staging__settings-note">
         The system reads the document and creates reviewable draft flashcards.
@@ -73,13 +84,13 @@ export function GenerationSettings({ values, onChange, prefix }) {
 /** Hiển thị thông báo lỗi nội tuyến khi có nội dung. */
 export function InlineAlert({ children }) {
   if (!children) return null;
-  return <div className="flashcard-staging__alert">{children}</div>;
+  return <Alert tone="danger">{children}</Alert>;
 }
 
 /** Hiển thị thông báo nghiệp vụ nội tuyến khi có nội dung. */
 export function InlineNotice({ children }) {
   if (!children) return null;
-  return <div className="flashcard-staging__notice">{children}</div>;
+  return <Alert tone="info">{children}</Alert>;
 }
 
 /** Chuyển notice của modal thành alert hoặc notice đúng loại. */
@@ -88,15 +99,9 @@ export function ModalNotice({ notice }) {
   const isError = notice.type === "error";
   return (
     <div className="flashcard-import-modal__notice">
-      <div
-        className={
-          isError ? "flashcard-staging__alert" : "flashcard-staging__notice"
-        }
-        role={isError ? "alert" : "status"}
-        aria-live={isError ? "assertive" : "polite"}
-      >
+      <Alert tone={isError ? "danger" : notice.type === "success" ? "success" : "info"}>
         {notice.message}
-      </div>
+      </Alert>
     </div>
   );
 }
@@ -323,40 +328,61 @@ export function CourseQuestionsImportPanel({
     <section className="flashcard-panel">
       <div className="flashcard-panel__header">
         <h3 className="flashcard-panel__title">Course Questions</h3>
-        <button
+        <Button
           type="button"
-          className="flashcard-btn"
+          variant="secondary"
+          leftIcon={<RefreshCw size={16} />}
           onClick={loadQuestions}
           disabled={loading}
         >
-          <RefreshCw size={16} />
           Refresh
-        </button>
+        </Button>
       </div>
       <div className="flashcard-panel__body flashcard-staging__section">
         <p className="flashcard-staging__muted">
           Choose approved questions from this course and review them as flashcard candidates.
         </p>
-        <div className="flashcard-staging__filters flashcard-course-question-filters">
-          <div className="flashcard-field">
-            <label htmlFor="staging-question-keyword">Search</label>
-            <input
+        <FilterBar
+          className="flashcard-course-question-filters"
+          ariaLabel="Course question filters"
+          search={
+            <SearchInput
               id="staging-question-keyword"
-              type="search"
+              label="Search"
               value={filters.keyword}
-              onChange={(event) =>
+              onChange={(value) =>
                 setFilters((current) => ({
                   ...current,
-                  keyword: event.target.value,
+                  keyword: value,
                 }))
               }
               placeholder="Question text"
             />
-          </div>
-          <div className="flashcard-field flashcard-course-question-filters__module">
-            <label htmlFor="staging-question-module">Module</label>
-            <select
+          }
+          actions={
+            <>
+              <Button
+                type="button"
+                variant="secondary"
+                leftIcon={<Search size={16} />}
+                onClick={applyFilters}
+                disabled={loading}
+              >
+                Apply
+              </Button>
+              <IconButton
+                icon={<X size={16} />}
+                label="Clear filters"
+                onClick={resetFilters}
+                disabled={loading}
+              />
+            </>
+          }
+        >
+          <Select
               id="staging-question-module"
+              className="flashcard-course-question-filters__module"
+              label="Module"
               value={filters.moduleId}
               onChange={(event) =>
                 setFilters((current) => ({
@@ -372,38 +398,19 @@ export function CourseQuestionsImportPanel({
                   {module.title}
                 </option>
               ))}
-            </select>
-          </div>
-          <button
-            type="button"
-            className="flashcard-btn"
-            onClick={applyFilters}
-            disabled={loading}
-          >
-            <Search size={16} />
-            Search
-          </button>
-          <button
-            type="button"
-            className="flashcard-btn flashcard-btn--icon"
-            onClick={resetFilters}
-            disabled={loading}
-            title="Clear filters"
-            aria-label="Clear filters"
-          >
-            <X size={16} />
-          </button>
-        </div>
+          </Select>
+        </FilterBar>
         <InlineAlert>{modulesError}</InlineAlert>
         <InlineAlert>{error}</InlineAlert>
 
-        <div className="flashcard-staging__table-wrap">
-          <table className="flashcard-staging__table">
+        <Table
+          ariaLabel="Approved course questions"
+          className="flashcard-staging__table-wrap"
+        >
             <thead>
               <tr>
                 <th>
-                  <input
-                    type="checkbox"
+                  <Checkbox
                     checked={allVisibleSelected}
                     onChange={toggleAllVisible}
                     disabled={selectablePageQuestions.length === 0}
@@ -443,74 +450,52 @@ export function CourseQuestionsImportPanel({
                       onClick={(event) => handleQuestionRowClick(event, question)}
                       aria-selected={isSelected}
                     >
-                      <td>
-                        <input
-                          type="checkbox"
+                      <td data-label="Select">
+                        <Checkbox
                           checked={isSelected}
                           onChange={() => toggleQuestion(question)}
                           aria-label="Select source question"
                         />
                       </td>
-                      <td className="flashcard-staging__wrap-cell">
+                      <td data-label="Question" className="flashcard-staging__wrap-cell">
                         {question.questionText || "--"}
                       </td>
-                      <td className="flashcard-staging__wrap-cell">
+                      <td data-label="Module" className="flashcard-staging__wrap-cell">
                         {moduleTitleById.get(String(getModuleId(question))) || "--"}
                       </td>
-                      <td className="flashcard-staging__wrap-cell">
+                      <td data-label="Answers" className="flashcard-staging__wrap-cell">
                         {answersLabel(question)}
                       </td>
-                      <td>{question.sourceName || "Course questions"}</td>
+                      <td data-label="Source">{question.sourceName || "Course questions"}</td>
                     </tr>
                   );
                 })
               )}
             </tbody>
-          </table>
-        </div>
+        </Table>
 
-        {filteredQuestions.length > 0 && (
-          <div className="flashcard-staging__pagination">
-            <span>
-              Showing {safePage * SOURCE_QUESTION_PAGE_SIZE + 1}-
-              {Math.min((safePage + 1) * SOURCE_QUESTION_PAGE_SIZE, filteredQuestions.length)} of{" "}
-              {filteredQuestions.length}
-            </span>
-            <div className="flashcard-staging__pagination-controls">
-              <button
-                type="button"
-                className="flashcard-btn"
-                onClick={() => setPage((current) => Math.max(0, current - 1))}
-                disabled={safePage === 0}
-              >
-                Previous
-              </button>
-              <span className="flashcard-staging__page-indicator">
-                Page {safePage + 1} / {totalPages}
-              </span>
-              <button
-                type="button"
-                className="flashcard-btn"
-                onClick={() => setPage((current) => Math.min(totalPages - 1, current + 1))}
-                disabled={safePage + 1 >= totalPages}
-              >
-                Next
-              </button>
-            </div>
-          </div>
-        )}
+        <Pagination
+          page={safePage + 1}
+          totalPages={totalPages}
+          totalItems={filteredQuestions.length}
+          size={SOURCE_QUESTION_PAGE_SIZE}
+          onPageChange={(nextPage) => setPage(nextPage - 1)}
+          ariaLabel="Course question pagination"
+        />
 
         <div className="flashcard-staging__actions">
           <span>{selectedImportableIds.length} selected</span>
-          <button
+          <Button
             type="button"
-            className="flashcard-btn flashcard-btn--primary"
+            variant="primary"
+            leftIcon={<Upload size={16} />}
+            loading={submitting}
+            loadingLabel="Preparing..."
             onClick={handleImport}
             disabled={submitting || loading || selectedImportableIds.length === 0}
           >
-            <Upload size={16} />
-            {submitting ? "Preparing" : "Review selected"}
-          </button>
+            Review selected
+          </Button>
         </div>
       </div>
     </section>
@@ -649,25 +634,20 @@ export function PastedTextImportPanel({
       onSubmit={handleImport}
       noValidate
     >
-      <div className="flashcard-field">
-        <label htmlFor="pasted-import-text">Pasted text</label>
-        <textarea
+      <Textarea
           id="pasted-import-text"
+          label="Pasted text"
           value={values.text}
           onChange={(event) => updateValue("text", event.target.value)}
           onKeyDown={handleTextKeyDown}
           placeholder={"Term\tDefinition\nAnother term\tAnother definition"}
           rows={12}
-        />
-      </div>
+      />
 
       <div className="flashcard-pasted-import__settings">
-        <div className="flashcard-field">
-          <label htmlFor="pasted-front-back-separator">
-            Between front and back
-          </label>
-          <select
+        <Select
             id="pasted-front-back-separator"
+            label="Between front and back"
             value={values.frontBackSeparator}
             onChange={(event) =>
               updateValue("frontBackSeparator", event.target.value)
@@ -678,27 +658,21 @@ export function PastedTextImportPanel({
                 {option.label}
               </option>
             ))}
-          </select>
-        </div>
+        </Select>
         {values.frontBackSeparator === "custom" && (
-          <div className="flashcard-field">
-            <label htmlFor="pasted-custom-front-back-separator">
-              Custom side separator
-            </label>
-            <input
+          <Input
               id="pasted-custom-front-back-separator"
+              label="Custom side separator"
               type="text"
               value={values.customFrontBackSeparator}
               onChange={(event) =>
                 updateValue("customFrontBackSeparator", event.target.value)
               }
-            />
-          </div>
+          />
         )}
-        <div className="flashcard-field">
-          <label htmlFor="pasted-card-separator">Between cards</label>
-          <select
+        <Select
             id="pasted-card-separator"
+            label="Between cards"
             value={values.cardSeparator}
             onChange={(event) =>
               updateValue("cardSeparator", event.target.value)
@@ -709,22 +683,17 @@ export function PastedTextImportPanel({
                 {option.label}
               </option>
             ))}
-          </select>
-        </div>
+        </Select>
         {values.cardSeparator === "custom" && (
-          <div className="flashcard-field">
-            <label htmlFor="pasted-custom-card-separator">
-              Custom card separator
-            </label>
-            <input
+          <Input
               id="pasted-custom-card-separator"
+              label="Custom card separator"
               type="text"
               value={values.customCardSeparator}
               onChange={(event) =>
                 updateValue("customCardSeparator", event.target.value)
               }
-            />
-          </div>
+          />
         )}
       </div>
 
@@ -800,15 +769,11 @@ export function PastedTextImportPanel({
                   <p>{card.backText}</p>
                 </div>
                 <div className="flashcard-pasted-import__row-status">
-                  <span
-                    className={
-                      card.importable
-                        ? "flashcard-pasted-import__status"
-                        : "flashcard-pasted-import__status flashcard-pasted-import__status--skip"
-                    }
-                  >
-                    {card.importable ? "Ready" : "Duplicate"}
-                  </span>
+                  <StatusBadge
+                    status={card.importable ? "ready" : "duplicate"}
+                    label={card.importable ? "Ready" : "Duplicate"}
+                    tone={card.importable ? "success" : "warning"}
+                  />
                 </div>
               </article>
             ))}
@@ -822,18 +787,20 @@ export function PastedTextImportPanel({
             ? "Only valid non-duplicate cards will be imported."
             : "Non-duplicate cards import directly to Current Flashcards."}
         </span>
-        <button
+        <Button
           type="submit"
-          className="flashcard-btn flashcard-btn--primary"
+          variant="primary"
+          leftIcon={<Upload size={16} />}
+          loading={submitting}
+          loadingLabel="Importing..."
           disabled={
             submitting ||
             Boolean(parsed.configError) ||
             importableCards.length === 0
           }
         >
-          <Upload size={16} />
-          {submitting ? "Importing" : "Import ready cards"}
-        </button>
+          Import ready cards
+        </Button>
       </div>
     </form>
   );
@@ -940,14 +907,16 @@ export function DocumentGenerationPanel({ setId, notify, onTemporaryCandidates }
         />
         <div className="flashcard-staging__actions">
           <span>{file ? "Ready to create cards" : "No file selected"}</span>
-          <button
+          <Button
             type="submit"
-            className="flashcard-btn flashcard-btn--primary"
+            variant="primary"
+            leftIcon={<Upload size={16} />}
+            loading={submitting}
+            loadingLabel="Creating..."
             disabled={submitting || Boolean(fileError)}
           >
-            <Upload size={16} />
-            {submitting ? "Creating" : "Create from document"}
-          </button>
+            Create from document
+          </Button>
         </div>
       </form>
     </section>

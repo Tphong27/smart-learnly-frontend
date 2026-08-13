@@ -9,17 +9,8 @@ import {
 } from "@/shared/constants/roles";
 import { SmartLearnlyMark } from "@/shared/components/SmartLearnlyMark";
 import { NotificationBell } from "@/features/notification";
+import { getInitials } from "@/shared/utils/userDisplay";
 import "./Header.css";
-
-function getInitials(name) {
-  return (name || "U")
-    .split(" ")
-    .filter(Boolean)
-    .map((word) => word[0])
-    .join("")
-    .slice(0, 2)
-    .toUpperCase();
-}
 
 export function Header({
   user,

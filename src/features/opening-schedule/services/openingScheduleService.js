@@ -1,10 +1,5 @@
 import apiClient from "@/services/api-client";
-
-// Bóc payload lịch khai giảng trong ApiResponse backend.
-function unwrapData(response) {
-  const root = response?.data ?? response;
-  return root?.data ?? root;
-}
+import { unwrapNestedApiData as unwrapData } from "@/services/api-response";
 
 // Chuẩn hóa danh sách lịch khai giảng và metadata phân trang.
 function normalizePage(response) {

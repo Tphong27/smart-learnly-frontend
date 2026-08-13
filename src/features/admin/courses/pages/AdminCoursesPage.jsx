@@ -2,27 +2,42 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
-  AlertTriangle,
   BookOpen,
   ClipboardCheck,
   Edit2,
   Eye,
-  FileQuestion,
   MoreVertical,
   Plus,
   RotateCcw,
-  Search,
   Trash2,
   Users,
   X,
 } from "lucide-react";
-import { Button, Modal, useToast } from "@/shared/components/ui";
+import {
+  Alert,
+  Button,
+  ConfirmDialog,
+  EmptyState,
+  ErrorState,
+  FilterBar,
+  IconButton,
+  LoadingState,
+  SearchInput,
+  Select,
+  Table,
+  Tabs,
+  useToast,
+} from "@/shared/components/ui";
+import { StatusBadge } from "@/shared/components/status";
 import Pagination from "@/shared/components/Pagination";
 import { categoryService, courseAdminService } from "@/features/course";
 import { getCurrentUser } from "@/services/api-client";
 import { formatDate, formatPrice } from "@/shared/utils/formatters";
 import { DEFAULT_PAGE_SIZE } from "@/shared/constants/pagination";
-import { canViewClasses as canViewClassRooms } from "@/shared/constants/roles";
+import {
+  canViewClasses as canViewClassRooms,
+  ROLES,
+} from "@/shared/constants/roles";
 import "@/features/course/course-admin.css";
 import "./AdminCoursesPage.css";
 
@@ -57,10 +72,18 @@ function CourseStatusBadge({ status }) {
     inactive: "Inactive",
   };
 
+  const tones = {
+    draft: "neutral",
+    published: "success",
+    inactive: "warning",
+  };
+
   return (
-    <span className={`admin-status admin-status--${normalized || "draft"}`}>
-      {labels[normalized] || status || "Draft"}
-    </span>
+    <StatusBadge
+      status={normalized || "draft"}
+      label={labels[normalized] || status || "Draft"}
+      tone={tones[normalized] || "neutral"}
+    />
   );
 }
 
@@ -98,29 +121,23 @@ function DeleteCourseModal({ open, target, onClose, onConfirmed }) {
   }
 
   return (
-    <Modal
+    <ConfirmDialog
       open={open}
       title="Delete this course?"
-      size="sm"
       onClose={onClose}
-      closeDisabled={loading}
+      onConfirm={handleConfirm}
+      confirmLabel="Delete course"
+      loading={loading}
+      loadingLabel="Deleting..."
     >
       <div className="course-management-delete">
         <p>
           Delete <strong>{target?.title}</strong>? Learners will no longer be able to access it.
           This action is reversible only through system recovery.
         </p>
-        {error ? <p className="course-management-delete__error">{error}</p> : null}
-        <div className="course-management-delete__actions">
-          <Button type="button" variant="outline" onClick={onClose} disabled={loading}>
-            Cancel
-          </Button>
-          <Button type="button" variant="danger" onClick={handleConfirm} loading={loading}>
-            Delete course
-          </Button>
-        </div>
+        {error ? <Alert tone="danger">{error}</Alert> : null}
       </div>
-    </Modal>
+    </ConfirmDialog>
   );
 }
 
@@ -128,8 +145,8 @@ function DeleteCourseModal({ open, target, onClose, onConfirmed }) {
 function RowActionsMenu({
   course,
   basePath,
+  classroomsBasePath,
   canViewClasses,
-  canOpenMasterCurriculum = true,
   canEdit,
   canDelete,
   previewReturnPath,
@@ -199,10 +216,8 @@ function RowActionsMenu({
     };
   }, [open, updateMenuPosition]);
 
-  const questionsPath = `/admin/courses/${course.id}/questions`;
   const testsPath = `/staff/tests?courseId=${encodeURIComponent(course.id)}`;
-  const classesBasePath = basePath.startsWith("/admin") ? "/admin/classrooms" : "/staff/classrooms";
-  const classesPath = `${classesBasePath}?courseId=${encodeURIComponent(course.id)}`;
+  const classesPath = `${classroomsBasePath}?courseId=${encodeURIComponent(course.id)}`;
   const showManageTest = basePath.startsWith("/staff");
   const previewPath = `${basePath}/${course.id}/preview?returnTo=${encodeURIComponent(previewReturnPath)}`;
   const detailsPath = `${basePath}/${course.id}`;
@@ -216,18 +231,6 @@ function RowActionsMenu({
       className="course-management__menu-list course-management__menu-list--portal"
       style={menuPosition}
     >
-      {canOpenMasterCurriculum ? (
-        <li role="none">
-          <Link
-            role="menuitem"
-            to={questionsPath}
-            className="course-management__menu-item"
-            onClick={() => setOpen(false)}
-          >
-            <FileQuestion size={14} aria-hidden="true" /> Manage questions
-          </Link>
-        </li>
-      ) : null}
       {showManageTest ? (
         <li role="none">
           <Link
@@ -249,7 +252,7 @@ function RowActionsMenu({
             onClick={() => setOpen(false)}
           >
             <Users size={14} aria-hidden="true" />
-            {canOpenMasterCurriculum ? "View classes" : "View classes"}
+            View classes
           </Link>
         </li>
       ) : null}
@@ -295,20 +298,17 @@ function RowActionsMenu({
 
   return (
     <div className="course-management__menu">
-      <button
+      <IconButton
         ref={triggerRef}
-        type="button"
-        className="course-management__action"
+        icon={<MoreVertical size={16} />}
+        label={`More actions for ${course.title}`}
         aria-haspopup="menu"
         aria-expanded={open}
-        aria-label={`More actions for ${course.title}`}
         onClick={() => {
           if (!open) updateMenuPosition();
           setOpen((value) => !value);
         }}
-      >
-        <MoreVertical size={16} aria-hidden="true" />
-      </button>
+      />
       {menu ? createPortal(menu, document.body) : null}
     </div>
   );
@@ -321,31 +321,31 @@ export function AdminCoursesPage() {
   const location = useLocation();
   const currentUser = getCurrentUser();
   const currentRole = String(currentUser?.role || "").toLowerCase();
-  const isTrainer = currentRole === "trainer";
-  const isSme = currentRole === "sme";
+  const isTrainer = currentRole === ROLES.TRAINER;
+  const isSme = currentRole === ROLES.SME;
+  const isTmo = currentRole === ROLES.TMO;
   const isAssignedOnlyRole = isTrainer || isSme;
-  const canManageCourses = currentRole === "admin" || currentRole === "tmo";
+  const canManageCourses = currentRole === ROLES.ADMIN;
 
   const isStaffRoute = location.pathname.startsWith("/staff/");
   const courseBasePath = isStaffRoute ? "/staff/courses" : "/admin/courses";
   const previewReturnPath = isStaffRoute ? "/staff/courses" : "/admin/courses";
+  const classroomsBasePath =
+    currentRole === ROLES.ADMIN ? "/admin/classrooms" : "/staff/classrooms";
   const canViewClasses = canViewClassRooms(currentRole);
-  const canOpenMasterCurriculum = !isTrainer;
   const canCreate = canManageCourses;
   const canDelete = canManageCourses;
-  const openCoursePath = (courseId) => {
+
+  /** Chọn đích mở khóa học theo đúng phạm vi chỉnh sửa của role hiện tại. */
+  function openCoursePath(courseId) {
     if (isTrainer) {
       return `/staff/classrooms?courseId=${encodeURIComponent(courseId)}`;
     }
-    // SME luôn mở course theo nhánh admin (`/admin/courses`) để thấy đúng master
-    // curriculum, không theo nhánh riêng của trainer (`/staff/courses`).
-    if (isSme) {
-      return `/admin/courses/${courseId}/content`;
+    if (isTmo) {
+      return `${courseBasePath}/${courseId}/preview?returnTo=${encodeURIComponent(previewReturnPath)}`;
     }
-    // Admin/TMO mở course vào trình soạn curriculum (content);
-    // `/admin/courses/:courseId/edit` không tồn tại trong adminRoutes.
     return `${courseBasePath}/${courseId}/content`;
-  };
+  }
 
   const [page, setPage] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
@@ -364,6 +364,7 @@ export function AdminCoursesPage() {
     target: null,
   });
 
+  /** Mở course bằng editor hoặc preview tùy quyền của người dùng. */
   function handleOpenCourse(course) {
     navigate(openCoursePath(course.id));
   }
@@ -480,6 +481,9 @@ export function AdminCoursesPage() {
       <header className="sl-cm-header course-management__header">
         <div>
           <h1>Course management</h1>
+          {isTmo ? (
+            <p>Read-only access: review course information and preview learning content.</p>
+          ) : null}
         </div>
 
         {canCreate ? (
@@ -494,124 +498,118 @@ export function AdminCoursesPage() {
           Courses
         </h2>
 
-        <div className="course-management__filters">
-          <label className="course-management__field course-management__field--search">
-            <span className="course-management__field-label">Search</span>
-            <span className="course-management__control course-management__search">
-              <Search size={18} aria-hidden="true" />
-              <input
-                type="search"
-                placeholder="Search title, slug, or description"
-                value={keyword}
-                onChange={(event) => setKeyword(event.target.value)}
-              />
-            </span>
-          </label>
-
-          <label className="course-management__field">
-            <span className="course-management__field-label">Category</span>
-            <span className="course-management__control course-management__select">
-              <select
-                value={categoryFilter}
-                onChange={(event) => changeFilter(setCategoryFilter, event.target.value)}
-              >
+        <FilterBar
+          ariaLabel="Course filters"
+          search={
+            <SearchInput
+              label="Search"
+              placeholder="Search title, slug, or description"
+              value={keyword}
+              onChange={setKeyword}
+            />
+          }
+          actions={
+            <Button
+              variant="secondary"
+              leftIcon={<X size={15} />}
+              onClick={clearFilters}
+              disabled={!hasFilters}
+            >
+              Reset
+            </Button>
+          }
+        >
+          <Select
+            label="Category"
+            value={categoryFilter}
+            onChange={(event) =>
+              changeFilter(setCategoryFilter, event.target.value)
+            }
+          >
                 <option value="all">All categories</option>
                 {categories.map((category) => (
                   <option key={category.id} value={category.id}>
                     {category.name}
                   </option>
                 ))}
-              </select>
-            </span>
-          </label>
+          </Select>
 
-          <label className="course-management__field">
-            <span className="course-management__field-label">Level</span>
-            <span className="course-management__control course-management__select">
-              <select
-                value={levelFilter}
-                onChange={(event) => changeFilter(setLevelFilter, event.target.value)}
-              >
+          <Select
+            label="Level"
+            value={levelFilter}
+            onChange={(event) =>
+              changeFilter(setLevelFilter, event.target.value)
+            }
+          >
                 {LEVEL_FILTERS.map((level) => (
                   <option key={level.value} value={level.value}>
                     {level.label}
                   </option>
                 ))}
-              </select>
-            </span>
-          </label>
-
-          <button
-            type="button"
-            className="course-management__clear"
-            onClick={clearFilters}
-            disabled={!hasFilters}
-          >
-            <X size={15} aria-hidden="true" /> Reset
-          </button>
-        </div>
+          </Select>
+        </FilterBar>
 
         <div className="course-management__status-bar">
-          <div className="course-management__tabs" aria-label="Filter courses by status">
-            {STATUS_FILTERS.map((status) => {
-              const selected = statusFilter === status.value;
-              return (
-                <button
-                  key={status.value}
-                  type="button"
-                  className={`course-management__tab${selected ? " is-active" : ""}`}
-                  aria-pressed={selected}
-                  onClick={() => changeFilter(setStatusFilter, status.value)}
-                >
-                  {status.label}
-                </button>
-              );
-            })}
-          </div>
+          <Tabs
+            items={STATUS_FILTERS}
+            value={statusFilter}
+            onChange={(value) => changeFilter(setStatusFilter, value)}
+            ariaLabel="Filter courses by status"
+            className="course-management__tabs"
+          />
           <p className="course-management__result-count" aria-live="polite">
             <strong>{totalItems}</strong> {totalItems === 1 ? "course" : "courses"}
           </p>
         </div>
 
-        <div className="course-management__table-wrap" role="region" aria-label="Course list">
-          {loading ? <div className="course-management__state">Loading courses…</div> : null}
+        <div className="course-management__table-wrap">
+          {loading ? <LoadingState label="Loading courses..." /> : null}
           {!loading && error ? (
-            <div className="course-management__state course-management__state--error">
-              <AlertTriangle size={28} aria-hidden="true" />
-              <strong>Could not load courses</strong>
-              <span>{error}</span>
-              <Button
-                variant="outline"
-                leftIcon={<RotateCcw size={16} />}
-                onClick={() => setReloadRequest((current) => current + 1)}
-              >
-                Try again
-              </Button>
-            </div>
+            <ErrorState
+              title="Could not load courses"
+              description={error}
+              action={
+                <Button
+                  variant="secondary"
+                  leftIcon={<RotateCcw size={16} />}
+                  onClick={() => setReloadRequest((current) => current + 1)}
+                >
+                  Try again
+                </Button>
+              }
+            />
           ) : null}
           {!loading && !error && items.length === 0 ? (
-            <div className="course-management__state">
-              <BookOpen size={28} aria-hidden="true" />
-              <strong>
-                {isAssignedOnlyRole && !hasFilters
+            <EmptyState
+              icon={<BookOpen size={28} />}
+              title={
+                isAssignedOnlyRole && !hasFilters
                   ? "No courses assigned yet"
-                  : "No courses match these filters"}
-              </strong>
-              <span>
-                {isAssignedOnlyRole && !hasFilters
+                  : "No courses match these filters"
+              }
+              description={
+                isAssignedOnlyRole && !hasFilters
                   ? "Courses assigned to you will appear here."
-                  : "Try another search term or clear your filters."}
-              </span>
-              {canCreate && !hasFilters ? (
-                <Button leftIcon={<Plus size={16} />} onClick={() => navigate("/admin/courses/new")}>
-                  Create course
-                </Button>
-              ) : null}
-            </div>
+                  : "Try another search term or clear your filters."
+              }
+              action={
+                canCreate && !hasFilters ? (
+                  <Button
+                    leftIcon={<Plus size={16} />}
+                    onClick={() => navigate("/admin/courses/new")}
+                  >
+                    Create course
+                  </Button>
+                ) : null
+              }
+            />
           ) : null}
           {!loading && !error && items.length > 0 ? (
             <>
-              <table className="course-management__table">
+              <Table
+                ariaLabel="Course list"
+                tableClassName="course-management__table"
+              >
                 <thead>
                   <tr>
                     <th>Course</th>
@@ -672,20 +670,19 @@ export function AdminCoursesPage() {
                       </td>
                       <td data-label="Actions">
                         <div className="course-management__actions">
-                          <button
-                            type="button"
-                            className="course-management__action course-management__action--primary"
-                            title="Open"
-                            aria-label={`Open ${course.title}`}
+                          <Button
+                            size="sm"
+                            title={isTmo ? "View" : "Open"}
+                            aria-label={`${isTmo ? "View" : "Open"} ${course.title}`}
                             onClick={() => handleOpenCourse(course)}
                           >
-                            Open
-                          </button>
+                            {isTmo ? "View" : "Open"}
+                          </Button>
                           <RowActionsMenu
                             course={course}
                             basePath={courseBasePath}
+                            classroomsBasePath={classroomsBasePath}
                             canViewClasses={canViewClasses}
-                            canOpenMasterCurriculum={canOpenMasterCurriculum}
                             canEdit={canManageCourses}
                             canDelete={canDelete}
                             previewReturnPath={previewReturnPath}
@@ -701,7 +698,7 @@ export function AdminCoursesPage() {
                     </tr>
                   ))}
                 </tbody>
-              </table>
+              </Table>
 
               <ul className="course-management__cards" aria-label="Course list">
                 {items.map((course) => (
@@ -745,13 +742,13 @@ export function AdminCoursesPage() {
                     </div>
                     <div className="course-management__card-actions">
                       <Button size="sm" onClick={() => handleOpenCourse(course)}>
-                        Open
+                        {isTmo ? "View" : "Open"}
                       </Button>
                       <RowActionsMenu
                         course={course}
                         basePath={courseBasePath}
+                        classroomsBasePath={classroomsBasePath}
                         canViewClasses={canViewClasses}
-                        canOpenMasterCurriculum={canOpenMasterCurriculum}
                         canEdit={canManageCourses}
                         canDelete={canDelete}
                         previewReturnPath={previewReturnPath}

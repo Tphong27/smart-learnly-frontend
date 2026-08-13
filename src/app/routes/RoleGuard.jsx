@@ -11,7 +11,7 @@ export function RoleGuard({ allowedRoles = [] }) {
   }
 
   if (!isRoleAllowed(user.role, allowedRoles)) {
-    return <Navigate to="/403" replace />
+    return <Navigate to="/403" replace />;
   }
 
   return <Outlet />;

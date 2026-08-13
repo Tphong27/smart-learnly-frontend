@@ -1,9 +1,5 @@
 import apiClient from "@/services/api-client";
-
-/** Lấy payload nghiệp vụ từ response chuẩn của API. */
-function unwrap(response) {
-  return response?.data ?? response;
-}
+import { unwrapApiData as unwrap } from "@/services/api-response";
 
 export const learningService = {
   /** Lấy nội dung học thật theo khóa và phạm vi lớp nếu học viên đã có quyền truy cập. */
@@ -47,7 +43,7 @@ export const learningService = {
     return unwrap(response);
   },
 
-  /** Láº¥y bá»™ flashcard gáº¯n vá»›i lesson Ä‘ang hiá»ƒn thá»‹ trong workspace há»c. */
+
   async getLessonFlashcards(courseId, lessonId, classId) {
     const response = await apiClient.get(
       `/learning/courses/${courseId}/lessons/${lessonId}/flashcards`,
@@ -58,14 +54,12 @@ export const learningService = {
     return unwrap(response);
   },
 
-  /** LÆ°u káº¿t quáº£ Ã´n tháº» trong luá»“ng flashcard cá»§a course/lesson. */
+
   async submitFlashcardProgress(cardId, result, classId) {
     const response = await apiClient.post(
       `/learning/flashcards/${cardId}/progress`,
       { result },
-      {
-        params: classId ? { classId } : {},
-      },
+      { params: classId ? { classId } : {} },
     );
     return unwrap(response);
   },

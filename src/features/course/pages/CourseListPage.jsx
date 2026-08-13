@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import Pagination from "@/shared/components/Pagination";
 import { enrollmentService } from "@/features/enrollment";
 import { categoryService } from "../services/categoryService";
 import { courseCatalogService } from "../services/courseCatalogService";
@@ -23,36 +23,6 @@ const PRICE_RANGES = {
   BETWEEN_500K_AND_1M: { minPrice: 500000, maxPrice: 1000000 },
   OVER_1M: { minPrice: 1000001 },
 };
-
-function getPaginationItems(currentPage, totalPages) {
-  if (totalPages <= 7) {
-    return Array.from({ length: totalPages }, (_, value) => ({
-      type: "page",
-      value,
-    }));
-  }
-
-  const pageSet = new Set([0, totalPages - 1]);
-  const windowStart = currentPage <= 2 ? 1 : currentPage - 1;
-  const windowEnd = currentPage >= totalPages - 3 ? totalPages - 2 : currentPage + 1;
-
-  for (let value = windowStart; value <= windowEnd; value += 1) {
-    if (value > 0 && value < totalPages - 1) pageSet.add(value);
-  }
-
-  const pages = Array.from(pageSet).sort((left, right) => left - right);
-  const items = [];
-
-  pages.forEach((value, index) => {
-    const previous = pages[index - 1];
-    if (index > 0 && value - previous > 1) {
-      items.push({ type: "ellipsis", key: `ellipsis-${previous}-${value}` });
-    }
-    items.push({ type: "page", value });
-  });
-
-  return items;
-}
 
 function CourseCatalogSkeleton() {
   return (
@@ -367,10 +337,6 @@ export function CourseListPage({
     localStorage.setItem("courseViewMode", mode);
   }
 
-  const paginationItems = useMemo(
-    () => getPaginationItems(pageInfo.page, pageInfo.totalPages),
-    [pageInfo.page, pageInfo.totalPages],
-  );
   const discoveryMode = !embedded;
   const hasCatalogFilters = Boolean(
     keyword ||
@@ -538,52 +504,16 @@ export function CourseListPage({
               ))}
             </div>
 
-            {pageInfo.totalPages > 1 && (
-              <nav className="course-pagination" aria-label="Course pagination">
-                <button
-                  type="button"
-                  disabled={pageInfo.page <= 0}
-                  onClick={() => updateQuery({ page: String(pageInfo.page - 1) })}
-                  aria-label="Go to previous course page"
-                >
-                  <ChevronLeft size={17} aria-hidden="true" />
-                  <span>Previous</span>
-                </button>
-                {paginationItems.map((item) =>
-                  item.type === "ellipsis" ? (
-                    <span
-                      className="course-pagination__ellipsis"
-                      key={item.key}
-                      aria-hidden="true"
-                    >
-                      …
-                    </span>
-                  ) : (
-                    <button
-                      key={item.value}
-                      type="button"
-                      className={item.value === pageInfo.page ? "is-active" : ""}
-                      onClick={() => updateQuery({ page: String(item.value) })}
-                      aria-label={`Go to course page ${item.value + 1}`}
-                      aria-current={
-                        item.value === pageInfo.page ? "page" : undefined
-                      }
-                    >
-                      {item.value + 1}
-                    </button>
-                  ),
-                )}
-                <button
-                  type="button"
-                  disabled={pageInfo.page >= pageInfo.totalPages - 1}
-                  onClick={() => updateQuery({ page: String(pageInfo.page + 1) })}
-                  aria-label="Go to next course page"
-                >
-                  <span>Next</span>
-                  <ChevronRight size={17} aria-hidden="true" />
-                </button>
-              </nav>
-            )}
+            <Pagination
+              page={pageInfo.page + 1}
+              totalPages={pageInfo.totalPages}
+              totalItems={pageInfo.totalElements}
+              size={pageSize}
+              onPageChange={(nextPage) =>
+                updateQuery({ page: String(nextPage - 1) })
+              }
+              ariaLabel="Course pagination"
+            />
           </>
         )}
       </section>

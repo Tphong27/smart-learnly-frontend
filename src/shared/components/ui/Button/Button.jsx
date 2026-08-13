@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import "./Button.css";
 
+/** Hiển thị action thống nhất dưới dạng button, router link hoặc anchor. */
 export function Button({
   children,
   type = "button",
@@ -51,6 +52,7 @@ export function Button({
     </>
   );
 
+  /** Chặn tương tác của link giả-disabled và chuyển click hợp lệ cho caller. */
   function handleInteractiveClick(event) {
     if (isDisabled) {
       event.preventDefault();
@@ -61,6 +63,7 @@ export function Button({
     onClick?.(event);
   }
 
+  /** Bổ sung thao tác bàn phím khi Button được render bằng label. */
   function handleCustomKeyDown(event) {
     onKeyDown?.(event);
 

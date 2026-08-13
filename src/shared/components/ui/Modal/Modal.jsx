@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
 import './Modal.css'
 
+/** Hiển thị dialog hoặc drawer có focus trap, scroll lock và khôi phục focus khi đóng. */
 export function Modal({
   open,
   title,
@@ -55,6 +56,7 @@ export function Modal({
       ;(firstFocusable || dialog)?.focus()
     })
 
+    /** Giữ focus trong dialog và cho phép đóng bằng Escape khi được phép. */
     function handleKeyDown(event) {
       if (event.key === 'Escape') {
         if (!closeDisabledRef.current) onCloseRef.current?.()
@@ -95,6 +97,7 @@ export function Modal({
 
   if (!open) return null
 
+  /** Chỉ đóng khi người dùng click đúng overlay, không phải nội dung dialog. */
   function handleOverlayClick(event) {
     if (!closeDisabled && closeOnOverlayClick && event.target === event.currentTarget) {
       onCloseRef.current?.()

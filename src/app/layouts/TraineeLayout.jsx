@@ -4,6 +4,11 @@ import { TraineeHeader } from "./TraineeHeader";
 import { authService } from "@/features/auth";
 import { getCurrentUser } from "@/services";
 import { SiteFooter } from "@/shared/components";
+import {
+    getFirstName,
+    getInitials,
+    getUserDisplayName,
+} from "@/shared/utils/userDisplay";
 import "./TraineeLayout.css";
 
 const TRAINEE_TABS = [
@@ -11,10 +16,6 @@ const TRAINEE_TABS = [
         label: "Dashboard",
         to: "/dashboard",
         end: true,
-    },
-    {
-        label: "My Tests",
-        to: "/learning/tests",
     },
     {
         label: "Assignment",
@@ -26,34 +27,11 @@ const TRAINEE_TABS = [
     },
 ];
 
-function getDisplayName(user) {
-    return (
-        user?.fullName ||
-        [user?.firstName, user?.lastName].filter(Boolean).join(" ") ||
-        user?.email ||
-        "Learner"
-    );
-}
-
-function getFirstName(name) {
-    return name.trim().split(/\s+/)[0] || "Learner";
-}
-
-function getInitials(name) {
-    return name
-        .split(" ")
-        .filter(Boolean)
-        .map((part) => part[0])
-        .join("")
-        .slice(0, 2)
-        .toUpperCase();
-}
-
 export function TraineeLayout({ children }) {
     const location = useLocation();
     const navigate = useNavigate();
     const user = getCurrentUser() || { fullName: "Learner" };
-    const displayName = getDisplayName(user);
+    const displayName = getUserDisplayName(user, "Learner");
     const isTransactionHistory = location.pathname === "/learning/transactions";
 
     const showLearningNavigation =
@@ -96,7 +74,10 @@ export function TraineeLayout({ children }) {
                             {getInitials(displayName)}
                         </span>
                         <div>
-                            <h1>Welcome back, {getFirstName(displayName)}</h1>
+                            <h1>
+                                Welcome back,{" "}
+                                {getFirstName(displayName, "Learner")}
+                            </h1>
                             <p>
                                 Continue learning and keep moving toward your
                                 goals.

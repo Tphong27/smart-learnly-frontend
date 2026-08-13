@@ -1,9 +1,5 @@
 import apiClient from '@/services/api-client'
-
-/** Lấy phần dữ liệu nghiệp vụ từ ApiResponse hoặc axios response. */
-function unwrap(response) {
-  return response?.data ?? response
-}
+import { unwrapApiData as unwrap } from '@/services/api-response'
 
 /** Chuẩn hóa các API trả về mảng thành danh sách an toàn cho UI. */
 function normalizeList(response) {
@@ -81,6 +77,14 @@ export const questionBankService = {
     return normalizePage(response)
   },
 
+  async listModuleQuestions(courseId, moduleId, params = {}) {
+    const response = await apiClient.get(
+      `/admin/courses/${courseId}/modules/${moduleId}/questions`,
+      { params },
+    )
+    return normalizePage(response)
+  },
+
   async getQuestion(questionId) {
     const response = await apiClient.get(`/admin/questions/${questionId}`)
     return unwrap(response)
@@ -88,6 +92,13 @@ export const questionBankService = {
 
   async getCourseQuestion(courseId, questionId) {
     const response = await apiClient.get(`/admin/courses/${courseId}/questions/${questionId}`)
+    return unwrap(response)
+  },
+
+  async getModuleQuestion(courseId, moduleId, questionId) {
+    const response = await apiClient.get(
+      `/admin/courses/${courseId}/modules/${moduleId}/questions/${questionId}`,
+    )
     return unwrap(response)
   },
 
@@ -101,6 +112,14 @@ export const questionBankService = {
     return unwrap(response)
   },
 
+  async createModuleQuestion(courseId, moduleId, payload) {
+    const response = await apiClient.post(
+      `/admin/courses/${courseId}/modules/${moduleId}/questions`,
+      payload,
+    )
+    return unwrap(response)
+  },
+
   async updateQuestion(questionId, payload) {
     const response = await apiClient.put(`/admin/questions/${questionId}`, payload)
     return unwrap(response)
@@ -108,6 +127,14 @@ export const questionBankService = {
 
   async updateCourseQuestion(courseId, questionId, payload) {
     const response = await apiClient.put(`/admin/courses/${courseId}/questions/${questionId}`, payload)
+    return unwrap(response)
+  },
+
+  async updateModuleQuestion(courseId, moduleId, questionId, payload) {
+    const response = await apiClient.put(
+      `/admin/courses/${courseId}/modules/${moduleId}/questions/${questionId}`,
+      payload,
+    )
     return unwrap(response)
   },
   async listQuestionMedia(questionId) {
@@ -174,6 +201,13 @@ export const questionBankService = {
     return unwrap(response)
   },
 
+  async archiveModuleQuestion(courseId, moduleId, questionId) {
+    const response = await apiClient.delete(
+      `/admin/courses/${courseId}/modules/${moduleId}/questions/${questionId}`,
+    )
+    return unwrap(response)
+  },
+
   async approveQuestion(questionId) {
     const response = await apiClient.post(`/admin/questions/${questionId}/approve`)
     return unwrap(response)
@@ -201,11 +235,27 @@ export const questionBankService = {
     return unwrap(response)
   },
 
+  async importModuleQuestionsBatch(courseId, moduleId, rows, importSource = 'excel_import') {
+    const response = await apiClient.post(
+      `/admin/courses/${courseId}/modules/${moduleId}/questions/import`,
+      { rows, importSource },
+    )
+    return unwrap(response)
+  },
+
   async exportCourseQuestions(courseId, params = {}) {
     const response = await apiClient.get(`/admin/courses/${courseId}/questions/export`, {
       params,
       responseType: 'blob',
     })
+    return response
+  },
+
+  async exportModuleQuestions(courseId, moduleId, params = {}) {
+    const response = await apiClient.get(
+      `/admin/courses/${courseId}/modules/${moduleId}/questions/export`,
+      { params, responseType: 'blob' },
+    )
     return response
   },
 

@@ -5,21 +5,17 @@ import { ROLES } from "@/shared/constants/roles";
 import { TraineeLayout } from "../layouts/TraineeLayout";
 import {
   CheckoutPage,
-  MyTransactionsPage,
+  TransactionsPage,
   PaymentResultPage,
 } from "@/features/checkout";
 import { MyEnrollmentsPage } from "@/features/enrollment";
 import {
-  TraineeFlashTestListPage,
-  TraineeFlashTestTakePage,
+  TraineeAssessmentListPage,
   TraineeAssignmentTakePage,
-  TraineeTestListPage,
   TraineeTestTakePage,
   TestAttemptDetailPage,
-} from "@/features/flashtest";
-import {
-  CourseListPage,
-} from "@/features/course";
+} from "@/features/test";
+import { CourseListPage } from "@/features/course";
 import { LearningWorkspacePage } from "@/features/learning";
 import { TraineeDashboardPage } from "@/features/dashboard";
 import { OpeningSchedulePage } from "@/features/opening-schedule";
@@ -33,11 +29,6 @@ function getTraineeRoutes() {
       path: "/learning/courses/:courseId",
       element: <RoleGuard allowedRoles={[ROLES.TRAINEE]} />,
       children: [{ index: true, element: <LearningWorkspacePage /> }],
-    },
-    {
-      path: "/learning/flashtests/take/:id/:type",
-      element: <RoleGuard allowedRoles={[ROLES.TRAINEE]} />,
-      children: [{ index: true, element: <TraineeFlashTestTakePage /> }],
     },
     {
       path: "/learning/assignments/take/:id/:type",
@@ -82,7 +73,10 @@ function getTraineeRoutes() {
               ),
             },
             { path: "enrollments", element: <MyEnrollmentsPage /> },
-            { path: "transactions", element: <MyTransactionsPage /> },
+            {
+              path: "transactions",
+              element: <TransactionsPage mode="personal" />,
+            },
             {
               path: "progress",
               element: <Navigate to="/dashboard" replace />,
@@ -93,7 +87,7 @@ function getTraineeRoutes() {
             },
             {
               path: "tests",
-              element: <TraineeTestListPage />,
+              element: <Navigate to="/dashboard" replace />,
             },
             {
               path: "tests/attempts/:testId/:attemptId",
@@ -104,12 +98,8 @@ function getTraineeRoutes() {
               element: <PlaceholderPage title="AI Chatbot" />,
             },
             {
-              path: "flashtests",
-              element: <TraineeFlashTestListPage />,
-            },
-            {
               path: "assignments",
-              element: <TraineeFlashTestListPage variant="assignment" />,
+              element: <TraineeAssessmentListPage variant="assignment" />,
             },
           ],
         },

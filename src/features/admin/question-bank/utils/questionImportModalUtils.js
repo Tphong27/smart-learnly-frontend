@@ -159,62 +159,126 @@ export function toImageConfirmPayload(question, imageFileIndexes = [], audioFile
   };
 }
 
-/** Ghép danh sách URL media thành chuỗi dùng trong row editor. */
-function mediaUrlsToText(urls) {
+const IMPORT_DIFFICULTY_ALIASES = {
+  easy: "1",
+  medium: "3",
+  hard: "5",
+};
+
+/** Lấy tên file dễ đọc từ media URL của dữ liệu import. */
+function importMediaFileName(url, fallback) {
+  try {
+    const pathname = new URL(url).pathname;
+    return decodeURIComponent(pathname.split("/").filter(Boolean).pop() || fallback);
+  } catch {
+    return fallback;
+  }
+}
+
+/** Chuyển danh sách URL import thành media state mà AdminQuestionForm đang sử dụng. */
+function importUrlsToMediaItems(urls, mediaType) {
   return (Array.isArray(urls) ? urls : [])
     .map((url) => String(url || "").trim())
     .filter(Boolean)
-    .join("; ");
+    .map((url, index) => ({
+      localId: `import-${mediaType}-${index}-${url}`,
+      mediaType,
+      mediaUrl: url,
+      url,
+      fileName: importMediaFileName(url, `${mediaType}-${index + 1}`),
+      source: "import-url",
+    }));
 }
 
-/** Tách chuỗi URL trong row editor trở lại thành mảng media URL. */
-function textToMediaUrls(value) {
-  return String(value || "")
-    .split(";")
-    .map((url) => url.trim())
+/** Lấy URL từ media state của AdminQuestionForm để đưa trở lại import payload. */
+function importMediaItemsToUrls(items) {
+  return (Array.isArray(items) ? items : [])
+    .map((item) => item?.mediaUrl || item?.url || item?.previewUrl || "")
+    .map((url) => String(url).trim())
     .filter(Boolean);
 }
 
-/** Chuyển import row thành state của form chỉnh sửa một dòng. */
-export function getImportRowEditValues(row) {
+/** Ghép danh sách URL về định dạng phân tách bằng dấu chấm phẩy của file import. */
+function mediaUrlsToText(urls) {
+  return urls.join("; ");
+}
+
+/** Chuyển import row thành initial state cho chính AdminQuestionForm dùng chung. */
+export function getImportQuestionFormState(row) {
   const data = row?.data || {};
+  const questionType = data.questionType || "single_choice";
   const options = Array.isArray(data.options) ? data.options : [];
+  const correctRaw = String(data.correctAnswer || "").trim();
+  const correctLetters = new Set(
+    correctRaw
+      .toUpperCase()
+      .split(/[\s,;]+/)
+      .map((letter) => letter.trim())
+      .filter(Boolean),
+  );
+  const rawDifficulty = String(data.difficulty ?? "").trim();
+  const difficulty = IMPORT_DIFFICULTY_ALIASES[rawDifficulty.toLowerCase()] || rawDifficulty;
+
   return {
-    questionText: data.questionText || "",
-    questionType: data.questionType || "single_choice",
-    options: Array.from({ length: 6 }, (_, index) => options[index] || ""),
-    correctAnswer: data.correctAnswer || "",
-    explanation: data.explanation || "",
-    difficulty: data.difficulty ?? "",
-    bloomLevel: data.bloomLevel || "",
-    moduleId: data.moduleId || "",
-    imageFiles: mediaUrlsToText(data.imageFiles),
-    audioFiles: mediaUrlsToText(data.audioFiles),
+    values: {
+      questionText: data.questionText || "",
+      questionType,
+      difficulty,
+      status: "draft",
+      explanation: data.explanation || "",
+      bloomLevel: data.bloomLevel || "",
+      answers: options.map((option, index) => ({
+        answerText: option || "",
+        correct: questionType === "true_false"
+          ? String(option || "").trim().toLowerCase() === correctRaw.toLowerCase()
+          : correctLetters.has(String.fromCharCode(65 + index)),
+        displayOrder: index + 1,
+        answerMedia: { image: null, audio: null, video: null },
+      })),
+    },
+    media: {
+      images: importUrlsToMediaItems(data.imageFiles, "image"),
+      audios: importUrlsToMediaItems(data.audioFiles, "audio"),
+      videos: [],
+    },
   };
 }
 
-/** Áp dụng state row editor trở lại data/raw để schema validator chạy lại. */
-export function applyImportRowEdit(row, values) {
-  const optionValues = values.options.map((option) => String(option || "").trim());
-  const imageFiles = textToMediaUrls(values.imageFiles);
-  const audioFiles = textToMediaUrls(values.audioFiles);
+/** Áp dụng dữ liệu AdminQuestionForm trở lại import row để schema validator chạy lại. */
+export function applyImportQuestionFormEdit(row, formState) {
+  const values = formState?.values || {};
+  const optionValues = (values.answers || []).map((answer) =>
+    String(answer?.answerText || "").trim(),
+  );
+  const correctIndexes = (values.answers || [])
+    .map((answer, index) => (answer?.correct ? index : -1))
+    .filter((index) => index >= 0);
+  const correctAnswer = values.questionType === "true_false"
+    ? optionValues[correctIndexes[0]] || ""
+    : correctIndexes.map((index) => String.fromCharCode(65 + index)).join(",");
+  const imageFiles = importMediaItemsToUrls(formState?.media?.images);
+  const audioFiles = importMediaItemsToUrls(formState?.media?.audios);
+  const questionText = String(values.questionText || "").trim();
+  const explanation = String(values.explanation || "").trim();
+  const difficulty = String(values.difficulty ?? "").trim();
+  const bloomLevel = String(values.bloomLevel || row?.data?.bloomLevel || "").trim();
+
   return {
     ...row,
     data: {
-      questionText: values.questionText.trim(),
+      questionText,
       questionType: values.questionType,
       options: optionValues.filter(Boolean),
-      correctAnswer: values.correctAnswer.trim(),
-      explanation: values.explanation.trim() || null,
-      difficulty: String(values.difficulty ?? "").trim(),
-      bloomLevel: values.bloomLevel.trim() || null,
-      moduleId: values.moduleId.trim() || null,
+      correctAnswer,
+      explanation: explanation || null,
+      difficulty,
+      bloomLevel: bloomLevel || null,
       imageFiles,
       audioFiles,
     },
     raw: {
       ...(row.raw || {}),
-      question_text: values.questionText.trim(),
+      question_text: questionText,
       question_type: values.questionType,
       option_a: optionValues[0] || "",
       option_b: optionValues[1] || "",
@@ -222,11 +286,10 @@ export function applyImportRowEdit(row, values) {
       option_d: optionValues[3] || "",
       option_e: optionValues[4] || "",
       option_f: optionValues[5] || "",
-      correct_answer: values.correctAnswer.trim(),
-      explanation: values.explanation.trim(),
-      difficulty: String(values.difficulty ?? "").trim(),
-      bloom_level: values.bloomLevel.trim(),
-      module_id: values.moduleId.trim(),
+      correct_answer: correctAnswer,
+      explanation,
+      difficulty,
+      bloom_level: bloomLevel,
       image_files: mediaUrlsToText(imageFiles),
       audio_files: mediaUrlsToText(audioFiles),
     },

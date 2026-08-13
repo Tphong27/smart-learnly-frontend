@@ -1,7 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Eye, Search } from "lucide-react";
-import { FormField, Modal, useToast } from "@/shared/components/ui";
+import { Eye } from "lucide-react";
+import {
+    DataTable,
+    ErrorState,
+    IconButton,
+    LoadingState,
+    Modal,
+    SearchInput,
+    useToast,
+} from "@/shared/components/ui";
+import { StatusBadge } from "@/shared/components/status";
 import { AdminFilterToolbar } from "@/features/admin/components/AdminFilterToolbar";
 import Pagination from "@/shared/components/Pagination";
 import {
@@ -18,6 +27,7 @@ import {
 import { DEFAULT_PAGE_SIZE } from "@/shared/constants/pagination";
 import "../../admin-shared.css";
 
+/** Chuyển ISO timestamp sang giá trị phù hợp cho datetime-local. */
 function toDateTimeLocal(value) {
     if (!value) return "";
     if (!value.endsWith("Z")) return value.slice(0, 16);
@@ -29,21 +39,25 @@ function toDateTimeLocal(value) {
     return new Date(date.getTime() - offsetMs).toISOString().slice(0, 16);
 }
 
+/** Chuyển datetime-local hợp lệ về ISO timestamp cho API audit. */
 function fromDateTimeLocal(value) {
     if (!value) return "";
     const date = new Date(value);
     return Number.isNaN(date.getTime()) ? "" : date.toISOString();
 }
 
+/** Hiển thị kết quả audit bằng nhãn có text rõ ràng. */
 function ResultBadge({ result }) {
     const normalized = String(result || "").toLowerCase();
-    return (
-        <span className={`admin-status admin-status--${normalized || "draft"}`}>
-            {result || "--"}
-        </span>
-    );
+    const tone = normalized === "success"
+        ? "success"
+        : normalized === "failure" || normalized === "failed"
+          ? "danger"
+          : "neutral";
+    return <StatusBadge status={normalized || "draft"} label={result || "--"} tone={tone} />;
 }
 
+/** Hiển thị object audit theo danh sách key-value dễ đọc. */
 function KeyValueList({ title, value }) {
     const entries =
         value && typeof value === "object" ? Object.entries(value) : [];
@@ -89,6 +103,7 @@ function KeyValueList({ title, value }) {
     );
 }
 
+/** Tải và hiển thị chi tiết một audit log trong modal. */
 function AuditDetailModal({ auditLogId, open, onClose }) {
     const toast = useToast();
     const [detail, setDetail] = useState(null);
@@ -100,6 +115,7 @@ function AuditDetailModal({ auditLogId, open, onClose }) {
 
         let cancelled = false;
 
+        /** Tải chi tiết audit được chọn và bỏ qua kết quả khi modal đã đóng. */
         async function loadDetail() {
             setLoading(true);
             setError(null);
@@ -133,9 +149,9 @@ function AuditDetailModal({ auditLogId, open, onClose }) {
             onClose={onClose}
         >
             {loading ? (
-                <div className="admin-loading">Loading audit detail...</div>
+                <LoadingState compact label="Loading audit detail..." />
             ) : error ? (
-                <div className="admin-error">{error}</div>
+                <ErrorState title="Could not load audit detail" description={error} />
             ) : !detail ? null : (
                 <div
                     style={{
@@ -230,6 +246,7 @@ function AuditDetailModal({ auditLogId, open, onClose }) {
     );
 }
 
+/** Điều phối danh sách audit, filter theo URL và modal chi tiết. */
 export function AdminAuditLogPage() {
     const toast = useToast();
     const [searchParams, setSearchParams] = useSearchParams();
@@ -261,6 +278,7 @@ export function AdminAuditLogPage() {
         [searchParams],
     );
 
+    /** Cập nhật một filter vào URL và quay về trang đầu. */
     function updateFilter(key, value) {
         const next = new URLSearchParams(searchParams);
         if (value) next.set(key, value);
@@ -269,16 +287,19 @@ export function AdminAuditLogPage() {
         setSearchParams(next);
     }
 
+    /** Đồng bộ trang audit mới vào URL. */
     function updatePage(nextPage) {
         const next = new URLSearchParams(searchParams);
         next.set("page", String(nextPage));
         setSearchParams(next);
     }
 
+    /** Xóa filter audit nhưng giữ nguyên kích thước trang. */
     function clearFilters() {
         setSearchParams({ page: "0", size: String(filters.size) });
     }
 
+    /** Đổi kích thước trang và quay về trang đầu. */
     function updatePageSize(nextSize) {
         const next = new URLSearchParams(searchParams);
         next.set("page", "0");
@@ -286,6 +307,7 @@ export function AdminAuditLogPage() {
         setSearchParams(next);
     }
 
+    /** Chuẩn hóa filter nháp rồi ghi toàn bộ vào URL. */
     function applyFilters(nextFilters) {
         const next = new URLSearchParams(searchParams);
         [
@@ -314,6 +336,7 @@ export function AdminAuditLogPage() {
     useEffect(() => {
         let cancelled = false;
 
+        /** Tải audit log theo filter URL hiện tại và bỏ qua request đã hủy. */
         async function loadLogs() {
             setLoading(true);
             setError(null);
@@ -349,6 +372,49 @@ export function AdminAuditLogPage() {
         };
     }, [filters, toast]);
 
+    const auditColumns = useMemo(
+        () => [
+            { key: "occurredAt", header: "Time", render: (row) => formatDateTime(row.occurredAt) },
+            {
+                key: "actor",
+                header: "Actor",
+                render: (row) => (
+                    <div>
+                        <strong>{row.actorEmail || row.actorType || "--"}</strong>
+                        <div className="admin-user-cell__meta">{row.actorRole || "--"}</div>
+                    </div>
+                ),
+            },
+            { key: "action", header: "Action", render: (row) => formatLabel(row.action) },
+            { key: "domain", header: "Domain", render: (row) => row.domain || "--" },
+            {
+                key: "target",
+                header: "Target",
+                render: (row) => (
+                    <div>
+                        <strong>{row.targetType || "--"}</strong>
+                        <div className="admin-user-cell__meta">{shortId(row.targetId)}</div>
+                    </div>
+                ),
+            },
+            { key: "result", header: "Result", render: (row) => <ResultBadge result={row.result} /> },
+            { key: "summary", header: "Summary", render: (row) => row.summary || "--" },
+            {
+                key: "actions",
+                header: "Actions",
+                render: (row) => (
+                    <IconButton
+                        label="View audit detail"
+                        icon={<Eye size={16} />}
+                        variant="ghost"
+                        onClick={() => setDetailId(row.id)}
+                    />
+                ),
+            },
+        ],
+        [],
+    );
+
     return (
         <section className="admin-page">
             <header className="admin-page__header">
@@ -361,15 +427,12 @@ export function AdminAuditLogPage() {
                 <AdminFilterToolbar
                     ariaLabel="Audit log search and filters"
                     search={
-                        <FormField
+                        <SearchInput
                             id="audit-log-search"
-                            aria-label="Search audit logs"
+                            ariaLabel="Search audit logs"
                             placeholder="Search actor, action, summary, or target..."
                             value={filters.keyword}
-                            onChange={(event) =>
-                                updateFilter("keyword", event.target.value)
-                            }
-                            leftIcon={<Search size={16} />}
+                            onChange={(value) => updateFilter("keyword", value)}
                         />
                     }
                     fields={[
@@ -463,88 +526,18 @@ export function AdminAuditLogPage() {
                     onClear={clearFilters}
                 />
 
-                {loading ? (
-                    <div className="admin-loading">Loading audit logs...</div>
-                ) : error ? (
-                    <div className="admin-error">{error}</div>
-                ) : items.length === 0 ? (
-                    <div className="admin-empty">
-                        No audit events match the current filters.
-                    </div>
+                {error ? (
+                    <ErrorState title="Could not load audit logs" description={error} />
                 ) : (
-                    <div className="admin-table-wrap">
-                        <table className="admin-table">
-                            <thead>
-                                <tr>
-                                    <th>Time</th>
-                                    <th>Actor</th>
-                                    <th>Action</th>
-                                    <th>Domain</th>
-                                    <th>Target</th>
-                                    <th>Result</th>
-                                    <th>Summary</th>
-                                    <th></th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {items.map((row) => (
-                                    <tr key={row.id}>
-                                        <td>
-                                            {formatDateTime(row.occurredAt)}
-                                        </td>
-                                        <td>
-                                            <strong>
-                                                {row.actorEmail ||
-                                                    row.actorType ||
-                                                    "--"}
-                                            </strong>
-                                            <div
-                                                style={{
-                                                    color: "#94a3b8",
-                                                    fontSize: 12,
-                                                }}
-                                            >
-                                                {row.actorRole || "--"}
-                                            </div>
-                                        </td>
-                                        <td>{formatLabel(row.action)}</td>
-                                        <td>{row.domain || "--"}</td>
-                                        <td>
-                                            <strong>
-                                                {row.targetType || "--"}
-                                            </strong>
-                                            <div
-                                                style={{
-                                                    color: "#94a3b8",
-                                                    fontSize: 12,
-                                                }}
-                                            >
-                                                {shortId(row.targetId)}
-                                            </div>
-                                        </td>
-                                        <td>
-                                            <ResultBadge result={row.result} />
-                                        </td>
-                                        <td style={{ minWidth: 240 }}>
-                                            {row.summary || "--"}
-                                        </td>
-                                        <td style={{ textAlign: "right" }}>
-                                            <button
-                                                className="admin-table__icon-btn"
-                                                type="button"
-                                                onClick={() =>
-                                                    setDetailId(row.id)
-                                                }
-                                                aria-label="View audit detail"
-                                            >
-                                                <Eye size={16} />
-                                            </button>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
+                    <DataTable
+                        ariaLabel="Audit log data"
+                        columns={auditColumns}
+                        rows={items}
+                        loading={loading}
+                        loadingLabel="Loading audit logs..."
+                        emptyTitle="No audit events found"
+                        emptyDescription="No events match the current search and filters."
+                    />
                 )}
 
                 <Pagination

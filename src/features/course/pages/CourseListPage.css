@@ -543,48 +543,6 @@
   min-height: 0;
 }
 
-/* Compact pagination */
-.course-panel--discovery .course-pagination {
-  align-items: center;
-  gap: 4px;
-  margin-top: 30px;
-}
-
-.course-panel--discovery .course-pagination button {
-  min-width: 44px;
-  height: 44px;
-  gap: 6px;
-  border-color: transparent;
-  border-radius: 4px;
-  color: var(--ink, #2d2f31);
-  background: transparent;
-  font-size: 13px;
-  font-weight: 700;
-}
-
-.course-panel--discovery .course-pagination button:first-child,
-.course-panel--discovery .course-pagination button:last-child {
-  padding: 0 12px;
-  border-color: var(--line, #d1d7dc);
-  background: #fff;
-}
-
-.course-panel--discovery .course-pagination button:hover:not(:disabled) {
-  background: var(--surface, #f7f9fa);
-}
-
-.course-panel--discovery .course-pagination button.is-active {
-  border-color: var(--primary, #5624d0);
-  color: #fff;
-  background: var(--primary, #5624d0);
-}
-
-.course-pagination__ellipsis {
-  width: 30px;
-  color: var(--muted, #64708a);
-  text-align: center;
-}
-
 @media (max-width: 920px) {
   .course-catalog-search-row {
     grid-template-columns: minmax(0, 1fr) auto;
@@ -672,15 +630,6 @@
     aspect-ratio: 16 / 9;
   }
 
-  .course-panel--discovery .course-pagination button:first-child span,
-  .course-panel--discovery .course-pagination button:last-child span {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip: rect(0, 0, 0, 0);
-    white-space: nowrap;
-  }
 }
 
 @media (max-width: 420px) {

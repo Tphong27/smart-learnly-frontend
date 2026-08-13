@@ -1,0 +1,88 @@
+.ui-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+  border: 1px solid var(--sl-line);
+  border-radius: var(--sl-radius-lg);
+  background: #ffffff;
+}
+
+.ui-table-wrap:focus-visible {
+  outline: 3px solid rgba(86, 36, 208, 0.2);
+  outline-offset: 2px;
+}
+
+.ui-table {
+  width: 100%;
+  border-collapse: collapse;
+  color: var(--sl-ink);
+  font-size: 14px;
+}
+
+.ui-table th,
+.ui-table td {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--sl-line-soft);
+  text-align: left;
+  vertical-align: middle;
+}
+
+.ui-table th {
+  background: var(--sl-surface);
+  color: var(--sl-muted);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.035em;
+  text-transform: uppercase;
+}
+
+.ui-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.ui-table tbody tr:hover {
+  background: color-mix(in srgb, var(--sl-surface) 62%, #ffffff);
+}
+
+@media (max-width: 720px) {
+  .ui-table,
+  .ui-table tbody,
+  .ui-table tr,
+  .ui-table td {
+    display: block;
+    width: 100%;
+  }
+
+  .ui-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+  }
+
+  .ui-table tbody tr {
+    padding: var(--sl-space-3);
+    border-bottom: 1px solid var(--sl-line);
+  }
+
+  .ui-table tbody tr:last-child {
+    border-bottom: 0;
+  }
+
+  .ui-table td {
+    display: grid;
+    grid-template-columns: minmax(100px, 34%) minmax(0, 1fr);
+    gap: var(--sl-space-3);
+    padding: 8px 0;
+    border: 0;
+  }
+
+  .ui-table td::before {
+    content: attr(data-label);
+    color: var(--sl-muted);
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.025em;
+    text-transform: uppercase;
+  }
+}

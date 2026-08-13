@@ -2,14 +2,23 @@ import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Edit2, Plus, Search, Trash2, UserCog } from "lucide-react";
+import { Edit2, Plus, Trash2, UserCog } from "lucide-react";
 import {
     Button,
+    Alert,
+    Checkbox,
+    DataTable,
+    ErrorState,
     Form,
+    FormActions,
     FormField,
+    IconButton,
     Modal,
+    SearchInput,
+    Select,
     useToast,
 } from "@/shared/components/ui";
+import { StatusBadge } from "@/shared/components/status";
 import { AdminFilterToolbar } from "@/features/admin/components/AdminFilterToolbar";
 import Pagination from "@/shared/components/Pagination";
 import { adminUserService } from "../services/adminUserService";
@@ -48,6 +57,7 @@ const userFormSchema = z.object({
     emailVerified: z.boolean().optional(),
 });
 
+/** Chuyển user hiện tại thành giá trị mặc định an toàn cho form admin. */
 function toDefaultValues(initial) {
     return {
         fullName: initial?.fullName ?? "",
@@ -59,6 +69,7 @@ function toDefaultValues(initial) {
     };
 }
 
+/** Chuẩn hóa payload user và loại bỏ password rỗng khi cập nhật. */
 function buildPayload(values) {
     return {
         fullName: values.fullName?.trim(),
@@ -70,6 +81,7 @@ function buildPayload(values) {
     };
 }
 
+/** Hiển thị form tạo hoặc chỉnh sửa user trong modal dùng chung. */
 function UserFormModal({ open, mode, initial, onClose, onSaved }) {
     const toast = useToast();
     const [serverError, setServerError] = useState(null);
@@ -91,6 +103,7 @@ function UserFormModal({ open, mode, initial, onClose, onSaved }) {
         reset(defaultValues);
     }, [defaultValues, open, reset]);
 
+    /** Lưu user theo mode create/edit và giữ lỗi API trong modal. */
     async function onSubmit(values) {
         setServerError(null);
         try {
@@ -121,9 +134,9 @@ function UserFormModal({ open, mode, initial, onClose, onSaved }) {
             onClose={isSubmitting ? undefined : onClose}
         >
             {serverError && (
-                <div className="auth-card__alert" style={{ marginBottom: 16 }}>
+                <Alert tone="danger">
                     {serverError}
-                </div>
+                </Alert>
             )}
 
             <Form onSubmit={handleSubmit(onSubmit)}>
@@ -142,56 +155,33 @@ function UserFormModal({ open, mode, initial, onClose, onSaved }) {
                         error={errors.email?.message}
                     />
 
-                    <div className="input-field">
-                        <label
-                            className="input-field__label"
-                            htmlFor="admin-user-role"
-                        >
-                            Role<span className="input-field__required">*</span>
-                        </label>
-                        <select
-                            id="admin-user-role"
-                            className="admin-toolbar__select"
-                            {...register("role")}
-                        >
+                    <Select
+                        id="admin-user-role"
+                        label="Role"
+                        required
+                        error={errors.role?.message}
+                        {...register("role")}
+                    >
                             {USER_ROLES.map((role) => (
                                 <option key={role} value={role}>
                                     {role}
                                 </option>
                             ))}
-                        </select>
-                        {errors.role && (
-                            <p className="input-field__error">
-                                {errors.role.message}
-                            </p>
-                        )}
-                    </div>
+                    </Select>
 
-                    <div className="input-field">
-                        <label
-                            className="input-field__label"
-                            htmlFor="admin-user-status"
-                        >
-                            Status
-                            <span className="input-field__required">*</span>
-                        </label>
-                        <select
-                            id="admin-user-status"
-                            className="admin-toolbar__select"
-                            {...register("status")}
-                        >
+                    <Select
+                        id="admin-user-status"
+                        label="Status"
+                        required
+                        error={errors.status?.message}
+                        {...register("status")}
+                    >
                             {USER_STATUSES.map((status) => (
                                 <option key={status} value={status}>
                                     {formatLabel(status)}
                                 </option>
                             ))}
-                        </select>
-                        {errors.status && (
-                            <p className="input-field__error">
-                                {errors.status.message}
-                            </p>
-                        )}
-                    </div>
+                    </Select>
 
                     <FormField
                         label="Phone number"
@@ -203,23 +193,14 @@ function UserFormModal({ open, mode, initial, onClose, onSaved }) {
                         error={errors.phoneNumber?.message}
                     />
 
-                    <label
-                        className="admin-checkbox"
-                        style={{ alignSelf: "center", marginTop: 8 }}
-                    >
-                        <input type="checkbox" {...register("emailVerified")} />
-                        Email verified
-                    </label>
+                    <Checkbox
+                        className="admin-form-checkbox"
+                        label="Email verified"
+                        {...register("emailVerified")}
+                    />
                 </div>
 
-                <div
-                    style={{
-                        display: "flex",
-                        justifyContent: "flex-end",
-                        gap: 10,
-                        marginTop: 18,
-                    }}
-                >
+                <FormActions>
                     <Button
                         type="button"
                         variant="ghost"
@@ -231,17 +212,19 @@ function UserFormModal({ open, mode, initial, onClose, onSaved }) {
                     <Button type="submit" loading={isSubmitting}>
                         {mode === "edit" ? "Update user" : "Create user"}
                     </Button>
-                </div>
+                </FormActions>
             </Form>
         </Modal>
     );
 }
 
+/** Xác nhận xóa user và khóa dialog trong lúc request đang chạy. */
 function DeleteUserModal({ open, target, onClose, onConfirmed }) {
     const toast = useToast();
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
 
+    /** Xóa user đang chọn sau khi người dùng xác nhận. */
     async function handleConfirm() {
         if (!target) return;
         setLoading(true);
@@ -309,6 +292,7 @@ function DeleteUserModal({ open, target, onClose, onConfirmed }) {
     );
 }
 
+/** Điều phối danh sách, tìm kiếm, filter và mutation user của admin. */
 export function AdminUsersPage() {
     const toast = useToast();
     const [items, setItems] = useState([]);
@@ -345,6 +329,7 @@ export function AdminUsersPage() {
     useEffect(() => {
         let cancelled = false;
 
+        /** Tải trang user hiện tại theo search và filter đã submit. */
         async function loadUsers() {
             setLoading(true);
             setError(null);
@@ -384,20 +369,24 @@ export function AdminUsersPage() {
         toast,
     ]);
 
+    /** Tăng khóa refresh để tải lại danh sách mà không thay filter. */
     function refreshList() {
         setRefreshKey((key) => key + 1);
     }
 
+    /** Đóng form và tải lại danh sách sau khi lưu thành công. */
     function handleSaved() {
         setFormState({ open: false, mode: "create", initial: null });
         refreshList();
     }
 
+    /** Đóng xác nhận và tải lại danh sách sau khi xóa thành công. */
     function handleDeleted() {
         setDeleteState({ open: false, target: null });
         refreshList();
     }
 
+    /** Xóa toàn bộ search, role và status filter của danh sách user. */
     function clearUserFilters() {
         setKeyword("");
         setSubmittedKeyword("");
@@ -405,6 +394,78 @@ export function AdminUsersPage() {
         setStatusFilter("");
         setPage(0);
     }
+
+    const userColumns = useMemo(
+        () => [
+            {
+                key: "user",
+                header: "User",
+                render: (user) => (
+                    <div className="admin-user-cell">
+                        <div className="admin-user-cell__avatar">
+                            {user.avatarUrl ? (
+                                <img src={user.avatarUrl} alt="" />
+                            ) : (
+                                <UserCog size={18} aria-hidden="true" />
+                            )}
+                        </div>
+                        <div>
+                            <strong>{user.fullName}</strong>
+                            <div className="admin-user-cell__meta">{user.email}</div>
+                        </div>
+                    </div>
+                ),
+            },
+            {
+                key: "role",
+                header: "Role",
+                render: (user) => (
+                    <StatusBadge status="draft" label={user.role} tone="neutral" />
+                ),
+            },
+            {
+                key: "status",
+                header: "Status",
+                render: (user) => (
+                    <StatusBadge
+                        status={user.status || "inactive"}
+                        label={formatLabel(user.status)}
+                    />
+                ),
+            },
+            { key: "phoneNumber", header: "Phone", render: (user) => user.phoneNumber || "--" },
+            {
+                key: "emailVerified",
+                header: "Email verified",
+                render: (user) => (user.emailVerified ? "Yes" : "No"),
+            },
+            { key: "lastLoginAt", header: "Last login", render: (user) => formatDateTime(user.lastLoginAt) },
+            { key: "createdAt", header: "Created", render: (user) => formatDateTime(user.createdAt) },
+            {
+                key: "actions",
+                header: "Actions",
+                render: (user) => (
+                    <div className="admin-table__actions">
+                        <IconButton
+                            label={`Edit ${user.fullName}`}
+                            icon={<Edit2 size={15} />}
+                            variant="ghost"
+                            onClick={() =>
+                                setFormState({ open: true, mode: "edit", initial: user })
+                            }
+                        />
+                        <IconButton
+                            label={`Delete ${user.fullName}`}
+                            icon={<Trash2 size={15} />}
+                            variant="danger"
+                            onClick={() => setDeleteState({ open: true, target: user })}
+                        />
+                    </div>
+                ),
+            },
+        ],
+        [],
+    );
 
     return (
         <div className="admin-page">
@@ -430,13 +491,12 @@ export function AdminUsersPage() {
                 <AdminFilterToolbar
                     ariaLabel="User search and filters"
                     search={
-                        <FormField
+                        <SearchInput
                             id="admin-user-search"
-                            aria-label="Search users"
+                            ariaLabel="Search users"
                             placeholder="Search name, email, or phone..."
                             value={keyword}
-                            onChange={(event) => setKeyword(event.target.value)}
-                            leftIcon={<Search size={16} />}
+                            onChange={setKeyword}
                         />
                     }
                     fields={[
@@ -485,131 +545,30 @@ export function AdminUsersPage() {
                     onClear={clearUserFilters}
                 />
 
-                <div className="admin-table-wrap">
-                    {loading ? (
-                        <div className="admin-loading">Loading users...</div>
-                    ) : error ? (
-                        <div className="admin-error">{error}</div>
-                    ) : items.length === 0 ? (
-                        <div className="admin-empty">
-                            No users match the current filters.
-                        </div>
+                {error ? (
+                        <ErrorState
+                            title="Could not load users"
+                            description={error}
+                            action={<Button variant="secondary" onClick={refreshList}>Retry</Button>}
+                        />
                     ) : (
-                        <table className="admin-table">
-                            <thead>
-                                <tr>
-                                    <th>User</th>
-                                    <th>Role</th>
-                                    <th>Status</th>
-                                    <th>Phone</th>
-                                    <th>Email verified</th>
-                                    <th>Last login</th>
-                                    <th>Created</th>
-                                    <th
-                                        style={{
-                                            width: 110,
-                                            textAlign: "right",
-                                        }}
-                                    >
-                                        Actions
-                                    </th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {items.map((user) => (
-                                    <tr key={user.id}>
-                                        <td>
-                                            <div className="admin-user-cell">
-                                                <div className="admin-user-cell__avatar">
-                                                    {user.avatarUrl ? (
-                                                        <img
-                                                            src={user.avatarUrl}
-                                                            alt=""
-                                                        />
-                                                    ) : (
-                                                        <UserCog size={18} />
-                                                    )}
-                                                </div>
-                                                <div>
-                                                    <strong>
-                                                        {user.fullName}
-                                                    </strong>
-                                                    <div className="admin-user-cell__meta">
-                                                        {user.email}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td>
-                                            <span className="admin-role-badge">
-                                                {user.role}
-                                            </span>
-                                        </td>
-                                        <td>
-                                            <span
-                                                className={`admin-status admin-status--${user.status || "inactive"}`}
-                                            >
-                                                {formatLabel(user.status)}
-                                            </span>
-                                        </td>
-                                        <td>
-                                            {user.phoneNumber || (
-                                                <span
-                                                    style={{ color: "#94a3b8" }}
-                                                >
-                                                    --
-                                                </span>
-                                            )}
-                                        </td>
-                                        <td>
-                                            {user.emailVerified ? "Yes" : "No"}
-                                        </td>
-                                        <td>
-                                            {formatDateTime(user.lastLoginAt)}
-                                        </td>
-                                        <td>
-                                            {formatDateTime(user.createdAt)}
-                                        </td>
-                                        <td>
-                                            <div
-                                                className="admin-table__actions"
-                                                style={{ float: "right" }}
-                                            >
-                                                <button
-                                                    type="button"
-                                                    className="admin-table__icon-btn"
-                                                    title="Edit"
-                                                    onClick={() =>
-                                                        setFormState({
-                                                            open: true,
-                                                            mode: "edit",
-                                                            initial: user,
-                                                        })
-                                                    }
-                                                >
-                                                    <Edit2 size={15} />
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    className="admin-table__icon-btn admin-table__icon-btn--danger"
-                                                    title="Delete"
-                                                    onClick={() =>
-                                                        setDeleteState({
-                                                            open: true,
-                                                            target: user,
-                                                        })
-                                                    }
-                                                >
-                                                    <Trash2 size={15} />
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                        <DataTable
+                            ariaLabel="User data"
+                            columns={userColumns}
+                            rows={items}
+                            loading={loading}
+                            loadingLabel="Loading users..."
+                            emptyTitle="No users found"
+                            emptyDescription="No users match the current search and filters."
+                            emptyAction={
+                                keyword.trim() || roleFilter || statusFilter ? (
+                                    <Button variant="secondary" onClick={clearUserFilters}>
+                                        Clear filters
+                                    </Button>
+                                ) : null
+                            }
+                        />
                     )}
-                </div>
 
                 <Pagination
                     page={page + 1}

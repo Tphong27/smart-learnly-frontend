@@ -17,6 +17,9 @@ export default function AdminLessonDetailPage() {
   const backPath = location.pathname.startsWith("/staff/")
     ? `/staff/courses/${courseId}/content`
     : `/admin/courses/${courseId}/content`;
+  const courseBasePath = location.pathname.startsWith("/staff/")
+    ? "/staff/courses"
+    : "/admin/courses";
 
   const context = useMemo(
     () => ({
@@ -24,6 +27,7 @@ export default function AdminLessonDetailPage() {
       lessonId,
       courseId,
       backPath,
+      courseBasePath,
       services: {
         getLessonDetail: (id) => courseContentService.getLessonDetail(id),
         updateLesson: (id, payload) => courseContentService.updateLesson(id, payload),
@@ -36,7 +40,7 @@ export default function AdminLessonDetailPage() {
         flashcardStaging: true,
       },
     }),
-    [backPath, courseId, lessonId],
+    [backPath, courseBasePath, courseId, lessonId],
   );
 
   return <LessonDetailTabs context={context} />;

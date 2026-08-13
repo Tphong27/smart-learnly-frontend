@@ -1,7 +1,8 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { ChevronDown, SlidersHorizontal, X } from "lucide-react";
-import { Button } from "@/shared/components/ui";
+import { Button, IconButton, Input, Select } from "@/shared/components/ui";
 
+/** Tạo object giá trị filter từ cấu hình field hiện tại hoặc giá trị mặc định. */
 function valuesFromFields(fields, source = "value") {
   return Object.fromEntries(
     fields.map((field) => [
@@ -11,10 +12,12 @@ function valuesFromFields(fields, source = "value") {
   );
 }
 
+/** Trả focus về nút mở filter sau khi popover đóng. */
 function focusTrigger(triggerRef) {
   window.requestAnimationFrame(() => triggerRef.current?.focus());
 }
 
+/** Hiển thị thanh search và filter responsive dùng chung cho các danh sách admin. */
 export function AdminFilterToolbar({
   ariaLabel = "List filters",
   search,
@@ -48,12 +51,14 @@ export function AdminFilterToolbar({
       (firstField || fallbackButton)?.focus();
     });
 
+    /** Đóng filter khi người dùng tương tác ra ngoài popover. */
     function handlePointerDown(event) {
       if (!rootRef.current?.contains(event.target)) {
         setOpen(false);
       }
     }
 
+    /** Đóng bằng Escape và giữ focus tuần hoàn bên trong filter dialog. */
     function handleKeyDown(event) {
       if (event.key === "Escape") {
         event.preventDefault();
@@ -92,22 +97,26 @@ export function AdminFilterToolbar({
     };
   }, [open]);
 
+  /** Mở panel bằng các giá trị filter đang được áp dụng. */
   function openPanel() {
     setDraftValues(valuesFromFields(fields));
     setOpen(true);
   }
 
+  /** Đóng panel và tùy chọn khôi phục focus về trigger. */
   function closePanel({ restoreFocus = true } = {}) {
     setOpen(false);
     if (restoreFocus) focusTrigger(triggerRef);
   }
 
+  /** Áp dụng các giá trị filter nháp rồi đóng panel. */
   function handleSubmit(event) {
     event.preventDefault();
     onApply?.(draftValues);
     closePanel();
   }
 
+  /** Khôi phục filter mặc định và thông báo caller xóa điều kiện hiện tại. */
   function handleClear() {
     setDraftValues(valuesFromFields(fields, "defaultValue"));
     onClear?.();
@@ -166,14 +175,13 @@ export function AdminFilterToolbar({
                       <strong>Filters</strong>
                       <span>Refine the displayed results.</span>
                     </div>
-                    <button
-                      type="button"
+                    <IconButton
                       className="admin-filter-popover__close"
-                      aria-label="Close filters"
+                      label="Close filters"
+                      icon={<X size={18} />}
+                      variant="ghost"
                       onClick={() => closePanel()}
-                    >
-                      <X size={18} aria-hidden="true" />
-                    </button>
+                    />
                   </div>
 
                   <div className="admin-filter-popover__fields">
@@ -181,7 +189,6 @@ export function AdminFilterToolbar({
                       const fieldId = field.id || `${panelId}-${field.name}`;
                       const commonProps = {
                         id: fieldId,
-                        className: "admin-toolbar__select",
                         value: draftValues[field.name] ?? "",
                         disabled: field.disabled,
                         onChange: (event) => {
@@ -190,26 +197,29 @@ export function AdminFilterToolbar({
                         },
                       };
 
-                      return (
-                        <div key={field.name} className="admin-filter-popover__field">
-                          <label htmlFor={fieldId}>{field.label}</label>
-                          {field.type === "select" ? (
-                            <select {...commonProps}>
+                      return field.type === "select" ? (
+                        <Select
+                          key={field.name}
+                          {...commonProps}
+                          label={field.label}
+                          className="admin-filter-popover__field"
+                        >
                               {(field.options || []).map((option) => (
                                 <option key={option.value || "all"} value={option.value}>
                                   {option.label}
                                 </option>
                               ))}
-                            </select>
-                          ) : (
-                            <input
-                              {...commonProps}
-                              type={field.type || "text"}
-                              placeholder={field.placeholder}
-                              autoComplete={field.autoComplete || "off"}
-                            />
-                          )}
-                        </div>
+                        </Select>
+                      ) : (
+                        <Input
+                          key={field.name}
+                          {...commonProps}
+                          label={field.label}
+                          className="admin-filter-popover__field"
+                          type={field.type || "text"}
+                          placeholder={field.placeholder}
+                          autoComplete={field.autoComplete || "off"}
+                        />
                       );
                     })}
                   </div>

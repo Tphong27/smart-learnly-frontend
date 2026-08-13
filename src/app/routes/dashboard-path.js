@@ -51,20 +51,61 @@ export function isPathAllowedForRole(pathname, role) {
     },
     {
       prefix: "/admin/courses",
-      match: /\/admin\/courses\/[^/]+\/questions(?:\/|$)/,
-      allow: [ROLES.ADMIN, ROLES.TMO, ROLES.SME, ROLES.TRAINER],
+      match: /^\/admin\/courses\/?$/,
+      allow: [ROLES.ADMIN, ROLES.TMO, ROLES.SME],
     },
     {
       prefix: "/admin/courses",
+      match: /^\/admin\/courses\/[^/]+\/preview(?:\/|$)/,
       allow: [ROLES.ADMIN, ROLES.TMO, ROLES.SME],
+    },
+    {
+      prefix: "/admin/courses",
+      match: /\/admin\/courses\/[^/]+\/modules\/[^/]+\/questions(?:\/|$)/,
+      allow: [ROLES.ADMIN, ROLES.SME, ROLES.TRAINER],
+    },
+    {
+      prefix: "/admin/courses",
+      allow: [ROLES.ADMIN, ROLES.SME],
     },
     {
       prefix: "/admin",
-      allow: [ROLES.ADMIN, ROLES.TMO, ROLES.SME],
+      allow: [ROLES.ADMIN, ROLES.SME],
+    },
+    {
+      prefix: "/staff/courses",
+      match: /^\/staff\/courses\/?$/,
+      allow: [ROLES.TRAINER, ROLES.TMO, ROLES.SME],
+    },
+    {
+      prefix: "/staff/courses",
+      match: /^\/staff\/courses\/[^/]+\/preview(?:\/|$)/,
+      allow: [ROLES.TRAINER, ROLES.TMO, ROLES.SME],
+    },
+    {
+      prefix: "/staff/courses",
+      allow: [ROLES.TRAINER, ROLES.SME],
+    },
+    {
+      prefix: "/staff/assignments",
+      match: /^\/staff\/assignments\/?$/,
+      allow: [ROLES.TRAINER, ROLES.TMO, ROLES.SME],
+    },
+    {
+      prefix: "/staff/assignments",
+      allow: [ROLES.TRAINER, ROLES.SME],
+    },
+    {
+      prefix: "/staff/classrooms",
+      allow: [ROLES.TRAINER, ROLES.TMO],
     },
     {
       prefix: "/staff",
-      allow: [ROLES.ADMIN, ROLES.TRAINER, ROLES.TMO, ROLES.SME],
+      allow: [ROLES.ADMIN, ROLES.TRAINER, ROLES.SME],
+    },
+    {
+      prefix: "/trainer",
+      allow: [ROLES.ADMIN, ROLES.TRAINER],
     },
     {
       prefix: "/learning",
@@ -77,7 +118,11 @@ export function isPathAllowedForRole(pathname, role) {
   ];
 
   for (const { prefix, match, allow } of restrictedPrefixes) {
-    if (match ? match.test(pathname) : pathname === prefix || pathname.startsWith(`${prefix}/`)) {
+    if (
+      match
+        ? match.test(pathname)
+        : pathname === prefix || pathname.startsWith(`${prefix}/`)
+    ) {
       return isRoleAllowed(normalizedRole, allow);
     }
   }

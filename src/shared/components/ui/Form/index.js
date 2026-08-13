@@ -1,1 +1,1 @@
-export { Form, FormField, FormActions } from './Form'
+export { Form, FormField, PasswordField, FormActions } from './Form'

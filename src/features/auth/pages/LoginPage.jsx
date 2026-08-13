@@ -3,8 +3,15 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { GoogleLogin } from "@react-oauth/google";
-import { Eye, EyeOff, Lock, Mail } from "lucide-react";
-import { Form, FormField, Button, useToast } from "@/shared/components/ui";
+import { Lock, Mail } from "lucide-react";
+import {
+    Alert,
+    Button,
+    Form,
+    FormField,
+    PasswordField,
+    useToast,
+} from "@/shared/components/ui";
 import { authService } from "../services/authService";
 import { loginSchema } from "../schemas/auth-schemas";
 import { AuthPage, AuthCard } from "../components/AuthCard";
@@ -29,13 +36,13 @@ function getRedirectPath(location, user) {
     return getDashboardPathByRole(user?.role);
 }
 
+/** Xác thực bằng email hoặc Google rồi điều hướng người dùng tới màn hình được phép. */
 export function LoginPage() {
     const navigate = useNavigate();
     const location = useLocation();
     const toast = useToast();
 
     const [serverError, setServerError] = useState(null);
-    const [showPassword, setShowPassword] = useState(false);
     const [unverifiedEmail, setUnverifiedEmail] = useState(null);
     const [googleLoading, setGoogleLoading] = useState(false);
 
@@ -49,11 +56,13 @@ export function LoginPage() {
         mode: "onBlur",
     });
 
+    /** Hoàn tất đăng nhập và điều hướng tới đích an toàn theo vai trò. */
     function handleSuccess(loggedInUser) {
         toast.success("Signed in successfully");
         navigate(getRedirectPath(location, loggedInUser), { replace: true });
     }
 
+    /** Gửi thông tin đăng nhập và tách riêng trường hợp email chưa xác minh. */
     async function onSubmit(values) {
         setServerError(null);
         setUnverifiedEmail(null);
@@ -73,6 +82,7 @@ export function LoginPage() {
         }
     }
 
+    /** Đổi Google credential thành phiên ứng dụng và hiển thị lỗi có thể phục hồi. */
     async function handleGoogleSuccess(credentialResponse) {
         const idToken = credentialResponse?.credential;
         if (!idToken) {
@@ -107,19 +117,14 @@ export function LoginPage() {
                 }
             >
                 {unverifiedEmail && (
-                    <div className="auth-card__alert auth-card__alert--info">
+                    <Alert tone="info" className="auth-card__alert">
                         Your email is not verified yet.{" "}
                         <Link
                             to={`/verify-email?email=${encodeURIComponent(unverifiedEmail)}`}
-                            style={{
-                                color: "inherit",
-                                textDecoration: "underline",
-                                fontWeight: 700,
-                            }}
                         >
                             Verify now
                         </Link>
-                    </div>
+                    </Alert>
                 )}
 
                 <Form onSubmit={handleSubmit(onSubmit)}>
@@ -134,32 +139,13 @@ export function LoginPage() {
                         autoComplete="email"
                     />
 
-                    <FormField
+                    <PasswordField
                         label="Password"
-                        type={showPassword ? "text" : "password"}
                         placeholder="Enter your password"
                         required
                         registration={register("password")}
                         error={errors.password?.message}
                         leftIcon={<Lock size={16} />}
-                        rightIcon={
-                            <button
-                                type="button"
-                                onClick={() => setShowPassword((s) => !s)}
-                                aria-label={
-                                    showPassword
-                                        ? "Hide password"
-                                        : "Show password"
-                                }
-                                className="auth-toggle-eye"
-                            >
-                                {showPassword ? (
-                                    <EyeOff size={16} />
-                                ) : (
-                                    <Eye size={16} />
-                                )}
-                            </button>
-                        }
                         autoComplete="current-password"
                     />
 

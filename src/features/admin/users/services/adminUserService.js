@@ -1,10 +1,5 @@
 import apiClient from "@/services/api-client";
-
-/** Lấy payload người dùng kể cả khi backend bọc hai lớp data. */
-function unwrapData(response) {
-  const root = response?.data ?? response;
-  return root?.data ?? root;
-}
+import { unwrapNestedApiData as unwrapData } from "@/services/api-response";
 
 /** Chuẩn hóa các tên trường phân trang cũ/mới thành một model cho trang admin. */
 function normalizeUserPage(response) {

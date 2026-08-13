@@ -248,7 +248,7 @@ export function CourseProgressCard({ course }) {
             completed={quiz.completed}
             total={quiz.total}
             percent={quiz.percent}
-            to={getScopedListPath("/learning/tests", course)}
+            to={learningPath}
           />
 
           <ProgressMetric

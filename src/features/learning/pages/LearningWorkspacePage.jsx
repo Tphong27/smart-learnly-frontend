@@ -148,7 +148,6 @@ export function LearningWorkspacePage({
   const [activeLessonTab, setActiveLessonTab] = useState("overview");
   const [completedLessonIds, setCompletedLessonIds] = useState(() => new Set());
   const [updatingLessonIds, setUpdatingLessonIds] = useState(() => new Set());
-  const [lessonNotesById, setLessonNotesById] = useState({});
   const resolvedClassId = requestedClassId || null;
   const flashcardProgressUserKey = mode === "student" ? workspaceUserKey : null;
 
@@ -390,23 +389,6 @@ export function LearningWorkspacePage({
       }
     },
     [completedLessonIds, courseId, mode, effectiveClassId, updatingLessonIds],
-  );
-
-  const activeLessonIdForNote = getLessonId(activeLesson);
-  const activeLessonNote = activeLessonIdForNote
-    ? lessonNotesById[activeLessonIdForNote] || ""
-    : "";
-
-  /** Lưu ghi chú cục bộ cho lesson đang mở trong workspace. */
-  const handleActiveLessonNoteChange = useCallback(
-    (note) => {
-      if (!activeLessonIdForNote) return;
-      setLessonNotesById((currentNotes) => ({
-        ...currentNotes,
-        [activeLessonIdForNote]: note,
-      }));
-    },
-    [activeLessonIdForNote],
   );
 
   /** Đánh dấu hoàn thành lesson sau một hoạt động bắt buộc như quiz hoặc bài nộp. */
@@ -772,8 +754,6 @@ export function LearningWorkspacePage({
                   classId={effectiveClassId}
                   activeTab={activeLessonTab}
                   onTabChange={setActiveLessonTab}
-                  note={activeLessonNote}
-                  onNoteChange={handleActiveLessonNoteChange}
                   nextLesson={nextLesson}
                   onNextLesson={handleGoToNextLesson}
                   canGoNext={canGoNext}

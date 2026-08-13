@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -7,9 +7,11 @@ import { Form, FormField, Button, useToast } from '@/shared/components/ui'
 import { authService } from '../services/authService'
 import { verifyEmailSchema } from '../schemas/auth-schemas'
 import { AuthPage, AuthCard } from '../components/AuthCard'
+import { ResendOtpButton } from '../components/ResendOtpButton'
 
 const RESEND_COOLDOWN_SECONDS = 60
 
+/** Xác minh email bằng OTP và dùng chung chính sách cooldown khi gửi lại mã. */
 export function VerifyEmailPage() {
   const navigate = useNavigate()
   const toast = useToast()
@@ -17,8 +19,6 @@ export function VerifyEmailPage() {
   const emailFromQuery = searchParams.get('email') ?? ''
 
   const [serverError, setServerError] = useState(null)
-  const [resendCooldown, setResendCooldown] = useState(0)
-  const [resendLoading, setResendLoading] = useState(false)
 
   const {
     register,
@@ -31,14 +31,7 @@ export function VerifyEmailPage() {
     mode: 'onBlur',
   })
 
-  useEffect(() => {
-    if (resendCooldown <= 0) return undefined
-    const timer = window.setInterval(() => {
-      setResendCooldown((value) => (value > 0 ? value - 1 : 0))
-    }, 1000)
-    return () => window.clearInterval(timer)
-  }, [resendCooldown])
-
+  /** Xác minh OTP và chuyển về đăng nhập khi email đã hợp lệ. */
   async function onSubmit(values) {
     setServerError(null)
     try {
@@ -50,24 +43,22 @@ export function VerifyEmailPage() {
     }
   }
 
+  /** Gửi lại OTP và báo kết quả để component cooldown quyết định có khóa nút hay không. */
   async function handleResend() {
     const email = (getValues('email') || emailFromQuery || '').trim()
     if (!email) {
       setServerError('Please enter your email first.')
-      return
+      return false
     }
-    if (resendCooldown > 0) return
 
-    setResendLoading(true)
     setServerError(null)
     try {
       await authService.resendVerification(email)
       toast.success('Verification code resent. Please check your email.')
-      setResendCooldown(RESEND_COOLDOWN_SECONDS)
+      return true
     } catch (error) {
       setServerError(error?.message || 'Could not resend the code. Try again later.')
-    } finally {
-      setResendLoading(false)
+      return false
     }
   }
 
@@ -120,16 +111,13 @@ export function VerifyEmailPage() {
             Verify
           </Button>
 
-          <Button
-            type="button"
+          <ResendOtpButton
             variant="outline"
             fullWidth
-            onClick={handleResend}
-            disabled={resendCooldown > 0}
-            loading={resendLoading}
-          >
-            {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : 'Resend code'}
-          </Button>
+            size="md"
+            onResend={handleResend}
+            cooldownSeconds={RESEND_COOLDOWN_SECONDS}
+          />
         </Form>
       </AuthCard>
     </AuthPage>
