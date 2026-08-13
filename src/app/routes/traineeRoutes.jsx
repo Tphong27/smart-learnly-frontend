@@ -10,13 +10,11 @@ import {
 } from "@/features/checkout";
 import { MyEnrollmentsPage } from "@/features/enrollment";
 import {
-  TraineeFlashTestListPage,
-  TraineeFlashTestTakePage,
+  TraineeAssessmentListPage,
   TraineeAssignmentTakePage,
-  TraineeTestListPage,
   TraineeTestTakePage,
   TestAttemptDetailPage,
-} from "@/features/flashtest";
+} from "@/features/test";
 import { CourseListPage } from "@/features/course";
 import { LearningWorkspacePage } from "@/features/learning";
 import { TraineeDashboardPage } from "@/features/dashboard";
@@ -31,11 +29,6 @@ function getTraineeRoutes() {
       path: "/learning/courses/:courseId",
       element: <RoleGuard allowedRoles={[ROLES.TRAINEE]} />,
       children: [{ index: true, element: <LearningWorkspacePage /> }],
-    },
-    {
-      path: "/learning/flashtests/take/:id/:type",
-      element: <RoleGuard allowedRoles={[ROLES.TRAINEE]} />,
-      children: [{ index: true, element: <TraineeFlashTestTakePage /> }],
     },
     {
       path: "/learning/assignments/take/:id/:type",
@@ -94,7 +87,7 @@ function getTraineeRoutes() {
             },
             {
               path: "tests",
-              element: <TraineeTestListPage />,
+              element: <Navigate to="/dashboard" replace />,
             },
             {
               path: "tests/attempts/:testId/:attemptId",
@@ -105,12 +98,8 @@ function getTraineeRoutes() {
               element: <PlaceholderPage title="AI Chatbot" />,
             },
             {
-              path: "flashtests",
-              element: <TraineeFlashTestListPage />,
-            },
-            {
               path: "assignments",
-              element: <TraineeFlashTestListPage variant="assignment" />,
+              element: <TraineeAssessmentListPage variant="assignment" />,
             },
           ],
         },

@@ -1,16 +1,13 @@
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
-  Archive,
   Bell,
   BookOpen,
-  Check,
   CheckCheck,
   ClipboardCheck,
   ClipboardList,
   Clock3,
   CreditCard,
-  Ellipsis,
   GraduationCap,
   Info,
   MessageSquareText,
@@ -69,31 +66,11 @@ function getNotificationVisual(type) {
   return TYPE_VISUALS[normalizeNotificationType(type)] || TYPE_VISUALS.SYSTEM;
 }
 
-/** Hiển thị một notification trong dropdown và các thao tác nhanh của nó. */
-function NotificationDropdownItem({
-  notification,
-  mutating,
-  actionsOpen,
-  onArchive,
-  onCloseActions,
-  onMarkRead,
-  onOpen,
-  onToggleActions,
-}) {
+/** Hiển thị một notification có thể mở trực tiếp từ dropdown. */
+function NotificationDropdownItem({ notification, onOpen }) {
   const unread = isUnreadNotification(notification);
   const preview = getNotificationPreview(notification);
-  const actionsId = useId();
   const { icon: TypeIcon, tone } = getNotificationVisual(notification.type);
-
-  function handleMarkRead() {
-    onCloseActions();
-    void onMarkRead(notification);
-  }
-
-  function handleArchive() {
-    onCloseActions();
-    void onArchive(notification);
-  }
 
   return (
     <li
@@ -139,47 +116,6 @@ function NotificationDropdownItem({
           )}
         </span>
       </button>
-
-      <div
-        className="notification-dropdown__item-actions"
-        onBlur={(event) => {
-          if (!event.currentTarget.contains(event.relatedTarget)) {
-            onCloseActions();
-          }
-        }}
-      >
-        <button
-          type="button"
-          className="notification-dropdown__more-button"
-          disabled={mutating}
-          onClick={onToggleActions}
-          aria-label={`More actions for ${notification.title}`}
-          aria-haspopup="menu"
-          aria-expanded={actionsOpen}
-          aria-controls={actionsOpen ? actionsId : undefined}
-        >
-          <Ellipsis size={18} aria-hidden="true" />
-        </button>
-
-        {actionsOpen && (
-          <div
-            id={actionsId}
-            className="notification-dropdown__actions-menu"
-            role="menu"
-          >
-            {unread && (
-              <button type="button" role="menuitem" onClick={handleMarkRead}>
-                <Check size={15} aria-hidden="true" />
-                Mark as read
-              </button>
-            )}
-            <button type="button" role="menuitem" onClick={handleArchive}>
-              <Archive size={15} aria-hidden="true" />
-              Archive
-            </button>
-          </div>
-        )}
-      </div>
     </li>
   );
 }
@@ -194,30 +130,23 @@ export function NotificationBell({ variant = "app", onOpen }) {
   const routeRef = useRef(location.key);
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
-  const [activeFilter, setActiveFilter] = useState("all");
-  const [activeActionsId, setActiveActionsId] = useState(null);
   const [actionError, setActionError] = useState(null);
   const {
     unreadCount,
-    activeNotificationCount,
     latestNotifications,
     latestLoading,
     latestError,
     latestLoaded,
     refreshUnread,
     refreshLatest,
-    markRead,
     recordClick,
-    archive,
-    archiveAll,
     markAllRead,
-    isNotificationMutating,
-    isBulkMutating,
+    isMarkingAllRead,
   } = useNotifications();
 
+  /** Đóng dropdown và trả focus về nút chuông khi phù hợp. */
   const closePanel = useCallback(({ returnFocus = true } = {}) => {
     setOpen(false);
-    setActiveActionsId(null);
     setActionError(null);
 
     if (returnFocus) {
@@ -230,19 +159,17 @@ export function NotificationBell({ variant = "app", onOpen }) {
   useEffect(() => {
     if (!open) return undefined;
 
+    /** Đóng dropdown khi người dùng bấm ra ngoài. */
     function handlePointerDown(event) {
       if (!rootRef.current?.contains(event.target)) {
         closePanel();
       }
     }
 
+    /** Đóng dropdown bằng phím Escape. */
     function handleKeyDown(event) {
       if (event.key === "Escape") {
         event.preventDefault();
-        if (activeActionsId) {
-          setActiveActionsId(null);
-          return;
-        }
         closePanel();
       }
     }
@@ -253,7 +180,7 @@ export function NotificationBell({ variant = "app", onOpen }) {
       document.removeEventListener("pointerdown", handlePointerDown);
       document.removeEventListener("keydown", handleKeyDown);
     };
-  }, [activeActionsId, closePanel, open]);
+  }, [closePanel, open]);
 
   useEffect(() => {
     if (routeRef.current === location.key) return;
@@ -270,9 +197,10 @@ export function NotificationBell({ variant = "app", onOpen }) {
   useEffect(() => {
     if (!open) return;
     void refreshUnread({ force: true });
-    void refreshLatest({ force: true, status: activeFilter });
-  }, [activeFilter, open, refreshLatest, refreshUnread]);
+    void refreshLatest({ force: true });
+  }, [open, refreshLatest, refreshUnread]);
 
+  /** Bật hoặc tắt dropdown notification. */
   function handleToggle() {
     setOpen((current) => {
       const next = !current;
@@ -281,27 +209,9 @@ export function NotificationBell({ variant = "app", onOpen }) {
     });
   }
 
-  async function handleMarkRead(notification) {
-    setActionError(null);
-    try {
-      await markRead(notification);
-    } catch (error) {
-      setActionError(error?.message || "Failed to mark notification as read.");
-    }
-  }
-
-  async function handleArchive(notification) {
-    setActionError(null);
-    try {
-      await archive(notification);
-    } catch (error) {
-      setActionError(error?.message || "Failed to archive notification.");
-    }
-  }
-
+  /** Đánh dấu toàn bộ notification đã đọc và hiển thị lỗi nếu thao tác thất bại. */
   async function handleMarkAllRead() {
     setActionError(null);
-    setActiveActionsId(null);
     try {
       await markAllRead();
     } catch (error) {
@@ -309,32 +219,16 @@ export function NotificationBell({ variant = "app", onOpen }) {
     }
   }
 
-  async function handleArchiveAll() {
-    setActionError(null);
-    setActiveActionsId(null);
-    if (
-      !window.confirm(
-        "Archive all active notifications? Archived notifications will be removed from this dropdown.",
-      )
-    ) {
-      return;
-    }
-    try {
-      await archiveAll();
-    } catch (error) {
-      setActionError(error?.message || "Failed to archive notifications.");
-    }
-  }
-
+  /** Tải lại badge và danh sách sau lỗi tải dữ liệu. */
   function handleRefresh() {
     void refreshUnread({ force: true });
-    void refreshLatest({ force: true, status: activeFilter });
+    void refreshLatest({ force: true });
   }
 
+  /** Ghi nhận click rồi điều hướng tới màn hình mà notification trỏ đến. */
   function handleOpenNotification(notification) {
     const destination = getNotificationDestination(notification);
     setActionError(null);
-    setActiveActionsId(null);
     void recordClick(notification).catch(() => {});
 
     if (destination) {
@@ -342,10 +236,6 @@ export function NotificationBell({ variant = "app", onOpen }) {
       navigate(destination);
     }
   }
-
-  const visibleNotifications = latestNotifications;
-  const markingAllRead = isBulkMutating("read-all");
-  const archivingAll = isBulkMutating("archive-all");
 
   return (
     <div className={classes.wrapper} ref={rootRef}>
@@ -386,59 +276,17 @@ export function NotificationBell({ variant = "app", onOpen }) {
                   : "You're all caught up"}
               </span>
             </div>
-            <div className="notification-dropdown__bulk-actions">
-              {unreadCount > 0 && (
-                <button
-                  type="button"
-                  className="notification-dropdown__mark-all"
-                  onClick={handleMarkAllRead}
-                  disabled={markingAllRead || archivingAll}
-                >
-                  <CheckCheck size={16} aria-hidden="true" />
-                  {markingAllRead ? "Marking..." : "Mark all read"}
-                </button>
-              )}
-              {activeNotificationCount > 0 && (
-                <button
-                  type="button"
-                  className="notification-dropdown__mark-all"
-                  onClick={handleArchiveAll}
-                  disabled={archivingAll || markingAllRead}
-                >
-                  <Archive size={16} aria-hidden="true" />
-                  {archivingAll ? "Archiving..." : "Archive all"}
-                </button>
-              )}
-            </div>
-          </div>
-
-          <div className="notification-dropdown__tabs" role="tablist">
-            <button
-              type="button"
-              role="tab"
-              aria-selected={activeFilter === "all"}
-              className={activeFilter === "all" ? "is-active" : undefined}
-              onClick={() => {
-                setActiveFilter("all");
-                setActiveActionsId(null);
-              }}
-            >
-              All
-              <span>{activeNotificationCount}</span>
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={activeFilter === "unread"}
-              className={activeFilter === "unread" ? "is-active" : undefined}
-              onClick={() => {
-                setActiveFilter("unread");
-                setActiveActionsId(null);
-              }}
-            >
-              Unread
-              <span>{unreadCount}</span>
-            </button>
+            {(unreadCount > 0 || isMarkingAllRead) && (
+              <button
+                type="button"
+                className="notification-dropdown__mark-all"
+                onClick={handleMarkAllRead}
+                disabled={isMarkingAllRead}
+              >
+                <CheckCheck size={16} aria-hidden="true" />
+                {isMarkingAllRead ? "Marking..." : "Mark all read"}
+              </button>
+            )}
           </div>
 
           {latestLoading && !latestLoaded ? (
@@ -456,32 +304,17 @@ export function NotificationBell({ variant = "app", onOpen }) {
                 Retry
               </button>
             </div>
-          ) : activeFilter === "all" && activeNotificationCount === 0 ? (
+          ) : latestNotifications.length === 0 ? (
             <div className="notification-dropdown__state">
               No notifications yet.
             </div>
-          ) : visibleNotifications.length === 0 ? (
-            <div className="notification-dropdown__state">
-              <CheckCheck size={22} aria-hidden="true" />
-              You're all caught up.
-            </div>
           ) : (
             <ul className="notification-dropdown__list">
-              {visibleNotifications.map((notification) => (
+              {latestNotifications.map((notification) => (
                 <NotificationDropdownItem
                   key={notification.id}
                   notification={notification}
-                  mutating={isNotificationMutating(notification.id)}
-                  actionsOpen={activeActionsId === notification.id}
-                  onArchive={handleArchive}
-                  onCloseActions={() => setActiveActionsId(null)}
-                  onMarkRead={handleMarkRead}
                   onOpen={handleOpenNotification}
-                  onToggleActions={() =>
-                    setActiveActionsId((current) =>
-                      current === notification.id ? null : notification.id,
-                    )
-                  }
                 />
               ))}
             </ul>

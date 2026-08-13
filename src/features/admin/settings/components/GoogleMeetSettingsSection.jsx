@@ -2,28 +2,22 @@ import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Save } from 'lucide-react'
-import { Button, Form, FormField, useToast } from '@/shared/components/ui'
+import {
+  Button,
+  Checkbox,
+  ErrorState,
+  Form,
+  FormActions,
+  FormField,
+  LoadingState,
+  useToast,
+} from '@/shared/components/ui'
 import { systemSettingsService } from '../services/systemSettingsService'
 import { googleMeetSettingsSchema } from '../schemas/settings-schemas'
 
 const SECRET_PLACEHOLDER = '********'
 
-const sectionTitleStyle = {
-  fontSize: 12,
-  fontWeight: 700,
-  letterSpacing: '0.08em',
-  color: '#64708a',
-  textTransform: 'uppercase',
-  margin: '0 0 14px',
-}
-
-const sectionLeadStyle = {
-  fontSize: 14,
-  color: '#64708a',
-  lineHeight: 1.6,
-  margin: '0 0 20px',
-}
-
+/** Cấu hình tích hợp Google Meet ở cấp hệ thống. */
 export function GoogleMeetSettingsSection() {
   const toast = useToast()
   const [loading, setLoading] = useState(true)
@@ -66,6 +60,7 @@ export function GoogleMeetSettingsSection() {
     }
   }, [reset, toast])
 
+  /** Lưu trạng thái bật/tắt và refresh token Google Meet. */
   async function onSubmit(values) {
     try {
       const payload = {
@@ -86,26 +81,27 @@ export function GoogleMeetSettingsSection() {
   }
 
   if (loading) {
-    return <div className="admin-loading">Loading...</div>
+    return <LoadingState label="Loading Google Meet settings..." />
   }
   if (loadError) {
-    return <div className="admin-error">{loadError}</div>
+    return <ErrorState title="Could not load Google Meet settings" description={loadError} />
   }
 
   return (
     <>
-      <p style={sectionLeadStyle}>
+      <p className="admin-settings-section__lead">
         Configure Google Meet link generation. Changes take effect immediately without restarting the application.
       </p>
 
       <Form onSubmit={handleSubmit(onSubmit)}>
-        <h2 style={sectionTitleStyle}>GOOGLE MEET</h2>
+        <h2 className="admin-settings-section__title">Google Meet</h2>
         <div className="admin-form-grid">
           <div className="admin-form-grid__full">
-            <label className="admin-checkbox" style={{ marginTop: 6 }}>
-              <input type="checkbox" {...register('enabled')} />
-              Enable Google Meet integration
-            </label>
+            <Checkbox
+              className="admin-form-checkbox"
+              label="Enable Google Meet integration"
+              {...register('enabled')}
+            />
           </div>
 
           <div className="admin-form-grid__full">
@@ -121,11 +117,11 @@ export function GoogleMeetSettingsSection() {
           </div>
         </div>
 
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 24 }}>
+        <FormActions>
           <Button type="submit" leftIcon={<Save size={16} />} loading={isSubmitting}>
             Save
           </Button>
-        </div>
+        </FormActions>
       </Form>
     </>
   )

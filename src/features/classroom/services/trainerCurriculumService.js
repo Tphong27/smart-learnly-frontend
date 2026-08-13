@@ -1,21 +1,10 @@
 import apiClient from "@/services/api-client";
-
-// Bóc payload curriculum trong ApiResponse backend.
-function unwrapData(response) {
-  const root = response?.data ?? response;
-  return root?.data ?? root;
-}
-
-// Chặn request thiếu định danh trước khi tạo URL API.
-function requireId(value, label) {
-  if (!value) {
-    throw new Error(`${label} is required`);
-  }
-}
+import { unwrapNestedApiData as unwrapData } from "@/services/api-response";
+import { requireTrainerResourceId } from "./trainerServiceUtils";
 
 // Tạo URL curriculum đã được giới hạn theo lớp trainer.
 function curriculumPath(classId, suffix = "") {
-  requireId(classId, "Class ID");
+  requireTrainerResourceId(classId, "Class ID");
   return `/trainer/classes/${classId}/curriculum${suffix}`;
 }
 
@@ -49,7 +38,7 @@ export const trainerCurriculumService = {
 
   // Cập nhật section trong curriculum draft của lớp.
   async updateSection(classId, sectionId, payload) {
-    requireId(sectionId, "Section ID");
+    requireTrainerResourceId(sectionId, "Section ID");
     const response = await apiClient.put(
       curriculumPath(classId, `/sections/${sectionId}`),
       payload,
@@ -59,7 +48,7 @@ export const trainerCurriculumService = {
 
   // Xóa section khỏi curriculum draft của lớp.
   async deleteSection(classId, sectionId) {
-    requireId(sectionId, "Section ID");
+    requireTrainerResourceId(sectionId, "Section ID");
     await apiClient.delete(curriculumPath(classId, `/sections/${sectionId}`));
     return true;
   },
@@ -74,7 +63,7 @@ export const trainerCurriculumService = {
 
   // Thêm lesson vào một section của curriculum draft.
   async createLesson(classId, sectionId, payload) {
-    requireId(sectionId, "Section ID");
+    requireTrainerResourceId(sectionId, "Section ID");
     const response = await apiClient.post(
       curriculumPath(classId, `/sections/${sectionId}/lessons`),
       payload,
@@ -84,7 +73,7 @@ export const trainerCurriculumService = {
 
   // Cập nhật nội dung lesson trong curriculum draft.
   async updateLesson(classId, lessonId, payload) {
-    requireId(lessonId, "Lesson ID");
+    requireTrainerResourceId(lessonId, "Lesson ID");
     const response = await apiClient.put(
       curriculumPath(classId, `/lessons/${lessonId}`),
       payload,
@@ -94,14 +83,14 @@ export const trainerCurriculumService = {
 
   // Xóa lesson khỏi curriculum draft của lớp.
   async deleteLesson(classId, lessonId) {
-    requireId(lessonId, "Lesson ID");
+    requireTrainerResourceId(lessonId, "Lesson ID");
     await apiClient.delete(curriculumPath(classId, `/lessons/${lessonId}`));
     return true;
   },
 
   // Lưu thứ tự lesson mới trong một section.
   async reorderLessons(classId, sectionId, ids) {
-    requireId(sectionId, "Section ID");
+    requireTrainerResourceId(sectionId, "Section ID");
     const response = await apiClient.put(
       curriculumPath(classId, `/sections/${sectionId}/lessons/order`),
       { ids },
@@ -111,7 +100,7 @@ export const trainerCurriculumService = {
 
   // Thêm một resource vào lesson của curriculum draft.
   async addResource(classId, lessonId, payload) {
-    requireId(lessonId, "Lesson ID");
+    requireTrainerResourceId(lessonId, "Lesson ID");
     const response = await apiClient.post(
       curriculumPath(classId, `/lessons/${lessonId}/resources`),
       payload,
@@ -121,7 +110,7 @@ export const trainerCurriculumService = {
 
   // Thay toàn bộ resource của lesson bằng danh sách mới.
   async replaceResources(classId, lessonId, resources) {
-    requireId(lessonId, "Lesson ID");
+    requireTrainerResourceId(lessonId, "Lesson ID");
     const response = await apiClient.put(
       curriculumPath(classId, `/lessons/${lessonId}/resources`),
       resources,
@@ -131,7 +120,7 @@ export const trainerCurriculumService = {
 
   // Lưu thứ tự resource mới của lesson.
   async reorderResources(classId, lessonId, ids) {
-    requireId(lessonId, "Lesson ID");
+    requireTrainerResourceId(lessonId, "Lesson ID");
     const response = await apiClient.put(
       curriculumPath(classId, `/lessons/${lessonId}/resources/order`),
       { ids },
@@ -141,8 +130,8 @@ export const trainerCurriculumService = {
 
   // Xóa một resource cụ thể khỏi lesson.
   async removeResource(classId, lessonId, resourceId) {
-    requireId(lessonId, "Lesson ID");
-    requireId(resourceId, "Resource ID");
+    requireTrainerResourceId(lessonId, "Lesson ID");
+    requireTrainerResourceId(resourceId, "Resource ID");
     await apiClient.delete(
       curriculumPath(classId, `/lessons/${lessonId}/resources/${resourceId}`),
     );

@@ -1,9 +1,5 @@
 import apiClient from "@/services/api-client";
-
-/** Trích dữ liệu nghiệp vụ từ cấu trúc response chuẩn của API. */
-function unwrap(response) {
-  return response?.data ?? response;
-}
+import { unwrapApiData as unwrap } from "@/services/api-response";
 
 /** Chuẩn hóa response danh sách từ API thường hoặc Page của Spring. */
 function normalizeList(payload) {

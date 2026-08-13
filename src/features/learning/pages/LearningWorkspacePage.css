@@ -1337,16 +1337,6 @@
     min-width: 0;
 }
 
-.learning-quiz-launch__eyebrow {
-    display: block;
-    margin-bottom: 4px;
-    font-size: 0.75rem;
-    font-weight: 800;
-    letter-spacing: 0;
-    text-transform: uppercase;
-    color: #2563eb;
-}
-
 .learning-quiz-launch__body h2 {
     margin: 0;
     color: #0f172a;

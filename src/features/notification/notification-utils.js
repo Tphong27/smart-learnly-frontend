@@ -69,7 +69,7 @@ function resolveBackendActionRoute(safeActionUrl, notification) {
 
   const orderId = getPathId(pathname, "/orders/");
   if (orderId) {
-    if (role === "ADMIN" || role === "TMO") return "/admin/orders";
+    if (role === "ADMIN" || role === "TMO") return "/admin/transactions";
     return "/learning/transactions";
   }
 
@@ -114,7 +114,7 @@ function resolveBackendActionRoute(safeActionUrl, notification) {
     getPayloadValue(notification, "testId", "test_id");
   if (getPathId(pathname, "/tests/")) {
     if (STAFF_ROLES.has(role)) return `/staff/tests/monitor/${testId}/mcq`;
-    if (role === "TRAINEE") return "/learning/tests";
+    if (role === "TRAINEE") return "/dashboard";
     return null;
   }
 
@@ -126,7 +126,7 @@ function resolveBackendActionRoute(safeActionUrl, notification) {
     if (testId && role === "TRAINEE") {
       return `/learning/tests/attempts/${testId}/${attemptId}`;
     }
-    return role === "TRAINEE" ? "/learning/tests" : null;
+    return role === "TRAINEE" ? "/dashboard" : null;
   }
 
   return safeActionUrl;

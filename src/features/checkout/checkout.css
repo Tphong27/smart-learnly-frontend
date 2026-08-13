@@ -397,48 +397,40 @@
    9. Transaction filters
    ========================================================= */
 
-.transaction-page .course-management__filters {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: end;
-  gap: 16px;
-
-  padding: 20px 20px 16px;
+.transaction-page__filters {
+  border: 0;
   border-bottom: 1px solid var(--sl-line-soft, #e8eaed);
+  border-radius: 0;
 }
 
-.transaction-page
-  .course-management__filters
-  .course-management__field--search {
-  width: 100%;
+.transaction-page__filters .filter-bar__search {
+  flex: 1 1 320px;
   min-width: 0;
-  max-width: none;
 }
 
-.transaction-page
-  .course-management__filters
-  .course-management__search {
+.transaction-page__filters .search-input {
   width: 100%;
-  min-width: 0;
-  max-width: none;
-  box-sizing: border-box;
-}
-
-.transaction-page
-  .course-management__filters
-  .course-management__search input {
-  flex: 1 1 auto;
-  width: 100%;
-  min-width: 0;
+  margin: 0;
 }
 
 /* =========================================================
    10. Transaction status tabs and result count
    ========================================================= */
 
-.transaction-page .course-management__status-bar {
-  padding: 14px 20px;
+.transaction-page__status-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+
+  padding: 0 20px;
   border-bottom: 1px solid var(--sl-line-soft, #e8eaed);
+}
+
+.transaction-page__tabs {
+  flex: 1 1 auto;
+  min-width: 0;
+  border-bottom: 0;
 }
 
 .transaction-page__result-count {
@@ -459,58 +451,20 @@
    11. Transaction table
    ========================================================= */
 
-.transaction-page .course-management__table-wrap {
+.transaction-page__content {
   width: 100%;
   min-height: 220px;
-  overflow-x: auto;
-
-  border-top: 1px solid var(--sl-line-soft, #e8eaed);
 }
 
-.transaction-page .history-table-wrap {
-  width: 100%;
-  overflow-x: auto;
+.transaction-page__content > .ui-state {
+  min-height: 260px;
+  border: 0;
+  border-radius: 0;
 }
 
-.transaction-page .history-table {
-  width: 100%;
-  min-width: 760px;
-
-  border-collapse: collapse;
-  border-spacing: 0;
-}
-
-.transaction-page .history-table th,
-.transaction-page .history-table td {
-  padding: 14px 18px;
-  border-bottom: 1px solid var(--sl-line-soft, #e8eaed);
-
-  text-align: left;
-  vertical-align: middle;
-  white-space: nowrap;
-}
-
-.transaction-page .history-table th {
-  background: var(--surface, #f7f9fa);
-  color: var(--muted, #6a6f73);
-
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-
-.transaction-page .history-table td {
-  color: #344054;
-  font-size: 14px;
-}
-
-.transaction-page .history-table tbody tr:hover {
-  background: #fafbfc;
-}
-
-.transaction-page .history-table tbody tr:last-child td {
-  border-bottom: 0;
+.transaction-page__table-wrap {
+  border: 0;
+  border-radius: 0;
 }
 
 
@@ -535,16 +489,6 @@
 
 .transaction-page__empty-value {
   color: #98a2b3;
-}
-
-
-/* =========================================================
-   13. Transaction loading, empty and error states
-   ========================================================= */
-
-.transaction-page .course-management__state {
-  min-height: 220px;
-  padding: 32px 20px;
 }
 
 
@@ -641,14 +585,19 @@
     padding: 18px;
   }
 
-  .transaction-page .course-management__filters {
-    grid-template-columns: 1fr;
+  .transaction-page__status-bar {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 0;
+    padding: 0 16px 12px;
   }
 
-  .transaction-page .course-management__status-bar {
-    align-items: flex-start;
-    flex-direction: column;
-    gap: 12px;
+  .transaction-page__tabs {
+    width: 100%;
+  }
+
+  .transaction-page__result-count {
+    padding-top: 8px;
   }
 }
 

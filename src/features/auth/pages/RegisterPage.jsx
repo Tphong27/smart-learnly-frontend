@@ -1,9 +1,15 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Eye, EyeOff, Mail, User, Lock } from "lucide-react";
-import { Form, FormField, Button, useToast } from "@/shared/components/ui";
+import { Mail, User, Lock } from "lucide-react";
+import {
+    Button,
+    Form,
+    FormField,
+    PasswordField,
+    useToast,
+} from "@/shared/components/ui";
 import { authService } from "../services/authService";
 import { registerSchema } from "../schemas/auth-schemas";
 import { PasswordStrengthChecklist } from "../components/PasswordStrengthChecklist";
@@ -14,16 +20,15 @@ import { useAuthWizard } from "../hooks/useAuthWizard";
 
 const OTP_LENGTH = 6;
 
+/** Thu thập thông tin tạo tài khoản và chuyển sang bước xác minh email. */
 function StepRegister({ wizard }) {
     const toast = useToast();
     const [serverError, setServerError] = useState(null);
-    const [showPassword, setShowPassword] = useState(false);
-    const [showConfirm, setShowConfirm] = useState(false);
 
     const {
         register,
         handleSubmit,
-        watch,
+        control,
         formState: { errors, isSubmitting },
     } = useForm({
         resolver: zodResolver(registerSchema),
@@ -36,8 +41,9 @@ function StepRegister({ wizard }) {
         mode: "onBlur",
     });
 
-    const passwordValue = watch("password") ?? "";
+    const passwordValue = useWatch({ control, name: "password" }) ?? "";
 
+    /** Đăng ký tài khoản và lưu dữ liệu cần thiết cho bước OTP tiếp theo. */
     async function onSubmit(values) {
         setServerError(null);
         try {
@@ -97,32 +103,13 @@ function StepRegister({ wizard }) {
                 />
 
                 <div>
-                    <FormField
+                    <PasswordField
                         label="Password"
-                        type={showPassword ? "text" : "password"}
                         placeholder="At least 8 characters"
                         required
                         registration={register("password")}
                         error={errors.password?.message}
                         leftIcon={<Lock size={16} />}
-                        rightIcon={
-                            <button
-                                type="button"
-                                onClick={() => setShowPassword((s) => !s)}
-                                aria-label={
-                                    showPassword
-                                        ? "Hide password"
-                                        : "Show password"
-                                }
-                                className="auth-toggle-eye"
-                            >
-                                {showPassword ? (
-                                    <EyeOff size={16} />
-                                ) : (
-                                    <Eye size={16} />
-                                )}
-                            </button>
-                        }
                         autoComplete="new-password"
                     />
                     <div style={{ marginTop: 12 }}>
@@ -130,30 +117,15 @@ function StepRegister({ wizard }) {
                     </div>
                 </div>
 
-                <FormField
+                <PasswordField
                     label="Confirm password"
-                    type={showConfirm ? "text" : "password"}
                     placeholder="Re-enter your password"
                     required
                     registration={register("confirmPassword")}
                     error={errors.confirmPassword?.message}
                     leftIcon={<Lock size={16} />}
-                    rightIcon={
-                        <button
-                            type="button"
-                            onClick={() => setShowConfirm((s) => !s)}
-                            aria-label={
-                                showConfirm ? "Hide password" : "Show password"
-                            }
-                            className="auth-toggle-eye"
-                        >
-                            {showConfirm ? (
-                                <EyeOff size={16} />
-                            ) : (
-                                <Eye size={16} />
-                            )}
-                        </button>
-                    }
+                    showLabel="Show password confirmation"
+                    hideLabel="Hide password confirmation"
                     autoComplete="new-password"
                 />
 
@@ -170,6 +142,7 @@ function StepRegister({ wizard }) {
     );
 }
 
+/** Xác minh OTP sau đăng ký và hỗ trợ gửi lại mã có cooldown. */
 function StepVerify({ wizard }) {
     const toast = useToast();
     const navigate = useNavigate();
@@ -207,6 +180,7 @@ function StepVerify({ wizard }) {
         );
     }
 
+    /** Xác minh mã OTP rồi xóa dữ liệu wizard nhạy cảm khi thành công. */
     async function handleVerify(code) {
         setServerError(null);
         try {
@@ -222,6 +196,7 @@ function StepVerify({ wizard }) {
         }
     }
 
+    /** Gửi lại OTP và chỉ kích hoạt cooldown khi yêu cầu hoàn tất. */
     async function handleResend() {
         setResendLoading(true);
         try {
@@ -282,15 +257,7 @@ function StepVerify({ wizard }) {
     );
 }
 
-/**
- * RegisterPage is a 2-step wizard:
- *   Step 1 - Create account (fullName/email/password)
- *   Step 2 - Verify email (6-digit OTP)
- *
- * - State syncs with ?step=1|2 so the URL is shareable and survives refresh.
- * - Form values are persisted to sessionStorage so a hard refresh on step 2
- *   keeps the email available for verification.
- */
+/** Điều phối wizard đăng ký hai bước và giữ trạng thái qua URL/sessionStorage. */
 export function RegisterPage() {
     const wizard = useAuthWizard({ totalSteps: 2 });
 

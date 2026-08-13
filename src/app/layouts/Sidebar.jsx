@@ -45,7 +45,7 @@ const navItems = [
     label: "Course Management",
     path: "/admin/courses",
     icon: FolderTree,
-    roles: [ROLES.ADMIN, ROLES.TMO, ROLES.SME],
+    roles: [ROLES.ADMIN, ROLES.TMO],
   },
   {
     label: "Class Management",
@@ -57,7 +57,7 @@ const navItems = [
     label: "Categories",
     path: "/admin/categories",
     icon: Receipt,
-    roles: [ROLES.ADMIN, ROLES.TMO, ROLES.SME],
+    roles: [ROLES.ADMIN, ROLES.SME],
   },
   {
     label: "Transactions",
@@ -83,7 +83,7 @@ const navItems = [
     label: "Course Content",
     path: "/staff/courses",
     icon: Layers3,
-    roles: [ROLES.TRAINER, ROLES.TMO, ROLES.SME],
+    roles: [ROLES.TRAINER, ROLES.SME],
   },
   {
     label: "Classrooms",
@@ -91,13 +91,6 @@ const navItems = [
     icon: Users,
     roles: [ROLES.TRAINER, ROLES.TMO],
   },
-  // {
-  //   label: "Flash Tests Management",
-  //   path: "/staff/flashtests",
-  //   icon: Timer,
-  //   roles: [ROLES.TRAINER, ROLES.TMO, ROLES.SME],
-  // },
-
   // TRAINEE ROUTES
   {
     label: "Trainee Dashboard",
@@ -130,23 +123,11 @@ const navItems = [
     roles: [ROLES.TRAINEE],
   },
   {
-    label: "My Tests",
-    path: "/learning/tests",
-    icon: ClipboardCheck,
-    roles: [ROLES.TRAINEE],
-  },
-  {
     label: "Assignment",
     path: "/learning/assignments",
     icon: ClipboardCheck,
     roles: [ROLES.TRAINEE],
   },
-  // {
-  //   label: "Flash Tests Management",
-  //   path: "/learning/flashtests",
-  //   icon: Timer,
-  //   roles: [ROLES.TRAINEE],
-  // },
 ];
 
 /** Hiển thị menu điều hướng phù hợp với role và trạng thái thu gọn của ứng dụng. */

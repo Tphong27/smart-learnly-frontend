@@ -1,5 +1,6 @@
 import { Search } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useDebouncedValue } from "../../../shared/hooks/useDebouncedValue";
 
 /** Hiển thị bộ lọc tên lớp, khóa học và trạng thái lớp. */
 export function ClassListFilters({
@@ -14,16 +15,11 @@ export function ClassListFilters({
     keyword: "",
     status: "",
   });
+  const debouncedFilters = useDebouncedValue(filters, 350);
 
   useEffect(() => {
-    const timeoutId = window.setTimeout(() => {
-      onFilterChange?.(filters);
-    }, 350);
-
-    return () => {
-      window.clearTimeout(timeoutId);
-    };
-  }, [filters, onFilterChange]);
+    onFilterChange?.(debouncedFilters);
+  }, [debouncedFilters, onFilterChange]);
 
   /** Cập nhật một điều kiện lọc nội bộ. */
   function updateFilter(key, value) {

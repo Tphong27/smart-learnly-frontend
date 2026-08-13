@@ -1,6 +1,7 @@
 import { useId } from "react";
 import "./Input.css";
 
+/** Hiển thị input chuẩn với label, helper, error và icon tùy chọn. */
 export function Input({
     id,
     label,
@@ -8,6 +9,7 @@ export function Input({
     helperText,
     leftIcon = null,
     rightIcon = null,
+    suffix = null,
     required = false,
     className = "",
     inputClassName = "",
@@ -27,7 +29,8 @@ export function Input({
     const controlClassName = [
         "input-field__control",
         leftIcon ? "input-field__control--has-left-icon" : "",
-        rightIcon ? "input-field__control--has-right-icon" : "",
+        rightIcon || suffix ? "input-field__control--has-right-icon" : "",
+        suffix ? "input-field__control--has-suffix" : "",
         inputClassName,
     ]
         .filter(Boolean)
@@ -71,10 +74,20 @@ export function Input({
                         {rightIcon}
                     </span>
                 )}
+
+                {!rightIcon && suffix && (
+                    <span className="input-field__suffix" aria-hidden="true">
+                        {suffix}
+                    </span>
+                )}
             </div>
 
             {error && (
-                <p id={`${inputId}-error`} className="input-field__error">
+                <p
+                    id={`${inputId}-error`}
+                    className="input-field__error"
+                    role="alert"
+                >
                     {error}
                 </p>
             )}

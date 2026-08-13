@@ -1,14 +1,20 @@
 import { useEffect, useState } from "react";
+import { Button } from "@/shared/components/ui";
 
 const DEFAULT_COOLDOWN = 60;
 
+/** Quản lý cooldown gửi lại OTP và chỉ khóa nút sau một yêu cầu thành công. */
 export function ResendOtpButton({
   cooldownSeconds = DEFAULT_COOLDOWN,
   disabled = false,
+  fullWidth = false,
   loading = false,
   onResend,
   label = "Resend code",
   cooldownLabel = (seconds) => `Resend in ${seconds}s`,
+  variant = "ghost",
+  size = "sm",
+  className = "",
 }) {
   const [remaining, setRemaining] = useState(0);
 
@@ -20,6 +26,7 @@ export function ResendOtpButton({
     return () => window.clearInterval(timer);
   }, [remaining]);
 
+  /** Gọi action gửi lại và bắt đầu cooldown sau khi Promise báo thành công. */
   function handleClick() {
     if (disabled || loading || remaining > 0) return;
     const result = onResend?.();
@@ -35,17 +42,21 @@ export function ResendOtpButton({
   }
 
   const onCooldown = remaining > 0;
-  const isDisabled = disabled || loading || onCooldown;
 
   return (
-    <button
+    <Button
       type="button"
+      variant={variant}
+      size={size}
+      fullWidth={fullWidth}
       onClick={handleClick}
-      disabled={isDisabled}
-      className="auth-wizard__resend-button"
+      disabled={disabled || onCooldown}
+      loading={loading}
+      loadingLabel="Sending..."
+      className={className}
       aria-live="polite"
     >
       {onCooldown ? cooldownLabel(remaining) : label}
-    </button>
+    </Button>
   );
 }

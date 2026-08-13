@@ -4,11 +4,11 @@ import {
     useParams,
     useNavigate,
 } from "react-router-dom";
-import { Eye, RotateCcw } from "lucide-react";
+import { Eye } from "lucide-react";
 import { courseContentService } from "../services/courseContentService";
 import { flashcardAuthoringService as flashcardService } from "@/features/flashcard";
 import { useToast } from "../../../shared/components/ui/Toast/useToast";
-import { Button } from "../../../shared/components/ui";
+import { CurriculumAuthoringLayout } from "../components/CurriculumAuthoringLayout";
 import { CurriculumStructureEditor } from "../components/CurriculumStructureEditor";
 import "../course-admin.css";
 
@@ -32,8 +32,6 @@ export default function AdminCourseContentPage() {
     const courseContentPath = `${courseBasePath}/${courseId}/content`;
     const coursePreviewPath = `${courseBasePath}/${courseId}/preview`;
     const lessonBasePath = `${courseBasePath}/${courseId}/lessons`;
-    const pageClassName = "sl-cm-page sl-cm-page--curriculum";
-
     /** Chuẩn hóa cả hai cách gọi toast đang tồn tại trong feature course. */
     const showToast = useCallback(
         (messageOrOptions, type) => {
@@ -44,6 +42,22 @@ export default function AdminCourseContentPage() {
             emitToast({ message: messageOrOptions, type });
         },
         [emitToast],
+    );
+
+    /** Mở Question List bằng ID module chuẩn thay vì ID snapshot curriculum section. */
+    const handleManageModuleQuestions = useCallback(
+        (section) => {
+            const moduleId = section?.moduleId;
+            if (!moduleId) {
+                showToast({
+                    type: "error",
+                    message: "Module ID was not found. Please reload the curriculum.",
+                });
+                return;
+            }
+            navigate(`${courseBasePath}/${courseId}/modules/${moduleId}/questions`);
+        },
+        [courseBasePath, courseId, navigate, showToast],
     );
 
     const [sections, setSections] = useState([]);
@@ -427,87 +441,24 @@ export default function AdminCourseContentPage() {
         };
     }, [sections, sectionLessons]);
 
-    if (loadingSections) {
-        return (
-            <div className={pageClassName} role="status" aria-live="polite">
-                <div className="sl-cm-workspace" aria-busy="true">
-                    <div
-                        className="sl-cm-skeleton"
-                        style={{ width: "40%", marginBottom: 12 }}
-                    />
-                    <div
-                        className="sl-cm-skeleton"
-                        style={{ width: "70%", marginBottom: 24 }}
-                    />
-                    <div
-                        className="sl-cm-skeleton"
-                        style={{ width: "100%", height: 64 }}
-                    />
-                    <div
-                        className="sl-cm-skeleton"
-                        style={{ width: "100%", height: 64 }}
-                    />
-                </div>
-            </div>
-        );
-    }
-
-    if (loadError) {
-        return (
-            <div className={pageClassName}>
-                <div className="sl-cm-workspace sl-cm-load-error" role="alert">
-                    <h1 className="sl-cm-header__title">
-                        Curriculum unavailable
-                    </h1>
-                    <p>{loadError}</p>
-                    <div className="sl-cm-load-error__actions">
-                        <Button
-                            variant="outline"
-                            onClick={() => navigate(courseListPath)}
-                        >
-                            Back to courses
-                        </Button>
-                        <Button
-                            leftIcon={<RotateCcw size={16} />}
-                            onClick={fetchSections}
-                        >
-                            Try again
-                        </Button>
-                    </div>
-                </div>
-            </div>
-        );
-    }
-
     return (
-        <div className={pageClassName}>
-            <header className="sl-cm-header">
-                <div>
-                    <button
-                        type="button"
-                        className="sl-cm-back"
-                        onClick={() => navigate(courseListPath)}
-                    >
-                        ← Back to courses
-                    </button>
-                    <h1 className="sl-cm-header__title">Curriculum</h1>
-                    <p className="sl-cm-header__subtitle">
-                        Organise sections and lessons so learners can follow a
-                        logical flow.
-                    </p>
-                </div>
-                <div className="sl-cm-header__actions">
-                    <a
-                        className="sl-cm-btn sl-cm-btn--secondary"
-                        href={`${coursePreviewPath}?returnTo=${encodeURIComponent(courseContentPath)}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                    >
-                        <Eye size={16} aria-hidden="true" /> Preview as learner
-                    </a>
-                </div>
-            </header>
-
+        <CurriculumAuthoringLayout
+            loading={loadingSections}
+            error={loadError}
+            backLabel="Back to courses"
+            onBack={() => navigate(courseListPath)}
+            onRetry={fetchSections}
+            headerActions={
+                <a
+                    className="sl-cm-btn sl-cm-btn--secondary"
+                    href={`${coursePreviewPath}?returnTo=${encodeURIComponent(courseContentPath)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                >
+                    <Eye size={16} aria-hidden="true" /> Preview as learner
+                </a>
+            }
+        >
             <CurriculumStructureEditor
                 sections={sections}
                 getLessons={(section) => sectionLessons[section.id] || []}
@@ -520,12 +471,13 @@ export default function AdminCourseContentPage() {
                 onDeleteSection={handleDeleteSection}
                 onReorderSections={handleReorderSections}
                 onCreateLesson={handleCreateLesson}
+                onManageModuleQuestions={handleManageModuleQuestions}
                 openLessonEditorOnCreate
                 onDeleteLesson={handleDeleteLesson}
                 onReorderLessons={handleReorderLessons}
                 onEditLesson={handleEditLesson}
                 enableFlashcardCreateFields
             />
-        </div>
+        </CurriculumAuthoringLayout>
     );
 }

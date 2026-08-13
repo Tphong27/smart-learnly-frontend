@@ -1,21 +1,30 @@
 import { useEffect, useMemo, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useLocation, useParams } from "react-router-dom";
 import { classroomService } from "../services/classroomService";
 import { createTrainerLessonService } from "../services/trainerLessonService";
 import { createTrainerQuizService } from "../services/trainerQuizService";
 import { createTrainerFlashcardService } from "../services/trainerFlashcardService";
 import { LessonDetailTabs } from "@/features/course/components/lesson-editor/LessonDetailTabs";
+import { ROLES } from "@/shared/constants/roles";
+import { getCurrentRole } from "@/shared/utils/auth";
 
 /**
- * Trainer lesson detail page — mirror of AdminLessonDetailPage but
- * scoped to a class curriculum draft. Audit tab is hidden; quiz &
- * flashcard editors are wired to trainer-scoped services.
+ * Lesson editor dùng chung cho class curriculum của Trainer, TMO và Admin.
+ * Audit tab bị ẩn; quiz và flashcard dùng các endpoint giới hạn theo class.
  *
  * courseId is required so QuestionBankImportPanel can list banks of the
  * parent course (trainer imports existing bank questions, does not author banks).
  */
 export default function TrainerLessonDetailPage() {
   const { classId, lessonId } = useParams();
+  const location = useLocation();
+  const currentRole = getCurrentRole();
+  const classroomBasePath = location.pathname.startsWith("/admin/")
+    ? "/admin/classrooms"
+    : "/staff/classrooms";
+  const courseBasePath = location.pathname.startsWith("/admin/")
+    ? "/admin/courses"
+    : "/staff/courses";
   const [courseId, setCourseId] = useState(null);
   const [loadError, setLoadError] = useState("");
 
@@ -25,7 +34,10 @@ export default function TrainerLessonDetailPage() {
 
     (async () => {
       try {
-        const classDetail = await classroomService.getTrainer(classId);
+        const classDetail =
+          currentRole === ROLES.TRAINER
+            ? await classroomService.getTrainer(classId)
+            : await classroomService.getAdmin(classId);
         if (!cancelled) {
           setCourseId(classDetail?.courseId || null);
           setLoadError("");
@@ -45,7 +57,7 @@ export default function TrainerLessonDetailPage() {
     return () => {
       cancelled = true;
     };
-  }, [classId]);
+  }, [classId, currentRole]);
 
   const context = useMemo(() => {
     if (!classId || !lessonId) return null;
@@ -61,7 +73,8 @@ export default function TrainerLessonDetailPage() {
       // Bắt buộc cho import question bank (banks scoped theo course).
       courseId,
       // Về thẳng tab Curriculum của lớp sau khi save/back.
-      backPath: `/staff/classrooms/${classId}/workspace?tab=curriculum`,
+      backPath: `${classroomBasePath}/${classId}/workspace?tab=curriculum`,
+      courseBasePath,
       services: {
         getLessonDetail: lessonService.getLessonDetail,
         updateLesson: lessonService.updateLesson,
@@ -79,7 +92,7 @@ export default function TrainerLessonDetailPage() {
         flashcardStaging: false,
       },
     };
-  }, [classId, courseId, lessonId]);
+  }, [classId, classroomBasePath, courseBasePath, courseId, lessonId]);
 
   if (!classId || !lessonId) return null;
 

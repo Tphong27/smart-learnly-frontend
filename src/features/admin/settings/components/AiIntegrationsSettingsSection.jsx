@@ -2,7 +2,16 @@ import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Save } from 'lucide-react'
-import { Button, Form, FormField, useToast } from '@/shared/components/ui'
+import {
+  Button,
+  Checkbox,
+  ErrorState,
+  Form,
+  FormActions,
+  FormField,
+  LoadingState,
+  useToast,
+} from '@/shared/components/ui'
 import { systemSettingsService } from '../services/systemSettingsService'
 import {
   assignmentAiSettingsSchema,
@@ -11,22 +20,7 @@ import {
 
 const SECRET_PLACEHOLDER = '********'
 
-const sectionTitleStyle = {
-  fontSize: 12,
-  fontWeight: 700,
-  letterSpacing: '0.08em',
-  color: '#64708a',
-  textTransform: 'uppercase',
-  margin: '0 0 14px',
-}
-
-const sectionLeadStyle = {
-  fontSize: 14,
-  color: '#64708a',
-  lineHeight: 1.6,
-  margin: '0 0 20px',
-}
-
+/** Quản lý cấu hình AI dùng cho import câu hỏi và tạo assignment draft. */
 export function AiIntegrationsSettingsSection() {
   const toast = useToast()
   const [loading, setLoading] = useState(true)
@@ -103,6 +97,7 @@ export function AiIntegrationsSettingsSection() {
     }
   }, [assignmentAiForm, questionImportForm, toast])
 
+  /** Lưu cấu hình AI OCR/import câu hỏi từ hình ảnh. */
   async function submitQuestionImageImport(values) {
     try {
       const payload = {
@@ -132,6 +127,7 @@ export function AiIntegrationsSettingsSection() {
     }
   }
 
+  /** Lưu cấu hình AI tạo bản nháp assignment. */
   async function submitAssignmentAi(values) {
     try {
       const payload = {
@@ -160,26 +156,27 @@ export function AiIntegrationsSettingsSection() {
   }
 
   if (loading) {
-    return <div className="admin-loading">Loading...</div>
+    return <LoadingState label="Loading AI settings..." />
   }
   if (loadError) {
-    return <div className="admin-error">{loadError}</div>
+    return <ErrorState title="Could not load AI settings" description={loadError} />
   }
 
   return (
     <>
-      <p style={sectionLeadStyle}>
+      <p className="admin-settings-section__lead">
         Configure AI-powered question image import and assignment drafting. Changes take effect immediately without restarting the application.
       </p>
 
       <Form onSubmit={questionImportForm.handleSubmit(submitQuestionImageImport)}>
-        <h2 style={sectionTitleStyle}>QUESTION IMAGE IMPORT</h2>
+        <h2 className="admin-settings-section__title">Question image import</h2>
         <div className="admin-form-grid">
           <div className="admin-form-grid__full">
-            <label className="admin-checkbox" style={{ marginTop: 6 }}>
-              <input type="checkbox" {...questionImportForm.register('enabled')} />
-              Enable question image import
-            </label>
+            <Checkbox
+              className="admin-form-checkbox"
+              label="Enable question image import"
+              {...questionImportForm.register('enabled')}
+            />
           </div>
 
           <FormField
@@ -231,7 +228,7 @@ export function AiIntegrationsSettingsSection() {
           />
         </div>
 
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 24 }}>
+        <FormActions>
           <Button
             type="submit"
             leftIcon={<Save size={16} />}
@@ -239,19 +236,20 @@ export function AiIntegrationsSettingsSection() {
           >
             Save question import settings
           </Button>
-        </div>
+        </FormActions>
       </Form>
 
-      <div style={{ height: 1, background: '#e7ecf4', margin: '28px 0' }} />
+      <hr className="admin-settings-divider" />
 
       <Form onSubmit={assignmentAiForm.handleSubmit(submitAssignmentAi)}>
-        <h2 style={sectionTitleStyle}>ASSIGNMENT AI</h2>
+        <h2 className="admin-settings-section__title">Assignment AI</h2>
         <div className="admin-form-grid">
           <div className="admin-form-grid__full">
-            <label className="admin-checkbox" style={{ marginTop: 6 }}>
-              <input type="checkbox" {...assignmentAiForm.register('enabled')} />
-              Enable assignment AI draft generation
-            </label>
+            <Checkbox
+              className="admin-form-checkbox"
+              label="Enable assignment AI draft generation"
+              {...assignmentAiForm.register('enabled')}
+            />
           </div>
 
           <FormField
@@ -293,7 +291,7 @@ export function AiIntegrationsSettingsSection() {
           />
         </div>
 
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 24 }}>
+        <FormActions>
           <Button
             type="submit"
             leftIcon={<Save size={16} />}
@@ -301,7 +299,7 @@ export function AiIntegrationsSettingsSection() {
           >
             Save Assignment AI settings
           </Button>
-        </div>
+        </FormActions>
       </Form>
     </>
   )

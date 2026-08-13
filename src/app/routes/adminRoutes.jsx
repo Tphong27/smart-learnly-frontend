@@ -1,7 +1,6 @@
 import { RoleGuard } from "./RoleGuard";
 import { ROLES } from "@/shared/constants/roles";
 import { AppLayout } from "@/app/layouts/AppLayout";
-import { PlaceholderPage } from "./PlaceholderPage";
 import {
   AdminAuditLogPage,
   AdminCategoriesPage,
@@ -22,8 +21,10 @@ import {
   ClassDetailPage,
   EditionClassPage,
   StaffClassListPage,
+  TrainerLessonDetailPage,
 } from "@/features/classroom";
 
+/** Khai báo route quản trị và các guard theo quyền nghiệp vụ. */
 function getAdminRoutes() {
   return [
     {
@@ -39,6 +40,11 @@ function getAdminRoutes() {
               path: "courses",
               element: <AdminCoursesPage />,
             },
+          ],
+        },
+        {
+          element: <RoleGuard allowedRoles={[ROLES.ADMIN, ROLES.SME]} />,
+          children: [
             {
               path: "courses/:courseId",
               element: <AdminCourseFormPage />,
@@ -50,7 +56,7 @@ function getAdminRoutes() {
           ],
         },
         {
-          element: <RoleGuard allowedRoles={[ROLES.ADMIN, ROLES.TMO]} />,
+          element: <RoleGuard allowedRoles={[ROLES.ADMIN]} />,
           children: [
             {
               path: "courses/new",
@@ -61,7 +67,7 @@ function getAdminRoutes() {
         {
           element: (
             <RoleGuard
-              allowedRoles={[ROLES.ADMIN, ROLES.TMO, ROLES.SME, ROLES.TRAINER]}
+              allowedRoles={[ROLES.ADMIN, ROLES.SME, ROLES.TRAINER]}
             />
           ),
           children: [
@@ -70,7 +76,7 @@ function getAdminRoutes() {
               element: <AdminCourseContentPage />,
             },
             {
-              path: "courses/:courseId/questions",
+              path: "courses/:courseId/modules/:moduleId/questions",
               element: <AdminQuestionBankDetailPage />,
             },
             {
@@ -82,12 +88,17 @@ function getAdminRoutes() {
         {
           element: <RoleGuard allowedRoles={[ROLES.ADMIN, ROLES.SME]} />,
           children: [
+            // Giữ deep-link cũ để notification đã lưu không rơi vào trang lỗi quyền.
             {
-              path: "courses/:courseId/questions/ai-drafts/new",
+              path: "courses/:courseId/questions/ai-drafts/:batchId",
+              element: <AdminAiQuestionDraftReviewPage />,
+            },
+            {
+              path: "courses/:courseId/modules/:moduleId/questions/ai-drafts/new",
               element: <AdminAiQuestionDraftCreatePage />,
             },
             {
-              path: "courses/:courseId/questions/ai-drafts/:batchId",
+              path: "courses/:courseId/modules/:moduleId/questions/ai-drafts/:batchId",
               element: <AdminAiQuestionDraftReviewPage />,
             },
           ],
@@ -122,14 +133,14 @@ function getAdminRoutes() {
               ),
             },
             {
+              path: "classrooms/:classId/curriculum/lessons/:lessonId",
+              element: <TrainerLessonDetailPage />,
+            },
+            {
               path: "users-management",
               element: <AdminUsersPage />,
             },
             { path: "audit-log", element: <AdminAuditLogPage /> },
-            {
-              path: "flashtests",
-              element: <PlaceholderPage title="Flash Tests Management" />,
-            },
             {
               path: "settings",
               element: <AdminSystemSettingsPage />,

@@ -183,7 +183,6 @@ export function normalizeAnswerMediaFromResponse(answer) {
 /** Kiểm tra toàn bộ dữ liệu form trước khi gọi API lưu question. */
 export function validateQuestionForm(values) {
   if (isEmptyQuestionHtml(values.questionText)) return "Question text is required.";
-  if (!values.moduleId) return "Module is required.";
   if (!values.questionType) return "Question type is required.";
   const answers = normalizeAnswers(values.questionType, values.answers);
   if (answers.length < 2) return "At least two answers are required.";

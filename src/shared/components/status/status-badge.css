@@ -73,3 +73,33 @@
   background: #fee2e2;
   color: #991b1b;
 }
+
+.status-badge__icon {
+  display: inline-flex;
+  margin-right: 5px;
+}
+
+.status-badge--tone-neutral {
+  background: var(--sl-neutral-soft);
+  color: var(--sl-neutral);
+}
+
+.status-badge--tone-info {
+  background: var(--sl-info-soft);
+  color: var(--sl-on-info);
+}
+
+.status-badge--tone-success {
+  background: var(--sl-success-soft);
+  color: var(--sl-on-success);
+}
+
+.status-badge--tone-warning {
+  background: var(--sl-warning-soft);
+  color: var(--sl-on-warning);
+}
+
+.status-badge--tone-danger {
+  background: var(--sl-danger-soft);
+  color: var(--sl-on-danger);
+}

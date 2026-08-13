@@ -114,6 +114,23 @@
     --button-hover-bg: var(--sl-surface, #f7f9fa);
 }
 
+/* Link action keeps the button hit target without presenting a bordered control. */
+.button--link,
+.button--inline {
+    --button-bg: transparent;
+    --button-color: var(--sl-purple, #5624d0);
+    --button-border: transparent;
+    --button-hover-bg: var(--sl-purple-soft, #f3f0fa);
+
+    padding-left: 8px;
+    padding-right: 8px;
+}
+
+.button--link:hover:not(:disabled):not([aria-disabled="true"]),
+.button--inline:hover:not(:disabled):not([aria-disabled="true"]) {
+    color: var(--sl-purple-dark, #401b9c);
+}
+
 .button--outline:hover:not(:disabled):not([aria-disabled="true"]) {
     color: var(--sl-purple-dark, #6d28d2);
     border-color: var(--sl-purple, #825ef5);

@@ -1,0 +1,24 @@
+.http-error-page {
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: var(--sl-space-4);
+  min-height: 80dvh;
+  padding: var(--sl-space-5) 16px;
+  background: #ffffff;
+}
+
+.http-error-page__code {
+  margin: 0;
+  color: var(--sl-purple);
+  font-size: clamp(56px, 12vw, 96px);
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  line-height: 1;
+}
+
+.http-error-page__state {
+  width: min(100%, 520px);
+  border: 0;
+  background: transparent;
+}

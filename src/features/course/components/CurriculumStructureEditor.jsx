@@ -21,9 +21,20 @@ import {
   X,
 } from "lucide-react";
 import { getLessonStatusMeta } from "../utils/lesson-status";
-import { Button, Modal } from "../../../shared/components/ui";
+import {
+  Alert,
+  Button,
+  ConfirmDialog,
+  EmptyState,
+  IconButton,
+  Input,
+  LoadingState,
+  Modal,
+} from "@/shared/components/ui";
+import { StatusBadge } from "@/shared/components/status";
 import "../course-admin.css";
 
+/** Tạo danh sách mới với một phần tử được chuyển sang vị trí đích. */
 const reorderArray = (list, startIndex, endIndex) => {
   const result = Array.from(list);
   const [removed] = result.splice(startIndex, 1);
@@ -31,6 +42,7 @@ const reorderArray = (list, startIndex, endIndex) => {
   return result;
 };
 
+/** Sắp xếp curriculum theo sortOrder mà không làm thay đổi mảng nguồn. */
 function sortByOrder(items) {
   return [...(items || [])].sort(
     (a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0),
@@ -84,6 +96,7 @@ const DEFAULT_LESSON_TYPES = [
   { value: "essay", label: "Assignment" },
 ];
 
+/** Chuẩn hóa lesson type cũ về key hiện được editor hỗ trợ. */
 function lessonTypeKey(type) {
   const t = String(type || "").toLowerCase();
   if (t === "text") return "rich_text";
@@ -91,28 +104,28 @@ function lessonTypeKey(type) {
   return LESSON_TYPE_META[t] ? t : "video";
 }
 
+/** Lấy metadata hiển thị tương ứng với lesson type đã chuẩn hóa. */
 function getLessonTypeMeta(type) {
   return LESSON_TYPE_META[lessonTypeKey(type)] || LESSON_TYPE_META.video;
 }
 
+/** Hiển thị icon semantic của một lesson type. */
 function LessonTypeIcon({ type, size = 18 }) {
   const { Icon } = getLessonTypeMeta(type);
   return <Icon size={size} aria-hidden="true" />;
 }
 
+/** Hiển thị trạng thái lesson bằng StatusBadge dùng chung. */
 function LessonStatusPill({ status }) {
   const meta = getLessonStatusMeta(status);
   const value = (meta.value || "draft").toLowerCase();
-  const className = `sl-cm-pill sl-cm-pill--${value}`;
   const Icon = STATUS_ICON[value] || STATUS_ICON.draft;
-  const accessible = meta.label
-    ? `Lesson status: ${meta.label}`
-    : "Lesson status";
   return (
-    <span className={className} aria-label={accessible}>
-      <Icon size={12} aria-hidden="true" />
-      <span>{meta.label || value}</span>
-    </span>
+    <StatusBadge
+      status={value}
+      label={meta.label || value}
+      icon={<Icon size={12} />}
+    />
   );
 }
 
@@ -126,12 +139,14 @@ const STATUS_ICON = {
    Kebab menu
    ========================================================================== */
 
+/** Hiển thị menu action nổi, tự căn trong viewport và hỗ trợ Escape. */
 function KebabMenu({ label = "Actions", items }) {
   const [open, setOpen] = useState(false);
   const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
   const triggerRef = useRef(null);
   const menuRef = useRef(null);
 
+  /** Căn menu action trong vùng nhìn thấy, ưu tiên mở phía dưới trigger. */
   const updateMenuPosition = useCallback(() => {
     const trigger = triggerRef.current;
     if (!trigger) return;
@@ -158,6 +173,7 @@ function KebabMenu({ label = "Actions", items }) {
 
     const frame = window.requestAnimationFrame(updateMenuPosition);
 
+    /** Đóng menu khi người dùng tương tác bên ngoài trigger và menu. */
     function handlePointerDown(event) {
       if (
         !triggerRef.current?.contains(event.target)
@@ -167,6 +183,7 @@ function KebabMenu({ label = "Actions", items }) {
       }
     }
 
+    /** Đóng menu bằng Escape và trả focus về trigger. */
     function handleKey(event) {
       if (event.key === "Escape") {
         setOpen(false);
@@ -221,20 +238,18 @@ function KebabMenu({ label = "Actions", items }) {
 
   return (
     <div className="sl-cm-kebab">
-      <button
+      <IconButton
         ref={triggerRef}
-        type="button"
-        className="sl-cm-btn sl-cm-btn--icon sl-cm-kebab__trigger"
+        icon={<MoreVertical size={18} />}
+        label={label}
+        className="sl-cm-kebab__trigger"
         aria-haspopup="menu"
         aria-expanded={open}
-        aria-label={label}
         onClick={() => {
           if (!open) updateMenuPosition();
           setOpen((value) => !value);
         }}
-      >
-        <MoreVertical size={18} aria-hidden="true" />
-      </button>
+      />
       {menu ? createPortal(menu, document.body) : null}
     </div>
   );
@@ -244,6 +259,7 @@ function KebabMenu({ label = "Actions", items }) {
    Section row
    ========================================================================== */
 
+/** Hiển thị một module cùng danh sách lesson và các action quản trị. */
 function SectionRow({
   section,
   index,
@@ -251,6 +267,7 @@ function SectionRow({
   loadingLessons,
   readOnly,
   onOpenCreateLesson,
+  onManageModuleQuestions,
   onEditSection,
   onDeleteSection,
   onEditLesson,
@@ -358,15 +375,27 @@ function SectionRow({
 
         {!readOnly && (
           <div className="sl-cm-section__actions">
-            <button
-              type="button"
-              className="sl-cm-btn sl-cm-btn--secondary sl-cm-btn--sm"
+            {onManageModuleQuestions ? (
+              <Button
+                variant="secondary"
+                size="sm"
+                leftIcon={<ClipboardList size={14} />}
+                onClick={() => onManageModuleQuestions(section)}
+              >
+                Manage questions
+              </Button>
+            ) : null}
+            <Button
+              variant="secondary"
+              size="sm"
+              leftIcon={<Plus size={14} />}
               onClick={handleAddLesson}
               disabled={isCreatingLesson}
+              loading={isCreatingLesson}
+              loadingLabel="Opening..."
             >
-              <Plus size={14} aria-hidden="true" />
-              {isCreatingLesson ? "Opening..." : "Add lesson"}
-            </button>
+              Add lesson
+            </Button>
             <KebabMenu
               label={`Module ${index + 1} actions`}
               items={[
@@ -413,9 +442,7 @@ function SectionRow({
                 className="sl-cm-lessons"
               >
                 {loadingLessons ? (
-                  <div className="sl-cm-section__loading" role="status">
-                    Loading lessons…
-                  </div>
+                  <LoadingState compact label="Loading lessons..." />
                 ) : sortedLessons.length > 0 ? (
                   sortedLessons.map((lesson, lIndex) => (
                     <Draggable
@@ -466,6 +493,7 @@ function SectionRow({
   );
 }
 
+/** Hiển thị thông tin tóm tắt và action của một lesson trong module. */
 function LessonRow({
   lesson,
   sectionIndex,
@@ -517,7 +545,7 @@ function LessonRow({
           <span aria-hidden="true">·</span>
           <span>{durationText}</span>
           {lesson?.isPreview && (
-            <span className="sl-cm-pill sl-cm-pill--preview">Preview</span>
+            <StatusBadge status="preview" label="Preview" tone="info" />
           )}
         </div>
       </div>
@@ -525,13 +553,13 @@ function LessonRow({
       <LessonStatusPill status={lesson?.status} />
 
       <div className="sl-cm-lesson__actions">
-        <button
-          type="button"
-          className="sl-cm-btn sl-cm-btn--secondary sl-cm-btn--sm"
+        <Button
+          variant="secondary"
+          size="sm"
           onClick={() => onEditLesson?.(lesson)}
         >
           {lessonEditLabel || "Edit lesson"}
-        </button>
+        </Button>
         {!readOnly && (
           <KebabMenu
             label={`Lesson ${sectionIndex + 1}.${lessonIndex + 1} actions`}
@@ -580,6 +608,7 @@ function LessonRow({
    Modals — dùng shared Modal component
    ========================================================================== */
 
+/** Thu thập tên module khi tạo mới hoặc chỉnh sửa. */
 function SectionFormModal({
   open,
   title,
@@ -617,11 +646,13 @@ function SectionFormModal({
     );
   }, [value, courseTopic]);
 
+  /** Áp dụng gợi ý tên module vào form. */
   const handleSuggestionClick = (suggestion) => {
     setValue(suggestion.label);
     setError("");
   };
 
+  /** Kiểm tra tên module và chuyển dữ liệu đã trim cho caller. */
   const handleSubmit = async (event) => {
     event.preventDefault();
     const trimmed = value.trim();
@@ -663,13 +694,10 @@ function SectionFormModal({
     >
       <form id="sl-cm-section-form" onSubmit={handleSubmit}>
         <div className="sl-cm-field">
-          <label className="sl-cm-field__label" htmlFor="sl-cm-section-name">
-            Module name <span className="required">*</span>
-          </label>
-          <input
+          <Input
             id="sl-cm-section-name"
-            type="text"
-            className="sl-cm-field__control"
+            label="Module name"
+            required
             value={value}
             onChange={(event) => {
               setValue(event.target.value);
@@ -677,22 +705,9 @@ function SectionFormModal({
             }}
             placeholder="e.g. Module 1: Introduction"
             autoFocus
-            aria-invalid={Boolean(error) || undefined}
-            aria-describedby={error ? "sl-cm-section-name-error" : undefined}
+            error={error}
+            helperText="Group related lessons so learners can follow a logical flow."
           />
-          {error ? (
-            <p
-              id="sl-cm-section-name-error"
-              className="sl-cm-field__error"
-              role="alert"
-            >
-              {error}
-            </p>
-          ) : (
-            <p className="sl-cm-field__helper">
-              Group related lessons so learners can follow a logical flow.
-            </p>
-          )}
         </div>
 
         {aiSuggestions.length > 0 && (
@@ -721,6 +736,7 @@ function SectionFormModal({
   );
 }
 
+/** Thu thập tiêu đề và loại nội dung để tạo lesson draft. */
 function LessonCreateModal({
   open,
   lessonTypeOptions,
@@ -735,6 +751,7 @@ function LessonCreateModal({
   const [titleError, setTitleError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
+  /** Kiểm tra tiêu đề và gửi payload lesson draft cho caller. */
   const handleSubmit = async (event) => {
     event.preventDefault();
     const trimmed = title.trim();
@@ -794,32 +811,19 @@ function LessonCreateModal({
     >
       <form id="sl-cm-lesson-form" onSubmit={handleSubmit} className="sl-cm-drawer-form">
         <div className="sl-cm-field">
-          <label className="sl-cm-field__label" htmlFor="sl-cm-lesson-title">
-            Lesson title <span className="required">*</span>
-          </label>
-          <input
+          <Input
             ref={titleInputRef}
             id="sl-cm-lesson-title"
-            type="text"
-            className="sl-cm-field__control"
+            label="Lesson title"
+            required
             value={title}
             onChange={(event) => {
               setTitle(event.target.value);
               if (event.target.value.trim()) setTitleError("");
             }}
             placeholder="e.g. 1.1. ReactJS overview"
-            aria-invalid={Boolean(titleError) || undefined}
-            aria-describedby={titleError ? "sl-cm-lesson-title-error" : undefined}
+            error={titleError}
           />
-          {titleError ? (
-            <p
-              id="sl-cm-lesson-title-error"
-              className="sl-cm-field__error"
-              role="alert"
-            >
-              {titleError}
-            </p>
-          ) : null}
         </div>
 
         <fieldset className="sl-cm-field sl-cm-field--fieldset">
@@ -866,42 +870,7 @@ function LessonCreateModal({
   );
 }
 
-function ConfirmModal({
-  open,
-  title,
-  description,
-  confirmLabel = "Confirm",
-  cancelLabel = "Cancel",
-  onConfirm,
-  onClose,
-  variant = "danger",
-}) {
-  return (
-    <Modal
-      open={open}
-      title={title}
-      onClose={onClose}
-      size="sm"
-      footer={
-        <>
-          <Button type="button" variant="outline" onClick={onClose}>
-            {cancelLabel}
-          </Button>
-          <Button
-            type="button"
-            variant={variant === "danger" ? "danger" : "primary"}
-            onClick={onConfirm}
-          >
-            {confirmLabel}
-          </Button>
-        </>
-      }
-    >
-      <p className="sl-cm-confirm__desc">{description}</p>
-    </Modal>
-  );
-}
-
+/** Render cây curriculum có drag-and-drop và trạng thái rỗng chuẩn. */
 const CurriculumTree = memo(function CurriculumTree({
   sortedSections,
   getLessons,
@@ -914,6 +883,7 @@ const CurriculumTree = memo(function CurriculumTree({
   lessonEditLabel,
   onDragEnd,
   onOpenCreateLesson,
+  onManageModuleQuestions,
   onOpenCreateSection,
   onEditSection,
   onDeleteSection,
@@ -955,6 +925,7 @@ const CurriculumTree = memo(function CurriculumTree({
                             isSectionLessonsLoading?.(section.id) || false
                           }
                           onOpenCreateLesson={onOpenCreateLesson}
+                          onManageModuleQuestions={onManageModuleQuestions}
                           onEditSection={onEditSection}
                           onDeleteSection={onDeleteSection}
                           onEditLesson={(lesson) => onEditLesson?.(lesson, section)}
@@ -974,23 +945,23 @@ const CurriculumTree = memo(function CurriculumTree({
                   </Draggable>
                 ))
               ) : (
-                <div className="sl-cm-empty">
-                  <span className="sl-cm-empty__icon" aria-hidden="true">
-                    <Sparkles size={26} />
-                  </span>
-                  <h3 className="sl-cm-empty__title">{emptyAddTitle}</h3>
-                  <p className="sl-cm-empty__desc">
-                    {readOnly ? emptyMessage : emptyAddSubtitle || emptyMessage}
-                  </p>
-                  {!readOnly && (
-                    <Button
-                      leftIcon={<Plus size={16} />}
-                      onClick={onOpenCreateSection}
-                    >
-                      Add first module
-                    </Button>
-                  )}
-                </div>
+                <EmptyState
+                  title={emptyAddTitle}
+                  description={
+                    readOnly ? emptyMessage : emptyAddSubtitle || emptyMessage
+                  }
+                  icon={<Sparkles size={26} />}
+                  action={
+                    !readOnly ? (
+                      <Button
+                        leftIcon={<Plus size={16} />}
+                        onClick={onOpenCreateSection}
+                      >
+                        Add first module
+                      </Button>
+                    ) : null
+                  }
+                />
               )}
               {provided.placeholder}
             </div>
@@ -999,14 +970,14 @@ const CurriculumTree = memo(function CurriculumTree({
       </DragDropContext>
 
       {!readOnly && sortedSections.length > 0 && (
-        <button
-          type="button"
-          className="sl-cm-add-section"
+        <Button
+          variant="secondary"
+          fullWidth
+          leftIcon={<Plus size={18} />}
           onClick={onOpenCreateSection}
         >
-          <Plus size={18} aria-hidden="true" />
-          <span>Add new module</span>
-        </button>
+          Add new module
+        </Button>
       )}
     </>
   );
@@ -1016,6 +987,7 @@ const CurriculumTree = memo(function CurriculumTree({
    Main component
    ========================================================================== */
 
+/** Điều phối CRUD, sắp xếp và feedback của toàn bộ cấu trúc curriculum. */
 export function CurriculumStructureEditor({
   sections,
   getLessons,
@@ -1033,6 +1005,7 @@ export function CurriculumStructureEditor({
   onDeleteSection,
   onReorderSections,
   onCreateLesson,
+  onManageModuleQuestions,
   openLessonEditorOnCreate = false,
   onDeleteLesson,
   onReorderLessons,
@@ -1068,23 +1041,27 @@ export function CurriculumStructureEditor({
     [sortedSections, getLessons],
   );
 
+  /** Tạo module và chỉ đóng modal khi thao tác thành công. */
   const handleCreateSection = async (title) => {
     const saved = await onCreateSection?.({ title });
     if (saved !== false) setIsSectionModalOpen(false);
   };
 
+  /** Cập nhật module đang chọn và giữ modal nếu caller báo lỗi. */
   const handleUpdateSection = async (title) => {
     if (!editingSection?.id) return;
     const saved = await onUpdateSection?.(editingSection.id, { title });
     if (saved !== false) setEditingSection(null);
   };
 
+  /** Tạo lesson trong module đang chọn và đóng modal khi thành công. */
   const handleCreateLesson = async (payload) => {
     if (!lessonModalSection?.id) return;
     const saved = await onCreateLesson?.(lessonModalSection.id, payload);
     if (saved !== false) setLessonModalSection(null);
   };
 
+  /** Chuẩn bị nội dung xác nhận xóa module. */
   const requestDeleteSection = useCallback((sectionId, title) => {
     setConfirm({
       title: `Delete “${title}”?`,
@@ -1098,6 +1075,7 @@ export function CurriculumStructureEditor({
     });
   }, [onDeleteSection]);
 
+  /** Chuẩn bị nội dung xác nhận xóa lesson. */
   const requestDeleteLesson = useCallback((lessonId, lessonTitle, lesson) => {
     setConfirm({
       title: `Delete “${lessonTitle}”?`,
@@ -1111,6 +1089,7 @@ export function CurriculumStructureEditor({
     });
   }, [onDeleteLesson]);
 
+  /** Di chuyển module một bước và phát thứ tự ID mới cho caller. */
   const moveSection = useCallback((section, direction) => {
     const index = sortedSections.findIndex(
       (item) => String(item.id) === String(section.id),
@@ -1122,6 +1101,7 @@ export function CurriculumStructureEditor({
     onReorderSections?.(reordered.map((item) => item.id));
   }, [onReorderSections, sortedSections]);
 
+  /** Di chuyển lesson một bước bên trong module hiện tại. */
   const moveLesson = useCallback((section, lesson, direction) => {
     const lessons = sortByOrder(getLessons?.(section) || []);
     const index = lessons.findIndex(
@@ -1137,6 +1117,7 @@ export function CurriculumStructureEditor({
     );
   }, [getLessons, onReorderLessons]);
 
+  /** Mở modal tạo module. */
   const openCreateSection = useCallback(() => {
     setIsSectionModalOpen(true);
   }, []);
@@ -1159,6 +1140,7 @@ export function CurriculumStructureEditor({
     [onCreateLesson, openLessonEditorOnCreate],
   );
 
+  /** Đồng bộ thứ tự module hoặc lesson sau khi kết thúc kéo thả. */
   const handleDragEnd = useCallback((result) => {
     if (!result.destination) return;
 
@@ -1187,29 +1169,22 @@ export function CurriculumStructureEditor({
   return (
     <div>
       {(draftCount > 0 || inactiveCount > 0 || emptySectionCount > 0) && (
-        <div
-          className={`sl-cm-attention${emptySectionCount > 0 && draftCount === 0 && inactiveCount === 0 ? " sl-cm-attention--info" : ""}`}
-          role="status"
-          aria-live="polite"
+        <Alert
+          tone={
+            emptySectionCount > 0 && draftCount === 0 && inactiveCount === 0
+              ? "info"
+              : "warning"
+          }
+          title={
+            draftCount > 0
+              ? `${draftCount} lesson${draftCount === 1 ? "" : "s"} still in draft`
+              : inactiveCount > 0
+                ? `${inactiveCount} inactive lesson${inactiveCount === 1 ? "" : "s"}`
+                : `${emptySectionCount} module${emptySectionCount === 1 ? "" : "s"} still need${emptySectionCount === 1 ? "s" : ""} lessons`
+          }
         >
-          <span className="sl-cm-attention__icon" aria-hidden="true">
-            <AlertTriangle size={18} color={emptySectionCount > 0 && draftCount === 0 && inactiveCount === 0 ? "#1d4ed8" : "#8a5b00"} />
-          </span>
-          <div className="sl-cm-attention__body">
-            <p className="sl-cm-attention__title">
-              {draftCount > 0
-                ? `${draftCount} lesson${draftCount === 1 ? "" : "s"} still in draft`
-                : inactiveCount > 0
-                  ? `${inactiveCount} inactive lesson${inactiveCount === 1 ? "" : "s"}`
-                  : `${emptySectionCount} module${emptySectionCount === 1 ? "" : "s"} still need${emptySectionCount === 1 ? "s" : ""} lessons`}
-            </p>
-            <div className="sl-cm-attention__links">
-              <span>
-                Review and publish so learners can enrol.
-              </span>
-            </div>
-          </div>
-        </div>
+          Review and publish so learners can enrol.
+        </Alert>
       )}
 
       {stats ? (
@@ -1233,6 +1208,7 @@ export function CurriculumStructureEditor({
         lessonEditLabel={lessonEditLabel}
         onDragEnd={handleDragEnd}
         onOpenCreateLesson={openCreateLesson}
+        onManageModuleQuestions={onManageModuleQuestions}
         onOpenCreateSection={openCreateSection}
         onEditSection={setEditingSection}
         onDeleteSection={requestDeleteSection}
@@ -1274,13 +1250,14 @@ export function CurriculumStructureEditor({
         />
       ) : null}
 
-      <ConfirmModal
+      <ConfirmDialog
         open={Boolean(confirm)}
         title={confirm?.title || ""}
         description={confirm?.description || ""}
         confirmLabel={confirm?.confirmLabel || "Confirm"}
         onConfirm={() => confirm?.onConfirm?.()}
         onClose={() => setConfirm(null)}
+        tone="danger"
       />
     </div>
   );

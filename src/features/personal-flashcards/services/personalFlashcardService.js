@@ -1,11 +1,7 @@
 import apiClient from "@/services/api-client";
+import { unwrapApiData as unwrap } from "@/services/api-response";
 
 const BASE_PATH = "/my-flashcards/sets";
-
-/** Lấy payload nghiệp vụ từ response chuẩn của API. */
-function unwrap(response) {
-  return response?.data ?? response;
-}
 
 /** Chuẩn hóa chuỗi tùy chọn để API nhận null thay vì nội dung rỗng. */
 function optionalText(value) {

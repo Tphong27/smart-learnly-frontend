@@ -3,16 +3,19 @@ import { RoleGuard } from "./RoleGuard";
 import { ROLES } from "@/shared/constants/roles";
 import { TrainerLayout } from "../layouts/TrainerLayout";
 import {
-  StaffFlashTestListPage,
-  StaffFlashTestCreatePage,
-  StaffFlashTestMonitorPage,
+  StaffAssessmentListPage,
+  StaffAssessmentCreatePage,
   StaffTestListPage,
   StaffTestCreatePage,
   StaffTestMonitorPage,
   TestAttemptDetailPage,
-} from "@/features/flashtest";
+} from "@/features/test";
 // import { TrainerLayout } from "@/app/layouts/TrainerLayout";
-import { AdminCoursesPage, AdminCourseFormPage } from "@/features/admin";
+import {
+  AdminCoursesPage,
+  AdminCourseFormPage,
+  AdminQuestionBankDetailPage,
+} from "@/features/admin";
 import AdminCourseContentPage from "@/features/course/pages/AdminCourseContentPage";
 import AdminLessonDetailPage from "@/features/course/pages/AdminLessonDetailPage";
 import {
@@ -30,7 +33,7 @@ function getStaffRoutes() {
       path: "/staff",
       element: <TrainerLayout />,
       children: [
-        // NHÓM CHUNG: Cả 3 quyền Trainer, TMO, SME đều xem được danh sách khoá học, bài test, flashcard
+        // TMO chỉ dùng danh sách course ở chế độ xem và danh sách assignment theo lớp.
         {
           element: (
             <RoleGuard allowedRoles={[ROLES.TRAINER, ROLES.TMO, ROLES.SME]} />
@@ -38,30 +41,30 @@ function getStaffRoutes() {
           children: [
             { path: "courses", element: <AdminCoursesPage /> },
             {
+              path: "assignments",
+              element: <StaffAssessmentListPage variant="assignment" />,
+            },
+          ],
+        },
+        // Trainer và SME giữ các công cụ authoring, test và assignment mutation.
+        {
+          element: <RoleGuard allowedRoles={[ROLES.TRAINER, ROLES.SME]} />,
+          children: [
+            {
               path: "courses/:courseId",
               element: <AdminCourseFormPage />,
             },
             {
-              element: <RoleGuard allowedRoles={[ROLES.TRAINER, ROLES.TMO]} />,
-              children: [
-                {
-                  path: "courses/:courseId/edit",
-                  element: <AdminCourseFormPage />,
-                },
-              ],
+              path: "courses/:courseId/modules/:moduleId/questions",
+              element: <AdminQuestionBankDetailPage />,
             },
-            // Master curriculum authoring: chỉ SME/TMO (và admin routes riêng).
-            // Trainer customize theo class tại /staff/classrooms/:classId/workspace?tab=curriculum.
             {
-              element: <RoleGuard allowedRoles={[ROLES.TMO, ROLES.SME]} />,
+              path: "courses/:courseId/edit",
+              element: <RoleGuard allowedRoles={[ROLES.TRAINER]} />,
               children: [
                 {
-                  path: "courses/:courseId/content",
-                  element: <AdminCourseContentPage />,
-                },
-                {
-                  path: "courses/:courseId/lessons/:lessonId",
-                  element: <AdminLessonDetailPage />,
+                  index: true,
+                  element: <AdminCourseFormPage />,
                 },
               ],
             },
@@ -86,36 +89,30 @@ function getStaffRoutes() {
               element: <TestAttemptDetailPage />,
             },
             {
-              path: "flashtests",
-              element: <StaffFlashTestListPage />,
-            },
-            {
-              path: "flashtests/create",
-              element: <StaffFlashTestCreatePage />,
-            },
-            {
-              path: "flashtests/edit/:id/:type",
-              element: <StaffFlashTestCreatePage />,
-            },
-            {
-              path: "flashtests/monitor/:id/:type",
-              element: <StaffFlashTestMonitorPage />,
-            },
-            {
-              path: "assignments",
-              element: <StaffFlashTestListPage variant="assignment" />,
-            },
-            {
               path: "assignments/create",
-              element: <StaffFlashTestCreatePage variant="assignment" />,
+              element: <StaffAssessmentCreatePage variant="assignment" />,
             },
             {
               path: "assignments/edit/:id/:type",
-              element: <StaffFlashTestCreatePage variant="assignment" />,
+              element: <StaffAssessmentCreatePage variant="assignment" />,
             },
             {
               path: "assignments/monitor/:id/:type",
-              element: <StaffFlashTestMonitorPage />,
+              element: <StaffTestMonitorPage />,
+            },
+          ],
+        },
+        // Master course curriculum chỉ do SME author; Trainer chỉnh theo từng lớp.
+        {
+          element: <RoleGuard allowedRoles={[ROLES.SME]} />,
+          children: [
+            {
+              path: "courses/:courseId/content",
+              element: <AdminCourseContentPage />,
+            },
+            {
+              path: "courses/:courseId/lessons/:lessonId",
+              element: <AdminLessonDetailPage />,
             },
           ],
         },
@@ -155,6 +152,16 @@ function getStaffRoutes() {
               path: "classrooms/:classId/workspace",
               element: <ClassDetailPage />,
             },
+            {
+              path: "classrooms/:classId/curriculum/lessons/:lessonId",
+              element: <RoleGuard allowedRoles={[ROLES.TRAINER]} />,
+              children: [
+                {
+                  index: true,
+                  element: <TrainerLessonDetailPage />,
+                },
+              ],
+            },
           ],
         },
       ],
@@ -167,7 +174,7 @@ function getStaffRoutes() {
       children: [
         {
           element: (
-            <RoleGuard allowedRoles={[ROLES.TRAINER, ROLES.TMO, ROLES.ADMIN]} />
+            <RoleGuard allowedRoles={[ROLES.TRAINER, ROLES.ADMIN]} />
           ),
           children: [
             {
@@ -180,11 +187,11 @@ function getStaffRoutes() {
     },
     {
       path: "/trainer/dashboard",
-      element: <Navigate to="/staff/courses" replace />,
+      element: <Navigate to="/staff/classrooms" replace />,
     },
     {
       path: "/sme/dashboard",
-      element: <Navigate to="/admin/courses" replace />,
+      element: <Navigate to="/staff/courses" replace />,
     },
     {
       path: "/tmo/dashboard",

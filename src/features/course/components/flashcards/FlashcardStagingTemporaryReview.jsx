@@ -1,6 +1,14 @@
 import { useCallback, useMemo, useRef, useState } from "react";
 import { Check, FileText } from "lucide-react";
-import { Modal } from "@/shared/components/ui";
+import {
+  Alert,
+  Button,
+  ConfirmDialog,
+  EmptyState,
+  Modal,
+  Tabs,
+  Textarea,
+} from "@/shared/components/ui";
 import { flashcardAuthoringService as flashcardService } from "@/features/flashcard";
 import { FlashcardCardEditorModal } from "../../../flashcards-shared";
 import { FlashcardCardList } from "./FlashcardCardList";
@@ -27,6 +35,27 @@ import {
   ModalNotice,
   PastedTextImportPanel,
 } from "./FlashcardStagingImportPanels";
+
+const IMPORT_TABS = [
+  {
+    id: "flashcard-import-tab-pasted",
+    panelId: "flashcard-import-panel-pasted",
+    value: "pasted",
+    label: "Pasted Text",
+  },
+  {
+    id: "flashcard-import-tab-document",
+    panelId: "flashcard-import-panel-document",
+    value: "document",
+    label: "Document",
+  },
+  {
+    id: "flashcard-import-tab-course-questions",
+    panelId: "flashcard-import-panel-course-questions",
+    value: "course-questions",
+    label: "Course Questions",
+  },
+];
 
 /** Tạo ID tạm thời ổn định cho ứng viên chưa được backend lưu. */
 function newClientId() {
@@ -228,9 +257,7 @@ function TemporaryCandidateEditorModal({
       previewTriggerRef={previewTriggerRef}
       errorContent={
         error ? (
-          <div className="flashcard-staging__alert" role="alert">
-            {error}
-          </div>
+          <Alert tone="danger">{error}</Alert>
         ) : null
       }
       editorProps={{
@@ -248,9 +275,9 @@ function TemporaryCandidateEditorModal({
       }}
       afterEditor={
         <>
-          <label className="flashcard-field flashcard-temp-review__source-field">
-            <span>Source excerpt</span>
-            <textarea
+          <Textarea
+              className="flashcard-temp-review__source-field"
+              label="Source excerpt"
               value={sourceExcerpt}
               onChange={(event) => {
                 setSourceExcerpt(event.target.value);
@@ -258,8 +285,7 @@ function TemporaryCandidateEditorModal({
               }}
               disabled={saving}
               rows={3}
-            />
-          </label>
+          />
           {previewOpen && (
             <Modal
               open
@@ -298,37 +324,17 @@ function TemporaryCandidateDeleteModal({
   onRemove,
 }) {
   return (
-    <Modal
-      open={open}
+    <ConfirmDialog
+      open={Boolean(open)}
       title="Remove draft card?"
-      size="sm"
-      closeDisabled={disabled}
+      description="This card has not been saved to Current Flashcards."
+      confirmLabel="Remove"
+      cancelLabel="Cancel"
+      tone="danger"
+      loading={disabled}
       onClose={onCancel}
-      footer={
-        <div className="flashcard-actions">
-          <button
-            type="button"
-            className="flashcard-btn"
-            onClick={onCancel}
-            disabled={disabled}
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            className="flashcard-btn flashcard-btn--danger"
-            onClick={onRemove}
-            disabled={disabled}
-          >
-            Remove
-          </button>
-        </div>
-      }
-    >
-      <p className="flashcard-temp-review__delete-copy">
-        This card has not been saved to Current Flashcards.
-      </p>
-    </Modal>
+      onConfirm={onRemove}
+    />
   );
 }
 
@@ -395,8 +401,6 @@ function TemporaryFlashcardReviewPanel({
     () => analyzedCards.filter((card) => !card.duplicate && !card.invalid),
     [analyzedCards],
   );
-  const duplicateSelectedCount = selectedCards.filter((card) => card.duplicate).length;
-  const invalidSelectedCount = selectedCards.filter((card) => card.invalid).length;
   const selectedCardIds = selectedCards.map((card) => card.id);
   const actionLocked = approving || savingEdit;
 
@@ -571,9 +575,9 @@ function TemporaryFlashcardReviewPanel({
           </div>
         </div>
         <div className="flashcard-staging__header-actions">
-          <button
+          <Button
             type="button"
-            className="flashcard-btn"
+            variant="secondary"
             onClick={selectAll}
             disabled={
               actionLocked ||
@@ -581,30 +585,26 @@ function TemporaryFlashcardReviewPanel({
             }
           >
             Select all
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
-            className="flashcard-btn"
+            variant="ghost"
             onClick={clearSelection}
             disabled={actionLocked || selectedCardIds.length === 0}
           >
             Clear
-          </button>
+          </Button>
         </div>
       </div>
 
       <div className="flashcard-staging__section">
         <InlineNotice>{reviewNotice}</InlineNotice>
-        {(duplicateSelectedCount > 0 || invalidSelectedCount > 0) && (
-          <InlineNotice>
-            Selected duplicate or invalid candidates will be skipped during approval.
-          </InlineNotice>
-        )}
         {analyzedCards.length === 0 ? (
-          <div className="flashcard-empty">
-            <FileText size={28} />
-            <p>No candidates left to review.</p>
-          </div>
+          <EmptyState
+            title="No candidates left to review"
+            description="Return to an import source to prepare more cards."
+            icon={<FileText size={28} />}
+          />
         ) : (
           <FlashcardCardList
             cards={analyzedCards}
@@ -648,19 +648,18 @@ function TemporaryFlashcardReviewPanel({
       <div className="flashcard-temp-review__footer">
         <div className="flashcard-temp-review__footer-status">
           {selectedCards.length} selected
-          {duplicateSelectedCount || invalidSelectedCount
-            ? ` - ${duplicateSelectedCount} duplicate, ${invalidSelectedCount} invalid`
-            : ""}
         </div>
-        <button
+        <Button
           type="button"
-          className="flashcard-btn flashcard-btn--primary"
+          variant="primary"
+          leftIcon={<Check size={16} />}
+          loading={approving}
+          loadingLabel="Approving..."
           onClick={approveSelected}
           disabled={actionLocked || selectedCards.length === 0}
         >
-          <Check size={16} />
-          {approving ? "Approving" : "Approve selected"}
-        </button>
+          Approve selected
+        </Button>
       </div>
 
     </section>
@@ -721,97 +720,40 @@ export function ImportFlashcardsModal({
   }
 
   return (
-    <div className="flashcard-modal" role="presentation">
-      <div
-        className="flashcard-modal__dialog flashcard-modal__dialog--wide flashcard-import-modal"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="flashcard-import-modal-title"
-      >
-        <div className="flashcard-import-modal__header">
-          <div>
-            <h3 id="flashcard-import-modal-title">
-              {reviewBatch ? "Review imported flashcards" : "Import flashcards"}
-            </h3>
-            <p>
-              {reviewBatch
-                ? "Review candidates before adding selected cards to Current Flashcards."
-                : "Choose a source and review the result before importing."}
-            </p>
+    <Modal
+      open
+      size="xl"
+      className="flashcard-import-modal"
+      title={reviewBatch ? "Review imported flashcards" : "Import flashcards"}
+      description={
+        reviewBatch
+          ? "Review candidates before adding selected cards to Current Flashcards."
+          : "Choose a source and review the result before importing."
+      }
+      onClose={onClose}
+    >
+        {reviewBatch ? (
+          <div className="flashcard-import-modal__back">
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={handleBackToImport}
+            >
+              Back to import
+            </Button>
           </div>
-          <div className="flashcard-import-modal__header-actions">
-            {reviewBatch && (
-              <button
-                type="button"
-                className="flashcard-btn"
-                onClick={handleBackToImport}
-              >
-                Back to import
-              </button>
-            )}
-            <button type="button" className="flashcard-btn" onClick={onClose}>
-              Close
-            </button>
-          </div>
-        </div>
+        ) : null}
 
         <ModalNotice notice={modalNotice} />
 
         {!reviewBatch && (
-          <div
-            className="flashcard-tabs flashcard-import-modal__tabs"
-            role="tablist"
-            aria-label="Flashcard import sources"
-          >
-            <button
-              id="flashcard-import-tab-pasted"
-              type="button"
-              role="tab"
-              aria-selected={activeImportTab === "pasted"}
-              aria-controls="flashcard-import-panel-pasted"
-              tabIndex={activeImportTab === "pasted" ? 0 : -1}
-              className={
-                activeImportTab === "pasted"
-                  ? "flashcard-tabs__tab is-active"
-                  : "flashcard-tabs__tab"
-              }
-              onClick={() => selectImportTab("pasted")}
-            >
-              Pasted Text
-            </button>
-            <button
-              id="flashcard-import-tab-document"
-              type="button"
-              role="tab"
-              aria-selected={activeImportTab === "document"}
-              aria-controls="flashcard-import-panel-document"
-              tabIndex={activeImportTab === "document" ? 0 : -1}
-              className={
-                activeImportTab === "document"
-                  ? "flashcard-tabs__tab is-active"
-                  : "flashcard-tabs__tab"
-              }
-              onClick={() => selectImportTab("document")}
-            >
-              Document
-            </button>
-            <button
-              id="flashcard-import-tab-course-questions"
-              type="button"
-              role="tab"
-              aria-selected={activeImportTab === "course-questions"}
-              aria-controls="flashcard-import-panel-course-questions"
-              tabIndex={activeImportTab === "course-questions" ? 0 : -1}
-              className={
-                activeImportTab === "course-questions"
-                  ? "flashcard-tabs__tab is-active"
-                  : "flashcard-tabs__tab"
-              }
-              onClick={() => selectImportTab("course-questions")}
-            >
-              Course Questions
-            </button>
-          </div>
+          <Tabs
+            className="flashcard-import-modal__tabs"
+            ariaLabel="Flashcard import sources"
+            items={IMPORT_TABS}
+            value={activeImportTab}
+            onChange={selectImportTab}
+          />
         )}
 
         <div className="flashcard-import-modal__content">
@@ -881,7 +823,6 @@ export function ImportFlashcardsModal({
             </>
           )}
         </div>
-      </div>
-    </div>
+    </Modal>
   );
 }

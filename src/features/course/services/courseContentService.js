@@ -1,9 +1,5 @@
 import apiClient from "@/services/api-client";
-
-// Bóc payload nghiệp vụ khỏi envelope chuẩn của backend.
-function unwrap(response) {
-  return response?.data ?? response;
-}
+import { unwrapApiData as unwrap } from "@/services/api-response";
 
 // Chuẩn hóa page audit log để màn hình lịch sử dùng cùng cấu trúc với list khác.
 function normalizePage(payload) {

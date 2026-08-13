@@ -24,17 +24,8 @@ const LATEST_NOTIFICATION_SIZE = 8;
 
 const NotificationContext = createContext(null);
 
-const initialUnreadState = {
-  count: 0,
-  loading: false,
-  error: null,
-  loaded: false,
-};
-
 const initialLatestState = {
   items: [],
-  totalItems: 0,
-  status: "all",
   loading: false,
   error: null,
   loaded: false,
@@ -80,11 +71,6 @@ function applyNotification(items, notification) {
   return found ? nextItems : items;
 }
 
-/** Loại một notification khỏi danh sách hiện tại. */
-function removeNotification(items, notificationId) {
-  return items.filter((item) => item.id !== notificationId);
-}
-
 /** Lấy timestamp ISO dùng cho optimistic update. */
 function nowIso() {
   return new Date().toISOString();
@@ -95,69 +81,47 @@ function nowIso() {
  */
 export function NotificationProvider({ children }) {
   const authKey = getAuthKey();
-  const [unreadState, setUnreadState] = useState(initialUnreadState);
+  const [unreadCount, setUnreadCount] = useState(0);
   const [latestState, setLatestState] = useState(initialLatestState);
-  const [activeTotalItems, setActiveTotalItems] = useState(0);
-  const [pendingNotificationIds, setPendingNotificationIds] = useState(
-    () => new Set(),
-  );
-  const [pendingBulkActions, setPendingBulkActions] = useState(() => new Set());
-  const [mutationVersion, setMutationVersion] = useState(0);
+  const [isMarkingAllRead, setIsMarkingAllRead] = useState(false);
 
   const unreadRequestRef = useRef(null);
   const unreadRequestIdRef = useRef(0);
   const latestRequestRef = useRef(null);
   const latestRequestIdRef = useRef(0);
   const pendingNotificationPromisesRef = useRef(new Map());
-  const pendingBulkPromisesRef = useRef(new Map());
+  const pendingMarkAllReadPromiseRef = useRef(null);
   const unreadCountRef = useRef(0);
   const latestItemsRef = useRef([]);
-  const latestTotalItemsRef = useRef(0);
-  const activeTotalItemsRef = useRef(0);
-  const latestStatusRef = useRef("all");
   const latestLoadedRef = useRef(false);
 
   useEffect(() => {
-    unreadCountRef.current = unreadState.count;
-  }, [unreadState.count]);
+    unreadCountRef.current = unreadCount;
+  }, [unreadCount]);
 
   useEffect(() => {
     latestItemsRef.current = latestState.items;
-    latestTotalItemsRef.current = latestState.totalItems;
-    latestStatusRef.current = latestState.status;
     latestLoadedRef.current = latestState.loaded;
-  }, [
-    latestState.items,
-    latestState.loaded,
-    latestState.status,
-    latestState.totalItems,
-  ]);
+  }, [latestState.items, latestState.loaded]);
 
-  useEffect(() => {
-    activeTotalItemsRef.current = activeTotalItems;
-  }, [activeTotalItems]);
-
+  /** Xóa toàn bộ cache và trạng thái mutation khi phiên đăng nhập thay đổi. */
   const resetState = useCallback(() => {
     unreadRequestRef.current = null;
     latestRequestRef.current = null;
     pendingNotificationPromisesRef.current = new Map();
-    pendingBulkPromisesRef.current = new Map();
+    pendingMarkAllReadPromiseRef.current = null;
     unreadCountRef.current = 0;
     latestItemsRef.current = [];
-    latestTotalItemsRef.current = 0;
-    activeTotalItemsRef.current = 0;
-    latestStatusRef.current = "all";
     latestLoadedRef.current = false;
-    setUnreadState(initialUnreadState);
+    setUnreadCount(0);
     setLatestState(initialLatestState);
-    setActiveTotalItems(0);
-    setPendingNotificationIds(new Set());
-    setPendingBulkActions(new Set());
+    setIsMarkingAllRead(false);
   }, []);
 
+  /** Tải lại số notification chưa đọc và giữ request mới nhất làm nguồn dữ liệu. */
   const refreshUnread = useCallback(async ({ force = false } = {}) => {
     if (!getAccessToken()) {
-      setUnreadState(initialUnreadState);
+      setUnreadCount(0);
       return null;
     }
 
@@ -167,11 +131,6 @@ export function NotificationProvider({ children }) {
 
     const requestId = unreadRequestIdRef.current + 1;
     unreadRequestIdRef.current = requestId;
-    setUnreadState((current) => ({
-      ...current,
-      loading: true,
-      error: null,
-    }));
 
     const request = notificationService
       .unreadCount()
@@ -179,26 +138,11 @@ export function NotificationProvider({ children }) {
         if (unreadRequestIdRef.current === requestId) {
           const count = clampUnreadCount(response.unreadCount);
           unreadCountRef.current = count;
-          setUnreadState({
-            count,
-            loading: false,
-            error: null,
-            loaded: true,
-          });
+          setUnreadCount(count);
         }
         return response;
       })
-      .catch((error) => {
-        if (unreadRequestIdRef.current === requestId) {
-          setUnreadState((current) => ({
-            ...current,
-            loading: false,
-            error: getErrorMessage(error, "Failed to load unread count."),
-            loaded: true,
-          }));
-        }
-        return null;
-      })
+      .catch(() => null)
       .finally(() => {
         if (unreadRequestRef.current === request) {
           unreadRequestRef.current = null;
@@ -209,7 +153,8 @@ export function NotificationProvider({ children }) {
     return request;
   }, []);
 
-  const refreshLatest = useCallback(async ({ force = false, status = "all" } = {}) => {
+  /** Tải danh sách notification gần nhất để hiển thị trong dropdown. */
+  const refreshLatest = useCallback(async ({ force = false } = {}) => {
     if (!getAccessToken()) {
       setLatestState(initialLatestState);
       return null;
@@ -223,27 +168,18 @@ export function NotificationProvider({ children }) {
     latestRequestIdRef.current = requestId;
     setLatestState((current) => ({
       ...current,
-      items: current.status === status ? current.items : [],
-      status,
       loading: true,
       error: null,
     }));
 
     const request = notificationService
-      .list({ page: 0, size: LATEST_NOTIFICATION_SIZE, status })
+      .list({ page: 0, size: LATEST_NOTIFICATION_SIZE })
       .then((page) => {
         if (latestRequestIdRef.current === requestId) {
           latestItemsRef.current = page.items;
-          latestTotalItemsRef.current = page.totalItems;
-          if (status === "all") {
-            activeTotalItemsRef.current = page.totalItems;
-            setActiveTotalItems(page.totalItems);
-          }
           latestLoadedRef.current = true;
           setLatestState({
             items: page.items,
-            totalItems: page.totalItems,
-            status,
             loading: false,
             error: null,
             loaded: true,
@@ -256,7 +192,6 @@ export function NotificationProvider({ children }) {
           latestLoadedRef.current = true;
           setLatestState((current) => ({
             ...current,
-            status,
             loading: false,
             error: getErrorMessage(error, "Failed to load notifications."),
             loaded: true,
@@ -274,10 +209,10 @@ export function NotificationProvider({ children }) {
     return request;
   }, []);
 
+  /** Đồng bộ badge và danh sách sau một mutation thành công. */
   const synchronizeAfterMutation = useCallback(() => {
-    setMutationVersion((value) => value + 1);
     void refreshUnread({ force: true });
-    void refreshLatest({ force: true, status: latestStatusRef.current });
+    void refreshLatest({ force: true });
   }, [refreshLatest, refreshUnread]);
 
   useEffect(() => {
@@ -290,11 +225,12 @@ export function NotificationProvider({ children }) {
   }, [authKey, refreshUnread, resetState]);
 
   useEffect(() => {
+    /** Đồng bộ notification khi người dùng quay lại cửa sổ ứng dụng. */
     function handleFocus() {
       if (!getAccessToken()) return;
       void refreshUnread({ force: true });
       if (latestLoadedRef.current) {
-        void refreshLatest({ force: true, status: latestStatusRef.current });
+        void refreshLatest({ force: true });
       }
     }
 
@@ -302,98 +238,22 @@ export function NotificationProvider({ children }) {
     return () => window.removeEventListener("focus", handleFocus);
   }, [refreshLatest, refreshUnread]);
 
+  /** Chặn nhiều request click đồng thời trên cùng một notification. */
   const beginNotificationMutation = useCallback((notificationId, operation) => {
     if (!notificationId) return Promise.resolve(null);
 
     const existing = pendingNotificationPromisesRef.current.get(notificationId);
     if (existing) return existing;
 
-    setPendingNotificationIds((current) => {
-      const next = new Set(current);
-      next.add(notificationId);
-      return next;
-    });
-
     const promise = operation().finally(() => {
       pendingNotificationPromisesRef.current.delete(notificationId);
-      setPendingNotificationIds((current) => {
-        const next = new Set(current);
-        next.delete(notificationId);
-        return next;
-      });
     });
 
     pendingNotificationPromisesRef.current.set(notificationId, promise);
     return promise;
   }, []);
 
-  const beginBulkMutation = useCallback((action, operation) => {
-    const existing = pendingBulkPromisesRef.current.get(action);
-    if (existing) return existing;
-
-    setPendingBulkActions((current) => {
-      const next = new Set(current);
-      next.add(action);
-      return next;
-    });
-
-    const promise = operation().finally(() => {
-      pendingBulkPromisesRef.current.delete(action);
-      setPendingBulkActions((current) => {
-        const next = new Set(current);
-        next.delete(action);
-        return next;
-      });
-    });
-
-    pendingBulkPromisesRef.current.set(action, promise);
-    return promise;
-  }, []);
-
-  const markRead = useCallback(
-    (notification) =>
-      beginNotificationMutation(notification?.id, async () => {
-        const previousUnread = unreadCountRef.current;
-        const previousItems = latestItemsRef.current;
-        const wasUnread = isUnreadNotification(notification);
-        const timestamp = nowIso();
-
-        if (wasUnread) {
-          setUnreadState((current) => ({
-            ...current,
-            count: clampUnreadCount(current.count - 1),
-          }));
-        }
-        setLatestState((current) => ({
-          ...current,
-          items: updateNotification(current.items, notification.id, (item) =>
-            withNotificationRead(item, timestamp),
-          ).filter((item) => current.status !== "unread" || isUnreadNotification(item)),
-        }));
-
-        try {
-          const saved = await notificationService.markRead(notification.id);
-          setLatestState((current) => ({
-            ...current,
-            items: applyNotification(current.items, saved),
-          }));
-          synchronizeAfterMutation();
-          return saved;
-        } catch (error) {
-          setUnreadState((current) => ({
-            ...current,
-            count: previousUnread,
-          }));
-          setLatestState((current) => ({
-            ...current,
-            items: previousItems,
-          }));
-          throw error;
-        }
-      }),
-    [beginNotificationMutation, synchronizeAfterMutation],
-  );
-
+  /** Ghi nhận click, đồng thời cập nhật trạng thái đã đọc theo hướng optimistic. */
   const recordClick = useCallback(
     (notification) =>
       beginNotificationMutation(notification?.id, async () => {
@@ -403,17 +263,14 @@ export function NotificationProvider({ children }) {
         const timestamp = nowIso();
 
         if (wasUnread) {
-          setUnreadState((current) => ({
-            ...current,
-            count: clampUnreadCount(current.count - 1),
-          }));
+          setUnreadCount((current) => clampUnreadCount(current - 1));
         }
         setLatestState((current) => ({
           ...current,
           items: updateNotification(current.items, notification.id, (item) => ({
             ...withNotificationRead(item, timestamp),
             clickedAt: item.clickedAt || timestamp,
-          })).filter((item) => current.status !== "unread" || isUnreadNotification(item)),
+          })),
         }));
 
         try {
@@ -425,10 +282,7 @@ export function NotificationProvider({ children }) {
           synchronizeAfterMutation();
           return saved;
         } catch (error) {
-          setUnreadState((current) => ({
-            ...current,
-            count: previousUnread,
-          }));
+          setUnreadCount(previousUnread);
           setLatestState((current) => ({
             ...current,
             items: previousItems,
@@ -439,173 +293,76 @@ export function NotificationProvider({ children }) {
     [beginNotificationMutation, synchronizeAfterMutation],
   );
 
-  const archive = useCallback(
-    (notification) =>
-      beginNotificationMutation(notification?.id, async () => {
-        const previousUnread = unreadCountRef.current;
-        const previousItems = latestItemsRef.current;
-        const previousTotalItems = latestTotalItemsRef.current;
-        const previousActiveTotalItems = activeTotalItemsRef.current;
-        const wasUnread = isUnreadNotification(notification);
-
-        if (wasUnread) {
-          setUnreadState((current) => ({
-            ...current,
-            count: clampUnreadCount(current.count - 1),
-          }));
-        }
-        setLatestState((current) => ({
-          ...current,
-          items: removeNotification(current.items, notification.id),
-          totalItems: Math.max(0, current.totalItems - 1),
-        }));
-        setActiveTotalItems((current) => Math.max(0, current - 1));
-
-        try {
-          const saved = await notificationService.archive(notification.id);
-          synchronizeAfterMutation();
-          return saved;
-        } catch (error) {
-          setUnreadState((current) => ({
-            ...current,
-            count: previousUnread,
-          }));
-          setLatestState((current) => ({
-            ...current,
-            items: previousItems,
-            totalItems: previousTotalItems,
-          }));
-          setActiveTotalItems(previousActiveTotalItems);
-          throw error;
-        }
-      }),
-    [beginNotificationMutation, synchronizeAfterMutation],
-  );
-
+  /** Đánh dấu toàn bộ notification đã đọc và rollback nếu API thất bại. */
   const markAllRead = useCallback(
-    () =>
-      beginBulkMutation("read-all", async () => {
-        const previousUnread = unreadCountRef.current;
-        const previousItems = latestItemsRef.current;
-        const timestamp = nowIso();
+    () => {
+      if (pendingMarkAllReadPromiseRef.current) {
+        return pendingMarkAllReadPromiseRef.current;
+      }
 
-        setUnreadState((current) => ({ ...current, count: 0 }));
-        setLatestState((current) => ({
-          ...current,
-          items:
-            current.status === "unread"
-              ? []
-              : current.items.map((item) => withNotificationRead(item, timestamp)),
-          totalItems: current.status === "unread" ? 0 : current.totalItems,
-        }));
+      const previousUnread = unreadCountRef.current;
+      const previousItems = latestItemsRef.current;
+      const timestamp = nowIso();
 
-        try {
-          const response = await notificationService.markAllRead();
-          setUnreadState((current) => ({
-            ...current,
-            count: clampUnreadCount(response.unreadCount),
-          }));
+      setIsMarkingAllRead(true);
+      setUnreadCount(0);
+      setLatestState((current) => ({
+        ...current,
+        items: current.items.map((item) => withNotificationRead(item, timestamp)),
+      }));
+
+      const promise = notificationService
+        .markAllRead()
+        .then((response) => {
+          setUnreadCount(clampUnreadCount(response.unreadCount));
           synchronizeAfterMutation();
           return response;
-        } catch (error) {
-          setUnreadState((current) => ({
-            ...current,
-            count: previousUnread,
-          }));
+        })
+        .catch((error) => {
+          setUnreadCount(previousUnread);
           setLatestState((current) => ({
             ...current,
             items: previousItems,
           }));
           throw error;
-        }
-      }),
-    [beginBulkMutation, synchronizeAfterMutation],
-  );
+        })
+        .finally(() => {
+          if (pendingMarkAllReadPromiseRef.current === promise) {
+            pendingMarkAllReadPromiseRef.current = null;
+          }
+          setIsMarkingAllRead(false);
+        });
 
-  const archiveAll = useCallback(
-    () =>
-      beginBulkMutation("archive-all", async () => {
-        const previousUnread = unreadCountRef.current;
-        const previousItems = latestItemsRef.current;
-        const previousTotalItems = latestTotalItemsRef.current;
-        const previousActiveTotalItems = activeTotalItemsRef.current;
-
-        setUnreadState((current) => ({ ...current, count: 0 }));
-        setLatestState((current) => ({
-          ...current,
-          items: [],
-          totalItems: 0,
-        }));
-        setActiveTotalItems(0);
-
-        try {
-          const response = await notificationService.archiveAll();
-          setUnreadState((current) => ({
-            ...current,
-            count: clampUnreadCount(response.unreadCount),
-          }));
-          synchronizeAfterMutation();
-          return response;
-        } catch (error) {
-          setUnreadState((current) => ({
-            ...current,
-            count: previousUnread,
-          }));
-          setLatestState((current) => ({
-            ...current,
-            items: previousItems,
-            totalItems: previousTotalItems,
-          }));
-          setActiveTotalItems(previousActiveTotalItems);
-          throw error;
-        }
-      }),
-    [beginBulkMutation, synchronizeAfterMutation],
+      pendingMarkAllReadPromiseRef.current = promise;
+      return promise;
+    },
+    [synchronizeAfterMutation],
   );
 
   const value = useMemo(
     () => ({
-      unreadCount: unreadState.count,
-      unreadLoading: unreadState.loading,
-      unreadError: unreadState.error,
+      unreadCount,
       latestNotifications: latestState.items,
-      activeNotificationCount: activeTotalItems,
       latestLoading: latestState.loading,
       latestError: latestState.error,
       latestLoaded: latestState.loaded,
-      pendingNotificationIds,
-      pendingBulkActions,
-      mutationVersion,
       refreshUnread,
       refreshLatest,
-      markRead,
       recordClick,
-      archive,
-      archiveAll,
       markAllRead,
-      isNotificationMutating: (notificationId) =>
-        pendingNotificationIds.has(notificationId),
-      isBulkMutating: (action) => pendingBulkActions.has(action),
+      isMarkingAllRead,
     }),
     [
-      archive,
-      archiveAll,
+      isMarkingAllRead,
       latestState.error,
       latestState.items,
       latestState.loaded,
       latestState.loading,
       markAllRead,
-      markRead,
-      mutationVersion,
-      pendingBulkActions,
-      pendingNotificationIds,
       recordClick,
       refreshLatest,
       refreshUnread,
-      activeTotalItems,
-      unreadState.count,
-      unreadState.error,
-      unreadState.loading,
+      unreadCount,
     ],
   );
 

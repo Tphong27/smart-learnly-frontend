@@ -1,0 +1,27 @@
+.search-input__clear {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  margin-right: -10px;
+  border: 0;
+  border-radius: var(--sl-radius-md);
+  background: transparent;
+  color: var(--sl-muted);
+  cursor: pointer;
+}
+
+.search-input__clear:hover {
+  background: var(--sl-surface);
+  color: var(--sl-ink);
+}
+
+.search-input__clear:focus-visible {
+  outline: 3px solid rgba(86, 36, 208, 0.24);
+  outline-offset: 1px;
+}
+
+input[type="search"].input-field__control::-webkit-search-cancel-button {
+  display: none;
+}

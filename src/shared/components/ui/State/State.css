@@ -1,0 +1,63 @@
+.ui-state {
+  display: grid;
+  justify-items: center;
+  gap: var(--sl-space-2);
+  width: 100%;
+  padding: var(--sl-space-6) var(--sl-space-4);
+  color: var(--sl-muted);
+  text-align: center;
+}
+
+.ui-state__icon {
+  display: inline-flex;
+  color: var(--sl-neutral);
+}
+
+.ui-state h3,
+.ui-state p {
+  margin: 0;
+}
+
+.ui-state h3 {
+  color: var(--sl-ink);
+  font-size: 18px;
+}
+
+.ui-state p {
+  max-width: 56ch;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.ui-state__action {
+  margin-top: var(--sl-space-2);
+}
+
+.ui-state--danger .ui-state__icon {
+  color: var(--sl-danger);
+}
+
+.ui-state--loading {
+  grid-template-columns: auto auto;
+  justify-content: center;
+  align-items: center;
+  min-height: 120px;
+}
+
+.ui-state--compact {
+  min-height: 0;
+  padding: var(--sl-space-3);
+}
+
+.ui-state__spinner {
+  animation: ui-state-spin 700ms linear infinite;
+  color: var(--sl-purple);
+}
+
+@keyframes ui-state-spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ui-state__spinner { animation: none; }
+}

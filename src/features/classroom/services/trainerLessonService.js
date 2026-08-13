@@ -1,22 +1,16 @@
 import apiClient from "@/services/api-client";
 import { trainerCurriculumService } from "./trainerCurriculumService";
-
-// Chặn request thiếu định danh trước khi tạo URL API.
-function requireId(value, label) {
-  if (!value) {
-    throw new Error(`${label} is required`);
-  }
-}
+import { requireTrainerResourceId } from "./trainerServiceUtils";
 
 // Tạo service lesson giới hạn theo một lớp và tương thích với LessonDetailEditor.
 export function createTrainerLessonService(classId) {
-  requireId(classId, "Class ID");
+  requireTrainerResourceId(classId, "Class ID");
   const basePath = `/trainer/classes/${classId}/curriculum`;
 
   return {
     // Tải chi tiết lesson trong curriculum của lớp trainer.
     async getLessonDetail(lessonId) {
-      requireId(lessonId, "Lesson ID");
+      requireTrainerResourceId(lessonId, "Lesson ID");
       const response = await apiClient.get(
         `${basePath}/lessons/${lessonId}`,
       );

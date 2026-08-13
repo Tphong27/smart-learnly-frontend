@@ -1,4 +1,5 @@
 import apiClient from "@/services/api-client";
+import { unwrapApiData as unwrap } from "@/services/api-response";
 import { toNumber } from "@/shared/utils/formatters";
 
 const SUCCESS_STATUSES = ["SUCCESS", "PAID", "MATCHED"];
@@ -17,10 +18,6 @@ function normalizeStatus(status) {
 }
 
 /** Lấy phần data nghiệp vụ ra khỏi ApiResponse hoặc giữ nguyên payload đã được unwrap. */
-function unwrap(response) {
-  return response?.data ?? response;
-}
-
 /** Chuẩn hóa response tạo checkout thành model thanh toán dùng thống nhất trên frontend. */
 function normalizeCheckout(payload) {
   const data = unwrap(payload);

@@ -1,9 +1,5 @@
 import apiClient from "@/services/api-client";
-
-/** Trích dữ liệu nghiệp vụ từ cấu trúc response chuẩn của API. */
-function unwrap(response) {
-  return response?.data ?? response;
-}
+import { unwrapApiData as unwrap } from "@/services/api-response";
 
 /** Chỉ thêm trường có giá trị để request tạo thẻ không gửi dữ liệu rỗng. */
 function appendIfPresent(formData, key, value) {

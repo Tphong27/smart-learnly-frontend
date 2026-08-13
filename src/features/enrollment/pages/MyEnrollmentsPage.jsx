@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
-import { useToast } from '@/shared/components/ui'
+import { Button, DataTable, EmptyState, ErrorState, LoadingState, useToast } from '@/shared/components/ui'
+import Pagination from '@/shared/components/Pagination'
 import { enrollmentService } from '../services/enrollmentService'
 import { StatusBadge } from '@/shared/components/status'
 import { formatDate } from '@/shared/utils/formatters'
 import { DEFAULT_PAGE_SIZE } from '@/shared/constants/pagination'
 import './history-page.css'
 
+/** Hiển thị lịch sử ghi danh với trạng thái, bảng responsive và phân trang dùng chung. */
 export function MyEnrollmentsPage() {
   const toast = useToast()
   const [items, setItems] = useState([])
@@ -16,6 +17,43 @@ export function MyEnrollmentsPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [pageRequest, setPageRequest] = useState(0)
+  const columns = [
+    {
+      key: 'course',
+      header: 'Course',
+      render: (row) => (
+        <div className="history-course-cell">
+          <strong>{row.courseTitle}</strong>
+          {row.courseSlug ? <span>/{row.courseSlug}</span> : null}
+        </div>
+      ),
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      render: (row) => <StatusBadge status={row.status} />,
+    },
+    {
+      key: 'enrolledAt',
+      header: 'Enrolled at',
+      render: (row) => formatDate(row.enrollmentDate),
+    },
+    {
+      key: 'updatedAt',
+      header: 'Last update',
+      render: (row) => formatDate(row.updatedAt),
+    },
+    {
+      key: 'actions',
+      header: 'Actions',
+      cellClassName: 'history-table__actions',
+      render: (row) => row.courseSlug ? (
+        <Button to={`/courses/${row.courseSlug}`} variant="link" size="sm">
+          View course
+        </Button>
+      ) : null,
+    },
+  ]
 
   useEffect(() => {
     let cancelled = false
@@ -57,70 +95,28 @@ export function MyEnrollmentsPage() {
         </div>
 
         {loading ? (
-          <div className="history-loading">Loading enrollment history...</div>
+          <LoadingState label="Loading enrollment history..." />
         ) : error ? (
-          <div className="history-error">{error}</div>
+          <ErrorState title="Could not load enrollment history" description={error} />
         ) : items.length === 0 ? (
-          <div className="history-empty">You have not enrolled in any course yet.</div>
+          <EmptyState title="No enrollment history" description="You have not enrolled in any course yet." />
         ) : (
-          <table className="history-table">
-            <thead>
-              <tr>
-                <th>Course</th>
-                <th>Status</th>
-                <th>Enrolled at</th>
-                <th>Last update</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {items.map((row) => (
-                <tr key={row.enrollmentId}>
-                  <td>
-                    <strong>{row.courseTitle}</strong>
-                    {row.courseSlug && (
-                      <div style={{ color: '#94a3b8', fontSize: 12 }}>/{row.courseSlug}</div>
-                    )}
-                  </td>
-                  <td><StatusBadge status={row.status} /></td>
-                  <td>{formatDate(row.enrollmentDate)}</td>
-                  <td>{formatDate(row.updatedAt)}</td>
-                  <td style={{ textAlign: 'right' }}>
-                    {row.courseSlug && (
-                      <Link to={`/courses/${row.courseSlug}`} className="history-table__link">
-                        View course
-                      </Link>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <DataTable
+            columns={columns}
+            rows={items}
+            rowKey="enrollmentId"
+            ariaLabel="Enrollment history"
+          />
         )}
 
-        {totalPages > 1 && (
-          <div className="history-pagination">
-            <span style={{ color: '#64748b', fontSize: 13 }}>Page {page + 1} / {totalPages}</span>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button
-                type="button"
-                className="history-pagination__btn"
-                onClick={() => setPageRequest(page - 1)}
-                disabled={page === 0}
-              >
-                Previous
-              </button>
-              <button
-                type="button"
-                className="history-pagination__btn"
-                onClick={() => setPageRequest(page + 1)}
-                disabled={page + 1 >= totalPages}
-              >
-                Next
-              </button>
-            </div>
-          </div>
-        )}
+        <Pagination
+          page={page + 1}
+          totalPages={totalPages}
+          totalItems={totalItems}
+          size={DEFAULT_PAGE_SIZE}
+          onPageChange={(nextPage) => setPageRequest(nextPage - 1)}
+          ariaLabel="Enrollment history pagination"
+        />
       </section>
     </div>
   )

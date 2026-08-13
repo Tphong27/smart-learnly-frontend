@@ -12,40 +12,14 @@ import {
 import { getDashboardPathByRole } from "@/app/routes/dashboard-path";
 import { categoryService } from "@/features/course";
 import { NotificationBell } from "@/features/notification";
+import {
+  getInitials,
+  getUserDisplayName,
+  getUserRoleLabel,
+} from "@/shared/utils/userDisplay";
 import "./TraineeLayout.css";
 
 const STAFF_HEADER_ROLES = [ROLES.TRAINER, ROLES.SME, ROLES.TMO];
-
-function getDisplayName(user) {
-  return (
-    user?.fullName ||
-    [user?.firstName, user?.lastName].filter(Boolean).join(" ") ||
-    user?.email ||
-    "Learner"
-  );
-}
-
-function getInitials(name) {
-  return name
-    .split(" ")
-    .filter(Boolean)
-    .map((part) => part[0])
-    .join("")
-    .slice(0, 2)
-    .toUpperCase();
-}
-
-function getRoleLabel(role) {
-  const labels = {
-    [ROLES.TRAINEE]: "Learner",
-    [ROLES.TRAINER]: "Trainer",
-    [ROLES.SME]: "SME",
-    [ROLES.TMO]: "TMO",
-    [ROLES.ADMIN]: "Admin",
-    [ROLES.GUEST]: "Guest",
-  };
-  return labels[role?.toLowerCase()] || labels[role] || "User";
-}
 
 export function TraineeHeader({ user, onLogout, roleLabel }) {
   const actionsRef = useRef(null);
@@ -55,9 +29,9 @@ export function TraineeHeader({ user, onLogout, roleLabel }) {
   const [categoriesOpen, setCategoriesOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
 
-  const displayName = getDisplayName(user);
+  const displayName = getUserDisplayName(user, "Learner");
   const initials = getInitials(displayName);
-  const roleText = roleLabel || getRoleLabel(user?.role);
+  const roleText = roleLabel || getUserRoleLabel(user?.role);
   const dashboardPath = getDashboardPathByRole(user?.role);
   const normalizedRole = normalizeRole(user?.role);
   const isStaffHeader = isRoleAllowed(normalizedRole, STAFF_HEADER_ROLES);

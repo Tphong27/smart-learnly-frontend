@@ -43,6 +43,27 @@
     --sl-danger-soft: #fde7e7;
     --sl-info: #5b42bd;
     --sl-info-soft: #f0ecff;
+    --sl-neutral: #475569;
+    --sl-neutral-soft: #f1f5f9;
+    --sl-on-success: #0f5c4e;
+    --sl-on-warning: #7a4900;
+    --sl-on-danger: #991b1b;
+    --sl-on-info: #49349c;
+
+    /* Shared rhythm, focus, motion and layer tokens. */
+    --sl-space-1: 4px;
+    --sl-space-2: 8px;
+    --sl-space-3: 12px;
+    --sl-space-4: 16px;
+    --sl-space-5: 24px;
+    --sl-space-6: 32px;
+    --sl-control-height: 44px;
+    --sl-focus-ring: 0 0 0 3px rgba(86, 36, 208, 0.2);
+    --sl-motion-fast: 150ms;
+    --sl-motion-standard: 200ms;
+    --sl-z-dropdown: 900;
+    --sl-z-modal: 1000;
+    --sl-z-toast: 1100;
 
     /* Island UI - Elevation levels */
     --island-1:

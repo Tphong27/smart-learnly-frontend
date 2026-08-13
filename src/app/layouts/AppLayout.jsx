@@ -37,7 +37,7 @@ export function AppLayout() {
     ]);
     const workspaceLabel = (() => {
         const path = location.pathname;
-        if (/\/courses\/[^/]+\/questions/.test(path)) return "Course Questions";
+        if (/\/courses\/[^/]+\/modules\/[^/]+\/questions/.test(path)) return "Module Questions";
         if (path.includes("/courses")) return "Course Management";
         if (path.includes("/users-management")) return "Users & Roles";
         if (path.includes("/categories")) return "Categories";

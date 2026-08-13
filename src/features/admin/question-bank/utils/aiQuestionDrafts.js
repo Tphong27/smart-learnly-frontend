@@ -151,16 +151,27 @@ export function canDraftBeSelected(draft) {
   )
 }
 
-export function aiQuestionTypeLabel(type) {
-  if (type === "single_choice") return "Single choice"
-  if (type === "true_false") return "True/False"
-  return "Multiple choice"
-}
-
-export function validationStatusLabel(status) {
-  if (status === "valid") return "Valid"
-  if (status === "warning") return "Warning"
-  return "Invalid"
+/** Gom workflow, validation và evidence thành một trạng thái review dễ hiểu. */
+export function aiDraftDisplayStatus(draft) {
+  if (draft.status === "accepted") {
+    return { tone: "accepted", label: "Accepted" }
+  }
+  if (draft.status === "rejected") {
+    return { tone: "rejected", label: "Rejected" }
+  }
+  if (
+    draft.validationStatus === "invalid" ||
+    evidenceIsUnsuitable(draft)
+  ) {
+    return { tone: "invalid", label: "Invalid" }
+  }
+  if (
+    draft.validationStatus === "warning" ||
+    evidenceNeedsReview(draft)
+  ) {
+    return { tone: "warning", label: "Needs review" }
+  }
+  return { tone: "ready", label: "Ready" }
 }
 
 export function evidenceNeedsReview(draft) {
@@ -169,9 +180,4 @@ export function evidenceNeedsReview(draft) {
 
 export function evidenceIsUnsuitable(draft) {
   return ["invalid", "not_suitable"].includes(draft.evidenceStatus)
-}
-
-export function getDefaultLanguage(bank) {
-  const language = String(bank?.language || bank?.courseLanguage || "").toLowerCase()
-  return language === "en" ? "en" : "vi"
 }

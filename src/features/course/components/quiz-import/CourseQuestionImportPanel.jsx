@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import { Search } from "lucide-react";
 import Pagination from "@/shared/components/Pagination";
 import { Button } from "@/shared/components/ui";
-import { courseContentService } from "../../services/courseContentService";
 import { questionBankService } from "@/features/admin/question-bank";
 import { sanitizeQuestionHtml } from "@/shared/utils/htmlSanitizer";
 import { prepareCourseQuestionImport } from "@/features/course/utils/course-question-quiz-import";
@@ -13,41 +12,30 @@ const DEFAULT_PAGE_SIZE = 10;
 const DEFAULT_FILTERS = {
     search: "",
     type: "all",
-    moduleId: "all",
 };
 
-function normalizeModules(payload) {
-    const root = payload?.data ?? payload;
-    const items = Array.isArray(root)
-        ? root
-        : (root?.items ?? root?.content ?? root?.sections ?? []);
-
-    return items
-        .map((item, index) => ({
-            id: item.sectionId || item.id,
-            title: item.title || item.name || `Module ${index + 1}`,
-        }))
-        .filter((item) => item.id);
-}
-
+/** Lấy định danh ổn định của câu hỏi từ các response shape được backend hỗ trợ. */
 function getQuestionId(question) {
     return question?.questionId || question?.id || "";
 }
 
-function isArchivedQuestion(question) {
+/** Chỉ cho phép câu hỏi đã được duyệt xuất hiện và được import vào quiz. */
+function isApprovedQuestion(question) {
     return (
         String(question?.status || "")
             .trim()
-            .toLowerCase() === "archived"
+            .toLowerCase() === "approved"
     );
 }
 
+/** Chuẩn hóa nội dung chính để hiển thị và báo lỗi trùng câu hỏi. */
 function questionLabel(question) {
     return String(
         question?.questionText || question?.title || question?.content || "",
     ).trim();
 }
 
+/** Chuyển loại câu hỏi backend thành nhãn ngắn, dễ đọc trong danh sách. */
 function questionTypeLabel(question) {
     const type = String(
         question?.questionType || question?.type || "",
@@ -59,15 +47,17 @@ function questionTypeLabel(question) {
     return type || "Unknown";
 }
 
+/** Tạo query filter gửi server để lọc trước khi phân trang. */
 function buildFilterParams(filters) {
     return {
         includeArchived: false,
+        status: "approved",
         search: filters.search.trim() || undefined,
         type: filters.type === "all" ? undefined : filters.type,
-        moduleId: filters.moduleId === "all" ? undefined : filters.moduleId,
     };
 }
 
+/** Tập hợp ID câu hỏi trùng để đánh dấu trực tiếp trong kết quả import. */
 function buildDuplicateQuestionIds(prepared, selectedQuestions) {
     const ids = new Set();
     prepared.duplicates.forEach((duplicate) => {
@@ -78,14 +68,15 @@ function buildDuplicateQuestionIds(prepared, selectedQuestions) {
     return ids;
 }
 
+/** Hiển thị và xử lý danh sách câu hỏi course có thể import vào quiz hiện tại. */
 export function CourseQuestionImportPanel({
     courseId,
+    moduleId,
     existingQuestions = [],
     onImport,
     onClose,
-    onBusyChange,
+    onImportingChange,
 }) {
-    const [modules, setModules] = useState([]);
     const [filters, setFilters] = useState(DEFAULT_FILTERS);
     const [debouncedFilters, setDebouncedFilters] = useState(DEFAULT_FILTERS);
     const [items, setItems] = useState([]);
@@ -121,14 +112,14 @@ export function CourseQuestionImportPanel({
     const bankBusy = loadingQuestions || importing;
     const canImportSelected =
         selectedQuestions.length > 0 &&
-        !selectedQuestions.some(isArchivedQuestion) &&
+        selectedQuestions.every(isApprovedQuestion) &&
         preparedSelection.valid &&
         preparedSelection.duplicates.length === 0 &&
         !bankBusy;
 
     useEffect(() => {
-        onBusyChange?.(bankBusy);
-    }, [bankBusy, onBusyChange]);
+        onImportingChange?.(importing);
+    }, [importing, onImportingChange]);
 
     useEffect(() => {
         const timer = window.setTimeout(
@@ -140,29 +131,10 @@ export function CourseQuestionImportPanel({
 
     useEffect(
         () => () => {
-            onBusyChange?.(false);
+            onImportingChange?.(false);
         },
-        [onBusyChange],
+        [onImportingChange],
     );
-
-    useEffect(() => {
-        if (!courseId) return;
-
-        let cancelled = false;
-        (async () => {
-            try {
-                const moduleData =
-                    await courseContentService.getCourseContent(courseId);
-                if (!cancelled) setModules(normalizeModules(moduleData));
-            } catch {
-                if (!cancelled) setModules([]);
-            }
-        })();
-
-        return () => {
-            cancelled = true;
-        };
-    }, [courseId]);
 
     useEffect(() => {
         if (!courseId) return undefined;
@@ -172,25 +144,28 @@ export function CourseQuestionImportPanel({
             setLoadingQuestions(true);
             setQuestionsError("");
             try {
-                const response = await questionBankService.listCourseQuestions(
-                    courseId,
-                    {
-                        page: pageInfo.page,
-                        size: DEFAULT_PAGE_SIZE,
-                        ...buildFilterParams(debouncedFilters),
-                    },
-                );
+                const params = {
+                    page: pageInfo.page,
+                    size: DEFAULT_PAGE_SIZE,
+                    ...buildFilterParams(debouncedFilters),
+                };
+                const response = moduleId
+                    ? await questionBankService.listModuleQuestions(
+                          courseId,
+                          moduleId,
+                          params,
+                      )
+                    : await questionBankService.listCourseQuestions(
+                          courseId,
+                          params,
+                      );
                 if (cancelled) return;
                 const responseItems = Array.isArray(response.items)
                     ? response.items
                     : [];
-                setItems(
-                    responseItems.filter(
-                        (question) => !isArchivedQuestion(question),
-                    ),
-                );
+                setItems(responseItems.filter(isApprovedQuestion));
                 setSelectedQuestions((current) =>
-                    current.filter((question) => !isArchivedQuestion(question)),
+                    current.filter(isApprovedQuestion),
                 );
                 setPageInfo({
                     page: Number(response.page || 0),
@@ -212,8 +187,9 @@ export function CourseQuestionImportPanel({
         return () => {
             cancelled = true;
         };
-    }, [courseId, debouncedFilters, pageInfo.page]);
+    }, [courseId, debouncedFilters, moduleId, pageInfo.page]);
 
+    /** Cập nhật một filter, quay về trang đầu và xóa lỗi import cũ. */
     const updateFilter = (name, value) => {
         setFilters((current) => ({ ...current, [name]: value }));
         setPageInfo((current) => ({
@@ -224,6 +200,7 @@ export function CourseQuestionImportPanel({
         setImportError("");
     };
 
+    /** Đưa bộ lọc câu hỏi về trạng thái mặc định. */
     const resetFilters = () => {
         setFilters(DEFAULT_FILTERS);
         setPageInfo((current) => ({
@@ -234,11 +211,12 @@ export function CourseQuestionImportPanel({
         setImportError("");
     };
 
+    /** Chọn hoặc bỏ chọn một câu hỏi đã được duyệt. */
     const toggleQuestion = (question) => {
         if (bankBusy) return;
-        if (isArchivedQuestion(question)) {
+        if (!isApprovedQuestion(question)) {
             setImportError(
-                "Archived questions cannot be imported into a quiz.",
+                "Only approved questions can be imported into a quiz.",
             );
             return;
         }
@@ -253,11 +231,10 @@ export function CourseQuestionImportPanel({
         });
     };
 
+    /** Chọn hoặc bỏ chọn toàn bộ câu hỏi hợp lệ trên trang hiện tại. */
     const toggleVisibleSelection = () => {
         if (bankBusy) return;
-        const selectableItems = items.filter(
-            (question) => !isArchivedQuestion(question),
-        );
+        const selectableItems = items.filter(isApprovedQuestion);
         const visibleIds = selectableItems.map(getQuestionId).filter(Boolean);
         if (visibleIds.length === 0) return;
 
@@ -281,12 +258,14 @@ export function CourseQuestionImportPanel({
         });
     };
 
+    /** Xóa toàn bộ lựa chọn hiện tại khi không có request đang chạy. */
     const clearSelection = () => {
         if (bankBusy) return;
         setSelectedQuestions([]);
         setImportError("");
     };
 
+    /** Xác minh lại câu hỏi mới nhất rồi lưu các câu hợp lệ vào quiz hiện tại. */
     const importQuestions = async (rawQuestions) => {
         if (importing) return false;
         if (!courseId) {
@@ -297,12 +276,12 @@ export function CourseQuestionImportPanel({
             setImportError("Select at least one question.");
             return false;
         }
-        if (rawQuestions.some(isArchivedQuestion)) {
+        if (!rawQuestions.every(isApprovedQuestion)) {
             setImportError(
-                "Archived questions cannot be imported into a quiz.",
+                "Only approved questions can be imported into a quiz.",
             );
             setSelectedQuestions((current) =>
-                current.filter((question) => !isArchivedQuestion(question)),
+                current.filter(isApprovedQuestion),
             );
             return false;
         }
@@ -338,32 +317,57 @@ export function CourseQuestionImportPanel({
         setImportError("");
         try {
             const latestQuestions = await Promise.all(
-                rawQuestions.map((question) =>
-                    questionBankService.getCourseQuestion(
-                        courseId,
-                        getQuestionId(question),
-                    ),
-                ),
+                rawQuestions.map((question) => {
+                    const questionId = getQuestionId(question);
+                    return moduleId
+                        ? questionBankService.getModuleQuestion(
+                              courseId,
+                              moduleId,
+                              questionId,
+                          )
+                        : questionBankService.getCourseQuestion(
+                              courseId,
+                              questionId,
+                          );
+                }),
             );
-            const archivedIds = new Set(
+            const unapprovedIds = new Set(
                 latestQuestions
-                    .filter(isArchivedQuestion)
+                    .filter((question) => !isApprovedQuestion(question))
                     .map(getQuestionId)
                     .filter(Boolean),
             );
-            if (archivedIds.size > 0) {
+            if (unapprovedIds.size > 0) {
                 setSelectedQuestions((current) =>
                     current.filter(
-                        (question) => !archivedIds.has(getQuestionId(question)),
+                        (question) =>
+                            !unapprovedIds.has(getQuestionId(question)),
                     ),
                 );
                 setImportError(
-                    `${archivedIds.size} selected question(s) were archived and cannot be imported.`,
+                    `${unapprovedIds.size} selected question(s) are no longer approved and cannot be imported.`,
                 );
                 return false;
             }
 
-            const saved = await onImport(prepared.mappedQuestions);
+            const latestPrepared = prepareCourseQuestionImport(
+                existingQuestions,
+                latestQuestions,
+            );
+            if (!latestPrepared.valid || latestPrepared.duplicates.length > 0) {
+                setImportError(
+                    latestPrepared.errors
+                        .map((error) => error.message)
+                        .join(" ") ||
+                        "The selected questions changed. Review them and try again.",
+                );
+                return false;
+            }
+
+            const saved = await onImport(
+                latestPrepared.mappedQuestions,
+                latestQuestions,
+            );
             if (!saved) {
                 setImportError(
                     "Questions could not be imported. Please try again.",
@@ -389,26 +393,10 @@ export function CourseQuestionImportPanel({
     ).length;
     const hasActiveFilters =
         filters.search.trim() ||
-        filters.type !== "all" ||
-        filters.moduleId !== "all";
+        filters.type !== "all";
 
     return (
-        <section className="quiz-question-bank-import quiz-question-bank-import--inline">
-            <div className="quiz-question-bank-import__inline-header">
-                <h3 className="quiz-question-bank-import__inline-title">
-                    Import from question list
-                </h3>
-                <Button
-                    type="button"
-                    variant="ghost"
-                    onClick={onClose}
-                    disabled={importing}
-                >
-                    Close
-                </Button>
-            </div>
-
-            <div className="quiz-question-bank-import">
+        <section className="quiz-question-bank-import">
                 <div className="quiz-question-bank-import__toolbar">
                     <label className="quiz-question-import__field quiz-question-bank-import__field--search">
                         <span className="quiz-question-import__field-label">
@@ -453,29 +441,6 @@ export function CourseQuestionImportPanel({
                         </select>
                     </label>
 
-                    <label className="quiz-question-import__field">
-                        <span className="quiz-question-import__field-label">
-                            Module
-                        </span>
-                        <select
-                            className="quiz-question-import__select"
-                            value={filters.moduleId}
-                            onChange={(event) =>
-                                updateFilter("moduleId", event.target.value)
-                            }
-                            disabled={
-                                !courseId || importing || modules.length === 0
-                            }
-                        >
-                            <option value="all">All modules</option>
-                            {modules.map((module) => (
-                                <option key={module.id} value={module.id}>
-                                    {module.title}
-                                </option>
-                            ))}
-                        </select>
-                    </label>
-
                     {hasActiveFilters && (
                         <Button
                             type="button"
@@ -494,7 +459,7 @@ export function CourseQuestionImportPanel({
                         className="quiz-question-bank-import__pool-meta"
                         aria-live="polite"
                     >
-                        <strong>{pageInfo.totalItems}</strong> questions
+                        <strong>{pageInfo.totalItems}</strong> approved questions
                         <span aria-hidden="true">·</span>
                         <strong>{selectedQuestions.length}</strong> selected
                     </div>
@@ -594,7 +559,7 @@ export function CourseQuestionImportPanel({
                         </div>
                     ) : items.length === 0 ? (
                         <div className="admin-empty">
-                            No questions match the current filters.
+                            No approved questions match the current filters.
                         </div>
                     ) : (
                         <div className="quiz-question-bank-import__list">
@@ -679,9 +644,7 @@ export function CourseQuestionImportPanel({
                         }));
                     }}
                 />
-            </div>
-
-            <div className="quiz-question-bank-import__inline-footer">
+            <div className="quiz-question-bank-import__modal-footer">
                 <div
                     className="quiz-question-bank-import__footer-summary"
                     aria-live="polite"

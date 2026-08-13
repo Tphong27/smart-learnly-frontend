@@ -3,7 +3,6 @@ import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
-  AlertCircle,
   ArrowLeft,
   BookOpen,
   ImageIcon,
@@ -12,7 +11,17 @@ import {
   Settings2,
   WalletCards,
 } from "lucide-react";
-import { Button, Form, useToast } from "@/shared/components/ui";
+import {
+  Alert,
+  Button,
+  Checkbox,
+  Form,
+  Input,
+  LoadingState,
+  Select,
+  Textarea,
+  useToast,
+} from "@/shared/components/ui";
 import { categoryService, courseAdminService } from "@/features/course";
 import { adminUserService } from "@/features/admin/users/services/adminUserService";
 import ThumbnailUploader from "@/features/course/components/ThumbnailUploader";
@@ -275,37 +284,19 @@ export function AdminCourseFormPage() {
   }, [canManageAssignment, toast]);
 
   if (loading) {
-    return (
-      <div
-        className="sl-course-editor sl-course-editor--loading"
-        role="status"
-        aria-live="polite"
-        aria-label="Loading course editor"
-      >
-        <div className="sl-course-editor__loading-header">
-          <span className="sl-course-editor__skeleton sl-course-editor__skeleton--short" />
-          <span className="sl-course-editor__skeleton sl-course-editor__skeleton--title" />
-          <span className="sl-course-editor__skeleton sl-course-editor__skeleton--subtitle" />
-        </div>
-        <div className="sl-course-editor__loading-layout">
-          <span className="sl-course-editor__skeleton sl-course-editor__skeleton--panel" />
-          <span className="sl-course-editor__skeleton sl-course-editor__skeleton--aside" />
-        </div>
-      </div>
-    );
+    return <LoadingState label="Loading course editor..." />;
   }
 
   return (
     <div className="sl-course-editor">
       <header className="sl-course-editor__header">
-        <button
-          type="button"
-          className="sl-course-editor__back"
+        <Button
+          variant="ghost"
+          leftIcon={<ArrowLeft size={16} />}
           onClick={() => navigate(courseListPath)}
         >
-          <ArrowLeft size={16} aria-hidden="true" />
           Back to courses
-        </button>
+        </Button>
 
         <div className="sl-course-editor__heading-row">
           <div>
@@ -335,13 +326,9 @@ export function AdminCourseFormPage() {
         onSubmit={handleSubmit(onSubmit)}
       >
         {serverError && (
-          <div className="sl-course-editor__alert" role="alert">
-            <AlertCircle size={20} aria-hidden="true" />
-            <div>
-              <strong>Course could not be saved</strong>
-              <p>{serverError}</p>
-            </div>
-          </div>
+          <Alert tone="danger" title="Course could not be saved">
+            {serverError}
+          </Alert>
         )}
 
         <div className="sl-course-editor__layout">
@@ -360,42 +347,26 @@ export function AdminCourseFormPage() {
               </div>
 
               <div className="sl-course-editor__fields">
-                <div className="sl-course-field sl-course-field--full">
-                  <label htmlFor="course-title">
-                    Course title <span aria-hidden="true">*</span>
-                  </label>
-                  <input
-                    id="course-title"
-                    type="text"
-                    placeholder="e.g. Mastering React from A to Z"
-                    disabled={isReadOnly}
-                    {...register("title")}
-                    aria-invalid={Boolean(errors.title) || undefined}
-                    aria-describedby={
-                      errors.title ? "course-title-error" : undefined
-                    }
-                  />
-                  {errors.title && (
-                    <p
-                      id="course-title-error"
-                      className="sl-course-field__error"
-                      role="alert"
-                    >
-                      {errors.title.message}
-                    </p>
-                  )}
-                </div>
+                <Input
+                  id="course-title"
+                  className="sl-course-field--full"
+                  label="Course title"
+                  required
+                  placeholder="e.g. Mastering React from A to Z"
+                  disabled={isReadOnly}
+                  error={errors.title}
+                  {...register("title")}
+                />
 
                 {canManageAssignment ? (
-                  <div className="sl-course-field sl-course-field--full">
-                    <label htmlFor="course-assigned-sme">Assigned SME</label>
-
-                    <select
-                      id="course-assigned-sme"
-                      disabled={isReadOnly}
-                      {...register("assignedSmeId")}
-                      aria-invalid={Boolean(errors.assignedSmeId) || undefined}
-                    >
+                  <Select
+                    id="course-assigned-sme"
+                    className="sl-course-field--full"
+                    label="Assigned SME"
+                    disabled={isReadOnly}
+                    error={errors.assignedSmeId}
+                    {...register("assignedSmeId")}
+                  >
                       <option value="">Not assigned</option>
 
                       {smeOptions.map((sme) => (
@@ -403,72 +374,30 @@ export function AdminCourseFormPage() {
                           {sme.fullName || sme.email}
                         </option>
                       ))}
-                    </select>
-
-                    {errors.assignedSmeId ? (
-                      <p className="sl-course-field__error" role="alert">
-                        {errors.assignedSmeId.message}
-                      </p>
-                    ) : null}
-                  </div>
+                  </Select>
                 ) : null}
 
-                <div className="sl-course-field sl-course-field--full">
-                  <label htmlFor="course-short-description">
-                    Short description
-                  </label>
-                  <input
-                    id="course-short-description"
-                    type="text"
-                    maxLength={500}
-                    placeholder="Summarize the course in one or two sentences"
-                    disabled={isReadOnly}
-                    {...register("shortDescription")}
-                    aria-invalid={Boolean(errors.shortDescription) || undefined}
-                    aria-describedby={
-                      errors.shortDescription
-                        ? "course-short-description-error"
-                        : "course-short-description-help"
-                    }
-                  />
-                  {errors.shortDescription && (
-                    <p
-                      id="course-short-description-error"
-                      className="sl-course-field__error"
-                      role="alert"
-                    >
-                      {errors.shortDescription.message}
-                    </p>
-                  )}
-                </div>
+                <Input
+                  id="course-short-description"
+                  className="sl-course-field--full"
+                  label="Short description"
+                  maxLength={500}
+                  placeholder="Summarize the course in one or two sentences"
+                  disabled={isReadOnly}
+                  error={errors.shortDescription}
+                  {...register("shortDescription")}
+                />
 
-                <div className="sl-course-field sl-course-field--full">
-                  <label htmlFor="course-description">
-                    Detailed description
-                  </label>
-                  <textarea
-                    id="course-description"
-                    rows={8}
-                    placeholder="Explain what the course covers and who it is for"
-                    disabled={isReadOnly}
-                    {...register("description")}
-                    aria-invalid={Boolean(errors.description) || undefined}
-                    aria-describedby={
-                      errors.description
-                        ? "course-description-error"
-                        : undefined
-                    }
-                  />
-                  {errors.description && (
-                    <p
-                      id="course-description-error"
-                      className="sl-course-field__error"
-                      role="alert"
-                    >
-                      {errors.description.message}
-                    </p>
-                  )}
-                </div>
+                <Textarea
+                  id="course-description"
+                  className="sl-course-field--full"
+                  label="Detailed description"
+                  rows={8}
+                  placeholder="Explain what the course covers and who it is for"
+                  disabled={isReadOnly}
+                  error={errors.description}
+                  {...register("description")}
+                />
 
                 <div className="sl-course-field sl-course-field--full">
                   <label htmlFor="course-slug">Course URL slug</label>
@@ -515,29 +444,23 @@ export function AdminCourseFormPage() {
               </div>
 
               <div className="sl-course-editor__fields sl-course-editor__fields--split">
-                <div className="sl-course-field">
-                  <label htmlFor="course-outcomes">
-                    What learners will learn
-                  </label>
-                  <textarea
-                    id="course-outcomes"
-                    rows={7}
-                    placeholder="Add one learning outcome per line"
-                    disabled={isReadOnly}
-                    {...register("outcomes")}
-                  />
-                </div>
+                <Textarea
+                  id="course-outcomes"
+                  label="What learners will learn"
+                  rows={7}
+                  placeholder="Add one learning outcome per line"
+                  disabled={isReadOnly}
+                  {...register("outcomes")}
+                />
 
-                <div className="sl-course-field">
-                  <label htmlFor="course-requirements">Prerequisites</label>
-                  <textarea
-                    id="course-requirements"
-                    rows={7}
-                    placeholder="Add one requirement per line"
-                    disabled={isReadOnly}
-                    {...register("requirements")}
-                  />
-                </div>
+                <Textarea
+                  id="course-requirements"
+                  label="Prerequisites"
+                  rows={7}
+                  placeholder="Add one requirement per line"
+                  disabled={isReadOnly}
+                  {...register("requirements")}
+                />
               </div>
             </section>
           </main>
@@ -615,75 +538,46 @@ export function AdminCourseFormPage() {
               </div>
 
               <div className="sl-course-editor__fields">
-                <div className="sl-course-field sl-course-field--full">
-                  <label htmlFor="course-category">
-                    Category <span aria-hidden="true">*</span>
-                  </label>
-                  <select
-                    id="course-category"
-                    disabled={isReadOnly}
-                    {...register("categoryId")}
-                    aria-invalid={Boolean(errors.categoryId) || undefined}
-                    aria-describedby={
-                      errors.categoryId ? "course-category-error" : undefined
-                    }
-                  >
+                <Select
+                  id="course-category"
+                  className="sl-course-field--full"
+                  label="Category"
+                  required
+                  disabled={isReadOnly}
+                  error={errors.categoryId}
+                  {...register("categoryId")}
+                >
                     <option value="">Select a category</option>
                     {categories.map((category) => (
                       <option key={category.id} value={category.id}>
                         {category.name}
                       </option>
                     ))}
-                  </select>
-                  {errors.categoryId && (
-                    <p
-                      id="course-category-error"
-                      className="sl-course-field__error"
-                      role="alert"
-                    >
-                      {errors.categoryId.message}
-                    </p>
-                  )}
-                </div>
+                </Select>
 
-                <div className="sl-course-field sl-course-field--full">
-                  <label htmlFor="course-level">Level</label>
-                  <select
-                    id="course-level"
-                    disabled={isReadOnly}
-                    {...register("level")}
-                  >
+                <Select
+                  id="course-level"
+                  className="sl-course-field--full"
+                  label="Level"
+                  disabled={isReadOnly}
+                  {...register("level")}
+                >
                     {LEVEL_OPTIONS.map((option) => (
                       <option key={option.value} value={option.value}>
                         {option.label}
                       </option>
                     ))}
-                  </select>
-                </div>
+                </Select>
 
-                <div className="sl-course-field sl-course-field--full">
-                  <label htmlFor="course-language">Language</label>
-                  <input
-                    id="course-language"
-                    type="text"
-                    placeholder="e.g. en or vi"
-                    disabled={isReadOnly}
-                    {...register("language")}
-                    aria-invalid={Boolean(errors.language) || undefined}
-                    aria-describedby={
-                      errors.language ? "course-language-error" : undefined
-                    }
-                  />
-                  {errors.language && (
-                    <p
-                      id="course-language-error"
-                      className="sl-course-field__error"
-                      role="alert"
-                    >
-                      {errors.language.message}
-                    </p>
-                  )}
-                </div>
+                <Input
+                  id="course-language"
+                  className="sl-course-field--full"
+                  label="Language"
+                  placeholder="e.g. en or vi"
+                  disabled={isReadOnly}
+                  error={errors.language}
+                  {...register("language")}
+                />
               </div>
             </section>
 
@@ -700,92 +594,54 @@ export function AdminCourseFormPage() {
                 </div>
               </div>
 
-              <label className="sl-course-editor__free-option">
-                <input
-                  type="checkbox"
-                  disabled={isReadOnly}
-                  {...register("isFree")}
-                />
-                <span>
-                  <strong>Free course</strong>
-                  <small>Learners can enrol without paying.</small>
-                </span>
-              </label>
+              <Checkbox
+                label="Free course"
+                description="Learners can enrol without paying."
+                disabled={isReadOnly}
+                {...register("isFree")}
+              />
 
               <div className="sl-course-editor__fields">
-                <div className="sl-course-field sl-course-field--full">
-                  <label htmlFor="course-price">Price (VND)</label>
-                  <input
-                    id="course-price"
-                    type="number"
-                    min="0"
-                    inputMode="numeric"
-                    disabled={isFree || isReadOnly}
-                    {...register("price", { valueAsNumber: true })}
-                    aria-invalid={Boolean(errors.price) || undefined}
-                    aria-describedby={
-                      errors.price
-                        ? "course-price-help course-price-error"
-                        : "course-price-help"
-                    }
-                  />
-                  {errors.price && (
-                    <p
-                      id="course-price-error"
-                      className="sl-course-field__error"
-                      role="alert"
-                    >
-                      {errors.price.message}
-                    </p>
-                  )}
-                </div>
+                <Input
+                  id="course-price"
+                  className="sl-course-field--full"
+                  label="Price (VND)"
+                  type="number"
+                  min="0"
+                  inputMode="numeric"
+                  disabled={isFree || isReadOnly}
+                  error={errors.price}
+                  {...register("price", { valueAsNumber: true })}
+                />
 
-                <div className="sl-course-field sl-course-field--full">
-                  <label htmlFor="course-discounted-price">
-                    Discounted price (VND)
-                  </label>
-                  <input
-                    id="course-discounted-price"
-                    type="number"
-                    min="0"
-                    inputMode="numeric"
-                    disabled={isFree || isReadOnly}
-                    {...register("discountedPrice", {
-                      valueAsNumber: true,
-                    })}
-                    aria-invalid={Boolean(errors.discountedPrice) || undefined}
-                    aria-describedby={
-                      errors.discountedPrice
-                        ? "course-discount-help course-discount-error"
-                        : "course-discount-help"
-                    }
-                  />
-                  {errors.discountedPrice && (
-                    <p
-                      id="course-discount-error"
-                      className="sl-course-field__error"
-                      role="alert"
-                    >
-                      {errors.discountedPrice.message}
-                    </p>
-                  )}
-                </div>
+                <Input
+                  id="course-discounted-price"
+                  className="sl-course-field--full"
+                  label="Discounted price (VND)"
+                  type="number"
+                  min="0"
+                  inputMode="numeric"
+                  disabled={isFree || isReadOnly}
+                  error={errors.discountedPrice}
+                  {...register("discountedPrice", {
+                    valueAsNumber: true,
+                  })}
+                />
 
                 {isEdit ? (
-                  <div className="sl-course-field sl-course-field--full">
-                    <label htmlFor="course-status">Course status</label>
-                    <select
-                      id="course-status"
-                      disabled={isReadOnly}
-                      {...register("status")}
-                    >
+                  <Select
+                    id="course-status"
+                    className="sl-course-field--full"
+                    label="Course status"
+                    disabled={isReadOnly}
+                    {...register("status")}
+                  >
                       {STATUS_OPTIONS.map((option) => (
                         <option key={option.value} value={option.value}>
                           {option.label}
                         </option>
                       ))}
-                    </select>
-                  </div>
+                  </Select>
                 ) : (
                   <div className="sl-course-field sl-course-field--full">
                     <p

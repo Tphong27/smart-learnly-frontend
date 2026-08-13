@@ -5,13 +5,19 @@ import { authService } from "@/features/auth";
 import { getCurrentUser } from "@/services";
 import { SiteFooter } from "@/shared/components";
 import { isRoleAllowed, normalizeRole, ROLES } from "@/shared/constants/roles";
+import {
+    getFirstName,
+    getInitials,
+    getUserDisplayName,
+    getUserRoleLabel,
+} from "@/shared/utils/userDisplay";
 import "./TrainerLayout.css";
 
 const STAFF_TABS = [
     {
         label: "Category Management",
         to: "/admin/categories",
-        roles: [ROLES.SME, ROLES.TMO],
+        roles: [ROLES.SME],
     },
     {
         label: "Course Management",
@@ -28,60 +34,9 @@ const STAFF_TABS = [
         to: "/staff/classrooms",
         roles: [ROLES.TMO],
     },
-    {
-        label: "Classrooms",
-        to: "/staff/classrooms",
-        roles: [ROLES.TRAINER],
-    },
-    {
-        label: "Course Content",
-        to: "/staff/courses",
-        end: true,
-        roles: [ROLES.TRAINER],
-    },
-    {
-        label: "Flashcards",
-        to: "/flashcards",
-        end: true,
-        roles: [ROLES.TRAINER],
-    },
 ];
 
-function getDisplayName(user) {
-    return (
-        user?.fullName ||
-        [user?.firstName, user?.lastName].filter(Boolean).join(" ") ||
-        user?.email ||
-        "Trainer"
-    );
-}
-
-function getFirstName(name) {
-    return name.trim().split(/\s+/)[0] || "Trainer";
-}
-
-function getRoleLabel(role) {
-    const labels = {
-        [ROLES.TRAINEE]: "Trainee",
-        [ROLES.TRAINER]: "Trainer",
-        [ROLES.SME]: "SME",
-        [ROLES.TMO]: "TMO",
-        [ROLES.ADMIN]: "Admin",
-        [ROLES.GUEST]: "Guest",
-    };
-    return labels[role?.toLowerCase()] || labels[role] || "User";
-}
-
-function getInitials(name) {
-    return name
-        .split(" ")
-        .filter(Boolean)
-        .map((part) => part[0])
-        .join("")
-        .slice(0, 2)
-        .toUpperCase();
-}
-
+/** Xác định các trang nhân sự cần hiển thị phần giới thiệu của workspace. */
 function isStaffPage(pathname) {
     return (
         pathname.startsWith("/admin/") ||
@@ -94,6 +49,7 @@ function isStaffPage(pathname) {
     );
 }
 
+/** Hiển thị layout ngang cho nhân sự; Trainer chỉ dùng nội dung lớp được phân công. */
 export function TrainerLayout({ children }) {
     const location = useLocation();
     const navigate = useNavigate();
@@ -105,15 +61,20 @@ export function TrainerLayout({ children }) {
         role: ROLES.TRAINER,
     };
 
-    const displayName = getDisplayName(user);
+    const displayName = getUserDisplayName(user, "Trainer");
     const showStaffNavigation = isStaffPage(location.pathname);
 
     const normalizedRole = normalizeRole(user.role);
+    const workspaceDescription =
+        normalizedRole === ROLES.TMO
+            ? "Manage transactions and classrooms, and review courses in read-only mode."
+            : "Manage your courses, classrooms, and training materials.";
 
     const visibleTabs = STAFF_TABS.filter((tab) =>
         isRoleAllowed(normalizedRole, tab.roles),
     );
 
+    /** Đăng xuất và luôn đưa người dùng về trang đăng nhập. */
     async function handleLogout() {
         try {
             await authService.logout();
@@ -131,7 +92,7 @@ export function TrainerLayout({ children }) {
             <TraineeHeader
                 user={user}
                 onLogout={handleLogout}
-                roleLabel={getRoleLabel(user.role)}
+                roleLabel={getUserRoleLabel(user.role, "Trainee")}
             />
 
             {showStaffNavigation && (
@@ -147,28 +108,29 @@ export function TrainerLayout({ children }) {
                             {getInitials(displayName)}
                         </span>
                         <div>
-                            <h1>Welcome, {getFirstName(displayName)}</h1>
-                            <p>
-                                Manage your courses, classrooms, and training
-                                materials.
-                            </p>
+                            <h1>
+                                Welcome, {getFirstName(displayName, "Trainer")}
+                            </h1>
+                            <p>{workspaceDescription}</p>
                         </div>
                     </div>
 
-                    <nav className="trainer-nav" aria-label="Staff navigation">
-                        {visibleTabs.map((tab) => (
-                            <NavLink
-                                key={tab.to}
-                                to={tab.to}
-                                end={tab.end}
-                                className={({ isActive }) =>
-                                    `trainer-nav__link${isActive ? " is-active" : ""}`
-                                }
-                            >
-                                {tab.label}
-                            </NavLink>
-                        ))}
-                    </nav>
+                    {visibleTabs.length > 0 && (
+                        <nav className="trainer-nav" aria-label="Staff navigation">
+                            {visibleTabs.map((tab) => (
+                                <NavLink
+                                    key={tab.to}
+                                    to={tab.to}
+                                    end={tab.end}
+                                    className={({ isActive }) =>
+                                        `trainer-nav__link${isActive ? " is-active" : ""}`
+                                    }
+                                >
+                                    {tab.label}
+                                </NavLink>
+                            ))}
+                        </nav>
+                    )}
                 </section>
             )}
 

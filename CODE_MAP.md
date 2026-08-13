@@ -23,7 +23,7 @@ src/
 │   ├── enrollment/        # Ghi danh
 │   ├── learning/          # Học tập
 │   ├── flashcard/         # Flashcard authoring
-│   ├── flashtest/         # Bài kiểm tra
+│   ├── test/              # Bài kiểm tra
 │   ├── assignment/        # Bài tập
 │   ├── notification/      # Thông báo
 │   ├── admin/             # Trang admin
@@ -83,8 +83,8 @@ src/
 
 | Muốn sửa nghiệp vụ | File nên mở đầu tiên | File liên quan |
 | --- | --- | --- |
-| Làm bài kiểm tra | `features/flashtest/pages/StudentTakeTestPage.jsx` | `flashtest/services/testService.js`, `attemptService.js` |
-| Giám sát bài kiểm tra | `features/flashtest/pages/TeacherMonitorPage.jsx` | `flashtest/services/attemptService.js` |
+| Làm bài kiểm tra | `features/test/pages/StudentTakeTestPage.jsx` | `test/services/testService.js`, `attemptService.js` |
+| Giám sát bài kiểm tra | `features/test/pages/TeacherMonitorPage.jsx` | `test/services/attemptService.js` |
 | Tạo/sửa flashcard | `features/flashcard/pages/FlashcardAuthoringPage.jsx` | `flashcard/services/flashcardAuthoringService.js` |
 | Học flashcard | `features/personal-flashcards/pages/PersonalFlashcardStudyPage.jsx` | `flashcard/services/flashcardLearningService.js` |
 
@@ -131,8 +131,8 @@ src/
 | adminDashboardService | `src/services/admin-dashboard.service.js` | Admin dashboard |
 | auditLogService | `src/services/audit-log.service.js` | Audit logs |
 | questionBankService | `features/admin/question-bank/services/questionBankService.js` | Question bank |
-| testService | `features/flashtest/services/testService.js` | Test definitions |
-| attemptService | `features/flashtest/services/attemptService.js` | Test attempts |
+| testService | `features/test/services/testService.js` | Test definitions |
+| attemptService | `features/test/services/attemptService.js` | Test attempts |
 | flashcardLearningService | `features/flashcard/services/flashcardLearningService.js` | Flashcard learning |
 
 ## Cập nhật

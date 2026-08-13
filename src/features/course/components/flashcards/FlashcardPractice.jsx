@@ -18,6 +18,15 @@ import {
 } from "@/features/flashcards-shared";
 import { flashcardAuthoringService } from "@/features/flashcard";
 import { learningService } from "@/features/learning/services/learningService";
+import {
+  Alert,
+  Button,
+  Checkbox,
+  ErrorState,
+  LoadingState,
+  Tabs,
+} from "@/shared/components/ui";
+import { StatusBadge } from "@/shared/components/status";
 import { getErrorMessage, normalizeSet } from "./flashcard-utils";
 import "./Flashcards.css";
 
@@ -37,10 +46,18 @@ const STATUS_META = {
 const TRACK_PROGRESS_STORAGE_PREFIX = "smartLearnly:flashcards:trackProgress";
 const CARD_POSITION_STORAGE_PREFIX = "smartLearnly:flashcards:lastCard";
 
+const STATUS_TONE = {
+  known: "success",
+  still_learning: "warning",
+  new: "neutral",
+};
+
+/** Chuẩn hóa ID card thành key ổn định để so sánh. */
 function cardKey(id) {
   return id == null ? "" : String(id);
 }
 
+/** Chuẩn hóa trạng thái học từ API về ba trạng thái của UI. */
 function normalizeLearningStatus(value) {
   const status = String(value || "").toLowerCase();
   if (status === "known") return "known";
@@ -48,6 +65,7 @@ function normalizeLearningStatus(value) {
   return "new";
 }
 
+/** Đọc trạng thái tiến độ từ các response shape đang được hỗ trợ. */
 function progressStatus(card) {
   const candidates = [
     card?.progress?.learningStatus,
@@ -69,11 +87,13 @@ function progressStatus(card) {
   return "new";
 }
 
+/** Tạo nhãn tóm tắt số card đã biết. */
 function progressLabel(cards) {
   const knownCount = cards.filter((card) => progressStatus(card) === "known").length;
   return `${knownCount}/${cards.length} known`;
 }
 
+/** Chia cards thành các queue theo trạng thái học. */
 function buildQueues(cards) {
   return {
     all: cards,
@@ -83,16 +103,19 @@ function buildQueues(cards) {
   };
 }
 
+/** Tạo thông báo rỗng phù hợp với filter đang chọn. */
 function filterEmptyMessage(selectedFilter) {
   if (selectedFilter === "all") return "No flashcards are available for this lesson.";
   const label = STATUS_META[selectedFilter]?.label.toLowerCase() || "matching";
   return `No ${label} cards in this set.`;
 }
 
+/** Lấy nhãn hiển thị của filter tiến độ. */
 function filterLabel(selectedFilter) {
   return FILTERS.find((filter) => filter.key === selectedFilter)?.label || "All";
 }
 
+/** Áp dụng thứ tự ID đã lưu và giữ lại card mới ở cuối. */
 function orderCardsByIds(cards, orderedIds) {
   if (!orderedIds?.length) return cards;
   const cardById = new Map(cards.map((card) => [cardKey(card.id), card]));
@@ -104,17 +127,20 @@ function orderCardsByIds(cards, orderedIds) {
   ];
 }
 
+/** Lấy queue của filter và áp dụng thứ tự riêng của queue đó. */
 function getQueueForFilter(queues, selectedFilter, orderedIdsByFilter) {
   const queue = queues[selectedFilter] || queues.all;
   return orderCardsByIds(queue, orderedIdsByFilter[selectedFilter]);
 }
 
+/** Tìm card bằng ID sau khi đã chuẩn hóa kiểu dữ liệu. */
 function findCardById(cards, cardId) {
   const targetKey = cardKey(cardId);
   if (!targetKey) return null;
   return cards.find((card) => cardKey(card.id) === targetKey) || null;
 }
 
+/** Suy ra set ID từ set, card đầu tiên hoặc giá trị fallback. */
 function getPracticeSetId(flashcardSet, explicitSetId, cards = []) {
   const firstCard = cards[0] || {};
   return (
@@ -128,6 +154,7 @@ function getPracticeSetId(flashcardSet, explicitSetId, cards = []) {
   );
 }
 
+/** Tạo localStorage key lưu vị trí card theo đúng ngữ cảnh học. */
 function cardPositionStorageKey({ userKey, courseId, classId, lessonId, setId }) {
   if (!userKey || !courseId || !setId) return null;
   const classPart = classId ? `class:${classId}` : "online";
@@ -135,10 +162,12 @@ function cardPositionStorageKey({ userKey, courseId, classId, lessonId, setId })
   return `${CARD_POSITION_STORAGE_PREFIX}:${userKey}:${courseId}:${classPart}:${lessonPart}:set:${setId}`;
 }
 
+/** Tạo localStorage key lưu lựa chọn theo dõi tiến độ của người học. */
 function trackProgressStorageKey(userKey) {
   return userKey ? `${TRACK_PROGRESS_STORAGE_PREFIX}:${userKey}` : null;
 }
 
+/** Đọc lựa chọn theo dõi tiến độ, mặc định bật khi chưa có dữ liệu. */
 function readStoredTrackProgress(storageKey) {
   if (!storageKey || typeof window === "undefined") return true;
   try {
@@ -149,6 +178,7 @@ function readStoredTrackProgress(storageKey) {
   }
 }
 
+/** Lưu lựa chọn theo dõi tiến độ theo cơ chế best-effort. */
 function writeStoredTrackProgress(storageKey, enabled) {
   if (!storageKey || typeof window === "undefined") return;
   try {
@@ -158,6 +188,7 @@ function writeStoredTrackProgress(storageKey, enabled) {
   }
 }
 
+/** Đọc ID card gần nhất để tiếp tục buổi học. */
 function readStoredCardId(storageKey) {
   if (!storageKey || typeof window === "undefined") return null;
   try {
@@ -167,6 +198,7 @@ function readStoredCardId(storageKey) {
   }
 }
 
+/** Lưu ID card hiện tại theo cơ chế best-effort. */
 function writeStoredCardId(storageKey, cardId) {
   if (!storageKey || cardId == null || typeof window === "undefined") return;
   try {
@@ -176,10 +208,12 @@ function writeStoredCardId(storageKey, cardId) {
   }
 }
 
+/** Chọn card đã lưu nếu còn tồn tại, nếu không dùng card đầu tiên. */
 function getResumeCardId(cards, savedCardId) {
   return findCardById(cards, savedCardId)?.id ?? cards[0]?.id ?? null;
 }
 
+/** Chuẩn hóa response cập nhật tiến độ về shape dùng trong card. */
 function normalizeProgressPayload(payload, fallbackResult) {
   const data = payload?.data ?? payload ?? {};
   return {
@@ -192,6 +226,7 @@ function normalizeProgressPayload(payload, fallbackResult) {
   };
 }
 
+/** Áp dụng tiến độ mới cho card đích mà không thay đổi mảng nguồn. */
 function applyProgressToCards(cards, cardId, savedProgress) {
   const targetKey = cardKey(cardId);
   return cards.map((card) =>
@@ -201,6 +236,7 @@ function applyProgressToCards(cards, cardId, savedProgress) {
   );
 }
 
+/** Tìm card hợp lệ tiếp theo sau khi một action làm thay đổi queue. */
 function findNextCardAfterAction(cardId, previousQueue, nextQueue) {
   const previousIndex = previousQueue.findIndex(
     (card) => cardKey(card.id) === cardKey(cardId),
@@ -215,12 +251,14 @@ function findNextCardAfterAction(cardId, previousQueue, nextQueue) {
   return null;
 }
 
+/** Trộn cards và chỉ trả về thứ tự ID mới. */
 function shuffledIds(cards) {
   if (cards.length <= 1) return cards.map((card) => card.id);
   const shuffled = shuffleCards(cards);
   return shuffled.map((card) => card.id);
 }
 
+/** Hiển thị trạng thái và hai action tự đánh giá của card hiện tại. */
 function FlashcardReviewActions({
   card,
   trackProgress,
@@ -238,33 +276,33 @@ function FlashcardReviewActions({
         .filter(Boolean)
         .join(" ")}
     >
-      <span className={`flashcard-progress-badge flashcard-progress-badge--${status}`}>
-        {STATUS_META[status].label}
-      </span>
+      <StatusBadge
+        status={status}
+        label={STATUS_META[status].label}
+        tone={STATUS_TONE[status]}
+      />
       <div className="flashcard-practice__results">
-        <button
-          type="button"
-          className="flashcard-btn flashcard-btn--warning"
+        <Button
+          variant="secondary"
+          leftIcon={<Clock3 size={16} />}
           disabled={isSubmitting}
           onClick={() => onSubmitProgress(card, "still_learning")}
         >
-          <Clock3 size={16} />
           Still learning
-        </button>
-        <button
-          type="button"
-          className="flashcard-btn flashcard-btn--success"
+        </Button>
+        <Button
+          leftIcon={<CheckCircle2 size={16} />}
           disabled={isSubmitting}
           onClick={() => onSubmitProgress(card, "known")}
         >
-          <CheckCircle2 size={16} />
           Know
-        </button>
+        </Button>
       </div>
     </div>
   );
 }
 
+/** Khóa điều hướng trong lúc lưu nhưng giữ nguyên interface controls. */
 function resolvedStudyControls(controls, navigationLocked) {
   return {
     ...controls,
@@ -275,19 +313,19 @@ function resolvedStudyControls(controls, navigationLocked) {
   };
 }
 
+/** Hiển thị lựa chọn bật hoặc tắt theo dõi tiến độ. */
 function FlashcardTrackProgressToggle({ checked, onChange }) {
   return (
-    <label className="flashcard-practice__track-toggle">
-      <input
-        type="checkbox"
-        checked={checked}
-        onChange={(event) => onChange(event.target.checked)}
-      />
-      <span>Track progress</span>
-    </label>
+    <Checkbox
+      className="flashcard-practice__track-toggle"
+      label="Track progress"
+      checked={checked}
+      onChange={(event) => onChange(event.target.checked)}
+    />
   );
 }
 
+/** Hiển thị số card đang học và đã biết trong focus mode. */
 function FlashcardFocusStatusCounts({ counts }) {
   return (
     <div
@@ -304,6 +342,7 @@ function FlashcardFocusStatusCounts({ counts }) {
   );
 }
 
+/** Ghép controls chuẩn với shortcut phân loại và action focus mode. */
 function FlashcardPracticeControls({
   controls,
   canClassify,
@@ -316,6 +355,7 @@ function FlashcardPracticeControls({
   onShuffle,
 }) {
   const studyControls = resolvedStudyControls(controls, navigationLocked);
+  /** Phân loại card là đang học bằng shortcut bàn phím. */
   const handleMarkStillLearning = useCallback(
     (event) => {
       if (event.repeat || !canClassify || !studyControls.card) return;
@@ -323,6 +363,7 @@ function FlashcardPracticeControls({
     },
     [canClassify, onSubmitProgress, studyControls.card],
   );
+  /** Phân loại card là đã biết bằng shortcut bàn phím. */
   const handleMarkKnown = useCallback(
     (event) => {
       if (event.repeat || !canClassify || !studyControls.card) return;
@@ -370,6 +411,7 @@ function FlashcardPracticeControls({
   );
 }
 
+/** Điều phối controls và shortcut khi đang ở focus mode. */
 function FlashcardFocusControls({
   controls,
   canClassify,
@@ -383,6 +425,7 @@ function FlashcardFocusControls({
   onTrackProgressChange,
 }) {
   const studyControls = resolvedStudyControls(controls, navigationLocked);
+  /** Phân loại card focus hiện tại là đang học. */
   const handleMarkStillLearning = useCallback(
     (event) => {
       if (event.repeat || !canClassify || !studyControls.card) return;
@@ -390,6 +433,7 @@ function FlashcardFocusControls({
     },
     [canClassify, onSubmitProgress, studyControls.card],
   );
+  /** Phân loại card focus hiện tại là đã biết. */
   const handleMarkKnown = useCallback(
     (event) => {
       if (event.repeat || !canClassify || !studyControls.card) return;
@@ -435,6 +479,7 @@ function FlashcardFocusControls({
   );
 }
 
+/** Điều phối tải, lọc, học và lưu tiến độ flashcard của lesson. */
 export function FlashcardPractice({
   lessonId,
   courseId,
@@ -477,6 +522,7 @@ export function FlashcardPractice({
   const activeFilter = canTrackProgress ? selectedFilter : "all";
   const progressNavigationLocked = canTrackProgress && submittingCardId != null;
 
+  /** Tải set flashcard phù hợp với admin preview hoặc learner context. */
   const loadPractice = useCallback(async () => {
     setLoading(true);
     setLoadError(null);
@@ -531,6 +577,7 @@ export function FlashcardPractice({
     [currentQueue],
   );
 
+  /** Ghi nhận card hiện tại cho cả session và filter tương ứng. */
   const setActiveCardForFilter = useCallback(
     (cardId, filterKey = activeFilter) => {
       if (cardId == null) return;
@@ -623,6 +670,7 @@ export function FlashcardPractice({
   const activeCardIdForCurrentFilter = activeCardForCurrentFilter?.id ?? null;
   const canOpenFocusMode = currentQueue.length > 0;
 
+  /** Chuyển filter và phục hồi card gần nhất còn hợp lệ trong queue. */
   const handleFilterChange = useCallback(
     (filterKey) => {
       const targetQueue = getQueueForFilter(queues, filterKey, orderedIdsByFilter);
@@ -646,6 +694,7 @@ export function FlashcardPractice({
     ],
   );
 
+  /** Lưu lựa chọn theo dõi tiến độ và reset filter khi tắt. */
   const handleTrackProgressChange = useCallback(
     (enabled) => {
       setTrackProgressPreference({ storageKey: trackingPreferenceKey, enabled });
@@ -655,6 +704,7 @@ export function FlashcardPractice({
     [trackingPreferenceKey],
   );
 
+  /** Trộn queue hiện tại và đưa card đầu tiên của thứ tự mới lên active. */
   const handleShuffle = useCallback(
     (controls) => {
       const sourceCards = controls?.orderedCards?.length ? controls.orderedCards : currentQueue;
@@ -669,19 +719,23 @@ export function FlashcardPractice({
     [activeFilter, currentQueue, setActiveCardForFilter],
   );
 
+  /** Đồng bộ card được chọn từ preview hoặc danh sách card. */
   const handleActiveCardChange = useCallback(
     (cardId) => setActiveCardForFilter(cardId),
     [setActiveCardForFilter],
   );
 
+  /** Mở chế độ học tập trung. */
   const openFocusMode = useCallback(() => {
     setIsFocusModeOpen(true);
   }, []);
 
+  /** Đóng chế độ học tập trung. */
   const closeFocusMode = useCallback(() => {
     setIsFocusModeOpen(false);
   }, []);
 
+  /** Lưu phân loại card theo optimistic update và rollback khi lỗi. */
   const handleSubmitProgress = useCallback(
     async (card, result) => {
       if (card?.id == null || !canTrackProgress || submittingCardIdRef.current != null) {
@@ -772,23 +826,24 @@ export function FlashcardPractice({
   );
 
   if (loading) {
-    return (
-      <div className="flashcard-practice__loading">
-        <span className="flashcard-spinner" />
-        Loading flashcards...
-      </div>
-    );
+    return <LoadingState label="Loading flashcards..." />;
   }
 
   if (loadError) {
     return (
-      <div className="flashcard-practice__error">
-        <span>{loadError}</span>
-        <button type="button" className="flashcard-btn" onClick={loadPractice}>
-          <RefreshCw size={16} />
-          Retry
-        </button>
-      </div>
+      <ErrorState
+        title="Could not load flashcards"
+        description={loadError}
+        action={
+          <Button
+            variant="secondary"
+            leftIcon={<RefreshCw size={16} />}
+            onClick={loadPractice}
+          >
+            Retry
+          </Button>
+        }
+      />
     );
   }
 
@@ -828,27 +883,24 @@ export function FlashcardPractice({
       </div>
 
       {canTrackProgress && cards.length > 0 && (
-        <div className="flashcard-practice__filters" aria-label="Filter flashcards by progress">
-          {FILTERS.map((filter) => (
-            <button
-              key={filter.key}
-              type="button"
-              className={`flashcard-practice__filter ${
-                selectedFilter === filter.key ? "is-active" : ""
-              }`}
-              onClick={() => handleFilterChange(filter.key)}
-            >
-              {filter.label}
-              <span>{progressCounts[filter.key]}</span>
-            </button>
-          ))}
-        </div>
+        <Tabs
+          className="flashcard-practice__filters"
+          variant="compact"
+          ariaLabel="Filter flashcards by progress"
+          items={FILTERS.map((filter) => ({
+            value: filter.key,
+            label: filter.label,
+            count: progressCounts[filter.key],
+          }))}
+          value={selectedFilter}
+          onChange={handleFilterChange}
+        />
       )}
 
       {progressError && (
-        <div className="flashcard-practice__inline-error" role="alert">
-          <span>{progressError}</span>
-        </div>
+        <Alert tone="danger" title="Progress could not be saved">
+          {progressError}
+        </Alert>
       )}
 
       <FlashcardPreview
@@ -896,9 +948,11 @@ export function FlashcardPractice({
             ? (card) => {
                 const status = progressStatus(card);
                 return (
-                  <span className={`flashcard-progress-badge flashcard-progress-badge--${status}`}>
-                    {STATUS_META[status].label}
-                  </span>
+                  <StatusBadge
+                    status={status}
+                    label={STATUS_META[status].label}
+                    tone={STATUS_TONE[status]}
+                  />
                 );
               }
             : undefined

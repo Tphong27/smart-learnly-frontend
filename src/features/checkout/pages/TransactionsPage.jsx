@@ -1,8 +1,18 @@
-import { Search, X } from "lucide-react";
+import { X } from "lucide-react";
 import { useEffect, useState } from "react";
 import Pagination from "@/shared/components/Pagination";
 import { StatusBadge } from "@/shared/components/status";
-import { useToast } from "@/shared/components/ui";
+import {
+  Button,
+  EmptyState,
+  ErrorState,
+  FilterBar,
+  LoadingState,
+  SearchInput,
+  Table,
+  Tabs,
+  useToast,
+} from "@/shared/components/ui";
 import { useDebouncedValue } from "@/shared/hooks/useDebouncedValue";
 import { DEFAULT_PAGE_SIZE } from "@/shared/constants/pagination";
 import {
@@ -19,6 +29,7 @@ const EMPTY_FILTER_OPTIONS = {
   statuses: [],
 };
 
+/** Hiển thị lịch sử giao dịch cá nhân hoặc danh sách giao dịch dành cho quản trị viên. */
 export function TransactionsPage({ mode = "personal" }) {
   const toast = useToast();
 
@@ -47,6 +58,7 @@ export function TransactionsPage({ mode = "personal" }) {
   useEffect(() => {
     let cancelled = false;
 
+    /** Tải các trạng thái giao dịch để tạo bộ lọc động từ backend. */
     async function loadFilterOptions() {
       try {
         const data =
@@ -94,6 +106,7 @@ export function TransactionsPage({ mode = "personal" }) {
 
     let cancelled = false;
 
+    /** Tải trang giao dịch hiện tại theo từ khóa và trạng thái đã chọn. */
     async function loadTransactions() {
       try {
         const requestParams = {
@@ -164,23 +177,27 @@ export function TransactionsPage({ mode = "personal" }) {
     toast,
   ]);
 
+  /** Đưa giao diện về trạng thái đang tải trước khi thay đổi tham số truy vấn. */
   function prepareRequestChange() {
     setLoading(true);
     setError("");
   }
 
-  function handleKeywordChange(event) {
+  /** Cập nhật từ khóa tìm kiếm và quay về trang đầu tiên. */
+  function handleKeywordChange(nextKeyword) {
     prepareRequestChange();
-    setKeyword(event.target.value);
+    setKeyword(nextKeyword);
     setPageRequest(0);
   }
 
+  /** Cập nhật một bộ lọc và quay về trang đầu tiên. */
   function changeFilter(setter, value) {
     prepareRequestChange();
     setter(value);
     setPageRequest(0);
   }
 
+  /** Xóa toàn bộ điều kiện tìm kiếm và lọc giao dịch. */
   function clearFilters() {
     prepareRequestChange();
     setKeyword("");
@@ -188,11 +205,13 @@ export function TransactionsPage({ mode = "personal" }) {
     setPageRequest(0);
   }
 
+  /** Chuyển sang trang dữ liệu được người dùng chọn. */
   function handlePageChange(nextPage) {
     prepareRequestChange();
     setPageRequest(nextPage - 1);
   }
 
+  /** Thay đổi số giao dịch trên mỗi trang và quay về trang đầu tiên. */
   function handlePageSizeChange(nextSize) {
     prepareRequestChange();
     setPageSize(nextSize);
@@ -203,7 +222,7 @@ export function TransactionsPage({ mode = "personal" }) {
     <main className="transaction-page">
       <header className="transaction-page__header">
         <div>
-          <h1>
+          <h1 id="transaction-list-title">
             {isManagement ? "Transaction management" : "Transaction history"}
           </h1>
         </div>
@@ -213,104 +232,86 @@ export function TransactionsPage({ mode = "personal" }) {
         className="transaction-page__panel"
         aria-labelledby="transaction-list-title"
       >
-        <div className="course-management__filters">
-          <label className="course-management__field course-management__field--search">
-            <span className="course-management__control course-management__search">
-              <Search size={18} aria-hidden="true" />
-
-              <input
-                type="search"
-                value={keyword}
-                placeholder={"Search transaction or order"}
-                aria-label="Search transactions"
-                onChange={handleKeywordChange}
-              />
-            </span>
-          </label>
-
-          <button
-            type="button"
-            className="course-management__clear"
-            disabled={!hasFilters}
-            onClick={clearFilters}
-          >
-            <X size={15} aria-hidden="true" />
-            Reset
-          </button>
-        </div>
-
-        <div className="course-management__status-bar">
-          <div
-            className="course-management__tabs"
-            aria-label="Filter transactions by status"
-          >
-            <button
-              type="button"
-              className={`course-management__tab${
-                status === "" ? " is-active" : ""
-              }`}
-              aria-pressed={status === ""}
-              onClick={() => changeFilter(setStatus, "")}
+        <FilterBar
+          className="transaction-page__filters"
+          ariaLabel="Transaction filters"
+          search={
+            <SearchInput
+              value={keyword}
+              placeholder="Search transaction or order"
+              ariaLabel="Search transactions"
+              onChange={handleKeywordChange}
+            />
+          }
+          actions={
+            <Button
+              variant="ghost"
+              leftIcon={<X size={15} aria-hidden="true" />}
+              disabled={!hasFilters}
+              onClick={clearFilters}
             >
-              All
-            </button>
+              Reset
+            </Button>
+          }
+        />
 
-            {filterOptions.statuses.map((statusOption) => {
-              const selected = status === statusOption;
+        <div className="transaction-page__status-bar">
+          <Tabs
+            className="transaction-page__tabs"
+            ariaLabel="Filter transactions by status"
+            value={status}
+            items={[
+              { value: "", label: "All" },
+              ...filterOptions.statuses.map((statusOption) => ({
+                value: statusOption,
+                label: formatLabel(statusOption),
+              })),
+            ]}
+            onChange={(nextStatus) => changeFilter(setStatus, nextStatus)}
+          />
 
-              return (
-                <button
-                  key={statusOption}
-                  type="button"
-                  className={`course-management__tab${
-                    selected ? " is-active" : ""
-                  }`}
-                  aria-pressed={selected}
-                  onClick={() => changeFilter(setStatus, statusOption)}
-                >
-                  {formatLabel(statusOption)}
-                </button>
-              );
-            })}
-          </div>
-
-          <p className="course-management__result-count" aria-live="polite">
-            <strong>{totalItems}</strong>
+          <p className="transaction-page__result-count" aria-live="polite">
+            <strong>{totalItems}</strong>{" "}
             {totalItems === 1 ? "transaction" : "transactions"}
           </p>
         </div>
 
-        <div
-          className="course-management__table-wrap"
-          role="region"
-          aria-label="Transaction list"
-        >
+        <div className="transaction-page__content">
           {loading ? (
-            <div className="course-management__state">
-              Loading transactions…
-            </div>
+            <LoadingState label="Loading transactions…" />
           ) : error ? (
-            <div className="course-management__state course-management__state--error">
-              <strong>Could not load transactions</strong>
-              <span>{error}</span>
-            </div>
+            <ErrorState
+              title="Could not load transactions"
+              description={error}
+            />
           ) : items.length === 0 ? (
-            <div className="course-management__state">
-              <strong>
-                {hasFilters
+            <EmptyState
+              title={
+                hasFilters
                   ? "No transactions match these filters"
                   : isManagement
                     ? "No payment transactions yet"
-                    : "You have no payment records yet"}
-              </strong>
-
-              {hasFilters && (
-                <span>Try another keyword or reset the current filters.</span>
-              )}
-            </div>
+                    : "You have no payment records yet"
+              }
+              description={
+                hasFilters
+                  ? "Try another keyword or reset the current filters."
+                  : undefined
+              }
+              action={
+                hasFilters ? (
+                  <Button variant="secondary" onClick={clearFilters}>
+                    Reset filters
+                  </Button>
+                ) : undefined
+              }
+            />
           ) : (
-            <div className="history-table-wrap">
-              <table className="history-table">
+            <Table
+              className="transaction-page__table-wrap"
+              tableClassName="history-table"
+              ariaLabel="Transaction list"
+            >
                 <thead>
                   <tr>
                     <th>Transaction / Order</th>
@@ -336,7 +337,7 @@ export function TransactionsPage({ mode = "personal" }) {
 
                     return (
                       <tr key={transaction.id}>
-                        <td>
+                        <td data-label="Transaction / Order">
                           <strong
                             title={
                               isManagement
@@ -354,40 +355,46 @@ export function TransactionsPage({ mode = "personal" }) {
                           )}
                         </td>
 
-                        <td>
+                        <td data-label="Gateway">
                           {transaction.paymentGateway
                             ? formatLabel(transaction.paymentGateway)
                             : "--"}
                         </td>
 
-                        <td>
+                        <td data-label="Amount">
                           {formatAmount(
                             transaction.amount,
                             transaction.currency,
                           )}
                         </td>
 
-                        <td>
+                        <td data-label="Status">
                           <StatusBadge status={transaction.status} />
                         </td>
 
-                        <td>{formatDateTime(transaction.createdAt)}</td>
+                        <td data-label="Created">
+                          {formatDateTime(transaction.createdAt)}
+                        </td>
 
-                        <td>
+                        <td data-label="Paid at">
                           {transaction.paidAt
                             ? formatDateTime(transaction.paidAt)
                             : "--"}
                         </td>
 
-                        <td className="transaction-page__action-cell">
+                        <td
+                          className="transaction-page__action-cell"
+                          data-label="Invoice"
+                        >
                           {isPaid && transaction.invoiceNumber ? (
-                            <button
-                              type="button"
-                              className="history-table__link transaction-page__action-btn"
+                            <Button
+                              variant="link"
+                              size="sm"
+                              className="transaction-page__action-btn"
                               onClick={() => setInvoiceTarget(transaction.id)}
                             >
                               View invoice
-                            </button>
+                            </Button>
                           ) : (
                             <span className="transaction-page__empty-value">
                               --
@@ -398,20 +405,21 @@ export function TransactionsPage({ mode = "personal" }) {
                     );
                   })}
                 </tbody>
-              </table>
-            </div>
+            </Table>
           )}
         </div>
 
-        <Pagination
-          page={page + 1}
-          totalPages={totalPages}
-          totalItems={totalItems}
-          size={pageSize}
-          disabled={loading}
-          onPageChange={handlePageChange}
-          onSizeChange={handlePageSizeChange}
-        />
+        {!error && totalItems > 0 ? (
+          <Pagination
+            page={page + 1}
+            totalPages={totalPages}
+            totalItems={totalItems}
+            size={pageSize}
+            disabled={loading}
+            onPageChange={handlePageChange}
+            onSizeChange={handlePageSizeChange}
+          />
+        ) : null}
       </section>
 
       <InvoiceDetailModal

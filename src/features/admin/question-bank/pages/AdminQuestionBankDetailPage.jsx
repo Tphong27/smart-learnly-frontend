@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useLocation, useParams } from "react-router-dom";
 import {
   Archive,
-  AlertTriangle,
   CheckCircle2,
   Download,
   Edit2,
@@ -11,7 +10,19 @@ import {
   Sparkles,
   Upload,
 } from "lucide-react";
-import { Button, useToast } from "@/shared/components/ui";
+import {
+  Alert,
+  Button,
+  ConfirmDialog,
+  EmptyState,
+  ErrorState,
+  IconButton,
+  LoadingState,
+  Table,
+  Tabs,
+  useToast,
+} from "@/shared/components/ui";
+import { StatusBadge } from "@/shared/components/status";
 import Pagination from "@/shared/components/Pagination";
 import {
   sanitizeAnswerHtml,
@@ -25,7 +36,11 @@ import { DEFAULT_PAGE_SIZE } from "@/shared/constants/pagination";
 import "../../admin-shared.css";
 import "./question-bank.css";
 import { QuestionImportModal } from "../components/QuestionImportModal";
-import { questionTypeLabel } from "../utils/questionFormUtils";
+import {
+  canWriteQuestionBank,
+  normalizeModules,
+  questionTypeLabel,
+} from "../utils/questionFormUtils";
 import { AdminQuestionFormModal } from "./AdminQuestionFormPage";
 import {
   QuestionImagePreviewModal,
@@ -33,20 +48,19 @@ import {
 } from "../components/QuestionBankDetailModals";
 import { QuestionBankFilters } from "../components/QuestionBankFilters";
 import {
-  canWriteQuestionBank,
   normalizeQuestionMedia,
-  normalizeQuestionModules,
   questionMediaName,
   questionMediaUrl,
 } from "../utils/questionBankDetailUtils";
 
+/** Điều phối Question List theo module và giữ đúng không gian route admin/staff. */
 export function AdminQuestionBankDetailPage() {
-  const { bankId, courseId } = useParams();
+  const { bankId, courseId, moduleId: routeModuleId } = useParams();
+  const location = useLocation();
   const toast = useToast();
   const writable = canWriteQuestionBank();
   const isCourseQuestionsMode = Boolean(courseId);
   const [bank, setBank] = useState(null);
-  const [course, setCourse] = useState(null);
   const [modules, setModules] = useState([]);
   const [items, setItems] = useState([]);
   const [pageInfo, setPageInfo] = useState({
@@ -60,11 +74,11 @@ export function AdminQuestionBankDetailPage() {
   const [type, setType] = useState("all");
   const [status, setStatus] = useState("all");
   const [difficulty, setDifficulty] = useState("all");
-  const [moduleId, setModuleId] = useState("all");
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [refreshKey, setRefreshKey] = useState(0);
   const [archivingId, setArchivingId] = useState(null);
+  const [pendingArchive, setPendingArchive] = useState(null);
   const [importOpen, setImportOpen] = useState(false);
   const [questionFormModal, setQuestionFormModal] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
@@ -77,9 +91,9 @@ export function AdminQuestionBankDetailPage() {
   const [activityPage, setActivityPage] = useState(0);
   const ACTIVITY_PAGE_SIZE = 10;
 
+  /** Đặt lại toàn bộ bộ lọc câu hỏi và quay về trang đầu. */
   function clearQuestionFilters() {
     setSearch("");
-    setModuleId("all");
     setType("all");
     setStatus("all");
     setDifficulty("all");
@@ -134,12 +148,19 @@ export function AdminQuestionBankDetailPage() {
           ? await Promise.all([
               courseAdminService.get(courseId),
               courseContentService.getCourseContent(courseId),
-              questionBankService.listCourseQuestions(courseId, {
-                search: search.trim() || undefined,
-                moduleId: moduleId === "all" ? undefined : moduleId,
-                page,
-                size: pageSize,
-              }),
+              questionBankService.listModuleQuestions(
+                courseId,
+                routeModuleId,
+                {
+                  search: search.trim() || undefined,
+                  type: type === "all" ? undefined : type,
+                  status: status === "all" ? undefined : status,
+                  difficulty:
+                    difficulty === "all" ? undefined : difficulty,
+                  page,
+                  size: pageSize,
+                },
+              ),
             ])
           : await (async () => {
               const bankData = await questionBankService.getBank(bankId);
@@ -153,7 +174,6 @@ export function AdminQuestionBankDetailPage() {
                   type: type === "all" ? undefined : type,
                   status: status === "all" ? undefined : status,
                   difficulty: difficulty === "all" ? undefined : difficulty,
-                  moduleId: moduleId === "all" ? undefined : moduleId,
                   page,
                   size: pageSize,
                 }),
@@ -162,7 +182,6 @@ export function AdminQuestionBankDetailPage() {
             })();
         if (cancelled) return;
         if (isCourseQuestionsMode) {
-          setCourse(scopeData);
           setBank({
             id: null,
             courseId,
@@ -170,10 +189,9 @@ export function AdminQuestionBankDetailPage() {
             status: scopeData?.status,
           });
         } else {
-          setCourse(null);
           setBank(scopeData);
         }
-        setModules(normalizeQuestionModules(moduleData));
+        setModules(normalizeModules(moduleData));
         setItems(questionPage.items || []);
         setPageInfo({
           page: questionPage.page,
@@ -198,10 +216,10 @@ export function AdminQuestionBankDetailPage() {
     courseId,
     difficulty,
     isCourseQuestionsMode,
-    moduleId,
     page,
     pageSize,
     refreshKey,
+    routeModuleId,
     search,
     status,
     // toast is intentionally included; useToast() returns a stable reference (useMemo in ToastProvider.jsx).
@@ -209,23 +227,27 @@ export function AdminQuestionBankDetailPage() {
     type,
   ]);
 
-  const moduleNameById = useMemo(
-    () => new Map(modules.map((module) => [module.id, module.title])),
-    [modules],
+  const activeModule = useMemo(
+    () => modules.find((module) => String(module.id) === String(routeModuleId)),
+    [modules, routeModuleId],
   );
 
+  /** Mở modal tạo câu hỏi mới trong scope hiện tại. */
   function openCreateQuestionModal() {
     setQuestionFormModal({ questionId: null });
   }
 
+  /** Mở modal chỉnh sửa theo ID câu hỏi. */
   function openEditQuestionModal(questionId) {
     setQuestionFormModal({ questionId });
   }
 
+  /** Đóng modal câu hỏi và làm sạch selection. */
   function closeQuestionFormModal() {
     setQuestionFormModal(null);
   }
 
+  /** Đóng form và tải lại danh sách sau khi lưu thành công. */
   function handleQuestionSaved() {
     closeQuestionFormModal();
     setRefreshKey((key) => key + 1);
@@ -233,19 +255,19 @@ export function AdminQuestionBankDetailPage() {
 
   async function handleArchive(question) {
     if (!writable || !question?.questionId) return;
-    const confirmed = window.confirm("Archive this question?");
-    if (!confirmed) return;
     setArchivingId(question.questionId);
     try {
       if (isCourseQuestionsMode) {
-        await questionBankService.archiveCourseQuestion(
+        await questionBankService.archiveModuleQuestion(
           courseId,
+          routeModuleId,
           question.questionId,
         );
       } else {
         await questionBankService.archiveQuestion(question.questionId);
       }
       toast.success("Question archived");
+      setPendingArchive(null);
       setRefreshKey((key) => key + 1);
     } catch (err) {
       toast.error(err?.message || "Could not archive question.");
@@ -254,14 +276,15 @@ export function AdminQuestionBankDetailPage() {
     }
   }
 
+  /** Xuất danh sách câu hỏi đã lọc của module thành CSV. */
   async function handleExport() {
     if (!isCourseQuestionsMode || !courseId) return;
     try {
-      const response = await questionBankService.exportCourseQuestions(
+      const response = await questionBankService.exportModuleQuestions(
         courseId,
+        routeModuleId,
         {
           search: search.trim() || undefined,
-          moduleId: moduleId === "all" ? undefined : moduleId,
         },
       );
       const blob = response instanceof Blob ? response : response?.data;
@@ -279,6 +302,7 @@ export function AdminQuestionBankDetailPage() {
     }
   }
 
+  /** Khôi phục question bank archived về draft hoặc approved. */
   async function handleRestore(targetStatus) {
     if (!writable || !bankId) return;
     try {
@@ -297,14 +321,17 @@ export function AdminQuestionBankDetailPage() {
 
   const isBankArchived = !isCourseQuestionsMode && bank?.status === "archived";
   const canEditQuestion = writable && !isBankArchived;
+  const courseBasePath = location.pathname.startsWith("/staff/")
+    ? "/staff/courses"
+    : "/admin/courses";
   const backPath = isCourseQuestionsMode
-    ? "/admin/courses"
+    ? `${courseBasePath}/${courseId}/content`
     : "/admin/question-banks";
   const title = isCourseQuestionsMode
-    ? `${course?.title || "Course"} - Questions`
+    ? `${activeModule?.title || "Module"} - Questions`
     : bank?.name || "Question bank";
   const aiDraftPath = isCourseQuestionsMode
-    ? `/admin/courses/${courseId}/questions/ai-drafts/new`
+    ? `/admin/courses/${courseId}/modules/${routeModuleId}/questions/ai-drafts/new`
     : `/admin/question-banks/${bankId}/ai-drafts/new`;
 
   return (
@@ -312,14 +339,14 @@ export function AdminQuestionBankDetailPage() {
       <header className="admin-page__header">
         <div>
           <Button to={backPath} variant="ghost" size="sm">
-            {isCourseQuestionsMode ? "Back to courses" : "Back to banks"}
+            {isCourseQuestionsMode ? "Back to curriculum" : "Back to banks"}
           </Button>
-          <h1 className="admin-page__title" style={{ marginTop: 8 }}>
+          <h1 className="admin-page__title question-bank-detail__title">
             {title}
           </h1>
         </div>
         {writable && !isBankArchived && (
-          <div style={{ display: "inline-flex", gap: 10 }}>
+          <div className="question-bank-detail__actions">
             <Button
               to={aiDraftPath}
               variant="secondary"
@@ -363,67 +390,33 @@ export function AdminQuestionBankDetailPage() {
       </header>
 
       {isBankArchived && (
-        <section
-          className="admin-card"
-          style={{
-            marginBottom: 18,
-            borderLeft: "4px solid #f59e0b",
-            background: "#fffbeb",
-          }}
-          role="alert"
-        >
-          <div
-            style={{
-              display: "flex",
-              alignItems: "flex-start",
-              gap: 12,
-            }}
-          >
-            <AlertTriangle
-              size={20}
-              style={{
-                color: "#b45309",
-                flexShrink: 0,
-                marginTop: 2,
-              }}
-            />
-            <div style={{ flex: 1 }}>
-              <strong style={{ color: "#92400e" }}>
-                This question bank is archived.
-              </strong>
-              <p
-                style={{
-                  margin: "4px 0 8px",
-                  color: "#78350f",
-                  fontSize: 14,
-                }}
+        <Alert
+          tone="warning"
+          title="This question bank is archived."
+          className="question-bank-detail__section"
+          action={
+            writable ? (
+              <Button
+                size="sm"
+                variant="secondary"
+                leftIcon={<RotateCcw size={14} />}
+                onClick={() => setRestoreModalOpen(true)}
               >
-                All questions and media are read-only. Restore the bank to make
-                changes again.
-              </p>
-              {writable && (
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  leftIcon={<RotateCcw size={14} />}
-                  onClick={() => setRestoreModalOpen(true)}
-                >
-                  Restore question bank
-                </Button>
-              )}
-            </div>
-          </div>
-        </section>
+                Restore question bank
+              </Button>
+            ) : null
+          }
+        >
+          All questions and media are read-only. Restore the bank to make changes again.
+        </Alert>
       )}
 
       {bank && !isCourseQuestionsMode && (
-        <section className="admin-card" style={{ marginBottom: 18 }}>
-          <div className="admin-toolbar" style={{ padding: 0 }}>
+        <section className="admin-card question-bank-detail__section">
+          <div className="admin-toolbar question-bank-detail__meta">
             <span>
               <strong>Status:</strong>{" "}
-              <span className={`admin-status admin-status--${bank.status}`}>
-                {bank.status}
-              </span>
+              <StatusBadge status={bank.status} />
             </span>
             <span>
               <strong>Questions:</strong>{" "}
@@ -437,38 +430,23 @@ export function AdminQuestionBankDetailPage() {
         </section>
       )}
 
-      <nav
-        className="admin-card admin-card--flush"
-        style={{ marginBottom: 18, padding: 0 }}
-        aria-label="Detail sections"
-      >
-        <div className="admin-toolbar" style={{ padding: 0, gap: 4 }}>
-          <button
-            type="button"
-            className={`admin-tab ${activeTab === "questions" ? "is-active" : ""}`}
-            onClick={() => setActiveTab("questions")}
-            aria-pressed={activeTab === "questions"}
-          >
-            Questions ({pageInfo.totalItems})
-          </button>
-          {!isCourseQuestionsMode && (
-            <button
-              type="button"
-              className={`admin-tab ${activeTab === "activity" ? "is-active" : ""}`}
-              onClick={() => setActiveTab("activity")}
-              aria-pressed={activeTab === "activity"}
-            >
-              Activity
-            </button>
-          )}
-        </div>
-      </nav>
+      <Tabs
+        className="admin-card admin-card--flush question-bank-detail__tabs"
+        ariaLabel="Detail sections"
+        value={activeTab}
+        items={[
+          { value: "questions", label: "Questions", count: pageInfo.totalItems },
+          ...(!isCourseQuestionsMode ? [{ value: "activity", label: "Activity" }] : []),
+        ]}
+        onChange={setActiveTab}
+      />
 
       {importOpen && (
         <QuestionImportModal
           variant="inline"
           bank={bank}
           courseId={isCourseQuestionsMode ? courseId : undefined}
+          moduleId={isCourseQuestionsMode ? routeModuleId : undefined}
           existingQuestions={items}
           onClose={() => setImportOpen(false)}
           onImported={() => setRefreshKey((key) => key + 1)}
@@ -478,24 +456,15 @@ export function AdminQuestionBankDetailPage() {
       {activeTab === "questions" && (
         <section className="admin-card admin-card--flush admin-card--filterable">
           <QuestionBankFilters
-            courseMode={isCourseQuestionsMode}
-            modules={modules}
             search={search}
-            moduleId={moduleId}
             type={type}
             status={status}
             difficulty={difficulty}
-            resultCount={pageInfo.totalItems}
             onSearchChange={(nextSearch) => {
               setSearch(nextSearch);
               setPage(0);
             }}
-            onModuleChange={(nextModuleId) => {
-              setModuleId(nextModuleId);
-              setPage(0);
-            }}
             onApply={(nextFilters) => {
-              setModuleId(nextFilters.moduleId);
               setType(nextFilters.type);
               setStatus(nextFilters.status);
               setDifficulty(nextFilters.difficulty);
@@ -504,21 +473,21 @@ export function AdminQuestionBankDetailPage() {
             onClear={clearQuestionFilters}
           />
           {loading ? (
-            <div className="admin-loading">Loading questions...</div>
+            <LoadingState label="Loading questions..." />
           ) : error ? (
-            <div className="admin-error">{error}</div>
+            <ErrorState title="Could not load questions" description={error} />
           ) : items.length === 0 ? (
-            <div className="admin-empty">
-              No questions match the current filters.
-            </div>
+            <EmptyState title="No questions match the current filters" />
           ) : isCourseQuestionsMode ? (
-            <div className="admin-table-wrapper">
-              <table className="admin-table">
+            <Table
+              className="admin-table-wrapper"
+              tableClassName="admin-table"
+              ariaLabel="Module questions"
+            >
                 <thead>
                   <tr>
                     <th>Id</th>
                     <th>Question Title</th>
-                    <th>Module</th>
                     <th>Type</th>
                     <th>Status</th>
                     <th>Actions</th>
@@ -528,12 +497,10 @@ export function AdminQuestionBankDetailPage() {
                   {items.map((question, index) => {
                     const questionNumber = page * pageSize + index + 1;
                     const questionId = question.questionId || question.id;
-                    const moduleLabel =
-                      moduleNameById.get(question.moduleId) || "Unassigned";
                     return (
                       <tr key={questionId}>
-                        <td>{questionNumber}</td>
-                        <td>
+                        <td data-label="Id">{questionNumber}</td>
+                        <td data-label="Question Title">
                           <div
                             className="question-rich-text-viewer"
                             dangerouslySetInnerHTML={{
@@ -543,42 +510,30 @@ export function AdminQuestionBankDetailPage() {
                             }}
                           />
                         </td>
-                        <td>{moduleLabel}</td>
-                        <td>
+                        <td data-label="Type">
                           {questionTypeLabel(question.questionType)}
                         </td>
-                        <td>
-                          <span
-                            className={`admin-status admin-status--${question.status}`}
-                          >
-                            {question.status}
-                          </span>
+                        <td data-label="Status">
+                          <StatusBadge status={question.status} />
                         </td>
-                        <td>
+                        <td data-label="Actions">
                           {canEditQuestion &&
                             question.status !== "archived" && (
                               <div className="admin-table__actions">
-                                <button
-                                  type="button"
-                                  className="admin-table__icon-btn"
-                                  title="Edit"
-                                  aria-label={`Edit question ${questionNumber}`}
+                                <IconButton
+                                  icon={<Edit2 size={15} />}
+                                  label={`Edit question ${questionNumber}`}
                                   onClick={() =>
                                     openEditQuestionModal(questionId)
                                   }
-                                >
-                                  <Edit2 size={15} />
-                                </button>
-                                <button
-                                  type="button"
-                                  className="admin-table__icon-btn admin-table__icon-btn--danger"
-                                  title="Archive"
-                                  aria-label={`Archive question ${questionNumber}`}
+                                />
+                                <IconButton
+                                  icon={<Archive size={15} />}
+                                  label={`Archive question ${questionNumber}`}
+                                  variant="danger"
                                   disabled={archivingId === questionId}
-                                  onClick={() => handleArchive(question)}
-                                >
-                                  <Archive size={15} />
-                                </button>
+                                  onClick={() => setPendingArchive(question)}
+                                />
                               </div>
                             )}
                         </td>
@@ -586,8 +541,7 @@ export function AdminQuestionBankDetailPage() {
                     );
                   })}
                 </tbody>
-              </table>
-            </div>
+            </Table>
           ) : (
             <div className="question-card-list">
               {items.map((question, index) => {
@@ -598,8 +552,6 @@ export function AdminQuestionBankDetailPage() {
                 );
                 const questionNumber = page * pageSize + index + 1;
                 const questionId = question.questionId || question.id;
-                const moduleLabel =
-                  moduleNameById.get(question.moduleId) || "Unassigned";
                 const { images, audios, videos } =
                   normalizeQuestionMedia(question);
                 const visibleImages = images.slice(0, 3);
@@ -609,14 +561,7 @@ export function AdminQuestionBankDetailPage() {
                       <div>
                         <div className="question-card__eyebrow">
                           <span>Question {questionNumber}</span>
-                          <span className="question-card__tag">
-                            {moduleLabel}
-                          </span>
-                          <span
-                            className={`admin-status admin-status--${question.status}`}
-                          >
-                            {question.status}
-                          </span>
+                          <StatusBadge status={question.status} />
                         </div>
                         <div
                           className="question-card__title question-rich-text-viewer"
@@ -627,23 +572,18 @@ export function AdminQuestionBankDetailPage() {
                       </div>
                       {canEditQuestion && question.status !== "archived" && (
                         <div className="question-card__actions">
-                          <button
-                            type="button"
-                            className="admin-table__icon-btn"
-                            title="Edit"
+                          <IconButton
+                            icon={<Edit2 size={15} />}
+                            label={`Edit question ${questionNumber}`}
                             onClick={() => openEditQuestionModal(questionId)}
-                          >
-                            <Edit2 size={15} />
-                          </button>
-                          <button
-                            type="button"
-                            className="admin-table__icon-btn admin-table__icon-btn--danger"
-                            title="Archive"
+                          />
+                          <IconButton
+                            icon={<Archive size={15} />}
+                            label={`Archive question ${questionNumber}`}
+                            variant="danger"
                             disabled={archivingId === questionId}
-                            onClick={() => handleArchive(question)}
-                          >
-                            <Archive size={15} />
-                          </button>
+                            onClick={() => setPendingArchive(question)}
+                          />
                         </div>
                       )}
                     </div>
@@ -819,23 +759,21 @@ export function AdminQuestionBankDetailPage() {
           className="admin-card admin-card--flush"
           aria-label="Bank activity log"
         >
-          <div className="admin-toolbar" style={{ padding: 0 }}>
+          <div className="admin-toolbar question-bank-detail__meta">
             <strong>Activity log</strong>
-            <span style={{ color: "#64748b", fontSize: 13 }}>
+            <span className="question-bank-detail__activity-count">
               {activityTotalItems} events
             </span>
           </div>
           {activityLoading ? (
-            <div className="admin-loading">Loading activity...</div>
+            <LoadingState label="Loading activity..." />
           ) : activityError ? (
-            <div className="admin-error">{activityError}</div>
+            <ErrorState title="Could not load activity" description={activityError} />
           ) : activity.length === 0 ? (
-            <div className="admin-empty">
-              No activity recorded for this bank yet.
-            </div>
+            <EmptyState title="No activity recorded for this bank yet" />
           ) : (
             <>
-              <table className="admin-table">
+              <Table tableClassName="admin-table" ariaLabel="Question bank activity">
                 <thead>
                   <tr>
                     <th>When</th>
@@ -848,19 +786,17 @@ export function AdminQuestionBankDetailPage() {
                 <tbody>
                   {activity.map((log) => (
                     <tr key={log.auditLogId || log.id}>
-                      <td>{formatDate(log.occurredAt)}</td>
-                      <td>{log.actorEmail || "System"}</td>
-                      <td>
-                        <span className="admin-status admin-status--draft">
-                          {log.action}
-                        </span>
+                      <td data-label="When">{formatDate(log.occurredAt)}</td>
+                      <td data-label="Actor">{log.actorEmail || "System"}</td>
+                      <td data-label="Action">
+                        <StatusBadge status="draft" label={log.action} tone="neutral" />
                       </td>
-                      <td>{log.result}</td>
-                      <td>{log.summary || log.actorRole || ""}</td>
+                      <td data-label="Result">{log.result}</td>
+                      <td data-label="Summary">{log.summary || log.actorRole || ""}</td>
                     </tr>
                   ))}
                 </tbody>
-              </table>
+              </Table>
               <Pagination
                 page={activityPage + 1}
                 totalPages={Math.max(
@@ -882,9 +818,20 @@ export function AdminQuestionBankDetailPage() {
         open={Boolean(questionFormModal)}
         bankId={bankId}
         courseId={isCourseQuestionsMode ? courseId : undefined}
+        moduleId={isCourseQuestionsMode ? routeModuleId : undefined}
         questionId={questionFormModal?.questionId}
         onClose={closeQuestionFormModal}
         onSaved={handleQuestionSaved}
+      />
+      <ConfirmDialog
+        open={Boolean(pendingArchive)}
+        title="Archive this question?"
+        description="The question will become read-only until it is restored."
+        confirmLabel="Archive"
+        loading={Boolean(archivingId)}
+        loadingLabel="Archiving..."
+        onClose={() => setPendingArchive(null)}
+        onConfirm={() => pendingArchive && handleArchive(pendingArchive)}
       />
       <QuestionImagePreviewModal
         preview={imagePreview}

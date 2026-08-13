@@ -1,9 +1,5 @@
 import apiClient from "@/services/api-client";
-
-/** Lấy payload nghiệp vụ từ response chuẩn của API. */
-function unwrap(response) {
-  return response?.data ?? response;
-}
+import { unwrapApiData as unwrap } from "@/services/api-response";
 
 export const learningService = {
   /** Lấy nội dung học thật theo khóa và phạm vi lớp nếu học viên đã có quyền truy cập. */

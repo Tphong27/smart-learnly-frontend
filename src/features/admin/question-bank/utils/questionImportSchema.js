@@ -13,7 +13,6 @@ export const IMPORT_COLUMNS = [
   { key: 'explanation', label: 'Explanation', required: false },
   { key: 'difficulty', label: 'Difficulty', required: false },
   { key: 'bloom_level', label: 'Bloom level', required: false },
-  { key: 'module_id', label: 'Module ID', required: false },
   { key: 'image_files', label: 'Image URLs', required: false },
   { key: 'audio_files', label: 'Audio URLs', required: false },
 ]
@@ -39,9 +38,8 @@ export const SAMPLE_QUESTION_BANK_JSON = JSON.stringify(
       explanation: 'Paris has been the capital of France for centuries.',
       difficulty: 1,
       bloomLevel: 'remember',
-      moduleId: null,
       media: {
-        images: ['https://example.com/question-diagram.png'],
+        images: [],
         audios: [],
       },
     },
@@ -53,7 +51,6 @@ export const SAMPLE_QUESTION_BANK_JSON = JSON.stringify(
       explanation: '@Component, @Service, and @Repository are component-scanned stereotypes.',
       difficulty: 3,
       bloomLevel: 'understand',
-      moduleId: null,
       media: {
         images: [],
         audios: [],
@@ -67,10 +64,9 @@ export const SAMPLE_QUESTION_BANK_JSON = JSON.stringify(
       explanation: 'Java is a general-purpose programming language.',
       difficulty: 'easy',
       bloom_level: 'understand',
-      module_id: null,
       media: {
         images: [],
-        audios: ['https://example.com/listening.mp3'],
+        audios: [],
       },
     },
   ],
@@ -93,7 +89,6 @@ const HEADER_ALIASES = {
   explanation: ['explanation', 'explain', 'rationale'],
   difficulty: ['difficulty', 'level'],
   bloom_level: ['bloom_level', 'bloom level', 'bloom'],
-  module_id: ['module_id', 'module id', 'module'],
   image_files: ['image_files', 'image files', 'image_urls', 'image urls', 'images'],
   audio_files: ['audio_files', 'audio files', 'audio_urls', 'audio urls', 'audios'],
 }
@@ -177,12 +172,29 @@ function collectMediaErrors(urls, label, maxCount) {
       const parsed = new URL(url)
       if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
         errors.push(label + ' URL must use http or https')
+      } else if (isReservedMediaHost(parsed.hostname)) {
+        errors.push(label + ' URL must point to a real, publicly accessible media file')
       }
     } catch {
       errors.push(label + ' URL is invalid')
     }
   }
   return errors
+}
+
+/** Chặn host mẫu hoặc host nội bộ vốn không thể dùng làm nguồn media import. */
+function isReservedMediaHost(hostname) {
+  const host = String(hostname || '').trim().toLowerCase()
+  return host === 'localhost'
+    || host.endsWith('.localhost')
+    || host.endsWith('.local')
+    || host.endsWith('.internal')
+    || host === 'example.com'
+    || host.endsWith('.example.com')
+    || host === 'example.org'
+    || host.endsWith('.example.org')
+    || host === 'example.net'
+    || host.endsWith('.example.net')
 }
 
 function getJsonMediaArray(rawQuestion, mediaKey, aliasKey) {
@@ -222,7 +234,6 @@ function normalizeJsonQuestion(rawQuestion) {
     explanation: String(rawQuestion.explanation ?? '').trim(),
     difficulty: String(rawQuestion.difficulty ?? '').trim(),
     bloom_level: String(getAliasedValue(rawQuestion, 'bloomLevel', 'bloom_level') ?? '').trim(),
-    module_id: String(getAliasedValue(rawQuestion, 'moduleId', 'module_id') ?? '').trim(),
     image_files: getJsonMediaArray(rawQuestion, 'images', 'imageFiles'),
     audio_files: getJsonMediaArray(rawQuestion, 'audios', 'audioFiles'),
   }
@@ -318,7 +329,6 @@ function toEditableMappedRow(row) {
     explanation: String(data.explanation ?? raw.explanation ?? '').trim(),
     difficulty: String(data.difficulty ?? raw.difficulty ?? '').trim(),
     bloom_level: String(data.bloomLevel ?? raw.bloom_level ?? '').trim(),
-    module_id: String(data.moduleId ?? raw.module_id ?? '').trim(),
     image_files: imageFiles.join('; '),
     audio_files: audioFiles.join('; '),
   }
@@ -348,7 +358,6 @@ function validateMappedRows(mappedRows, existingQuestions = []) {
         explanation: mapped.explanation || null,
         difficulty: resolveDifficulty(mapped.difficulty),
         bloomLevel: mapped.bloom_level ? mapped.bloom_level.trim().toLowerCase().replace(/-/g, '_') : null,
-        moduleId: mapped.module_id || null,
         imageFiles,
         audioFiles,
       },
@@ -451,13 +460,6 @@ function collectRowErrors(row, rowNumber, existingTexts) {
     }
   }
 
-  if (row.module_id) {
-    const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-    if (!uuidPattern.test(row.module_id)) {
-      errors.push('Module ID must be a valid UUID')
-    }
-  }
-
   if (row.explanation && row.explanation.length > 10000) {
     errors.push('Explanation must not exceed 10000 characters')
   }
@@ -507,7 +509,6 @@ export async function parseImportFile(file) {
         explanation: mapped.explanation || null,
         difficulty: resolveDifficulty(mapped.difficulty),
         bloomLevel: mapped.bloom_level ? mapped.bloom_level.trim().toLowerCase().replace(/-/g, '_') : null,
-        moduleId: mapped.module_id || null,
         imageFiles,
         audioFiles,
       },
@@ -549,7 +550,6 @@ export function parseImportJson(jsonText) {
         explanation: mapped.explanation || null,
         difficulty: resolveDifficulty(mapped.difficulty),
         bloomLevel: mapped.bloom_level ? mapped.bloom_level.trim().toLowerCase().replace(/-/g, '_') : null,
-        moduleId: mapped.module_id || null,
         imageFiles,
         audioFiles,
       },
@@ -598,7 +598,6 @@ export function buildImportPayload(bankId, validRows) {
       explanation: row.data.explanation || null,
       difficulty: row.data.difficulty,
       bloomLevel: row.data.bloomLevel || null,
-      moduleId: row.data.moduleId || null,
       imageFiles: row.data.imageFiles || [],
       audioFiles: row.data.audioFiles || [],
     })),
@@ -620,8 +619,7 @@ export function downloadTemplate() {
       explanation: 'Paris has been the capital of France for centuries.',
       difficulty: '1',
       bloom_level: 'remember',
-      module_id: '',
-      image_files: 'https://example.com/question-diagram.png',
+      image_files: '',
       audio_files: '',
     },
     {
@@ -637,7 +635,6 @@ export function downloadTemplate() {
       explanation: '@Component, @Service, and @Repository are component-scanned stereotypes.',
       difficulty: '3',
       bloom_level: 'understand',
-      module_id: '',
       image_files: '',
       audio_files: '',
     },
@@ -654,9 +651,8 @@ export function downloadTemplate() {
       explanation: 'Java is a general-purpose programming language.',
       difficulty: '2',
       bloom_level: 'understand',
-      module_id: '',
       image_files: '',
-      audio_files: 'https://example.com/listening.mp3',
+      audio_files: '',
     },
   ]
 
@@ -670,8 +666,8 @@ export function downloadTemplate() {
     ['Question types', 'single_choice, multiple_choice, or true_false'],
     ['Correct answer', 'single_choice uses one letter A-F; multiple_choice uses comma-separated letters like A,C; true_false uses True or False'],
     ['Difficulty', '1-5, or easy/medium/hard aliases'],
-    ['Image media', 'Use image_files with http/https URLs only; separate multiple URLs with semicolons; max 5 per question'],
-    ['Audio media', 'Use audio_files with http/https URLs only; separate multiple URLs with semicolons; max 3 per question'],
+    ['Image media', 'Optional. Use real public image URLs only; separate multiple URLs with semicolons; max 5 per question'],
+    ['Audio media', 'Optional. Use real public audio URLs only; separate multiple URLs with semicolons; max 3 per question'],
     ['Final storage', 'Imported media URLs are downloaded, validated, and re-uploaded by the backend before saving'],
   ]
   const rulesSheet = XLSX.utils.aoa_to_sheet(rules)

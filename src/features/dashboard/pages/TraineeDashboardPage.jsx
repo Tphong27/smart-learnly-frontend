@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import {
   ArrowRight,
   BookOpen,
-  CheckCircle2,
   CirclePlay,
   Flame,
   Sparkles,
@@ -403,9 +402,6 @@ export function TraineeDashboardPage() {
             <Link to="/flashcards">
               <BookOpen size={18} /> Practice flashcards{" "}
               <ArrowRight size={16} />
-            </Link>
-            <Link to="/learning/tests">
-              <CheckCircle2 size={18} /> View my tests <ArrowRight size={16} />
             </Link>
           </div>
         </section>

@@ -1,0 +1,118 @@
+.tabs {
+  display: flex;
+  align-items: center;
+  gap: var(--sl-space-4);
+  overflow-x: auto;
+  overflow-y: hidden;
+  border-bottom: 1px solid var(--sl-line);
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.tabs__tab {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sl-space-2);
+  min-height: var(--sl-control-height);
+  padding: 0 2px;
+  border: 0;
+  background: transparent;
+  color: var(--sl-muted);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.tabs__tab::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  bottom: -1px;
+  left: 0;
+  height: 2px;
+  background: transparent;
+}
+
+.tabs__tab:hover,
+.tabs__tab.is-active {
+  color: var(--sl-ink);
+}
+
+.tabs__tab.is-active::after {
+  background: var(--sl-purple);
+}
+
+.tabs__tab:focus-visible {
+  outline: 3px solid rgba(86, 36, 208, 0.22);
+  outline-offset: -3px;
+}
+
+.tabs__tab:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.tabs__icon {
+  display: inline-flex;
+}
+
+.tabs__count {
+  min-width: 22px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: var(--sl-neutral-soft);
+  color: var(--sl-neutral);
+  font-size: 12px;
+}
+
+.tabs--compact {
+  gap: var(--sl-space-2);
+}
+
+.tabs--compact .tabs__tab {
+  min-height: 40px;
+  padding: 0 var(--sl-space-2);
+}
+
+.tabs--vertical {
+  flex-direction: column;
+  align-items: stretch;
+  overflow: visible;
+  border-bottom: 0;
+}
+
+.tabs--navigation {
+  gap: var(--sl-space-1);
+  padding: 10px;
+  border-bottom: 0;
+}
+
+.tabs--navigation .tabs__tab {
+  justify-content: flex-start;
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+  border-radius: var(--sl-radius-sm);
+  text-align: left;
+}
+
+.tabs--navigation .tabs__tab::after {
+  display: none;
+}
+
+.tabs--navigation .tabs__tab:hover:not(:disabled) {
+  background: var(--sl-surface);
+}
+
+.tabs--navigation .tabs__tab.is-active {
+  background: var(--sl-purple-soft);
+  color: var(--sl-purple);
+}

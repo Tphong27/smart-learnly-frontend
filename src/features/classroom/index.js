@@ -7,7 +7,6 @@ export { ClassList } from "./components/ClassList";
 export { ClassStatusBadge } from "./components/ClassStatusBadge";
 export { ClassListFilters } from "./components/ClassListFilters";
 export { ClassOverviewTab } from "./components/ClassOverviewTab";
-export { ClassCurriculumTab } from "./components/ClassCurriculumTab";
 export { ClassAnalyticsTab } from "./components/ClassAnalyticsTab";
 export { EditionClassPage } from "./pages/EditionClassPage";
 export { ClassAnalyticsRedirect } from "./pages/ClassAnalyticsRedirect";
