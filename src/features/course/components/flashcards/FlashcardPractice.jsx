@@ -226,6 +226,11 @@ function normalizeProgressPayload(payload, fallbackResult) {
   };
 }
 
+function isLessonCompletedPayload(payload) {
+  const data = payload?.data ?? payload ?? {};
+  return data.lessonCompleted === true;
+}
+
 /** Áp dụng tiến độ mới cho card đích mà không thay đổi mảng nguồn. */
 function applyProgressToCards(cards, cardId, savedProgress) {
   const targetKey = cardKey(cardId);
@@ -308,8 +313,8 @@ function resolvedStudyControls(controls, navigationLocked) {
     ...controls,
     canGoPrevious: navigationLocked ? false : controls.canGoPrevious,
     canGoNext: navigationLocked ? false : controls.canGoNext,
-    goPrevious: navigationLocked ? () => {} : controls.goPrevious,
-    goNext: navigationLocked ? () => {} : controls.goNext,
+    goPrevious: navigationLocked ? () => { } : controls.goPrevious,
+    goNext: navigationLocked ? () => { } : controls.goNext,
   };
 }
 
@@ -398,13 +403,13 @@ function FlashcardPracticeControls({
       trailingAction={
         canOpenFocusMode
           ? {
-              ariaLabel: "Open focus mode",
-              className: "flashcard-btn flashcard-btn--icon flashcard-focus-toggle",
-              disabled: navigationLocked,
-              icon: <Maximize2 size={16} />,
-              onClick: navigationLocked ? undefined : onOpenFocusMode,
-              title: "Open focus mode",
-            }
+            ariaLabel: "Open focus mode",
+            className: "flashcard-btn flashcard-btn--icon flashcard-focus-toggle",
+            disabled: navigationLocked,
+            icon: <Maximize2 size={16} />,
+            onClick: navigationLocked ? undefined : onOpenFocusMode,
+            title: "Open focus mode",
+          }
           : null
       }
     />
@@ -642,17 +647,6 @@ export function FlashcardPractice({
     setActiveCardForFilter,
   ]);
 
-  const allCardsKnown = useMemo(
-    () => cards.length > 0 && cards.every((card) => progressStatus(card) === "known"),
-    [cards],
-  );
-
-  useEffect(() => {
-    if (!canTrackProgress || !lessonId || completionNotified || !allCardsKnown) return;
-    setCompletionNotified(true);
-    onCompleted?.(lessonId);
-  }, [allCardsKnown, canTrackProgress, completionNotified, lessonId, onCompleted]);
-
   const progressCounts = useMemo(
     () => ({
       all: queues.all.length,
@@ -761,21 +755,23 @@ export function FlashcardPractice({
       setFlashcardSet((currentSet) =>
         currentSet
           ? {
-              ...currentSet,
-              cards: applyProgressToCards(
-                currentSet.cards || [],
-                card.id,
-                optimisticProgress,
-              ),
-            }
+            ...currentSet,
+            cards: applyProgressToCards(
+              currentSet.cards || [],
+              card.id,
+              optimisticProgress,
+            ),
+          }
           : currentSet,
       );
 
       try {
-        const savedProgress = normalizeProgressPayload(
-          await learningService.submitFlashcardProgress(card.id, result, classId),
+        const response = await learningService.submitFlashcardProgress(
+          card.id,
           result,
+          classId,
         );
+        const savedProgress = normalizeProgressPayload(response, result);
         const nextCards = applyProgressToCards(cardsRef.current, card.id, savedProgress);
         const nextQueues = buildQueues(nextCards);
         const nextQueue = getQueueForFilter(nextQueues, activeFilter, orderedIdsByFilter);
@@ -785,9 +781,9 @@ export function FlashcardPractice({
         setFlashcardSet((currentSet) =>
           currentSet
             ? {
-                ...currentSet,
-                cards: applyProgressToCards(currentSet.cards || [], card.id, savedProgress),
-              }
+              ...currentSet,
+              cards: applyProgressToCards(currentSet.cards || [], card.id, savedProgress),
+            }
             : currentSet,
         );
 
@@ -802,6 +798,11 @@ export function FlashcardPractice({
             setActiveCardId(null);
             closeFocusMode();
           }
+        }
+
+        if (isLessonCompletedPayload(response) && !completionNotified) {
+          setCompletionNotified(true);
+          onCompleted?.(lessonId);
         }
       } catch (error) {
         cardsRef.current = previousCards;
@@ -818,9 +819,12 @@ export function FlashcardPractice({
       activeFilter,
       canTrackProgress,
       classId,
+      completionNotified,
       currentQueue,
+      lessonId,
       orderedIdsByFilter,
       closeFocusMode,
+      onCompleted,
       setActiveCardForFilter,
     ],
   );
@@ -946,15 +950,15 @@ export function FlashcardPractice({
         renderItemMeta={
           canTrackProgress
             ? (card) => {
-                const status = progressStatus(card);
-                return (
-                  <StatusBadge
-                    status={status}
-                    label={STATUS_META[status].label}
-                    tone={STATUS_TONE[status]}
-                  />
-                );
-              }
+              const status = progressStatus(card);
+              return (
+                <StatusBadge
+                  status={status}
+                  label={STATUS_META[status].label}
+                  tone={STATUS_TONE[status]}
+                />
+              );
+            }
             : undefined
         }
       />

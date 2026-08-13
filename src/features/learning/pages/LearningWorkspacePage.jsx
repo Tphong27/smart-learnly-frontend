@@ -423,6 +423,20 @@ export function LearningWorkspacePage({
     [completedLessonIds, courseId, mode, effectiveClassId],
   );
 
+  const markFlashcardLessonCompleted = useCallback(
+    (lessonId) => {
+      if (!lessonId || mode !== "student") return;
+      if (completedLessonIds.has(lessonId)) return;
+
+      setCompletedLessonIds((currentIds) => {
+        const nextIds = new Set(currentIds);
+        nextIds.add(lessonId);
+        return nextIds;
+      });
+    },
+    [completedLessonIds, mode],
+  );
+
   /** Kiểm tra điều kiện hoàn thành và chuyển học viên đến lesson kế tiếp. */
   const handleGoToNextLesson = useCallback(async () => {
     if (!nextLesson || !activeLesson) return;
@@ -749,7 +763,7 @@ export function LearningWorkspacePage({
                   flashcardPositionUserKey={workspaceUserKey}
                   onQuizCompleted={markLessonCompleted}
                   onQuizStart={handleStartQuiz}
-                  onFlashcardCompleted={markLessonCompleted}
+                  onFlashcardCompleted={markFlashcardLessonCompleted}
                   onEssayCompleted={markLessonCompleted}
                 />
               </div>
