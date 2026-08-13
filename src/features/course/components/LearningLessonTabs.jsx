@@ -12,9 +12,7 @@ import {
   FileText,
   FolderOpen,
   Loader2,
-  MessageSquare,
   RefreshCw,
-  StickyNote,
   UploadCloud,
   X,
 } from "lucide-react";
@@ -28,8 +26,6 @@ import DOMPurify from "dompurify";
 const TABS = [
   { key: "overview", label: "Overview", icon: BookOpen },
   { key: "resources", label: "Resources", icon: FolderOpen },
-  { key: "qa", label: "Q&A", icon: MessageSquare },
-  { key: "notes", label: "Notes", icon: StickyNote },
 ];
 
 function getLessonId(lesson) {
@@ -986,14 +982,13 @@ function ResourcesContent({ lesson }) {
   );
 }
 
+/** Hiển thị nội dung tổng quan và tài nguyên của lesson trong workspace học. */
 export function LearningLessonTabs({
   lesson,
   courseId,
   classId,
   activeTab,
   onTabChange,
-  note,
-  onNoteChange,
   nextLesson,
   onNextLesson,
   canGoNext = true,
@@ -1051,39 +1046,6 @@ export function LearningLessonTabs({
         {activeTab === "resources" && (
           <div className="tab-resources">
             <ResourcesContent lesson={lesson} />
-          </div>
-        )}
-
-        {activeTab === "qa" && (
-          <div className="tab-qa">
-            <div className="tab-qa__placeholder">
-              <MessageSquare size={40} />
-              <h4>Q&A is not available in admin preview yet.</h4>
-              <p>
-                The Q&A feature will be available when students access this
-                course through the learner interface.
-              </p>
-            </div>
-          </div>
-        )}
-
-        {activeTab === "notes" && (
-          <div className="tab-notes">
-            <div className="tab-notes__placeholder">
-              <StickyNote size={40} />
-              <h4>Notes are local-only in preview</h4>
-              <p>
-                Your notes are saved in this browser session and will not be
-                persisted.
-              </p>
-            </div>
-            <textarea
-              className="tab-notes__textarea"
-              placeholder="Take notes about this lesson..."
-              rows={8}
-              value={note}
-              onChange={(event) => onNoteChange(event.target.value)}
-            />
           </div>
         )}
 

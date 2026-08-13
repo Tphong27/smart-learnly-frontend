@@ -59,10 +59,11 @@ export const learningService = {
   },
 
   /** LÆ°u káº¿t quáº£ Ã´n tháº» trong luá»“ng flashcard cá»§a course/lesson. */
-  async submitFlashcardProgress(cardId, result) {
+  async submitFlashcardProgress(cardId, result, classId) {
     const response = await apiClient.post(
       `/learning/flashcards/${cardId}/progress`,
       { result },
+      { params: classId ? { classId } : {} },
     );
     return unwrap(response);
   },
