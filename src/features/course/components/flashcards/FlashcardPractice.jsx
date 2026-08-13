@@ -719,7 +719,7 @@ export function FlashcardPractice({
 
       try {
         const savedProgress = normalizeProgressPayload(
-          await learningService.submitFlashcardProgress(card.id, result),
+          await learningService.submitFlashcardProgress(card.id, result, classId),
           result,
         );
         const nextCards = applyProgressToCards(cardsRef.current, card.id, savedProgress);
@@ -763,6 +763,7 @@ export function FlashcardPractice({
     [
       activeFilter,
       canTrackProgress,
+      classId,
       currentQueue,
       orderedIdsByFilter,
       closeFocusMode,
