@@ -20,10 +20,7 @@ import {
     getDashboardPathByRole,
     isPathAllowedForRole,
 } from "@/app/routes/dashboard-path";
-const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-const isGoogleConfigured = Boolean(
-    GOOGLE_CLIENT_ID && GOOGLE_CLIENT_ID !== "__SET_ME__",
-);
+import { useGoogleAuthConfig } from "@/app/providers/googleAuthConfigContext";
 
 /** Xác định đường dẫn an toàn sau khi người dùng đăng nhập thành công. */
 function getRedirectPath(location, user) {
@@ -41,6 +38,9 @@ export function LoginPage() {
     const navigate = useNavigate();
     const location = useLocation();
     const toast = useToast();
+    const { clientId: googleClientId, isLoading: isGoogleConfigLoading } =
+        useGoogleAuthConfig();
+    const isGoogleConfigured = Boolean(googleClientId);
 
     const [serverError, setServerError] = useState(null);
     const [unverifiedEmail, setUnverifiedEmail] = useState(null);
@@ -186,9 +186,10 @@ export function LoginPage() {
                         </div>
                     </>
                 ) : (
-                    <p className="auth-google-fallback">
-                        Google sign-in is being configured. Set
-                        VITE_GOOGLE_CLIENT_ID in .env to enable it.
+                    <p className="auth-google-fallback" aria-live="polite">
+                        {isGoogleConfigLoading
+                            ? "Loading Google sign-in..."
+                            : "Google sign-in is not configured. Please contact an administrator."}
                     </p>
                 )}
             </AuthCard>

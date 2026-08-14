@@ -90,8 +90,6 @@ export function AdminQuestionForm({
   const [videoMedia, setVideoMedia] = useState(() => initialMedia?.videos || []);
   const [removedAttachmentIds, setRemovedAttachmentIds] = useState([]);
   const [activeMediaTab, setActiveMediaTab] = useState("image");
-  const [uploadingAnswerIndex, setUploadingAnswerIndex] = useState(null);
-  const [uploadingAnswerMediaType, setUploadingAnswerMediaType] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -122,6 +120,8 @@ export function AdminQuestionForm({
             answers: normalizeAnswers(
               question.questionType || "single_choice",
               (question.answers || []).map((answer, index) => ({
+                answerId: answer.answerId || answer.id || null,
+                id: answer.id || answer.answerId || null,
                 ...parseAnswerContent(answer.answerText),
                 correct: Boolean(answer.correct || answer.isCorrect),
                 displayOrder: answer.displayOrder ?? index + 1,
@@ -325,30 +325,18 @@ export function AdminQuestionForm({
     }));
   }
 
-  /** Upload media của đáp án và đồng bộ trạng thái hiển thị. */
+  /** Giữ media đáp án ở local để upload sau khi question và answer đã có ID. */
   function handleAnswerMediaUpload(index, mediaType, file) {
-    let previousItem = null;
-    setValues((current) => {
-      const target = current.answers[index];
-      previousItem = target?.answerMedia?.[mediaType] || null;
-      return current;
-    });
+    const previousItem = values.answers[index]?.answerMedia?.[mediaType] || null;
     if (previousItem?.previewUrl) {
       URL.revokeObjectURL(previousItem.previewUrl);
       pendingPreviewUrls.current.delete(previousItem.previewUrl);
     }
     const previewUrl = URL.createObjectURL(file);
     pendingPreviewUrls.current.add(previewUrl);
-    applyAnswerMediaUpdate(index, mediaType, () => ({
-      previewUrl,
-      fileName: file.name,
-      fileSize: file.size,
-      contentType: file.type,
-      uploading: true,
-      source: "pending",
-    }));
-    setUploadingAnswerIndex(index);
-    setUploadingAnswerMediaType(mediaType);
+    applyAnswerMediaUpdate(index, mediaType, () =>
+      pendingMediaItem(file, mediaType, previewUrl),
+    );
   }
 
   /** Gỡ media của đáp án và ghi nhận attachment cần xóa. */
@@ -384,11 +372,12 @@ export function AdminQuestionForm({
       }
     });
     return Promise.all(uploadTasks.map((task) =>
-      questionBankService
-        .uploadAnswerMedia(savedQuestion.questionId || savedQuestion.id, task.answerId, task.mediaType, task.file)
-        .catch((uploadError) => {
-          toast.error(uploadError?.message || `Could not upload answer ${task.mediaType}.`);
-        }),
+      questionBankService.uploadAnswerMedia(
+        savedQuestion.questionId || savedQuestion.id,
+        task.answerId,
+        task.mediaType,
+        task.file,
+      ),
     ));
   }
 
@@ -530,10 +519,6 @@ export function AdminQuestionForm({
       setError(validationError);
       return;
     }
-    if (uploadingAnswerIndex !== null) {
-      setError("Please wait for the answer media upload to finish.");
-      return;
-    }
     setSubmitting(true);
     setError(null);
     const cleanExplanation = sanitizeQuestionHtml(values.explanation).trim();
@@ -547,6 +532,7 @@ export function AdminQuestionForm({
       explanation: isEmptyQuestionHtml(cleanExplanation) ? null : cleanExplanation,
       answers: normalizeAnswers(values.questionType, values.answers).map(
         (answer, index) => ({
+          answerId: answer.answerId || answer.id || null,
           answerText: buildAnswerContent(answer),
           correct: Boolean(answer.correct),
           displayOrder: index + 1,
@@ -819,9 +805,6 @@ export function AdminQuestionForm({
                       <AnswerMediaRow
                         media={answer.answerMedia || { image: null, audio: null, video: null }}
                         disabled={draftMode || submitting || values.status === "archived"}
-                        uploading={
-                          uploadingAnswerIndex === index ? uploadingAnswerMediaType : null
-                        }
                         onUpload={(mediaType, file) =>
                           handleAnswerMediaUpload(index, mediaType, file)
                         }
@@ -844,7 +827,7 @@ export function AdminQuestionForm({
                             label="Remove answer image"
                             variant="danger"
                             onClick={() => removeAnswerImage(index)}
-                            disabled={submitting || uploadingAnswerIndex === index}
+                            disabled={submitting}
                           />
                         </div>
                       ) : null}

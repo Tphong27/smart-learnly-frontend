@@ -39,6 +39,7 @@ import {
   parsePastedFlashcards,
   shouldIgnoreSelectionClick,
   SOURCE_QUESTION_PAGE_SIZE,
+  toPlainText,
   toTemporaryApprovalPayload,
   validateGenerationSettings,
 } from "./flashcardStagingUtils";
@@ -563,7 +564,7 @@ export function CourseQuestionsImportPanel({
                         />
                       </td>
                       <td data-label="Question" className="flashcard-staging__wrap-cell">
-                        {question.questionText || "--"}
+                        {toPlainText(question.questionText) || "--"}
                       </td>
                       <td data-label="Module" className="flashcard-staging__wrap-cell">
                         {moduleTitleById.get(String(getModuleId(question))) || "--"}

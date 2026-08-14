@@ -36,7 +36,7 @@ function getTraineeRoutes() {
       children: [{ index: true, element: <TraineeAssignmentTakePage /> }],
     },
     {
-      path: "/learning/tests/take/:id/:type",
+      path: "/learning/course-quizzes/:id",
       element: <RoleGuard allowedRoles={[ROLES.TRAINEE]} />,
       children: [{ index: true, element: <TraineeTestTakePage /> }],
     },
@@ -86,11 +86,7 @@ function getTraineeRoutes() {
               element: <PlaceholderPage title="Classrooms" />,
             },
             {
-              path: "tests",
-              element: <Navigate to="/dashboard" replace />,
-            },
-            {
-              path: "tests/attempts/:testId/:attemptId",
+              path: "course-quizzes/attempts/:testId/:attemptId",
               element: <TestAttemptDetailPage />,
             },
             {

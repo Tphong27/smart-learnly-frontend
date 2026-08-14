@@ -1,13 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import {
-    ArrowLeft,
-    Edit2,
-    FileText,
-    Sparkles,
-    Upload,
-    X,
-} from "lucide-react";
+import { ArrowLeft, Edit2, FileText, Sparkles, Upload, X } from "lucide-react";
 import {
     Alert,
     Button,
@@ -140,15 +133,13 @@ export function AdminAiQuestionDraftCreatePage() {
                           updatedAt: bankData?.updatedAt,
                       }
                     : bankData;
-                const capabilityData = await (
-                    isCourseQuestionsMode
-                        ? questionBankService
-                              .getCourseAiDraftSourceCapabilities(courseId)
-                              .catch(() => DEFAULT_CAPABILITIES)
-                        : questionBankService
-                              .getAiDraftSourceCapabilities(bankId)
-                              .catch(() => DEFAULT_CAPABILITIES)
-                );
+                const capabilityData = await (isCourseQuestionsMode
+                    ? questionBankService
+                          .getCourseAiDraftSourceCapabilities(courseId)
+                          .catch(() => DEFAULT_CAPABILITIES)
+                    : questionBankService
+                          .getAiDraftSourceCapabilities(bankId)
+                          .catch(() => DEFAULT_CAPABILITIES));
                 if (cancelled) return;
                 setBank(normalizedBank);
                 setLanguage("en");
@@ -593,10 +584,7 @@ export function AdminAiQuestionDraftCreatePage() {
                             </span>
                         </div>
                         {fileErrors.length > 0 && (
-                            <ul
-                                className="ai-draft-row__notes"
-                                role="alert"
-                            >
+                            <ul className="ai-draft-row__notes" role="alert">
                                 {fileErrors.map((item) => (
                                     <li key={item}>{item}</li>
                                 ))}
@@ -611,7 +599,9 @@ export function AdminAiQuestionDraftCreatePage() {
                                     >
                                         <FileText size={17} />
                                         <span>{file.name}</span>
-                                        <strong>{formatBytes(file.size)}</strong>
+                                        <strong>
+                                            {formatBytes(file.size)}
+                                        </strong>
                                         <IconButton
                                             icon={<X size={15} />}
                                             label={`Remove ${file.name}`}
@@ -626,8 +616,8 @@ export function AdminAiQuestionDraftCreatePage() {
 
                         <Alert tone="info">
                             Source material is optional. Uploaded document
-                            originals are stored for audit and can be
-                            downloaded after review authorization.
+                            originals are stored for audit and can be downloaded
+                            after review authorization.
                         </Alert>
                     </div>
                 </details>
@@ -642,7 +632,7 @@ export function AdminAiQuestionDraftCreatePage() {
                     <div className="ai-generating-control">
                         <Input
                             id="ai-draft-count"
-                            label="Number of Questions"
+                            label="Number of Questions (max 20)"
                             type="number"
                             min="1"
                             max={MAX_REQUESTED_COUNT}
@@ -662,7 +652,7 @@ export function AdminAiQuestionDraftCreatePage() {
                             leftIcon={<Sparkles size={16} />}
                             loading={submitting}
                             disabled={!canSubmit}
-                            loadingLabel="Creating batch..."
+                            loadingLabel="Creating..."
                         >
                             AI Generate
                         </Button>
@@ -709,69 +699,66 @@ export function AdminAiQuestionDraftCreatePage() {
                         ariaLabel="Generated AI questions"
                         tableClassName="admin-table ai-generated-table"
                     >
-                            <thead>
+                        <thead>
+                            <tr>
+                                <th>Select</th>
+                                <th>Question content</th>
+                                <th>Type</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {draftRows.length === 0 ? (
                                 <tr>
-                                    <th>Select</th>
-                                    <th>Question content</th>
-                                    <th>Type</th>
-                                    <th>Status</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {draftRows.length === 0 ? (
-                                    <tr>
-                                        <td colSpan="5">
-                                            <EmptyState
-                                                title="No generated questions yet"
-                                                description="Generated draft questions will appear here for this session after AI Generate finishes."
-                                                className="ai-drafts-empty"
-                                            />
-                                        </td>
-                                    </tr>
-                                ) : (
-                                    draftRows.map((row) => (
-                                        <AiQuestionDraftTableRow
-                                            key={row.key}
-                                            draft={row.draft}
-                                            selected={selectedDraftKeys.includes(
-                                                row.key,
-                                            )}
-                                            selectable={canDraftBeSelected(
-                                                row.draft,
-                                            )}
-                                            mutating={mutatingDrafts}
-                                            onToggle={() =>
-                                                toggleDraftSelection(row.key)
-                                            }
-                                            actions={
-                                                <Button
-                                                    type="button"
-                                                    variant="secondary"
-                                                    size="sm"
-                                                    leftIcon={
-                                                        <Edit2 size={15} />
-                                                    }
-                                                    onClick={() => {
-                                                        setEditError(null);
-                                                        setEditDraftRow(row);
-                                                    }}
-                                                    disabled={
-                                                        row.draft.status !==
-                                                            "generated_draft" ||
-                                                        mutatingDrafts
-                                                    }
-                                                >
-                                                    Edit
-                                                </Button>
-                                            }
+                                    <td colSpan="5">
+                                        <EmptyState
+                                            title="No generated questions yet"
+                                            description="Generated draft questions will appear here for this session after AI Generate finishes."
+                                            className="ai-drafts-empty"
                                         />
-                                    ))
-                                )}
-                            </tbody>
+                                    </td>
+                                </tr>
+                            ) : (
+                                draftRows.map((row) => (
+                                    <AiQuestionDraftTableRow
+                                        key={row.key}
+                                        draft={row.draft}
+                                        selected={selectedDraftKeys.includes(
+                                            row.key,
+                                        )}
+                                        selectable={canDraftBeSelected(
+                                            row.draft,
+                                        )}
+                                        mutating={mutatingDrafts}
+                                        onToggle={() =>
+                                            toggleDraftSelection(row.key)
+                                        }
+                                        actions={
+                                            <Button
+                                                type="button"
+                                                variant="secondary"
+                                                size="sm"
+                                                leftIcon={<Edit2 size={15} />}
+                                                onClick={() => {
+                                                    setEditError(null);
+                                                    setEditDraftRow(row);
+                                                }}
+                                                disabled={
+                                                    row.draft.status !==
+                                                        "generated_draft" ||
+                                                    mutatingDrafts
+                                                }
+                                            >
+                                                Edit
+                                            </Button>
+                                        }
+                                    />
+                                ))
+                            )}
+                        </tbody>
                     </Table>
                 </div>
-
             </form>
 
             {editDraftRow && (

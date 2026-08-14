@@ -38,13 +38,6 @@
     line-height: 1.55;
 }
 
-.course-management__panel {
-    overflow: hidden;
-    border: 1px solid var(--line);
-    border-radius: 4px;
-    background: #ffffff;
-}
-
 .course-management__status-bar {
     justify-content: space-between;
     gap: 20px;

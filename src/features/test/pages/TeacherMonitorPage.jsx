@@ -156,11 +156,10 @@ function getMcqScorePercentage(row, questionTotal) {
 
 /** Điều phối giám sát trực tiếp, lịch sử attempt và chấm essay. */
 export function TeacherMonitorPage() {
-  const { id, type } = useParams();
+  const { id } = useParams();
   const navigate = useNavigate();
   const toast = useToast();
-  const normalizedType =
-    type === "essay" || type === "assignment" ? "essay" : "mcq";
+  const normalizedType = "essay";
   const [rows, setRows] = useState({});
   const [loading, setLoading] = useState(true);
   const [downloadingId, setDownloadingId] = useState(null);
@@ -427,7 +426,7 @@ export function TeacherMonitorPage() {
     const attemptId = attempt?.id || attempt?.attemptId;
     const testId = attempt?.testId || id;
     if (!attemptId || !testId) return;
-    navigate(`/staff/tests/attempts/${testId}/${attemptId}`, {
+    navigate(`/staff/courses`, {
       state: { attempt, studentName },
     });
   };
@@ -652,10 +651,7 @@ export function TeacherMonitorPage() {
   }, []);
 
   useEffect(() => {
-    const topic =
-      normalizedType === "essay"
-        ? `/topic/assignments/monitor/${id}`
-        : `/topic/tests/monitor/${id}`;
+    const topic = `/topic/assignments/monitor/${id}`;
     const client = new Client({
       brokerURL: wsUrl(),
       reconnectDelay: 3000,

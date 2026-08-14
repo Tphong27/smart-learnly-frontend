@@ -57,15 +57,22 @@ function buildFilterParams(filters) {
     };
 }
 
-/** Tập hợp ID câu hỏi trùng để đánh dấu trực tiếp trong kết quả import. */
-function buildDuplicateQuestionIds(prepared, selectedQuestions) {
-    const ids = new Set();
-    prepared.duplicates.forEach((duplicate) => {
-        const matchedQuestion = selectedQuestions[duplicate.index];
-        const id = getQuestionId(matchedQuestion);
-        if (id) ids.add(id);
-    });
-    return ids;
+/** Kiểm tra question bank item đã được gắn vào quiz theo ID hoặc nội dung chuẩn hóa. */
+function isQuestionAlreadyInQuiz(existingQuestions, question) {
+    const questionId = getQuestionId(question);
+    if (
+        questionId &&
+        existingQuestions.some(
+            (existingQuestion) =>
+                getQuestionId(existingQuestion) === questionId,
+        )
+    ) {
+        return true;
+    }
+    return (
+        prepareCourseQuestionImport(existingQuestions, [question]).duplicates
+            .length > 0
+    );
 }
 
 /** Hiển thị và xử lý danh sách câu hỏi course có thể import vào quiz hiện tại. */
@@ -104,9 +111,13 @@ export function CourseQuestionImportPanel({
         [existingQuestions, selectedQuestions],
     );
 
-    const duplicateQuestionIds = useMemo(
-        () => buildDuplicateQuestionIds(preparedSelection, selectedQuestions),
-        [preparedSelection, selectedQuestions],
+    const availableItems = useMemo(
+        () =>
+            items.filter(
+                (question) =>
+                    !isQuestionAlreadyInQuiz(existingQuestions, question),
+            ),
+        [existingQuestions, items],
     );
 
     const bankBusy = loadingQuestions || importing;
@@ -135,6 +146,21 @@ export function CourseQuestionImportPanel({
         },
         [onImportingChange],
     );
+
+    useEffect(() => {
+        const timer = window.setTimeout(() => {
+            setSelectedQuestions((current) => {
+                const availableSelection = current.filter(
+                    (question) =>
+                        !isQuestionAlreadyInQuiz(existingQuestions, question),
+                );
+                return availableSelection.length === current.length
+                    ? current
+                    : availableSelection;
+            });
+        }, 0);
+        return () => window.clearTimeout(timer);
+    }, [existingQuestions]);
 
     useEffect(() => {
         if (!courseId) return undefined;
@@ -234,7 +260,7 @@ export function CourseQuestionImportPanel({
     /** Chọn hoặc bỏ chọn toàn bộ câu hỏi hợp lệ trên trang hiện tại. */
     const toggleVisibleSelection = () => {
         if (bankBusy) return;
-        const selectableItems = items.filter(isApprovedQuestion);
+        const selectableItems = availableItems.filter(isApprovedQuestion);
         const visibleIds = selectableItems.map(getQuestionId).filter(Boolean);
         if (visibleIds.length === 0) return;
 
@@ -388,7 +414,7 @@ export function CourseQuestionImportPanel({
         }
     };
 
-    const visibleSelectedCount = items.filter((question) =>
+    const visibleSelectedCount = availableItems.filter((question) =>
         selectedIds.has(getQuestionId(question)),
     ).length;
     const hasActiveFilters =
@@ -459,7 +485,7 @@ export function CourseQuestionImportPanel({
                         className="quiz-question-bank-import__pool-meta"
                         aria-live="polite"
                     >
-                        <strong>{pageInfo.totalItems}</strong> approved questions
+                        <strong>{availableItems.length}</strong> available on this page
                         <span aria-hidden="true">·</span>
                         <strong>{selectedQuestions.length}</strong> selected
                     </div>
@@ -477,11 +503,11 @@ export function CourseQuestionImportPanel({
                             variant="ghost"
                             onClick={toggleVisibleSelection}
                             disabled={
-                                !courseId || items.length === 0 || bankBusy
+                                !courseId || availableItems.length === 0 || bankBusy
                             }
                         >
-                            {visibleSelectedCount === items.length &&
-                            items.length > 0
+                            {visibleSelectedCount === availableItems.length &&
+                            availableItems.length > 0
                                 ? "Unselect page"
                                 : "Select page"}
                         </Button>
@@ -506,17 +532,6 @@ export function CourseQuestionImportPanel({
                             aria-live="assertive"
                         >
                             {questionsError}
-                        </p>
-                    )}
-
-                    {preparedSelection.duplicates.length > 0 && (
-                        <p
-                            className="quiz-question-import__warning"
-                            role="alert"
-                            aria-live="assertive"
-                        >
-                            Remove the highlighted question(s) because they
-                            already exist in this quiz.
                         </p>
                     )}
 
@@ -557,16 +572,15 @@ export function CourseQuestionImportPanel({
                         <div className="admin-loading">
                             Loading question list items...
                         </div>
-                    ) : items.length === 0 ? (
+                    ) : availableItems.length === 0 ? (
                         <div className="admin-empty">
-                            No approved questions match the current filters.
+                            No approved questions are available for this quiz.
                         </div>
                     ) : (
                         <div className="quiz-question-bank-import__list">
-                            {items.map((question) => {
+                            {availableItems.map((question) => {
                                 const id = getQuestionId(question);
                                 const selected = selectedIds.has(id);
-                                const duplicate = duplicateQuestionIds.has(id);
                                 const answers = Array.isArray(question.answers)
                                     ? question.answers
                                     : Array.isArray(question.options)
@@ -576,7 +590,7 @@ export function CourseQuestionImportPanel({
                                 return (
                                     <article
                                         key={id || questionLabel(question)}
-                                        className={`quiz-question-bank-import__item${selected ? " is-selected" : ""}${duplicate ? " is-duplicate" : ""}`}
+                                        className={`quiz-question-bank-import__item${selected ? " is-selected" : ""}`}
                                     >
                                         <label className="quiz-question-bank-import__item-main">
                                             <input
@@ -615,11 +629,6 @@ export function CourseQuestionImportPanel({
                                                     <span>
                                                         {answers.length} answers
                                                     </span>
-                                                    {duplicate && (
-                                                        <span className="quiz-question-bank-import__duplicate">
-                                                            Already in this quiz
-                                                        </span>
-                                                    )}
                                                 </div>
                                             </div>
                                         </label>

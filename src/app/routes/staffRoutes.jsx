@@ -5,10 +5,7 @@ import { TrainerLayout } from "../layouts/TrainerLayout";
 import {
   StaffAssessmentListPage,
   StaffAssessmentCreatePage,
-  StaffTestListPage,
-  StaffTestCreatePage,
-  StaffTestMonitorPage,
-  TestAttemptDetailPage,
+  TeacherMonitorPage,
 } from "@/features/test";
 // import { TrainerLayout } from "@/app/layouts/TrainerLayout";
 import {
@@ -46,7 +43,7 @@ function getStaffRoutes() {
             },
           ],
         },
-        // Trainer và SME giữ các công cụ authoring, test và assignment mutation.
+        // Trainer và SME giữ các công cụ authoring và assignment mutation.
         {
           element: <RoleGuard allowedRoles={[ROLES.TRAINER, ROLES.SME]} />,
           children: [
@@ -69,26 +66,6 @@ function getStaffRoutes() {
               ],
             },
             {
-              path: "tests",
-              element: <StaffTestListPage />,
-            },
-            {
-              path: "tests/create",
-              element: <StaffTestCreatePage />,
-            },
-            {
-              path: "tests/edit/:id/:type",
-              element: <StaffTestCreatePage />,
-            },
-            {
-              path: "tests/monitor/:id/:type",
-              element: <StaffTestMonitorPage />,
-            },
-            {
-              path: "tests/attempts/:testId/:attemptId",
-              element: <TestAttemptDetailPage />,
-            },
-            {
               path: "assignments/create",
               element: <StaffAssessmentCreatePage variant="assignment" />,
             },
@@ -98,7 +75,7 @@ function getStaffRoutes() {
             },
             {
               path: "assignments/monitor/:id/:type",
-              element: <StaffTestMonitorPage />,
+              element: <TeacherMonitorPage />,
             },
           ],
         },
