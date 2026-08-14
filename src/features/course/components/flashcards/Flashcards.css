@@ -189,20 +189,6 @@
   width: 100%;
 }
 
-.flashcard-current-workspace--with-fixed-preview-bar {
-  padding-bottom: calc(82px + env(safe-area-inset-bottom, 0px));
-}
-
-.sl-cm-lesson-editor--save-bar-visible
-  .flashcard-current-workspace--with-fixed-preview-bar {
-  padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px));
-}
-
-.flashcard-current-workspace--with-fixed-preview-bar ~ .flashcard-current-preview-bar,
-.sl-cm-lesson-editor--save-bar-visible .flashcard-current-preview-bar {
-  bottom: max(6px, env(safe-area-inset-bottom, 0px));
-}
-
 .flashcard-current-workspace__inner {
   width: 100%;
 }
@@ -229,22 +215,30 @@
   background: transparent;
 }
 
-.app-layout-shell .flashcard-current-preview-bar {
-  left: calc(248px + var(--flashcard-fixed-bar-gutter));
-}
-
-.app-layout-shell--sidebar-collapsed .flashcard-current-preview-bar {
-  left: calc(76px + var(--flashcard-fixed-bar-gutter));
-}
-
-.app-layout-wrapper .flashcard-current-preview-bar {
-  right: 24px;
-  left: 284px;
-}
-
 .flashcard-current-editor__preview .flashcard-preview__stage,
 .flashcard-current-editor__preview .flashcard-preview__card {
   min-height: min(520px, 62vh);
+}
+
+/* Keep the transformed management preview inside a stable, non-scrolling surface. */
+.flashcard-current-editor__preview--current .flashcard-preview__stage,
+.flashcard-current-editor__preview--current .flashcard-preview__card {
+  height: min(520px, 62vh);
+  min-height: 0;
+}
+
+.flashcard-current-editor__preview--current .flashcard-preview__stage {
+  overflow: hidden;
+  overflow: clip;
+}
+
+.flashcard-current-editor__preview--current .flashcard-preview__main-content {
+  overflow-y: auto;
+}
+
+.flashcard-current-editor__preview--current .flashcard-preview__text {
+  max-height: none;
+  overflow: visible;
 }
 
 .flashcard-current-pagination {
@@ -322,6 +316,15 @@
   background: var(--sl-purple-soft);
 }
 
+.flashcard-staging__unavailable-row,
+.flashcard-staging__unavailable-row td {
+  cursor: default;
+}
+
+.flashcard-staging__unavailable-row td {
+  background: #fffbeb;
+}
+
 .flashcard-staging__wrap-cell {
   max-width: 320px;
   overflow-wrap: anywhere;
@@ -378,12 +381,114 @@
 .flashcard-temp-review {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 16px;
   min-height: 0;
 }
 
+.flashcard-course-question-availability {
+  margin-top: -2px;
+}
+
+.flashcard-course-question-availability .tabs__count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  min-height: 20px;
+  box-sizing: border-box;
+}
+
+.flashcard-course-question-count-placeholder {
+  display: block;
+  width: 100%;
+  min-width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--sl-neutral) 22%, transparent);
+  animation: flashcard-placeholder-pulse 1.2s ease-in-out infinite;
+}
+
+.flashcard-course-question-unavailable-notice {
+  margin: -4px 0 0;
+  border: 1px solid #fcd34d;
+  border-radius: 6px;
+  background: #fffbeb;
+  color: #92400e;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.45;
+  padding: 10px 12px;
+}
+
+.flashcard-course-question-loading {
+  display: grid;
+  gap: 10px;
+  min-height: 148px;
+  align-content: center;
+  color: var(--muted);
+  font-weight: 800;
+}
+
+.flashcard-course-question-loading__text {
+  display: block;
+}
+
+.flashcard-course-question-loading__row {
+  display: block;
+  width: 100%;
+  height: 18px;
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    var(--surface) 0%,
+    color-mix(in srgb, var(--sl-neutral-soft) 76%, #ffffff) 48%,
+    var(--surface) 100%
+  );
+  animation: flashcard-placeholder-pulse 1.2s ease-in-out infinite;
+}
+
+.flashcard-course-question-loading__row:nth-child(3) {
+  width: 84%;
+}
+
+.flashcard-course-question-loading__row:nth-child(4) {
+  width: 68%;
+}
+
+.flashcard-course-question-filters .button--icon.is-refreshing .button__icon {
+  animation: flashcard-refresh-spin 0.9s linear infinite;
+}
+
+@keyframes flashcard-placeholder-pulse {
+  0%,
+  100% {
+    opacity: 0.45;
+  }
+
+  50% {
+    opacity: 0.95;
+  }
+}
+
+@keyframes flashcard-refresh-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.flashcard-course-question-source {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 .flashcard-temp-review__header {
-  align-items: flex-start;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  padding: 14px 16px;
 }
 
 .flashcard-temp-review__meta {
@@ -439,9 +544,9 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  margin: 4px -2px -2px;
+  margin: 2px 0 0;
   border: 1px solid var(--line);
-  border-radius: 8px 8px 0 0;
+  border-radius: 8px;
   background: #ffffff;
   box-shadow: 0 -8px 22px rgba(45, 47, 49, 0.08);
   padding: 12px;
@@ -511,6 +616,15 @@
   margin-bottom: 18px;
 }
 
+.flashcard-import-modal__tabs .tabs__tab.is-active {
+  color: var(--primary);
+}
+
+.flashcard-import-modal__tabs .tabs__tab.is-active::after {
+  height: 3px;
+  background: var(--primary);
+}
+
 .flashcard-import-modal__content {
   min-height: 0;
 }
@@ -528,15 +642,8 @@
   background: transparent;
 }
 
-.flashcard-import-modal__content > .flashcard-panel > .flashcard-panel__header {
-  align-items: flex-start;
-  padding: 0 0 12px;
-  border-bottom: 1px solid var(--line);
-  background: transparent;
-}
-
 .flashcard-import-modal__content > .flashcard-panel > .flashcard-panel__body {
-  padding: 14px 0 0;
+  padding: 0;
 }
 
 .flashcard-import-modal textarea#pasted-import-text {
@@ -2029,22 +2136,6 @@
 
 .flashcard-practice__review {
   margin-top: 2px;
-}
-
-@media (max-width: 1024px) {
-  .app-layout-shell .flashcard-current-preview-bar,
-  .app-layout-shell--sidebar-collapsed .flashcard-current-preview-bar,
-  .app-layout-wrapper .flashcard-current-preview-bar {
-    right: clamp(14px, 2vw, 20px);
-    left: clamp(14px, 2vw, 20px);
-  }
-
-}
-
-@media (max-width: 430px) {
-  .flashcard-current-workspace--with-fixed-preview-bar {
-    padding-bottom: calc(112px + env(safe-area-inset-bottom, 0px));
-  }
 }
 
 @media (max-width: 680px) {
