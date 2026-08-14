@@ -18,6 +18,7 @@ const attachedQuestion = {
 
 describe("Quiz question manager integration", () => {
   it("FE-IT-CLASS-QUESTIONS-002 - reads class quiz questions from the attached-question API", async () => {
+    const onQuestionsChange = vi.fn();
     const service = {
       getLessonDetail: vi.fn().mockResolvedValue({
         id: "lesson-1",
@@ -41,7 +42,11 @@ describe("Quiz question manager integration", () => {
             openQuestionList: vi.fn(),
           }}
         >
-          <QuizQuestionsPanel lessonId="lesson-1" service={service} />
+          <QuizQuestionsPanel
+            lessonId="lesson-1"
+            service={service}
+            onQuestionsChange={onQuestionsChange}
+          />
         </QuizImportContext.Provider>
       </ToastProvider>,
     );
@@ -54,5 +59,6 @@ describe("Quiz question manager integration", () => {
     await waitFor(() =>
       expect(service.getQuestions).toHaveBeenCalledWith("lesson-1"),
     );
+    await waitFor(() => expect(onQuestionsChange).toHaveBeenCalledWith(1));
   });
 });

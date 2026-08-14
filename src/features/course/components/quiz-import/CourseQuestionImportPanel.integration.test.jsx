@@ -89,4 +89,37 @@ describe("Course question import panel integration", () => {
     );
     expect(questionBankMocks.listModuleQuestions).not.toHaveBeenCalled();
   });
+
+  it("FE-IT-COURSE-QUESTION-003 - hides attached questions and shows them again after detach", async () => {
+    const props = {
+      courseId: "course-1",
+      moduleId: "module-1",
+      onImport: vi.fn(),
+      onClose: vi.fn(),
+    };
+    const { rerender } = render(
+      <CourseQuestionImportPanel
+        {...props}
+        existingQuestions={[
+          {
+            questionId: "approved-question",
+            questionText: "Approved question",
+            questionType: "single_choice",
+            answers: [],
+          },
+        ]}
+      />,
+    );
+
+    expect(
+      await screen.findByText("No approved questions are available for this quiz."),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Approved question")).not.toBeInTheDocument();
+
+    rerender(
+      <CourseQuestionImportPanel {...props} existingQuestions={[]} />,
+    );
+
+    expect(await screen.findByText("Approved question")).toBeInTheDocument();
+  });
 });

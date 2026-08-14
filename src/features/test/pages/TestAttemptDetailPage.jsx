@@ -231,7 +231,7 @@ export function TestAttemptDetailPage() {
                 </div>
                 <div className="ft-result-panel__body">
                     <span className="ft-page-kicker">{resultKicker}</span>
-                    <h2>{test?.title || test?.name || "Test attempt"}</h2>
+                    <h2>{test?.title || test?.name || "Course quiz attempt"}</h2>
                     <p>
                         Status:{" "}
                         <strong>{attempt?.status || "SUBMITTED"}</strong>

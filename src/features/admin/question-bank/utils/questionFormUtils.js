@@ -33,15 +33,26 @@ export function blankAnswer(index = 0) {
 /** Chuẩn hóa danh sách answer theo loại câu hỏi đang chọn. */
 export function normalizeAnswers(type, answers) {
   if (type === "true_false") {
+    const sourceAnswers = Array.isArray(answers) ? answers : [];
+    const findAnswer = (label, fallbackIndex) =>
+      sourceAnswers.find(
+        (answer) =>
+          String(answer?.answerText || "").trim().toLowerCase() ===
+          label.toLowerCase(),
+      ) || sourceAnswers[fallbackIndex];
+    const trueAnswer = findAnswer("True", 0);
+    const falseAnswer = findAnswer("False", 1);
     return [
       {
+        ...trueAnswer,
         answerText: "True",
-        correct: answers?.[0]?.correct ?? true,
+        correct: trueAnswer?.correct ?? true,
         displayOrder: 1,
       },
       {
+        ...falseAnswer,
         answerText: "False",
-        correct: answers?.[1]?.correct ?? false,
+        correct: falseAnswer?.correct ?? false,
         displayOrder: 2,
       },
     ];

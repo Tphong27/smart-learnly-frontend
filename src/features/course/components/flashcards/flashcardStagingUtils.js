@@ -116,6 +116,31 @@ export function isApprovedSourceQuestion(question) {
   return normalizeStatus(question?.status) === "approved";
 }
 
+/**
+ * Chuyển nội dung HTML hoặc HTML đã mã hóa thành văn bản thuần để hiển thị an toàn.
+ */
+export function toPlainText(value) {
+  const raw = String(value ?? "");
+  let decoded = raw;
+
+  if (typeof document !== "undefined") {
+    const textarea = document.createElement("textarea");
+    textarea.innerHTML = raw;
+    decoded = textarea.value;
+
+    const container = document.createElement("div");
+    container.innerHTML = decoded;
+    decoded = container.textContent || container.innerText || decoded;
+  }
+
+  return decoded
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;|&#160;|&#xA0;/gi, " ")
+    .replace(/\u00a0/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 /** Ghép các đáp án đúng thành chuỗi dùng trong preview. */
 export function correctAnswersLabel(question) {
   const answers = Array.isArray(question?.correctAnswers)
@@ -123,7 +148,15 @@ export function correctAnswersLabel(question) {
     : (question?.answers || [])
         .filter((answer) => answer.correct || answer.isCorrect)
         .map((answer) => answer.answerText);
-  return answers.filter(Boolean).join(", ") || "--";
+  return answers
+    .map((answer) =>
+      typeof answer === "string"
+        ? answer
+        : answer?.answerText || answer?.text || "",
+    )
+    .map(toPlainText)
+    .filter(Boolean)
+    .join(", ") || "--";
 }
 
 /** Ghép toàn bộ lựa chọn thành chuỗi tóm tắt của source question. */
@@ -133,7 +166,8 @@ export function answersLabel(question) {
   return (
     answers
       .map((answer, index) => {
-        const label = answer.answerText || answer.text || `Answer ${index + 1}`;
+        const label =
+          toPlainText(answer.answerText || answer.text) || `Answer ${index + 1}`;
         const correct = answer.correct || answer.isCorrect;
         return correct ? `${label} (correct)` : label;
       })
@@ -214,23 +248,7 @@ export function splitPastedCards(text, separator) {
 
 /** Chuẩn hóa HTML/text trước khi tạo khóa phát hiện duplicate. */
 export function normalizeTextForDuplicate(value) {
-  const raw = String(value || "");
-  let decoded = raw;
-  if (typeof document !== "undefined") {
-    const textarea = document.createElement("textarea");
-    textarea.innerHTML = raw;
-    decoded = textarea.value;
-
-    const container = document.createElement("div");
-    container.innerHTML = decoded;
-    decoded = container.textContent || container.innerText || decoded;
-  }
-
-  return decoded
-    .replace(/<[^>]+>/g, " ")
-    .replace(/\s+/g, " ")
-    .trim()
-    .toLowerCase();
+  return toPlainText(value).toLowerCase();
 }
 
 /** Tạo signature từ hai mặt flashcard để so sánh duplicate. */

@@ -9,6 +9,7 @@ import {
     LoadingState,
     useToast,
 } from "@/shared/components/ui";
+import { StatusBadge } from "@/shared/components/status";
 import { courseContentService } from "../services/courseContentService";
 import { normalizeLessonStatus } from "@/features/course/utils/lesson-status";
 import {
@@ -24,14 +25,7 @@ import {
 import { QuizQuestionEditModal } from "./QuizQuestionEditModal";
 import { QuizImportContext } from "./lesson-editor/quiz-import-context";
 import { mapCourseQuestionToQuizQuestion } from "../utils/course-question-quiz-import";
-import "@/features/admin/admin-shared.css";
 import "./quiz-question-manager.css";
-
-const TYPE_BADGE_CLASS = {
-    [QUESTION_TYPES.SINGLE]: "admin-status admin-status--approved",
-    [QUESTION_TYPES.MULTIPLE]: "admin-status admin-status--pending_verify",
-    [QUESTION_TYPES.FILL]: "admin-status admin-status--draft",
-};
 
 /** Render nội dung HTML quiz sau khi đã loại bỏ markup không an toàn. */
 function HtmlText({ html }) {
@@ -107,17 +101,19 @@ function QuizQuestionCard({
     return (
         <article className="quiz-question-card">
             <div className="quiz-question-card__header">
-                <div>
+                <div className="quiz-question-card__heading">
                     <div className="quiz-question-card__eyebrow">
                         <span>Question {index + 1}</span>
-                        <span
-                            className={
-                                TYPE_BADGE_CLASS[type] ||
-                                "admin-status admin-status--draft"
+                        <StatusBadge
+                            status={type || "unknown"}
+                            label={
+                                QUESTION_TYPE_LABELS[type] ||
+                                type ||
+                                "Unknown"
                             }
-                        >
-                            {QUESTION_TYPE_LABELS[type] || type || "Unknown"}
-                        </span>
+                            tone="neutral"
+                            className="quiz-question-card__type"
+                        />
                     </div>
                     {question.title ? (
                         <h3 className="quiz-question-card__title">
@@ -144,14 +140,14 @@ function QuizQuestionCard({
                 <div className="quiz-question-card__actions">
                     {canEditContent && (
                         <IconButton
-                            icon={<Pencil size={15} />}
+                            icon={<Pencil size={18} />}
                             label={`Edit question ${index + 1}`}
                             onClick={() => onEdit(index)}
                             disabled={disabled}
                         />
                     )}
                     <IconButton
-                        icon={<Trash2 size={15} />}
+                        icon={<Trash2 size={18} />}
                         label={`Delete question ${index + 1}`}
                         variant="danger"
                         onClick={() => onDelete(index)}
@@ -249,6 +245,7 @@ export function QuizQuestionsPanel({
     lessonTitle,
     onSaved,
     onBusyChange,
+    onQuestionsChange,
     disabled = false,
     service = courseContentService,
 }) {
@@ -273,11 +270,16 @@ export function QuizQuestionsPanel({
         onBusyChange?.(busy);
     }, [busy, onBusyChange]);
 
+    useEffect(() => {
+        onQuestionsChange?.(questions.length);
+    }, [onQuestionsChange, questions.length]);
+
     useEffect(
         () => () => {
             onBusyChange?.(false);
+            onQuestionsChange?.(0);
         },
-        [onBusyChange],
+        [onBusyChange, onQuestionsChange],
     );
 
     // Reset bridge khi panel unmount (ví dụ đổi lesson type) để tab Question
@@ -541,7 +543,16 @@ export function QuizQuestionsPanel({
                 aria-labelledby="quiz-questions-heading"
             >
                 <div className="quiz-question-panel__header">
-                    <h2 id="quiz-questions-heading">Questions</h2>
+                    <div className="quiz-question-panel__heading">
+                        <h2 id="quiz-questions-heading">Questions</h2>
+                        <p
+                            className="quiz-question-panel__count"
+                            aria-live="polite"
+                        >
+                            {questions.length}{" "}
+                            {questions.length === 1 ? "question" : "questions"}
+                        </p>
+                    </div>
                     <div className="quiz-question-panel__actions">
                         <Button
                             type="button"
