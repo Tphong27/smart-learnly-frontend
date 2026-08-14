@@ -1662,6 +1662,59 @@
   color: var(--sl-muted, #64748b);
   font-size: 13px;
 }
+
+.admin-table-wrapper {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.admin-table-wrapper .admin-table {
+  table-layout: fixed;
+}
+
+.admin-table-wrapper .admin-table th,
+.admin-table-wrapper .admin-table td {
+  padding-inline: 16px;
+}
+
+.admin-table-wrapper .admin-table th:nth-child(1) {
+  width: 64px;
+}
+
+.admin-table-wrapper .admin-table th:nth-child(3) {
+  width: 136px;
+}
+
+.admin-table-wrapper .admin-table th:nth-child(4) {
+  width: 120px;
+}
+
+.admin-table-wrapper .admin-table th:nth-child(5) {
+  width: 124px;
+}
+
+.admin-table-wrapper .question-rich-text-viewer,
+.admin-table-wrapper .question-rich-text-viewer * {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.admin-table-wrapper .admin-table__actions {
+  white-space: nowrap;
+}
+
+@media (max-width: 720px) {
+  .admin-table-wrapper .admin-table {
+    table-layout: auto;
+  }
+
+  .admin-table-wrapper .admin-table td {
+    padding-inline: 0;
+  }
+}
+
 .question-bank-restore__description {
   margin-top: 0;
   color: var(--sl-muted, #475569);

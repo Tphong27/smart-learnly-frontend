@@ -173,9 +173,9 @@ function renderAnswerMedia(answer) {
 /** Điều phối luồng làm MCQ hoặc nộp essay của trainee. */
 export function StudentTakeTestPage({
     listPath = "/dashboard",
-    accessStoragePrefix = "testAccess",
-    resultKicker: defaultResultKicker = "Test result",
-    resultDetailPath = "/learning/tests/attempts",
+    accessStoragePrefix = "courseQuizAccess",
+    resultKicker: defaultResultKicker = "Quiz result",
+    resultDetailPath = "/learning/course-quizzes/attempts",
 } = {}) {
     const { id, type } = useParams();
     const navigate = useNavigate();
@@ -251,13 +251,11 @@ export function StudentTakeTestPage({
     /** Phát trạng thái làm bài hiện tại tới kênh monitor realtime. */
     const publishMonitor = useCallback(
         (payload) => {
+            if (normalizedType !== "essay") return;
             const client = stompRef.current;
             if (!client?.connected) return;
             client.publish({
-                destination:
-                    normalizedType === "essay"
-                        ? "/app/assignments/monitor"
-                        : "/app/tests/monitor",
+                destination: "/app/assignments/monitor",
                 body: JSON.stringify({
                     targetId: id,
                     studentId: student.id,
@@ -271,11 +269,12 @@ export function StudentTakeTestPage({
     );
 
     useEffect(() => {
+        if (normalizedType !== "essay") return undefined;
         const client = new Client({ brokerURL: wsUrl(), reconnectDelay: 3000 });
         stompRef.current = client;
         client.activate();
         return () => client.deactivate();
-    }, []);
+    }, [normalizedType]);
 
     useEffect(() => {
         /** Khởi tạo attempt hoặc submission tương ứng với loại assessment. */

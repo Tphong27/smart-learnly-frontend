@@ -490,25 +490,25 @@ export function LearningWorkspacePage({
       }
       const backParams = new URLSearchParams(searchParams);
       if (lessonId) backParams.set("lessonId", lessonId);
-      if (resolvedClassId) backParams.set("classId", resolvedClassId);
+      if (effectiveClassId) backParams.set("classId", effectiveClassId);
       const backQuery = backParams.toString();
       const backPath = `${location.pathname}${backQuery ? `?${backQuery}` : ""}`;
       const takeParams = new URLSearchParams();
-      if (resolvedClassId) takeParams.set("classId", resolvedClassId);
+      if (effectiveClassId) takeParams.set("classId", effectiveClassId);
       const takeQuery = takeParams.toString();
       navigate(
-        `/learning/tests/take/${testId}/mcq${takeQuery ? `?${takeQuery}` : ""}`,
+        `/learning/course-quizzes/${testId}${takeQuery ? `?${takeQuery}` : ""}`,
         {
           state: {
             resultBackPath: backPath,
             resultKicker: "Quiz result",
             resultMode: "quiz",
-            classId: resolvedClassId,
+            classId: effectiveClassId,
           },
         },
       );
     },
-    [location.pathname, navigate, resolvedClassId, searchParams],
+    [effectiveClassId, location.pathname, navigate, searchParams],
   );
 
   if (loading) {

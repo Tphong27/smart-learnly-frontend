@@ -1,12 +1,13 @@
 import { StudentTakeTestPage } from "./StudentTakeTestPage";
 
-/** Mở luồng làm Test và lưu mã truy cập theo namespace Test. */
+/** Mở quiz từ course và đưa kết quả về đúng namespace course quiz. */
 export function TraineeTestTakePage() {
   return (
     <StudentTakeTestPage
-      accessStoragePrefix="testAccess"
+      accessStoragePrefix="courseQuizAccess"
       listPath="/dashboard"
-      resultKicker="Test result"
+      resultKicker="Quiz result"
+      resultDetailPath="/learning/course-quizzes/attempts"
     />
   );
 }

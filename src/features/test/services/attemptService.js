@@ -1,7 +1,7 @@
 import apiClient from "@/services/api-client";
 import { normalizeList, unwrap } from "./assessmentApiUtils";
 
-/** Gọi API bắt đầu, lưu và chấm kết quả làm bài kiểm tra. */
+/** Gọi API bắt đầu, lưu và chấm attempt của quiz nhúng trong course. */
 export const attemptService = {
   /** Tạo hoặc tiếp tục lượt làm bài của học viên. */
   async start(
@@ -12,7 +12,7 @@ export const attemptService = {
     accessCode = "",
     classId = null,
   ) {
-    const response = await apiClient.post("/test-attempts/start", {
+    const response = await apiClient.post("/course-quiz-attempts/start", {
       testId,
       studentId,
       assignmentId,
@@ -26,7 +26,7 @@ export const attemptService = {
   /** Nộp toàn bộ đáp án của một lượt làm bài. */
   async submit(attemptId, submitData) {
     const response = await apiClient.put(
-      `/test-attempts/${attemptId}/submit`,
+      `/course-quiz-attempts/${attemptId}/submit`,
       submitData,
     );
     return unwrap(response);
@@ -35,36 +35,23 @@ export const attemptService = {
   /** Lấy lịch sử làm một đề của một học viên. */
   async getHistory(testId, studentId, params = {}) {
     const response = await apiClient.get(
-      `/test-attempts/test/${testId}/student/${studentId}`,
+      `/course-quiz-attempts/quiz/${testId}/student/${studentId}`,
       { params },
     );
     return normalizeList(response);
   },
 
-  /** Lấy tất cả lượt làm bài của một đề để giảng viên theo dõi. */
-  async getByTest(testId) {
-    const response = await apiClient.get(`/test-attempts/test/${testId}`);
-    return normalizeList(response);
-  },
-
   /** Lấy chi tiết một lượt làm bài. */
   async getById(attemptId, params = {}) {
-    const response = await apiClient.get(`/test-attempts/${attemptId}`, {
+    const response = await apiClient.get(`/course-quiz-attempts/${attemptId}`, {
       params,
     });
     return unwrap(response);
   },
 
-  /** Mở lại quyền làm bài cho học viên. */
-  async reopen(testId, studentId) {
-    return apiClient.put(
-      `/test-attempts/test/${testId}/student/${studentId}/reopen`,
-    );
-  },
-
   /** Lưu câu trả lời tạm thời của học viên trong lúc làm bài. */
   async saveAnswer(attemptId, questionId, selectedAnswerId, essayAnswer = "") {
-    const response = await apiClient.post("/student-test-answers/save", {
+    const response = await apiClient.post("/course-quiz-answers/save", {
       attemptId,
       questionId,
       selectedAnswerId,
@@ -73,19 +60,10 @@ export const attemptService = {
     return unwrap(response);
   },
 
-  /** Lưu điểm và nhận xét chấm tự luận cho một câu trả lời. */
-  async gradeEssay(answerId, gradeData) {
-    const response = await apiClient.put(
-      `/student-test-answers/${answerId}/grade`,
-      gradeData,
-    );
-    return unwrap(response);
-  },
-
   /** Lấy các đáp án đã lưu của một lượt làm bài. */
   async getStudentAnswers(attemptId) {
     const response = await apiClient.get(
-      `/student-test-answers/attempt/${attemptId}`,
+      `/course-quiz-answers/attempt/${attemptId}`,
     );
     return normalizeList(response);
   },
