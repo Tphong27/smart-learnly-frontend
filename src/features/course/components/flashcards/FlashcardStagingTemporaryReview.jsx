@@ -57,6 +57,26 @@ const IMPORT_TABS = [
   },
 ];
 
+const IMPORT_SOURCE_LABELS = {
+  document: "document",
+  "course-questions": "Course Questions",
+};
+
+function formatCardCount(count) {
+  return `${count} flashcard${count === 1 ? "" : "s"}`;
+}
+
+function formatReviewCardCount(count) {
+  return `${count} review card${count === 1 ? "" : "s"}`;
+}
+
+function formatSkipSuffix(duplicateSkipped = 0, invalidSkipped = 0) {
+  const skipped = Number(duplicateSkipped || 0) + Number(invalidSkipped || 0);
+  return skipped
+    ? ` ${skipped} skipped (${duplicateSkipped} duplicate, ${invalidSkipped} invalid).`
+    : "";
+}
+
 /** Tạo ID tạm thời ổn định cho ứng viên chưa được backend lưu. */
 function newClientId() {
   if (typeof crypto !== "undefined" && crypto.randomUUID) {
@@ -539,19 +559,17 @@ function TemporaryFlashcardReviewPanel({
       const created = Number(response?.created ?? createdCards.length);
       const duplicateSkipped = Number(response?.duplicateSkipped ?? 0);
       const invalidSkipped = Number(response?.invalidSkipped ?? 0);
-      const skipped = duplicateSkipped + invalidSkipped;
-      const suffix = skipped
-        ? ` ${skipped} skipped (${duplicateSkipped} duplicate, ${invalidSkipped} invalid).`
-        : "";
+      const suffix = formatSkipSuffix(duplicateSkipped, invalidSkipped);
       if (created === 0) {
         notify(`No cards were approved.${suffix}`, "error");
         return;
       }
-      notify(
-        `Approved ${created} card${created === 1 ? "" : "s"}.${suffix}`,
-        "success",
-      );
-      await onApproved?.(createdCards.map((card) => card.id).filter(Boolean));
+      await onApproved?.({
+        created,
+        createdCards,
+        duplicateSkipped,
+        invalidSkipped,
+      });
     } catch (approveError) {
       notify(
         getErrorMessage(approveError, "Failed to approve selected candidates."),
@@ -658,7 +676,7 @@ function TemporaryFlashcardReviewPanel({
           onClick={approveSelected}
           disabled={actionLocked || selectedCards.length === 0}
         >
-          Approve selected
+          Approve {selectedCards.length} selected
         </Button>
       </div>
 
@@ -680,6 +698,7 @@ export function ImportFlashcardsModal({
 }) {
   const [activeImportTab, setActiveImportTab] = useState("pasted");
   const [reviewBatch, setReviewBatch] = useState(null);
+  const [reviewSource, setReviewSource] = useState(null);
   const [reviewNotice, setReviewNotice] = useState(null);
   const [modalNotice, setModalNotice] = useState(null);
 
@@ -699,12 +718,21 @@ export function ImportFlashcardsModal({
   function handleTemporaryCandidates(batch, meta = {}) {
     if (batch?.id) {
       setReviewBatch(batch);
+      setReviewSource(meta.source || activeImportTab);
       setReviewNotice(
         getShortfallNotice(
           meta.requestedCount,
           meta.createdCount ?? getGeneratedCount(batch),
         ),
       );
+      const sourceLabel = IMPORT_SOURCE_LABELS[meta.source || activeImportTab];
+      const preparedCount = meta.createdCount ?? getGeneratedCount(batch);
+      if (sourceLabel && preparedCount > 0) {
+        notify?.(
+          `Prepared ${formatReviewCardCount(preparedCount)} from ${sourceLabel}.`,
+          "success",
+        );
+      }
     } else {
       notifyInModal(
         "Candidates were created, but the response did not include a review id.",
@@ -715,8 +743,30 @@ export function ImportFlashcardsModal({
 
   function handleBackToImport() {
     setReviewBatch(null);
+    setReviewSource(null);
     setReviewNotice(null);
     setModalNotice(null);
+  }
+
+  async function handleApproved(result = {}) {
+    const createdCards = Array.isArray(result.createdCards)
+      ? result.createdCards
+      : [];
+    const created = Number(result.created ?? createdCards.length);
+    if (created === 0) {
+      return;
+    }
+
+    const sourceLabel = IMPORT_SOURCE_LABELS[reviewSource] || "source";
+    await onApproved?.(createdCards.map((card) => card.id).filter(Boolean));
+    onClose?.();
+    notify?.(
+      `Imported ${formatCardCount(created)} from ${sourceLabel} to Current Flashcards.${formatSkipSuffix(
+        result.duplicateSkipped,
+        result.invalidSkipped,
+      )}`,
+      "success",
+    );
   }
 
   return (
@@ -765,10 +815,7 @@ export function ImportFlashcardsModal({
               existingCards={existingCards}
               notify={notifyInModal}
               reviewNotice={reviewNotice}
-              onApproved={async (flashcardIds = []) => {
-                await onApproved?.(flashcardIds);
-                onClose?.();
-              }}
+              onApproved={handleApproved}
               onUploadImage={onUploadImage}
             />
           ) : (
@@ -780,9 +827,6 @@ export function ImportFlashcardsModal({
                   role="tabpanel"
                   aria-labelledby="flashcard-import-tab-pasted"
                 >
-                  <div className="flashcard-panel__header">
-                    <h3 className="flashcard-panel__title">Pasted Text</h3>
-                  </div>
                   <PastedTextImportPanel
                     setId={setId}
                     existingCards={existingCards}

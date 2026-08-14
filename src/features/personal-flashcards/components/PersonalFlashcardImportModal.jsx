@@ -98,7 +98,7 @@ function PastedTextPanel({ values, parsed, busy, saving, onChange, onImport }) {
         >
             <div className="personal-flashcard-import__field personal-flashcard-import__source">
                 <label htmlFor="personal-flashcard-import-pasted-text">
-                    Pasted text
+                    Flashcard content
                 </label>
                 <textarea
                     id="personal-flashcard-import-pasted-text"
@@ -301,6 +301,7 @@ function PastedTextPanel({ values, parsed, busy, saving, onChange, onImport }) {
                 </span>
                 <Button
                     type="submit"
+                    variant="primary"
                     loading={saving}
                     disabled={
                         busy ||
@@ -538,6 +539,7 @@ export function PersonalFlashcardImportModal({
                     {hasDocumentDrafts ? (
                         <Button
                             type="button"
+                            variant="primary"
                             onClick={confirmDocumentSave}
                             loading={saving}
                             disabled={busy || documentDrafts.length === 0}
@@ -587,9 +589,6 @@ export function PersonalFlashcardImportModal({
                         role="tabpanel"
                         aria-labelledby="personal-flashcard-import-tab-text"
                     >
-                        <div className="personal-flashcard-import__panel-header">
-                            <h3>Pasted Text</h3>
-                        </div>
                         <PastedTextPanel
                             values={pastedValues}
                             parsed={parsedPastedCards}
@@ -609,9 +608,6 @@ export function PersonalFlashcardImportModal({
                         role="tabpanel"
                         aria-labelledby="personal-flashcard-import-tab-document"
                     >
-                        <div className="personal-flashcard-import__panel-header">
-                            <h3>Document</h3>
-                        </div>
                         <div className="personal-flashcard-import__panel-body">
                             <div className="personal-flashcard-import__source">
                                 <input
@@ -705,6 +701,7 @@ export function PersonalFlashcardImportModal({
                                 </span>
                                 <Button
                                     type="button"
+                                    variant="primary"
                                     onClick={generateDocumentDrafts}
                                     loading={generating}
                                     disabled={busy}
