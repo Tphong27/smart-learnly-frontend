@@ -6,6 +6,7 @@ import {
   StaffAssessmentListPage,
   StaffAssessmentCreatePage,
   TeacherMonitorPage,
+  TestAttemptDetailPage,
 } from "@/features/test";
 // import { TrainerLayout } from "@/app/layouts/TrainerLayout";
 import {
@@ -41,6 +42,10 @@ function getStaffRoutes() {
               path: "assignments",
               element: <StaffAssessmentListPage variant="assignment" />,
             },
+            {
+              path: "tests",
+              element: <StaffAssessmentListPage variant="test" />,
+            },
           ],
         },
         // Trainer và SME giữ các công cụ authoring và assignment mutation.
@@ -70,12 +75,28 @@ function getStaffRoutes() {
               element: <StaffAssessmentCreatePage variant="assignment" />,
             },
             {
+              path: "tests/create",
+              element: <StaffAssessmentCreatePage variant="test" />,
+            },
+            {
               path: "assignments/edit/:id/:type",
               element: <StaffAssessmentCreatePage variant="assignment" />,
             },
             {
+              path: "tests/edit/:id/:type",
+              element: <StaffAssessmentCreatePage variant="test" />,
+            },
+            {
               path: "assignments/monitor/:id/:type",
-              element: <TeacherMonitorPage />,
+              element: <TeacherMonitorPage variant="assignment" />,
+            },
+            {
+              path: "tests/monitor/:id/:type",
+              element: <TeacherMonitorPage variant="test" />,
+            },
+            {
+              path: "tests/attempts/:testId/:attemptId",
+              element: <TestAttemptDetailPage />,
             },
           ],
         },

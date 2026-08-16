@@ -96,17 +96,17 @@ function formatDate(value) {
 }
 
 /** Hiển thị danh sách assignment và khóa toàn bộ mutation đối với TMO. */
-export function StaffAssessmentListPage() {
+export function StaffAssessmentListPage({ variant = "assignment" }) {
   const navigate = useNavigate();
   const toast = useToast();
   const [searchParams] = useSearchParams();
   const currentUser = useMemo(() => getCurrentUser(), []);
   const currentRole = normalizeRole(currentUser?.role);
-  const isAssignmentMode = true;
+  const isAssignmentMode = variant !== "test";
   const canManageItems = currentRole !== ROLES.TMO;
   const courseId = searchParams.get("courseId") || "";
   const classId = searchParams.get("classId") || "";
-  const basePath = "/staff/assignments";
+  const basePath = isAssignmentMode ? "/staff/assignments" : "/staff/tests";
   const backPath = isAssignmentMode
     ? classId
       ? `/staff/classrooms/${classId}/workspace`
@@ -473,6 +473,10 @@ export function StaffAssessmentListPage() {
                   const expired =
                     isEssay && dueDate && new Date(dueDate).getTime() <= nowMs;
                   const inactive = !isEssay && !isPublishedTest(item);
+                  const hasAttempts = Boolean(
+                    item.hasAttempts ?? item.has_attempts,
+                  );
+                  const canEditItem = isEssay || !hasAttempts;
                   return (
                     <tr key={`${type}-${item.id}`}>
                       <td data-label="Title">
@@ -519,17 +523,19 @@ export function StaffAssessmentListPage() {
                       {canManageItems && (
                         <td data-label="Actions" className="ft-table-action">
                           <div className="ft-table-actions">
-                            <IconButton
-                              icon={<Edit2 size={16} />}
-                              label={
-                                isAssignmentMode ? "Edit assignment" : "Edit test"
-                              }
-                              to={
-                                curriculumEssayEditPath
-                                  ? curriculumEssayEditPath
-                                  : `${basePath}/edit/${item.id}/${type}${pathQuery}`
-                              }
-                            />
+                            {canEditItem && (
+                              <IconButton
+                                icon={<Edit2 size={16} />}
+                                label={
+                                  isAssignmentMode ? "Edit assignment" : "Edit test"
+                                }
+                                to={
+                                  curriculumEssayEditPath
+                                    ? curriculumEssayEditPath
+                                    : `${basePath}/edit/${item.id}/${type}${pathQuery}`
+                                }
+                              />
+                            )}
                             <IconButton
                               icon={<Eye size={16} />}
                               label="Monitor progress"

@@ -9,6 +9,7 @@ import {
   Info,
   Loader,
   Eye,
+  FileQuestion,
   RotateCcw,
   Trash2,
 } from "lucide-react";
@@ -261,6 +262,18 @@ export function ClassDetailPage({
     navigate(`/staff/assignments${query ? `?${query}` : ""}`);
   }
 
+  function openTests() {
+    const params = new URLSearchParams();
+    if (classData.courseId) {
+      params.set("courseId", classData.courseId);
+    }
+    if (classId) {
+      params.set("classId", classId);
+    }
+    const query = params.toString();
+    navigate(`/staff/tests${query ? `?${query}` : ""}`);
+  }
+
   if (loading) {
     return (
       <div className="page-loading">
@@ -325,13 +338,22 @@ export function ClassDetailPage({
             </Button>
 
             {(isTrainer || isTmo) && (
-              <Button
-                type="button"
-                leftIcon={<ClipboardList size={17} />}
-                onClick={openAssignments}
-              >
-                {isTmo ? "View assignments" : "Assignment"}
-              </Button>
+              <>
+                <Button
+                  type="button"
+                  leftIcon={<ClipboardList size={17} />}
+                  onClick={openAssignments}
+                >
+                  {isTmo ? "View assignments" : "Assignment"}
+                </Button>
+                <Button
+                  type="button"
+                  leftIcon={<FileQuestion size={17} />}
+                  onClick={openTests}
+                >
+                  Test
+                </Button>
+              </>
             )}
 
             {canCancelClass && (
