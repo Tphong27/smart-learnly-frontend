@@ -61,7 +61,25 @@ function parseBackendImportRowError(message) {
   }
 }
 
-/** Điều phối import question từ file, JSON hoặc ảnh OCR và preview trước khi lưu. */
+/** Hien thi dap an dung bang noi dung cau tra loi thay vi ky hieu A-F trong bang preview. */
+function formatImportCorrectAnswer(row) {
+  const rawCorrect = String(row?.data?.correctAnswer || '').trim()
+  const options = Array.isArray(row?.data?.options) ? row.data.options : []
+  if (!rawCorrect) return '--'
+  if (row?.data?.questionType === 'true_false') return rawCorrect
+
+  const labels = rawCorrect
+    .split(/[\s,;]+/)
+    .map((letter) => {
+      const index = letter.trim().toUpperCase().charCodeAt(0) - 65
+      return index >= 0 && index < options.length ? options[index] : letter
+    })
+    .filter(Boolean)
+
+  return labels.length ? labels.join(', ') : rawCorrect
+}
+
+/** Dieu phoi import question tu file, JSON hoac anh OCR va preview truoc khi luu. */
 export function QuestionImportModal({ open, variant = 'modal', bank, courseId, moduleId, existingQuestions = [], onClose, onImported }) {
   const toast = useToast()
   const isCourseQuestionsMode = Boolean(courseId)
@@ -667,14 +685,6 @@ export function QuestionImportModal({ open, variant = 'modal', bank, courseId, m
                       </option>
                     ))}
                   </Select>
-                  <Input
-                    label="Difficulty"
-                    type="number"
-                    min="1"
-                    max="5"
-                    value={question.difficulty}
-                    onChange={(event) => updateImageQuestion(questionIndex, { difficulty: event.target.value })}
-                  />
               </div>
               <div className="question-import__answers">
                 {question.answers.map((answer, answerIndex) => (
@@ -862,7 +872,11 @@ export function QuestionImportModal({ open, variant = 'modal', bank, courseId, m
             </div>
           )}
           {parsedRows.length > 0 && (
-          <Table ariaLabel="Question import preview" tableClassName="admin-table">
+          <Table
+            ariaLabel="Question import preview"
+            className="question-import__table-wrap"
+            tableClassName="admin-table question-import__table"
+          >
               <thead>
                 <tr>
                   <th className="question-import__column--row">Row</th>
@@ -879,8 +893,8 @@ export function QuestionImportModal({ open, variant = 'modal', bank, courseId, m
               <tbody>
                 {parsedRows.map((row, rowIndex) => (
                   <tr key={`${row.rowNumber}-${rowIndex}`}>
-                    <td>{row.rowNumber}</td>
-                    <td className="question-import__question-cell">
+                    <td data-label="Row">{row.rowNumber}</td>
+                    <td data-label="Question text" className="question-import__question-cell">
                       {row.data.questionText ? (
                         <div
                           className="question-rich-text-viewer question-import__question-preview"
@@ -888,12 +902,14 @@ export function QuestionImportModal({ open, variant = 'modal', bank, courseId, m
                         />
                       ) : '--'}
                     </td>
-                    <td>{row.data.questionType || '--'}</td>
-                    <td>{row.data.options?.length || 0}</td>
-                    <td>{row.data.correctAnswer || '--'}</td>
-                    <td>{(row.data.imageFiles?.length || 0) + (row.data.audioFiles?.length || 0) ? String(row.data.imageFiles?.length || 0) + ' img / ' + String(row.data.audioFiles?.length || 0) + ' audio' : '--'}</td>
-                    <td><QuestionImportStatusBadge row={row} /></td>
-                    <td>
+                    <td data-label="Type" className="question-import__type-cell">{row.data.questionType || '--'}</td>
+                    <td data-label="Options">{row.data.options?.length || 0}</td>
+                    <td data-label="Correct" className="question-import__correct-cell">
+                      {formatImportCorrectAnswer(row)}
+                    </td>
+                    <td data-label="Media">{(row.data.imageFiles?.length || 0) + (row.data.audioFiles?.length || 0) ? String(row.data.imageFiles?.length || 0) + ' img / ' + String(row.data.audioFiles?.length || 0) + ' audio' : '--'}</td>
+                    <td data-label="Status"><QuestionImportStatusBadge row={row} /></td>
+                    <td data-label="Errors" className="question-import__error-cell">
                       {row.errors?.length ? (
                         <ul className="question-import__errors">
                           {row.errors.map((error, index) => <li key={index}>{error}</li>)}
@@ -904,7 +920,7 @@ export function QuestionImportModal({ open, variant = 'modal', bank, courseId, m
                         </span>
                       )}
                     </td>
-                    <td>
+                    <td data-label="Actions" className="question-import__actions-cell">
                       <div className="question-import__row-actions">
                         <IconButton
                           icon={<Pencil size={15} />}

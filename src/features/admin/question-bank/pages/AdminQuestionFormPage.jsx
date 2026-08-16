@@ -23,6 +23,7 @@ import {
   blankAnswer,
   buildAnswerContent,
   canWriteQuestionBank,
+  getSaveableQuestionAnswers,
   mediaId,
   normalizeAnswerMediaFromResponse,
   normalizeAnswers,
@@ -38,7 +39,6 @@ import "./question-bank.css";
 const EMPTY_QUESTION_FORM_VALUES = {
   questionText: "",
   questionType: "single_choice",
-  difficulty: "",
   status: "draft",
   explanation: "",
   answers: [],
@@ -114,7 +114,6 @@ export function AdminQuestionForm({
           setValues({
             questionText: question.questionText || "",
             questionType: question.questionType || "single_choice",
-            difficulty: question.difficulty ? String(question.difficulty) : "",
             status: question.status || "draft",
             explanation: question.explanation || "",
             answers: normalizeAnswers(
@@ -359,8 +358,12 @@ export function AdminQuestionForm({
     const answers = savedQuestion?.answers || [];
     if (!answers.length) return Promise.resolve();
     const answerIdByIndex = answers.map((answer) => answer.answerId || answer.id);
+    const saveableAnswers = getSaveableQuestionAnswers(
+      values.questionType,
+      values.answers,
+    );
     const uploadTasks = [];
-    values.answers.forEach((answer, index) => {
+    saveableAnswers.forEach((answer, index) => {
       const media = answer.answerMedia || {};
       const answerId = answerIdByIndex[index];
       if (!answerId) return;
@@ -522,22 +525,23 @@ export function AdminQuestionForm({
     setSubmitting(true);
     setError(null);
     const cleanExplanation = sanitizeQuestionHtml(values.explanation).trim();
+    const saveableAnswers = getSaveableQuestionAnswers(
+      values.questionType,
+      values.answers,
+    );
     const payload = {
       bankId: courseId ? undefined : returnBankId,
       courseId,
       questionText: sanitizeQuestionHtml(values.questionText).trim(),
       questionType: values.questionType,
-      difficulty: values.difficulty ? Number(values.difficulty) : null,
       status: values.status,
       explanation: isEmptyQuestionHtml(cleanExplanation) ? null : cleanExplanation,
-      answers: normalizeAnswers(values.questionType, values.answers).map(
-        (answer, index) => ({
-          answerId: answer.answerId || answer.id || null,
-          answerText: buildAnswerContent(answer),
-          correct: Boolean(answer.correct),
-          displayOrder: index + 1,
-        }),
-      ),
+      answers: saveableAnswers.map((answer, index) => ({
+        answerId: answer.answerId || answer.id || null,
+        answerText: buildAnswerContent(answer),
+        correct: Boolean(answer.correct),
+        displayOrder: index + 1,
+      })),
     };
     try {
       let savedQuestion;
@@ -699,6 +703,7 @@ export function AdminQuestionForm({
               <Select
                   id="question-type"
                   label="Question type"
+                  required
                   value={values.questionType}
                   onChange={(event) => setType(event.target.value)}
                 >
@@ -707,27 +712,6 @@ export function AdminQuestionForm({
                       {option.label}
                     </option>
                   ))}
-              </Select>
-              <Select
-                  id="question-difficulty"
-                  label="Difficulty"
-                  value={values.difficulty}
-                  onChange={(event) =>
-                    setValues((current) => ({
-                      ...current,
-                      difficulty: event.target.value,
-                    }))
-                  }
-                >
-                  {values.difficulty && !["1", "2", "3", "4", "5"].includes(String(values.difficulty)) && (
-                    <option value={values.difficulty}>{values.difficulty}</option>
-                  )}
-                  <option value="">Not set</option>
-                  <option value="1">1 - Easy</option>
-                  <option value="2">2</option>
-                  <option value="3">3 - Medium</option>
-                  <option value="4">4</option>
-                  <option value="5">5 - Hard</option>
               </Select>
               <Select
                   id="question-status"
@@ -748,7 +732,10 @@ export function AdminQuestionForm({
           </section>
           <section className="question-authoring-block">
             <div className="question-authoring-block__header">
-              <h2>Question text</h2>
+              <h2>
+                Question text
+                <span className="input-field__required" aria-hidden="true">*</span>
+              </h2>
             </div>
             <QuestionTextRichEditor
               value={values.questionText}
@@ -764,7 +751,10 @@ export function AdminQuestionForm({
 
           <section className="question-authoring-block">
             <div className="question-authoring-block__header">
-              <h2>Answers</h2>
+              <h2>
+                Answers
+                <span className="input-field__required" aria-hidden="true">*</span>
+              </h2>
               {values.questionType !== "true_false" && (
                 <Button
                   type="button"

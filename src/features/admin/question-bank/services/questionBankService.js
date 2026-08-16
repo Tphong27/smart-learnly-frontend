@@ -34,6 +34,15 @@ function hasMixedAiDraftSources(payload = {}) {
   )
 }
 
+/** Loại bỏ Module ID trong batch module-scoped vì backend luôn lấy module từ URL. */
+function stripModuleIdFromImportRows(rows = []) {
+  return rows.map((row) => {
+    const sanitizedRow = { ...row }
+    delete sanitizedRow.moduleId
+    return sanitizedRow
+  })
+}
+
 export const questionBankService = {
   async listBanks(params = {}) {
     const response = await apiClient.get('/admin/question-banks', { params })
@@ -238,7 +247,7 @@ export const questionBankService = {
   async importModuleQuestionsBatch(courseId, moduleId, rows, importSource = 'excel_import') {
     const response = await apiClient.post(
       `/admin/courses/${courseId}/modules/${moduleId}/questions/import`,
-      { rows, importSource },
+      { rows: stripModuleIdFromImportRows(rows), importSource },
     )
     return unwrap(response)
   },

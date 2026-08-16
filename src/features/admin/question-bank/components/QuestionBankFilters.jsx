@@ -2,12 +2,11 @@ import { AdminFilterToolbar } from "@/features/admin/components/AdminFilterToolb
 import { SearchInput } from "@/shared/components/ui";
 import { QUESTION_TYPE_OPTIONS } from "../utils/questionFormUtils";
 
-/** Hiển thị bộ lọc tìm kiếm, loại, trạng thái và độ khó của câu hỏi. */
+/** Hien thi bo loc tim kiem, loai va trang thai cua cau hoi. */
 export function QuestionBankFilters({
     search,
     type,
     status,
-    difficulty,
     onSearchChange,
     onApply,
     onClear,
@@ -51,33 +50,17 @@ export function QuestionBankFilters({
                         { value: "archived", label: "Archived" },
                     ],
                 },
-                {
-                    name: "difficulty",
-                    label: "Difficulty",
-                    type: "select",
-                    value: difficulty,
-                    defaultValue: "all",
-                    options: [
-                        { value: "all", label: "All difficulties" },
-                        ...[1, 2, 3, 4, 5].map((level) => ({
-                            value: String(level),
-                            label: String(level),
-                        })),
-                    ],
-                },
             ]}
             activeFilterCount={
                 [
                     type !== "all",
                     status !== "all",
-                    difficulty !== "all",
                 ].filter(Boolean).length
             }
             canClear={Boolean(
                 search.trim() ||
                 type !== "all" ||
-                status !== "all" ||
-                difficulty !== "all",
+                status !== "all",
             )}
             onApply={onApply}
             onClear={onClear}
