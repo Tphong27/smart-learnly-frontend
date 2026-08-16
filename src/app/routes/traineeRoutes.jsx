@@ -87,7 +87,7 @@ function getTraineeRoutes() {
             },
             {
               path: "tests",
-              element: <Navigate to="/dashboard" replace />,
+              element: <TraineeAssessmentListPage variant="test" />,
             },
             {
               path: "tests/attempts/:testId/:attemptId",
