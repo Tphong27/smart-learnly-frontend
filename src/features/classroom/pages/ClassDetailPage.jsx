@@ -10,6 +10,7 @@ import {
   Info,
   Loader,
   Eye,
+  FileQuestion,
   RotateCcw,
   Trash2,
 } from "lucide-react";
@@ -338,13 +339,22 @@ export function ClassDetailPage({
             </Button>
 
             {(isTrainer || isTmo) && (
-              <Button
-                type="button"
-                leftIcon={<ClipboardList size={17} />}
-                onClick={openAssignments}
-              >
-                {isTmo ? "View assignments" : "Assignment"}
-              </Button>
+              <>
+                <Button
+                  type="button"
+                  leftIcon={<ClipboardList size={17} />}
+                  onClick={openAssignments}
+                >
+                  {isTmo ? "View assignments" : "Assignment"}
+                </Button>
+                <Button
+                  type="button"
+                  leftIcon={<FileQuestion size={17} />}
+                  onClick={openTests}
+                >
+                  Test
+                </Button>
+              </>
             )}
 
             {isTrainer && (

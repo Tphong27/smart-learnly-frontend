@@ -42,6 +42,14 @@ export const attemptService = {
   },
 
   /** Lấy chi tiết một lượt làm bài. */
+  async getByTest(testId, params = {}) {
+    const response = await apiClient.get(
+      `/course-quiz-attempts/quiz/${testId}`,
+      { params },
+    );
+    return normalizeList(response);
+  },
+
   async getById(attemptId, params = {}) {
     const response = await apiClient.get(`/course-quiz-attempts/${attemptId}`, {
       params,

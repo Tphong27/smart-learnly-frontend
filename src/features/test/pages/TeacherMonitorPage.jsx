@@ -1,6 +1,6 @@
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import { Client } from "@stomp/stompjs";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import {
   ArrowLeft,
   BarChart3,
@@ -26,7 +26,6 @@ import {
   Input,
   Modal,
   Table,
-  Tabs,
   Textarea,
   useToast,
 } from "@/shared/components/ui";
@@ -155,11 +154,17 @@ function getMcqScorePercentage(row, questionTotal) {
 }
 
 /** Điều phối giám sát trực tiếp, lịch sử attempt và chấm essay. */
-export function TeacherMonitorPage() {
+function getTrainerFeedbackValue(source) {
+  return source?.trainerFeedback ?? source?.trainer_feedback ?? "";
+}
+
+export function TeacherMonitorPage({ variant = "test" }) {
   const { id } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const toast = useToast();
-  const normalizedType = "essay";
+  const normalizedType = variant === "assignment" ? "essay" : "mcq";
+  const classId = searchParams.get("classId") || "";
   const [rows, setRows] = useState({});
   const [loading, setLoading] = useState(true);
   const [downloadingId, setDownloadingId] = useState(null);
@@ -172,7 +177,6 @@ export function TeacherMonitorPage() {
   const [questionTotal, setQuestionTotal] = useState(null);
   const [accessInfo, setAccessInfo] = useState(null);
   const [assignmentRubric, setAssignmentRubric] = useState("");
-  const [activeTab, setActiveTab] = useState("live");
   const [attemptHistory, setAttemptHistory] = useState([]);
   const [expandedStudentId, setExpandedStudentId] = useState(null);
   const [feedbackModal, setFeedbackModal] = useState(null);
@@ -345,7 +349,7 @@ export function TeacherMonitorPage() {
             fileUrl: item.fileUrl,
             fileName: item.fileName,
             score: item.score,
-            trainerFeedback: item.trainerFeedback,
+            trainerFeedback: getTrainerFeedbackValue(item),
           }),
         );
       } else {
@@ -426,9 +430,20 @@ export function TeacherMonitorPage() {
     const attemptId = attempt?.id || attempt?.attemptId;
     const testId = attempt?.testId || id;
     if (!attemptId || !testId) return;
-    navigate(`/staff/courses`, {
-      state: { attempt, studentName },
-    });
+    const detailParams = new URLSearchParams();
+    if (classId) detailParams.set("classId", classId);
+    const detailQuery = detailParams.toString();
+    navigate(
+      `/staff/tests/attempts/${testId}/${attemptId}${detailQuery ? `?${detailQuery}` : ""}`,
+      {
+        state: {
+          attempt,
+          studentName,
+          classId: classId || null,
+          backPath: window.location.pathname + window.location.search,
+        },
+      },
+    );
   };
 
   /** Render danh sách attempt có action mở chi tiết. */
@@ -512,7 +527,7 @@ export function TeacherMonitorPage() {
         fileUrl: graded.fileUrl,
         fileName: graded.fileName,
         score: graded.score,
-        trainerFeedback: graded.trainerFeedback,
+        trainerFeedback: getTrainerFeedbackValue(graded),
       });
       setGradeForms((current) => {
         const next = { ...current };
@@ -530,7 +545,7 @@ export function TeacherMonitorPage() {
   /** Mở modal feedback và hydrate dữ liệu của submission. */
   const openFeedbackModal = (row) => {
     setFeedbackModal(row);
-    setFeedbackText(row.trainerFeedback || "");
+    setFeedbackText(getTrainerFeedbackValue(row));
     setAiFeedbackDraft("");
     setFeedbackError("");
     setFeedbackCopied(false);
@@ -552,7 +567,9 @@ export function TeacherMonitorPage() {
       const result = await assignmentService.generateSubmissionFeedback(
         feedbackModal.submissionId,
       );
-      setAiFeedbackDraft(result?.feedback || "");
+      const generatedFeedback = result?.feedback || "";
+      setAiFeedbackDraft(generatedFeedback);
+      setFeedbackText((current) => current || generatedFeedback);
     } catch (error) {
       setFeedbackError(error.message || "Could not generate AI feedback.");
     } finally {
@@ -578,11 +595,12 @@ export function TeacherMonitorPage() {
     setSavingFeedback(true);
     setFeedbackError("");
     try {
+      const finalFeedback = feedbackText.trim() || aiFeedbackDraft.trim();
       const graded = await assignmentService.gradeSubmission(
         feedbackModal.submissionId,
         {
           score: feedbackModal.score ?? null,
-          trainerFeedback: feedbackText.trim(),
+          trainerFeedback: finalFeedback,
           status: feedbackModal.status || "SUBMITTED",
         },
       );
@@ -593,7 +611,7 @@ export function TeacherMonitorPage() {
         studentId: graded.studentId,
         status: graded.status,
         score: graded.score,
-        trainerFeedback: graded.trainerFeedback,
+        trainerFeedback: getTrainerFeedbackValue(graded) || finalFeedback,
       });
       setFeedbackModal(null);
     } catch (error) {
@@ -651,7 +669,10 @@ export function TeacherMonitorPage() {
   }, []);
 
   useEffect(() => {
-    const topic = `/topic/assignments/monitor/${id}`;
+    const topic =
+      normalizedType === "essay"
+        ? `/topic/assignments/monitor/${id}`
+        : `/topic/tests/monitor/${id}`;
     const client = new Client({
       brokerURL: wsUrl(),
       reconnectDelay: 3000,
@@ -750,20 +771,9 @@ export function TeacherMonitorPage() {
         </div>
       )}
 
-      {normalizedType === "mcq" && (
-        <Tabs
-          className="ft-monitor-tabs"
-          ariaLabel="Test monitor tabs"
-          value={activeTab}
-          onChange={setActiveTab}
-          items={[
-            { value: "live", label: "Live monitor" },
-            { value: "history", label: "Attempt history" },
-          ]}
-        />
-      )}
+      <div className="ft-monitor-tabs" aria-hidden="true" />
 
-      {(normalizedType !== "mcq" || activeTab === "live") && (
+      {(
         <Table ariaLabel="Live test monitor" tableClassName="ft-table">
             <thead>
               <tr>
@@ -998,96 +1008,6 @@ export function TeacherMonitorPage() {
                   <td colSpan={normalizedType === "mcq" ? 6 : 8}>
                     No student activity yet.
                   </td>
-                </tr>
-              )}
-            </tbody>
-        </Table>
-      )}
-
-      {normalizedType === "mcq" && activeTab === "history" && (
-        <Table ariaLabel="Test attempt history" tableClassName="ft-table">
-            <thead>
-              <tr>
-                <th>Trainee</th>
-                <th>Attempts</th>
-                <th>Latest attempt</th>
-                <th>Highest score</th>
-                <th className="ft-table-action">Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {historyRows.map((row) => {
-                const bestAttempt = row.attempts.reduce((best, attempt) => {
-                  const score =
-                    getMcqScorePercentage(
-                      attempt,
-                      getQuestionTotal(attempt) || questionTotal,
-                    ) ?? -1;
-                  const bestScore =
-                    getMcqScorePercentage(
-                      best,
-                      getQuestionTotal(best) || questionTotal,
-                    ) ?? -1;
-                  return score > bestScore ? attempt : best;
-                }, row.attempts[0]);
-                const latestAttempt = row.attempts[row.attempts.length - 1];
-                const bestScore = formatMcqScore(
-                  bestAttempt,
-                  getQuestionTotal(bestAttempt) || questionTotal,
-                );
-                const isExpanded = expandedStudentId === row.studentId;
-                return (
-                  <Fragment key={row.studentId}>
-                    <tr>
-                      <td>{row.studentName}</td>
-                      <td>{row.attempts.length}</td>
-                      <td>
-                        {latestAttempt?.startTime
-                          ? new Date(latestAttempt.startTime).toLocaleString()
-                          : "--"}
-                      </td>
-                      <td>
-                        <strong>
-                          {bestScore.score}/10
-                          {bestScore.percentage != null
-                            ? ` (${bestScore.percentage}%)`
-                            : ""}
-                        </strong>
-                      </td>
-                      <td>
-                        <div className="ft-table-actions">
-                          <button
-                            className={`ft-history-attempt__toggle ft-history-attempt__toggle--chevron ${
-                              isExpanded ? "is-expanded" : ""
-                            }`}
-                            type="button"
-                            title={
-                              isExpanded ? "Hide attempts" : "Show attempts"
-                            }
-                            aria-label={
-                              isExpanded ? "Hide attempts" : "Show attempts"
-                            }
-                            aria-expanded={isExpanded}
-                            onClick={() => toggleStudentAttempts(row.studentId)}
-                          >
-                            <ChevronUp size={18} />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                    {isExpanded && (
-                      <tr className="ft-expanded-row">
-                        <td colSpan={5}>
-                          {renderAttemptList(row.attempts, row.studentName)}
-                        </td>
-                      </tr>
-                    )}
-                  </Fragment>
-                );
-              })}
-              {!loading && historyRows.length === 0 && (
-                <tr>
-                  <td colSpan={5}>No attempt history yet.</td>
                 </tr>
               )}
             </tbody>

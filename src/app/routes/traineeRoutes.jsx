@@ -102,6 +102,10 @@ function getTraineeRoutes() {
               path: "assignments",
               element: <TraineeAssessmentListPage variant="assignment" />,
             },
+            {
+              path: "tests",
+              element: <TraineeAssessmentListPage variant="test" />,
+            },
           ],
         },
       ],

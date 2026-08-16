@@ -110,19 +110,19 @@ const DURATION_PRESETS = [
 ];
 
 /** Điều phối form tạo/sửa assignment. */
-export function StaffAssessmentCreatePage() {
+export function StaffAssessmentCreatePage({ variant = "assignment" }) {
     const navigate = useNavigate();
     const toast = useToast();
     const { id } = useParams();
     const [searchParams] = useSearchParams();
     const isEdit = Boolean(id);
-    const isAssignmentMode = true;
+    const isAssignmentMode = variant !== "test";
     const routeCourseId = searchParams.get("courseId") || "";
     const routeClassId = searchParams.get("classId") || "";
     const returnParams = new URLSearchParams();
     if (routeCourseId) returnParams.set("courseId", routeCourseId);
     if (routeClassId) returnParams.set("classId", routeClassId);
-    const basePath = "/staff/assignments";
+    const basePath = isAssignmentMode ? "/staff/assignments" : "/staff/tests";
     const returnPath = `${basePath}${returnParams.toString() ? `?${returnParams.toString()}` : ""}`;
     const pageName = isAssignmentMode ? "Assignment" : "Test";
     const testType = isAssignmentMode ? "essay" : "mcq";

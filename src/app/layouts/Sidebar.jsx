@@ -3,6 +3,7 @@ import {
   CalendarDays,
   ClipboardCheck,
   CreditCard,
+  FileQuestion,
   FolderTree,
   GraduationCap,
   Home,
@@ -126,6 +127,12 @@ const navItems = [
     label: "Assignment",
     path: "/learning/assignments",
     icon: ClipboardCheck,
+    roles: [ROLES.TRAINEE],
+  },
+  {
+    label: "Test",
+    path: "/learning/tests",
+    icon: FileQuestion,
     roles: [ROLES.TRAINEE],
   },
 ];

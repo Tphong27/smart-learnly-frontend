@@ -163,15 +163,17 @@ function getAssessmentState(item, result, referenceMs) {
 }
 
 /** Hiển thị danh sách assignment dành cho trainee. */
-export function TraineeAssessmentListPage() {
+export function TraineeAssessmentListPage({ variant = "test" }) {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const isAssignmentMode = true;
-  const showsFeedbackColumn = true;
+  const isAssignmentMode = variant !== "test";
+  const showsFeedbackColumn = isAssignmentMode;
   const courseId = searchParams.get("courseId") || "";
   const classId = searchParams.get("classId") || "";
-  const takePath = "/learning/assignments/take";
-  const accessStoragePrefix = "assignmentAccess";
+  const takePath = isAssignmentMode
+    ? "/learning/assignments/take"
+    : "/learning/course-quizzes";
+  const accessStoragePrefix = isAssignmentMode ? "assignmentAccess" : "testAccess";
   const currentUser = useMemo(() => getCurrentUser(), []);
   const studentId = useMemo(
     () =>
@@ -198,9 +200,10 @@ export function TraineeAssessmentListPage() {
   const [assignmentView, setAssignmentView] = useState("daily");
   const [expandedResultKey, setExpandedResultKey] = useState("");
   const [visibleFeedback, setVisibleFeedback] = useState(null);
-  const pageTitle = "My Assignments";
-  const pageSubtitle =
-    "Track essay work from your enrolled classes and continue before each due date.";
+  const pageTitle = isAssignmentMode ? "My Assignments" : "My Tests";
+  const pageSubtitle = isAssignmentMode
+    ? "Track essay work from your enrolled classes and continue before each due date."
+    : "Take available tests and review your attempt history.";
 
   /** Tải assessment khả dụng và trạng thái attempt/submission của trainee. */
   const loadAvailableTests = useCallback(async () => {
@@ -566,8 +569,11 @@ export function TraineeAssessmentListPage() {
       const takeParams = new URLSearchParams();
       if (classId) takeParams.set("classId", classId);
       const takeQuery = takeParams.toString();
+      const destination = isAssignmentMode
+        ? `${takePath}/${item.id}/${type}${takeQuery ? `?${takeQuery}` : ""}`
+        : `${takePath}/${item.id}${takeQuery ? `?${takeQuery}` : ""}`;
       navigate(
-        `${takePath}/${item.id}/${type}${takeQuery ? `?${takeQuery}` : ""}`,
+        destination,
         {
           state: { accessCode: code, classId: classId || null },
         },
