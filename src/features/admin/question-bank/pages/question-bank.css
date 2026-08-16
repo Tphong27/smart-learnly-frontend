@@ -1312,6 +1312,14 @@
   gap: 12px;
 }
 
+.ai-drafts-counter span {
+  flex: 1;
+}
+
+.ai-drafts-counter strong {
+  flex-shrink: 0;
+}
+
 .ai-drafts-counter .is-danger,
 .ai-drafts-danger-text {
   color: var(--sl-danger, #b91c1c);
