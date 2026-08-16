@@ -73,7 +73,6 @@ export function AdminQuestionBankDetailPage() {
   const [search, setSearch] = useState("");
   const [type, setType] = useState("all");
   const [status, setStatus] = useState("all");
-  const [difficulty, setDifficulty] = useState("all");
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -96,7 +95,6 @@ export function AdminQuestionBankDetailPage() {
     setSearch("");
     setType("all");
     setStatus("all");
-    setDifficulty("all");
     setPage(0);
   }
 
@@ -155,8 +153,6 @@ export function AdminQuestionBankDetailPage() {
                   search: search.trim() || undefined,
                   type: type === "all" ? undefined : type,
                   status: status === "all" ? undefined : status,
-                  difficulty:
-                    difficulty === "all" ? undefined : difficulty,
                   page,
                   size: pageSize,
                 },
@@ -173,7 +169,6 @@ export function AdminQuestionBankDetailPage() {
                   search: search.trim() || undefined,
                   type: type === "all" ? undefined : type,
                   status: status === "all" ? undefined : status,
-                  difficulty: difficulty === "all" ? undefined : difficulty,
                   page,
                   size: pageSize,
                 }),
@@ -214,7 +209,6 @@ export function AdminQuestionBankDetailPage() {
   }, [
     bankId,
     courseId,
-    difficulty,
     isCourseQuestionsMode,
     page,
     pageSize,
@@ -459,7 +453,6 @@ export function AdminQuestionBankDetailPage() {
             search={search}
             type={type}
             status={status}
-            difficulty={difficulty}
             onSearchChange={(nextSearch) => {
               setSearch(nextSearch);
               setPage(0);
@@ -467,7 +460,6 @@ export function AdminQuestionBankDetailPage() {
             onApply={(nextFilters) => {
               setType(nextFilters.type);
               setStatus(nextFilters.status);
-              setDifficulty(nextFilters.difficulty);
               setPage(0);
             }}
             onClear={clearQuestionFilters}
@@ -488,6 +480,7 @@ export function AdminQuestionBankDetailPage() {
                   <tr>
                     <th>Id</th>
                     <th>Question Title</th>
+                    <th>Media</th>
                     <th>Type</th>
                     <th>Status</th>
                     <th>Actions</th>
@@ -497,6 +490,10 @@ export function AdminQuestionBankDetailPage() {
                   {items.map((question, index) => {
                     const questionNumber = page * pageSize + index + 1;
                     const questionId = question.questionId || question.id;
+                    const { images } = normalizeQuestionMedia(question);
+                    const firstImage = images[0];
+                    const firstImageUrl = firstImage ? questionMediaUrl(firstImage) : "";
+                    const firstImageTitle = `Question ${questionNumber} image 1`;
                     return (
                       <tr key={questionId}>
                         <td data-label="Id">{questionNumber}</td>
@@ -509,6 +506,37 @@ export function AdminQuestionBankDetailPage() {
                               ),
                             }}
                           />
+                        </td>
+                        <td data-label="Media">
+                          {firstImageUrl ? (
+                            <button
+                              type="button"
+                              className="question-module-media-thumb"
+                              onClick={() =>
+                                setImagePreview({
+                                  url: firstImageUrl,
+                                  title: firstImageTitle,
+                                  fileName: questionMediaName(
+                                    firstImage,
+                                    firstImageTitle,
+                                  ),
+                                })
+                              }
+                            >
+                              <img
+                                src={firstImageUrl}
+                                alt={questionMediaName(
+                                  firstImage,
+                                  firstImageTitle,
+                                )}
+                              />
+                              {images.length > 1 && (
+                                <span>+{images.length - 1}</span>
+                              )}
+                            </button>
+                          ) : (
+                            "--"
+                          )}
                         </td>
                         <td data-label="Type">
                           {questionTypeLabel(question.questionType)}
@@ -591,7 +619,6 @@ export function AdminQuestionBankDetailPage() {
                       <span>
                         {questionTypeLabel(question.questionType)}
                       </span>
-                      <span>Difficulty: {question.difficulty ?? "--"}</span>
                       <span>
                         Updated:{" "}
                         {formatDate(question.updatedAt || question.createdAt)}

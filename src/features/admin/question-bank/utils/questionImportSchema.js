@@ -2,7 +2,7 @@ import * as XLSX from 'xlsx'
 
 export const IMPORT_COLUMNS = [
   { key: 'question_text', label: 'Question text', required: true },
-  { key: 'question_type', label: 'Question type', required: true },
+  { key: 'question_type', label: 'Question type', required: false },
   { key: 'option_a', label: 'Option A', required: true },
   { key: 'option_b', label: 'Option B', required: true },
   { key: 'option_c', label: 'Option C', required: false },
@@ -11,22 +11,12 @@ export const IMPORT_COLUMNS = [
   { key: 'option_f', label: 'Option F', required: false },
   { key: 'correct_answer', label: 'Correct answer', required: true },
   { key: 'explanation', label: 'Explanation', required: false },
-  { key: 'difficulty', label: 'Difficulty', required: false },
-  { key: 'bloom_level', label: 'Bloom level', required: false },
+  { key: 'module_id', label: 'Module ID', required: false },
   { key: 'image_files', label: 'Image URLs', required: false },
   { key: 'audio_files', label: 'Audio URLs', required: false },
 ]
 
 export const ALLOWED_TYPES = ['single_choice', 'multiple_choice', 'true_false']
-
-export const ALLOWED_BLOOM_LEVELS = [
-  'remember',
-  'understand',
-  'apply',
-  'analyze',
-  'evaluate',
-  'create',
-]
 
 export const SAMPLE_QUESTION_BANK_JSON = JSON.stringify(
   [
@@ -36,8 +26,6 @@ export const SAMPLE_QUESTION_BANK_JSON = JSON.stringify(
       options: ['Paris', 'London', 'Berlin', 'Madrid'],
       correctAnswer: 'A',
       explanation: 'Paris has been the capital of France for centuries.',
-      difficulty: 1,
-      bloomLevel: 'remember',
       media: {
         images: [],
         audios: [],
@@ -49,8 +37,6 @@ export const SAMPLE_QUESTION_BANK_JSON = JSON.stringify(
       options: ['@Component', '@Service', '@Repository', '@BeanFactory'],
       correctAnswer: 'A,B,C',
       explanation: '@Component, @Service, and @Repository are component-scanned stereotypes.',
-      difficulty: 3,
-      bloomLevel: 'understand',
       media: {
         images: [],
         audios: [],
@@ -62,8 +48,6 @@ export const SAMPLE_QUESTION_BANK_JSON = JSON.stringify(
       options: ['True', 'False'],
       correct_answer: 'True',
       explanation: 'Java is a general-purpose programming language.',
-      difficulty: 'easy',
-      bloom_level: 'understand',
       media: {
         images: [],
         audios: [],
@@ -87,16 +71,9 @@ const HEADER_ALIASES = {
   option_f: ['option_f', 'option f', 'answer_f', 'answer f', 'f'],
   correct_answer: ['correct_answer', 'correct answer', 'correct', 'answer'],
   explanation: ['explanation', 'explain', 'rationale'],
-  difficulty: ['difficulty', 'level'],
-  bloom_level: ['bloom_level', 'bloom level', 'bloom'],
+  module_id: ['module_id', 'module id', 'moduleid', 'module'],
   image_files: ['image_files', 'image files', 'image_urls', 'image urls', 'images'],
   audio_files: ['audio_files', 'audio files', 'audio_urls', 'audio urls', 'audios'],
-}
-
-const DIFFICULTY_ALIASES = {
-  easy: 1,
-  medium: 3,
-  hard: 5,
 }
 
 function hasMappedColumn(columnMap, key) {
@@ -232,8 +209,7 @@ function normalizeJsonQuestion(rawQuestion) {
     question_type: String(getAliasedValue(rawQuestion, 'questionType', 'question_type') ?? '').trim(),
     correct_answer: String(getAliasedValue(rawQuestion, 'correctAnswer', 'correct_answer') ?? '').trim(),
     explanation: String(rawQuestion.explanation ?? '').trim(),
-    difficulty: String(rawQuestion.difficulty ?? '').trim(),
-    bloom_level: String(getAliasedValue(rawQuestion, 'bloomLevel', 'bloom_level') ?? '').trim(),
+    module_id: String(getAliasedValue(rawQuestion, 'moduleId', 'module_id') ?? '').trim(),
     image_files: getJsonMediaArray(rawQuestion, 'images', 'imageFiles'),
     audio_files: getJsonMediaArray(rawQuestion, 'audios', 'audioFiles'),
   }
@@ -258,9 +234,6 @@ function buildColumnMap(headers) {
 function validateRowShape(row, columnMap) {
   if (!hasMappedColumn(columnMap, 'question_text')) {
     return 'Missing required column: question_text'
-  }
-  if (!hasMappedColumn(columnMap, 'question_type')) {
-    return 'Missing required column: question_type'
   }
   if (!hasMappedColumn(columnMap, 'option_a') || !hasMappedColumn(columnMap, 'option_b')) {
     return 'Missing required columns: option_a and option_b'
@@ -327,8 +300,7 @@ function toEditableMappedRow(row) {
     option_f: String(options[5] ?? raw.option_f ?? '').trim(),
     correct_answer: String(data.correctAnswer ?? raw.correct_answer ?? '').trim(),
     explanation: String(data.explanation ?? raw.explanation ?? '').trim(),
-    difficulty: String(data.difficulty ?? raw.difficulty ?? '').trim(),
-    bloom_level: String(data.bloomLevel ?? raw.bloom_level ?? '').trim(),
+    module_id: String(data.moduleId ?? raw.module_id ?? '').trim(),
     image_files: imageFiles.join('; '),
     audio_files: audioFiles.join('; '),
   }
@@ -356,8 +328,7 @@ function validateMappedRows(mappedRows, existingQuestions = []) {
         options,
         correctAnswer: correctRaw,
         explanation: mapped.explanation || null,
-        difficulty: resolveDifficulty(mapped.difficulty),
-        bloomLevel: mapped.bloom_level ? mapped.bloom_level.trim().toLowerCase().replace(/-/g, '_') : null,
+        moduleId: mapped.module_id ? mapped.module_id.trim() : null,
         imageFiles,
         audioFiles,
       },
@@ -368,21 +339,7 @@ function validateMappedRows(mappedRows, existingQuestions = []) {
   return validateAgainstExisting(parsedRows, existingQuestions)
 }
 
-function resolveDifficulty(value) {
-  const raw = String(value ?? '').trim().toLowerCase()
-  if (!raw) return null
-
-  if (Object.prototype.hasOwnProperty.call(DIFFICULTY_ALIASES, raw)) {
-    return DIFFICULTY_ALIASES[raw]
-  }
-
-  const difficultyNumber = Number(raw)
-  if (!Number.isInteger(difficultyNumber) || difficultyNumber < 1 || difficultyNumber > 5) {
-    return null
-  }
-  return difficultyNumber
-}
-
+/** Kiem tra tung dong import va chuan hoa loai cau hoi de preview khop voi payload gui len backend. */
 function collectRowErrors(row, rowNumber, existingTexts) {
   const errors = []
 
@@ -396,7 +353,7 @@ function collectRowErrors(row, rowNumber, existingTexts) {
   const questionType = (row.question_type || '').trim().toLowerCase()
   let resolvedType = null
   if (!questionType) {
-    errors.push('Question type is required')
+    resolvedType = 'single_choice'
   } else if (!ALLOWED_TYPES.includes(questionType)) {
     errors.push('Question type must be single_choice, multiple_choice, or true_false')
   } else {
@@ -447,19 +404,6 @@ function collectRowErrors(row, rowNumber, existingTexts) {
     }
   }
 
-  if (row.difficulty) {
-    if (resolveDifficulty(row.difficulty) == null) {
-      errors.push('Difficulty must be a whole number between 1 and 5, or easy, medium, hard')
-    }
-  }
-
-  if (row.bloom_level) {
-    const bloom = row.bloom_level.trim().toLowerCase().replace(/-/g, '_')
-    if (!ALLOWED_BLOOM_LEVELS.includes(bloom)) {
-      errors.push(`Bloom level must be one of: ${ALLOWED_BLOOM_LEVELS.join(', ')}`)
-    }
-  }
-
   if (row.explanation && row.explanation.length > 10000) {
     errors.push('Explanation must not exceed 10000 characters')
   }
@@ -507,8 +451,7 @@ export async function parseImportFile(file) {
         options,
         correctAnswer: correctRaw,
         explanation: mapped.explanation || null,
-        difficulty: resolveDifficulty(mapped.difficulty),
-        bloomLevel: mapped.bloom_level ? mapped.bloom_level.trim().toLowerCase().replace(/-/g, '_') : null,
+        moduleId: mapped.module_id ? mapped.module_id.trim() : null,
         imageFiles,
         audioFiles,
       },
@@ -548,8 +491,7 @@ export function parseImportJson(jsonText) {
         options,
         correctAnswer: correctRaw,
         explanation: mapped.explanation || null,
-        difficulty: resolveDifficulty(mapped.difficulty),
-        bloomLevel: mapped.bloom_level ? mapped.bloom_level.trim().toLowerCase().replace(/-/g, '_') : null,
+        moduleId: mapped.module_id ? mapped.module_id.trim() : null,
         imageFiles,
         audioFiles,
       },
@@ -596,8 +538,7 @@ export function buildImportPayload(bankId, validRows) {
       options: row.data.options,
       correctAnswer: row.data.correctAnswer,
       explanation: row.data.explanation || null,
-      difficulty: row.data.difficulty,
-      bloomLevel: row.data.bloomLevel || null,
+      ...(row.data.moduleId ? { moduleId: row.data.moduleId } : {}),
       imageFiles: row.data.imageFiles || [],
       audioFiles: row.data.audioFiles || [],
     })),
@@ -617,8 +558,7 @@ export function downloadTemplate() {
       option_f: '',
       correct_answer: 'A',
       explanation: 'Paris has been the capital of France for centuries.',
-      difficulty: '1',
-      bloom_level: 'remember',
+      module_id: '',
       image_files: '',
       audio_files: '',
     },
@@ -633,8 +573,7 @@ export function downloadTemplate() {
       option_f: '',
       correct_answer: 'A,B,C',
       explanation: '@Component, @Service, and @Repository are component-scanned stereotypes.',
-      difficulty: '3',
-      bloom_level: 'understand',
+      module_id: '',
       image_files: '',
       audio_files: '',
     },
@@ -649,8 +588,7 @@ export function downloadTemplate() {
       option_f: '',
       correct_answer: 'True',
       explanation: 'Java is a general-purpose programming language.',
-      difficulty: '2',
-      bloom_level: 'understand',
+      module_id: '',
       image_files: '',
       audio_files: '',
     },
@@ -662,10 +600,10 @@ export function downloadTemplate() {
   worksheet['!cols'] = IMPORT_COLUMNS.map(() => ({ wch: 22 }))
   const rules = [
     ['Question Import Rules'],
-    ['Required columns', 'question_text, question_type, option_a, option_b, correct_answer'],
-    ['Question types', 'single_choice, multiple_choice, or true_false'],
+    ['Required columns', 'question_text, option_a, option_b, correct_answer'],
+    ['Question types', 'Optional. Blank defaults to single_choice. Use single_choice for one correct answer; multiple_choice for two or more correct answers'],
     ['Correct answer', 'single_choice uses one letter A-F; multiple_choice uses comma-separated letters like A,C; true_false uses True or False'],
-    ['Difficulty', '1-5, or easy/medium/hard aliases'],
+    ['Module ID', 'Optional. In module import screens, the page URL decides the module and this column is ignored by the backend'],
     ['Image media', 'Optional. Use real public image URLs only; separate multiple URLs with semicolons; max 5 per question'],
     ['Audio media', 'Optional. Use real public audio URLs only; separate multiple URLs with semicolons; max 3 per question'],
     ['Final storage', 'Imported media URLs are downloaded, validated, and re-uploaded by the backend before saving'],

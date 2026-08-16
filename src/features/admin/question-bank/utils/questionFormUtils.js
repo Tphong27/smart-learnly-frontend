@@ -169,6 +169,13 @@ export function answerHasContent(answer) {
   return Boolean(media.image || media.audio || media.video);
 }
 
+/** Lay danh sach answer duoc tinh khi validate va gui payload theo tung loai cau hoi. */
+export function getSaveableQuestionAnswers(type, answers) {
+  const normalizedAnswers = normalizeAnswers(type, answers);
+  if (type === "true_false") return normalizedAnswers.slice(0, 2);
+  return normalizedAnswers.filter((answer) => answerHasContent(answer));
+}
+
 /** Chuyển answer media từ response backend thành state của form. */
 export function normalizeAnswerMediaFromResponse(answer) {
   const next = { image: null, audio: null, video: null };
@@ -195,8 +202,8 @@ export function normalizeAnswerMediaFromResponse(answer) {
 export function validateQuestionForm(values) {
   if (isEmptyQuestionHtml(values.questionText)) return "Question text is required.";
   if (!values.questionType) return "Question type is required.";
-  const answers = normalizeAnswers(values.questionType, values.answers);
-  if (answers.length < 2) return "At least two answers are required.";
+  const answers = getSaveableQuestionAnswers(values.questionType, values.answers);
+  if (answers.length < 2) return "At least two answers with content are required.";
   if (
     (values.questionType === "single_choice" ||
       values.questionType === "multiple_choice") &&
@@ -219,6 +226,7 @@ export function validateQuestionForm(values) {
     return "Multiple choice requires at least two correct answers.";
   }
   if (values.questionType === "true_false") {
+    if (answers.length !== 2) return "True/False must have exactly two answers.";
     const labels = answers.map((answer) => answer.answerText.trim().toLowerCase());
     if (!labels.includes("true") || !labels.includes("false")) {
       return "True/False answers must be True and False.";

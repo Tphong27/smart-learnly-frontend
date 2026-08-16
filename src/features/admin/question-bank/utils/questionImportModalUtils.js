@@ -1,4 +1,5 @@
 import { FileAudio, ImagePlus } from "lucide-react";
+import { getSaveableQuestionAnswers } from "./questionFormUtils";
 
 export const IMPORT_MODES = {
   FILE: "file",
@@ -69,7 +70,6 @@ export function normalizeImageQuestion(question, index) {
       correct: Boolean(answer?.correct || answer?.isCorrect),
       displayOrder: answerIndex + 1,
     })),
-    difficulty: question?.difficulty || "",
     explanation: question?.explanation || "",
     warnings: Array.isArray(question?.warnings) ? question.warnings : [],
     providerErrors: Array.isArray(question?.errors) ? question.errors : [],
@@ -107,12 +107,15 @@ export function validateImageQuestion(question) {
   const errors = [...(question.providerErrors || [])];
   const text = question.questionText?.trim();
   const type = question.questionType;
-  const answers = Array.isArray(question.answers) ? question.answers : [];
+  const rawAnswers = Array.isArray(question.answers) ? question.answers : [];
+  const answers = type === "true_false"
+    ? rawAnswers.slice(0, 2)
+    : rawAnswers.filter((answer) => answer.answerText?.trim());
   if (!text) errors.push("Question text is required");
   if (!["single_choice", "multiple_choice", "true_false"].includes(type)) {
     errors.push("Question type must be single_choice, multiple_choice, or true_false");
   }
-  if (answers.length < 2) errors.push("At least two answers are required");
+  if (answers.length < 2) errors.push("At least two answers with content are required");
   if ((type === "single_choice" || type === "multiple_choice") && answers.length > 6) {
     errors.push("Choice questions support 2 to 6 answers");
   }
@@ -122,7 +125,7 @@ export function validateImageQuestion(question) {
     errors.push("Exactly one correct answer is required");
   }
   if (type === "multiple_choice" && correctCount < 2) {
-    errors.push("Multiple choice requires at least two correct answers");
+    errors.push("Multiple choice requires at least two correct answers. Use single_choice when only one option is correct");
   }
   if (type === "true_false") {
     if (answers.length !== 2) errors.push("True/false must have exactly two answers");
@@ -131,39 +134,27 @@ export function validateImageQuestion(question) {
       errors.push("True/false answers must be True and False");
     }
   }
-  const difficulty = question.difficulty === "" || question.difficulty == null
-    ? null
-    : Number(question.difficulty);
-  if (difficulty != null && (Number.isNaN(difficulty) || difficulty < 1 || difficulty > 5)) {
-    errors.push("Difficulty must be between 1 and 5");
-  }
   return errors;
 }
 
 /** Tạo payload confirm cho một question image import và ánh xạ index media multipart. */
 export function toImageConfirmPayload(question, imageFileIndexes = [], audioFileIndexes = []) {
+  const answers = question.questionType === "true_false"
+    ? (question.answers || []).slice(0, 2)
+    : (question.answers || []).filter((answer) => answer.answerText?.trim());
   return {
     questionText: question.questionText.trim(),
     questionType: question.questionType,
-    answers: question.answers.map((answer, index) => ({
+    answers: answers.map((answer, index) => ({
       answerText: answer.answerText.trim(),
       correct: Boolean(answer.correct),
       displayOrder: index + 1,
     })),
-    difficulty: question.difficulty === "" || question.difficulty == null
-      ? null
-      : Number(question.difficulty),
     explanation: question.explanation?.trim() || null,
     imageFileIndexes,
     audioFileIndexes,
   };
 }
-
-const IMPORT_DIFFICULTY_ALIASES = {
-  easy: "1",
-  medium: "3",
-  hard: "5",
-};
 
 /** Lấy tên file dễ đọc từ media URL của dữ liệu import. */
 function importMediaFileName(url, fallback) {
@@ -216,17 +207,12 @@ export function getImportQuestionFormState(row) {
       .map((letter) => letter.trim())
       .filter(Boolean),
   );
-  const rawDifficulty = String(data.difficulty ?? "").trim();
-  const difficulty = IMPORT_DIFFICULTY_ALIASES[rawDifficulty.toLowerCase()] || rawDifficulty;
-
   return {
     values: {
       questionText: data.questionText || "",
       questionType,
-      difficulty,
       status: "draft",
       explanation: data.explanation || "",
-      bloomLevel: data.bloomLevel || "",
       answers: options.map((option, index) => ({
         answerText: option || "",
         correct: questionType === "true_false"
@@ -247,10 +233,14 @@ export function getImportQuestionFormState(row) {
 /** Áp dụng dữ liệu AdminQuestionForm trở lại import row để schema validator chạy lại. */
 export function applyImportQuestionFormEdit(row, formState) {
   const values = formState?.values || {};
-  const optionValues = (values.answers || []).map((answer) =>
+  const saveableAnswers = getSaveableQuestionAnswers(
+    values.questionType,
+    values.answers,
+  );
+  const optionValues = saveableAnswers.map((answer) =>
     String(answer?.answerText || "").trim(),
   );
-  const correctIndexes = (values.answers || [])
+  const correctIndexes = saveableAnswers
     .map((answer, index) => (answer?.correct ? index : -1))
     .filter((index) => index >= 0);
   const correctAnswer = values.questionType === "true_false"
@@ -260,8 +250,6 @@ export function applyImportQuestionFormEdit(row, formState) {
   const audioFiles = importMediaItemsToUrls(formState?.media?.audios);
   const questionText = String(values.questionText || "").trim();
   const explanation = String(values.explanation || "").trim();
-  const difficulty = String(values.difficulty ?? "").trim();
-  const bloomLevel = String(values.bloomLevel || row?.data?.bloomLevel || "").trim();
 
   return {
     ...row,
@@ -271,8 +259,6 @@ export function applyImportQuestionFormEdit(row, formState) {
       options: optionValues.filter(Boolean),
       correctAnswer,
       explanation: explanation || null,
-      difficulty,
-      bloomLevel: bloomLevel || null,
       imageFiles,
       audioFiles,
     },
@@ -288,8 +274,6 @@ export function applyImportQuestionFormEdit(row, formState) {
       option_f: optionValues[5] || "",
       correct_answer: correctAnswer,
       explanation,
-      difficulty,
-      bloom_level: bloomLevel,
       image_files: mediaUrlsToText(imageFiles),
       audio_files: mediaUrlsToText(audioFiles),
     },
