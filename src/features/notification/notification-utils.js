@@ -4,7 +4,7 @@ const TYPE_LABELS = Object.freeze({
   ENROLLMENT: "Enrollment",
   PAYMENT: "Payment",
   ASSIGNMENT: "Assignment",
-  TEST: "Test",
+  TEST: "Course quiz",
   FEEDBACK: "Feedback",
   SYSTEM: "System",
   AI_SUGGESTION: "AI suggestion",
@@ -109,24 +109,14 @@ function resolveBackendActionRoute(safeActionUrl, notification) {
     return null;
   }
 
-  const testId =
-    getPathId(pathname, "/tests/") ||
-    getPayloadValue(notification, "testId", "test_id");
-  if (getPathId(pathname, "/tests/")) {
-    if (STAFF_ROLES.has(role)) return `/staff/tests/monitor/${testId}/mcq`;
-    if (role === "TRAINEE") return "/dashboard";
-    return null;
-  }
+  const testId = getPayloadValue(notification, "testId", "test_id");
 
-  const attemptId = getPathId(pathname, "/test-attempts/");
+  const attemptId = getPathId(pathname, "/course-quiz-attempts/");
   if (attemptId) {
-    if (testId && STAFF_ROLES.has(role)) {
-      return `/staff/tests/attempts/${testId}/${attemptId}`;
-    }
     if (testId && role === "TRAINEE") {
-      return `/learning/tests/attempts/${testId}/${attemptId}`;
+      return `/learning/course-quizzes/attempts/${testId}/${attemptId}`;
     }
-    return role === "TRAINEE" ? "/dashboard" : null;
+    return role === "TRAINEE" ? "/dashboard" : "/staff/courses";
   }
 
   return safeActionUrl;

@@ -1,4 +1,5 @@
 import {
+  Eye,
   GripVertical,
   ListOrdered,
   Pencil,
@@ -70,6 +71,7 @@ export function FlashcardCardList({
   selectedCardIds = [],
   onToggleSelect,
   onSelect,
+  onPreview,
   onEdit,
   onDelete,
   onMove,
@@ -248,6 +250,21 @@ export function FlashcardCardList({
                         {renderCardMeta?.(card)}
                       </div>
                       <div className="flashcard-list-item__actions">
+                        {onPreview && (
+                          <button
+                            type="button"
+                            className="flashcard-btn flashcard-btn--icon"
+                            title="Preview flashcard"
+                            aria-label={`Preview flashcard ${rowIndex}`}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              onPreview(card, event);
+                            }}
+                            disabled={disabled}
+                          >
+                            <Eye size={15} />
+                          </button>
+                        )}
                         {onEdit && (
                           <button
                             type="button"

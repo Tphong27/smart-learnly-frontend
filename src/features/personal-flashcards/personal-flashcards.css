@@ -831,23 +831,11 @@
     background: transparent;
 }
 
-.personal-flashcard-import__panel-header {
-    padding: 0 0 12px;
-    border-bottom: 1px solid var(--line);
-}
-
-.personal-flashcard-import__panel-header h3 {
-    margin: 0;
-    color: var(--ink);
-    font-size: 20px;
-    font-weight: 800;
-}
-
 .personal-flashcard-import__panel-body {
     display: flex;
     flex-direction: column;
     gap: 14px;
-    padding-top: 14px;
+    padding-top: 0;
 }
 
 .personal-flashcard-import__field,

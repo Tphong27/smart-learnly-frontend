@@ -96,18 +96,18 @@ function formatDate(value) {
   return new Date(value).toLocaleString();
 }
 
-/** Hiển thị danh sách test/assignment và khóa toàn bộ mutation assignment đối với TMO. */
-export function StaffAssessmentListPage({ variant = "test" }) {
+/** Hiển thị danh sách assignment và khóa toàn bộ mutation đối với TMO. */
+export function StaffAssessmentListPage() {
   const navigate = useNavigate();
   const toast = useToast();
   const [searchParams] = useSearchParams();
   const currentUser = useMemo(() => getCurrentUser(), []);
   const currentRole = normalizeRole(currentUser?.role);
-  const isAssignmentMode = variant === "assignment";
+  const isAssignmentMode = true;
   const canManageItems = currentRole !== ROLES.TMO;
   const courseId = searchParams.get("courseId") || "";
   const classId = searchParams.get("classId") || "";
-  const basePath = isAssignmentMode ? "/staff/assignments" : "/staff/tests";
+  const basePath = "/staff/assignments";
   const backPath = isAssignmentMode
     ? classId
       ? `/staff/classrooms/${classId}/workspace`

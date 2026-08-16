@@ -13,7 +13,6 @@ import {
 } from "@/shared/components/ui";
 import {
     FlashcardCardEditorModal,
-    FlashcardPreviewBar,
     FlashcardSelectionToolbar,
 } from "../../../flashcards-shared";
 import { FlashcardCardList } from "./FlashcardCardList";
@@ -104,7 +103,7 @@ export function FlashcardLessonEditor({
     const [cardEditorPreviewOpen, setCardEditorPreviewOpen] = useState(false);
     const [cardEditorPreviewCardId, setCardEditorPreviewCardId] =
         useState(null);
-    const [currentPreviewOpen, setCurrentPreviewOpen] = useState(false);
+    const [currentPreviewCardId, setCurrentPreviewCardId] = useState(null);
     const [cardEditorDiscardPending, setCardEditorDiscardPending] =
         useState(false);
     const [cardPendingDelete, setCardPendingDelete] = useState(null);
@@ -120,9 +119,23 @@ export function FlashcardLessonEditor({
         stagingEnabled && isRoleAllowed(getCurrentUser()?.role, STAGING_ROLES);
 
     const toastIdsRef = useRef(new Set());
+    const initialTitleFallbackRef = useRef({
+        lessonId,
+        title: defaultTitle,
+    });
     const cardEditorFrontRef = useRef(null);
     const cardEditorPreviewTriggerRef = useRef(null);
     const currentPreviewTriggerRef = useRef(null);
+
+    useEffect(() => {
+        if (initialTitleFallbackRef.current.lessonId === lessonId) {
+            return;
+        }
+        initialTitleFallbackRef.current = {
+            lessonId,
+            title: defaultTitle,
+        };
+    }, [defaultTitle, lessonId]);
 
     /** Dọn các toast thuộc editor khi component unmount. */
     const clearFlashcardToasts = useCallback(() => {
@@ -158,7 +171,9 @@ export function FlashcardLessonEditor({
             const normalized = normalizeSet(payload);
             setFlashcardSet(normalized);
             setCards(normalized.cards);
-            setTitle(normalized.title || defaultTitle || "");
+            setTitle(
+                normalized.title || initialTitleFallbackRef.current.title || "",
+            );
             setDescription(normalized.description || "");
             if (lessonId && normalized.id) {
                 sessionStorage.setItem(
@@ -168,7 +183,7 @@ export function FlashcardLessonEditor({
             }
             return normalized;
         },
-        [defaultTitle, lessonId],
+        [lessonId],
     );
 
     /** Tải set theo cache hoặc lesson, sau đó hydrate state editor. */
@@ -231,9 +246,11 @@ export function FlashcardLessonEditor({
         return activePreviewCardId ? null : orderedCards[0].id;
     }, [activePreviewCardId, orderedCards]);
 
-    const activeCurrentCard = useMemo(
-        () => orderedCards.find((card) => card.id === activeCardId) || null,
-        [activeCardId, orderedCards],
+    const currentPreviewCard = useMemo(
+        () =>
+            orderedCards.find((card) => card.id === currentPreviewCardId) ||
+            null,
+        [currentPreviewCardId, orderedCards],
     );
 
     const cardEditorDirty = useMemo(
@@ -292,16 +309,6 @@ export function FlashcardLessonEditor({
             visibleIdSet.has(cardId),
         );
     }, [selectedVisibleCardIds, visibleCardIds]);
-    const showCurrentPreviewBar =
-        activeSection === "current" &&
-        !cardEditorSession &&
-        !cardEditorPreviewOpen &&
-        !currentPreviewOpen &&
-        !importModalOpen &&
-        !cardPendingDelete &&
-        !bulkDeletePending &&
-        !cardEditorDiscardPending;
-
     useEffect(() => {
         if (!cardEditorFocusKey) return undefined;
 
@@ -608,10 +615,16 @@ export function FlashcardLessonEditor({
 
     /** Đóng preview card hiện tại và phục hồi focus. */
     const closeCurrentPreview = useCallback(() => {
-        setCurrentPreviewOpen(false);
+        setCurrentPreviewCardId(null);
         window.requestAnimationFrame(() => {
             currentPreviewTriggerRef.current?.focus({ preventScroll: true });
         });
+    }, []);
+
+    const openCurrentPreview = useCallback((card, event) => {
+        if (!card?.id) return;
+        currentPreviewTriggerRef.current = event?.currentTarget || null;
+        setCurrentPreviewCardId(card.id);
     }, []);
 
     /** Kiểm tra và lưu draft card đang mở. */
@@ -890,14 +903,7 @@ export function FlashcardLessonEditor({
                     </div>
                     <div
                         id="flashcard-current-panel"
-                        className={[
-                            "flashcard-current-workspace",
-                            showCurrentPreviewBar
-                                ? "flashcard-current-workspace--with-fixed-preview-bar"
-                                : "",
-                        ]
-                            .filter(Boolean)
-                            .join(" ")}
+                        className="flashcard-current-workspace"
                         role="region"
                         aria-labelledby="flashcard-current-workspace-title"
                     >
@@ -996,6 +1002,7 @@ export function FlashcardLessonEditor({
                                                 card?.id || null,
                                             )
                                         }
+                                        onPreview={openCurrentPreview}
                                         onEdit={handleEditCard}
                                         onDelete={handleDeleteCard}
                                         onMove={handleMoveCard}
@@ -1027,17 +1034,6 @@ export function FlashcardLessonEditor({
                     </div>
                 </>
             )}
-            {showCurrentPreviewBar && (
-                <FlashcardPreviewBar
-                    activeCard={activeCurrentCard}
-                    activeIndex={orderedCards.findIndex(
-                        (card) => card.id === activeCurrentCard?.id,
-                    )}
-                    totalCards={orderedCards.length}
-                    onOpenPreview={() => setCurrentPreviewOpen(true)}
-                    triggerRef={currentPreviewTriggerRef}
-                />
-            )}
             {importModalOpen && flashcardSet?.id && (
                 <ImportFlashcardsModal
                     courseId={courseId}
@@ -1051,18 +1047,18 @@ export function FlashcardLessonEditor({
                     onUploadImage={handleUploadImage}
                 />
             )}
-            {currentPreviewOpen && activeCurrentCard && (
+            {currentPreviewCard && (
                 <Modal
                     open
                     title="Preview"
-                    description="Preview the active flashcard."
+                    description="Preview this flashcard."
                     size="lg"
                     onClose={closeCurrentPreview}
                 >
-                    <div className="flashcard-current-editor__preview">
+                    <div className="flashcard-current-editor__preview flashcard-current-editor__preview--current">
                         <FlashcardPreview
-                            cards={[activeCurrentCard]}
-                            activeCardId={activeCurrentCard.id}
+                            cards={[currentPreviewCard]}
+                            activeCardId={currentPreviewCard.id}
                             emptyMessage="Select a card to preview it."
                             contentLayout="management"
                             showNavigation={false}

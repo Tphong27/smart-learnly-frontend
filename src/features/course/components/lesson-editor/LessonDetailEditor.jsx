@@ -136,6 +136,7 @@ export function LessonDetailEditor({ context }) {
     const [videoSummaryError, setVideoSummaryError] = useState("");
     const [summaryGenerated, setSummaryGenerated] = useState(false);
     const [quizQuestionsBusy, setQuizQuestionsBusy] = useState(false);
+    const [quizQuestionCount, setQuizQuestionCount] = useState(0);
 
     const [editHistory, setEditHistory] = useState([]);
     const [historyLoading, setHistoryLoading] = useState(false);
@@ -161,9 +162,7 @@ export function LessonDetailEditor({ context }) {
     const [summaryReplaceConfirmationOpen, setSummaryReplaceConfirmationOpen] =
         useState(false);
 
-    const hasDescriptionData = !isEmptyLessonHtml(
-        sanitizeLessonHtml(summary),
-    );
+    const hasDescriptionData = !isEmptyLessonHtml(sanitizeLessonHtml(summary));
     const hasResourceData = resources.length > 0;
     const hasTypeSpecificData =
         (lessonType === "VIDEO" && Boolean(videoUrl.trim())) ||
@@ -172,15 +171,14 @@ export function LessonDetailEditor({ context }) {
         (lessonType === "ESSAY" &&
             Boolean(
                 assignmentLoading ||
-                    assignment?.id ||
-                    assignmentRubric.trim() ||
-                    assignmentFile ||
-                    existingAssignmentFile,
+                assignment?.id ||
+                assignmentRubric.trim() ||
+                assignmentFile ||
+                existingAssignmentFile,
             )) ||
         (lessonType === "FLASHCARD" &&
             Boolean(
-                persistedLessonType === "FLASHCARD" ||
-                    initialFlashcardSetId,
+                persistedLessonType === "FLASHCARD" || initialFlashcardSetId,
             ));
     const hasCurrentLessonTypeData =
         hasDescriptionData || hasResourceData || hasTypeSpecificData;
@@ -197,6 +195,7 @@ export function LessonDetailEditor({ context }) {
             setLessonType(nextLessonType);
             setSummary("");
             setTextContent("");
+            setQuizQuestionCount(0);
             setResources([]);
             setVideoUrl("");
             setUploadedFileUrl("");
@@ -693,6 +692,8 @@ export function LessonDetailEditor({ context }) {
 
         const isQuiz = lessonType === "QUIZ";
         const isFlashcard = lessonType === "FLASHCARD";
+        const usesAttachedQuestionApi =
+            isQuiz && typeof services?.getQuestions === "function";
         const usesLessonResources =
             !isQuiz && lessonType !== "ESSAY" && !isFlashcard;
         const cleanSummary = sanitizeLessonHtml(summary);
@@ -733,7 +734,7 @@ export function LessonDetailEditor({ context }) {
                 title: "Lesson could not be saved",
                 message: materialMessage,
             });
-                return;
+            return;
         }
 
         saveInProgressRef.current = true;
@@ -748,11 +749,20 @@ export function LessonDetailEditor({ context }) {
             let latestQuizLesson = null;
             let latestQuizQuestions = [];
             if (isQuiz) {
-                const latestResponse = await services.getLessonDetail(lessonId);
+                const [latestResponse, attachedQuestions] = await Promise.all([
+                    services.getLessonDetail(lessonId),
+                    usesAttachedQuestionApi
+                        ? services.getQuestions(lessonId)
+                        : Promise.resolve(null),
+                ]);
                 latestQuizLesson = latestResponse?.data || latestResponse;
-                latestQuizQuestions = parseQuizContent(
-                    latestQuizLesson?.content || "",
-                ).questions;
+                latestQuizQuestions = usesAttachedQuestionApi
+                    ? Array.isArray(attachedQuestions)
+                        ? attachedQuestions
+                        : []
+                    : parseQuizContent(latestQuizLesson?.content || "")
+                          .questions;
+                setQuizQuestionCount(latestQuizQuestions.length);
 
                 if (latestQuizQuestions.length === 0) {
                     showSaveNotice({
@@ -777,7 +787,9 @@ export function LessonDetailEditor({ context }) {
                 : [];
 
             const content = isQuiz
-                ? serializeQuizContent(title.trim(), latestQuizQuestions)
+                ? usesAttachedQuestionApi
+                    ? latestQuizLesson?.content || ""
+                    : serializeQuizContent(title.trim(), latestQuizQuestions)
                 : cleanSummary;
             const durationSeconds =
                 durationMinutes === ""
@@ -858,7 +870,7 @@ export function LessonDetailEditor({ context }) {
                 message: "All lesson changes were saved successfully.",
             });
             if (isFlashcard) {
-                showToast("Lesson metadata saved.", "success");
+                showToast("Lesson saved.", "success");
             } else {
                 showToast("Update successfully!", "success");
                 if (backPath) navigate(backPath);
@@ -955,7 +967,9 @@ export function LessonDetailEditor({ context }) {
         if (lessonType === "VIDEO") return Boolean(videoEmbedUrl);
         if (lessonType === "PDF") return Boolean(uploadedFileUrl);
         if (lessonType === "QUIZ") {
-            return (parsedQuizContent.questions || []).length > 0;
+            return typeof services?.getQuestions === "function"
+                ? quizQuestionCount > 0
+                : (parsedQuizContent.questions || []).length > 0;
         }
         return true;
     })();
@@ -983,7 +997,10 @@ export function LessonDetailEditor({ context }) {
                 : "Reading material is required";
         }
         if (lessonType === "QUIZ") {
-            const count = parsedQuizContent.questions.length;
+            const count =
+                typeof services?.getQuestions === "function"
+                    ? quizQuestionCount
+                    : parsedQuizContent.questions.length;
             return `${count} question${count === 1 ? "" : "s"}`;
         }
         if (lessonType === "ESSAY") {
@@ -1044,15 +1061,9 @@ export function LessonDetailEditor({ context }) {
         return (
             <div className="sl-cm-page" role="status" aria-live="polite">
                 <div className="sl-cm-workspace">
-                    <div
-                        className="sl-cm-skeleton sl-cm-lesson-editor__skeleton-title"
-                    />
-                    <div
-                        className="sl-cm-skeleton sl-cm-lesson-editor__skeleton-subtitle"
-                    />
-                    <div
-                        className="sl-cm-skeleton sl-cm-lesson-editor__skeleton-panel"
-                    />
+                    <div className="sl-cm-skeleton sl-cm-lesson-editor__skeleton-title" />
+                    <div className="sl-cm-skeleton sl-cm-lesson-editor__skeleton-subtitle" />
+                    <div className="sl-cm-skeleton sl-cm-lesson-editor__skeleton-panel" />
                 </div>
             </div>
         );
@@ -1292,6 +1303,9 @@ export function LessonDetailEditor({ context }) {
                                                 disabled={loading}
                                                 onBusyChange={
                                                     setQuizQuestionsBusy
+                                                }
+                                                onQuestionsChange={
+                                                    setQuizQuestionCount
                                                 }
                                                 onSaved={(
                                                     nextContent,
@@ -1553,127 +1567,123 @@ export function LessonDetailEditor({ context }) {
                                     <div className="sl-cm-lesson-editor__material-layout">
                                         <div className="sl-cm-lesson-editor__panel-body">
                                             <div className="sl-cm-lesson-editor__essay-card">
-                                                    {assignmentLoading ? (
-                                                        <LoadingState
-                                                            compact
-                                                            label="Loading essay content..."
-                                                        />
-                                                    ) : (
-                                                        <>
-                                                            <div className="sl-cm-lesson-editor__assignment-file-field">
-                                                                <span className="sl-cm-lesson-editor__assignment-file-label">
-                                                                    Assignment
-                                                                    File
-                                                                </span>
-                                                                {assignmentFile ||
-                                                                existingAssignmentFile ? (
-                                                                    <div className="sl-cm-lesson-editor__assignment-file-selected">
-                                                                        <div className="sl-cm-lesson-editor__assignment-file-copy">
-                                                                            <Paperclip
-                                                                                size={
-                                                                                    16
-                                                                                }
-                                                                                aria-hidden="true"
-                                                                            />
-                                                                            <span className="sl-cm-lesson-editor__assignment-file-name">
-                                                                                {assignmentFile?.name ||
-                                                                                    existingAssignmentFile?.fileName}
-                                                                            </span>
-                                                                        </div>
-                                                                        <IconButton
-                                                                            icon={
-                                                                                <X
-                                                                                    size={
-                                                                                        16
-                                                                                    }
-                                                                                />
-                                                                            }
-                                                                            label="Remove assignment file"
-                                                                            onClick={() => {
-                                                                                setAssignmentFile(
-                                                                                    null,
-                                                                                );
-                                                                                setExistingAssignmentFile(
-                                                                                    null,
-                                                                                );
-                                                                                markChanged();
-                                                                            }}
-                                                                        />
-                                                                    </div>
-                                                                ) : (
-                                                                    <label className="sl-cm-lesson-editor__assignment-file-dropzone">
+                                                {assignmentLoading ? (
+                                                    <LoadingState
+                                                        compact
+                                                        label="Loading essay content..."
+                                                    />
+                                                ) : (
+                                                    <>
+                                                        <div className="sl-cm-lesson-editor__assignment-file-field">
+                                                            <span className="sl-cm-lesson-editor__assignment-file-label">
+                                                                Assignment File
+                                                            </span>
+                                                            {assignmentFile ||
+                                                            existingAssignmentFile ? (
+                                                                <div className="sl-cm-lesson-editor__assignment-file-selected">
+                                                                    <div className="sl-cm-lesson-editor__assignment-file-copy">
                                                                         <Paperclip
                                                                             size={
-                                                                                20
+                                                                                16
                                                                             }
                                                                             aria-hidden="true"
                                                                         />
-                                                                        <span>
-                                                                            Upload
-                                                                            essay
-                                                                            assignment
-                                                                            file
+                                                                        <span className="sl-cm-lesson-editor__assignment-file-name">
+                                                                            {assignmentFile?.name ||
+                                                                                existingAssignmentFile?.fileName}
                                                                         </span>
-                                                                        <input
-                                                                            type="file"
-                                                                            className="sl-cm-lesson-editor__assignment-file-input"
-                                                                            accept=".pdf,.doc,.docx,.ppt,.pptx,.png,.jpg,.jpeg,.zip"
-                                                                            onChange={(
-                                                                                event,
-                                                                            ) => {
-                                                                                setAssignmentFile(
-                                                                                    event
-                                                                                        .target
-                                                                                        .files?.[0] ||
-                                                                                        null,
-                                                                                );
-                                                                                markChanged();
-                                                                            }}
-                                                                        />
-                                                                    </label>
-                                                                )}
-                                                            </div>
-                                                            <AssignmentAiDraftPanel
-                                                                mode="essay"
-                                                                currentTitle={
-                                                                    title
-                                                                }
-                                                                currentDescription={
-                                                                    summary
-                                                                }
-                                                                compact
-                                                                onDraftGenerated={({
+                                                                    </div>
+                                                                    <IconButton
+                                                                        icon={
+                                                                            <X
+                                                                                size={
+                                                                                    16
+                                                                                }
+                                                                            />
+                                                                        }
+                                                                        label="Remove assignment file"
+                                                                        onClick={() => {
+                                                                            setAssignmentFile(
+                                                                                null,
+                                                                            );
+                                                                            setExistingAssignmentFile(
+                                                                                null,
+                                                                            );
+                                                                            markChanged();
+                                                                        }}
+                                                                    />
+                                                                </div>
+                                                            ) : (
+                                                                <label className="sl-cm-lesson-editor__assignment-file-dropzone">
+                                                                    <Paperclip
+                                                                        size={
+                                                                            20
+                                                                        }
+                                                                        aria-hidden="true"
+                                                                    />
+                                                                    <span>
+                                                                        Upload
+                                                                        essay
+                                                                        assignment
+                                                                        file
+                                                                    </span>
+                                                                    <input
+                                                                        type="file"
+                                                                        className="sl-cm-lesson-editor__assignment-file-input"
+                                                                        accept=".pdf,.doc,.docx,.ppt,.pptx,.png,.jpg,.jpeg,.zip"
+                                                                        onChange={(
+                                                                            event,
+                                                                        ) => {
+                                                                            setAssignmentFile(
+                                                                                event
+                                                                                    .target
+                                                                                    .files?.[0] ||
+                                                                                    null,
+                                                                            );
+                                                                            markChanged();
+                                                                        }}
+                                                                    />
+                                                                </label>
+                                                            )}
+                                                        </div>
+                                                        <AssignmentAiDraftPanel
+                                                            mode="essay"
+                                                            currentTitle={title}
+                                                            currentDescription={
+                                                                summary
+                                                            }
+                                                            compact
+                                                            onDraftGenerated={({
+                                                                rubric,
+                                                            }) => {
+                                                                setAssignmentRubric(
                                                                     rubric,
-                                                                }) => {
-                                                                    setAssignmentRubric(
-                                                                        rubric,
-                                                                    );
-                                                                    markChanged();
-                                                                }}
-                                                            />
-                                                            <Textarea
-                                                                className="sl-cm-lesson-editor__rubric-field"
-                                                                textareaClassName="sl-cm-lesson-editor__rubric-control"
-                                                                label="Assignment rubric"
-                                                                value={
-                                                                    assignmentRubric
-                                                                }
-                                                                rows={6}
-                                                                placeholder="Grading criteria generated by AI or entered by the trainer."
-                                                                onChange={(
-                                                                    event,
-                                                                ) => {
-                                                                    setAssignmentRubric(
-                                                                        event
-                                                                            .target
-                                                                            .value,
-                                                                    );
-                                                                    markChanged();
-                                                                }}
-                                                            />
-                                                        </>
-                                                    )}
-                                                </div>
+                                                                );
+                                                                markChanged();
+                                                            }}
+                                                        />
+                                                        <Textarea
+                                                            className="sl-cm-lesson-editor__rubric-field"
+                                                            textareaClassName="sl-cm-lesson-editor__rubric-control"
+                                                            label="Assignment rubric"
+                                                            value={
+                                                                assignmentRubric
+                                                            }
+                                                            rows={6}
+                                                            placeholder="Grading criteria generated by AI or entered by the trainer."
+                                                            onChange={(
+                                                                event,
+                                                            ) => {
+                                                                setAssignmentRubric(
+                                                                    event.target
+                                                                        .value,
+                                                                );
+                                                                markChanged();
+                                                            }}
+                                                        />
+                                                    </>
+                                                )}
+                                            </div>
                                         </div>
                                     </div>
                                 </LessonEditorSection>

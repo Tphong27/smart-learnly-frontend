@@ -109,20 +109,20 @@ const DURATION_PRESETS = [
     { label: "45 min", value: "45", unit: "minutes" },
 ];
 
-/** Điều phối form tạo/sửa test hoặc assignment. */
-export function StaffAssessmentCreatePage({ variant = "test" }) {
+/** Điều phối form tạo/sửa assignment. */
+export function StaffAssessmentCreatePage() {
     const navigate = useNavigate();
     const toast = useToast();
     const { id } = useParams();
     const [searchParams] = useSearchParams();
     const isEdit = Boolean(id);
-    const isAssignmentMode = variant === "assignment";
+    const isAssignmentMode = true;
     const routeCourseId = searchParams.get("courseId") || "";
     const routeClassId = searchParams.get("classId") || "";
     const returnParams = new URLSearchParams();
     if (routeCourseId) returnParams.set("courseId", routeCourseId);
     if (routeClassId) returnParams.set("classId", routeClassId);
-    const basePath = isAssignmentMode ? "/staff/assignments" : "/staff/tests";
+    const basePath = "/staff/assignments";
     const returnPath = `${basePath}${returnParams.toString() ? `?${returnParams.toString()}` : ""}`;
     const pageName = isAssignmentMode ? "Assignment" : "Test";
     const testType = isAssignmentMode ? "essay" : "mcq";

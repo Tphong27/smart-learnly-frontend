@@ -10,7 +10,8 @@ import { getCurrentRole } from "@/shared/utils/auth";
 
 /**
  * Lesson editor dùng chung cho class curriculum của Trainer, TMO và Admin.
- * Audit tab bị ẩn; quiz và flashcard dùng các endpoint giới hạn theo class.
+ * Audit tab bị ẩn; quiz và flashcard dùng các endpoint giới hạn theo class,
+ * còn import flashcard dùng staging API có kiểm tra quyền sở hữu class lesson.
  *
  * courseId is required so QuestionBankImportPanel can list banks of the
  * parent course (trainer imports existing bank questions, does not author banks).
@@ -89,7 +90,7 @@ export default function TrainerLessonDetailPage() {
         audit: false,
         quizManager: true,
         flashcard: true,
-        flashcardStaging: false,
+        flashcardStaging: true,
       },
     };
   }, [classId, classroomBasePath, courseBasePath, courseId, lessonId]);

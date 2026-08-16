@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { FileAudio, FileVideo, ImagePlus, Loader2, X } from 'lucide-react'
+import { FileAudio, FileVideo, ImagePlus, X } from 'lucide-react'
 import { IconButton, Modal, useToast } from '@/shared/components/ui'
 
 const MEDIA_CONFIG = {
@@ -59,7 +59,6 @@ function itemName(item) {
 export function AnswerMediaRow({
   media,
   disabled,
-  uploading,
   onUpload,
   onRemove,
 }) {
@@ -151,7 +150,7 @@ export function AnswerMediaRow({
         <div className="answer-media-tile__preview">{previewNode}</div>
         <div className="answer-media-tile__meta">
           <strong>{itemName(item)}</strong>
-          <span>{config.label}{item.uploading ? ' / Uploading...' : ''}</span>
+          <span>{config.label}{item.source === 'pending' ? ' / Ready to upload' : ''}</span>
         </div>
         <IconButton
           icon={<X size={14} />}
@@ -172,21 +171,20 @@ export function AnswerMediaRow({
           const config = MEDIA_CONFIG[mediaType]
           const Icon = config.Icon
           const taken = Boolean(media?.[mediaType])
-          const isUploading = uploading === mediaType
           return (
             <label
               key={mediaType}
-              className={`answer-media-button ${disabled || taken || isUploading ? 'is-disabled' : ''}`}
+              className={`answer-media-button ${disabled || taken ? 'is-disabled' : ''}`}
               title={taken ? `${config.label} already attached` : `Upload ${config.label.toLowerCase()}`}
               aria-label={`Upload ${config.label.toLowerCase()}`}
             >
-              {isUploading ? <Loader2 size={14} /> : <Icon size={14} />}
+              <Icon size={14} />
               <span>{config.label}</span>
               <input
                 type="file"
                 accept={config.accept}
                 hidden
-                disabled={disabled || taken || isUploading}
+                disabled={disabled || taken}
                 onChange={(event) => handleFile(mediaType, event)}
               />
             </label>

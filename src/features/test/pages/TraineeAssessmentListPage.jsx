@@ -162,18 +162,16 @@ function getAssessmentState(item, result, referenceMs) {
   return "ready";
 }
 
-/** Hiển thị danh sách test hoặc assignment dành cho trainee. */
-export function TraineeAssessmentListPage({ variant = "test" }) {
+/** Hiển thị danh sách assignment dành cho trainee. */
+export function TraineeAssessmentListPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const isAssignmentMode = variant === "assignment";
-  const showsFeedbackColumn = isAssignmentMode;
+  const isAssignmentMode = true;
+  const showsFeedbackColumn = true;
   const courseId = searchParams.get("courseId") || "";
   const classId = searchParams.get("classId") || "";
-  const takePath = isAssignmentMode
-    ? "/learning/assignments/take"
-    : "/learning/tests/take";
-  const accessStoragePrefix = "testAccess";
+  const takePath = "/learning/assignments/take";
+  const accessStoragePrefix = "assignmentAccess";
   const currentUser = useMemo(() => getCurrentUser(), []);
   const studentId = useMemo(
     () =>
@@ -200,10 +198,9 @@ export function TraineeAssessmentListPage({ variant = "test" }) {
   const [assignmentView, setAssignmentView] = useState("daily");
   const [expandedResultKey, setExpandedResultKey] = useState("");
   const [visibleFeedback, setVisibleFeedback] = useState(null);
-  const pageTitle = isAssignmentMode ? "My Assignments" : "My Tests";
-  const pageSubtitle = isAssignmentMode
-    ? "Track essay work from your enrolled classes and continue before each due date."
-    : "";
+  const pageTitle = "My Assignments";
+  const pageSubtitle =
+    "Track essay work from your enrolled classes and continue before each due date.";
 
   /** Tải assessment khả dụng và trạng thái attempt/submission của trainee. */
   const loadAvailableTests = useCallback(async () => {
@@ -465,7 +462,7 @@ export function TraineeAssessmentListPage({ variant = "test" }) {
     if (classId) detailParams.set("classId", classId);
     const detailQuery = detailParams.toString();
     navigate(
-      `/learning/tests/attempts/${testId}/${attemptId}${detailQuery ? `?${detailQuery}` : ""}`,
+      `/learning/course-quizzes/attempts/${testId}/${attemptId}${detailQuery ? `?${detailQuery}` : ""}`,
       {
         state: {
           attempt,

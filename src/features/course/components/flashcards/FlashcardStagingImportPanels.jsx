@@ -11,6 +11,7 @@ import {
   Input,
   SearchInput,
   Select,
+  Tabs,
   Table,
   Textarea,
 } from "@/shared/components/ui";
@@ -25,7 +26,6 @@ import {
   DEFAULT_SOURCE_FILTERS,
   DOCUMENT_MAX_FILE_SIZE_BYTES,
   DOCUMENT_MAX_FILE_SIZE_MESSAGE,
-  formatGeneratedMessage,
   FRONT_BACK_SEPARATOR_OPTIONS,
   getGenerationPayload,
   getGeneratedCount,
@@ -39,6 +39,7 @@ import {
   parsePastedFlashcards,
   shouldIgnoreSelectionClick,
   SOURCE_QUESTION_PAGE_SIZE,
+  toPlainText,
   toTemporaryApprovalPayload,
   validateGenerationSettings,
 } from "./flashcardStagingUtils";
@@ -114,6 +115,47 @@ function sourceFilters(defaultModuleId) {
   };
 }
 
+function isImportedSourceQuestion(question) {
+  return question?.imported === true;
+}
+
+function getSourceQuestionEligibilityStatus(question) {
+  const status = String(question?.eligibilityStatus || "").toUpperCase();
+  if (
+    status === "AVAILABLE" ||
+    status === "ALREADY_IMPORTED" ||
+    status === "MATCHES_CURRENT_FLASHCARDS"
+  ) {
+    return status;
+  }
+  return isImportedSourceQuestion(question) ? "ALREADY_IMPORTED" : "AVAILABLE";
+}
+
+function isUnavailableSourceQuestion(question) {
+  return getSourceQuestionEligibilityStatus(question) !== "AVAILABLE";
+}
+
+function isSelectableSourceQuestion(question) {
+  return isApprovedSourceQuestion(question) && !isUnavailableSourceQuestion(question);
+}
+
+function sourceQuestionUnavailableLabel(question) {
+  const status = getSourceQuestionEligibilityStatus(question);
+  if (status === "ALREADY_IMPORTED") return "Already imported";
+  if (status === "MATCHES_CURRENT_FLASHCARDS") return "Matches Current Flashcards";
+  return "";
+}
+
+function unresolvedCountPlaceholder(label) {
+  return (
+    <span
+      className="flashcard-course-question-count-placeholder"
+      aria-hidden="true"
+      title={`${label} count loading`}
+    />
+  );
+}
+
 /** Tìm, chọn và tạo temporary candidates từ câu hỏi đã duyệt của khóa học. */
 export function CourseQuestionsImportPanel({
   setId,
@@ -128,7 +170,9 @@ export function CourseQuestionsImportPanel({
   const [modulesLoading, setModulesLoading] = useState(false);
   const [modulesError, setModulesError] = useState(null);
   const [questions, setQuestions] = useState([]);
+  const [questionsLoaded, setQuestionsLoaded] = useState(false);
   const [selectedIds, setSelectedIds] = useState([]);
+  const [availability, setAvailability] = useState("available");
   const [page, setPage] = useState(0);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -190,13 +234,14 @@ export function CourseQuestionsImportPanel({
       };
       const items = await flashcardService.listSourceQuestions(setId, params);
       setQuestions(items);
+      setQuestionsLoaded(true);
       setPage(0);
       setSelectedIds((current) =>
         current.filter((id) =>
           items.some(
             (question) =>
               getQuestionId(question) === id &&
-              isApprovedSourceQuestion(question),
+              isSelectableSourceQuestion(question),
           ),
         ),
       );
@@ -218,10 +263,51 @@ export function CourseQuestionsImportPanel({
     return () => window.clearTimeout(timer);
   }, [loadQuestions]);
 
-  const filteredQuestions = useMemo(
+  const approvedQuestions = useMemo(
     () => questions.filter(isApprovedSourceQuestion),
     [questions],
   );
+  const filteredQuestions = useMemo(() => {
+    if (availability === "unavailable") {
+      return approvedQuestions.filter(isUnavailableSourceQuestion);
+    }
+    if (availability === "all") {
+      return approvedQuestions;
+    }
+    return approvedQuestions.filter(
+      (question) => !isUnavailableSourceQuestion(question),
+    );
+  }, [approvedQuestions, availability]);
+  const availabilityTabs = useMemo(
+    () => [
+      {
+        value: "available",
+        label: "Available",
+        count: questionsLoaded
+          ? approvedQuestions.filter(
+              (question) => !isUnavailableSourceQuestion(question),
+            ).length
+          : unresolvedCountPlaceholder("Available"),
+      },
+      {
+        value: "unavailable",
+        label: "Unavailable",
+        count: questionsLoaded
+          ? approvedQuestions.filter(isUnavailableSourceQuestion).length
+          : unresolvedCountPlaceholder("Unavailable"),
+      },
+      {
+        value: "all",
+        label: "All",
+        count: questionsLoaded
+          ? approvedQuestions.length
+          : unresolvedCountPlaceholder("All"),
+      },
+    ],
+    [approvedQuestions, questionsLoaded],
+  );
+  const initialQuestionsLoading = loading && !questionsLoaded;
+  const refreshingQuestions = loading && questionsLoaded;
 
   const totalPages = Math.max(
     1,
@@ -233,13 +319,13 @@ export function CourseQuestionsImportPanel({
     safePage * SOURCE_QUESTION_PAGE_SIZE + SOURCE_QUESTION_PAGE_SIZE,
   );
   const selectablePageQuestions = pageQuestions.filter(
-    (question) => isApprovedSourceQuestion(question),
+    isSelectableSourceQuestion,
   );
   const selectedImportableIds = selectedIds.filter((id) =>
     questions.some(
       (question) =>
         getQuestionId(question) === id &&
-        isApprovedSourceQuestion(question),
+        isSelectableSourceQuestion(question),
     ),
   );
   const allVisibleSelected =
@@ -261,7 +347,7 @@ export function CourseQuestionsImportPanel({
   }
 
   function toggleQuestion(question) {
-    if (!question || !isApprovedSourceQuestion(question)) return;
+    if (!question || !isSelectableSourceQuestion(question)) return;
     const questionId = getQuestionId(question);
     if (!questionId) return;
     setSelectedIds((current) =>
@@ -290,6 +376,11 @@ export function CourseQuestionsImportPanel({
     toggleQuestion(question);
   }
 
+  function changeAvailability(nextAvailability) {
+    setPage(0);
+    setAvailability(nextAvailability);
+  }
+
   async function handleImport() {
     const idsToImport = selectedImportableIds;
     if (!idsToImport.length) {
@@ -303,14 +394,9 @@ export function CourseQuestionsImportPanel({
         await flashcardService.importCourseQuestionsToTemporaryReview(setId, idsToImport),
       );
       setSelectedIds([]);
-      notify(
-        `Prepared ${response?.cards?.length || idsToImport.length} question${
-          idsToImport.length === 1 ? "" : "s"
-        } for review.`,
-        "success",
-      );
       await loadQuestions();
       onTemporaryCandidates?.(response, {
+        source: "course-questions",
         requestedCount: idsToImport.length,
         createdCount: response?.cards?.length || idsToImport.length,
       });
@@ -326,21 +412,9 @@ export function CourseQuestionsImportPanel({
 
   return (
     <section className="flashcard-panel">
-      <div className="flashcard-panel__header">
-        <h3 className="flashcard-panel__title">Course Questions</h3>
-        <Button
-          type="button"
-          variant="secondary"
-          leftIcon={<RefreshCw size={16} />}
-          onClick={loadQuestions}
-          disabled={loading}
-        >
-          Refresh
-        </Button>
-      </div>
       <div className="flashcard-panel__body flashcard-staging__section">
         <p className="flashcard-staging__muted">
-          Choose approved questions from this course and review them as flashcard candidates.
+          Choose approved questions from this course and review them as flashcard candidates. Content duplicates are identified during review.
         </p>
         <FilterBar
           className="flashcard-course-question-filters"
@@ -376,6 +450,13 @@ export function CourseQuestionsImportPanel({
                 onClick={resetFilters}
                 disabled={loading}
               />
+              <IconButton
+                icon={<RefreshCw size={16} />}
+                label="Refresh course questions"
+                className={refreshingQuestions ? "is-refreshing" : ""}
+                onClick={loadQuestions}
+                disabled={loading}
+              />
             </>
           }
         >
@@ -402,11 +483,27 @@ export function CourseQuestionsImportPanel({
         </FilterBar>
         <InlineAlert>{modulesError}</InlineAlert>
         <InlineAlert>{error}</InlineAlert>
+        <Tabs
+          className="flashcard-course-question-availability"
+          ariaLabel="Course question availability"
+          variant="compact"
+          items={availabilityTabs}
+          value={availability}
+          onChange={changeAvailability}
+        />
+        <div className="flashcard-course-question-notice-slot">
+          {availability === "unavailable" || availability === "all" ? (
+            <p className="flashcard-course-question-unavailable-notice" role="note">
+              Unavailable questions are either linked to an existing staging import or already match Current Flashcards.
+            </p>
+          ) : null}
+        </div>
 
-        <Table
-          ariaLabel="Approved course questions"
-          className="flashcard-staging__table-wrap"
-        >
+        <div className="flashcard-course-question-results">
+          <Table
+            ariaLabel="Approved course questions"
+            className="flashcard-staging__table-wrap"
+          >
             <thead>
               <tr>
                 <th>
@@ -424,25 +521,29 @@ export function CourseQuestionsImportPanel({
               </tr>
             </thead>
             <tbody>
-              {loading ? (
-                <tr>
-                  <td colSpan="5">Loading source questions...</td>
-                </tr>
-              ) : filteredQuestions.length === 0 ? (
+              {!initialQuestionsLoading && filteredQuestions.length === 0 ? (
                 <tr>
                   <td colSpan="5">
-                    No approved questions found in this module. Try All modules or another search.
+                    <div className="flashcard-course-question-empty">
+                      {availability === "unavailable"
+                        ? "No unavailable questions found in this module."
+                        : "No approved questions found in this module. Try All modules or another search."}
+                    </div>
                   </td>
                 </tr>
-              ) : (
+              ) : !initialQuestionsLoading ? (
                 pageQuestions.map((question) => {
                   const questionId = getQuestionId(question);
                   const isSelected = selectedIds.includes(questionId);
+                  const unavailableLabel = sourceQuestionUnavailableLabel(question);
+                  const isUnavailable = Boolean(unavailableLabel);
                   return (
                     <tr
                       key={questionId}
                       className={[
-                        "flashcard-staging__selectable-row",
+                        isUnavailable
+                          ? "flashcard-staging__unavailable-row"
+                          : "flashcard-staging__selectable-row",
                         isSelected ? "is-selected" : "",
                       ]
                         .filter(Boolean)
@@ -454,11 +555,16 @@ export function CourseQuestionsImportPanel({
                         <Checkbox
                           checked={isSelected}
                           onChange={() => toggleQuestion(question)}
-                          aria-label="Select source question"
+                          disabled={isUnavailable}
+                          aria-label={
+                            isUnavailable
+                              ? `${unavailableLabel} source question`
+                              : "Select source question"
+                          }
                         />
                       </td>
                       <td data-label="Question" className="flashcard-staging__wrap-cell">
-                        {question.questionText || "--"}
+                        {toPlainText(question.questionText) || "--"}
                       </td>
                       <td data-label="Module" className="flashcard-staging__wrap-cell">
                         {moduleTitleById.get(String(getModuleId(question))) || "--"}
@@ -466,22 +572,60 @@ export function CourseQuestionsImportPanel({
                       <td data-label="Answers" className="flashcard-staging__wrap-cell">
                         {answersLabel(question)}
                       </td>
-                      <td data-label="Source">{question.sourceName || "Course questions"}</td>
+                      <td data-label="Source">
+                        <div className="flashcard-course-question-source">
+                          <span>{question.sourceName || "Course questions"}</span>
+                          {unavailableLabel ? (
+                            <StatusBadge
+                              status={getSourceQuestionEligibilityStatus(question)}
+                              label={unavailableLabel}
+                              tone="warning"
+                            />
+                          ) : null}
+                        </div>
+                      </td>
                     </tr>
                   );
                 })
-              )}
+              ) : null}
             </tbody>
-        </Table>
+          </Table>
+          {initialQuestionsLoading ? (
+            <div
+              className="flashcard-course-question-loading"
+              aria-label="Loading source questions"
+            >
+              <span className="flashcard-course-question-loading__text">
+                Loading source questions...
+              </span>
+              {[0, 1, 2].map((row) => (
+                <span
+                  key={row}
+                  className="flashcard-course-question-loading__row"
+                  aria-hidden="true"
+                />
+              ))}
+            </div>
+          ) : null}
+        </div>
 
-        <Pagination
-          page={safePage + 1}
-          totalPages={totalPages}
-          totalItems={filteredQuestions.length}
-          size={SOURCE_QUESTION_PAGE_SIZE}
-          onPageChange={(nextPage) => setPage(nextPage - 1)}
-          ariaLabel="Course question pagination"
-        />
+        <div className="flashcard-course-question-pagination-slot">
+          {filteredQuestions.length > 0 ? (
+            <Pagination
+              page={safePage + 1}
+              totalPages={totalPages}
+              totalItems={filteredQuestions.length}
+              size={SOURCE_QUESTION_PAGE_SIZE}
+              onPageChange={(nextPage) => setPage(nextPage - 1)}
+              ariaLabel="Course question pagination"
+            />
+          ) : (
+            <div
+              className="flashcard-course-question-pagination-placeholder"
+              aria-hidden="true"
+            />
+          )}
+        </div>
 
         <div className="flashcard-staging__actions">
           <span>{selectedImportableIds.length} selected</span>
@@ -636,7 +780,7 @@ export function PastedTextImportPanel({
     >
       <Textarea
           id="pasted-import-text"
-          label="Pasted text"
+          label="Flashcard content"
           value={values.text}
           onChange={(event) => updateValue("text", event.target.value)}
           onKeyDown={handleTextKeyDown}
@@ -854,18 +998,12 @@ export function DocumentGenerationPanel({ setId, notify, onTemporaryCandidates }
         }),
       );
       const createdCount = getGeneratedCount(response);
-      notify(
-        formatGeneratedMessage(
-          response,
-          "from document",
-        ),
-        "success",
-      );
       setFile(null);
       setFileError(null);
       setUploadError(null);
       setFileInputRevision((revision) => revision + 1);
       onTemporaryCandidates?.(response, {
+        source: "document",
         requestedCount: generationPayload.desiredCount,
         createdCount,
       });
@@ -880,9 +1018,6 @@ export function DocumentGenerationPanel({ setId, notify, onTemporaryCandidates }
 
   return (
     <section className="flashcard-panel">
-      <div className="flashcard-panel__header">
-        <h3 className="flashcard-panel__title">Document</h3>
-      </div>
       <form
         className="flashcard-panel__body flashcard-staging__section"
         onSubmit={handleSubmit}
