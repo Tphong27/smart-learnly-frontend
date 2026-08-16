@@ -86,6 +86,11 @@ function getTraineeRoutes() {
               element: <PlaceholderPage title="Classrooms" />,
             },
             {
+              path: "tests",
+              element: <TraineeAssessmentListPage variant="test" />,
+            },
+            {
+              path: "tests/attempts/:testId/:attemptId",
               path: "course-quizzes/attempts/:testId/:attemptId",
               element: <TestAttemptDetailPage />,
             },

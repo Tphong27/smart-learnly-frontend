@@ -5,6 +5,7 @@ import {
   Ban,
   BarChart3,
   BookOpen,
+  ClipboardCheck,
   ClipboardList,
   Info,
   Loader,
@@ -261,6 +262,18 @@ export function ClassDetailPage({
     navigate(`/staff/assignments${query ? `?${query}` : ""}`);
   }
 
+  function openTests() {
+    const params = new URLSearchParams();
+    if (classData.courseId) {
+      params.set("courseId", classData.courseId);
+    }
+    if (classId) {
+      params.set("classId", classId);
+    }
+    const query = params.toString();
+    navigate(`/staff/tests${query ? `?${query}` : ""}`);
+  }
+
   if (loading) {
     return (
       <div className="page-loading">
@@ -331,6 +344,16 @@ export function ClassDetailPage({
                 onClick={openAssignments}
               >
                 {isTmo ? "View assignments" : "Assignment"}
+              </Button>
+            )}
+
+            {isTrainer && (
+              <Button
+                type="button"
+                leftIcon={<ClipboardCheck size={17} />}
+                onClick={openTests}
+              >
+                Test
               </Button>
             )}
 

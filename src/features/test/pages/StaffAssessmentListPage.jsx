@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { assignmentService } from "@/features/assignment";
 import { testService } from "../services/testService";
+import { attemptService } from "../services/attemptService";
 import { getCurrentUser } from "@/services/api-client";
 import { normalizeRole, ROLES } from "@/shared/constants/roles";
 import Pagination from "@/shared/components/Pagination";
@@ -128,6 +129,7 @@ export function StaffAssessmentListPage() {
     : "Create Test";
   const [tests, setTests] = useState([]);
   const [assignments, setAssignments] = useState([]);
+  const [lockedTestIds, setLockedTestIds] = useState(() => new Set());
   const [loading, setLoading] = useState(false);
   const [keyword, setKeyword] = useState("");
   const [page, setPage] = useState(1);
@@ -169,17 +171,40 @@ export function StaffAssessmentListPage() {
           : Promise.resolve([]),
       ]);
 
-      setTests(
-        testResult.status === "fulfilled"
-          ? testResult.value || []
-          : [],
-      );
+      const loadedTests =
+        testResult.status === "fulfilled" ? testResult.value || [] : [];
+      setTests(loadedTests);
       setAssignments(
         isAssignmentMode &&
           assignmentResult?.status === "fulfilled"
           ? assignmentResult.value || []
           : [],
       );
+      if (isAssignmentMode || loadedTests.length === 0) {
+        setLockedTestIds(new Set());
+      } else {
+        const attemptResults = await Promise.allSettled(
+          loadedTests
+            .filter((item) => item?.id)
+            .map(async (item) => {
+              const attempts = await attemptService.getByTest(item.id);
+              return {
+                id: item.id,
+                locked: Array.isArray(attempts) && attempts.length > 0,
+              };
+            }),
+        );
+        setLockedTestIds(
+          new Set(
+            attemptResults
+              .filter(
+                (result) =>
+                  result.status === "fulfilled" && result.value?.locked,
+              )
+              .map((result) => String(result.value.id)),
+          ),
+        );
+      }
     } catch (error) {
       console.error("Failed to load assessments", error);
     } finally {
@@ -473,6 +498,8 @@ export function StaffAssessmentListPage() {
                   const expired =
                     isEssay && dueDate && new Date(dueDate).getTime() <= nowMs;
                   const inactive = !isEssay && !isPublishedTest(item);
+                  const updateLocked =
+                    !isEssay && lockedTestIds.has(String(item.id));
                   return (
                     <tr key={`${type}-${item.id}`}>
                       <td data-label="Title">
@@ -519,17 +546,19 @@ export function StaffAssessmentListPage() {
                       {canManageItems && (
                         <td data-label="Actions" className="ft-table-action">
                           <div className="ft-table-actions">
-                            <IconButton
-                              icon={<Edit2 size={16} />}
-                              label={
-                                isAssignmentMode ? "Edit assignment" : "Edit test"
-                              }
-                              to={
-                                curriculumEssayEditPath
-                                  ? curriculumEssayEditPath
-                                  : `${basePath}/edit/${item.id}/${type}${pathQuery}`
-                              }
-                            />
+                            {!updateLocked && (
+                              <IconButton
+                                icon={<Edit2 size={16} />}
+                                label={
+                                  isAssignmentMode ? "Edit assignment" : "Edit test"
+                                }
+                                to={
+                                  curriculumEssayEditPath
+                                    ? curriculumEssayEditPath
+                                    : `${basePath}/edit/${item.id}/${type}${pathQuery}`
+                                }
+                              />
+                            )}
                             <IconButton
                               icon={<Eye size={16} />}
                               label="Monitor progress"
