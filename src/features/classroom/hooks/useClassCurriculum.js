@@ -231,10 +231,9 @@ export function useClassCurriculum({
         }
 
         await loadCurriculum();
-        toast.success(
-          lessonType === "flashcard" ? "Flashcard lesson added." : "Lesson added.",
-        );
-        navigate(`${routeBase}/${classId}/curriculum/lessons/${createdLessonId}`);
+        navigate(`${routeBase}/${classId}/curriculum/lessons/${createdLessonId}`, {
+          state: { isNewLesson: true },
+        });
         return true;
       } catch (error) {
         toast.error(error?.message || "Could not create lesson.");

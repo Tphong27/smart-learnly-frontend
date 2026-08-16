@@ -114,6 +114,11 @@ export function LessonDetailEditor({ context }) {
     const initialFlashcardSetId =
         location.state?.flashcardSetId ||
         new URLSearchParams(location.search).get("flashcardSetId");
+    /** Đánh dấu lesson vừa được tạo để editor chạy ở chế độ "Create lesson"
+     *  cho tới khi người dùng lưu lần đầu. */
+    const [isNewLesson, setIsNewLesson] = useState(() =>
+        Boolean(location.state?.isNewLesson),
+    );
 
     const [titleError, setTitleError] = useState("");
     const [summaryError, setSummaryError] = useState("");
@@ -866,15 +871,28 @@ export function LessonDetailEditor({ context }) {
             setHasChanges(false);
             setSaveNotice({
                 type: "success",
-                title: "Lesson saved",
-                message: "All lesson changes were saved successfully.",
+                title: isNewLesson ? "Lesson created" : "Lesson saved",
+                message: isNewLesson
+                    ? "The lesson was created successfully."
+                    : "All lesson changes were saved successfully.",
             });
             if (isFlashcard) {
-                showToast("Lesson saved.", "success");
+                showToast(
+                    isNewLesson
+                        ? "Flashcard lesson created."
+                        : "Lesson saved.",
+                    "success",
+                );
             } else {
-                showToast("Update successfully!", "success");
+                showToast(
+                    isNewLesson
+                        ? "Lesson created successfully!"
+                        : "Update successfully!",
+                    "success",
+                );
                 if (backPath) navigate(backPath);
             }
+            if (isNewLesson) setIsNewLesson(false);
         } catch (error) {
             console.error("Error updating lesson details:", error);
 
@@ -1044,7 +1062,9 @@ export function LessonDetailEditor({ context }) {
                 type="submit"
                 variant="primary"
                 loading={loading}
-                disabled={editorBusy || !hasChanges}
+                disabled={
+                    editorBusy || (!isNewLesson && !hasChanges)
+                }
                 form={
                     lessonType === "FLASHCARD"
                         ? lessonMetadataFormId
@@ -1052,7 +1072,11 @@ export function LessonDetailEditor({ context }) {
                 }
                 leftIcon={<Save size={16} />}
             >
-                {assignmentSaving ? "Saving assignment..." : "Save changes"}
+                {assignmentSaving
+                    ? "Saving assignment..."
+                    : isNewLesson
+                      ? "Create lesson"
+                      : "Save changes"}
             </Button>
         </div>
     ) : null;
@@ -1094,7 +1118,9 @@ export function LessonDetailEditor({ context }) {
                     <h1 className="sl-cm-lesson-editor__title">
                         {activeTab === "history"
                             ? "Lesson audit history"
-                            : "Edit lesson"}
+                            : isNewLesson
+                              ? "Create lesson"
+                              : "Edit lesson"}
                     </h1>
                     {activeTab === "edit" && lessonType === "ESSAY" && (
                         <Select

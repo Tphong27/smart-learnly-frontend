@@ -670,12 +670,14 @@ export function QuestionImportModal({ open, variant = 'modal', bank, courseId, m
               </div>
               <Textarea
                 label="Question text"
+                required
                 value={question.questionText}
                 onChange={(event) => updateImageQuestion(questionIndex, { questionText: event.target.value })}
               />
               <div className="question-import__grid">
                   <Select
                     label="Type"
+                    required
                     value={question.questionType}
                     onChange={(event) => setImageType(questionIndex, event.target.value)}
                   >
@@ -813,6 +815,7 @@ export function QuestionImportModal({ open, variant = 'modal', bank, courseId, m
               <Textarea
                 id="question-import-json"
                 label="JSON data"
+                required
                 rows={10}
                 value={jsonText}
                 onChange={(event) => setJsonText(event.target.value)}

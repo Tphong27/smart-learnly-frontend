@@ -598,6 +598,7 @@ export function StaffAssessmentCreatePage({ variant = "assignment" }) {
                     <div className="ft-field">
                         <Input
                             label="Title"
+                            required
                             placeholder="Midterm quick practice"
                             value={formData.title}
                             onChange={(event) =>
@@ -608,7 +609,10 @@ export function StaffAssessmentCreatePage({ variant = "assignment" }) {
                     </div>
 
                     <label className="ft-field">
-                        <span className="ft-label">Duration</span>
+                        <span className="ft-label">
+                            Duration{" "}
+                            <span className="input-field__required">*</span>
+                        </span>
                         <div className="ft-duration-control">
                             <div className="ft-duration-presets">
                                 {DURATION_PRESETS.map((preset) => (
@@ -706,6 +710,7 @@ export function StaffAssessmentCreatePage({ variant = "assignment" }) {
                     <div className="ft-field">
                         <Select
                             label="Class"
+                            required
                             value={formData.classId}
                             onChange={(event) => {
                                 const nextClassId = event.target.value;
@@ -895,7 +900,10 @@ export function StaffAssessmentCreatePage({ variant = "assignment" }) {
                             <div className="ft-field">
                                 <span className="ft-label">
                                     Question pool ({selectedQuestions.length}{" "}
-                                    selected)
+                                    selected){" "}
+                                    <span className="input-field__required">
+                                        *
+                                    </span>
                                 </span>
                                 <QuestionSelector
                                     courseId={formData.courseId}

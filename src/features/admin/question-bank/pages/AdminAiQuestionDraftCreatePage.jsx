@@ -537,6 +537,7 @@ export function AdminAiQuestionDraftCreatePage() {
                         <div className="ai-drafts-fieldset">
                             <span className="input-field__label">
                                 Question type
+                                <span className="input-field__required" aria-hidden="true">*</span>
                             </span>
                             <div className="ai-drafts-check-grid ai-drafts-check-grid--inline">
                                 {QUESTION_TYPE_OPTIONS.map((option) => (
@@ -633,6 +634,7 @@ export function AdminAiQuestionDraftCreatePage() {
                         <Input
                             id="ai-draft-count"
                             label="Number of Questions (max 20)"
+                            required
                             type="number"
                             min="1"
                             max={MAX_REQUESTED_COUNT}

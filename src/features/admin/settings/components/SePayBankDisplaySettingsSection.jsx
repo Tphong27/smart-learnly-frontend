@@ -180,12 +180,14 @@ export function SePayBankDisplaySettingsSection() {
         <div className="admin-form-grid">
           <FormField
             label="Account number"
+            required
             placeholder="123456789"
             registration={displayForm.register('accountNumber')}
             error={displayForm.formState.errors.accountNumber?.message}
           />
           <FormField
             label="Bank name"
+            required
             placeholder="MBBank"
             registration={displayForm.register('bankName')}
             error={displayForm.formState.errors.bankName?.message}
@@ -193,6 +195,7 @@ export function SePayBankDisplaySettingsSection() {
           <div className="admin-form-grid__full">
             <FormField
               label="Account name"
+              required
               placeholder="SMART LEARNLY"
               registration={displayForm.register('accountName')}
               error={displayForm.formState.errors.accountName?.message}

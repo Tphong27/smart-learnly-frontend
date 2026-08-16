@@ -291,15 +291,14 @@ export default function AdminCourseContentPage() {
                     );
                 }
 
-                showToast({
-                    type: "success",
-                    message: "Flashcard lesson added.",
-                });
                 fetchLessonsForSection(sectionId);
 
                 if (createdLesson?.lessonId) {
                     navigate(`${lessonBasePath}/${createdLesson.lessonId}`, {
-                        state: { flashcardSetId: createdLesson.setId },
+                        state: {
+                            flashcardSetId: createdLesson.setId,
+                            isNewLesson: true,
+                        },
                     });
                 }
                 return true;
@@ -319,9 +318,10 @@ export default function AdminCourseContentPage() {
                 throw new Error("Created lesson ID was not returned.");
             }
 
-            showToast({ type: "success", message: "Lesson added." });
             fetchLessonsForSection(sectionId);
-            navigate(`${lessonBasePath}/${createdLessonId}`);
+            navigate(`${lessonBasePath}/${createdLessonId}`, {
+                state: { isNewLesson: true },
+            });
             return true;
         } catch (error) {
             showToast({

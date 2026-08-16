@@ -181,12 +181,14 @@ export function AiIntegrationsSettingsSection() {
 
           <FormField
             label="Provider"
+            required
             placeholder="gemini"
             registration={questionImportForm.register('provider')}
             error={questionImportForm.formState.errors.provider?.message}
           />
           <FormField
             label="Model"
+            required
             placeholder="gemini-3.5-flash"
             registration={questionImportForm.register('model')}
             error={questionImportForm.formState.errors.model?.message}
@@ -254,18 +256,21 @@ export function AiIntegrationsSettingsSection() {
 
           <FormField
             label="Provider"
+            required
             placeholder="gemini"
             registration={assignmentAiForm.register('provider')}
             error={assignmentAiForm.formState.errors.provider?.message}
           />
           <FormField
             label="Model"
+            required
             placeholder="gemini-flash-latest"
             registration={assignmentAiForm.register('model')}
             error={assignmentAiForm.formState.errors.model?.message}
           />
           <FormField
             label="Fallback model"
+            required
             placeholder="gemini-flash-lite-latest"
             registration={assignmentAiForm.register('fallbackModel')}
             error={assignmentAiForm.formState.errors.fallbackModel?.message}
