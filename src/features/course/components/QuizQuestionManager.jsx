@@ -244,8 +244,8 @@ export function QuizQuestionsPanel({
     lessonId,
     lessonTitle,
     onSaved,
-    onBusyChange,
     onQuestionsChange,
+    onBusyChange,
     disabled = false,
     service = courseContentService,
 }) {
@@ -308,13 +308,13 @@ export function QuizQuestionsPanel({
                 const data = response?.data || response;
                 const parsed = parseQuizContent(data?.content || "");
                 if (!cancelled) {
-                    setQuestions(
-                        attachedQuestionMode
-                            ? (attachedQuestions || []).map(
-                                  normalizeAttachedQuestion,
-                              )
-                            : parsed.questions || [],
-                    );
+                    const loadedQuestions = attachedQuestionMode
+                        ? (attachedQuestions || []).map(
+                              normalizeAttachedQuestion,
+                          )
+                        : parsed.questions || [];
+                    setQuestions(loadedQuestions);
+                    onQuestionsChange?.(loadedQuestions);
                     setModuleId(
                         data?.moduleId ||
                             data?.courseModuleId ||
@@ -334,7 +334,7 @@ export function QuizQuestionsPanel({
         return () => {
             cancelled = true;
         };
-    }, [attachedQuestionMode, lessonId, toast, service]);
+    }, [attachedQuestionMode, lessonId, onQuestionsChange, toast, service]);
 
     /** Kiểm tra và lưu toàn bộ danh sách question của lesson content cũ. */
     const persistQuestions = async (nextQuestions, successMessage) => {
@@ -384,6 +384,7 @@ export function QuizQuestionsPanel({
             };
 
             setQuestions(nextQuestions);
+            onQuestionsChange?.(nextQuestions);
             setErrors([]);
             try {
                 await onSaved?.(content, savedLesson);
@@ -442,7 +443,11 @@ export function QuizQuestionsPanel({
                 });
             }
             const refreshed = await service.getQuestions(lessonId);
-            setQuestions((refreshed || []).map(normalizeAttachedQuestion));
+            const nextQuestions = (refreshed || []).map(
+                normalizeAttachedQuestion,
+            );
+            setQuestions(nextQuestions);
+            onQuestionsChange?.(nextQuestions);
             setErrors([]);
             toast.success(`Imported ${sources.length} question(s).`);
             return true;
@@ -508,9 +513,11 @@ export function QuizQuestionsPanel({
             setSaving(true);
             try {
                 await service.detachQuestion(lessonId, questionId);
-                setQuestions((current) =>
-                    current.filter((item) => item.questionId !== questionId),
+                const nextQuestions = questions.filter(
+                    (item) => item.questionId !== questionId,
                 );
+                setQuestions(nextQuestions);
+                onQuestionsChange?.(nextQuestions);
                 setDeleteIndex(null);
                 toast.success("Question removed from this quiz.");
             } catch (error) {

@@ -24,6 +24,7 @@ import {
     parseQuizContent,
     serializeQuizContent,
 } from "../../utils/quiz-question-schema";
+import { mapCourseQuestionToQuizQuestion } from "../../utils/course-question-quiz-import";
 import {
     validateSummaryImage,
     validateSummaryVideo,
@@ -161,6 +162,9 @@ export function LessonDetailEditor({ context }) {
     const [pendingLessonType, setPendingLessonType] = useState(null);
     const [summaryReplaceConfirmationOpen, setSummaryReplaceConfirmationOpen] =
         useState(false);
+    const handleQuizQuestionsChange = useCallback((nextQuestions) => {
+        setQuizQuestionCount(Array.isArray(nextQuestions) ? nextQuestions.length : 0);
+    }, []);
 
     const hasDescriptionData = !isEmptyLessonHtml(sanitizeLessonHtml(summary));
     const hasResourceData = resources.length > 0;
@@ -757,12 +761,16 @@ export function LessonDetailEditor({ context }) {
                 ]);
                 latestQuizLesson = latestResponse?.data || latestResponse;
                 latestQuizQuestions = usesAttachedQuestionApi
-                    ? Array.isArray(attachedQuestions)
-                        ? attachedQuestions
-                        : []
+                    ? (Array.isArray(attachedQuestions) ? attachedQuestions : []).map(
+                          mapCourseQuestionToQuizQuestion,
+                      )
                     : parseQuizContent(latestQuizLesson?.content || "")
                           .questions;
-                setQuizQuestionCount(latestQuizQuestions.length);
+                setQuizQuestionCount(
+                    usesAttachedQuestionApi && Array.isArray(attachedQuestions)
+                        ? attachedQuestions.length
+                        : latestQuizQuestions.length,
+                );
 
                 if (latestQuizQuestions.length === 0) {
                     showSaveNotice({
@@ -1305,13 +1313,18 @@ export function LessonDetailEditor({ context }) {
                                                     setQuizQuestionsBusy
                                                 }
                                                 onQuestionsChange={
-                                                    setQuizQuestionCount
+                                                    handleQuizQuestionsChange
                                                 }
                                                 onSaved={(
                                                     nextContent,
                                                     savedLesson,
                                                 ) => {
                                                     setTextContent(nextContent);
+                                                    setQuizQuestionCount(
+                                                        parseQuizContent(
+                                                            nextContent,
+                                                        ).questions.length,
+                                                    );
                                                     setExistingLessonData(
                                                         (current) => ({
                                                             ...current,
