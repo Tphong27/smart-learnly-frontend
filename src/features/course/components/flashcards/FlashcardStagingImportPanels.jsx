@@ -52,6 +52,7 @@ export function GenerationSettings({ values, onChange, prefix }) {
         <Input
           id={`${prefix}-count`}
           label="Target cards"
+          required
           type="number"
           min="1"
           inputMode="numeric"
@@ -781,6 +782,7 @@ export function PastedTextImportPanel({
       <Textarea
           id="pasted-import-text"
           label="Flashcard content"
+          required
           value={values.text}
           onChange={(event) => updateValue("text", event.target.value)}
           onKeyDown={handleTextKeyDown}
@@ -807,6 +809,7 @@ export function PastedTextImportPanel({
           <Input
               id="pasted-custom-front-back-separator"
               label="Custom side separator"
+              required
               type="text"
               value={values.customFrontBackSeparator}
               onChange={(event) =>
@@ -832,6 +835,7 @@ export function PastedTextImportPanel({
           <Input
               id="pasted-custom-card-separator"
               label="Custom card separator"
+              required
               type="text"
               value={values.customCardSeparator}
               onChange={(event) =>
@@ -1026,6 +1030,7 @@ export function DocumentGenerationPanel({ setId, notify, onTemporaryCandidates }
         <label className="flashcard-staging__file-drop" htmlFor="staging-document-file">
           <FileText size={22} />
           <span>{file ? file.name : "Upload DOCX or PDF"}</span>
+          <span className="input-field__required">*</span>
           <input
             key={fileInputRevision}
             id="staging-document-file"

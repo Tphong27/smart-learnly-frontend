@@ -99,6 +99,7 @@ function PastedTextPanel({ values, parsed, busy, saving, onChange, onImport }) {
             <div className="personal-flashcard-import__field personal-flashcard-import__source">
                 <label htmlFor="personal-flashcard-import-pasted-text">
                     Flashcard content
+                    <span className="input-field__required">*</span>
                 </label>
                 <textarea
                     id="personal-flashcard-import-pasted-text"
@@ -640,6 +641,7 @@ export function PersonalFlashcardImportModal({
                                                 {file
                                                     ? "Document selected"
                                                     : "Upload DOCX or PDF"}
+                                                <span className="input-field__required">*</span>
                                             </strong>
                                             <small>
                                                 {file

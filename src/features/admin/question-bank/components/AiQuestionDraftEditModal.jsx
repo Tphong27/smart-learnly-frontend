@@ -68,7 +68,10 @@ export function AiQuestionDraftEditModal({
                 </div>
 
                 <div className="ai-drafts-fieldset">
-                    <span className="input-field__label">Question text</span>
+                    <span className="input-field__label">
+                        Question text
+                        <span className="input-field__required" aria-hidden="true">*</span>
+                    </span>
                     <QuestionTextRichEditor
                         value={values.questionText}
                         onChange={(questionText) =>
@@ -83,7 +86,10 @@ export function AiQuestionDraftEditModal({
                 </div>
 
                 <fieldset className="ai-drafts-fieldset ai-draft-edit-fieldset">
-                    <legend className="input-field__label">Answers</legend>
+                    <legend className="input-field__label">
+                        Answers
+                        <span className="input-field__required" aria-hidden="true">*</span>
+                    </legend>
                     <div className="ai-draft-edit-answers">
                         {values.answers.map((answer, index) => (
                             <div

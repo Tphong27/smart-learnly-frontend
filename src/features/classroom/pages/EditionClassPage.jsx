@@ -214,7 +214,7 @@ function EditionClassForm({ mode, initialData, classId, routeBase }) {
           <h3>Basic Information</h3>
 
           <div className="form-group">
-            <label htmlFor="className">Class Name *</label>
+            <label htmlFor="className">Class Name <span className="input-field__required" aria-hidden="true">*</span></label>
 
             <input
               id="className"
@@ -240,7 +240,7 @@ function EditionClassForm({ mode, initialData, classId, routeBase }) {
           </div>
 
           <div className="form-group">
-            <label htmlFor="courseId">Course *</label>
+            <label htmlFor="courseId">Course <span className="input-field__required" aria-hidden="true">*</span></label>
 
             <select
               id="courseId"
@@ -265,7 +265,7 @@ function EditionClassForm({ mode, initialData, classId, routeBase }) {
           </div>
 
           <div className="form-group">
-            <label htmlFor="trainerId">Trainer *</label>
+            <label htmlFor="trainerId">Trainer <span className="input-field__required" aria-hidden="true">*</span></label>
 
             <select
               id="trainerId"
@@ -300,7 +300,7 @@ function EditionClassForm({ mode, initialData, classId, routeBase }) {
           </div>
 
           <div className="form-group">
-            <label htmlFor="meetingUrl">Google Meet URL *</label>
+            <label htmlFor="meetingUrl">Google Meet URL <span className="input-field__required" aria-hidden="true">*</span></label>
 
             <div className="class-form__meeting-link-control">
               <input
@@ -342,7 +342,7 @@ function EditionClassForm({ mode, initialData, classId, routeBase }) {
 
           <div className="form-row">
             <div className="form-group">
-              <label htmlFor="startDate">Start Date</label>
+              <label htmlFor="startDate">Start Date <span className="input-field__required" aria-hidden="true">*</span></label>
 
               <input
                 id="startDate"
@@ -359,7 +359,7 @@ function EditionClassForm({ mode, initialData, classId, routeBase }) {
             </div>
 
             <div className="form-group">
-              <label htmlFor="endDate">End Date</label>
+              <label htmlFor="endDate">End Date <span className="input-field__required" aria-hidden="true">*</span></label>
 
               <input
                 id="endDate"
@@ -378,7 +378,7 @@ function EditionClassForm({ mode, initialData, classId, routeBase }) {
 
           <div className="form-row form-row--three-columns">
             <div className="form-group">
-              <label htmlFor="price">Class price (VND) *</label>
+              <label htmlFor="price">Class price (VND) <span className="input-field__required" aria-hidden="true">*</span></label>
 
               <input
                 id="price"
@@ -397,7 +397,7 @@ function EditionClassForm({ mode, initialData, classId, routeBase }) {
             </div>
 
             <div className="form-group">
-              <label htmlFor="maxStudents">Capacity *</label>
+              <label htmlFor="maxStudents">Capacity <span className="input-field__required" aria-hidden="true">*</span></label>
 
               <input
                 id="maxStudents"
@@ -425,7 +425,7 @@ function EditionClassForm({ mode, initialData, classId, routeBase }) {
           </div>
 
           <div className="form-group">
-            <label>Schedule</label>
+            <label>Schedule <span className="input-field__required" aria-hidden="true">*</span></label>
 
             <WeeklySchedulePicker
               control={form.control}

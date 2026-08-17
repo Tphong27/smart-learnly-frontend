@@ -39,7 +39,7 @@ const DEFAULT_CAPABILITIES = {
     maxPastedTextCharacters: 50000,
     maxDocumentBytes: 25 * 1024 * 1024,
     maxTranscriptCharacters: 200000,
-    maxSourcesPerBatch: 8,
+    maxSourcesPerBatch: 3,
     maxNormalizedCharactersPerBatch: 300000,
     acceptedDocumentMimeTypes: [
         "application/pdf",
@@ -244,6 +244,10 @@ export function AdminAiQuestionDraftCreatePage() {
         const incoming = Array.from(nextFiles || []);
         const accepted = [];
         const errors = [];
+        const remainingSlots = Math.max(
+            0,
+            capabilities.maxSourcesPerBatch - files.length,
+        );
         incoming.forEach((file) => {
             const extension = fileExtension(file.name);
             if (!capabilities.acceptedDocumentExtensions.includes(extension)) {
@@ -251,6 +255,10 @@ export function AdminAiQuestionDraftCreatePage() {
             } else if (file.size > capabilities.maxDocumentBytes) {
                 errors.push(
                     `${file.name}: maximum ${formatBytes(capabilities.maxDocumentBytes)}.`,
+                );
+            } else if (accepted.length >= remainingSlots) {
+                errors.push(
+                    `${file.name}: use at most ${capabilities.maxSourcesPerBatch} source files.`,
                 );
             } else {
                 accepted.push(file);
@@ -509,7 +517,7 @@ export function AdminAiQuestionDraftCreatePage() {
                             setGenerationInstruction(event.target.value)
                         }
                         disabled={submitting}
-                        placeholder="Mention scope, topic, or learning goals to cover."
+                        placeholder="Optional focus notes: topics, learning goals, terminology, misconceptions, or emphasis."
                         error={
                             instructionTooLong
                                 ? "Keep the instruction within 2,000 characters."
@@ -517,6 +525,10 @@ export function AdminAiQuestionDraftCreatePage() {
                         }
                     />
                     <div className="ai-drafts-counter">
+                        <span>
+                            Guides shape focus only. Count, type, language, and
+                            source rules use the selected settings.
+                        </span>
                         <strong
                             className={instructionTooLong ? "is-danger" : ""}
                         >
@@ -537,6 +549,7 @@ export function AdminAiQuestionDraftCreatePage() {
                         <div className="ai-drafts-fieldset">
                             <span className="input-field__label">
                                 Question type
+                                <span className="input-field__required" aria-hidden="true">*</span>
                             </span>
                             <div className="ai-drafts-check-grid ai-drafts-check-grid--inline">
                                 {QUESTION_TYPE_OPTIONS.map((option) => (
@@ -572,14 +585,20 @@ export function AdminAiQuestionDraftCreatePage() {
                                 onChange={(event) =>
                                     addFiles(event.target.files)
                                 }
-                                disabled={submitting}
+                                disabled={
+                                    submitting ||
+                                    selectedSourcesCount >=
+                                        capabilities.maxSourcesPerBatch
+                                }
                             />
                             <Upload size={18} />
                             <label htmlFor="ai-source-files">
                                 Choose files
                             </label>
                             <span>
-                                or drop PDF, DOCX, or TXT files up to{" "}
+                                or drop up to{" "}
+                                {capabilities.maxSourcesPerBatch} PDF, DOCX, or
+                                TXT files up to{" "}
                                 {formatBytes(capabilities.maxDocumentBytes)}
                             </span>
                         </div>
@@ -633,6 +652,7 @@ export function AdminAiQuestionDraftCreatePage() {
                         <Input
                             id="ai-draft-count"
                             label="Number of Questions (max 20)"
+                            required
                             type="number"
                             min="1"
                             max={MAX_REQUESTED_COUNT}

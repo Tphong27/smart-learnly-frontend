@@ -375,6 +375,7 @@ export function QuizQuestionEditModal({ open, question, onClose, onSubmit }) {
       <div className="quiz-question-edit-form">
         <Textarea
           label="Question title"
+          required
           helperText="Optional if question media is provided."
           rows={2}
           value={form.title}
@@ -422,7 +423,8 @@ export function QuizQuestionEditModal({ open, question, onClose, onSubmit }) {
         {isChoice && (
           <div className="quiz-question-edit-form__options">
             <label className="quiz-question-edit-form__label">
-              Options{" "}
+              Options <span className="input-field__required">*</span>
+              {" "}
               <span className="quiz-question-edit-form__hint">
                 ({form.type === QUESTION_TYPES.SINGLE
                   ? "select one correct"
@@ -489,7 +491,8 @@ export function QuizQuestionEditModal({ open, question, onClose, onSubmit }) {
         {isFill && (
           <div className="quiz-question-edit-form__options">
             <label className="quiz-question-edit-form__label">
-              Accepted answers{" "}
+              Accepted answers <span className="input-field__required">*</span>
+              {" "}
               <span className="quiz-question-edit-form__hint">
                 (any match is correct)
               </span>
