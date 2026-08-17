@@ -14,7 +14,6 @@ import {
 import {
   Alert,
   Button,
-  Checkbox,
   Form,
   Input,
   LoadingState,
@@ -44,9 +43,24 @@ const LEVEL_OPTIONS = [
   { value: "advanced", label: "Advanced" },
 ];
 
-/** Tạo payload course từ form và chỉ gửi các trường hợp lệ theo mode. */
+/** Tạo payload course và tự xác định miễn phí khi giá bằng 0. */
 function buildPayload(values, mode, includeAssignment) {
   const thumbnailUrl = values.thumbnailUrl?.trim();
+
+  const numericPrice =
+    values.price === "" || values.price == null || Number.isNaN(values.price)
+      ? 0
+      : Number(values.price);
+
+  const isFree = numericPrice === 0;
+
+  const numericDiscountedPrice =
+    values.discountedPrice === "" ||
+    values.discountedPrice == null ||
+    Number.isNaN(values.discountedPrice)
+      ? undefined
+      : Number(values.discountedPrice);
+
   const payload = {
     categoryId: values.categoryId,
     title: values.title?.trim(),
@@ -58,29 +72,20 @@ function buildPayload(values, mode, includeAssignment) {
     language: values.language?.trim() || undefined,
     level: values.level?.trim() || undefined,
     thumbnailUrl: mode === "edit" ? thumbnailUrl : thumbnailUrl || undefined,
-    price:
-      values.isFree ||
-      values.price === "" ||
-      values.price == null ||
-      Number.isNaN(values.price)
-        ? 0
-        : Number(values.price),
-    discountedPrice:
-      values.isFree ||
-      values.discountedPrice === "" ||
-      values.discountedPrice == null ||
-      Number.isNaN(values.discountedPrice)
-        ? undefined
-        : Number(values.discountedPrice),
-    isFree: !!values.isFree,
+    price: numericPrice,
+    discountedPrice: isFree ? undefined : numericDiscountedPrice,
+    isFree,
   };
   if (includeAssignment) {
-    payload.assignedSmeId = values.assignedSmeId || null;
+    payload.assignedSmeId = values.assignedSmeId;
   }
   if (mode === "edit") {
     payload.status = values.status || "draft";
-    Object.keys(payload).forEach((k) => {
-      if (payload[k] === undefined) delete payload[k];
+
+    Object.keys(payload).forEach((key) => {
+      if (payload[key] === undefined) {
+        delete payload[key];
+      }
     });
   }
   return payload;
@@ -98,6 +103,7 @@ export function AdminCourseFormPage() {
 
   const [categories, setCategories] = useState([]);
   const [smeOptions, setSmeOptions] = useState([]);
+  const [smeOptionsLoading, setSmeOptionsLoading] = useState(false);
   const [loading, setLoading] = useState(isEdit);
   const [serverError, setServerError] = useState(null);
 
@@ -133,7 +139,6 @@ export function AdminCourseFormPage() {
       thumbnailUrl: "",
       price: 0,
       discountedPrice: "",
-      isFree: false,
       status: "draft",
     }),
     [],
@@ -152,8 +157,14 @@ export function AdminCourseFormPage() {
     mode: "onBlur",
   });
 
-  const isFree = useWatch({ control, name: "isFree" });
-  const thumbnailUrl = useWatch({ control, name: "thumbnailUrl" });
+  const price = useWatch({ control, name: "price" });
+  const thumbnailUrl = useWatch({
+    control,
+    name: "thumbnailUrl",
+  });
+
+  const isFreeCourse =
+    price === "" || price == null || Number.isNaN(price) || Number(price) === 0;
 
   useEffect(() => {
     if (isAssignedOnlyRole && !isEdit) {
@@ -192,9 +203,8 @@ export function AdminCourseFormPage() {
           language: detail.language || "en",
           level: detail.level || "",
           thumbnailUrl: detail.thumbnailUrl || "",
-          price: detail.price ?? 0,
-          discountedPrice: detail.discountedPrice ?? "",
-          isFree: !!detail.isFree,
+          price: detail.isFree ? 0 : (detail.price ?? 0),
+          discountedPrice: detail.isFree ? "" : (detail.discountedPrice ?? ""),
           status: detail.status?.toLowerCase() || "draft",
         });
       } catch (err) {
@@ -208,13 +218,6 @@ export function AdminCourseFormPage() {
       cancelled = true;
     };
   }, [courseId, isEdit, reset, toast]);
-
-  useEffect(() => {
-    if (isFree) {
-      setValue("price", 0);
-      setValue("discountedPrice", "");
-    }
-  }, [isFree, setValue]);
 
   async function onSubmit(values) {
     if (isReadOnly) {
@@ -260,6 +263,8 @@ export function AdminCourseFormPage() {
 
     /** Tải danh sách SME active để Admin/TMO gán người phụ trách course. */
     async function loadActiveSmes() {
+      setSmeOptionsLoading(true);
+
       try {
         const pageData = await adminUserService.listActiveSmes({
           page: 0,
@@ -271,7 +276,12 @@ export function AdminCourseFormPage() {
         }
       } catch (error) {
         if (!cancelled) {
+          setSmeOptions([]);
           toast.error(error?.message || "Could not load active SME accounts.");
+        }
+      } finally {
+        if (!cancelled) {
+          setSmeOptionsLoading(false);
         }
       }
     }
@@ -307,7 +317,6 @@ export function AdminCourseFormPage() {
                   ? "Update course"
                   : "Create new course"}
             </h1>
-
           </div>
           {isEdit && (
             <Button
@@ -363,17 +372,24 @@ export function AdminCourseFormPage() {
                     id="course-assigned-sme"
                     className="sl-course-field--full"
                     label="Assigned SME"
-                    disabled={isReadOnly}
+                    required
+                    disabled={isReadOnly || smeOptionsLoading}
                     error={errors.assignedSmeId}
                     {...register("assignedSmeId")}
                   >
-                      <option value="">Not assigned</option>
+                    <option value="" disabled>
+                      {smeOptionsLoading
+                        ? "Loading SME accounts..."
+                        : smeOptions.length === 0
+                          ? "No active SME available"
+                          : "Assign SME"}
+                    </option>
 
-                      {smeOptions.map((sme) => (
-                        <option key={sme.id} value={sme.id}>
-                          {sme.fullName || sme.email}
-                        </option>
-                      ))}
+                    {smeOptions.map((sme) => (
+                      <option key={sme.id} value={sme.id}>
+                        {sme.fullName || sme.email}
+                      </option>
+                    ))}
                   </Select>
                 ) : null}
 
@@ -547,12 +563,12 @@ export function AdminCourseFormPage() {
                   error={errors.categoryId}
                   {...register("categoryId")}
                 >
-                    <option value="">Select a category</option>
-                    {categories.map((category) => (
-                      <option key={category.id} value={category.id}>
-                        {category.name}
-                      </option>
-                    ))}
+                  <option value="">Select a category</option>
+                  {categories.map((category) => (
+                    <option key={category.id} value={category.id}>
+                      {category.name}
+                    </option>
+                  ))}
                 </Select>
 
                 <Select
@@ -562,11 +578,11 @@ export function AdminCourseFormPage() {
                   disabled={isReadOnly}
                   {...register("level")}
                 >
-                    {LEVEL_OPTIONS.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
+                  {LEVEL_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
                 </Select>
 
                 <Input
@@ -594,13 +610,6 @@ export function AdminCourseFormPage() {
                 </div>
               </div>
 
-              <Checkbox
-                label="Free course"
-                description="Learners can enrol without paying."
-                disabled={isReadOnly}
-                {...register("isFree")}
-              />
-
               <div className="sl-course-editor__fields">
                 <Input
                   id="course-price"
@@ -609,9 +618,11 @@ export function AdminCourseFormPage() {
                   type="number"
                   min="0"
                   inputMode="numeric"
-                  disabled={isFree || isReadOnly}
+                  disabled={isReadOnly}
                   error={errors.price}
-                  {...register("price", { valueAsNumber: true })}
+                  {...register("price", {
+                    valueAsNumber: true,
+                  })}
                 />
 
                 <Input
@@ -621,7 +632,7 @@ export function AdminCourseFormPage() {
                   type="number"
                   min="0"
                   inputMode="numeric"
-                  disabled={isFree || isReadOnly}
+                  disabled={isFreeCourse || isReadOnly}
                   error={errors.discountedPrice}
                   {...register("discountedPrice", {
                     valueAsNumber: true,
@@ -636,11 +647,11 @@ export function AdminCourseFormPage() {
                     disabled={isReadOnly}
                     {...register("status")}
                   >
-                      {STATUS_OPTIONS.map((option) => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
-                        </option>
-                      ))}
+                    {STATUS_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
                   </Select>
                 ) : (
                   <div className="sl-course-field sl-course-field--full">
@@ -672,14 +683,14 @@ export function AdminCourseFormPage() {
             {isReadOnly
               ? "View-only access for assigned SME"
               : isSubmitting
-              ? isEdit
-                ? "Saving course..."
-                : "Creating draft..."
-              : isDirty
-                ? "Unsaved changes"
-                : isEdit
-                  ? "All course details loaded"
-                  : "Enter a course title and category to create a draft"}
+                ? isEdit
+                  ? "Saving course..."
+                  : "Creating draft..."
+                : isDirty
+                  ? "Unsaved changes"
+                  : isEdit
+                    ? "All course details loaded"
+                    : "Enter a course title and category to create a draft"}
           </p>
           <div>
             <Button
