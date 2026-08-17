@@ -220,11 +220,20 @@ function EditionClassForm({ mode, initialData, classId, routeBase }) {
               id="className"
               type="text"
               readOnly={editPolicy.readOnly}
+              className={form.errors.className ? "input-error" : ""}
+              aria-invalid={Boolean(form.errors.className)}
+              aria-describedby={
+                form.errors.className ? "className-error" : undefined
+              }
               {...form.register("className")}
             />
 
             {form.errors.className && (
-              <span className="form-error-text">
+              <span
+                id="className-error"
+                className="form-error-text"
+                role="alert"
+              >
                 {form.errors.className.message}
               </span>
             )}
@@ -325,7 +334,6 @@ function EditionClassForm({ mode, initialData, classId, routeBase }) {
                 {meetingLinkState.error}
               </span>
             )}
-
           </div>
         </div>
 

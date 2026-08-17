@@ -147,8 +147,8 @@ export function createClassFormSchema({
       className: z
         .string()
         .trim()
-        .min(3, "Class name must be at least 3 characters")
-        .max(255, "Class name must not exceed 255 characters"),
+        .min(3, "Class name must contain between 3 and 255 characters")
+        .max(255, "Class name must contain between 3 and 255 characters"),
 
       trainerId: z
         .string()
@@ -184,7 +184,7 @@ export function createClassFormSchema({
 
       maxStudents: z
         .number({
-          invalid_type_error: "Capacity must be a valid number",
+          error: "Capacity is required and must be a valid number",
         })
         .int("Capacity must be an integer")
         .min(1, "Capacity must be at least 1")
@@ -199,8 +199,8 @@ export function createClassFormSchema({
         .max(9999999999.99, "Class price is too large"),
     })
     .superRefine((data, context) => {
-      if (data.endDate < data.startDate) {
-        addIssue(context, ["endDate"], "End date cannot be before start date");
+      if (data.endDate <= data.startDate) {
+        addIssue(context, ["endDate"], "End date must be after start date");
       }
 
       if (data.maxStudents < activeEnrollmentCount) {
