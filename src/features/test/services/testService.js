@@ -31,6 +31,14 @@ export const testService = {
     return unwrap(response);
   },
 
+  /** Cập nhật thời lượng và số phút còn lại của các lượt đang làm. */
+  async updateDuration(id, durationMinutes) {
+    const response = await apiClient.patch(`/course-quizzes/${id}/duration`, {
+      durationMinutes,
+    });
+    return unwrap(response);
+  },
+
   async remove(id) {
     const response = await apiClient.delete(`/course-quizzes/${id}`);
     return unwrap(response);

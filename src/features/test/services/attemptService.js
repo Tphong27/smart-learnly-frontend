@@ -50,6 +50,7 @@ export const attemptService = {
     return normalizeList(response);
   },
 
+  /** Lấy chi tiết một lượt làm bài để đồng bộ trạng thái và thời gian kết thúc. */
   async getById(attemptId, params = {}) {
     const response = await apiClient.get(`/course-quiz-attempts/${attemptId}`, {
       params,
