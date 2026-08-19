@@ -15,6 +15,7 @@ import { courseContentService } from "@/features/course";
 import { assignmentService } from "@/features/assignment";
 import { testService } from "../services/testService";
 import {
+    Alert,
     Button,
     IconButton,
     Input,
@@ -151,6 +152,7 @@ export function StaffAssessmentCreatePage({ variant = "assignment" }) {
     const [customDurationOpen, setCustomDurationOpen] = useState(false);
     const [customDurationValue, setCustomDurationValue] = useState("");
     const [validationErrors, setValidationErrors] = useState({});
+    const [hasActiveAttempts, setHasActiveAttempts] = useState(false);
 
     const selectedDurationMinutes = Math.round(
         Number(formData.durationValue) *
@@ -338,6 +340,11 @@ export function StaffAssessmentCreatePage({ variant = "assignment" }) {
                             id: mapping.questionId || mapping.id,
                         })),
                     );
+                    setHasActiveAttempts(
+                        Boolean(
+                            test.hasActiveAttempts ?? test.has_active_attempts,
+                        ),
+                    );
                 }
             } catch (error) {
                 console.error("Failed to load assessment", error);
@@ -358,23 +365,34 @@ export function StaffAssessmentCreatePage({ variant = "assignment" }) {
             Number(formData.durationValue) *
                 (DURATION_UNITS[formData.durationUnit] || 1),
         );
+        const isAdjustingActiveDuration =
+            testType === "mcq" && isEdit && hasActiveAttempts;
         const nextErrors = {};
-        if (!formData.title.trim()) {
+        if (!isAdjustingActiveDuration && !formData.title.trim()) {
             nextErrors.title = `Please enter the ${pageName.toLowerCase()} title.`;
         }
         if (!duration || duration <= 0) {
             nextErrors.duration = "Please enter a valid duration.";
         }
-        if (testType === "mcq" && !formData.courseId) {
+        if (
+            !isAdjustingActiveDuration &&
+            testType === "mcq" &&
+            !formData.courseId
+        ) {
             nextErrors.courseId = "Please choose a course.";
         }
-        if (!formData.classId) {
+        if (!isAdjustingActiveDuration && !formData.classId) {
             nextErrors.classId = "Please choose a class.";
         }
-        if (testType === "mcq" && selectedQuestions.length === 0) {
+        if (
+            !isAdjustingActiveDuration &&
+            testType === "mcq" &&
+            selectedQuestions.length === 0
+        ) {
             nextErrors.questions = "Please select at least one MCQ question.";
         }
         if (
+            !isAdjustingActiveDuration &&
             testType === "mcq" &&
             formData.opensAt &&
             formData.closesAt &&
@@ -390,7 +408,9 @@ export function StaffAssessmentCreatePage({ variant = "assignment" }) {
 
         setIsSaving(true);
         try {
-            if (testType === "essay") {
+            if (isAdjustingActiveDuration) {
+                await testService.updateDuration(id, duration);
+            } else if (testType === "essay") {
                 const uploadedInstruction = instructionFile
                     ? await assignmentService.uploadFile(instructionFile)
                     : null;
@@ -485,7 +505,9 @@ export function StaffAssessmentCreatePage({ variant = "assignment" }) {
             }
 
             toast.success(
-                `${pageName} ${isEdit ? "updated" : "created"} successfully.`,
+                isAdjustingActiveDuration
+                    ? `Active attempts now have ${duration} minute(s) remaining.`
+                    : `${pageName} ${isEdit ? "updated" : "created"} successfully.`,
             );
             navigate(returnPath);
         } catch (error) {
@@ -523,7 +545,11 @@ export function StaffAssessmentCreatePage({ variant = "assignment" }) {
                         disabled={loadingExisting}
                         onClick={handleSave}
                     >
-                        {isEdit ? `Update ${pageName}` : `Save ${pageName}`}
+                        {hasActiveAttempts
+                            ? "Update remaining time"
+                            : isEdit
+                              ? `Update ${pageName}`
+                              : `Save ${pageName}`}
                     </Button>
                 </div>
             </header>
@@ -595,18 +621,28 @@ export function StaffAssessmentCreatePage({ variant = "assignment" }) {
                     disabled={loadingExisting}
                     aria-busy={loadingExisting}
                 >
-                    <div className="ft-field">
-                        <Input
-                            label="Title"
-                            required
-                            placeholder="Midterm quick practice"
-                            value={formData.title}
-                            onChange={(event) =>
-                                updateFormData({ title: event.target.value })
-                            }
-                            error={validationErrors.title}
-                        />
-                    </div>
+                    {hasActiveAttempts && (
+                        <Alert tone="warning" title="Test in progress">
+                            Only duration can be changed right now. Active
+                            attempts will receive the selected time starting
+                            when you update.
+                        </Alert>
+                    )}
+
+                    {!hasActiveAttempts && (
+                        <div className="ft-field">
+                            <Input
+                                label="Title"
+                                required
+                                placeholder="Midterm quick practice"
+                                value={formData.title}
+                                onChange={(event) =>
+                                    updateFormData({ title: event.target.value })
+                                }
+                                error={validationErrors.title}
+                            />
+                        </div>
+                    )}
 
                     <label className="ft-field">
                         <span className="ft-label">
@@ -707,7 +743,7 @@ export function StaffAssessmentCreatePage({ variant = "assignment" }) {
                         </div>
                     </label>
 
-                    <div className="ft-field">
+                    {!hasActiveAttempts && <div className="ft-field">
                         <Select
                             label="Class"
                             required
@@ -743,9 +779,9 @@ export function StaffAssessmentCreatePage({ variant = "assignment" }) {
                             ))}
                             error={validationErrors.classId}
                         </Select>
-                    </div>
+                    </div>}
 
-                    {testType === "essay" ? (
+                    {!hasActiveAttempts && (testType === "essay" ? (
                         <>
                             <label className="ft-field">
                                 <span className="ft-label">Instructions</span>
@@ -925,7 +961,7 @@ export function StaffAssessmentCreatePage({ variant = "assignment" }) {
                                 )}
                             </div>
                         </>
-                    )}
+                    ))}
                 </fieldset>
             </div>
         </section>

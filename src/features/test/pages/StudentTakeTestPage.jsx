@@ -615,6 +615,50 @@ export function StudentTakeTestPage({
     );
 
     useEffect(() => {
+        if (
+            normalizedType !== "mcq" ||
+            !attempt?.id ||
+            loading ||
+            submittedRef.current ||
+            completedResult
+        ) {
+            return undefined;
+        }
+
+        let cancelled = false;
+        /** Đồng bộ mốc hết giờ để nhận thay đổi thời lượng từ staff khi đang làm bài. */
+        async function syncAttemptEndTime() {
+            try {
+                const latest = await attemptService.getById(
+                    attempt.id,
+                    contextClassId ? { classId: contextClassId } : {},
+                );
+                if (cancelled || !latest?.endTime) return;
+                setAttempt((current) =>
+                    current?.id === latest.id &&
+                    current.endTime !== latest.endTime
+                        ? { ...current, endTime: latest.endTime }
+                        : current,
+                );
+            } catch (syncError) {
+                console.error("Failed to sync attempt end time", syncError);
+            }
+        }
+
+        const syncTimer = window.setInterval(syncAttemptEndTime, 5000);
+        return () => {
+            cancelled = true;
+            window.clearInterval(syncTimer);
+        };
+    }, [
+        attempt?.id,
+        completedResult,
+        contextClassId,
+        loading,
+        normalizedType,
+    ]);
+
+    useEffect(() => {
         if (!testData || loading || submittedRef.current || completedResult) {
             return undefined;
         }
