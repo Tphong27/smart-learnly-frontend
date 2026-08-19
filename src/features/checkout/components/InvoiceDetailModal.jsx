@@ -3,7 +3,6 @@ import { Modal, Button, useToast } from "@/shared/components/ui";
 import { StatusBadge } from "@/shared/components/status";
 import { checkoutService } from "../services/checkoutService";
 import { formatAmount, formatDateTime } from "@/shared/utils/formatters";
-import { downloadInvoice } from "@/features/checkout/utils/downloadInvoice";
 import "../invoice-detail-modal.css";
 
 export function InvoiceDetailModal({ open, transactionId, onClose }) {
@@ -13,17 +12,6 @@ export function InvoiceDetailModal({ open, transactionId, onClose }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const purchasedItem = order?.items?.[0];
-
-  const handleDownloadInvoice = () => {
-    downloadInvoice({
-      invoice,
-      order,
-      purchasedItem,
-      onBlocked: () => {
-        toast.error("Please allow pop-ups to download invoice.");
-      },
-    });
-  };
 
   useEffect(() => {
     if (!open || !transactionId) {
@@ -62,14 +50,14 @@ export function InvoiceDetailModal({ open, transactionId, onClose }) {
   return (
     <Modal open={open} title="Invoice details" size="lg" onClose={onClose}>
       {loading ? (
-        <div className="history-loading">Loading invoice...</div>
+        <div className="history-loading">Loading receipt...</div>
       ) : error ? (
         <div className="history-error">{error}</div>
       ) : !invoice ? null : (
         <div className="invoice-detail">
           <section className="invoice-detail__header">
             <div>
-              <div className="invoice-detail__label">Invoice number</div>
+              <div className="invoice-detail__label">Receipt number</div>
               <strong className="invoice-detail__number">
                 {invoice.invoiceNumber || "--"}
               </strong>
@@ -168,10 +156,6 @@ export function InvoiceDetailModal({ open, transactionId, onClose }) {
           </section>
 
           <div className="invoice-detail__actions">
-            <Button type="button" onClick={handleDownloadInvoice}>
-              Download invoice
-            </Button>
-
             <Button type="button" variant="ghost" onClick={onClose}>
               Close
             </Button>

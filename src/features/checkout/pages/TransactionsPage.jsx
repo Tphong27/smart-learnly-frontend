@@ -393,7 +393,7 @@ export function TransactionsPage({ mode = "personal" }) {
                               className="transaction-page__action-btn"
                               onClick={() => setInvoiceTarget(transaction.id)}
                             >
-                              View invoice
+                              View details
                             </Button>
                           ) : (
                             <span className="transaction-page__empty-value">
