@@ -9,7 +9,6 @@ import {
   Home,
   Layers3,
   Receipt,
-  ScrollText,
   Settings,
   ShieldCheck,
   PanelLeftClose,
@@ -29,7 +28,7 @@ import { getDashboardPathByRole } from "@/app/routes/dashboard-path";
 import { SmartLearnlyMark } from "@/shared/components/SmartLearnlyMark";
 
 const navItems = [
-  // ADMIN & MONITORING ROUTES
+  // ADMIN — hệ thống only (settings, dashboard, users)
   {
     label: "Admin Dashboard",
     path: "/admin/dashboard",
@@ -43,40 +42,30 @@ const navItems = [
     roles: [ROLES.ADMIN],
   },
   {
+    label: "System Settings",
+    path: "/admin/settings",
+    icon: Settings,
+    roles: [ROLES.ADMIN],
+  },
+
+  // TMO / SME — tài nguyên (không còn ADMIN)
+  {
     label: "Course Management",
     path: "/admin/courses",
     icon: FolderTree,
-    roles: [ROLES.ADMIN, ROLES.TMO],
-  },
-  {
-    label: "Class Management",
-    path: "/admin/classrooms",
-    icon: Users,
-    roles: [ROLES.ADMIN],
+    roles: [ROLES.TMO],
   },
   {
     label: "Categories",
     path: "/admin/categories",
     icon: Receipt,
-    roles: [ROLES.ADMIN, ROLES.SME],
+    roles: [ROLES.TMO],
   },
   {
     label: "Transactions",
     path: "/admin/transactions",
     icon: CreditCard,
-    roles: [ROLES.ADMIN, ROLES.TMO],
-  },
-  {
-    label: "System Activity Log",
-    path: "/admin/audit-log",
-    icon: ScrollText,
-    roles: [ROLES.ADMIN],
-  },
-  {
-    label: "System Settings",
-    path: "/admin/settings",
-    icon: Settings,
-    roles: [ROLES.ADMIN],
+    roles: [ROLES.TMO],
   },
 
   // STAFF ROUTES

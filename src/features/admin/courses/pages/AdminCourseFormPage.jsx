@@ -115,7 +115,7 @@ export function AdminCourseFormPage() {
   const isAssignedOnlyRole = isTrainer || isSme;
   const isReadOnly = isSme && isEdit;
 
-  const canManageAssignment = currentRole === "admin" || currentRole === "tmo";
+  const canManageAssignment = currentRole === "tmo";
   const isStaffRoute = location.pathname.startsWith("/staff/");
 
   const courseListPath = isStaffRoute ? "/staff/courses" : "/admin/courses";

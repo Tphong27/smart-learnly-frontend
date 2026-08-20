@@ -35,8 +35,8 @@ export function isRoleAllowed(role, allowedRoles = []) {
 }
 
 export const CLASS_ACCESS_ROLES = Object.freeze({
-  VIEW: Object.freeze([ROLES.ADMIN, ROLES.TMO, ROLES.TRAINER]),
-  MANAGE: Object.freeze([ROLES.ADMIN, ROLES.TMO]),
+  VIEW: Object.freeze([ROLES.TMO, ROLES.TRAINER]),
+  MANAGE: Object.freeze([ROLES.TMO]),
 });
 
 export function canViewClasses(role) {

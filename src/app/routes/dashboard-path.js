@@ -9,7 +9,7 @@ export function getDashboardPathByRole(role) {
     case ROLES.TMO:
       return "/admin/courses";
     case ROLES.SME:
-      return "/admin/courses";
+      return "/staff/courses";
     case ROLES.TRAINER:
       return "/staff/classrooms";
     case ROLES.TRAINEE:
@@ -34,43 +34,62 @@ export function isPathAllowedForRole(pathname, role) {
       allow: [ROLES.ADMIN],
     },
     {
-      prefix: "/admin/audit-log",
-      allow: [ROLES.ADMIN],
-    },
-    {
       prefix: "/admin/settings",
       allow: [ROLES.ADMIN],
     },
+    // System activity log đã tắt trên BE — không mở cho role nào
+    {
+      prefix: "/admin/audit-log",
+      allow: [],
+    },
     {
       prefix: "/admin/orders",
-      allow: [ROLES.ADMIN, ROLES.TMO],
+      allow: [ROLES.TMO],
     },
     {
       prefix: "/admin/transactions",
-      allow: [ROLES.ADMIN, ROLES.TMO],
+      allow: [ROLES.TMO],
+    },
+    {
+      prefix: "/admin/categories",
+      allow: [ROLES.TMO],
+    },
+    {
+      prefix: "/admin/classrooms",
+      allow: [],
     },
     {
       prefix: "/admin/courses",
       match: /^\/admin\/courses\/?$/,
-      allow: [ROLES.ADMIN, ROLES.TMO, ROLES.SME],
+      allow: [ROLES.TMO],
+    },
+    {
+      prefix: "/admin/courses/new",
+      match: /^\/admin\/courses\/new\/?$/,
+      allow: [ROLES.TMO],
     },
     {
       prefix: "/admin/courses",
       match: /^\/admin\/courses\/[^/]+\/preview(?:\/|$)/,
-      allow: [ROLES.ADMIN, ROLES.TMO, ROLES.SME],
+      allow: [ROLES.TMO, ROLES.SME],
     },
     {
       prefix: "/admin/courses",
       match: /\/admin\/courses\/[^/]+\/modules\/[^/]+\/questions(?:\/|$)/,
-      allow: [ROLES.ADMIN, ROLES.SME, ROLES.TRAINER],
+      allow: [ROLES.TMO, ROLES.SME, ROLES.TRAINER],
     },
     {
       prefix: "/admin/courses",
-      allow: [ROLES.ADMIN, ROLES.SME],
+      match: /\/admin\/courses\/[^/]+\/(?:content|lessons)(?:\/|$)/,
+      allow: [ROLES.TMO, ROLES.SME, ROLES.TRAINER],
+    },
+    {
+      prefix: "/admin/courses",
+      allow: [ROLES.TMO, ROLES.SME],
     },
     {
       prefix: "/admin",
-      allow: [ROLES.ADMIN, ROLES.SME],
+      allow: [ROLES.ADMIN],
     },
     {
       prefix: "/staff/courses",
@@ -101,11 +120,11 @@ export function isPathAllowedForRole(pathname, role) {
     },
     {
       prefix: "/staff",
-      allow: [ROLES.ADMIN, ROLES.TRAINER, ROLES.SME],
+      allow: [ROLES.TRAINER, ROLES.SME, ROLES.TMO],
     },
     {
       prefix: "/trainer",
-      allow: [ROLES.ADMIN, ROLES.TRAINER],
+      allow: [ROLES.TRAINER],
     },
     {
       prefix: "/learning",

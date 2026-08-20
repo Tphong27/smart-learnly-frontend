@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useLocation, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { classroomService } from "../services/classroomService";
 import { createTrainerLessonService } from "../services/trainerLessonService";
 import { createTrainerQuizService } from "../services/trainerQuizService";
@@ -9,23 +9,18 @@ import { ROLES } from "@/shared/constants/roles";
 import { getCurrentRole } from "@/shared/utils/auth";
 
 /**
- * Lesson editor dùng chung cho class curriculum của Trainer, TMO và Admin.
- * Audit tab bị ẩn; quiz và flashcard dùng các endpoint giới hạn theo class,
- * còn import flashcard dùng staging API có kiểm tra quyền sở hữu class lesson.
+ * Lesson editor cho class curriculum của Trainer (và TMO xem nếu được mở route).
+ * Audit tab bị ẩn; quiz và flashcard dùng endpoint theo class.
+ * Classrooms chỉ còn không gian /staff — không còn /admin/classrooms.
  *
  * courseId is required so QuestionBankImportPanel can list banks of the
  * parent course (trainer imports existing bank questions, does not author banks).
  */
 export default function TrainerLessonDetailPage() {
   const { classId, lessonId } = useParams();
-  const location = useLocation();
   const currentRole = getCurrentRole();
-  const classroomBasePath = location.pathname.startsWith("/admin/")
-    ? "/admin/classrooms"
-    : "/staff/classrooms";
-  const courseBasePath = location.pathname.startsWith("/admin/")
-    ? "/admin/courses"
-    : "/staff/courses";
+  const classroomBasePath = "/staff/classrooms";
+  const courseBasePath = "/staff/courses";
   const [courseId, setCourseId] = useState(null);
   const [loadError, setLoadError] = useState("");
 

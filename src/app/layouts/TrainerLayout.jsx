@@ -14,15 +14,16 @@ import {
 import "./TrainerLayout.css";
 
 const STAFF_TABS = [
+    // TMO: lifecycle khóa học, taxonomy, commerce, lớp
     {
         label: "Category Management",
         to: "/admin/categories",
-        roles: [ROLES.SME],
+        roles: [ROLES.TMO],
     },
     {
         label: "Course Management",
         to: "/admin/courses",
-        roles: [ROLES.SME, ROLES.TMO],
+        roles: [ROLES.TMO],
     },
     {
         label: "Transactions",
@@ -34,7 +35,13 @@ const STAFF_TABS = [
         to: "/staff/classrooms",
         roles: [ROLES.TMO],
     },
-];
+    // SME: chỉ soạn nội dung curriculum (không lifecycle/admin courses)
+    {
+        label: "Course Content",
+        to: "/staff/courses",
+        roles: [ROLES.SME],
+    },
+]
 
 /** Xác định các trang nhân sự cần hiển thị phần giới thiệu của workspace. */
 function isStaffPage(pathname) {
@@ -67,8 +74,10 @@ export function TrainerLayout({ children }) {
     const normalizedRole = normalizeRole(user.role);
     const workspaceDescription =
         normalizedRole === ROLES.TMO
-            ? "Manage transactions and classrooms, and review courses in read-only mode."
-            : "Manage your courses, classrooms, and training materials.";
+            ? "Manage courses, categories, transactions, and classrooms."
+            : normalizedRole === ROLES.SME
+              ? "Author course curriculum, questions, and lesson content."
+              : "Manage your courses, classrooms, and training materials.";
 
     const visibleTabs = STAFF_TABS.filter((tab) =>
         isRoleAllowed(normalizedRole, tab.roles),

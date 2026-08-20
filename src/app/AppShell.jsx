@@ -164,7 +164,7 @@ const appRoutes = [
             {
                 element: (
                     <RoleGuard
-                        allowedRoles={[ROLES.ADMIN, ROLES.TMO, ROLES.SME]}
+                        allowedRoles={[ROLES.TMO, ROLES.SME]}
                     />
                 ),
                 children: [

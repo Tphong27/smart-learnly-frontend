@@ -1,19 +1,6 @@
 import apiClient from "@/services/api-client";
 import { unwrapApiData as unwrap } from "@/services/api-response";
 
-// Chuẩn hóa page audit log để màn hình lịch sử dùng cùng cấu trúc với list khác.
-function normalizePage(payload) {
-  const data = unwrap(payload);
-  const items = data?.content ?? data?.items ?? data?.data ?? [];
-  return {
-    items: Array.isArray(items) ? items : [],
-    page: Number(data?.page ?? data?.number ?? 0),
-    size: Number(data?.size ?? 12),
-    totalElements: Number(data?.totalElements ?? data?.total ?? items.length ?? 0),
-    totalPages: Number(data?.totalPages ?? 1),
-  };
-}
-
 // Tải một file multipart lên endpoint content và trả metadata file.
 async function uploadFile(path, file) {
   const formData = new FormData();
@@ -116,13 +103,5 @@ export const courseContentService = {
     const response = await apiClient.get(`/admin/sections/${sectionId}/lessons`);
     const data = unwrap(response);
     return Array.isArray(data) ? data : data?.items || data?.content || [];
-  },
-
-  // Tải lịch sử audit của lesson theo phân trang.
-  async getLessonAuditLogs(lessonId, page = 0, size = 50) {
-    const response = await apiClient.get("/admin/audit-logs", {
-      params: { targetType: "LESSON", targetId: lessonId, page, size },
-    });
-    return normalizePage(response);
   },
 };

@@ -44,7 +44,7 @@ export function ClassDetailPage({
   const isTmo = userRole === ROLES.TMO;
   const isClassManager = canManageClasses(userRole);
   const canOpenClassCurriculum = isTrainer || isClassManager;
-  const canEditClassCurriculum = isTrainer || userRole === ROLES.ADMIN;
+  const canEditClassCurriculum = isTrainer;
 
   const [classData, setClassData] = useState(null);
   const [searchParams, setSearchParams] = useSearchParams();

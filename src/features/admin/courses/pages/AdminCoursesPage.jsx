@@ -315,15 +315,14 @@ export function AdminCoursesPage() {
     const isSme = currentRole === ROLES.SME;
     const isTmo = currentRole === ROLES.TMO;
     const isAssignedOnlyRole = isTrainer || isSme;
-    const canManageCourses = currentRole === ROLES.ADMIN;
+    const canManageCourses = isTmo;
 
     const isStaffRoute = location.pathname.startsWith("/staff/");
     const courseBasePath = isStaffRoute ? "/staff/courses" : "/admin/courses";
     const previewReturnPath = isStaffRoute
         ? "/staff/courses"
         : "/admin/courses";
-    const classroomsBasePath =
-        currentRole === ROLES.ADMIN ? "/admin/classrooms" : "/staff/classrooms";
+    const classroomsBasePath = "/staff/classrooms";
     const canViewClasses = canViewClassRooms(currentRole);
     const canCreate = canManageCourses;
     const canDelete = canManageCourses;

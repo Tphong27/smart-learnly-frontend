@@ -172,7 +172,7 @@ function getStaffRoutes() {
       children: [
         {
           element: (
-            <RoleGuard allowedRoles={[ROLES.TRAINER, ROLES.ADMIN]} />
+            <RoleGuard allowedRoles={[ROLES.TRAINER]} />
           ),
           children: [
             {

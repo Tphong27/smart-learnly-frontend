@@ -16,8 +16,9 @@ export function questionTypeLabel(type) {
 
 /** Cho biết người dùng hiện tại có quyền tạo hoặc sửa question bank hay không. */
 export function canWriteQuestionBank() {
-  const role = getCurrentUser()?.role;
-  return role === "ADMIN" || role === "SME";
+  const role = String(getCurrentUser()?.role || "").toLowerCase();
+  // Khớp BE CourseModuleQuestion write: chỉ SME (không ADMIN/TMO/TRAINER).
+  return role === "sme";
 }
 
 /** Tạo một answer rỗng với thứ tự và trạng thái đúng mặc định. */

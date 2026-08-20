@@ -19,7 +19,6 @@ import {
   IconButton,
   LoadingState,
   Table,
-  Tabs,
   useToast,
 } from "@/shared/components/ui";
 import { StatusBadge } from "@/shared/components/status";
@@ -28,7 +27,6 @@ import {
   sanitizeAnswerHtml,
   sanitizeQuestionHtml,
 } from "@/shared/utils/htmlSanitizer";
-import { auditLogService } from "@/services";
 import { questionBankService } from "@/features/admin/question-bank";
 import { courseAdminService, courseContentService } from "@/features/course";
 import { formatDate } from "@/shared/utils/formatters";
@@ -82,13 +80,6 @@ export function AdminQuestionBankDetailPage() {
   const [questionFormModal, setQuestionFormModal] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
   const [restoreModalOpen, setRestoreModalOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState("questions");
-  const [activity, setActivity] = useState([]);
-  const [activityLoading, setActivityLoading] = useState(false);
-  const [activityError, setActivityError] = useState(null);
-  const [activityTotalItems, setActivityTotalItems] = useState(0);
-  const [activityPage, setActivityPage] = useState(0);
-  const ACTIVITY_PAGE_SIZE = 10;
 
   /** Đặt lại toàn bộ bộ lọc câu hỏi và quay về trang đầu. */
   function clearQuestionFilters() {
@@ -97,44 +88,6 @@ export function AdminQuestionBankDetailPage() {
     setStatus("all");
     setPage(0);
   }
-
-  useEffect(() => {
-    if (isCourseQuestionsMode || activeTab !== "activity" || !bankId) return;
-    let cancelled = false;
-    (async () => {
-      setActivityLoading(true);
-      setActivityError(null);
-      try {
-        const data = await auditLogService.list({
-          targetType: "QUESTION_BANK",
-          targetId: bankId,
-          page: activityPage,
-          size: ACTIVITY_PAGE_SIZE,
-        });
-        if (cancelled) return;
-        setActivity(data.items || []);
-        setActivityTotalItems(data.totalItems || 0);
-      } catch (err) {
-        if (!cancelled) {
-          const message = err?.message || "Could not load activity.";
-          setActivityError(message);
-          toast.error(message);
-        }
-      } finally {
-        if (!cancelled) setActivityLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [
-    activeTab,
-    bankId,
-    isCourseQuestionsMode,
-    activityPage,
-    refreshKey,
-    toast,
-  ]);
 
   useEffect(() => {
     let cancelled = false;
@@ -424,17 +377,6 @@ export function AdminQuestionBankDetailPage() {
         </section>
       )}
 
-      <Tabs
-        className="admin-card admin-card--flush question-bank-detail__tabs"
-        ariaLabel="Detail sections"
-        value={activeTab}
-        items={[
-          { value: "questions", label: "Questions", count: pageInfo.totalItems },
-          ...(!isCourseQuestionsMode ? [{ value: "activity", label: "Activity" }] : []),
-        ]}
-        onChange={setActiveTab}
-      />
-
       {importOpen && (
         <QuestionImportModal
           variant="inline"
@@ -447,30 +389,29 @@ export function AdminQuestionBankDetailPage() {
         />
       )}
 
-      {activeTab === "questions" && (
-        <section className="admin-card admin-card--flush admin-card--filterable">
-          <QuestionBankFilters
-            search={search}
-            type={type}
-            status={status}
-            onSearchChange={(nextSearch) => {
-              setSearch(nextSearch);
-              setPage(0);
-            }}
-            onApply={(nextFilters) => {
-              setType(nextFilters.type);
-              setStatus(nextFilters.status);
-              setPage(0);
-            }}
-            onClear={clearQuestionFilters}
-          />
-          {loading ? (
-            <LoadingState label="Loading questions..." />
-          ) : error ? (
-            <ErrorState title="Could not load questions" description={error} />
-          ) : items.length === 0 ? (
-            <EmptyState title="No questions match the current filters" />
-          ) : isCourseQuestionsMode ? (
+      <section className="admin-card admin-card--flush admin-card--filterable">
+        <QuestionBankFilters
+          search={search}
+          type={type}
+          status={status}
+          onSearchChange={(nextSearch) => {
+            setSearch(nextSearch);
+            setPage(0);
+          }}
+          onApply={(nextFilters) => {
+            setType(nextFilters.type);
+            setStatus(nextFilters.status);
+            setPage(0);
+          }}
+          onClear={clearQuestionFilters}
+        />
+        {loading ? (
+          <LoadingState label="Loading questions..." />
+        ) : error ? (
+          <ErrorState title="Could not load questions" description={error} />
+        ) : items.length === 0 ? (
+          <EmptyState title="No questions match the current filters" />
+        ) : isCourseQuestionsMode ? (
             <Table
               className="admin-table-wrapper"
               tableClassName="admin-table"
@@ -779,67 +720,6 @@ export function AdminQuestionBankDetailPage() {
             }}
           />
         </section>
-      )}
-
-      {activeTab === "activity" && (
-        <section
-          className="admin-card admin-card--flush"
-          aria-label="Bank activity log"
-        >
-          <div className="admin-toolbar question-bank-detail__meta">
-            <strong>Activity log</strong>
-            <span className="question-bank-detail__activity-count">
-              {activityTotalItems} events
-            </span>
-          </div>
-          {activityLoading ? (
-            <LoadingState label="Loading activity..." />
-          ) : activityError ? (
-            <ErrorState title="Could not load activity" description={activityError} />
-          ) : activity.length === 0 ? (
-            <EmptyState title="No activity recorded for this bank yet" />
-          ) : (
-            <>
-              <Table tableClassName="admin-table" ariaLabel="Question bank activity">
-                <thead>
-                  <tr>
-                    <th>When</th>
-                    <th>Actor</th>
-                    <th>Action</th>
-                    <th>Result</th>
-                    <th>Summary</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {activity.map((log) => (
-                    <tr key={log.auditLogId || log.id}>
-                      <td data-label="When">{formatDate(log.occurredAt)}</td>
-                      <td data-label="Actor">{log.actorEmail || "System"}</td>
-                      <td data-label="Action">
-                        <StatusBadge status="draft" label={log.action} tone="neutral" />
-                      </td>
-                      <td data-label="Result">{log.result}</td>
-                      <td data-label="Summary">{log.summary || log.actorRole || ""}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </Table>
-              <Pagination
-                page={activityPage + 1}
-                totalPages={Math.max(
-                  1,
-                  Math.ceil(activityTotalItems / ACTIVITY_PAGE_SIZE),
-                )}
-                totalItems={activityTotalItems}
-                size={ACTIVITY_PAGE_SIZE}
-                disabled={activityLoading}
-                ariaLabel="Question bank activity pagination"
-                onPageChange={(nextPage) => setActivityPage(nextPage - 1)}
-              />
-            </>
-          )}
-        </section>
-      )}
 
       <AdminQuestionFormModal
         open={Boolean(questionFormModal)}
