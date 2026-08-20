@@ -243,7 +243,6 @@ function ProfileInfoForm({ profile, onSaved }) {
             <header className="profile-panel__header">
                 <div>
                     <h2 id="profile-info-heading">Personal information</h2>
-                    <p>Update your display name, avatar and contact details.</p>
                 </div>
             </header>
 
@@ -373,10 +372,6 @@ function ChangePasswordForm() {
             <header className="profile-panel__header">
                 <div>
                     <h2 id="profile-password-heading">Change Password</h2>
-                    <p>
-                        Choose a strong, unique password to protect your
-                        account.
-                    </p>
                 </div>
             </header>
 
@@ -437,7 +432,6 @@ function ChangePasswordForm() {
                 />
 
                 <div className="profile-form__actions profile-form__actions--password">
-                    <p>Your password is encrypted and never displayed.</p>
                     <Button type="submit" loading={isSubmitting}>
                         Update password
                     </Button>
