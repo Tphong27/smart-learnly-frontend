@@ -42,7 +42,6 @@ export function AppLayout() {
         if (path.includes("/users-management")) return "Users & Roles";
         if (path.includes("/categories")) return "Categories";
         if (path.includes("/transactions")) return "Transactions";
-        if (path.includes("/audit-log")) return "System Activity Log";
         if (path.includes("/settings")) return "System Settings";
         if (path.includes("/classrooms")) return "Classrooms";
         if (path.includes("/course-quizzes")) return "Course quiz";

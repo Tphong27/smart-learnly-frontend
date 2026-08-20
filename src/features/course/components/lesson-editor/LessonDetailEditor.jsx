@@ -99,7 +99,7 @@ export function LessonDetailEditor({ context }) {
         lessonId,
         backPath,
         services,
-        features = { audit: true, quizManager: true, flashcard: true },
+        features = { audit: false, quizManager: true, flashcard: true },
     } = context || {};
 
     const navigate = useNavigate();

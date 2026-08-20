@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import {
-  ArrowLeft,
   BarChart3,
   CheckSquare,
   ClipboardList,
@@ -98,7 +97,6 @@ function formatDate(value) {
 
 /** Hiển thị danh sách assignment và khóa toàn bộ mutation đối với TMO. */
 export function StaffAssessmentListPage({ variant = "assignment" }) {
-  const navigate = useNavigate();
   const toast = useToast();
   const [searchParams] = useSearchParams();
   const currentUser = useMemo(() => getCurrentUser(), []);
@@ -108,13 +106,6 @@ export function StaffAssessmentListPage({ variant = "assignment" }) {
   const courseId = searchParams.get("courseId") || "";
   const classId = searchParams.get("classId") || "";
   const basePath = isAssignmentMode ? "/staff/assignments" : "/staff/tests";
-  const backPath = isAssignmentMode
-    ? classId
-      ? `/staff/classrooms/${classId}/workspace`
-      : courseId
-        ? `/staff/courses/${courseId}/content`
-        : "/staff/courses"
-    : "/staff/courses";
   const pathParams = new URLSearchParams();
   if (courseId) pathParams.set("courseId", courseId);
   if (classId) pathParams.set("classId", classId);
@@ -370,11 +361,6 @@ export function StaffAssessmentListPage({ variant = "assignment" }) {
           </div>
         </div>
         <div className="ft-toolbar ft-staff-hero__actions">
-          <IconButton
-            icon={<ArrowLeft size={18} />}
-            label="Back"
-            onClick={() => navigate(backPath)}
-          />
           <IconButton
             icon={<RefreshCw size={18} className={loading ? "ft-spin" : ""} />}
             label="Refresh"

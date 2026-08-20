@@ -2,7 +2,6 @@ import { RoleGuard } from "./RoleGuard";
 import { ROLES } from "@/shared/constants/roles";
 import { AppLayout } from "@/app/layouts/AppLayout";
 import {
-  AdminAuditLogPage,
   AdminCategoriesPage,
   AdminCoursesPage,
   AdminCourseFormPage,
@@ -16,59 +15,50 @@ import {
 import { TransactionsPage } from "@/features/checkout";
 import AdminCourseContentPage from "@/features/course/pages/AdminCourseContentPage";
 import AdminLessonDetailPage from "@/features/course/pages/AdminLessonDetailPage";
-import {
-  ClassAnalyticsRedirect,
-  ClassDetailPage,
-  EditionClassPage,
-  StaffClassListPage,
-  TrainerLessonDetailPage,
-} from "@/features/classroom";
 
-/** Khai báo route quản trị và các guard theo quyền nghiệp vụ. */
+/** Khai báo route quản trị: ADMIN = hệ thống; TMO/SME = tài nguyên. */
 function getAdminRoutes() {
   return [
     {
       path: "/admin",
       element: <AppLayout />,
       children: [
+        // TMO: lifecycle khóa học + taxonomy + commerce ops
         {
-          element: (
-            <RoleGuard allowedRoles={[ROLES.ADMIN, ROLES.TMO, ROLES.SME]} />
-          ),
+          element: <RoleGuard allowedRoles={[ROLES.TMO]} />,
           children: [
             {
               path: "courses",
               element: <AdminCoursesPage />,
             },
-          ],
-        },
-        {
-          element: <RoleGuard allowedRoles={[ROLES.ADMIN, ROLES.SME]} />,
-          children: [
             {
-              path: "courses/:courseId",
+              path: "courses/new",
               element: <AdminCourseFormPage />,
             },
             {
               path: "categories",
               element: <AdminCategoriesPage />,
             },
+            {
+              path: "transactions",
+              element: <TransactionsPage mode="management" />,
+            },
           ],
         },
+        // TMO + SME: form chi tiết khóa học (SME read-only ở page)
         {
-          element: <RoleGuard allowedRoles={[ROLES.ADMIN]} />,
+          element: <RoleGuard allowedRoles={[ROLES.TMO, ROLES.SME]} />,
           children: [
             {
-              path: "courses/new",
+              path: "courses/:courseId",
               element: <AdminCourseFormPage />,
             },
           ],
         },
+        // Nội dung khóa học / question bank — không còn ADMIN
         {
           element: (
-            <RoleGuard
-              allowedRoles={[ROLES.ADMIN, ROLES.SME, ROLES.TRAINER]}
-            />
+            <RoleGuard allowedRoles={[ROLES.TMO, ROLES.SME, ROLES.TRAINER]} />
           ),
           children: [
             {
@@ -86,7 +76,7 @@ function getAdminRoutes() {
           ],
         },
         {
-          element: <RoleGuard allowedRoles={[ROLES.ADMIN, ROLES.SME]} />,
+          element: <RoleGuard allowedRoles={[ROLES.SME, ROLES.TMO]} />,
           children: [
             // Giữ deep-link cũ để notification đã lưu không rơi vào trang lỗi quyền.
             {
@@ -103,56 +93,18 @@ function getAdminRoutes() {
             },
           ],
         },
+        // ADMIN only: dashboard hệ thống, user admin, settings
         {
           element: <RoleGuard allowedRoles={[ROLES.ADMIN]} />,
           children: [
             { path: "dashboard", element: <AdminDashboardPage /> },
             {
-              path: "classrooms",
-              element: <StaffClassListPage routeBase="/admin/classrooms" />,
-            },
-            {
-              path: "classrooms/create",
-              element: <EditionClassPage routeBase="/admin/classrooms" />,
-            },
-            {
-              path: "classrooms/:classId/edit",
-              element: <EditionClassPage routeBase="/admin/classrooms" />,
-            },
-            {
-              path: "classrooms/:classId/analytics",
-              element: <ClassAnalyticsRedirect routeBase="/admin/classrooms" />,
-            },
-            {
-              path: "classrooms/:classId/workspace",
-              element: (
-                <ClassDetailPage
-                  routeBase="/admin/classrooms"
-                  coursePreviewBase="/admin/courses"
-                />
-              ),
-            },
-            {
-              path: "classrooms/:classId/curriculum/lessons/:lessonId",
-              element: <TrainerLessonDetailPage />,
-            },
-            {
               path: "users-management",
               element: <AdminUsersPage />,
             },
-            { path: "audit-log", element: <AdminAuditLogPage /> },
             {
               path: "settings",
               element: <AdminSystemSettingsPage />,
-            },
-          ],
-        },
-        {
-          element: <RoleGuard allowedRoles={[ROLES.ADMIN, ROLES.TMO]} />,
-          children: [
-            {
-              path: "transactions",
-              element: <TransactionsPage mode="management" />,
             },
           ],
         },

@@ -18,7 +18,7 @@ import {
     AUDIT_DOMAINS,
     AUDIT_RESULTS,
     auditLogService,
-} from "@/services";
+} from "@/services/audit-log.service";
 import {
     formatDateTime,
     formatLabel,

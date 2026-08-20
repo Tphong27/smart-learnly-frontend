@@ -69,7 +69,7 @@ function resolveBackendActionRoute(safeActionUrl, notification) {
 
   const orderId = getPathId(pathname, "/orders/");
   if (orderId) {
-    if (role === "ADMIN" || role === "TMO") return "/admin/transactions";
+    if (role === "TMO") return "/admin/transactions";
     return "/learning/transactions";
   }
 
@@ -80,7 +80,6 @@ function resolveBackendActionRoute(safeActionUrl, notification) {
 
   const classId = getPathId(pathname, "/classes/");
   if (classId) {
-    if (role === "ADMIN") return `/admin/classrooms/${classId}/workspace`;
     if (role === "TRAINER" || role === "TMO") {
       return `/staff/classrooms/${classId}/workspace`;
     }
