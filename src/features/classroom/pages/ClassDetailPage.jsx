@@ -5,7 +5,6 @@ import {
   Ban,
   BarChart3,
   BookOpen,
-  ClipboardCheck,
   ClipboardList,
   Info,
   Loader,
@@ -355,16 +354,6 @@ export function ClassDetailPage({
                   Test
                 </Button>
               </>
-            )}
-
-            {isTrainer && (
-              <Button
-                type="button"
-                leftIcon={<ClipboardCheck size={17} />}
-                onClick={openTests}
-              >
-                Test
-              </Button>
             )}
 
             {canCancelClass && (
