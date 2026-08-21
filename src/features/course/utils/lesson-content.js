@@ -18,6 +18,34 @@ export function isPdfUrl(url, contentType) {
 // Định dạng tài liệu được phép cho main material của lesson (type PDF).
 export const MATERIAL_DOC_EXTENSIONS = ["pdf", "doc", "docx"];
 
+// Định dạng tài liệu bổ sung (resources) — khớp whitelist backend LessonFileUploadService.
+export const RESOURCE_EXTENSIONS = [
+    "pdf",
+    "doc",
+    "docx",
+    "ppt",
+    "pptx",
+    "xls",
+    "xlsx",
+    "csv",
+    "txt",
+    "zip",
+    "png",
+    "jpg",
+    "jpeg",
+    "webp",
+    "gif",
+    "mp3",
+    "m4a",
+    "wav",
+    "mp4",
+];
+
+export const MAX_RESOURCE_FILE_SIZE_BYTES = 20 * 1024 * 1024;
+
+export const RESOURCE_ACCEPT =
+    ".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.csv,.txt,.zip,.png,.jpg,.jpeg,.webp,.gif,.mp3,.m4a,.wav,.mp4";
+
 // Lấy phần mở rộng (lowercase, không dấu chấm) từ tên file hoặc URL.
 export function getFileExtension(nameOrUrl) {
     if (!nameOrUrl) return "";
