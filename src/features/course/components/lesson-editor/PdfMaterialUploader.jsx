@@ -53,7 +53,11 @@ export function PdfMaterialUploader({
     setPendingFile(file);
     try {
       const uploaded = await courseContentService.uploadLessonMaterial(file);
-      onAttachmentUrlChange?.(uploaded.url);
+      const uploadedUrl = uploaded?.url || uploaded?.data?.url;
+      if (!uploadedUrl) {
+        throw new Error("Upload succeeded but no file URL was returned");
+      }
+      onAttachmentUrlChange?.(uploadedUrl);
       emitToast(`Successfully uploaded ${file.name}!`, "success");
     } catch (error) {
       setPendingFile(null);

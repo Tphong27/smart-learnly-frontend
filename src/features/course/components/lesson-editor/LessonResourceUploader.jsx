@@ -1,6 +1,12 @@
 import { useRef, useState } from "react";
 import { CloudUpload, FileText, Loader2, Trash2 } from "lucide-react";
 import { courseContentService } from "../../services/courseContentService";
+import {
+  RESOURCE_ACCEPT,
+  RESOURCE_EXTENSIONS,
+  MAX_RESOURCE_FILE_SIZE_BYTES,
+  getFileExtension,
+} from "@/features/course/utils/lesson-content";
 import "./lesson-material-uploader.css";
 
 const MAX_RESOURCES = 10;
@@ -22,6 +28,17 @@ function displayResourceName(resource) {
     getFileNameFromUrl(resource.url) ||
     "Document"
   );
+}
+
+function validateResourceFile(file) {
+  const extension = getFileExtension(file?.name);
+  if (!RESOURCE_EXTENSIONS.includes(extension)) {
+    return `"${file?.name || "File"}" is not a supported resource type`;
+  }
+  if (file.size > MAX_RESOURCE_FILE_SIZE_BYTES) {
+    return `"${file.name}" is too large. Maximum size is 20MB`;
+  }
+  return null;
 }
 
 /**
@@ -57,15 +74,53 @@ export function LessonResourceUploader({
       );
       return;
     }
+
     const selectedFiles = Array.from(files).slice(0, availableSlots);
+    const validFiles = [];
+
+    for (const file of selectedFiles) {
+      const validationError = validateResourceFile(file);
+      if (validationError) {
+        emitToast(validationError, "error");
+        continue;
+      }
+      validFiles.push(file);
+    }
+
+    if (validFiles.length === 0) {
+      return;
+    }
+
     setBusy(true);
     try {
       const uploadResults = await Promise.allSettled(
-        selectedFiles.map((file) => courseContentService.uploadLessonResource(file)),
+        validFiles.map((file) =>
+          courseContentService.uploadLessonResource(file),
+        ),
       );
-      const uploaded = uploadResults
-        .filter((result) => result.status === "fulfilled")
-        .map((result) => result.value);
+
+      const uploaded = [];
+      const failureMessages = [];
+
+      uploadResults.forEach((result, index) => {
+        if (result.status === "fulfilled" && result.value?.url) {
+          uploaded.push(result.value);
+          return;
+        }
+
+        const fileLabel = validFiles[index]?.name || `File ${index + 1}`;
+        if (result.status === "fulfilled") {
+          failureMessages.push(`${fileLabel}: invalid upload response`);
+          return;
+        }
+
+        const reasonMessage =
+          result.reason?.message ||
+          result.reason?.error?.message ||
+          "upload failed";
+        failureMessages.push(`${fileLabel}: ${reasonMessage}`);
+      });
+
       if (uploaded.length > 0) {
         onResourcesChange?.([...resources, ...uploaded]);
         emitToast(
@@ -73,14 +128,14 @@ export function LessonResourceUploader({
           "success",
         );
       }
-      const failed = uploadResults.filter(
-        (result) => result.status === "rejected",
-      );
-      if (failed.length > 0) {
-        emitToast(
-          `${failed.length} file(s) failed to upload`,
-          "error",
-        );
+
+      if (failureMessages.length > 0) {
+        const preview = failureMessages.slice(0, 2).join(" · ");
+        const extra =
+          failureMessages.length > 2
+            ? ` (+${failureMessages.length - 2} more)`
+            : "";
+        emitToast(preview + extra, "error");
       }
     } finally {
       setBusy(false);
@@ -160,7 +215,7 @@ export function LessonResourceUploader({
               ? "Please wait while your files are uploaded."
               : resources.length >= maxResources
                 ? `Remove a file before adding another. Maximum ${maxResources} files.`
-                : "Drag files here or browse your device"}
+                : "Drag files here or browse your device · max 20MB each"}
           </span>
         </span>
       </button>
@@ -172,6 +227,7 @@ export function LessonResourceUploader({
         disabled={uploading || disabled || resources.length >= maxResources}
         className="sl-material-visually-hidden"
         tabIndex={-1}
+        accept={RESOURCE_ACCEPT}
       />
 
       {resources.length > 0 && (
