@@ -536,7 +536,7 @@ export function StaffAssessmentCreatePage({ variant = "assignment" }) {
                     <IconButton
                         icon={<ArrowLeft size={18} />}
                         label="Back"
-                        onClick={() => navigate(-1)}
+                        onClick={() => navigate(returnPath)}
                     />
                     <Button
                         leftIcon={<Save size={16} />}
