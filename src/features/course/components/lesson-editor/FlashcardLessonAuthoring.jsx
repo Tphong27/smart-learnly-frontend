@@ -102,6 +102,7 @@ export function FlashcardLessonAuthoring({
                         showToast={showToast}
                         flashcardService={services.flashcardService}
                         stagingEnabled={features.flashcardStaging !== false}
+                        onContentChange={markChanged}
                     />
                 ) : (
                     <>
