@@ -9,7 +9,7 @@ function normalizePage(payload) {
     items: Array.isArray(items) ? items : [],
     page: Number(data?.page ?? data?.number ?? 0),
     size: Number(data?.size ?? 12),
-    totalElements: Number(data?.totalElements ?? data?.total ?? items.length ?? 0),
+    totalElements: Number(data?.totalElements ?? data?.totalItems ?? data?.total ?? items.length ?? 0),
     totalPages: Number(data?.totalPages ?? 1),
   };
 }
