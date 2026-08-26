@@ -200,7 +200,10 @@ export function LearningWorkspacePage({
             resolvedClassId,
           );
         } else if (mode === "guest") {
-          result = await learningService.getPreviewContent(courseId);
+          result = await learningService.getPreviewContent(
+            courseId,
+            requestedClassId,
+          );
         } else if (mode === "admin-preview") {
           result = await learningService.getAdminPreviewContent(
             courseId,
@@ -441,6 +444,13 @@ export function LearningWorkspacePage({
   const handleGoToNextLesson = useCallback(async () => {
     if (!nextLesson || !activeLesson) return;
 
+    const readOnlyPreview = mode !== "student" || previewMode;
+
+    if (readOnlyPreview) {
+      handleSelectLesson(nextLesson);
+      return;
+    }
+
     const currentLessonId = getLessonId(activeLesson);
     const currentLessonType = String(
       activeLesson?.lessonType || "",
@@ -477,11 +487,21 @@ export function LearningWorkspacePage({
     completedLessonIds,
     handleSelectLesson,
     markLessonCompleted,
+    mode,
     nextLesson,
+    previewMode,
   ]);
 
   const handleStartQuiz = useCallback(
     (lesson) => {
+      if (mode !== "student" || previewMode) {
+        setError(
+          "This test is available for preview only. " +
+            "Enroll in the class to answer questions and submit.",
+        );
+        return;
+      }
+
       const testId = lesson?.testId || lesson?.test_id;
       const lessonId = getLessonId(lesson);
       if (!testId) {
@@ -508,7 +528,14 @@ export function LearningWorkspacePage({
         },
       );
     },
-    [effectiveClassId, location.pathname, navigate, searchParams],
+    [
+      effectiveClassId,
+      location.pathname,
+      mode,
+      navigate,
+      previewMode,
+      searchParams,
+    ],
   );
 
   if (loading) {
@@ -578,10 +605,14 @@ export function LearningWorkspacePage({
     "ASSIGNMENT",
   ].includes(String(activeLesson?.lessonType || "").toUpperCase());
 
+  const readOnlyPreview = mode !== "student" || previewMode;
+
   const canGoNext =
     !!nextLesson &&
-    (!isActivityLesson || completedLessonIds.has(currentLessonId));
-
+    (readOnlyPreview ||
+      !isActivityLesson ||
+      completedLessonIds.has(currentLessonId));
+      
   const progressPercent =
     totalLessonCount > 0
       ? Math.round((completedCount / totalLessonCount) * 100)
@@ -758,7 +789,7 @@ export function LearningWorkspacePage({
                   onNextLesson={handleGoToNextLesson}
                   canGoNext={canGoNext}
                   isActivityLesson={isActivityLesson}
-                  workspaceMode={mode}
+                  workspaceMode={previewMode ? "guest" : mode}
                   flashcardProgressUserKey={flashcardProgressUserKey}
                   flashcardPositionUserKey={workspaceUserKey}
                   onQuizCompleted={markLessonCompleted}
