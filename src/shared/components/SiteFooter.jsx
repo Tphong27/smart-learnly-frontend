@@ -27,18 +27,28 @@ const footerGroups = [
       { label: "Log in", to: "/login" },
     ],
   },
+  {
+    title: "Legal",
+    links: [
+      { label: "Privacy policy", to: "/privacy-policy" },
+      { label: "Terms of service", to: "/terms-of-service" },
+    ],
+  },
 ];
 
+/** Render mot lien ket footer theo dung loai route noi bo hoac anchor public. */
 function FooterLink({ link }) {
   if (link.to) return <Link to={link.to}>{link.label}</Link>;
   return <a href={link.href}>{link.label}</a>;
 }
 
+/** Hien thi footer public voi dieu huong va lien ket phap ly can cho OAuth. */
 export function SiteFooter() {
   const currentYear = new Date().getFullYear();
   const [showBackToTop, setShowBackToTop] = useState(false);
 
   useEffect(() => {
+    /** Cap nhat trang thai nut quay ve dau trang dua tren vi tri cuon. */
     function updateBackToTopVisibility() {
       setShowBackToTop(window.scrollY > 480);
     }
@@ -48,6 +58,7 @@ export function SiteFooter() {
     return () => window.removeEventListener("scroll", updateBackToTopVisibility);
   }, []);
 
+  /** Dua nguoi dung ve dau trang va ton trong tuy chon giam chuyen dong. */
   function scrollToTop() {
     const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     window.scrollTo({ top: 0, left: 0, behavior: reduceMotion ? "auto" : "smooth" });
