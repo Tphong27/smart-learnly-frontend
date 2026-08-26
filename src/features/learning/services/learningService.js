@@ -11,11 +11,25 @@ export const learningService = {
   },
 
   /** Lấy nội dung xem trước công khai của khóa học. */
-  async getPreviewContent(courseId) {
+  // async getPreviewContent(courseId) {
+  //   const response = await apiClient.get(`/courses/${courseId}/preview`, {
+  //     skipAuthorization: true,
+  //     skipAuthRedirect: true,
+  //   });
+  //   return unwrap(response);
+  // },
+
+  /**
+   * Lấy curriculum preview công khai.
+   * Có classId thì backend sẽ ưu tiên curriculum đã publish của class.
+   */
+  async getPreviewContent(courseId, classId = null) {
     const response = await apiClient.get(`/courses/${courseId}/preview`, {
+      params: classId ? { classId } : {},
       skipAuthorization: true,
       skipAuthRedirect: true,
     });
+
     return unwrap(response);
   },
 
@@ -43,7 +57,6 @@ export const learningService = {
     return unwrap(response);
   },
 
-
   async getLessonFlashcards(courseId, lessonId, classId) {
     const response = await apiClient.get(
       `/learning/courses/${courseId}/lessons/${lessonId}/flashcards`,
@@ -53,7 +66,6 @@ export const learningService = {
     );
     return unwrap(response);
   },
-
 
   async submitFlashcardProgress(cardId, result, classId) {
     const response = await apiClient.post(
