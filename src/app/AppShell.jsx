@@ -20,6 +20,7 @@ import {
 } from "@/shared/constants/roles";
 import { getCurrentUser } from "@/services";
 import { HomePage } from "../features/home/HomePage";
+import { LegalPage } from "@/features/legal";
 import { CourseDetailPage} from "../features/course";
 import { LearningWorkspacePage } from "@/features/learning";
 import {
@@ -110,6 +111,22 @@ const appRoutes = [
         element: (
             <PublicLayout>
                 <VerifyEmailPage />
+            </PublicLayout>
+        ),
+    },
+    {
+        path: "/privacy-policy",
+        element: (
+            <PublicLayout>
+                <LegalPage type="privacy" />
+            </PublicLayout>
+        ),
+    },
+    {
+        path: "/terms-of-service",
+        element: (
+            <PublicLayout>
+                <LegalPage type="terms" />
             </PublicLayout>
         ),
     },
@@ -251,6 +268,8 @@ function RoutedApp() {
     const { pathname } = useLocation();
     const showPublicFooter =
         pathname === "/" ||
+        pathname === "/privacy-policy" ||
+        pathname === "/terms-of-service" ||
         /^\/courses\/[^/]+$/.test(pathname) ||
         /^\/trainers\/[^/]+$/.test(pathname);
 
