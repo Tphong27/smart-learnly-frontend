@@ -25,6 +25,7 @@ import {
   TrainerLessonDetailPage,
   ClassAnalyticsRedirect,
 } from "@/features/classroom";
+import { CourseQuestionLegacyRedirect } from "./CourseQuestionLegacyRedirect";
 
 /** Khai báo route staff theo từng nhóm quyền Trainer, TMO và SME. */
 function getStaffRoutes() {
@@ -64,7 +65,7 @@ function getStaffRoutes() {
             },
             {
               path: "courses/:courseId/modules/:moduleId/questions",
-              element: <AdminQuestionBankDetailPage />,
+              element: <CourseQuestionLegacyRedirect basePath="/staff" />,
             },
             {
               path: "courses/:courseId/questions/ai-drafts/new",
@@ -76,11 +77,21 @@ function getStaffRoutes() {
             },
             {
               path: "courses/:courseId/modules/:moduleId/questions/ai-drafts/new",
-              element: <AdminAiQuestionDraftCreatePage />,
+              element: (
+                <CourseQuestionLegacyRedirect
+                  basePath="/staff"
+                  destination="ai-create"
+                />
+              ),
             },
             {
               path: "courses/:courseId/modules/:moduleId/questions/ai-drafts/:batchId",
-              element: <AdminAiQuestionDraftReviewPage />,
+              element: (
+                <CourseQuestionLegacyRedirect
+                  basePath="/staff"
+                  destination="ai-review"
+                />
+              ),
             },
             {
               path: "courses/:courseId/edit",

@@ -89,20 +89,6 @@ export function normalizeQuestionMedia(question) {
   };
 }
 
-/** Chuẩn hóa nhiều dạng response curriculum thành danh sách module dùng cho select. */
-export function normalizeModules(payload) {
-  const root = payload?.data ?? payload;
-  const items = Array.isArray(root)
-    ? root
-    : (root?.items ?? root?.content ?? root?.sections ?? []);
-  return items
-    .map((item, index) => ({
-      id: item.moduleId || item.sectionId || item.id,
-      title: item.title || item.name || `Module ${index + 1}`,
-    }))
-    .filter((item) => item.id);
-}
-
 /** Tạo media item tạm thời cho file chưa upload. */
 export function pendingMediaItem(file, mediaType, previewUrl) {
   return {

@@ -67,7 +67,6 @@ export function buildDraftPayload(values) {
     version: values.version,
     questionText: values.questionText.trim(),
     explanation: values.explanation.trim() || null,
-    moduleId: values.moduleId || null,
     answers: sortedDraftAnswers(values).map((answer, index) => ({
       answerText: String(answer.answerText || "").trim(),
       correct: Boolean(answer.correct),

@@ -833,6 +833,10 @@
   background: #f0fdf4;
 }
 
+.question-authoring-answer--fill {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
 .question-authoring-answer__choice {
   display: grid;
   justify-items: center;

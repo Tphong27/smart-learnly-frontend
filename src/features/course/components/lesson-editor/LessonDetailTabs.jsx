@@ -66,7 +66,6 @@ export function LessonDetailTabs({ context }) {
           {showImport && (
             <CourseQuestionImportPanel
               courseId={context?.courseId}
-              moduleId={bridge.moduleId}
               existingQuestions={bridge.existingQuestions}
               onImport={bridge.import}
               onClose={closeQuestionList}

@@ -80,7 +80,7 @@ function formatImportCorrectAnswer(row) {
 }
 
 /** Dieu phoi import question tu file, JSON hoac anh OCR va preview truoc khi luu. */
-export function QuestionImportModal({ open, variant = 'modal', bank, courseId, moduleId, existingQuestions = [], onClose, onImported }) {
+export function QuestionImportModal({ open, variant = 'modal', bank, courseId, existingQuestions = [], onClose, onImported }) {
   const toast = useToast()
   const isCourseQuestionsMode = Boolean(courseId)
   const fileInputRef = useRef(null)
@@ -556,9 +556,8 @@ export function QuestionImportModal({ open, variant = 'modal', bank, courseId, m
       const payload = buildImportPayload(bankId, validRows)
       const importSource = importMode === IMPORT_MODES.JSON ? 'json_import' : 'excel_import'
       const response = courseId
-        ? await questionBankService.importModuleQuestionsBatch(
+        ? await questionBankService.importCourseQuestionsBatch(
             courseId,
-            moduleId,
             payload.rows,
             importSource,
           )
@@ -991,7 +990,6 @@ export function QuestionImportModal({ open, variant = 'modal', bank, courseId, m
       title={`Edit imported question - row ${parsedRows[editRowIndex]?.rowNumber || editRowIndex + 1}`}
       bankId={bank?.bankId || bank?.id}
       courseId={courseId}
-      moduleId={moduleId}
       initialValues={editQuestionFormState?.values}
       initialMedia={editQuestionFormState?.media}
       draftMode

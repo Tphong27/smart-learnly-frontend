@@ -65,7 +65,7 @@ describe("question import schema", () => {
     expect(rows[0].data.moduleId).toBeNull();
   });
 
-  it("accepts optional module fields from imported JSON", () => {
+  it("ignores legacy module fields when building a course-wide payload", () => {
     const parsed = parseImportJson(JSON.stringify([{
       questionText: "Question for the active module",
       questionType: "single_choice",
@@ -79,7 +79,7 @@ describe("question import schema", () => {
 
     expect(rows[0].data.moduleId).toBe("11111111-1111-1111-1111-111111111111");
     expect(rows[0].raw.module_id).toBe("11111111-1111-1111-1111-111111111111");
-    expect(payload.rows[0].moduleId).toBe("11111111-1111-1111-1111-111111111111");
+    expect(payload.rows[0]).not.toHaveProperty("moduleId");
     expect(rows[0].errors).toEqual([]);
   });
 

@@ -119,7 +119,6 @@ export function normalizeAiDraft(draft, index = 0) {
     questionType: normalizeStatus(draft?.questionType || draft?.type || "multiple_choice"),
     questionText: draft?.questionText || draft?.text || "",
     explanation: draft?.explanation || "",
-    moduleId: draft?.moduleId || "",
     version: Number(draft?.version ?? draft?.revision ?? 0),
     answers: answers.map((answer, answerIndex) => ({
       ...answer,
