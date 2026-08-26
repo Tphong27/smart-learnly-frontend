@@ -208,7 +208,9 @@ export function StudentTakeTestPage({
         location.state?.classId || searchParams.get("classId") || null;
     // Staff "View as trainee": giữ kết quả inline, không nhảy sang attempt detail (shell role sai).
     const isStaffPreview =
-        getCurrentRole() === ROLES.SME || getCurrentRole() === ROLES.TRAINER;
+        getCurrentRole() === ROLES.TMO ||
+        getCurrentRole() === ROLES.SME ||
+        getCurrentRole() === ROLES.TRAINER;
 
     const accessCode =
         location.state?.accessCode ||
