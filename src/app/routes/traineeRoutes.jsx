@@ -44,6 +44,20 @@ function getTraineeRoutes() {
       ),
       children: [{ index: true, element: <TraineeTestTakePage /> }],
     },
+    // Attempt detail must allow SME/TRAINER (view-as-trainee submit flow).
+    // Lifted out of TRAINEE-only /learning parent so staff do not hit FE 403.
+    {
+      path: "/learning/course-quizzes/attempts/:testId/:attemptId",
+      element: (
+        <RoleGuard allowedRoles={[ROLES.TRAINEE, ROLES.SME, ROLES.TRAINER]} />
+      ),
+      children: [
+        {
+          element: <TraineeLayout />,
+          children: [{ index: true, element: <TestAttemptDetailPage /> }],
+        },
+      ],
+    },
     {
       path: "/learning",
       element: <RoleGuard allowedRoles={[ROLES.TRAINEE]} />,
@@ -88,7 +102,6 @@ function getTraineeRoutes() {
             },
             {
               path: "tests/attempts/:testId/:attemptId",
-              path: "course-quizzes/attempts/:testId/:attemptId",
               element: <TestAttemptDetailPage />,
             },
             {
@@ -98,10 +111,6 @@ function getTraineeRoutes() {
             {
               path: "assignments",
               element: <TraineeAssessmentListPage variant="assignment" />,
-            },
-            {
-              path: "tests",
-              element: <TraineeAssessmentListPage variant="test" />,
             },
           ],
         },

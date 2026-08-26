@@ -578,7 +578,7 @@ export function OpeningScheduleDetailPage() {
               </div>
               {classItem.courseId && (
                 <Link
-                  to={`/courses/${classItem.courseSlug || classItem.courseId}/preview`}
+                  to={`/courses/${classItem.courseId}/preview`}
                   className="opening-detail__back"
                 >
                   Open full preview

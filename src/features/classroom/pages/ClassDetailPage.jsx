@@ -92,23 +92,6 @@ export function ClassDetailPage({
     );
   }
 
-  /** Mở question bank theo module master từ section curriculum lớp. */
-  function handleManageModuleQuestions(section) {
-    const courseId = classData?.courseId;
-    const moduleId = section?.moduleId;
-    if (!courseId) {
-      toast.error("Course ID was not found for this class.");
-      return;
-    }
-    if (!moduleId) {
-      toast.error("Module ID was not found. Please reload the curriculum.");
-      return;
-    }
-    navigate(
-      `${coursePreviewBase}/${courseId}/modules/${moduleId}/questions?returnTo=${encodeURIComponent(curriculumReturnTo)}`,
-    );
-  }
-
   function reloadClass() {
     setLoading(true);
     setError("");
@@ -544,9 +527,6 @@ export function ClassDetailPage({
               onCreateLesson={classCurriculum.createLesson}
               showManageQuestions={canEditClassCurriculum}
               onManageQuestions={classCurriculum.manageLessonQuestions}
-              onManageModuleQuestions={
-                canEditClassCurriculum ? handleManageModuleQuestions : undefined
-              }
               openLessonEditorOnCreate
               onDeleteLesson={classCurriculum.deleteLesson}
               onReorderLessons={classCurriculum.reorderLessons}

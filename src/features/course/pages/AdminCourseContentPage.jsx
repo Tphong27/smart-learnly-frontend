@@ -45,22 +45,6 @@ export default function AdminCourseContentPage() {
         [emitToast],
     );
 
-    /** Mở Question List bằng ID module chuẩn thay vì ID snapshot curriculum section. */
-    const handleManageModuleQuestions = useCallback(
-        (section) => {
-            const moduleId = section?.moduleId;
-            if (!moduleId) {
-                showToast({
-                    type: "error",
-                    message: "Module ID was not found. Please reload the curriculum.",
-                });
-                return;
-            }
-            navigate(`${courseBasePath}/${courseId}/modules/${moduleId}/questions`);
-        },
-        [courseBasePath, courseId, navigate, showToast],
-    );
-
     const [sections, setSections] = useState([]);
     const [sectionLessons, setSectionLessons] = useState({});
     const [loadingSections, setLoadingSections] = useState(true);
@@ -481,7 +465,6 @@ export default function AdminCourseContentPage() {
                 onDeleteSection={handleDeleteSection}
                 onReorderSections={handleReorderSections}
                 onCreateLesson={handleCreateLesson}
-                onManageModuleQuestions={handleManageModuleQuestions}
                 openLessonEditorOnCreate
                 onDeleteLesson={handleDeleteLesson}
                 onReorderLessons={handleReorderLessons}

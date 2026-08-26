@@ -25,9 +25,8 @@ export function LessonDetailTabs({ context }) {
   /** Đóng modal sau khi hủy hoặc import thành công. */
   const closeQuestionList = useCallback(() => setShowImport(false), []);
   const courseBasePath = context?.courseBasePath || "/admin/courses";
-  const questionListPath = bridge.moduleId
-    ? `${courseBasePath}/${context?.courseId}/modules/${bridge.moduleId}/questions`
-    : `${courseBasePath}/${context?.courseId}/content`;
+  // Question bank is always course-wide (not per-module) from lesson UI.
+  const questionListPath = `${courseBasePath}/${context?.courseId}/questions`;
 
   const contextValue = useMemo(
     () => ({ bridge, setBridge, openQuestionList }),

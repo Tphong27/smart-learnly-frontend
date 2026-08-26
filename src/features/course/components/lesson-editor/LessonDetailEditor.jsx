@@ -1228,7 +1228,6 @@ export function LessonDetailEditor({ context }) {
                         flashcardSetReady={
                             Boolean(lessonId) &&
                             (persistedLessonType === "FLASHCARD" ||
-                                lessonType === "FLASHCARD" ||
                                 Boolean(initialFlashcardSetId))
                         }
                         defaultFlashcardModuleId={defaultFlashcardModuleId}
@@ -1428,7 +1427,15 @@ export function LessonDetailEditor({ context }) {
                                     <section className="sl-video-lesson-form__section">
                                         <div className="sl-video-lesson-form__details-heading">
                                             <div>
-                                                <h2>Description</h2>
+                                                <h2>
+                                                    Description{" "}
+                                                    <span
+                                                        className="required"
+                                                        aria-hidden="true"
+                                                    >
+                                                        *
+                                                    </span>
+                                                </h2>
                                             </div>
                                             {lessonType === "VIDEO" && (
                                                 <Button
