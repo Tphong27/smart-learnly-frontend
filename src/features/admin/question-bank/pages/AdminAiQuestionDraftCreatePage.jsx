@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, Edit2, FileText, Sparkles, Upload, X } from "lucide-react";
 import {
     Alert,
@@ -9,12 +9,13 @@ import {
     IconButton,
     Input,
     LoadingState,
+    Select,
     Table,
     Textarea,
     useToast,
 } from "@/shared/components/ui";
 import { questionBankService } from "@/features/admin/question-bank";
-import { courseAdminService } from "@/features/course";
+import { courseAdminService, courseContentService } from "@/features/course";
 import {
     canDraftBeSelected,
     normalizeAiBatch,
@@ -26,6 +27,7 @@ import {
 } from "../utils/aiQuestionDraftReview";
 import {
     canWriteQuestionBank,
+    normalizeModules,
     QUESTION_TYPE_OPTIONS,
 } from "../utils/questionFormUtils";
 import { AiQuestionDraftEditModal } from "../components/AiQuestionDraftEditModal";
@@ -79,12 +81,23 @@ function mergeDraftBatches(batches) {
 /** Trang tạo AI question draft và chỉ hiển thị draft được generate trong phiên hiện tại. */
 export function AdminAiQuestionDraftCreatePage() {
     const { bankId, courseId, moduleId: routeModuleId } = useParams();
+    const location = useLocation();
     const navigate = useNavigate();
     const toast = useToast();
     const writable = canWriteQuestionBank();
     const isCourseQuestionsMode = Boolean(courseId);
+    const courseBasePath = location.pathname.startsWith("/staff/")
+        ? "/staff/courses"
+        : "/admin/courses";
+    const courseQuestionsPath = routeModuleId
+        ? `${courseBasePath}/${courseId}/modules/${routeModuleId}/questions`
+        : `${courseBasePath}/${courseId}/questions`;
     const fileInputRef = useRef(null);
     const [bank, setBank] = useState(null);
+    const [modules, setModules] = useState([]);
+    const [selectedModuleId, setSelectedModuleId] = useState(
+        routeModuleId || "",
+    );
     const [capabilities, setCapabilities] = useState(DEFAULT_CAPABILITIES);
     const [draftBatches, setDraftBatches] = useState([]);
     const [selectedDraftKeys, setSelectedDraftKeys] = useState([]);
@@ -96,7 +109,7 @@ export function AdminAiQuestionDraftCreatePage() {
         "true_false",
     ]);
     const [requestedCount, setRequestedCount] = useState(10);
-    const moduleId = routeModuleId || "";
+    const moduleId = routeModuleId || selectedModuleId;
     const [language, setLanguage] = useState("en");
     const [generationInstruction, setGenerationInstruction] = useState("");
     const [loading, setLoading] = useState(true);
@@ -120,10 +133,14 @@ export function AdminAiQuestionDraftCreatePage() {
             setDraftBatches([]);
             setSelectedDraftKeys([]);
             try {
-                const bankData = isCourseQuestionsMode
-                    ? await courseAdminService.get(courseId)
-                    : await questionBankService.getBank(bankId);
+                const [bankData, moduleData] = isCourseQuestionsMode
+                    ? await Promise.all([
+                          courseAdminService.get(courseId),
+                          courseContentService.getCourseContent(courseId),
+                      ])
+                    : [await questionBankService.getBank(bankId), []];
                 if (cancelled) return;
+                const normalizedModules = normalizeModules(moduleData);
                 const normalizedBank = isCourseQuestionsMode
                     ? {
                           id: null,
@@ -142,6 +159,15 @@ export function AdminAiQuestionDraftCreatePage() {
                           .catch(() => DEFAULT_CAPABILITIES));
                 if (cancelled) return;
                 setBank(normalizedBank);
+                setModules(normalizedModules);
+                setSelectedModuleId((current) => {
+                    if (routeModuleId) return String(routeModuleId);
+                    if (current) return current;
+                    if (normalizedModules.length === 1) {
+                        return String(normalizedModules[0].id);
+                    }
+                    return "";
+                });
                 setLanguage("en");
                 setCapabilities({
                     ...DEFAULT_CAPABILITIES,
@@ -162,7 +188,7 @@ export function AdminAiQuestionDraftCreatePage() {
         return () => {
             cancelled = true;
         };
-    }, [bankId, courseId, isCourseQuestionsMode]);
+    }, [bankId, courseId, isCourseQuestionsMode, routeModuleId]);
 
     const draftRows = useMemo(
         () =>
@@ -187,6 +213,7 @@ export function AdminAiQuestionDraftCreatePage() {
     );
 
     const selectedSourcesCount = files.length;
+    const hasSourceMaterial = selectedSourcesCount > 0;
     const trimmedInstruction = generationInstruction.trim();
     const instructionTooLong = trimmedInstruction.length > 2000;
     const sourceCountExceeded =
@@ -196,6 +223,7 @@ export function AdminAiQuestionDraftCreatePage() {
         !loading &&
         !submitting &&
         !sourceCountExceeded &&
+        hasSourceMaterial &&
         fileErrors.length === 0 &&
         questionTypes.length > 0 &&
         Boolean(moduleId) &&
@@ -298,6 +326,12 @@ export function AdminAiQuestionDraftCreatePage() {
     /** Tao batch AI moi va giu nguoi dung o lai man hinh danh sach draft. */
     async function handleSubmit(event) {
         event.preventDefault();
+        if (!hasSourceMaterial) {
+            setError(
+                "Add at least one source material file before generating questions.",
+            );
+            return;
+        }
         if (!canSubmit) {
             setError(
                 "Complete the generation setup before creating draft questions.",
@@ -438,13 +472,13 @@ export function AdminAiQuestionDraftCreatePage() {
                 <section className="admin-card">
                     <h1 className="admin-page__title">Unauthorized</h1>
                     <p className="ai-drafts-muted">
-                        Only Admin and SME users can generate AI question
+                        Only SME and Trainer users can generate AI question
                         drafts.
                     </p>
                     <Button
                         to={
                             isCourseQuestionsMode
-                                ? `/admin/courses/${courseId}/modules/${routeModuleId}/questions`
+                                ? courseQuestionsPath
                                 : "/admin/question-banks"
                         }
                         variant="secondary"
@@ -466,7 +500,7 @@ export function AdminAiQuestionDraftCreatePage() {
 
     const bankArchived = !isCourseQuestionsMode && bank?.status === "archived";
     const backPath = isCourseQuestionsMode
-        ? `/admin/courses/${courseId}/modules/${routeModuleId}/questions`
+        ? courseQuestionsPath
         : `/admin/question-banks/${bankId}`;
     const allSelectableSelected =
         selectableDraftRows.length > 0 &&
@@ -505,6 +539,32 @@ export function AdminAiQuestionDraftCreatePage() {
             )}
 
             <form className="ai-generating-form" onSubmit={handleSubmit}>
+                {isCourseQuestionsMode && !routeModuleId && (
+                    <Select
+                        id="ai-draft-module"
+                        label="Target module"
+                        required
+                        value={selectedModuleId}
+                        onChange={(event) =>
+                            setSelectedModuleId(event.target.value)
+                        }
+                        disabled={submitting || modules.length === 0}
+                        error={
+                            modules.length === 0
+                                ? "This course has no module available for AI questions."
+                                : undefined
+                        }
+                        helperText="Choose the module that will receive the generated questions."
+                    >
+                        <option value="">Select a module</option>
+                        {modules.map((module) => (
+                            <option key={module.id} value={module.id}>
+                                {module.title}
+                            </option>
+                        ))}
+                    </Select>
+                )}
+
                 <div className="ai-generating-field">
                     <Textarea
                         id="ai-draft-instruction"
@@ -539,9 +599,17 @@ export function AdminAiQuestionDraftCreatePage() {
 
                 <details className="admin-card ai-source-collapsible">
                     <summary>
-                        <span>Source material</span>
+                        <span>
+                            Source material
+                            <span
+                                className="input-field__required"
+                                aria-hidden="true"
+                            >
+                                *
+                            </span>
+                        </span>
                         <strong>
-                            Optional - {selectedSourcesCount}/
+                            Required - {selectedSourcesCount}/
                             {capabilities.maxSourcesPerBatch} selected
                         </strong>
                     </summary>
@@ -634,9 +702,10 @@ export function AdminAiQuestionDraftCreatePage() {
                         )}
 
                         <Alert tone="info">
-                            Source material is optional. Uploaded document
-                            originals are stored for audit and can be downloaded
-                            after review authorization.
+                            Add at least one source material file to enable AI
+                            Generate. Uploaded document originals are stored for
+                            audit and can be downloaded after review
+                            authorization.
                         </Alert>
                     </div>
                 </details>
