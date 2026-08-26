@@ -608,7 +608,7 @@ export function AdminCoursesPage() {
                     <th>Course</th>
                     <th>Category</th>
                     <th>Level</th>
-                    <th>Price</th>
+                    {/* <th>Price</th> */}
                     <th>Status</th>
                     <th>Updated</th>
                     <th>
@@ -641,7 +641,7 @@ export function AdminCoursesPage() {
                           {formatLevel(course.level)}
                         </span>
                       </td>
-                      <td data-label="Price">
+                      {/* <td data-label="Price">
                         <div className="course-management__meta-cell">
                           <strong>
                             {formatPrice(
@@ -657,7 +657,7 @@ export function AdminCoursesPage() {
                                 : "Standard price"}
                           </span>
                         </div>
-                      </td>
+                      </td> */}
                       <td data-label="Status">
                         <CourseStatusBadge status={course.status} />
                       </td>
