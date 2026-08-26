@@ -1551,6 +1551,14 @@
   color: #334155;
 }
 
+.ft-result-panel__hint {
+  margin: 10px 0 0;
+  max-width: 42rem;
+  color: #64748b;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
 .ft-result-panel__score {
   display: grid;
   min-width: 110px;

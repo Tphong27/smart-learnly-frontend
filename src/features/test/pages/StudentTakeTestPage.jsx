@@ -23,6 +23,8 @@ import {
     sanitizeLessonHtml,
     sanitizeQuestionHtml,
 } from "@/shared/utils/htmlSanitizer";
+import { ROLES } from "@/shared/constants/roles";
+import { getCurrentRole } from "@/shared/utils/auth";
 import { StatusBadge } from "@/shared/components/status";
 import {
     Alert,
@@ -204,6 +206,9 @@ export function StudentTakeTestPage({
     const resultKicker = location.state?.resultKicker || defaultResultKicker;
     const contextClassId =
         location.state?.classId || searchParams.get("classId") || null;
+    // Staff "View as trainee": giữ kết quả inline, không nhảy sang attempt detail (shell role sai).
+    const isStaffPreview =
+        getCurrentRole() === ROLES.SME || getCurrentRole() === ROLES.TRAINER;
 
     const accessCode =
         location.state?.accessCode ||
@@ -306,6 +311,13 @@ export function StudentTakeTestPage({
                         contextClassId,
                     );
                     if (isCompletedAttempt(started.status)) {
+                        if (isStaffPreview) {
+                            setTestData(test);
+                            setAttempt(started);
+                            setCompletedResult(started);
+                            setLoading(false);
+                            return;
+                        }
                         openAttemptResult(started, { replace: true });
                         return;
                     }
@@ -411,6 +423,7 @@ export function StudentTakeTestPage({
     }, [
         accessCode,
         id,
+        isStaffPreview,
         normalizedType,
         openAttemptResult,
         publishMonitor,
@@ -547,7 +560,10 @@ export function StudentTakeTestPage({
                         classId: contextClassId,
                     });
                     setCompletedResult(result);
-                    openAttemptResult(result);
+                    // Trainee: sang trang chi tiết attempt. Staff preview: ở lại panel kết quả inline.
+                    if (!isStaffPreview) {
+                        openAttemptResult(result);
+                    }
                     publishMonitor({
                         attemptId: attempt.id,
                         status: result.status,
@@ -600,6 +616,7 @@ export function StudentTakeTestPage({
             file,
             id,
             ensureEssayStarted,
+            isStaffPreview,
             navigate,
             effectiveListPath,
             normalizedType,
@@ -754,7 +771,11 @@ export function StudentTakeTestPage({
                         <Eye size={24} />
                     </div>
                     <div className="ft-result-panel__body">
-                        <span className="ft-page-kicker">{resultKicker}</span>
+                        <span className="ft-page-kicker">
+                            {isStaffPreview
+                                ? "Staff preview result"
+                                : resultKicker}
+                        </span>
                         <h2>
                             {testData?.title ||
                                 testData?.name ||
@@ -764,17 +785,29 @@ export function StudentTakeTestPage({
                             status={completedResult.status || "SUBMITTED"}
                             tone="success"
                         />
+                        {isStaffPreview ? (
+                            <p className="ft-result-panel__hint">
+                                Preview attempt finished. Score below is for
+                                this staff preview only — it is not a trainee
+                                enrollment result.
+                            </p>
+                        ) : null}
                     </div>
                     <div className="ft-result-panel__score">
                         <span>Score</span>
                         <strong>{completedResult.score ?? "--"}</strong>
+                        {completedResult.percentage != null ? (
+                            <small>{completedResult.percentage}%</small>
+                        ) : null}
                     </div>
                     <div className="ft-result-panel__actions">
                         <Button
                             leftIcon={<ArrowLeft size={16} />}
-                            onClick={() => navigate(listPath)}
+                            onClick={() => navigate(effectiveListPath)}
                         >
-                            Back to list
+                            {isStaffPreview
+                                ? "Back to course preview"
+                                : "Back to list"}
                         </Button>
                     </div>
                 </div>

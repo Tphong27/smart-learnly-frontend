@@ -579,7 +579,7 @@ export function OpeningScheduleDetailPage() {
               {classItem.courseId && (
                 <Link
                   to={`/courses/${classItem.courseId}/preview`}
-                  className="opening-detail__back"
+                  className="opening-detail__preview-link"
                 >
                   Open full preview
                 </Link>

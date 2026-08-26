@@ -774,9 +774,38 @@ a.opening-detail__chip:hover {
 
 .opening-detail__section-head {
   display: flex;
-  align-items: flex-end;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
+}
+
+/* CTA trong section head — không reuse .opening-detail__back (margin âm cho hero). */
+.opening-detail__preview-link {
+  flex-shrink: 0;
+  align-self: center;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border: 1px solid var(--primary, #5624d0);
+  border-radius: 999px;
+  background: #ffffff;
+  color: var(--primary-dark, #401b9c);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.4;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.opening-detail__preview-link:hover {
+  background: rgba(86, 36, 208, 0.06);
+  text-decoration: none;
+}
+
+.opening-detail__preview-link:focus-visible {
+  outline: 3px solid rgba(86, 36, 208, 0.28);
+  outline-offset: 3px;
 }
 
 .opening-detail__section-title {

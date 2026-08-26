@@ -1428,9 +1428,9 @@ export function LessonDetailEditor({ context }) {
                                         <div className="sl-video-lesson-form__details-heading">
                                             <div>
                                                 <h2>
-                                                    Description{" "}
+                                                    Description
                                                     <span
-                                                        className="required"
+                                                        className="input-field__required"
                                                         aria-hidden="true"
                                                     >
                                                         *
@@ -1558,8 +1558,11 @@ export function LessonDetailEditor({ context }) {
                                         <div className="sl-cm-lesson-editor__description-field">
                                             <div>
                                                 <label className="sl-cm-lesson-editor__field-label">
-                                                    Description{" "}
-                                                    <span className="required">
+                                                    Description
+                                                    <span
+                                                        className="input-field__required"
+                                                        aria-hidden="true"
+                                                    >
                                                         *
                                                     </span>
                                                 </label>
@@ -1625,7 +1628,10 @@ export function LessonDetailEditor({ context }) {
                                                         <div className="sl-cm-lesson-editor__assignment-file-field">
                                                             <span className="sl-cm-lesson-editor__assignment-file-label">
                                                                 Assignment File{" "}
-                                                                <span className="required">
+                                                                <span
+                                                                    className="input-field__required"
+                                                                    aria-hidden="true"
+                                                                >
                                                                     *
                                                                 </span>
                                                             </span>

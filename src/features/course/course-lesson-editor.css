@@ -349,6 +349,12 @@
     font-weight: 700;
 }
 
+.sl-cm-lesson-editor__assignment-file-label .input-field__required,
+.sl-cm-lesson-editor__assignment-file-label .required {
+    margin-left: 4px;
+    color: var(--sl-danger);
+}
+
 .sl-cm-lesson-editor__assignment-file-selected {
     display: flex;
     align-items: center;
@@ -762,6 +768,13 @@
     color: var(--sl-ink);
     font-size: 20px;
     line-height: 1.35;
+}
+
+/* Required marker giống Title (Input.input-field__required). */
+.sl-video-lesson-form__details-heading h2 .input-field__required,
+.sl-cm-lesson-editor__field-label .input-field__required {
+    margin-left: 4px;
+    color: var(--sl-danger);
 }
 
 .sl-video-lesson-form__type {
