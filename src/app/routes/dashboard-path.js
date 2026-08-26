@@ -103,7 +103,7 @@ export function isPathAllowedForRole(pathname, role) {
     },
     {
       prefix: "/staff/courses",
-      allow: [ROLES.TRAINER, ROLES.SME],
+      allow: [ROLES.TRAINER, ROLES.TMO, ROLES.SME],
     },
     {
       prefix: "/staff/assignments",
@@ -112,7 +112,7 @@ export function isPathAllowedForRole(pathname, role) {
     },
     {
       prefix: "/staff/assignments",
-      allow: [ROLES.TRAINER, ROLES.SME],
+      allow: [ROLES.TRAINER, ROLES.TMO, ROLES.SME],
     },
     {
       prefix: "/staff/classrooms",

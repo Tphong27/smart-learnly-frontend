@@ -18,7 +18,7 @@ export function questionTypeLabel(type) {
 export function canWriteQuestionBank() {
   const role = String(getCurrentUser()?.role || "").toLowerCase();
   // Khớp BE question write: SME và TRAINER (không TMO/ADMIN).
-  return role === "sme" || role === "trainer";
+  return role === "sme" || role === "trainer" || role === "tmo";
 }
 
 /** Tạo một answer rỗng với thứ tự và trạng thái đúng mặc định. */

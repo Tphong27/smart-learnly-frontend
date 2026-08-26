@@ -50,7 +50,7 @@ function getStaffRoutes() {
         },
         // Trainer và SME giữ các công cụ authoring và assignment mutation.
         {
-          element: <RoleGuard allowedRoles={[ROLES.TRAINER, ROLES.SME]} />,
+          element: <RoleGuard allowedRoles={[ROLES.TRAINER, ROLES.TMO, ROLES.SME]} />,
           children: [
             {
               path: "courses/:courseId",
