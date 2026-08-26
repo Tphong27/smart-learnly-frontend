@@ -13,6 +13,8 @@ import {
   AdminCoursesPage,
   AdminCourseFormPage,
   AdminQuestionBankDetailPage,
+  AdminAiQuestionDraftCreatePage,
+  AdminAiQuestionDraftReviewPage,
 } from "@/features/admin";
 import AdminCourseContentPage from "@/features/course/pages/AdminCourseContentPage";
 import AdminLessonDetailPage from "@/features/course/pages/AdminLessonDetailPage";
@@ -63,6 +65,22 @@ function getStaffRoutes() {
             {
               path: "courses/:courseId/modules/:moduleId/questions",
               element: <AdminQuestionBankDetailPage />,
+            },
+            {
+              path: "courses/:courseId/questions/ai-drafts/new",
+              element: <AdminAiQuestionDraftCreatePage />,
+            },
+            {
+              path: "courses/:courseId/questions/ai-drafts/:batchId",
+              element: <AdminAiQuestionDraftReviewPage />,
+            },
+            {
+              path: "courses/:courseId/modules/:moduleId/questions/ai-drafts/new",
+              element: <AdminAiQuestionDraftCreatePage />,
+            },
+            {
+              path: "courses/:courseId/modules/:moduleId/questions/ai-drafts/:batchId",
+              element: <AdminAiQuestionDraftReviewPage />,
             },
             {
               path: "courses/:courseId/edit",

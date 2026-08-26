@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import {
     ArrowLeft,
     CheckCircle2,
@@ -52,10 +52,14 @@ import "./question-bank.css";
 /** Hiển thị batch AI draft để reviewer kiểm tra evidence, chỉnh sửa và xuất bản. */
 export function AdminAiQuestionDraftReviewPage() {
     const { bankId, courseId, moduleId, batchId } = useParams();
+    const location = useLocation();
     const navigate = useNavigate();
     const toast = useToast();
     const writable = canWriteQuestionBank();
     const isCourseQuestionsMode = Boolean(courseId);
+    const courseBasePath = location.pathname.startsWith("/staff/")
+        ? "/staff/courses"
+        : "/admin/courses";
     const [bank, setBank] = useState(null);
     const [batch, setBatch] = useState(null);
     const [selectedDraftIds, setSelectedDraftIds] = useState([]);
@@ -72,8 +76,8 @@ export function AdminAiQuestionDraftReviewPage() {
         moduleId || batch?.drafts?.find((draft) => draft.moduleId)?.moduleId;
     const backPath = isCourseQuestionsMode
         ? resolvedModuleId
-            ? `/admin/courses/${courseId}/modules/${resolvedModuleId}/questions`
-            : `/admin/courses/${courseId}/content`
+            ? `${courseBasePath}/${courseId}/modules/${resolvedModuleId}/questions`
+            : `${courseBasePath}/${courseId}/content`
         : `/admin/question-banks/${bankId}`;
 
     /** Nạp batch, question bank và module liên quan; hỗ trợ refresh nền khi polling. */
@@ -134,10 +138,10 @@ export function AdminAiQuestionDraftReviewPage() {
     useEffect(() => {
         if (!courseId || moduleId || !resolvedModuleId) return;
         navigate(
-            `/admin/courses/${courseId}/modules/${resolvedModuleId}/questions/ai-drafts/${batchId}`,
+            `${courseBasePath}/${courseId}/modules/${resolvedModuleId}/questions/ai-drafts/${batchId}`,
             { replace: true },
         );
-    }, [batchId, courseId, moduleId, navigate, resolvedModuleId]);
+    }, [batchId, courseBasePath, courseId, moduleId, navigate, resolvedModuleId]);
 
     useEffect(() => {
         if (!batch || !AI_DRAFT_BATCH_PROCESSING_STATUSES.has(batch.status))
