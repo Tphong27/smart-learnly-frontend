@@ -372,7 +372,7 @@ export function CourseListPage({
     <>
       {showHero && (
         <section className="course-hero course-hero--catalog">
-          <h1>Course Catalog</h1>
+          <h1>Courses</h1>
         </section>
       )}
 

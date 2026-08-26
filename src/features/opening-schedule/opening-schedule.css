@@ -806,6 +806,39 @@ a.opening-detail__chip:hover {
   line-height: 1.5;
 }
 
+.opening-detail__course-overview {
+  display: grid;
+  gap: 10px;
+  padding: 18px 20px;
+  border: 1px solid var(--line, #d1d7dc);
+  border-radius: 4px;
+  background: #ffffff;
+}
+
+.opening-detail__course-title {
+  margin: 0;
+  color: var(--ink, #1c1d1f);
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.opening-detail__course-description {
+  margin: 0;
+  color: var(--muted, #4a5568);
+  font-size: 14px;
+  line-height: 1.65;
+  white-space: pre-wrap;
+}
+
+.opening-detail__preview-layout {
+  margin-top: 4px;
+}
+
+.opening-detail__preview-layout.preview-layout {
+  min-height: 360px;
+}
+
 .opening-detail__information {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

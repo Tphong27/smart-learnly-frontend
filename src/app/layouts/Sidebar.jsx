@@ -5,7 +5,6 @@ import {
   CreditCard,
   FileQuestion,
   FolderTree,
-  GraduationCap,
   Home,
   Layers3,
   Receipt,
@@ -92,12 +91,6 @@ const navItems = [
     label: "Trainee Progress",
     path: "/learning/progress",
     icon: BarChart3,
-    roles: [ROLES.TRAINEE],
-  },
-  {
-    label: "Courses Catalog",
-    path: "/learning/courses",
-    icon: GraduationCap,
     roles: [ROLES.TRAINEE],
   },
   {

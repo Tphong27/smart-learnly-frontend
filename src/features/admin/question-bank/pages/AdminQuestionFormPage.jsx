@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { FileAudio, FileVideo, Image as ImageIcon, Plus, Trash2, X } from "lucide-react";
 import {
   Alert,
@@ -13,7 +13,7 @@ import {
   useToast,
 } from "@/shared/components/ui";
 import { questionBankService } from "@/features/admin/question-bank";
-import { courseAdminService } from "@/features/course";
+import { courseAdminService, courseContentService } from "@/features/course";
 import { isEmptyQuestionHtml, sanitizeQuestionHtml } from "@/shared/utils/htmlSanitizer";
 import { AnswerMediaRow } from "../components/AnswerMediaRow";
 import { QuestionMediaManager } from "../components/QuestionMediaManager";
@@ -27,6 +27,7 @@ import {
   mediaId,
   normalizeAnswerMediaFromResponse,
   normalizeAnswers,
+  normalizeModules,
   normalizeQuestionMedia,
   parseAnswerContent,
   pendingMediaItem,
@@ -42,6 +43,7 @@ const EMPTY_QUESTION_FORM_VALUES = {
   status: "draft",
   explanation: "",
   answers: [],
+  moduleId: "",
 };
 
 /** Chuẩn hóa initial values để cùng một AdminQuestionForm dùng được cho API và import draft. */
@@ -58,6 +60,7 @@ export function AdminQuestionForm({
   bankId: bankIdProp,
   courseId: courseIdProp,
   moduleId: moduleIdProp,
+  modules: modulesProp,
   questionId: questionIdProp,
   initialValues,
   initialMedia,
@@ -69,6 +72,7 @@ export function AdminQuestionForm({
   framed = true,
 }) {
   const params = useParams();
+  const location = useLocation();
   const bankId = bankIdProp ?? params.bankId;
   const courseId = courseIdProp ?? params.courseId;
   const lockedModuleId = moduleIdProp ?? params.moduleId;
@@ -77,12 +81,19 @@ export function AdminQuestionForm({
   const toast = useToast();
   const writable = canWriteQuestionBank();
   const editing = Boolean(questionId);
+  const courseBasePath = location.pathname.startsWith("/staff/")
+    ? "/staff/courses"
+    : "/admin/courses";
   const [bank, setBank] = useState(null);
+  const [modules, setModules] = useState(() => modulesProp || []);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
   const [values, setValues] = useState(() =>
-    createInitialQuestionFormValues(initialValues),
+    createInitialQuestionFormValues({
+      ...initialValues,
+      moduleId: initialValues?.moduleId || lockedModuleId || "",
+    }),
   );
   const pendingPreviewUrls = useRef(new Set());
   const [imageMedia, setImageMedia] = useState(() => initialMedia?.images || []);
@@ -90,6 +101,14 @@ export function AdminQuestionForm({
   const [videoMedia, setVideoMedia] = useState(() => initialMedia?.videos || []);
   const [removedAttachmentIds, setRemovedAttachmentIds] = useState([]);
   const [activeMediaTab, setActiveMediaTab] = useState("image");
+  const needsModulePicker =
+    Boolean(courseId) && !lockedModuleId && !editing && !draftMode;
+
+  useEffect(() => {
+    if (modulesProp?.length) {
+      setModules(modulesProp);
+    }
+  }, [modulesProp]);
 
   useEffect(() => {
     let cancelled = false;
@@ -99,11 +118,13 @@ export function AdminQuestionForm({
       try {
         if (editing) {
           const question = courseId
-            ? await questionBankService.getModuleQuestion(
-                courseId,
-                lockedModuleId,
-                questionId,
-              )
+            ? lockedModuleId
+              ? await questionBankService.getModuleQuestion(
+                  courseId,
+                  lockedModuleId,
+                  questionId,
+                )
+              : await questionBankService.getCourseQuestion(courseId, questionId)
             : await questionBankService.getQuestion(questionId);
           if (cancelled) return;
           const normalizedMedia = normalizeQuestionMedia(question);
@@ -116,6 +137,10 @@ export function AdminQuestionForm({
             questionType: question.questionType || "single_choice",
             status: question.status || "draft",
             explanation: question.explanation || "",
+            moduleId:
+              question.moduleId ||
+              lockedModuleId ||
+              "",
             answers: normalizeAnswers(
               question.questionType || "single_choice",
               (question.answers || []).map((answer, index) => ({
@@ -157,9 +182,20 @@ export function AdminQuestionForm({
                 courseId,
                 name: `${bankData?.title || "Course"} Questions`,
               });
+              setValues((current) => ({
+                ...current,
+                moduleId: lockedModuleId || current.moduleId || "",
+              }));
             } else {
               setBank(bankData);
             }
+          }
+        }
+
+        if (courseId && !modulesProp?.length) {
+          const moduleData = await courseContentService.getCourseContent(courseId);
+          if (!cancelled) {
+            setModules(normalizeModules(moduleData));
           }
         }
       } catch (err) {
@@ -172,14 +208,16 @@ export function AdminQuestionForm({
     return () => {
       cancelled = true;
     };
-  }, [bankId, courseId, editing, lockedModuleId, questionId]);
+  }, [bankId, courseId, editing, lockedModuleId, modulesProp, questionId]);
 
   const returnBankId = useMemo(
     () => bank?.bankId || bank?.id || bankId,
     [bank, bankId],
   );
   const returnPath = courseId
-    ? `/admin/courses/${courseId}/modules/${lockedModuleId}/questions`
+    ? lockedModuleId
+      ? `${courseBasePath}/${courseId}/modules/${lockedModuleId}/questions`
+      : `${courseBasePath}/${courseId}/questions`
     : `/admin/question-banks/${returnBankId}`;
 
   /** Bọc nội dung bằng admin page khi form không nằm trong modal. */
@@ -522,6 +560,11 @@ export function AdminQuestionForm({
       setError(validationError);
       return;
     }
+    const resolvedModuleId = lockedModuleId || values.moduleId || "";
+    if (courseId && !editing && !resolvedModuleId) {
+      setError("Module is required.");
+      return;
+    }
     setSubmitting(true);
     setError(null);
     const cleanExplanation = sanitizeQuestionHtml(values.explanation).trim();
@@ -532,6 +575,7 @@ export function AdminQuestionForm({
     const payload = {
       bankId: courseId ? undefined : returnBankId,
       courseId,
+      moduleId: courseId ? resolvedModuleId || undefined : undefined,
       questionText: sanitizeQuestionHtml(values.questionText).trim(),
       questionType: values.questionType,
       status: values.status,
@@ -546,25 +590,38 @@ export function AdminQuestionForm({
     try {
       let savedQuestion;
       if (editing) {
-        savedQuestion = courseId
-          ? await questionBankService.updateModuleQuestion(
-              courseId,
-              lockedModuleId,
-              questionId,
-              payload,
-            )
-          : await questionBankService.updateQuestion(
-              questionId,
-              payload,
-            );
+        if (!courseId) {
+          savedQuestion = await questionBankService.updateQuestion(
+            questionId,
+            payload,
+          );
+        } else if (lockedModuleId) {
+          savedQuestion = await questionBankService.updateModuleQuestion(
+            courseId,
+            lockedModuleId,
+            questionId,
+            payload,
+          );
+        } else {
+          savedQuestion = await questionBankService.updateCourseQuestion(
+            courseId,
+            questionId,
+            payload,
+          );
+        }
+      } else if (!courseId) {
+        savedQuestion = await questionBankService.createQuestion(payload);
+      } else if (lockedModuleId) {
+        savedQuestion = await questionBankService.createModuleQuestion(
+          courseId,
+          lockedModuleId,
+          payload,
+        );
       } else {
-        savedQuestion = courseId
-          ? await questionBankService.createModuleQuestion(
-              courseId,
-              lockedModuleId,
-              payload,
-            )
-          : await questionBankService.createQuestion(payload);
+        savedQuestion = await questionBankService.createCourseQuestion(
+          courseId,
+          payload,
+        );
       }
       const savedQuestionId =
         savedQuestion?.questionId || savedQuestion?.id || questionId;
@@ -700,6 +757,27 @@ export function AdminQuestionForm({
         <form className="question-authoring-form" onSubmit={handleSubmit}>
           <section className="question-authoring-block question-authoring-block--metadata">
             <div className="question-authoring-meta-grid">
+              {needsModulePicker && (
+                <Select
+                  id="question-module"
+                  label="Module"
+                  required
+                  value={values.moduleId || ""}
+                  onChange={(event) =>
+                    setValues((current) => ({
+                      ...current,
+                      moduleId: event.target.value,
+                    }))
+                  }
+                >
+                  <option value="">Select module</option>
+                  {modules.map((module) => (
+                    <option key={module.id} value={String(module.id)}>
+                      {module.title}
+                    </option>
+                  ))}
+                </Select>
+              )}
               <Select
                   id="question-type"
                   label="Question type"
@@ -947,6 +1025,7 @@ export function AdminQuestionFormModal({
   bankId,
   courseId,
   moduleId,
+  modules,
   questionId,
   initialValues,
   initialMedia,
@@ -970,6 +1049,7 @@ export function AdminQuestionFormModal({
         bankId={bankId}
         courseId={courseId}
         moduleId={moduleId}
+        modules={modules}
         questionId={questionId}
         initialValues={initialValues}
         initialMedia={initialMedia}

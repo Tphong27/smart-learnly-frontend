@@ -925,6 +925,15 @@ export function LessonDetailEditor({ context }) {
     /** Lưu Daily Assignment và gắn bài vào đúng lớp khi thao tác từ workspace Trainer. */
     /** Tạo hoặc cập nhật essay assignment, gồm rubric và instruction file. */
     const saveLessonAssignment = async ({ title: nextTitle, description }) => {
+        const hasInstructionText = !isEmptyLessonHtml(description);
+        const hasInstructionFile = Boolean(
+            assignmentFile || existingAssignmentFile?.fileUrl,
+        );
+        if (!hasInstructionText && !hasInstructionFile) {
+            showToast("Instructions text or file is required", "error");
+            return false;
+        }
+
         setAssignmentSaving(true);
         try {
             const uploaded = assignmentFile
@@ -1216,7 +1225,12 @@ export function LessonDetailEditor({ context }) {
                         courseId={courseId}
                         lessonId={lessonId}
                         initialFlashcardSetId={initialFlashcardSetId}
-                        flashcardSetReady={persistedLessonType === "FLASHCARD"}
+                        flashcardSetReady={
+                            Boolean(lessonId) &&
+                            (persistedLessonType === "FLASHCARD" ||
+                                lessonType === "FLASHCARD" ||
+                                Boolean(initialFlashcardSetId))
+                        }
                         defaultFlashcardModuleId={defaultFlashcardModuleId}
                         showToast={showToast}
                         services={services}
@@ -1281,6 +1295,7 @@ export function LessonDetailEditor({ context }) {
                                         status={status}
                                         durationMinutes={durationMinutes}
                                         isPreview={isPreview}
+                                        showDuration={false}
                                         onStatusChange={(nextStatus) => {
                                             setStatus(nextStatus);
                                             markChanged();
@@ -1602,7 +1617,10 @@ export function LessonDetailEditor({ context }) {
                                                     <>
                                                         <div className="sl-cm-lesson-editor__assignment-file-field">
                                                             <span className="sl-cm-lesson-editor__assignment-file-label">
-                                                                Assignment File
+                                                                Assignment File{" "}
+                                                                <span className="required">
+                                                                    *
+                                                                </span>
                                                             </span>
                                                             {assignmentFile ||
                                                             existingAssignmentFile ? (

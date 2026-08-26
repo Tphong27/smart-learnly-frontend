@@ -8,7 +8,7 @@ const footerGroups = [
   {
     title: "Platform",
     links: [
-      { label: "Explore courses", href: "/#courses" },
+      { label: "Opening classes", to: "/learning/opening-schedule" },
       { label: "Learning tools", href: "/#features" },
     ],
   },
@@ -16,7 +16,7 @@ const footerGroups = [
     title: "Your workspace",
     links: [
       { label: "Dashboard", to: "/dashboard" },
-      { label: "My learning", to: "/learning/courses" },
+      { label: "Opening schedule", to: "/learning/opening-schedule" },
       { label: "Profile", to: "/profile" },
     ],
   },

@@ -6,6 +6,7 @@ import {
   BarChart3,
   BookOpen,
   ClipboardList,
+  HelpCircle,
   Info,
   Loader,
   Eye,
@@ -75,6 +76,38 @@ export function ClassDetailPage({
     startDate: "",
     endDate: "",
   });
+
+  /** Đường quay lại workspace curriculum sau khi mở question bank course-wide. */
+  const curriculumReturnTo = `${routeBase}/${classId}/workspace?tab=curriculum`;
+
+  /** Mở question bank theo course (giống SME All questions) từ class curriculum. */
+  function openCourseQuestions() {
+    const courseId = classData?.courseId;
+    if (!courseId) {
+      toast.error("Course ID was not found for this class.");
+      return;
+    }
+    navigate(
+      `${coursePreviewBase}/${courseId}/questions?returnTo=${encodeURIComponent(curriculumReturnTo)}`,
+    );
+  }
+
+  /** Mở question bank theo module master từ section curriculum lớp. */
+  function handleManageModuleQuestions(section) {
+    const courseId = classData?.courseId;
+    const moduleId = section?.moduleId;
+    if (!courseId) {
+      toast.error("Course ID was not found for this class.");
+      return;
+    }
+    if (!moduleId) {
+      toast.error("Module ID was not found. Please reload the curriculum.");
+      return;
+    }
+    navigate(
+      `${coursePreviewBase}/${courseId}/modules/${moduleId}/questions?returnTo=${encodeURIComponent(curriculumReturnTo)}`,
+    );
+  }
 
   function reloadClass() {
     setLoading(true);
@@ -466,17 +499,30 @@ export function ClassDetailPage({
             onRetry={classCurriculum.reload}
             context={classCurriculum.contextLabel}
             headerActions={
-              classCurriculum.canPublish ? (
-                <Button
-                  type="button"
-                  variant="save"
-                  size="sm"
-                  loading={classCurriculum.actionLoading}
-                  onClick={classCurriculum.publishDraft}
-                >
-                  Publish changes
-                </Button>
-              ) : null
+              <>
+                {canEditClassCurriculum && classData?.courseId ? (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    leftIcon={<HelpCircle size={16} aria-hidden="true" />}
+                    onClick={openCourseQuestions}
+                  >
+                    All questions
+                  </Button>
+                ) : null}
+                {classCurriculum.canPublish ? (
+                  <Button
+                    type="button"
+                    variant="save"
+                    size="sm"
+                    loading={classCurriculum.actionLoading}
+                    onClick={classCurriculum.publishDraft}
+                  >
+                    Publish changes
+                  </Button>
+                ) : null}
+              </>
             }
           >
             <CurriculumStructureEditor
@@ -498,6 +544,9 @@ export function ClassDetailPage({
               onCreateLesson={classCurriculum.createLesson}
               showManageQuestions={canEditClassCurriculum}
               onManageQuestions={classCurriculum.manageLessonQuestions}
+              onManageModuleQuestions={
+                canEditClassCurriculum ? handleManageModuleQuestions : undefined
+              }
               openLessonEditorOnCreate
               onDeleteLesson={classCurriculum.deleteLesson}
               onReorderLessons={classCurriculum.reorderLessons}

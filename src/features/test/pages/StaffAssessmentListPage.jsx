@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import {
+  ArrowLeft,
   BarChart3,
   CheckSquare,
   ClipboardList,
@@ -95,9 +96,35 @@ function formatDate(value) {
   return new Date(value).toLocaleString();
 }
 
+/** Suy ra đường dẫn curriculum/content để Back từ manage test/assignment. */
+function resolveCurriculumBackPath({
+  returnTo,
+  returnPath,
+  classId,
+  courseId,
+  pathname = "",
+}) {
+  const explicit = returnTo || returnPath;
+  if (explicit && explicit.startsWith("/")) {
+    return explicit;
+  }
+  if (classId) {
+    return `/trainer/classes/${classId}/curriculum`;
+  }
+  if (courseId) {
+    const isAdmin = pathname.startsWith("/admin");
+    return isAdmin
+      ? `/admin/courses/${courseId}/content`
+      : `/staff/courses/${courseId}/content`;
+  }
+  return null;
+}
+
 /** Hiển thị danh sách assignment và khóa toàn bộ mutation đối với TMO. */
 export function StaffAssessmentListPage({ variant = "assignment" }) {
   const toast = useToast();
+  const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams] = useSearchParams();
   const currentUser = useMemo(() => getCurrentUser(), []);
   const currentRole = normalizeRole(currentUser?.role);
@@ -105,6 +132,15 @@ export function StaffAssessmentListPage({ variant = "assignment" }) {
   const canManageItems = currentRole !== ROLES.TMO;
   const courseId = searchParams.get("courseId") || "";
   const classId = searchParams.get("classId") || "";
+  const returnTo = searchParams.get("returnTo") || "";
+  const returnPath = searchParams.get("returnPath") || "";
+  const curriculumBackPath = resolveCurriculumBackPath({
+    returnTo,
+    returnPath,
+    classId,
+    courseId,
+    pathname: location.pathname,
+  });
   const basePath = isAssignmentMode ? "/staff/assignments" : "/staff/tests";
   const pathParams = new URLSearchParams();
   if (courseId) pathParams.set("courseId", courseId);
@@ -361,6 +397,17 @@ export function StaffAssessmentListPage({ variant = "assignment" }) {
           </div>
         </div>
         <div className="ft-toolbar ft-staff-hero__actions">
+          <IconButton
+            icon={<ArrowLeft size={18} />}
+            label="Back to curriculum"
+            onClick={() => {
+              if (curriculumBackPath) {
+                navigate(curriculumBackPath);
+                return;
+              }
+              navigate(-1);
+            }}
+          />
           <IconButton
             icon={<RefreshCw size={18} className={loading ? "ft-spin" : ""} />}
             label="Refresh"

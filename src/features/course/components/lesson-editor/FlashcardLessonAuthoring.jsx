@@ -77,6 +77,7 @@ export function FlashcardLessonAuthoring({
                         status={status}
                         durationMinutes={durationMinutes}
                         isPreview={isPreview}
+                        showDuration={false}
                         onStatusChange={(nextStatus) => {
                             setStatus(nextStatus);
                             markChanged();

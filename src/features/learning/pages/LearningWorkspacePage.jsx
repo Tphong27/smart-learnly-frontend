@@ -607,7 +607,7 @@ export function LearningWorkspacePage({
       return;
     }
 
-    navigate("/learning/courses");
+    navigate("/dashboard");
   }
 
   return (

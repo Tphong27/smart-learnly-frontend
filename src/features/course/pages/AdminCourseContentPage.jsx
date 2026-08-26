@@ -4,7 +4,7 @@ import {
     useParams,
     useNavigate,
 } from "react-router-dom";
-import { Eye } from "lucide-react";
+import { Eye, HelpCircle } from "lucide-react";
 import { courseContentService } from "../services/courseContentService";
 import { flashcardAuthoringService as flashcardService } from "@/features/flashcard";
 import { useToast } from "../../../shared/components/ui/Toast/useToast";
@@ -31,6 +31,7 @@ export default function AdminCourseContentPage() {
 
     const courseContentPath = `${courseBasePath}/${courseId}/content`;
     const coursePreviewPath = `${courseBasePath}/${courseId}/preview`;
+    const courseQuestionsPath = `${courseBasePath}/${courseId}/questions`;
     const lessonBasePath = `${courseBasePath}/${courseId}/lessons`;
     /** Chuẩn hóa cả hai cách gọi toast đang tồn tại trong feature course. */
     const showToast = useCallback(
@@ -449,14 +450,23 @@ export default function AdminCourseContentPage() {
             onBack={() => navigate(courseListPath)}
             onRetry={fetchSections}
             headerActions={
-                <a
-                    className="sl-cm-btn sl-cm-btn--secondary"
-                    href={`${coursePreviewPath}?returnTo=${encodeURIComponent(courseContentPath)}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                >
-                    <Eye size={16} aria-hidden="true" /> Preview as learner
-                </a>
+                <>
+                    <button
+                        type="button"
+                        className="sl-cm-btn sl-cm-btn--secondary"
+                        onClick={() => navigate(courseQuestionsPath)}
+                    >
+                        <HelpCircle size={16} aria-hidden="true" /> All questions
+                    </button>
+                    <a
+                        className="sl-cm-btn sl-cm-btn--secondary"
+                        href={`${coursePreviewPath}?returnTo=${encodeURIComponent(courseContentPath)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                    >
+                        <Eye size={16} aria-hidden="true" /> Preview as learner
+                    </a>
+                </>
             }
         >
             <CurriculumStructureEditor

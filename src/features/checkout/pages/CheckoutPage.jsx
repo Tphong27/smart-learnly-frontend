@@ -37,7 +37,7 @@ export function CheckoutPage() {
         </div>
 
         <div>
-          <Button to="/learning/courses">Back to Course Catalog</Button>
+          <Button to="/learning/opening-schedule">Back to Opening Schedule</Button>
         </div>
       </section>
     );

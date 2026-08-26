@@ -242,7 +242,8 @@ export function AdminCourseFormPage() {
       } else {
         const created = await courseAdminService.create(payload);
         toast.success("Course draft created successfully");
-        navigate(`/admin/courses/${created.id}/content`, {
+        // TMO tạo course (gán SME) rồi về list — curriculum do SME author, không redirect /content.
+        navigate(courseListPath, {
           replace: true,
         });
         return;

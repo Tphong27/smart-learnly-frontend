@@ -11,7 +11,6 @@ import {
     X,
 } from "lucide-react";
 import { classroomService } from "@/features/classroom";
-import { courseContentService } from "@/features/course";
 import { assignmentService } from "@/features/assignment";
 import { testService } from "../services/testService";
 import {
@@ -26,27 +25,13 @@ import {
 } from "@/shared/components/ui";
 import RichTextEditor from "@/shared/components/rich-text/RichTextEditor";
 import { AssignmentAiDraftPanel } from "@/features/assignment/components/AssignmentAiDraftPanel";
+import { isEmptyLessonHtml } from "@/shared/utils/htmlSanitizer";
 import { QuestionSelector } from "../components/QuestionSelector";
 import "../test.css";
 
 /** Lấy ID class từ các response shape hiện có. */
 function getClassId(classItem) {
     return classItem?.id || classItem?.classId || "";
-}
-
-/** Lấy ID module từ curriculum response. */
-function getModuleId(module) {
-    return module?.id || module?.moduleId || module?.sectionId || "";
-}
-
-/** Lấy tiêu đề module với fallback an toàn. */
-function getModuleTitle(module) {
-    return (
-        module?.title ||
-        module?.name ||
-        module?.moduleTitle ||
-        "Untitled module"
-    );
 }
 
 /** Lấy ID question từ question-bank response. */
@@ -141,7 +126,6 @@ export function StaffAssessmentCreatePage({ variant = "assignment" }) {
         closesAt: "",
         accessCode: "",
     });
-    const [modules, setModules] = useState([]);
     const [classes, setClasses] = useState([]);
     const [selectedQuestions, setSelectedQuestions] = useState([]);
     const [instructionFile, setInstructionFile] = useState(null);
@@ -177,28 +161,6 @@ export function StaffAssessmentCreatePage({ variant = "assignment" }) {
             return next;
         });
     };
-
-    useEffect(() => {
-        if (testType !== "mcq" || !formData.courseId) {
-            return undefined;
-        }
-        let cancelled = false;
-        courseContentService
-            .getCourseContent(formData.courseId)
-            .then((items) => {
-                if (!cancelled) {
-                    setModules(
-                        (Array.isArray(items) ? items : []).filter(getModuleId),
-                    );
-                }
-            })
-            .catch(() => {
-                if (!cancelled) setModules([]);
-            });
-        return () => {
-            cancelled = true;
-        };
-    }, [formData.courseId, testType]);
 
     useEffect(() => {
         let cancelled = false;
@@ -323,10 +285,8 @@ export function StaffAssessmentCreatePage({ variant = "assignment" }) {
                         durationUnit: duration.unit,
                         description: test.description || "",
                         rubric: "",
-                        moduleId:
-                            test.curriculumSectionId ||
-                            test.curriculum_section_id ||
-                            "all",
+                        // Test luôn course-wide — không bind module từ curriculumSectionId.
+                        moduleId: "all",
                         isPublished: test.isPublished !== false,
                         courseId: test.courseId || test.course_id || "",
                         classId: test.classId || test.class_id || routeClassId,
@@ -401,6 +361,16 @@ export function StaffAssessmentCreatePage({ variant = "assignment" }) {
         ) {
             nextErrors.schedule = "Closing time must be after opening time.";
         }
+        if (!isAdjustingActiveDuration && testType === "essay") {
+            const hasInstructionText = !isEmptyLessonHtml(formData.description);
+            const hasInstructionFile = Boolean(
+                instructionFile || existingInstructionFile?.fileUrl,
+            );
+            if (!hasInstructionText && !hasInstructionFile) {
+                nextErrors.instructions =
+                    "Instructions text or file is required";
+            }
+        }
         setValidationErrors(nextErrors);
         if (Object.keys(nextErrors).length > 0) {
             return;
@@ -444,10 +414,8 @@ export function StaffAssessmentCreatePage({ variant = "assignment" }) {
                     description: formData.description,
                     courseId: formData.courseId,
                     classId: formData.classId,
-                    curriculumSectionId:
-                        formData.moduleId === "all"
-                            ? undefined
-                            : formData.moduleId || undefined,
+                    // Create test luôn course-wide — không gắn module cụ thể.
+                    curriculumSectionId: undefined,
                     isPublished: formData.isPublished,
                     testType: "practice",
                     maxAttempts: 1,
@@ -784,23 +752,42 @@ export function StaffAssessmentCreatePage({ variant = "assignment" }) {
                     {!hasActiveAttempts && (testType === "essay" ? (
                         <>
                             <label className="ft-field">
-                                <span className="ft-label">Instructions</span>
+                                <span className="ft-label">
+                                    Instructions{" "}
+                                    <span className="required">*</span>
+                                </span>
                                 <RichTextEditor
                                     value={formData.description}
                                     minHeight={180}
                                     placeholder="Write the essay description and submission instructions."
-                                    onChange={(value) =>
-                                        setFormData({
-                                            ...formData,
-                                            description: value,
-                                        })
-                                    }
+                                    onChange={(value) => {
+                                        updateFormData({ description: value });
+                                        setValidationErrors((current) => {
+                                            if (!current.instructions) {
+                                                return current;
+                                            }
+                                            const next = { ...current };
+                                            delete next.instructions;
+                                            return next;
+                                        });
+                                    }}
                                 />
+                                {validationErrors.instructions ? (
+                                    <p className="ft-field-error" role="alert">
+                                        {validationErrors.instructions}
+                                    </p>
+                                ) : (
+                                    <p className="ft-muted">
+                                        Provide instruction text or attach a
+                                        file (at least one).
+                                    </p>
+                                )}
                             </label>
 
                             <div className="ft-field">
                                 <span className="ft-label">
-                                    Instruction file
+                                    Instruction file{" "}
+                                    <span className="required">*</span>
                                 </span>
                                 {instructionFile || existingInstructionFile ? (
                                     <div className="ft-file-pill">
@@ -834,12 +821,26 @@ export function StaffAssessmentCreatePage({ variant = "assignment" }) {
                                             type="file"
                                             accept=".pdf,.doc,.docx,.ppt,.pptx,.png,.jpg,.jpeg,.zip"
                                             hidden
-                                            onChange={(event) =>
+                                            onChange={(event) => {
                                                 setInstructionFile(
                                                     event.target.files?.[0] ||
                                                         null,
-                                                )
-                                            }
+                                                );
+                                                setValidationErrors(
+                                                    (current) => {
+                                                        if (
+                                                            !current.instructions
+                                                        ) {
+                                                            return current;
+                                                        }
+                                                        const next = {
+                                                            ...current,
+                                                        };
+                                                        delete next.instructions;
+                                                        return next;
+                                                    },
+                                                );
+                                            }}
                                         />
                                     </label>
                                 )}
@@ -871,30 +872,6 @@ export function StaffAssessmentCreatePage({ variant = "assignment" }) {
                         </>
                     ) : (
                         <>
-                            <div className="ft-field">
-                                <Select
-                                    label="Module"
-                                    value={formData.moduleId}
-                                    onChange={(event) => {
-                                        updateFormData({
-                                            moduleId: event.target.value,
-                                        });
-                                        setSelectedQuestions([]);
-                                    }}
-                                    disabled={!formData.courseId}
-                                >
-                                    <option value="all">All modules</option>
-                                    {modules.map((module) => (
-                                        <option
-                                            key={getModuleId(module)}
-                                            value={getModuleId(module)}
-                                        >
-                                            {getModuleTitle(module)}
-                                        </option>
-                                    ))}
-                                </Select>
-                            </div>
-
                             <div className="ft-field">
                                 <span className="ft-label">Status</span>
                                 <RadioGroup
@@ -943,7 +920,7 @@ export function StaffAssessmentCreatePage({ variant = "assignment" }) {
                                 </span>
                                 <QuestionSelector
                                     courseId={formData.courseId}
-                                    moduleId={formData.moduleId}
+                                    moduleId="all"
                                     selectedQuestions={selectedQuestions}
                                     onQuestionsChange={(nextQuestions) => {
                                         setSelectedQuestions(nextQuestions);

@@ -151,8 +151,8 @@ export function PaymentResultPage() {
           </p>
 
           <div className="payment-result__actions">
-            <Button to="/learning/courses">
-              Go to my courses
+            <Button to="/dashboard">
+              Go to dashboard
             </Button>
 
             <Button to="/learning/transactions" variant="ghost">
@@ -187,8 +187,8 @@ export function PaymentResultPage() {
               View transactions
             </Button>
 
-            <Button to="/" variant="ghost">
-              Browse courses
+            <Button to="/learning/opening-schedule" variant="ghost">
+              Browse opening classes
             </Button>
           </div>
         </div>

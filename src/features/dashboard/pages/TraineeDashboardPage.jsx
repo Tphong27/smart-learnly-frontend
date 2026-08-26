@@ -383,11 +383,14 @@ export function TraineeDashboardPage() {
           <Sparkles size={28} aria-hidden="true" />
           <h2>Start your learning journey</h2>
           <p>
-            You have not enrolled in a course yet. Find a course that fits your
-            next goal.
+            You have not enrolled in a course yet. Browse opening classes to
+            register and start learning.
           </p>
-          <Button to="/learning/courses" rightIcon={<ArrowRight size={17} />}>
-            Browse course catalog
+          <Button
+            to="/learning/opening-schedule"
+            rightIcon={<ArrowRight size={17} />}
+          >
+            Browse opening classes
           </Button>
         </section>
       )}

@@ -23,7 +23,6 @@ import {
 import { isLessonPublished } from "../utils/lesson-status";
 import { enrollmentService } from "@/features/enrollment";
 import { courseCatalogService } from "../services/courseCatalogService";
-import { checkoutService } from "@/features/checkout";
 import { CourseReviewsSection } from "../components/CourseReviewsSection";
 import { ROLES } from "@/shared/constants/roles";
 import { getCurrentRole } from "@/shared/utils/auth";
@@ -43,14 +42,12 @@ function LessonIcon({ type }) {
 export function CourseDetailPage() {
     const { slug } = useParams();
     const navigate = useNavigate();
-    const [buyNowLoading, setBuyNowLoading] = useState(false);
     const toast = useToast();
     const location = useLocation();
     const [course, setCourse] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [isEnrolled, setIsEnrolled] = useState(false);
-    const [freeEnrollLoading, setFreeEnrollLoading] = useState(false);
     const [expandedModules, setExpandedModules] = useState(() => new Set());
     const [showAllObjectives, setShowAllObjectives] = useState(false);
 
@@ -169,119 +166,16 @@ export function CourseDetailPage() {
         });
     }
 
-    function isFreeCourse(courseData) {
-        const effectivePrice =
-            courseData?.discountedPrice === null ||
-            courseData?.discountedPrice === undefined
-                ? courseData?.price
-                : courseData.discountedPrice;
-
-        return courseData?.isFree === true || Number(effectivePrice || 0) <= 0;
-    }
-
-    function getCourseId() {
-        return course?.id;
-    }
-
-    function ensureAuthenticated() {
-        if (hasAccessToken()) {
-            return true;
-        }
-
-        navigate("/login", {
+    function handleViewOpeningClasses() {
+        toast.info("Please register via an opening class for this course.");
+        navigate("/learning/opening-schedule", {
             state: {
-                from: `/courses/${course.slug || course.id}`,
+                from: `/courses/${course?.slug || course?.id || slug}`,
+                backLabel: "Back to course",
+                courseId: course?.id,
+                courseSlug: course?.slug || slug,
             },
         });
-
-        return false;
-    }
-
-    async function handleBuyNowClick() {
-        if (!ensureAuthenticated()) return;
-
-        const courseId = getCourseId();
-
-        if (!courseId) {
-            toast.error("Course information is missing.");
-            return;
-        }
-
-        /*
-         * Course miễn phí:
-         * không tạo order, không chuyển sang checkout.
-         */
-        if (isFreeCourse(course)) {
-            await handleFreeEnroll();
-            return;
-        }
-
-        /*
-         * Course có phí:
-         * tạo order online không có classId.
-         */
-        setBuyNowLoading(true);
-
-        try {
-            const checkout = await checkoutService.checkoutCourse(courseId);
-
-            toast.success("Checkout created.");
-
-            navigate(`/checkout/${checkout.orderId}`, {
-                state: {
-                    checkout,
-                    expectedCourse: {
-                        itemType: "COURSE",
-                        courseId,
-                        classId: null,
-                        title: course.title,
-                        originalPrice,
-                        displayPrice,
-                        hasDiscount,
-                        discountPercent,
-                        currency: course.currency ?? "VND",
-                    },
-                },
-            });
-        } catch (err) {
-            toast.error(err?.message || "Could not start course checkout.");
-        } finally {
-            setBuyNowLoading(false);
-        }
-    }
-
-    async function handleFreeEnroll() {
-        if (!ensureAuthenticated()) return;
-
-        const courseId = getCourseId();
-
-        if (!courseId) {
-            toast.error("Course information is missing.");
-            return;
-        }
-
-        setFreeEnrollLoading(true);
-
-        try {
-            const enrollment =
-                await enrollmentService.enrollFreeCourse(courseId);
-
-            setIsEnrolled(true);
-
-            toast.success(
-                enrollment?.alreadyEnrolled
-                    ? "You are already enrolled in this course."
-                    : "Course enrollment completed successfully.",
-            );
-
-            navigate(`/learning/courses/${courseId}`);
-        } catch (err) {
-            toast.error(
-                err?.message || "Could not enroll in this free course.",
-            );
-        } finally {
-            setFreeEnrollLoading(false);
-        }
     }
 
     function handleTryItOutClick() {
@@ -577,14 +471,10 @@ export function CourseDetailPage() {
                         {!isEnrolled && (
                             <div className="course-detail__action-grid">
                                 <Button
-                                    onClick={handleBuyNowClick}
-                                    loading={buyNowLoading || freeEnrollLoading}
-                                    loadingLabel="Processing..."
+                                    onClick={handleViewOpeningClasses}
                                     fullWidth
                                 >
-                                    {isFreeCourse(course)
-                                        ? "Enroll now"
-                                        : "Buy now"}
+                                    View opening classes
                                 </Button>
 
                                 <Button

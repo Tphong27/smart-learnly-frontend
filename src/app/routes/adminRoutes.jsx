@@ -66,6 +66,10 @@ function getAdminRoutes() {
               element: <AdminCourseContentPage />,
             },
             {
+              path: "courses/:courseId/questions",
+              element: <AdminQuestionBankDetailPage />,
+            },
+            {
               path: "courses/:courseId/modules/:moduleId/questions",
               element: <AdminQuestionBankDetailPage />,
             },
@@ -76,12 +80,18 @@ function getAdminRoutes() {
           ],
         },
         {
-          element: <RoleGuard allowedRoles={[ROLES.SME, ROLES.TMO]} />,
+          element: (
+            <RoleGuard allowedRoles={[ROLES.SME, ROLES.TMO, ROLES.TRAINER]} />
+          ),
           children: [
             // Giữ deep-link cũ để notification đã lưu không rơi vào trang lỗi quyền.
             {
               path: "courses/:courseId/questions/ai-drafts/:batchId",
               element: <AdminAiQuestionDraftReviewPage />,
+            },
+            {
+              path: "courses/:courseId/questions/ai-drafts/new",
+              element: <AdminAiQuestionDraftCreatePage />,
             },
             {
               path: "courses/:courseId/modules/:moduleId/questions/ai-drafts/new",

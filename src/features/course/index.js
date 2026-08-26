@@ -12,6 +12,6 @@ export { trainerProfileService } from "./services/trainerProfileService";
 export { videoAiService } from "./services/videoAiService";
 
 export const courseFeature = {
-  name: 'Course Catalog',
+  name: 'Courses',
   routeBase: '/courses',
 }

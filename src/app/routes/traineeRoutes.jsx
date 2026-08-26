@@ -15,7 +15,6 @@ import {
   TraineeTestTakePage,
   TestAttemptDetailPage,
 } from "@/features/test";
-import { CourseListPage } from "@/features/course";
 import { LearningWorkspacePage } from "@/features/learning";
 import { TraineeDashboardPage } from "@/features/dashboard";
 import { OpeningSchedulePage } from "@/features/opening-schedule";
@@ -26,8 +25,11 @@ function getTraineeRoutes() {
     {
       // Learning workspace - fullscreen, outside TraineeLayout (giống admin "view as user")
       // để màn hình học bài hiển thị y hệt chế độ admin-preview.
+      // SME/TRAINER cũng vào được khi preview quiz từ admin-preview.
       path: "/learning/courses/:courseId",
-      element: <RoleGuard allowedRoles={[ROLES.TRAINEE]} />,
+      element: (
+        <RoleGuard allowedRoles={[ROLES.TRAINEE, ROLES.SME, ROLES.TRAINER]} />
+      ),
       children: [{ index: true, element: <LearningWorkspacePage /> }],
     },
     {
@@ -37,7 +39,9 @@ function getTraineeRoutes() {
     },
     {
       path: "/learning/course-quizzes/:id",
-      element: <RoleGuard allowedRoles={[ROLES.TRAINEE]} />,
+      element: (
+        <RoleGuard allowedRoles={[ROLES.TRAINEE, ROLES.SME, ROLES.TRAINER]} />
+      ),
       children: [{ index: true, element: <TraineeTestTakePage /> }],
     },
     {
@@ -50,14 +54,7 @@ function getTraineeRoutes() {
             {
               path: "courses",
               element: (
-                <CourseListPage
-                  pageSize={6}
-                  defaultSort="NEWEST"
-                  detailState={{
-                    from: "/learning/courses",
-                    backLabel: "Back to Course Catalog",
-                  }}
-                />
+                <Navigate to="/learning/opening-schedule" replace />
               ),
             },
             {
@@ -128,7 +125,9 @@ function getTraineeRoutes() {
           children: [
             {
               path: "/my-courses",
-              element: <Navigate to="/learning/courses" replace />,
+              element: (
+                <Navigate to="/learning/opening-schedule" replace />
+              ),
             },
             {
               path: "/my-enrollments",

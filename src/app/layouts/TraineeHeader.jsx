@@ -149,7 +149,7 @@ export function TraineeHeader({ user, onLogout, roleLabel }) {
                   aria-label="Course categories"
                 >
                   <Link
-                    to="/learning/courses"
+                    to="/learning/opening-schedule"
                     role="menuitem"
                     onClick={() => setCategoriesOpen(false)}
                   >
@@ -167,7 +167,7 @@ export function TraineeHeader({ user, onLogout, roleLabel }) {
                     categories.map((category) => (
                       <Link
                         key={category.id || category.slug || category.name}
-                        to={`/learning/courses?categorySlug=${encodeURIComponent(
+                        to={`/learning/opening-schedule?categorySlug=${encodeURIComponent(
                           category.slug || category.id,
                         )}`}
                         role="menuitem"
@@ -186,37 +186,20 @@ export function TraineeHeader({ user, onLogout, roleLabel }) {
             </div>
 
             {normalizedRole === ROLES.TRAINEE && (
-              <>
-                <NavLink
-                  to="/learning/courses"
-                  className={({ isActive }) =>
-                    `trainee-header__primary-link${
-                      isActive ? " is-active" : ""
-                    }`
-                  }
-                  onClick={() => {
-                    setCategoriesOpen(false);
-                    setProfileOpen(false);
-                  }}
-                >
-                  Course Catalog
-                </NavLink>
-
-                <NavLink
-                  to="/learning/opening-schedule"
-                  className={({ isActive }) =>
-                    `trainee-header__primary-link${
-                      isActive ? " is-active" : ""
-                    }`
-                  }
-                  onClick={() => {
-                    setCategoriesOpen(false);
-                    setProfileOpen(false);
-                  }}
-                >
-                  Opening Class
-                </NavLink>
-              </>
+              <NavLink
+                to="/learning/opening-schedule"
+                className={({ isActive }) =>
+                  `trainee-header__primary-link${
+                    isActive ? " is-active" : ""
+                  }`
+                }
+                onClick={() => {
+                  setCategoriesOpen(false);
+                  setProfileOpen(false);
+                }}
+              >
+                Opening Class
+              </NavLink>
             )}
           </nav>
         )}

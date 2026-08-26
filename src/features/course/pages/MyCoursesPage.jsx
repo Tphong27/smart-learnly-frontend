@@ -1,18 +1,13 @@
 import { useEffect, useState, useMemo } from "react";
-import { BookOpen, GraduationCap, RotateCcw } from "lucide-react";
+import { GraduationCap, RotateCcw } from "lucide-react";
+import { Link } from "react-router-dom";
 import { EnrolledCourseCard } from "../components/EnrolledCourseCard";
 import { CourseFilters } from "../components/CourseFilters";
 import { CourseListToolbar } from "../components/CourseListToolbar";
-import { CourseListPage } from "./CourseListPage";
 import { enrollmentService } from "@/features/enrollment";
 import "../course.css";
 
-const TAB_ENROLLED = "enrolled";
-const TAB_CATALOG = "catalog";
-
 export function MyCoursesPage() {
-  const [activeTab, setActiveTab] = useState(TAB_ENROLLED);
-
   const [enrolledKeyword, setEnrolledKeyword] = useState("");
   const [enrolledCategorySlug, setEnrolledCategorySlug] = useState("");
   const [enrolledViewMode, setEnrolledViewMode] = useState(
@@ -123,161 +118,117 @@ export function MyCoursesPage() {
         <span className="course-hero__eyebrow">Learning space</span>
         <h1>My Courses</h1>
         <p>
-          Continue enrolled courses or browse the course catalog in one place.
+          Continue enrolled courses. To join a new course, browse opening
+          classes.
         </p>
       </section>
 
-      <section className="my-courses-tabs">
-        <button
-          type="button"
-          className={activeTab === TAB_ENROLLED ? "is-active" : ""}
-          onClick={() => setActiveTab(TAB_ENROLLED)}
-        >
-          <GraduationCap size={18} />
-          Enrolled Courses
-        </button>
-
-        <button
-          type="button"
-          className={activeTab === TAB_CATALOG ? "is-active" : ""}
-          onClick={() => setActiveTab(TAB_CATALOG)}
-        >
-          <BookOpen size={18} />
-          Course Catalog
-        </button>
-      </section>
-
-      {activeTab === TAB_ENROLLED && (
-        <section className="my-courses-section">
-          <div className="my-courses-section__header">
-            <div>
-              <h2>Enrolled Courses</h2>
-              <p>Courses that you have enrolled in or have access to.</p>
-            </div>
-
-            <button
-              type="button"
-              className="my-courses-section__refresh"
-              onClick={refreshEnrolledCourses}
-              disabled={loadingEnrolled}
-            >
-              <RotateCcw size={16} />
-              Refresh
-            </button>
+      <section className="my-courses-section">
+        <div className="my-courses-section__header">
+          <div>
+            <h2>
+              <GraduationCap size={20} aria-hidden="true" /> Enrolled Courses
+            </h2>
+            <p>Courses that you have enrolled in or have access to.</p>
           </div>
 
-          {loadingEnrolled && (
-            <div className="course-state">
-              <p>Loading enrolled courses...</p>
-            </div>
-          )}
+          <button
+            type="button"
+            className="my-courses-section__refresh"
+            onClick={refreshEnrolledCourses}
+            disabled={loadingEnrolled}
+          >
+            <RotateCcw size={16} />
+            Refresh
+          </button>
+        </div>
 
-          {!loadingEnrolled && enrolledError && (
-            <div className="course-state course-state--error">
-              <p>{enrolledError}</p>
-              <button type="button" onClick={refreshEnrolledCourses}>
-                Try again
+        {loadingEnrolled && (
+          <div className="course-state">
+            <p>Loading enrolled courses...</p>
+          </div>
+        )}
+
+        {!loadingEnrolled && enrolledError && (
+          <div className="course-state course-state--error">
+            <p>{enrolledError}</p>
+            <button type="button" onClick={refreshEnrolledCourses}>
+              Try again
+            </button>
+          </div>
+        )}
+
+        {!loadingEnrolled && !enrolledError && enrolledCourses.length > 0 && (
+          <>
+            <CourseFilters
+              keyword={enrolledKeyword}
+              categorySlug={enrolledCategorySlug}
+              categories={enrolledCategories}
+              onKeywordChange={setEnrolledKeyword}
+              onCategoryChange={setEnrolledCategorySlug}
+            />
+
+            <CourseListToolbar
+              totalElements={filteredEnrolledCourses.length}
+              viewMode={enrolledViewMode}
+              onViewModeChange={handleEnrolledViewModeChange}
+            />
+          </>
+        )}
+
+        {!loadingEnrolled && !enrolledError && enrolledCourses.length === 0 && (
+          <div className="course-state">
+            <h3>No enrolled courses yet</h3>
+            <p>
+              You have not enrolled in any course yet. Browse opening classes to
+              register and start learning.
+            </p>
+            <Link to="/learning/opening-schedule">Browse opening classes</Link>
+          </div>
+        )}
+
+        {!loadingEnrolled &&
+          !enrolledError &&
+          enrolledCourses.length > 0 &&
+          filteredEnrolledCourses.length === 0 && (
+            <div className="course-state">
+              <h3>No matching enrolled courses</h3>
+              <p>Try another keyword or category.</p>
+              <button
+                type="button"
+                onClick={() => {
+                  setEnrolledKeyword("");
+                  setEnrolledCategorySlug("");
+                }}
+              >
+                Clear filters
               </button>
             </div>
           )}
 
-          {!loadingEnrolled && !enrolledError && enrolledCourses.length > 0 && (
-            <>
-              <CourseFilters
-                keyword={enrolledKeyword}
-                categorySlug={enrolledCategorySlug}
-                categories={enrolledCategories}
-                onKeywordChange={setEnrolledKeyword}
-                onCategoryChange={setEnrolledCategorySlug}
-              />
-
-              <CourseListToolbar
-                totalElements={filteredEnrolledCourses.length}
-                viewMode={enrolledViewMode}
-                onViewModeChange={handleEnrolledViewModeChange}
-              />
-            </>
-          )}
-
-          {!loadingEnrolled &&
-            !enrolledError &&
-            enrolledCourses.length === 0 && (
-              <div className="course-state">
-                <h3>No enrolled courses yet</h3>
-                <p>
-                  You have not enrolled in any course. Open the Course Catalog
-                  tab to explore available courses.
-                </p>
-                <button type="button" onClick={() => setActiveTab(TAB_CATALOG)}>
-                  Browse course catalog
-                </button>
-              </div>
-            )}
-
-          {!loadingEnrolled &&
-            !enrolledError &&
-            enrolledCourses.length > 0 &&
-            filteredEnrolledCourses.length === 0 && (
-              <div className="course-state">
-                <h3>No matching enrolled courses</h3>
-                <p>Try another keyword or category.</p>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setEnrolledKeyword("");
-                    setEnrolledCategorySlug("");
-                  }}
-                >
-                  Clear filters
-                </button>
-              </div>
-            )}
-
-          {!loadingEnrolled &&
-            !enrolledError &&
-            filteredEnrolledCourses.length > 0 && (
-              <div
-                className={`enrolled-course-list enrolled-course-list--${enrolledViewMode}`}
-              >
-                {filteredEnrolledCourses.map((course) => (
-                  <EnrolledCourseCard
-                    key={[
-                      course.learningType || "COURSE",
-                      course.enrolledClass?.id ||
-                        course.classId ||
-                        course.enrollmentId ||
-                        course.id ||
-                        course.slug,
-                    ].join(":")}
-                    course={course}
-                    viewMode={enrolledViewMode}
-                  />
-                ))}
-              </div>
-            )}
-        </section>
-      )}
-
-      {activeTab === TAB_CATALOG && (
-        <section className="my-courses-section">
-          <div className="my-courses-section__header">
-            <div>
-              <h2>Course Catalog</h2>
+        {!loadingEnrolled &&
+          !enrolledError &&
+          filteredEnrolledCourses.length > 0 && (
+            <div
+              className={`enrolled-course-list enrolled-course-list--${enrolledViewMode}`}
+            >
+              {filteredEnrolledCourses.map((course) => (
+                <EnrolledCourseCard
+                  key={[
+                    course.learningType || "COURSE",
+                    course.enrolledClass?.id ||
+                      course.classId ||
+                      course.enrollmentId ||
+                      course.id ||
+                      course.slug,
+                  ].join(":")}
+                  course={course}
+                  viewMode={enrolledViewMode}
+                />
+              ))}
             </div>
-          </div>
-
-          <CourseListPage
-            embedded
-            showHero={false}
-            pageSize={6}
-            excludeEnrolled={true}
-            detailState={{
-              from: "/learning/courses",
-              backLabel: "Back to My Courses",
-            }}
-          />
-        </section>
-      )}
+          )}
+      </section>
     </main>
   );
 }

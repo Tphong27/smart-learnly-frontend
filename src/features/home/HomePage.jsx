@@ -67,8 +67,8 @@ export function HomePage() {
                 <Button to="/register" size="lg">
                   Start Learning!
                 </Button>
-                <Button href="#courses" variant="outline" size="lg">
-                  Explore Courses
+                <Button href="#opening-schedule" variant="outline" size="lg">
+                  Browse opening classes
                 </Button>
               </div>
 
@@ -236,12 +236,12 @@ export function HomePage() {
                   <span>moment count?</span>
                 </h3>
                 <p>
-                  Explore a course today or discover how Smart Learnly can
+                  Browse opening classes today or discover how Smart Learnly can
                   support your training center.
                 </p>
               </div>
-              <a className="feature-cta__button" href="#courses">
-                <span>Explore courses</span>
+              <a className="feature-cta__button" href="#opening-schedule">
+                <span>Browse opening classes</span>
                 <ArrowRight size={17} aria-hidden="true" />
               </a>
             </div>

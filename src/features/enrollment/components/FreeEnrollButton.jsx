@@ -1,46 +1,31 @@
-import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Button, useToast } from '@/shared/components/ui'
 import { getAccessToken } from '@/services'
-import { enrollmentService } from '../services/enrollmentService'
 
-export function FreeEnrollButton({ courseId, label = 'Enroll for free', onEnrolled, redirectTo = '/learning/courses', size = 'md' }) {
+/** Self-study free enroll đã tắt — hướng học viên sang opening class. */
+export function FreeEnrollButton({
+  label = 'View opening classes',
+  redirectTo = '/learning/opening-schedule',
+  size = 'md',
+}) {
   const navigate = useNavigate()
   const toast = useToast()
-  const [loading, setLoading] = useState(false)
 
-  async function handleEnroll() {
+  function handleClick() {
     if (!getAccessToken()) {
-      toast.info('Please sign in to enroll in this course.')
-      navigate('/login')
-      return
-    }
-    if (!courseId) {
-      toast.error('Course is not available right now.')
+      toast.info('Please sign in to register for an opening class.')
+      navigate('/login', {
+        state: { from: redirectTo || '/learning/opening-schedule' },
+      })
       return
     }
 
-    setLoading(true)
-    try {
-      const result = await enrollmentService.enrollFreeCourse(courseId)
-      if (result?.alreadyEnrolled) {
-        toast.info('You already have access to this course.')
-      } else if (result?.reactivated) {
-        toast.success('Welcome back. Access has been restored.')
-      } else {
-        toast.success('Enrollment successful. Happy learning.')
-      }
-      onEnrolled?.(result)
-      if (redirectTo) navigate(redirectTo)
-    } catch (err) {
-      toast.error(err?.message || 'Could not enroll in this course.')
-    } finally {
-      setLoading(false)
-    }
+    toast.info('Please register via an opening class for this course.')
+    navigate(redirectTo || '/learning/opening-schedule')
   }
 
   return (
-    <Button type="button" onClick={handleEnroll} loading={loading} size={size}>
+    <Button type="button" onClick={handleClick} size={size}>
       {label}
     </Button>
   )

@@ -57,6 +57,10 @@ function getStaffRoutes() {
               element: <AdminCourseFormPage />,
             },
             {
+              path: "courses/:courseId/questions",
+              element: <AdminQuestionBankDetailPage />,
+            },
+            {
               path: "courses/:courseId/modules/:moduleId/questions",
               element: <AdminQuestionBankDetailPage />,
             },

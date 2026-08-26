@@ -223,8 +223,9 @@ function RowActionsMenu({
     const classesPath = `${classroomsBasePath}?courseId=${encodeURIComponent(course.id)}`;
     const previewPath = `${basePath}/${course.id}/preview?returnTo=${encodeURIComponent(previewReturnPath)}`;
     const detailsPath = `${basePath}/${course.id}`;
-    const editPath = basePath.startsWith("/staff")
-        ? `${basePath}/${course.id}/edit`
+    // TMO edit luôn dùng admin form (`/admin/courses/:id`). Staff `/edit` chỉ dành cho Trainer.
+    const editPath = canEdit
+        ? `/admin/courses/${course.id}`
         : detailsPath;
     const menu = open ? (
         <ul
@@ -332,9 +333,12 @@ export function AdminCoursesPage() {
         if (isTrainer) {
             return `/staff/classrooms?courseId=${encodeURIComponent(courseId)}`;
         }
+        // TMO sửa course detail (title/thumbnail/metadata).
+        // Form create/edit chỉ có trên admin routes — staff không có RoleGuard cho TMO.
         if (isTmo) {
-            return `${courseBasePath}/${courseId}/preview?returnTo=${encodeURIComponent(previewReturnPath)}`;
+            return `/admin/courses/${courseId}`;
         }
+        // SME/khác vào curriculum content.
         return `${courseBasePath}/${courseId}/content`;
     }
 
@@ -475,8 +479,7 @@ export function AdminCoursesPage() {
                     <h1>Course management</h1>
                     {isTmo ? (
                         <p>
-                            Read-only access: review course information and
-                            preview learning content.
+                            Manage course details, thumbnails, and metadata.
                         </p>
                     ) : null}
                 </div>
@@ -602,7 +605,9 @@ export function AdminCoursesPage() {
                             }
                             description={
                                 isAssignedOnlyRole && !hasFilters
-                                    ? "Courses assigned to you will appear here."
+                                    ? isSme
+                                        ? "Courses appear here after a TMO assigns you as the course SME. Ask a TMO to set Assigned SME when creating or editing the course."
+                                        : "Courses linked to your trainer classes will appear here."
                                     : "Try another search term or clear your filters."
                             }
                             action={
@@ -716,21 +721,15 @@ export function AdminCoursesPage() {
                                                 <div className="course-management__actions">
                                                     <Button
                                                         size="sm"
-                                                        title={
-                                                            isTmo
-                                                                ? "View"
-                                                                : "Open"
-                                                        }
-                                                        aria-label={`${isTmo ? "View" : "Open"} ${course.title}`}
+                                                        title={isTmo ? "Edit" : "Open"}
+                                                        aria-label={`${isTmo ? "Edit" : "Open"} ${course.title}`}
                                                         onClick={() =>
                                                             handleOpenCourse(
                                                                 course,
                                                             )
                                                         }
                                                     >
-                                                        {isTmo
-                                                            ? "View"
-                                                            : "Open"}
+                                                        {isTmo ? "Edit" : "Open"}
                                                     </Button>
                                                     <RowActionsMenu
                                                         course={course}
@@ -835,7 +834,7 @@ export function AdminCoursesPage() {
                                                     handleOpenCourse(course)
                                                 }
                                             >
-                                                {isTmo ? "View" : "Open"}
+                                                {isTmo ? "Edit" : "Open"}
                                             </Button>
                                             <RowActionsMenu
                                                 course={course}
