@@ -46,3 +46,22 @@ export function canViewClasses(role) {
 export function canManageClasses(role) {
   return isRoleAllowed(role, CLASS_ACCESS_ROLES.MANAGE);
 }
+
+export const COURSE_DETAIL_ACCESS_ROLES =
+  Object.freeze({
+    VIEW: Object.freeze([
+      ROLES.TMO,
+      ROLES.SME,
+      ROLES.TRAINER,
+    ]),
+    MANAGE: Object.freeze([
+      ROLES.TMO,
+    ]),
+  });
+
+export function canManageCourseDetails(role) {
+  return isRoleAllowed(
+    role,
+    COURSE_DETAIL_ACCESS_ROLES.MANAGE,
+  );
+}

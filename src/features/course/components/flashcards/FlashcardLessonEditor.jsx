@@ -83,6 +83,7 @@ export function FlashcardLessonEditor({
     activeSection = "details",
     onTitleSaved,
     onNavigateToCurrent,
+    onContentChange,
     showToast,
     flashcardService = defaultFlashcardService,
     stagingEnabled = true,
@@ -346,6 +347,7 @@ export function FlashcardLessonEditor({
                 }),
             );
             onTitleSaved?.(savedSet.title);
+            onContentChange?.();
             notify("Flashcard set saved.", "success");
         } catch (saveError) {
             notify(
@@ -419,6 +421,7 @@ export function FlashcardLessonEditor({
                 current.filter((cardId) => cardId !== cardPendingDelete.id),
             );
             setCardPendingDelete(null);
+            onContentChange?.();
             notify("Card deleted.", "success");
         } catch (deleteError) {
             notify(
@@ -472,6 +475,7 @@ export function FlashcardLessonEditor({
             setCards(
                 savedSet?.cards?.length ? savedSet.cards : optimisticCards,
             );
+            onContentChange?.();
         } catch (reorderError) {
             setCards(previousCards);
             notify(
@@ -504,6 +508,9 @@ export function FlashcardLessonEditor({
     const handleCardsImported = async (cardIds = []) => {
         onNavigateToCurrent?.();
         const refreshedSet = await refreshCurrentFlashcards();
+        if (cardIds.length) {
+            onContentChange?.();
+        }
         const refreshedCards =
             normalizeSet(refreshedSet || flashcardSet)?.cards || orderedCards;
         if (cardIds.length) {
@@ -662,6 +669,7 @@ export function FlashcardLessonEditor({
                           );
 
                 handleCardPersisted(savedCard);
+                onContentChange?.();
                 if (savedCard?.id && cardEditorSession.mode === "edit") {
                     setActivePreviewCardId(savedCard.id);
                 }
@@ -693,6 +701,7 @@ export function FlashcardLessonEditor({
             flashcardSet,
             handleCardPersisted,
             notify,
+            onContentChange,
             orderedCards,
         ],
     );
@@ -768,6 +777,7 @@ export function FlashcardLessonEditor({
             setSelectedCardIds([]);
             setSelectionMode(remainingCards.length > 0);
             setBulkDeletePending(false);
+            onContentChange?.();
             notify(
                 `Deleted ${idsToDelete.length} flashcard${
                     idsToDelete.length === 1 ? "" : "s"
