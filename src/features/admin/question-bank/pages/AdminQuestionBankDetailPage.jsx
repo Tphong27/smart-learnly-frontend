@@ -31,6 +31,8 @@ import { questionBankService } from "@/features/admin/question-bank";
 import { courseAdminService } from "@/features/course";
 import { formatDate } from "@/shared/utils/formatters";
 import { DEFAULT_PAGE_SIZE } from "@/shared/constants/pagination";
+import { ROLES } from "@/shared/constants/roles";
+import { getCurrentRole } from "@/shared/utils/auth";
 import "../../admin-shared.css";
 import "./question-bank.css";
 import { QuestionImportModal } from "../components/QuestionImportModal";
@@ -57,6 +59,7 @@ export function AdminQuestionBankDetailPage() {
   const [searchParams] = useSearchParams();
   const toast = useToast();
   const writable = canWriteQuestionBank();
+  const currentRole = getCurrentRole();
   const isCourseQuestionsMode = Boolean(courseId);
   const [bank, setBank] = useState(null);
   const [items, setItems] = useState([]);
@@ -253,6 +256,7 @@ export function AdminQuestionBankDetailPage() {
     ? "/staff/courses"
     : "/admin/courses";
   // Trainer mở bank từ class curriculum qua ?returnTo=...; chỉ nhận path nội bộ.
+  // Khi thiếu class context, quay về danh sách lớp thay vì master curriculum bị cấm.
   const rawReturnTo = searchParams.get("returnTo");
   const safeReturnTo =
     rawReturnTo &&
@@ -264,7 +268,9 @@ export function AdminQuestionBankDetailPage() {
   const backPath = safeReturnTo
     ? safeReturnTo
     : isCourseQuestionsMode
-      ? `${courseBasePath}/${courseId}/content`
+      ? currentRole === ROLES.TRAINER
+        ? "/staff/classrooms"
+        : `${courseBasePath}/${courseId}/content`
       : "/admin/question-banks";
   const title = isCourseQuestionsMode
     ? "Course questions"
