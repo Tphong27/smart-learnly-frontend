@@ -21,7 +21,7 @@ import {
   EditionClassPage,
   ClassDetailPage,
   TrainerLessonDetailPage,
-  ClassAnalyticsRedirect
+  ClassAnalyticsRedirect,
 } from "@/features/classroom";
 
 /** Khai báo route staff theo từng nhóm quyền Trainer, TMO và SME. */
@@ -104,9 +104,9 @@ function getStaffRoutes() {
             },
           ],
         },
-        // Master course curriculum chỉ do SME author; Trainer chỉnh theo từng lớp.
+        // Master curriculum: SME và TMO cùng author; Trainer chỉ chỉnh curriculum theo lớp.
         {
-          element: <RoleGuard allowedRoles={[ROLES.SME]} />,
+          element: <RoleGuard allowedRoles={[ROLES.SME, ROLES.TMO]} />,
           children: [
             {
               path: "courses/:courseId/content",
@@ -175,9 +175,7 @@ function getStaffRoutes() {
       element: <TrainerLayout />,
       children: [
         {
-          element: (
-            <RoleGuard allowedRoles={[ROLES.TRAINER]} />
-          ),
+          element: <RoleGuard allowedRoles={[ROLES.TRAINER]} />,
           children: [
             {
               path: "classes/:classId/curriculum/lessons/:lessonId",

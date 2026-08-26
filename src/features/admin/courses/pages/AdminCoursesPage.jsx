@@ -314,22 +314,13 @@ export function AdminCoursesPage() {
   const currentRole = String(currentUser?.role || "").toLowerCase();
 
   const isTrainer = currentRole === ROLES.TRAINER;
-
   const isSme = currentRole === ROLES.SME;
-
-  const isTmo = currentRole === ROLES.TMO;
-
+  // const isTmo = currentRole === ROLES.TMO;
   const isAssignedOnlyRole = isTrainer || isSme;
-
   const canManageCourses = canManageCourseDetails(currentRole);
-
   const isStaffRoute = location.pathname.startsWith("/staff/");
 
-  const courseBasePath = isTmo
-    ? "/admin/courses"
-    : isStaffRoute
-      ? "/staff/courses"
-      : "/admin/courses";
+  const courseBasePath = isStaffRoute ? "/staff/courses" : "/admin/courses";
   const previewReturnPath = isStaffRoute ? "/staff/courses" : "/admin/courses";
   const classroomsBasePath = "/staff/classrooms";
   const canViewClasses = canViewClassRooms(currentRole);
@@ -340,10 +331,6 @@ export function AdminCoursesPage() {
   function openCoursePath(courseId) {
     if (isTrainer) {
       return `/staff/classrooms?courseId=${encodeURIComponent(courseId)}`;
-    }
-
-    if (isTmo) {
-      return `${courseBasePath}/${courseId}`;
     }
 
     return `${courseBasePath}/${courseId}/content`;
