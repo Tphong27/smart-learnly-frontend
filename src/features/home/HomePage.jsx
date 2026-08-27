@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { ArrowRight, SunMedium, Zap } from "lucide-react";
 import { useDocumentTitle } from "../../shared/hooks/useDocumentTitle";
 import { Button } from "../../shared/components/ui";
-import { CourseListPage } from "../course/pages/CourseListPage";
 import { CourseCard } from "../course/components/CourseCard";
 import { OpeningSchedulePage } from "../opening-schedule";
 import { courseCatalogService } from "@/features/course";
@@ -112,28 +111,6 @@ export function HomePage() {
                 </div>
               )}
             </div>
-          </div>
-        </section>
-
-        <section className="courses-section" id="courses">
-          <div className="container">
-            <div className="courses-heading">
-              <h2>Popular Courses</h2>
-            </div>
-
-            <CourseListPage
-              embedded
-              showHero={false}
-              showFilters={false}
-              showAdvancedFilters
-              pageSize={6}
-              cardVariant="popular"
-              detailState={{
-                from: "/",
-                fromHash: "#courses",
-                backLabel: "Back to homepage",
-              }}
-            />
           </div>
         </section>
 

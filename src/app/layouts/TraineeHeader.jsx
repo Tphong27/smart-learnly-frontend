@@ -10,7 +10,6 @@ import {
   ROLES,
 } from "@/shared/constants/roles";
 import { getDashboardPathByRole } from "@/app/routes/dashboard-path";
-import { categoryService } from "@/features/course";
 import { NotificationBell } from "@/features/notification";
 import {
   getInitials,
@@ -23,10 +22,6 @@ const STAFF_HEADER_ROLES = [ROLES.TRAINER, ROLES.SME, ROLES.TMO];
 
 export function TraineeHeader({ user, onLogout, roleLabel }) {
   const actionsRef = useRef(null);
-  const categoriesRef = useRef(null);
-  const [categories, setCategories] = useState([]);
-  const [categoriesLoading, setCategoriesLoading] = useState(true);
-  const [categoriesOpen, setCategoriesOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
 
   const displayName = getUserDisplayName(user, "Learner");
@@ -38,21 +33,16 @@ export function TraineeHeader({ user, onLogout, roleLabel }) {
   const canAccessProfile = isRoleAllowed(normalizedRole, PROFILE_ROLES);
 
   useEffect(() => {
-    if (!categoriesOpen && !profileOpen) return undefined;
+    if (!profileOpen) return undefined;
 
     function closeMenus(event) {
-      const outsideCategories = !categoriesRef.current?.contains(event.target);
-      const outsideActions = !actionsRef.current?.contains(event.target);
-
-      if (outsideCategories && outsideActions) {
-        setCategoriesOpen(false);
+      if (!actionsRef.current?.contains(event.target)) {
         setProfileOpen(false);
       }
     }
 
     function handleEscape(event) {
       if (event.key === "Escape") {
-        setCategoriesOpen(false);
         setProfileOpen(false);
       }
     }
@@ -63,29 +53,7 @@ export function TraineeHeader({ user, onLogout, roleLabel }) {
       document.removeEventListener("pointerdown", closeMenus);
       document.removeEventListener("keydown", handleEscape);
     };
-  }, [categoriesOpen, profileOpen]);
-
-  useEffect(() => {
-    if (isStaffHeader) return undefined;
-
-    let mounted = true;
-
-    async function loadCategories() {
-      try {
-        const data = await categoryService.listPublic();
-        if (mounted) setCategories(Array.isArray(data) ? data : []);
-      } catch {
-        if (mounted) setCategories([]);
-      } finally {
-        if (mounted) setCategoriesLoading(false);
-      }
-    }
-
-    loadCategories();
-    return () => {
-      mounted = false;
-    };
-  }, [isStaffHeader]);
+  }, [profileOpen]);
 
   return (
     <header className="trainee-header">
@@ -108,99 +76,29 @@ export function TraineeHeader({ user, onLogout, roleLabel }) {
               ? normalizedRole === ROLES.SME
                 ? "Search assigned course content..."
                 : "Search course content and classrooms..."
-              : "Search courses, classes, topics, or skills..."
+              : "Search classes, topics, or skills..."
           }
           classDetailPath="/opening-schedule"
           classReturnPath="/#opening-schedule"
           classBackLabel="Back to homepage"
         />
 
-        {!isStaffHeader && (
+        {!isStaffHeader && normalizedRole === ROLES.TRAINEE && (
           <nav
             className="trainee-header__browse-nav"
             aria-label="Course discovery"
           >
-            <div
-              className="trainee-header__category-anchor"
-              ref={categoriesRef}
+            <NavLink
+              to="/learning/opening-schedule"
+              className={({ isActive }) =>
+                `trainee-header__primary-link${isActive ? " is-active" : ""}`
+              }
+              onClick={() => {
+                setProfileOpen(false);
+              }}
             >
-              <button
-                type="button"
-                className="header-categories-btn trainee-header__categories-button"
-                aria-expanded={categoriesOpen}
-                aria-haspopup="menu"
-                onClick={() => {
-                  setCategoriesOpen((current) => !current);
-                  setProfileOpen(false);
-                }}
-              >
-                <span>Categories</span>
-                <ChevronDown
-                  size={16}
-                  className={categoriesOpen ? "is-open" : undefined}
-                  aria-hidden="true"
-                />
-              </button>
-
-              {categoriesOpen && (
-                <div
-                  className="trainee-header__popover trainee-header__categories-menu"
-                  role="menu"
-                  aria-label="Course categories"
-                >
-                  <Link
-                    to="/learning/opening-schedule"
-                    role="menuitem"
-                    onClick={() => setCategoriesOpen(false)}
-                  >
-                    All categories
-                  </Link>
-
-                  {categoriesLoading ? (
-                    <span
-                      className="trainee-header__categories-status"
-                      role="status"
-                    >
-                      Loading categories…
-                    </span>
-                  ) : categories.length > 0 ? (
-                    categories.map((category) => (
-                      <Link
-                        key={category.id || category.slug || category.name}
-                        to={`/learning/opening-schedule?categorySlug=${encodeURIComponent(
-                          category.slug || category.id,
-                        )}`}
-                        role="menuitem"
-                        onClick={() => setCategoriesOpen(false)}
-                      >
-                        {category.name}
-                      </Link>
-                    ))
-                  ) : (
-                    <span className="trainee-header__categories-status">
-                      No categories available.
-                    </span>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {normalizedRole === ROLES.TRAINEE && (
-              <NavLink
-                to="/learning/opening-schedule"
-                className={({ isActive }) =>
-                  `trainee-header__primary-link${
-                    isActive ? " is-active" : ""
-                  }`
-                }
-                onClick={() => {
-                  setCategoriesOpen(false);
-                  setProfileOpen(false);
-                }}
-              >
-                Opening Class
-              </NavLink>
-            )}
+              Opening Class
+            </NavLink>
           </nav>
         )}
 
@@ -208,7 +106,6 @@ export function TraineeHeader({ user, onLogout, roleLabel }) {
           <NotificationBell
             variant="trainee"
             onOpen={() => {
-              setCategoriesOpen(false);
               setProfileOpen(false);
             }}
           />
@@ -221,7 +118,6 @@ export function TraineeHeader({ user, onLogout, roleLabel }) {
               aria-haspopup="menu"
               onClick={() => {
                 setProfileOpen((current) => !current);
-                setCategoriesOpen(false);
               }}
             >
               {user?.avatarUrl ? (
