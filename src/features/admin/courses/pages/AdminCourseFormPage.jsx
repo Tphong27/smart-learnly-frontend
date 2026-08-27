@@ -397,17 +397,6 @@ export function AdminCourseFormPage() {
                                     </Select>
                                 ) : null}
 
-                                <Input
-                                    id="course-short-description"
-                                    className="sl-course-field--full"
-                                    label="Short description"
-                                    maxLength={500}
-                                    placeholder="Summarize the course in one or two sentences"
-                                    disabled={isReadOnly}
-                                    error={errors.shortDescription}
-                                    {...register("shortDescription")}
-                                />
-
                                 <Textarea
                                     id="course-description"
                                     className="sl-course-field--full"
