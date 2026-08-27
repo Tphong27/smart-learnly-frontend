@@ -23,9 +23,7 @@ import {
   IMPORT_COLUMNS,
   ALLOWED_TYPES,
   parseImportFile,
-  parseImportJson,
   revalidateImportRows,
-  SAMPLE_QUESTION_BANK_JSON,
 } from '../utils/questionImportSchema'
 import {
   applyImportQuestionFormEdit,
@@ -79,7 +77,7 @@ function formatImportCorrectAnswer(row) {
   return labels.length ? labels.join(', ') : rawCorrect
 }
 
-/** Dieu phoi import question tu file, JSON hoac anh OCR va preview truoc khi luu. */
+/** Dieu phoi import question tu file Excel/CSV va preview truoc khi luu. */
 export function QuestionImportModal({ open, variant = 'modal', bank, courseId, moduleId, existingQuestions = [], onClose, onImported }) {
   const toast = useToast()
   const isCourseQuestionsMode = Boolean(courseId)
@@ -98,7 +96,6 @@ export function QuestionImportModal({ open, variant = 'modal', bank, courseId, m
   const [imageQuestions, setImageQuestions] = useState([])
   const [imageOcrText, setImageOcrText] = useState('')
   const [imageWarnings, setImageWarnings] = useState([])
-  const [jsonText, setJsonText] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => () => {
@@ -125,10 +122,14 @@ export function QuestionImportModal({ open, variant = 'modal', bank, courseId, m
     }
   }), [imageQuestions])
   const validImageRows = useMemo(() => imageRows.filter((row) => !row.errors?.length), [imageRows])
+  const importModeOptions = useMemo(() => [
+    { value: IMPORT_MODES.FILE, label: 'Excel/CSV', disabled: parsing || submitting },
+    ...(IMAGE_IMPORT_ENABLED && !isCourseQuestionsMode
+      ? [{ value: IMPORT_MODES.IMAGE, label: 'Image/OCR', disabled: parsing || submitting }]
+      : []),
+  ], [isCourseQuestionsMode, parsing, submitting])
   const isArchived = !isCourseQuestionsMode && bank?.status === 'archived'
-  const sourceLabel = importMode === IMPORT_MODES.JSON
-    ? 'JSON data'
-    : importMode === IMPORT_MODES.IMAGE
+  const sourceLabel = importMode === IMPORT_MODES.IMAGE
       ? imageFiles.length ? `${imageFiles.length} image${imageFiles.length === 1 ? '' : 's'} selected` : 'No image selected'
       : fileName || 'No file selected'
 
@@ -146,7 +147,6 @@ export function QuestionImportModal({ open, variant = 'modal', bank, courseId, m
     setImageQuestions([])
     setImageOcrText('')
     setImageWarnings([])
-    setJsonText('')
     setParsing(false)
     setSubmitting(false)
     if (fileInputRef.current) fileInputRef.current.value = ''
@@ -268,22 +268,6 @@ export function QuestionImportModal({ open, variant = 'modal', bank, courseId, m
       setImageWarnings([])
     } finally {
       setParsing(false)
-    }
-  }
-
-  /** Parse JSON và đưa các row đã validate sang preview. */
-  function handleJsonPreview() {
-    setParseError(null)
-    setParseSuccess(null)
-    try {
-      const result = parseImportJson(jsonText)
-      const validated = revalidateImportRows(result.rows, existingQuestions)
-      setParsedRows(validated)
-      setParseSuccess(`JSON parsed. ${validated.length} row${validated.length === 1 ? '' : 's'} ready for preview.`)
-      setStep('preview')
-    } catch (err) {
-      setParseError(err?.message || 'Could not parse the JSON data.')
-      setParsedRows([])
     }
   }
 
@@ -554,7 +538,7 @@ export function QuestionImportModal({ open, variant = 'modal', bank, courseId, m
     setSubmitting(true)
     try {
       const payload = buildImportPayload(bankId, validRows)
-      const importSource = importMode === IMPORT_MODES.JSON ? 'json_import' : 'excel_import'
+      const importSource = 'excel_import'
       const response = courseId
         ? await questionBankService.importModuleQuestionsBatch(
             courseId,
@@ -752,19 +736,15 @@ export function QuestionImportModal({ open, variant = 'modal', bank, courseId, m
 
       {step === 'upload' && (
         <div className="question-import">
-          <Tabs
-            variant="compact"
-            ariaLabel="Choose import format"
-            value={importMode}
-            onChange={handleModeChange}
-            items={[
-              { value: IMPORT_MODES.FILE, label: 'Excel/CSV', disabled: parsing || submitting },
-              { value: IMPORT_MODES.JSON, label: 'JSON', disabled: parsing || submitting },
-              ...(IMAGE_IMPORT_ENABLED && !isCourseQuestionsMode
-                ? [{ value: IMPORT_MODES.IMAGE, label: 'Image/OCR', disabled: parsing || submitting }]
-                : []),
-            ]}
-          />
+          {importModeOptions.length > 1 && (
+            <Tabs
+              variant="compact"
+              ariaLabel="Choose import format"
+              value={importMode}
+              onChange={handleModeChange}
+              items={importModeOptions}
+            />
+          )}
 
           {importMode === IMPORT_MODES.FILE ? (
             <>
@@ -799,29 +779,6 @@ export function QuestionImportModal({ open, variant = 'modal', bank, courseId, m
                   Download template
                 </Button>
               </div>
-            </>
-          ) : importMode === IMPORT_MODES.JSON ? (
-            <>
-              <p className="question-import__intro">
-                Paste a JSON array using the native question fields. Quiz lesson JSON fields such as title,
-                correct_answers, and fill_in_the_blank are not supported here.
-              </p>
-
-              <div className="question-import__sample">
-                <h4>Sample JSON</h4>
-                <pre>{SAMPLE_QUESTION_BANK_JSON}</pre>
-              </div>
-
-              <Textarea
-                id="question-import-json"
-                label="JSON data"
-                required
-                rows={10}
-                value={jsonText}
-                onChange={(event) => setJsonText(event.target.value)}
-                disabled={isArchived || parsing}
-                placeholder="Paste question JSON here"
-              />
             </>
           ) : IMAGE_IMPORT_ENABLED && importMode === IMPORT_MODES.IMAGE ? (
             <>
@@ -871,7 +828,7 @@ export function QuestionImportModal({ open, variant = 'modal', bank, courseId, m
           )}
           {parsedRows.length === 0 && (
             <div className="admin-empty question-import__preview-empty">
-              No rows left in preview. Go back to import another file or JSON payload.
+              No rows left in preview. Go back to import another file.
             </div>
           )}
           {parsedRows.length > 0 && (
@@ -967,11 +924,6 @@ export function QuestionImportModal({ open, variant = 'modal', bank, courseId, m
         ) : (
           <>
             <Button type="button" variant="ghost" onClick={handleClose} disabled={parsing}>Close</Button>
-            {importMode === IMPORT_MODES.JSON && (
-              <Button type="button" onClick={handleJsonPreview} disabled={isArchived || parsing || !jsonText.trim()}>
-                Validate and preview JSON
-              </Button>
-            )}
             {IMAGE_IMPORT_ENABLED && importMode === IMPORT_MODES.IMAGE && (
               <Button type="button" onClick={handleImagePreview} disabled={isArchived || parsing || !imageFiles.length} leftIcon={<FileImage size={16} />}>
                 Generate preview

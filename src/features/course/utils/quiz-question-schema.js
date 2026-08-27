@@ -25,8 +25,7 @@ export const MEDIA_TYPES = {
 
 export const MEDIA_TYPE_VALUES = Object.values(MEDIA_TYPES);
 
-// Excel/CSV template chỉ chứa text. Media thêm bằng cách chỉnh từng câu
-// trong QuizQuestionEditModal hoặc dùng JSON import (JSON hỗ trợ đầy đủ media).
+// Excel/CSV template chi chua text. Media them bang cach chinh tung cau trong QuizQuestionEditModal.
 export const QUIZ_IMPORT_COLUMNS = [
   "type",
   "title",
@@ -38,63 +37,6 @@ export const QUIZ_IMPORT_COLUMNS = [
   "explain_question",
 ];
 
-// JSON mẫu hiển thị trong textarea (placeholder import).
-export const SAMPLE_QUIZ_JSON = JSON.stringify(
-  [
-    {
-      title: "What is the capital of <b>France</b>?",
-      media: {
-        type: "audio",
-        url: "https://example.com/listening-sample.mp3",
-        objectPath: "2026/07/listening-sample.mp3",
-        fileName: "listening-sample.mp3",
-        contentType: "audio/mpeg",
-        size: 123456,
-      },
-      explain_question: "This tests your <i>geography</i> knowledge",
-      type: "single_choice",
-      number_of_options: 4,
-      options: ["<b>Paris</b>", "London", "Berlin", "Madrid"],
-      correct_answers: [1],
-    },
-    {
-      title: "Select all <u>programming languages</u>",
-      media: {
-        type: "image",
-        url: "https://example.com/question-image.png",
-        objectPath: "2026/07/question-image.png",
-        fileName: "question-image.png",
-        contentType: "image/png",
-        size: 123456,
-      },
-      explain_question: "",
-      type: "multiple_choice",
-      number_of_options: 3,
-      options: [
-        "Python",
-        { text: "Java", media: null },
-        {
-          text: "",
-          media: {
-            type: "image",
-            url: "https://example.com/answer-image.png",
-            objectPath: "2026/07/answer-image.png",
-          },
-        },
-      ],
-      correct_answers: [1, 2],
-    },
-    {
-      title: "PHP stands for _____ Hypertext Preprocessor",
-      media: null,
-      explain_question: "",
-      type: "fill_in_the_blank",
-      correct_answers: ["PHP", "Personal Home Page"],
-    },
-  ],
-  null,
-  2,
-);
 
 // ─── HTML sanitization (chỉ cho phép <b> <i> <u>, không attribute) ─────────────
 

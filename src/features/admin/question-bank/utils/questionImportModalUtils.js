@@ -3,7 +3,6 @@ import { getSaveableQuestionAnswers } from "./questionFormUtils";
 
 export const IMPORT_MODES = {
   FILE: "file",
-  JSON: "json",
   IMAGE: "image",
 };
 

@@ -18,46 +18,6 @@ export const IMPORT_COLUMNS = [
 
 export const ALLOWED_TYPES = ['single_choice', 'multiple_choice', 'true_false']
 
-export const SAMPLE_QUESTION_BANK_JSON = JSON.stringify(
-  [
-    {
-      questionText: 'What is the capital of France?',
-      questionType: 'single_choice',
-      options: ['Paris', 'London', 'Berlin', 'Madrid'],
-      correctAnswer: 'A',
-      explanation: 'Paris has been the capital of France for centuries.',
-      media: {
-        images: [],
-        audios: [],
-      },
-    },
-    {
-      questionText: 'Which Spring stereotypes can register beans?',
-      questionType: 'multiple_choice',
-      options: ['@Component', '@Service', '@Repository', '@BeanFactory'],
-      correctAnswer: 'A,B,C',
-      explanation: '@Component, @Service, and @Repository are component-scanned stereotypes.',
-      media: {
-        images: [],
-        audios: [],
-      },
-    },
-    {
-      question_text: 'Java is a programming language.',
-      question_type: 'true_false',
-      options: ['True', 'False'],
-      correct_answer: 'True',
-      explanation: 'Java is a general-purpose programming language.',
-      media: {
-        images: [],
-        audios: [],
-      },
-    },
-  ],
-  null,
-  2,
-)
-
 const DUPLICATE_MESSAGE = 'A question with the same text already exists in this bank'
 
 const HEADER_ALIASES = {
@@ -123,12 +83,6 @@ function mapRow(rawRow, columnMap) {
   return normalized
 }
 
-function getAliasedValue(source, camelKey, snakeKey) {
-  if (Object.prototype.hasOwnProperty.call(source, camelKey)) return source[camelKey]
-  if (Object.prototype.hasOwnProperty.call(source, snakeKey)) return source[snakeKey]
-  return ''
-}
-
 function parseMediaUrls(value) {
   if (Array.isArray(value)) {
     return value.map((item) => String(item ?? '').trim()).filter(Boolean)
@@ -172,53 +126,6 @@ function isReservedMediaHost(hostname) {
     || host.endsWith('.example.org')
     || host === 'example.net'
     || host.endsWith('.example.net')
-}
-
-function getJsonMediaArray(rawQuestion, mediaKey, aliasKey) {
-  const media = rawQuestion.media && typeof rawQuestion.media === 'object' && !Array.isArray(rawQuestion.media)
-    ? rawQuestion.media
-    : {}
-  if (Array.isArray(media[mediaKey])) return media[mediaKey]
-  if (Array.isArray(rawQuestion[aliasKey])) return rawQuestion[aliasKey]
-  return []
-}
-
-function normalizeJsonQuestion(rawQuestion) {
-  const errors = []
-  if (!rawQuestion || typeof rawQuestion !== 'object' || Array.isArray(rawQuestion)) {
-    return {
-      mapped: {},
-      errors: ['Question must be an object'],
-    }
-  }
-
-  if (Object.prototype.hasOwnProperty.call(rawQuestion, 'title') || Object.prototype.hasOwnProperty.call(rawQuestion, 'correct_answers')) {
-    errors.push('Quiz JSON format is not supported. Use questionText, questionType, options, and correctAnswer.')
-  }
-
-  const rawOptions = rawQuestion.options
-  const options = Array.isArray(rawOptions) ? rawOptions : []
-  if (!Array.isArray(rawOptions)) {
-    errors.push('Options must be an array')
-  } else if (options.length > 6) {
-    errors.push('Choice questions support 2 to 6 answers')
-  }
-
-  const mapped = {
-    question_text: String(getAliasedValue(rawQuestion, 'questionText', 'question_text') ?? '').trim(),
-    question_type: String(getAliasedValue(rawQuestion, 'questionType', 'question_type') ?? '').trim(),
-    correct_answer: String(getAliasedValue(rawQuestion, 'correctAnswer', 'correct_answer') ?? '').trim(),
-    explanation: String(rawQuestion.explanation ?? '').trim(),
-    module_id: String(getAliasedValue(rawQuestion, 'moduleId', 'module_id') ?? '').trim(),
-    image_files: getJsonMediaArray(rawQuestion, 'images', 'imageFiles'),
-    audio_files: getJsonMediaArray(rawQuestion, 'audios', 'audioFiles'),
-  }
-
-  options.slice(0, 6).forEach((option, index) => {
-    mapped[`option_${String.fromCharCode(97 + index)}`] = String(option ?? '').trim()
-  })
-
-  return { mapped, errors }
 }
 
 function buildColumnMap(headers) {
@@ -461,46 +368,6 @@ export async function parseImportFile(file) {
   })
 
   return { headers, rows: parsed }
-}
-
-export function parseImportJson(jsonText) {
-  const text = String(jsonText ?? '').trim()
-  if (!text) throw new Error('JSON data is required.')
-
-  let data
-  try {
-    data = JSON.parse(text)
-  } catch (err) {
-    throw new Error(`Invalid JSON: ${err.message}`, { cause: err })
-  }
-
-  if (!Array.isArray(data)) {
-    throw new Error('JSON must be an array of questions.')
-  }
-
-  const seenTexts = new Set()
-  const rows = data.map((rawQuestion, index) => {
-    const rowNumber = index + 1
-    const { mapped, errors: shapeErrors } = normalizeJsonQuestion(rawQuestion)
-    const { errors, resolvedType, questionText, options, correctRaw, imageFiles, audioFiles } = collectRowErrors(mapped, rowNumber, seenTexts)
-    return {
-      rowNumber,
-      data: {
-        questionText,
-        questionType: resolvedType || (mapped.question_type || '').trim().toLowerCase(),
-        options,
-        correctAnswer: correctRaw,
-        explanation: mapped.explanation || null,
-        moduleId: mapped.module_id ? mapped.module_id.trim() : null,
-        imageFiles,
-        audioFiles,
-      },
-      raw: mapped,
-      errors: [...shapeErrors, ...errors],
-    }
-  })
-
-  return { headers: [], rows }
 }
 
 export function revalidateImportRows(parsedRows, existingQuestions = []) {
