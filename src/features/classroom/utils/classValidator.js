@@ -192,10 +192,12 @@ export function createClassFormSchema({
 
       price: z
         .number({
-          required_error: "Class price is required",
-          invalid_type_error: "Class price must be a valid number",
+          error: (issue) =>
+            issue.input === undefined || Number.isNaN(issue.input)
+              ? "Class price is required"
+              : "Class price must be a valid number",
         })
-        .min(0, "Class price must be greater than or equal to 0")
+        .positive("Class price must be greater than 0")
         .max(9999999999.99, "Class price is too large"),
     })
     .superRefine((data, context) => {
