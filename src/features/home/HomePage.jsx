@@ -2,9 +2,12 @@ import { useEffect, useState } from "react";
 import { ArrowRight, SunMedium, Zap } from "lucide-react";
 import { useDocumentTitle } from "../../shared/hooks/useDocumentTitle";
 import { Button } from "../../shared/components/ui";
-import { CourseCard } from "../course/components/CourseCard";
-import { OpeningSchedulePage } from "../opening-schedule";
-import { courseCatalogService } from "@/features/course";
+import {
+  OpeningScheduleCard,
+  OpeningSchedulePage,
+  openingScheduleService,
+} from "../opening-schedule";
+import "../opening-schedule/opening-schedule.css";
 
 function RoadStop({ className }) {
   return (
@@ -16,28 +19,28 @@ function RoadStop({ className }) {
 }
 
 export function HomePage() {
-  const [heroPopularCourse, setHeroPopularCourse] = useState(undefined);
+  const [heroPopularClass, setHeroPopularClass] = useState(undefined);
 
   useDocumentTitle("Learn smarter. Achieve faster.");
 
   useEffect(() => {
     let cancelled = false;
 
-    async function loadMostEnrolledCourse() {
+    async function loadMostRegisteredClass() {
       try {
-        const course = await courseCatalogService.getMostEnrolled();
+        const classItem = await openingScheduleService.getMostRegistered();
 
         if (!cancelled) {
-          setHeroPopularCourse(course);
+          setHeroPopularClass(classItem ?? null);
         }
       } catch {
         if (!cancelled) {
-          setHeroPopularCourse(null);
+          setHeroPopularClass(null);
         }
       }
     }
 
-    void loadMostEnrolledCourse();
+    void loadMostRegisteredClass();
 
     return () => {
       cancelled = true;
@@ -90,15 +93,14 @@ export function HomePage() {
             </div>
 
             <div className="hero-illustration">
-              {heroPopularCourse === undefined ? (
+              {heroPopularClass === undefined ? (
                 <div className="course-state" role="status" aria-live="polite">
-                  <p>Loading most enrolled course...</p>
+                  <p>Loading most registered class...</p>
                 </div>
-              ) : heroPopularCourse ? (
-                <CourseCard
-                  course={heroPopularCourse}
-                  viewMode="grid"
-                  highlightLabel="Most enrolled"
+              ) : heroPopularClass ? (
+                <OpeningScheduleCard
+                  classItem={heroPopularClass}
+                  highlightLabel="Most registered"
                   detailState={{
                     from: "/",
                     fromHash: "#top",
@@ -107,10 +109,31 @@ export function HomePage() {
                 />
               ) : (
                 <div className="course-state" role="status">
-                  <p>No published course is available right now.</p>
+                  <p>No opening class is available right now.</p>
                 </div>
               )}
             </div>
+          </div>
+        </section>
+
+        <section className="courses-section" id="courses">
+          <div className="container">
+            <div className="courses-heading">
+              <h2>Popular Classes</h2>
+            </div>
+
+            <OpeningSchedulePage
+              embedded
+              showHero={false}
+              showFilters={false}
+              sort="POPULAR"
+              pageSize={6}
+              detailState={{
+                from: "/",
+                fromHash: "#courses",
+                backLabel: "Back to homepage",
+              }}
+            />
           </div>
         </section>
 

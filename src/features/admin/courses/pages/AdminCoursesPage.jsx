@@ -31,7 +31,7 @@ import { StatusBadge } from "@/shared/components/status";
 import Pagination from "@/shared/components/Pagination";
 import { categoryService, courseAdminService } from "@/features/course";
 import { getCurrentUser } from "@/services/api-client";
-import { formatDate, formatPrice } from "@/shared/utils/formatters";
+import { formatDate } from "@/shared/utils/formatters";
 import { DEFAULT_PAGE_SIZE } from "@/shared/constants/pagination";
 import {
   canManageCourseDetails,
@@ -608,7 +608,6 @@ export function AdminCoursesPage() {
                     <th>Course</th>
                     <th>Category</th>
                     <th>Level</th>
-                    {/* <th>Price</th> */}
                     <th>Status</th>
                     <th>Updated</th>
                     <th>
@@ -641,23 +640,6 @@ export function AdminCoursesPage() {
                           {formatLevel(course.level)}
                         </span>
                       </td>
-                      {/* <td data-label="Price">
-                        <div className="course-management__meta-cell">
-                          <strong>
-                            {formatPrice(
-                              course.discountedPrice ?? course.price,
-                              course.isFree,
-                            )}
-                          </strong>
-                          <span>
-                            {course.isFree
-                              ? "Free course"
-                              : course.discountedPrice != null
-                                ? "Discounted price"
-                                : "Standard price"}
-                          </span>
-                        </div>
-                      </td> */}
                       <td data-label="Status">
                         <CourseStatusBadge status={course.status} />
                       </td>
@@ -716,15 +698,6 @@ export function AdminCoursesPage() {
                       <div>
                         <dt>Level</dt>
                         <dd>{formatLevel(course.level)}</dd>
-                      </div>
-                      <div>
-                        <dt>Price</dt>
-                        <dd>
-                          {formatPrice(
-                            course.discountedPrice ?? course.price,
-                            course.isFree,
-                          )}
-                        </dd>
                       </div>
                       <div>
                         <dt>Updated</dt>

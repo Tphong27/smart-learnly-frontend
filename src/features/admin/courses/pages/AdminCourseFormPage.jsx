@@ -9,7 +9,6 @@ import {
   ListChecks,
   Save,
   Settings2,
-  WalletCards,
 } from "lucide-react";
 import {
   Alert,
@@ -43,23 +42,11 @@ const LEVEL_OPTIONS = [
   { value: "advanced", label: "Advanced" },
 ];
 
-/** Tạo payload course và tự xác định miễn phí khi giá bằng 0. */
+/**
+ * Tạo payload course. Giá bán thuộc opening class — course luôn gửi price 0 / isFree.
+ */
 function buildPayload(values, mode, includeAssignment) {
   const thumbnailUrl = values.thumbnailUrl?.trim();
-
-  const numericPrice =
-    values.price === "" || values.price == null || Number.isNaN(values.price)
-      ? 0
-      : Number(values.price);
-
-  const isFree = numericPrice === 0;
-
-  const numericDiscountedPrice =
-    values.discountedPrice === "" ||
-    values.discountedPrice == null ||
-    Number.isNaN(values.discountedPrice)
-      ? undefined
-      : Number(values.discountedPrice);
 
   const payload = {
     categoryId: values.categoryId,
@@ -72,9 +59,8 @@ function buildPayload(values, mode, includeAssignment) {
     language: values.language?.trim() || undefined,
     level: values.level?.trim() || undefined,
     thumbnailUrl: mode === "edit" ? thumbnailUrl : thumbnailUrl || undefined,
-    price: numericPrice,
-    discountedPrice: isFree ? undefined : numericDiscountedPrice,
-    isFree,
+    price: 0,
+    isFree: true,
   };
   if (includeAssignment) {
     payload.assignedSmeId = values.assignedSmeId;
@@ -137,8 +123,6 @@ export function AdminCourseFormPage() {
       language: "en",
       level: "",
       thumbnailUrl: "",
-      price: 0,
-      discountedPrice: "",
       status: "draft",
     }),
     [],
@@ -157,14 +141,10 @@ export function AdminCourseFormPage() {
     mode: "onBlur",
   });
 
-  const price = useWatch({ control, name: "price" });
   const thumbnailUrl = useWatch({
     control,
     name: "thumbnailUrl",
   });
-
-  const isFreeCourse =
-    price === "" || price == null || Number.isNaN(price) || Number(price) === 0;
 
   useEffect(() => {
     if (isAssignedOnlyRole && !isEdit) {
@@ -203,8 +183,6 @@ export function AdminCourseFormPage() {
           language: detail.language || "en",
           level: detail.level || "",
           thumbnailUrl: detail.thumbnailUrl || "",
-          price: detail.isFree ? 0 : (detail.price ?? 0),
-          discountedPrice: detail.isFree ? "" : (detail.discountedPrice ?? ""),
           status: detail.status?.toLowerCase() || "draft",
         });
       } catch (err) {
@@ -600,46 +578,22 @@ export function AdminCourseFormPage() {
 
             <section
               className="sl-course-editor__section sl-course-editor__section--aside"
-              aria-labelledby="course-pricing-heading"
+              aria-labelledby="course-visibility-heading"
             >
               <div className="sl-course-editor__section-header">
                 <span className="sl-course-editor__section-icon">
-                  <WalletCards size={19} aria-hidden="true" />
+                  <Settings2 size={19} aria-hidden="true" />
                 </span>
                 <div>
-                  <h2 id="course-pricing-heading">Pricing and visibility</h2>
+                  <h2 id="course-visibility-heading">Visibility</h2>
+                  <p>
+                    Commercial pricing is set on opening classes, not on the
+                    course.
+                  </p>
                 </div>
               </div>
 
               <div className="sl-course-editor__fields">
-                <Input
-                  id="course-price"
-                  className="sl-course-field--full"
-                  label="Price (VND)"
-                  type="number"
-                  min="0"
-                  inputMode="numeric"
-                  disabled={isReadOnly}
-                  error={errors.price}
-                  {...register("price", {
-                    valueAsNumber: true,
-                  })}
-                />
-
-                <Input
-                  id="course-discounted-price"
-                  className="sl-course-field--full"
-                  label="Discounted price (VND)"
-                  type="number"
-                  min="0"
-                  inputMode="numeric"
-                  disabled={isFreeCourse || isReadOnly}
-                  error={errors.discountedPrice}
-                  {...register("discountedPrice", {
-                    valueAsNumber: true,
-                  })}
-                />
-
                 {isEdit ? (
                   <Select
                     id="course-status"

@@ -2,6 +2,7 @@ import {
   ArrowRight,
   BookOpen,
   CalendarDays,
+  Flame,
   UserRound,
   Users,
 } from "lucide-react";
@@ -19,7 +20,11 @@ const CARD_DATE_OPTIONS = {
   year: "numeric",
 };
 
-export function OpeningScheduleCard({ classItem, detailState }) {
+export function OpeningScheduleCard({
+  classItem,
+  detailState,
+  highlightLabel = "",
+}) {
   const availableSlots = toNumber(classItem?.availableSlots, 0);
   const price = toNumber(classItem?.price, 0);
 
@@ -30,13 +35,22 @@ export function OpeningScheduleCard({ classItem, detailState }) {
   const detailPath = `/opening-schedule/${classItem.classId}`;
 
   return (
-    <article className="opening-card">
+    <article
+      className={`opening-card${highlightLabel ? " opening-card--highlighted" : ""}`}
+    >
       <Link
         to={detailPath}
         state={detailState}
         className="opening-card__media"
         aria-label={`View ${classItem.className}`}
       >
+        {highlightLabel ? (
+          <span className="opening-card__highlight">
+            <Flame size={15} aria-hidden="true" />
+            {highlightLabel}
+          </span>
+        ) : null}
+
         {classItem.courseThumbnailUrl ? (
           <img
             src={classItem.courseThumbnailUrl}

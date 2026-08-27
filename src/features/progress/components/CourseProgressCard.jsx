@@ -57,8 +57,6 @@ export function CourseProgressCard({ course }) {
     ? course.className || "Unnamed class"
     : course.title;
 
-  const learningTypeLabel = isClassLearning ? "Class course" : "Online course";
-
   const progressLabel = isClassLearning ? "Class progress" : "Course progress";
 
   const lesson = course.lesson ?? {
@@ -98,18 +96,11 @@ export function CourseProgressCard({ course }) {
         <div className="course-progress-card__info">
           <div className="course-progress-card__heading-row">
             <div>
-              <p className="course-progress-card__meta">
-                <span
-                  className={
-                    isClassLearning
-                      ? "course-learning-type course-learning-type--class"
-                      : "course-learning-type course-learning-type--course"
-                  }
-                >
-                  {learningTypeLabel}
-                </span>
-                <span>{course.categoryName}</span>
-              </p>
+              {course.categoryName ? (
+                <p className="course-progress-card__meta">
+                  <span>{course.categoryName}</span>
+                </p>
+              ) : null}
               <h3>{learningTitle}</h3>
 
               {isClassLearning && (
