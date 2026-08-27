@@ -15,7 +15,7 @@ import { assignmentService } from "../services/assignmentService";
 import "./AssignmentAiDraftPanel.css";
 
 const DEFAULT_PROMPT =
-  "Hãy tạo một bài tập dựa trên nội dung bài học hiện tại và kèm tiêu chí đánh giá.";
+  "Hãy tạo một bài tập dựa trên nội dung bài học hiện tại ";
 const UNSUPPORTED_SOURCE_MESSAGE = "Only PDF or DOCX files can be uploaded.";
 const MIN_THINKING_MS = 700;
 /** Kiểm tra nhanh định dạng nguồn trước khi gửi file lên backend. */
@@ -176,8 +176,8 @@ export function AssignmentAiDraftPanel({
                   </span>
                 </div>
                 <span>
-                  Build assignment content and grading rubrics with AI. Up to
-                  5 drafts per request
+                  Build assignment content and grading rubrics with AI. Up to 5
+                  drafts per request
                 </span>
               </div>
             </div>

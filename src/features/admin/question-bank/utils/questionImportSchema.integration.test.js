@@ -4,9 +4,7 @@ import {
   buildImportPayload,
   IMPORT_COLUMNS,
   parseImportFile,
-  parseImportJson,
   revalidateImportRows,
-  SAMPLE_QUESTION_BANK_JSON,
 } from "./questionImportSchema";
 
 /** Tao file Excel giong template de test luong parse file that trong import question. */
@@ -24,9 +22,52 @@ function createTemplateImportFile(rows) {
   });
 }
 
+/** Tao file Excel co them cot ngoai template (vd module_id legacy) de kiem tra parser bo qua. */
+function createSheetWithExtraColumns(headerRow, valueRows) {
+  const matrix = [headerRow, ...valueRows];
+  const worksheet = XLSX.utils.aoa_to_sheet(matrix);
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, "Questions");
+  const content = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
+  return new File([content], "questions.xlsx", {
+    type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  });
+}
+
 describe("question import schema", () => {
-  it("keeps bundled sample rows free from fake media URLs", () => {
-    const result = parseImportJson(SAMPLE_QUESTION_BANK_JSON);
+  it("accepts Excel rows without fake media URLs", async () => {
+    const file = createTemplateImportFile([
+      {
+        question_text: "What is the capital of France?",
+        question_type: "single_choice",
+        option_a: "Paris",
+        option_b: "London",
+        option_c: "Berlin",
+        option_d: "Madrid",
+        correct_answer: "A",
+        explanation: "Paris has been the capital of France for centuries.",
+      },
+      {
+        question_text: "Which Spring stereotypes can register beans?",
+        question_type: "multiple_choice",
+        option_a: "@Component",
+        option_b: "@Service",
+        option_c: "@Repository",
+        option_d: "@BeanFactory",
+        correct_answer: "A,B,C",
+        explanation: "@Component, @Service, and @Repository are component-scanned stereotypes.",
+      },
+      {
+        question_text: "Java is a programming language.",
+        question_type: "true_false",
+        option_a: "True",
+        option_b: "False",
+        correct_answer: "True",
+        explanation: "Java is a general-purpose programming language.",
+      },
+    ]);
+
+    const result = await parseImportFile(file);
 
     expect(result.rows).toHaveLength(3);
     expect(result.rows.every((row) => row.data.imageFiles.length === 0)).toBe(true);
@@ -37,26 +78,30 @@ describe("question import schema", () => {
     expect(payloadRows.every((row) => !("bloomLevel" in row))).toBe(true);
   });
 
-  it("rejects documentation placeholder domains before backend commit", () => {
-    const result = parseImportJson(JSON.stringify([{
-      questionText: "Question with fake media",
-      questionType: "single_choice",
-      options: ["A", "B"],
-      correctAnswer: "A",
-      media: { images: ["https://example.com/question.png"] },
-    }]));
+  it("rejects documentation placeholder domains before backend commit", async () => {
+    const file = createTemplateImportFile([{
+      question_text: "Question with fake media",
+      question_type: "single_choice",
+      option_a: "A",
+      option_b: "B",
+      correct_answer: "A",
+      image_files: "https://example.com/question.png",
+    }]);
+
+    const result = await parseImportFile(file);
 
     expect(result.rows[0].errors).toContain(
       "Image media URL must point to a real, publicly accessible media file",
     );
   });
 
-  it("does not require a module column because scope comes from the page URL", () => {
-    const parsed = parseImportJson(JSON.stringify([{
-      questionText: "Course question",
-      questionType: "single_choice",
-      options: ["A", "B"],
-      correctAnswer: "A",
+  it("does not require a module column because scope comes from the page URL", async () => {
+    const parsed = await parseImportFile(createTemplateImportFile([{
+      question_text: "Course question",
+      question_type: "single_choice",
+      option_a: "A",
+      option_b: "B",
+      correct_answer: "A",
     }]));
 
     const rows = revalidateImportRows(parsed.rows, []);
@@ -65,14 +110,25 @@ describe("question import schema", () => {
     expect(rows[0].data.moduleId).toBeNull();
   });
 
-  it("ignores legacy module fields when building a course-wide payload", () => {
-    const parsed = parseImportJson(JSON.stringify([{
-      questionText: "Question for the active module",
-      questionType: "single_choice",
-      options: ["A", "B"],
-      correctAnswer: "A",
-      moduleId: "11111111-1111-1111-1111-111111111111",
-    }]));
+  it("ignores legacy module fields when building a course-wide payload", async () => {
+    const parsed = await parseImportFile(createSheetWithExtraColumns(
+      [
+        "Question text",
+        "Question type",
+        "Option A",
+        "Option B",
+        "Correct answer",
+        "module_id",
+      ],
+      [[
+        "Question for the active module",
+        "single_choice",
+        "A",
+        "B",
+        "A",
+        "11111111-1111-1111-1111-111111111111",
+      ]],
+    ));
 
     const rows = revalidateImportRows(parsed.rows, []);
     const payload = buildImportPayload(null, rows);
@@ -83,12 +139,15 @@ describe("question import schema", () => {
     expect(rows[0].errors).toEqual([]);
   });
 
-  it("rejects multiple choice imports with only one correct answer", () => {
-    const parsed = parseImportJson(JSON.stringify([{
-      questionText: "Question with a single correct option",
-      questionType: "multiple_choice",
-      options: ["A", "B", "C", "D"],
-      correctAnswer: "A",
+  it("rejects multiple choice imports with only one correct answer", async () => {
+    const parsed = await parseImportFile(createTemplateImportFile([{
+      question_text: "Question with a single correct option",
+      question_type: "multiple_choice",
+      option_a: "A",
+      option_b: "B",
+      option_c: "C",
+      option_d: "D",
+      correct_answer: "A",
     }]));
 
     expect(parsed.rows[0].errors).toContain(
@@ -97,11 +156,12 @@ describe("question import schema", () => {
     expect(parsed.rows[0].data.questionType).toBe("multiple_choice");
   });
 
-  it("defaults missing question type to single choice", () => {
-    const parsed = parseImportJson(JSON.stringify([{
-      questionText: "Question without explicit type",
-      options: ["A", "B"],
-      correctAnswer: "A",
+  it("defaults missing question type to single choice", async () => {
+    const parsed = await parseImportFile(createTemplateImportFile([{
+      question_text: "Question without explicit type",
+      option_a: "A",
+      option_b: "B",
+      correct_answer: "A",
     }]));
 
     expect(parsed.rows[0].errors).toEqual([]);
