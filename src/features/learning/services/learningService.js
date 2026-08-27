@@ -94,6 +94,20 @@ export const learningService = {
     return unwrap(response) || [];
   },
 
+  /** Lấy nội dung assignment chỉ đọc cho guest preview. */
+  async getPreviewAssignment(courseId, lessonId, classId = null) {
+    const response = await apiClient.get(
+      `/courses/${courseId}/preview-lessons/${lessonId}/assignment`,
+      {
+        params: classId ? { classId } : {},
+        skipAuthorization: true,
+        skipAuthRedirect: true,
+      },
+    );
+
+    return unwrap(response);
+  },
+
   /** Lấy câu hỏi chỉ đọc của quiz trong staff preview, kể cả course đang draft. */
   async getAdminPreviewTestQuestions(courseId, lessonId, classId = null) {
     const response = await apiClient.get(

@@ -3,6 +3,21 @@ export const PERSONAL_IMPORT_DEFAULT_OPTIONS = {
   language: "auto",
 };
 
+export const PERSONAL_DOCUMENT_MAX_FILE_SIZE_BYTES = 20 * 1024 * 1024;
+
+/** Kiểm tra document ngay tại trình duyệt trước khi gửi request AI tốn thời gian. */
+export function validatePersonalDocumentFile(file) {
+  if (!file) return "Choose a PDF or DOCX file.";
+  const extension = String(file.name || "").toLowerCase();
+  if (!extension.endsWith(".pdf") && !extension.endsWith(".docx")) {
+    return "Choose a PDF or DOCX file.";
+  }
+  if (file.size > PERSONAL_DOCUMENT_MAX_FILE_SIZE_BYTES) {
+    return "Document size must not exceed 20 MB.";
+  }
+  return null;
+}
+
 export const PERSONAL_IMPORT_LANGUAGES = [
   { value: "auto", label: "Auto-detect" },
   { value: "vi", label: "Vietnamese" },

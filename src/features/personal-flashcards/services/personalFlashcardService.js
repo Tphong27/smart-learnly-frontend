@@ -132,6 +132,8 @@ export const personalFlashcardService = {
     return unwrap(
       await apiClient.post(`${BASE_PATH}/${setId}/imports/generate-from-file`, formData, {
         params: { desiredCount, language },
+        // Cho phép một lần primary và một lần fallback trong giới hạn 90 giây của backend.
+        timeout: 210000,
       }),
     );
   },

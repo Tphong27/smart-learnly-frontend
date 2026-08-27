@@ -553,7 +553,9 @@ function OverviewContent({
     return (
       <EssayLessonContent
         lesson={lesson}
+        courseId={courseId}
         classId={classId}
+        guestPreview={workspaceMode === "guest"}
         readOnly={workspaceMode !== "student"}
         onCompleted={() => onEssayCompleted?.(getLessonId(lesson))}
       />
@@ -622,7 +624,9 @@ function OverviewContent({
 
 function EssayLessonContent({
   lesson,
+  courseId,
   classId,
+  guestPreview = false,
   readOnly = false,
   onCompleted,
 }) {
@@ -649,10 +653,13 @@ function EssayLessonContent({
       setMessage(null);
       setFile(null);
       try {
-        const nextAssignment = await assignmentService.getByLesson(
-          lessonId,
-          classId,
-        );
+        const nextAssignment = guestPreview
+          ? await learningService.getPreviewAssignment(
+              courseId,
+              lessonId,
+              classId,
+            )
+          : await assignmentService.getByLesson(lessonId, classId);
         if (cancelled) return;
         setAssignment(nextAssignment);
         setSubmission(null);
@@ -699,7 +706,7 @@ function EssayLessonContent({
     return () => {
       cancelled = true;
     };
-  }, [lessonId, classId, readOnly, loadVersion]);
+  }, [lessonId, courseId, classId, guestPreview, readOnly, loadVersion]);
 
   const downloadAssignmentFile = async (fileUrl, fileName, downloadKey) => {
     if (!fileUrl) return;
