@@ -335,7 +335,17 @@ export function AdminAiQuestionDraftCreatePage() {
                   )
                 : await questionBankService.createAiDraftBatch(bankId, payload);
             const normalizedBatch = normalizeAiBatch(batch);
-            toast.success("AI draft batch created");
+            const batchFailed = normalizedBatch.status === "failed";
+            if (batchFailed) {
+                const message =
+                    normalizedBatch.safeErrorMessage || "AI generation failed. Check the batch for details.";
+                setError(message);
+                toast.error(message);
+            } else {
+                toast.success("AI draft batch created");
+            }
+            // Rotate the idempotency key even on failure so a resubmit is a fresh
+            // attempt; reusing the key would only return the same finished batch.
             setIdempotencyKey(createIdempotencyKey());
             setFiles([]);
             if (fileInputRef.current) fileInputRef.current.value = "";
