@@ -28,6 +28,7 @@ export const openingScheduleService = {
     startTo = "",
     minPrice = "",
     maxPrice = "",
+    sort = "",
   } = {}) {
     const response = await apiClient.get("/opening-schedules", {
       skipAuthorization: true,
@@ -41,10 +42,21 @@ export const openingScheduleService = {
         ...(startTo && { startTo }),
         ...(minPrice !== "" && { minPrice }),
         ...(maxPrice !== "" && { maxPrice }),
+        ...(sort && { sort }),
       },
     });
 
     return normalizePage(response);
+  },
+
+  // Lớp đăng ký active nhiều nhất (homepage hero).
+  async getMostRegistered() {
+    const response = await apiClient.get("/opening-schedules/most-registered", {
+      skipAuthorization: true,
+      skipAuthRedirect: true,
+    });
+
+    return unwrapData(response);
   },
 
   // Tải chi tiết một lớp đang mở đăng ký.

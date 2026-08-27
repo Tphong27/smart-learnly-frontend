@@ -17,7 +17,7 @@ import { assignmentAiSettingsSchema } from '../schemas/settings-schemas'
 
 const SECRET_PLACEHOLDER = '********'
 
-/** Quan ly cau hinh AI model dung cho assignment draft. */
+/** Cấu hình AI model dùng chung cho assignment, question, flashcard và video. */
 export function AiIntegrationsSettingsSection() {
   const toast = useToast()
   const [loading, setLoading] = useState(true)
@@ -105,8 +105,9 @@ export function AiIntegrationsSettingsSection() {
   return (
     <>
       <p className="admin-settings-section__lead">
-        Configure the AI model for assignment drafting.
-        Changes take effect immediately without restarting the application.
+        Configure the shared AI model used for assignment draft, question draft,
+        flashcard generation, and video summary. Changes take effect immediately
+        without restarting the application.
       </p>
 
       <Form onSubmit={form.handleSubmit(submitAiModel)}>

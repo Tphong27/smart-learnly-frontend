@@ -15,18 +15,6 @@ const TAB_CONFIG = {
 
 const PAGE_SIZE = 5;
 
-const LEARNING_TYPES = {
-  all: {
-    label: "All",
-  },
-  COURSE: {
-    label: "Online courses",
-  },
-  CLASS: {
-    label: "Class courses",
-  },
-};
-
 function normalizeText(value) {
   return String(value || "")
     .trim()
@@ -35,7 +23,6 @@ function normalizeText(value) {
 
 export function TraineeProgress({ progress }) {
   const [activeTab, setActiveTab] = useState("inProgress");
-  const [learningType, setLearningType] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [page, setPage] = useState(1);
@@ -60,23 +47,10 @@ export function TraineeProgress({ progress }) {
       : progress.inProgressCourseItems || [];
   }, [activeTab, progress]);
 
-  const typeCounts = useMemo(() => {
-    return {
-      all: tabCourses.length,
-      COURSE: tabCourses.filter((course) => course.learningType === "COURSE")
-        .length,
-      CLASS: tabCourses.filter((course) => course.learningType === "CLASS")
-        .length,
-    };
-  }, [tabCourses]);
-
   const filteredCourses = useMemo(() => {
     const keyword = normalizeText(searchTerm);
 
     return tabCourses.filter((course) => {
-      const matchesType =
-        learningType === "all" || course.learningType === learningType;
-
       const matchesSearch =
         !keyword ||
         normalizeText(course.title).includes(keyword) ||
@@ -86,9 +60,9 @@ export function TraineeProgress({ progress }) {
       const matchesCategory =
         selectedCategory === "all" || course.categoryName === selectedCategory;
 
-      return matchesType && matchesSearch && matchesCategory;
+      return matchesSearch && matchesCategory;
     });
-  }, [tabCourses, learningType, searchTerm, selectedCategory]);
+  }, [tabCourses, searchTerm, selectedCategory]);
 
   const totalPages = Math.max(1, Math.ceil(filteredCourses.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
@@ -156,32 +130,6 @@ export function TraineeProgress({ progress }) {
             <span className="progress-tabs-panel__count">
               {filteredCourses.length} learning items
             </span>
-          </div>
-
-          <div
-            className="progress-type-filter"
-            role="group"
-            aria-label="Filter progress by learning type"
-          >
-            {Object.entries(LEARNING_TYPES).map(([value, config]) => (
-              <button
-                key={value}
-                type="button"
-                className={
-                  learningType === value
-                    ? "progress-type-filter__button is-active"
-                    : "progress-type-filter__button"
-                }
-                aria-pressed={learningType === value}
-                onClick={() => {
-                  setLearningType(value);
-                  setPage(1);
-                }}
-              >
-                {config.label}
-                <span>{typeCounts[value]}</span>
-              </button>
-            ))}
           </div>
 
           <div className="progress-filter-bar">

@@ -86,12 +86,15 @@ function OpeningScheduleSkeleton({ count = 6 }) {
 function OpeningSchedulePageContent({
   embedded = false,
   showHero = true,
+  showFilters = true,
+  sort = "",
   pageSize = 12,
   detailState,
   sharedKeyword = "",
 }) {
   const [searchParams, setSearchParams] = useSearchParams();
   const syncWithUrl = !embedded;
+  const isPopularSort = String(sort || "").toUpperCase() === "POPULAR";
   const initialFilters = syncWithUrl
     ? readFiltersFromSearchParams(searchParams)
     : {
@@ -143,6 +146,11 @@ function OpeningSchedulePageContent({
   );
 
   useEffect(() => {
+    // Popular embed skips date/price filters entirely.
+    if (isPopularSort) {
+      return undefined;
+    }
+
     if (previousFiltersRef.current === filters) {
       return undefined;
     }
@@ -176,7 +184,7 @@ function OpeningSchedulePageContent({
     return () => {
       window.clearTimeout(timer);
     };
-  }, [filters, syncWithUrl, updateUrl]);
+  }, [filters, isPopularSort, syncWithUrl, updateUrl]);
 
   useEffect(() => {
     if (!syncWithUrl) {
@@ -204,17 +212,22 @@ function OpeningSchedulePageContent({
       setError("");
 
       try {
-        const priceRange = getPriceRangeParams(appliedFilters.priceRange);
-
-        const result = await openingScheduleService.list({
-          keyword: appliedFilters.keyword,
-          startFrom: appliedFilters.startFrom,
-          startTo: appliedFilters.startTo,
-          minPrice: priceRange.minPrice,
-          maxPrice: priceRange.maxPrice,
-          page,
-          size: pageSize,
-        });
+        // Popular mode: only page/size/sort — no date/price filters.
+        const result = isPopularSort
+          ? await openingScheduleService.list({
+              page,
+              size: pageSize,
+              sort: "POPULAR",
+            })
+          : await openingScheduleService.list({
+              keyword: appliedFilters.keyword,
+              startFrom: appliedFilters.startFrom,
+              startTo: appliedFilters.startTo,
+              minPrice: getPriceRangeParams(appliedFilters.priceRange).minPrice,
+              maxPrice: getPriceRangeParams(appliedFilters.priceRange).maxPrice,
+              page,
+              size: pageSize,
+            });
 
         if (cancelled) {
           return;
@@ -268,7 +281,15 @@ function OpeningSchedulePageContent({
     return () => {
       cancelled = true;
     };
-  }, [appliedFilters, page, pageSize, refreshKey, syncWithUrl, updateUrl]);
+  }, [
+    appliedFilters,
+    isPopularSort,
+    page,
+    pageSize,
+    refreshKey,
+    syncWithUrl,
+    updateUrl,
+  ]);
 
   function handlePageChange(nextPage) {
     const isInvalidPage =
@@ -320,17 +341,19 @@ function OpeningSchedulePageContent({
             : "opening-panel opening-panel--discovery"
         }
       >
-        <OpeningScheduleFilters
-          filters={filters}
-          onChange={setFilters}
-          showKeywordSearch={!embedded}
-        />
+        {showFilters && !isPopularSort ? (
+          <OpeningScheduleFilters
+            filters={filters}
+            onChange={setFilters}
+            showKeywordSearch={!embedded}
+          />
+        ) : null}
 
-        {filterError && (
+        {showFilters && !isPopularSort && filterError ? (
           <p className="opening-filters__error" role="alert">
             {filterError}
           </p>
-        )}
+        ) : null}
 
         {loading && !embedded && (
           <OpeningScheduleSkeleton count={Math.min(pageSize, 6)} />
@@ -382,7 +405,11 @@ function OpeningSchedulePageContent({
           <>
             <section
               className="opening-grid"
-              aria-label="Upcoming offline classes"
+              aria-label={
+                isPopularSort
+                  ? "Popular opening classes"
+                  : "Upcoming offline classes"
+              }
             >
               {classes.map((classItem) => (
                 <OpeningScheduleCard
