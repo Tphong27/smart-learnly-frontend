@@ -96,7 +96,7 @@ function formatDate(value) {
   return new Date(value).toLocaleString();
 }
 
-/** Suy ra đường dẫn curriculum/content để Back từ manage test/assignment. */
+/** Suy ra đường dẫn class hoặc curriculum/content để Back từ manage test/assignment. */
 function resolveCurriculumBackPath({
   returnTo,
   returnPath,
@@ -109,7 +109,7 @@ function resolveCurriculumBackPath({
     return explicit;
   }
   if (classId) {
-    return `/trainer/classes/${classId}/curriculum`;
+    return `/staff/classrooms/${classId}/workspace`;
   }
   if (courseId) {
     const isAdmin = pathname.startsWith("/admin");
@@ -399,7 +399,7 @@ export function StaffAssessmentListPage({ variant = "assignment" }) {
         <div className="ft-toolbar ft-staff-hero__actions">
           <IconButton
             icon={<ArrowLeft size={18} />}
-            label="Back to curriculum"
+            label="Back to class information"
             onClick={() => {
               if (curriculumBackPath) {
                 navigate(curriculumBackPath);
