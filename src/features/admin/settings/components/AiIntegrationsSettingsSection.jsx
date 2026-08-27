@@ -29,8 +29,8 @@ export function AiIntegrationsSettingsSection() {
       enabled: false,
       provider: 'gemini',
       apiKey: '',
-      model: 'gemini-flash-latest',
-      fallbackModel: 'gemini-flash-lite-latest',
+      model: 'gemini-2.5-flash',
+      fallbackModel: 'gemini-3.5-flash-lite',
       timeoutSeconds: 60,
     },
     mode: 'onBlur',
@@ -49,8 +49,8 @@ export function AiIntegrationsSettingsSection() {
           enabled: Boolean(assignmentAi?.enabled),
           provider: assignmentAi?.provider ?? 'gemini',
           apiKey: assignmentAi?.hasApiKey ? SECRET_PLACEHOLDER : '',
-          model: assignmentAi?.model ?? 'gemini-flash-latest',
-          fallbackModel: assignmentAi?.fallbackModel ?? 'gemini-flash-lite-latest',
+          model: assignmentAi?.model ?? 'gemini-2.5-flash',
+          fallbackModel: assignmentAi?.fallbackModel ?? 'gemini-3.5-flash-lite',
           timeoutSeconds: assignmentAi?.timeoutSeconds ?? 60,
         })
       } catch (err) {
@@ -85,8 +85,8 @@ export function AiIntegrationsSettingsSection() {
         enabled: Boolean(updated?.enabled),
         provider: updated?.provider ?? 'gemini',
         apiKey: updated?.hasApiKey ? SECRET_PLACEHOLDER : '',
-        model: updated?.model ?? 'gemini-flash-latest',
-        fallbackModel: updated?.fallbackModel ?? 'gemini-flash-lite-latest',
+        model: updated?.model ?? 'gemini-2.5-flash',
+        fallbackModel: updated?.fallbackModel ?? 'gemini-3.5-flash-lite',
         timeoutSeconds: updated?.timeoutSeconds ?? 60,
       })
       toast.success('AI model settings saved.')
@@ -131,14 +131,14 @@ export function AiIntegrationsSettingsSection() {
           <FormField
             label="Model"
             required
-            placeholder="gemini-flash-latest"
+            placeholder="gemini-2.5-flash"
             registration={form.register('model')}
             error={form.formState.errors.model?.message}
           />
           <FormField
             label="Fallback model"
             required
-            placeholder="gemini-flash-lite-latest"
+            placeholder="gemini-3.5-flash-lite"
             registration={form.register('fallbackModel')}
             error={form.formState.errors.fallbackModel?.message}
           />
