@@ -6,10 +6,10 @@ import "../TraineeProgress.css";
 
 const TAB_CONFIG = {
   inProgress: {
-    emptyMessage: "No in-progress learning items found.",
+    emptyMessage: "No in-progress classes found.",
   },
   completed: {
-    emptyMessage: "No completed learning items found.",
+    emptyMessage: "No completed classes found.",
   },
 };
 
@@ -51,11 +51,9 @@ export function TraineeProgress({ progress }) {
     const keyword = normalizeText(searchTerm);
 
     return tabCourses.filter((course) => {
+      // Search by class name only (class-only commerce).
       const matchesSearch =
-        !keyword ||
-        normalizeText(course.title).includes(keyword) ||
-        normalizeText(course.className).includes(keyword) ||
-        normalizeText(course.categoryName).includes(keyword);
+        !keyword || normalizeText(course.className).includes(keyword);
 
       const matchesCategory =
         selectedCategory === "all" || course.categoryName === selectedCategory;
@@ -128,17 +126,18 @@ export function TraineeProgress({ progress }) {
             </div>
 
             <span className="progress-tabs-panel__count">
-              {filteredCourses.length} learning items
+              {filteredCourses.length}{" "}
+              {filteredCourses.length === 1 ? "class" : "classes"}
             </span>
           </div>
 
           <div className="progress-filter-bar">
             <label className="progress-search">
               <Search size={18} aria-hidden="true" />
-              <span className="sr-only">Search courses and class</span>
+              <span className="sr-only">Search classes</span>
               <input
                 type="search"
-                placeholder="Search courses and classes..."
+                placeholder="Search classes..."
                 value={searchTerm}
                 onChange={(event) => {
                   setSearchTerm(event.target.value);
@@ -154,7 +153,7 @@ export function TraineeProgress({ progress }) {
                   setSelectedCategory(event.target.value);
                   setPage(1);
                 }}
-                aria-label="Filter courses by category"
+                aria-label="Filter classes by category"
               >
                 <option value="all">All categories</option>
                 {categoryOptions.map((category) => (
@@ -179,13 +178,13 @@ export function TraineeProgress({ progress }) {
               <div className="progress-empty">
                 <strong>
                   {hasActiveFilters
-                    ? "No courses match your filters."
+                    ? "No classes match your filters."
                     : currentTab.emptyMessage}
                 </strong>
                 <span>
                   {hasActiveFilters
-                    ? "Try another keyword or category."
-                    : "Courses will appear here when progress is available."}
+                    ? "Try another class name or category."
+                    : "Classes will appear here when progress is available."}
                 </span>
               </div>
             ) : (
