@@ -77,6 +77,7 @@ export function AdminQuestionBankDetailPage() {
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [refreshKey, setRefreshKey] = useState(0);
   const [archivingId, setArchivingId] = useState(null);
+  const [restoringId, setRestoringId] = useState(null);
   const [pendingArchive, setPendingArchive] = useState(null);
   const [importOpen, setImportOpen] = useState(false);
   const [questionFormModal, setQuestionFormModal] = useState(null);
@@ -207,6 +208,22 @@ export function AdminQuestionBankDetailPage() {
     }
   }
 
+  /** Khôi phục một câu hỏi archived về draft trong Question Bank của khóa học. */
+  async function handleRestoreQuestion(question) {
+    const questionId = question?.questionId || question?.id;
+    if (!writable || !isCourseQuestionsMode || !courseId || !questionId) return;
+    setRestoringId(questionId);
+    try {
+      await questionBankService.restoreCourseQuestion(courseId, questionId);
+      toast.success("Question restored to draft");
+      setRefreshKey((key) => key + 1);
+    } catch (err) {
+      toast.error(err?.message || "Could not restore question.");
+    } finally {
+      setRestoringId(null);
+    }
+  }
+
   /** Xuất danh sách câu hỏi course-wide đã lọc thành CSV. */
   async function handleExport() {
     if (!isCourseQuestionsMode || !courseId) return;
@@ -278,6 +295,47 @@ export function AdminQuestionBankDetailPage() {
   const aiDraftPath = isCourseQuestionsMode
     ? `${courseBasePath}/${courseId}/questions/ai-drafts/new`
     : `/admin/question-banks/${bankId}/ai-drafts/new`;
+
+  /** Hiển thị đúng action theo trạng thái, gồm Restore cho câu hỏi archived. */
+  function renderQuestionActions(
+    question,
+    questionNumber,
+    questionId,
+    className,
+  ) {
+    if (!canEditQuestion) return null;
+
+    if (question.status === "archived") {
+      if (!isCourseQuestionsMode) return null;
+      return (
+        <div className={className}>
+          <IconButton
+            icon={<RotateCcw size={15} />}
+            label={`Restore question ${questionNumber}`}
+            disabled={restoringId === questionId}
+            onClick={() => handleRestoreQuestion(question)}
+          />
+        </div>
+      );
+    }
+
+    return (
+      <div className={className}>
+        <IconButton
+          icon={<Edit2 size={15} />}
+          label={`Edit question ${questionNumber}`}
+          onClick={() => openEditQuestionModal(questionId)}
+        />
+        <IconButton
+          icon={<Archive size={15} />}
+          label={`Archive question ${questionNumber}`}
+          variant="danger"
+          disabled={archivingId === questionId}
+          onClick={() => setPendingArchive(question)}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="admin-page">
@@ -486,25 +544,12 @@ export function AdminQuestionBankDetailPage() {
                           <StatusBadge status={question.status} />
                         </td>
                         <td data-label="Actions">
-                          {canEditQuestion &&
-                            question.status !== "archived" && (
-                              <div className="admin-table__actions">
-                                <IconButton
-                                  icon={<Edit2 size={15} />}
-                                  label={`Edit question ${questionNumber}`}
-                                  onClick={() =>
-                                    openEditQuestionModal(questionId)
-                                  }
-                                />
-                                <IconButton
-                                  icon={<Archive size={15} />}
-                                  label={`Archive question ${questionNumber}`}
-                                  variant="danger"
-                                  disabled={archivingId === questionId}
-                                  onClick={() => setPendingArchive(question)}
-                                />
-                              </div>
-                            )}
+                          {renderQuestionActions(
+                            question,
+                            questionNumber,
+                            questionId,
+                            "admin-table__actions",
+                          )}
                         </td>
                       </tr>
                     );
@@ -539,21 +584,11 @@ export function AdminQuestionBankDetailPage() {
                           }}
                         />
                       </div>
-                      {canEditQuestion && question.status !== "archived" && (
-                        <div className="question-card__actions">
-                          <IconButton
-                            icon={<Edit2 size={15} />}
-                            label={`Edit question ${questionNumber}`}
-                            onClick={() => openEditQuestionModal(questionId)}
-                          />
-                          <IconButton
-                            icon={<Archive size={15} />}
-                            label={`Archive question ${questionNumber}`}
-                            variant="danger"
-                            disabled={archivingId === questionId}
-                            onClick={() => setPendingArchive(question)}
-                          />
-                        </div>
+                      {renderQuestionActions(
+                        question,
+                        questionNumber,
+                        questionId,
+                        "question-card__actions",
                       )}
                     </div>
                     <div className="question-card__meta">
