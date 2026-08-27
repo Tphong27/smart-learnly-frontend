@@ -165,6 +165,12 @@ export function TeacherMonitorPage({ variant = "test" }) {
   const toast = useToast();
   const normalizedType = variant === "assignment" ? "essay" : "mcq";
   const classId = searchParams.get("classId") || "";
+  const listBackPath = useMemo(() => {
+    const basePath =
+      normalizedType === "essay" ? "/staff/assignments" : "/staff/tests";
+    const query = searchParams.toString();
+    return query ? `${basePath}?${query}` : basePath;
+  }, [normalizedType, searchParams]);
   const [rows, setRows] = useState({});
   const [loading, setLoading] = useState(true);
   const [downloadingId, setDownloadingId] = useState(null);
@@ -727,7 +733,7 @@ export function TeacherMonitorPage({ variant = "test" }) {
           <IconButton
             icon={<ArrowLeft size={18} />}
             label="Back"
-            onClick={() => navigate(-1)}
+            onClick={() => navigate(listBackPath)}
           />
           <Button
             variant="secondary"

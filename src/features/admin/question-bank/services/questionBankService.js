@@ -171,6 +171,13 @@ export const questionBankService = {
     return unwrap(response)
   },
 
+  async restoreCourseQuestion(courseId, questionId) {
+    const response = await apiClient.post(
+      `/admin/courses/${courseId}/questions/${questionId}/restore`,
+    )
+    return unwrap(response)
+  },
+
   async approveQuestion(questionId) {
     const response = await apiClient.post(`/admin/questions/${questionId}/approve`)
     return unwrap(response)

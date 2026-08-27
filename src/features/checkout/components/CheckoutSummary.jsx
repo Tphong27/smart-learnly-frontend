@@ -11,12 +11,6 @@ export function CheckoutSummary({ payment, expectedCourse }) {
     <aside className="checkout-summary">
       <h2>Checkout summary</h2>
 
-      <div className="checkout-summary__row">
-        <span>Product type</span>
-
-        <strong>{isClassCheckout ? "Offline Class" : "Online Course"}</strong>
-      </div>
-
       {expectedCourse?.title && (
         <div className="checkout-summary__row">
           <span>Course</span>
@@ -37,12 +31,6 @@ export function CheckoutSummary({ payment, expectedCourse }) {
         <span>Order</span>
 
         <strong>{payment?.orderCode || payment?.orderId || "-"}</strong>
-      </div>
-
-      <div className="checkout-summary__row">
-        <span>Gateway</span>
-
-        <strong>{payment?.paymentGateway || "SEPAY"}</strong>
       </div>
 
       <div className="checkout-summary__row checkout-summary__row--total">

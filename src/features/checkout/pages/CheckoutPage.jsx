@@ -48,7 +48,6 @@ export function CheckoutPage() {
       <header className="checkout-page__header">
         <div>
           <h1>Complete your checkout</h1>
-          <p>Order {payment.orderCode || payment.orderId}</p>
         </div>
       </header>
 

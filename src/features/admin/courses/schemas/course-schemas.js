@@ -2,8 +2,7 @@ import { z } from "zod";
 
 const slugRule = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
-export const courseSchema = z
-  .object({
+export const courseSchema = z.object({
     categoryId: z
       .string({ message: "Category is required" })
       .trim()

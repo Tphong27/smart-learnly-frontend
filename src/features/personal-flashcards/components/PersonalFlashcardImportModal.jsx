@@ -21,6 +21,7 @@ import {
     parsePersonalPastedFlashcards,
     toBulkCreateCards,
     toDraftCards,
+    validatePersonalDocumentFile,
     validatePersonalImportOptions,
 } from "../utils/personal-flashcard-import-utils";
 
@@ -33,7 +34,7 @@ function ImportSettings({ options, onChange, disabled }) {
     return (
         <div className="personal-flashcard-import__settings">
             <label>
-                <span>Target cards</span>
+                <span>Target cards (max 30)</span>
                 <input
                     type="number"
                     min="1"
@@ -407,7 +408,7 @@ export function PersonalFlashcardImportModal({
 
     async function generateDocumentDrafts() {
         const optionError = validatePersonalImportOptions(options);
-        const sourceError = !file ? "Choose a PDF or DOCX file." : null;
+        const sourceError = validatePersonalDocumentFile(file);
         if (optionError || sourceError) {
             setError(optionError || sourceError);
             return;
@@ -619,9 +620,19 @@ export function PersonalFlashcardImportModal({
                                     accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                                     disabled={busy}
                                     onChange={(event) => {
-                                        setFile(
-                                            event.target.files?.[0] || null,
-                                        );
+                                        const nextFile =
+                                            event.target.files?.[0] || null;
+                                        const fileError =
+                                            validatePersonalDocumentFile(
+                                                nextFile,
+                                            );
+                                        if (fileError) {
+                                            setFile(null);
+                                            event.target.value = "";
+                                            setError(fileError);
+                                            return;
+                                        }
+                                        setFile(nextFile);
                                         setError("");
                                     }}
                                 />
@@ -641,12 +652,14 @@ export function PersonalFlashcardImportModal({
                                                 {file
                                                     ? "Document selected"
                                                     : "Upload DOCX or PDF"}
-                                                <span className="input-field__required">*</span>
+                                                <span className="input-field__required">
+                                                    *
+                                                </span>
                                             </strong>
                                             <small>
                                                 {file
                                                     ? file.name
-                                                    : "Generated cards stay temporary until you confirm save."}
+                                                    : "PDF or DOCX, up to 20 MB. Generated cards stay temporary until saved."}
                                             </small>
                                         </span>
                                     </label>
@@ -726,21 +739,6 @@ export function PersonalFlashcardImportModal({
                                 className="personal-flashcard-import__review"
                                 aria-label="Generated flashcard review"
                             >
-                                <header className="personal-flashcard-import__review-header">
-                                    <span>Review generated drafts</span>
-                                    <h3>
-                                        {documentDrafts.length} draft{" "}
-                                        {documentDrafts.length === 1
-                                            ? "card"
-                                            : "cards"}{" "}
-                                        ready
-                                    </h3>
-                                    <p>
-                                        Edit wording, remove weak cards, or drag
-                                        to reorder. Confirm save writes the
-                                        remaining drafts into this set.
-                                    </p>
-                                </header>
                                 <FlashcardSelectionToolbar
                                     selectionMode={selectionMode}
                                     selectedCount={selectedIds.size}

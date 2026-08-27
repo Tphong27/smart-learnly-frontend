@@ -605,7 +605,9 @@ export function StaffAssessmentCreatePage({ variant = "assignment" }) {
                                 placeholder="Midterm quick practice"
                                 value={formData.title}
                                 onChange={(event) =>
-                                    updateFormData({ title: event.target.value })
+                                    updateFormData({
+                                        title: event.target.value,
+                                    })
                                 }
                                 error={validationErrors.title}
                             />
@@ -662,7 +664,6 @@ export function StaffAssessmentCreatePage({ variant = "assignment" }) {
                             {customDurationOpen && (
                                 <div className="ft-duration-popover">
                                     <label>
-                                        <span>Custom minutes</span>
                                         <Input
                                             label="Custom minutes"
                                             inputMode="numeric"
@@ -711,234 +712,250 @@ export function StaffAssessmentCreatePage({ variant = "assignment" }) {
                         </div>
                     </label>
 
-                    {!hasActiveAttempts && <div className="ft-field">
-                        <Select
-                            label="Class"
-                            required
-                            value={formData.classId}
-                            onChange={(event) => {
-                                const nextClassId = event.target.value;
-                                const selectedClass = classes.find(
-                                    (item) => getClassId(item) === nextClassId,
-                                );
-                                const selectedCourseId =
-                                    selectedClass?.courseId ||
-                                    selectedClass?.course_id ||
-                                    "";
-                                updateFormData({
-                                    classId: nextClassId,
-                                    ...(!formData.courseId && selectedCourseId
-                                        ? { courseId: selectedCourseId }
-                                        : {}),
-                                });
-                            }}
-                            disabled={testType === "mcq" && !formData.courseId}
-                        >
-                            <option value="">Select a class</option>
-                            {classes.map((item) => (
-                                <option
-                                    key={getClassId(item)}
-                                    value={getClassId(item)}
-                                >
-                                    {item.className ||
-                                        item.name ||
-                                        "Untitled class"}
-                                </option>
-                            ))}
-                            error={validationErrors.classId}
-                        </Select>
-                    </div>}
-
-                    {!hasActiveAttempts && (testType === "essay" ? (
-                        <>
-                            <label className="ft-field">
-                                <span className="ft-label">
-                                    Instructions{" "}
-                                    <span className="required">*</span>
-                                </span>
-                                <RichTextEditor
-                                    value={formData.description}
-                                    minHeight={180}
-                                    placeholder="Write the essay description and submission instructions."
-                                    onChange={(value) => {
-                                        updateFormData({ description: value });
-                                        setValidationErrors((current) => {
-                                            if (!current.instructions) {
-                                                return current;
-                                            }
-                                            const next = { ...current };
-                                            delete next.instructions;
-                                            return next;
-                                        });
-                                    }}
-                                />
-                                {validationErrors.instructions ? (
-                                    <p className="ft-field-error" role="alert">
-                                        {validationErrors.instructions}
-                                    </p>
-                                ) : (
-                                    <p className="ft-muted">
-                                        Provide instruction text or attach a
-                                        file (at least one).
-                                    </p>
-                                )}
-                            </label>
-
-                            <div className="ft-field">
-                                <span className="ft-label">
-                                    Instruction file{" "}
-                                    <span className="required">*</span>
-                                </span>
-                                {instructionFile || existingInstructionFile ? (
-                                    <div className="ft-file-pill">
-                                        <Paperclip size={16} />
-                                        <span>
-                                            {instructionFile?.name ||
-                                                existingInstructionFile?.fileName}
-                                        </span>
-                                        <IconButton
-                                            icon={<X size={16} />}
-                                            label="Remove file"
-                                            onClick={() => {
-                                                setInstructionFile(null);
-                                                setExistingInstructionFile(
-                                                    null,
-                                                );
-                                            }}
-                                        />
-                                    </div>
-                                ) : (
-                                    <label className="ft-upload-zone ft-upload-zone--compact">
-                                        <Paperclip size={24} />
-                                        <strong>
-                                            Attach an instruction file
-                                        </strong>
-                                        <span className="ft-muted">
-                                            PDF, Word, PowerPoint, image, or
-                                            ZIP.
-                                        </span>
-                                        <input
-                                            type="file"
-                                            accept=".pdf,.doc,.docx,.ppt,.pptx,.png,.jpg,.jpeg,.zip"
-                                            hidden
-                                            onChange={(event) => {
-                                                setInstructionFile(
-                                                    event.target.files?.[0] ||
-                                                        null,
-                                                );
-                                                setValidationErrors(
-                                                    (current) => {
-                                                        if (
-                                                            !current.instructions
-                                                        ) {
-                                                            return current;
-                                                        }
-                                                        const next = {
-                                                            ...current,
-                                                        };
-                                                        delete next.instructions;
-                                                        return next;
-                                                    },
-                                                );
-                                            }}
-                                        />
-                                    </label>
-                                )}
-                            </div>
-
-                            <AssignmentAiDraftPanel
-                                mode="assignment"
-                                currentTitle={formData.title}
-                                currentDescription={formData.description}
-                                onDraftGenerated={({ rubric }) =>
-                                    updateFormData({ rubric })
+                    {!hasActiveAttempts && (
+                        <div className="ft-field">
+                            <Select
+                                label="Class"
+                                required
+                                value={formData.classId}
+                                onChange={(event) => {
+                                    const nextClassId = event.target.value;
+                                    const selectedClass = classes.find(
+                                        (item) =>
+                                            getClassId(item) === nextClassId,
+                                    );
+                                    const selectedCourseId =
+                                        selectedClass?.courseId ||
+                                        selectedClass?.course_id ||
+                                        "";
+                                    updateFormData({
+                                        classId: nextClassId,
+                                        ...(!formData.courseId &&
+                                        selectedCourseId
+                                            ? { courseId: selectedCourseId }
+                                            : {}),
+                                    });
+                                }}
+                                disabled={
+                                    testType === "mcq" && !formData.courseId
                                 }
-                            />
+                            >
+                                <option value="">Select a class</option>
+                                {classes.map((item) => (
+                                    <option
+                                        key={getClassId(item)}
+                                        value={getClassId(item)}
+                                    >
+                                        {item.className ||
+                                            item.name ||
+                                            "Untitled class"}
+                                    </option>
+                                ))}
+                                error={validationErrors.classId}
+                            </Select>
+                        </div>
+                    )}
 
-                            <div className="ft-field">
-                                <Textarea
-                                    label="Assignment rubrics"
-                                    helperText="AI lists a separate, clearly labelled rubric for each generated assignment."
-                                    rows={6}
-                                    value={formData.rubric}
-                                    placeholder="Rubric for assignment 1, rubric for assignment 2, and so on."
-                                    onChange={(event) =>
-                                        updateFormData({
-                                            rubric: event.target.value,
-                                        })
-                                    }
-                                />
-                            </div>
-                        </>
-                    ) : (
-                        <>
-                            <div className="ft-field">
-                                <span className="ft-label">Status</span>
-                                <RadioGroup
-                                    name="test-status"
-                                    value={
-                                        formData.isPublished
-                                            ? "active"
-                                            : "inactive"
-                                    }
-                                    options={[
-                                        { value: "active", label: "Active" },
-                                        {
-                                            value: "inactive",
-                                            label: "Inactive",
-                                        },
-                                    ]}
-                                    onChange={(value) =>
-                                        updateFormData({
-                                            isPublished: value === "active",
-                                        })
-                                    }
-                                />
-                            </div>
-
-                            <div className="ft-field">
-                                <Textarea
-                                    label="Description"
-                                    rows={5}
-                                    value={formData.description}
-                                    onChange={(event) =>
-                                        updateFormData({
-                                            description: event.target.value,
-                                        })
-                                    }
-                                    placeholder="Describe this test."
-                                />
-                            </div>
-
-                            <div className="ft-field">
-                                <span className="ft-label">
-                                    Question pool ({selectedQuestions.length}{" "}
-                                    selected){" "}
-                                    <span className="input-field__required">
-                                        *
+                    {!hasActiveAttempts &&
+                        (testType === "essay" ? (
+                            <>
+                                <label className="ft-field">
+                                    <span className="ft-label">
+                                        Instructions{" "}
+                                        <span className="required">*</span>
                                     </span>
-                                </span>
-                                <QuestionSelector
-                                    courseId={formData.courseId}
-                                    moduleId="all"
-                                    selectedQuestions={selectedQuestions}
-                                    onQuestionsChange={(nextQuestions) => {
-                                        setSelectedQuestions(nextQuestions);
-                                        setValidationErrors((current) => {
-                                            const next = { ...current };
-                                            delete next.questions;
-                                            return next;
-                                        });
-                                    }}
-                                />
-                                {validationErrors.questions && (
-                                    <span className="ft-field-error">
-                                        {validationErrors.questions}
+                                    <RichTextEditor
+                                        value={formData.description}
+                                        minHeight={180}
+                                        placeholder="Write the essay description and submission instructions."
+                                        onChange={(value) => {
+                                            updateFormData({
+                                                description: value,
+                                            });
+                                            setValidationErrors((current) => {
+                                                if (!current.instructions) {
+                                                    return current;
+                                                }
+                                                const next = { ...current };
+                                                delete next.instructions;
+                                                return next;
+                                            });
+                                        }}
+                                    />
+                                    {validationErrors.instructions ? (
+                                        <p
+                                            className="ft-field-error"
+                                            role="alert"
+                                        >
+                                            {validationErrors.instructions}
+                                        </p>
+                                    ) : (
+                                        <p className="ft-muted">
+                                            Provide instruction text or attach a
+                                            file (at least one).
+                                        </p>
+                                    )}
+                                </label>
+
+                                <div className="ft-field">
+                                    <span className="ft-label">
+                                        Instruction file{" "}
+                                        <span className="required">*</span>
                                     </span>
-                                )}
-                            </div>
-                        </>
-                    ))}
+                                    {instructionFile ||
+                                    existingInstructionFile ? (
+                                        <div className="ft-file-pill">
+                                            <Paperclip size={16} />
+                                            <span>
+                                                {instructionFile?.name ||
+                                                    existingInstructionFile?.fileName}
+                                            </span>
+                                            <IconButton
+                                                icon={<X size={16} />}
+                                                label="Remove file"
+                                                onClick={() => {
+                                                    setInstructionFile(null);
+                                                    setExistingInstructionFile(
+                                                        null,
+                                                    );
+                                                }}
+                                            />
+                                        </div>
+                                    ) : (
+                                        <label className="ft-upload-zone ft-upload-zone--compact">
+                                            <Paperclip size={24} />
+                                            <strong>
+                                                Attach an instruction file
+                                            </strong>
+                                            <span className="ft-muted">
+                                                PDF, Word, PowerPoint, image, or
+                                                ZIP.
+                                            </span>
+                                            <input
+                                                type="file"
+                                                accept=".pdf,.doc,.docx,.ppt,.pptx,.png,.jpg,.jpeg,.zip"
+                                                hidden
+                                                onChange={(event) => {
+                                                    setInstructionFile(
+                                                        event.target
+                                                            .files?.[0] || null,
+                                                    );
+                                                    setValidationErrors(
+                                                        (current) => {
+                                                            if (
+                                                                !current.instructions
+                                                            ) {
+                                                                return current;
+                                                            }
+                                                            const next = {
+                                                                ...current,
+                                                            };
+                                                            delete next.instructions;
+                                                            return next;
+                                                        },
+                                                    );
+                                                }}
+                                            />
+                                        </label>
+                                    )}
+                                </div>
+
+                                <AssignmentAiDraftPanel
+                                    mode="assignment"
+                                    currentTitle={formData.title}
+                                    currentDescription={formData.description}
+                                    onDraftGenerated={({ rubric }) =>
+                                        updateFormData({ rubric })
+                                    }
+                                />
+
+                                <div className="ft-field">
+                                    <Textarea
+                                        label="Assignment rubrics"
+                                        helperText="AI lists a separate, clearly labelled rubric for each generated assignment."
+                                        rows={6}
+                                        value={formData.rubric}
+                                        placeholder="Rubric for assignment 1, rubric for assignment 2, and so on."
+                                        onChange={(event) =>
+                                            updateFormData({
+                                                rubric: event.target.value,
+                                            })
+                                        }
+                                    />
+                                </div>
+                            </>
+                        ) : (
+                            <>
+                                <div className="ft-field">
+                                    <span className="ft-label">Status</span>
+                                    <RadioGroup
+                                        name="test-status"
+                                        value={
+                                            formData.isPublished
+                                                ? "active"
+                                                : "inactive"
+                                        }
+                                        options={[
+                                            {
+                                                value: "active",
+                                                label: "Active",
+                                            },
+                                            {
+                                                value: "inactive",
+                                                label: "Inactive",
+                                            },
+                                        ]}
+                                        onChange={(value) =>
+                                            updateFormData({
+                                                isPublished: value === "active",
+                                            })
+                                        }
+                                    />
+                                </div>
+
+                                <div className="ft-field">
+                                    <Textarea
+                                        label="Description"
+                                        rows={5}
+                                        value={formData.description}
+                                        onChange={(event) =>
+                                            updateFormData({
+                                                description: event.target.value,
+                                            })
+                                        }
+                                        placeholder="Describe this test."
+                                    />
+                                </div>
+
+                                <div className="ft-field">
+                                    <span className="ft-label">
+                                        Question pool (
+                                        {selectedQuestions.length} selected){" "}
+                                        <span className="input-field__required">
+                                            *
+                                        </span>
+                                    </span>
+                                    <QuestionSelector
+                                        courseId={formData.courseId}
+                                        moduleId="all"
+                                        selectedQuestions={selectedQuestions}
+                                        onQuestionsChange={(nextQuestions) => {
+                                            setSelectedQuestions(nextQuestions);
+                                            setValidationErrors((current) => {
+                                                const next = { ...current };
+                                                delete next.questions;
+                                                return next;
+                                            });
+                                        }}
+                                    />
+                                    {validationErrors.questions && (
+                                        <span className="ft-field-error">
+                                            {validationErrors.questions}
+                                        </span>
+                                    )}
+                                </div>
+                            </>
+                        ))}
                 </fieldset>
             </div>
         </section>
