@@ -62,6 +62,22 @@ function getCourseId(item) {
   return item?.courseId || item?.course_id || "";
 }
 
+/** Giữ essay course-level trong lớp hiện tại khi course khớp dù assignment không có classId. */
+function isInAssessmentScope(item, classId, courseId) {
+  if (!classId) return true;
+
+  const itemClassId = getClassId(item);
+  if (itemClassId) {
+    return String(itemClassId) === String(classId);
+  }
+
+  return (
+    isCurriculumEssay(item) &&
+    Boolean(courseId) &&
+    String(getCourseId(item)) === String(courseId)
+  );
+}
+
 /** Tạo đường dẫn editor đúng scope class hoặc course cho curriculum essay. */
 function getCurriculumEssayEditPath(item, fallbackCourseId, fallbackClassId) {
   const lessonId = getLessonId(item);
@@ -262,9 +278,9 @@ export function StaffAssessmentListPage({ variant = "assignment" }) {
         new Date(b.createdAt || b.created_at || 0).getTime() -
         new Date(a.createdAt || a.created_at || 0).getTime(),
     );
-    const scopedRows = classId
-      ? merged.filter((item) => String(getClassId(item)) === String(classId))
-      : merged;
+    const scopedRows = merged.filter((item) =>
+      isInAssessmentScope(item, classId, courseId),
+    );
     const viewRows = isAssignmentMode
       ? scopedRows.filter((item) =>
           showCurriculumEssays
@@ -290,6 +306,7 @@ export function StaffAssessmentListPage({ variant = "assignment" }) {
   }, [
     assignments,
     classId,
+    courseId,
     isAssignmentMode,
     keyword,
     showCurriculumEssays,
@@ -298,9 +315,9 @@ export function StaffAssessmentListPage({ variant = "assignment" }) {
 
   const total = useMemo(() => {
     const merged = [...tests, ...assignments];
-    const scopedRows = classId
-      ? merged.filter((item) => String(getClassId(item)) === String(classId))
-      : merged;
+    const scopedRows = merged.filter((item) =>
+      isInAssessmentScope(item, classId, courseId),
+    );
     const viewRows = isAssignmentMode
       ? scopedRows.filter((item) =>
           showCurriculumEssays
@@ -309,7 +326,14 @@ export function StaffAssessmentListPage({ variant = "assignment" }) {
         )
       : scopedRows;
     return viewRows.length;
-  }, [assignments, classId, isAssignmentMode, showCurriculumEssays, tests]);
+  }, [
+    assignments,
+    classId,
+    courseId,
+    isAssignmentMode,
+    showCurriculumEssays,
+    tests,
+  ]);
 
   const summary = useMemo(() => {
     const activeCount = rows.filter((item) => {
