@@ -641,7 +641,9 @@ export function PersonalFlashcardImportModal({
                                                 {file
                                                     ? "Document selected"
                                                     : "Upload DOCX or PDF"}
-                                                <span className="input-field__required">*</span>
+                                                <span className="input-field__required">
+                                                    *
+                                                </span>
                                             </strong>
                                             <small>
                                                 {file
@@ -726,21 +728,6 @@ export function PersonalFlashcardImportModal({
                                 className="personal-flashcard-import__review"
                                 aria-label="Generated flashcard review"
                             >
-                                <header className="personal-flashcard-import__review-header">
-                                    <span>Review generated drafts</span>
-                                    <h3>
-                                        {documentDrafts.length} draft{" "}
-                                        {documentDrafts.length === 1
-                                            ? "card"
-                                            : "cards"}{" "}
-                                        ready
-                                    </h3>
-                                    <p>
-                                        Edit wording, remove weak cards, or drag
-                                        to reorder. Confirm save writes the
-                                        remaining drafts into this set.
-                                    </p>
-                                </header>
                                 <FlashcardSelectionToolbar
                                     selectionMode={selectionMode}
                                     selectedCount={selectedIds.size}

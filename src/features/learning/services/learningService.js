@@ -94,6 +94,16 @@ export const learningService = {
     return unwrap(response) || [];
   },
 
+  /** Lấy câu hỏi chỉ đọc của quiz trong staff preview, kể cả course đang draft. */
+  async getAdminPreviewTestQuestions(courseId, lessonId, classId = null) {
+    const response = await apiClient.get(
+      `/admin/courses/${courseId}/learning-preview-lessons/${lessonId}/questions`,
+      { params: classId ? { classId } : {} },
+    );
+
+    return unwrap(response) || [];
+  },
+
   /**
    * Lấy bộ flashcard chỉ đọc của lesson được phép preview.
    */

@@ -25,6 +25,10 @@ import { FlashcardPractice } from "./flashcards/FlashcardPractice";
 import { getCurrentUser } from "@/services/api-client";
 import { learningService } from "@/features/learning/services/learningService";
 import DOMPurify from "dompurify";
+import {
+  sanitizeAnswerHtml,
+  sanitizeQuestionHtml,
+} from "@/shared/utils/htmlSanitizer";
 
 const TABS = [
   { key: "overview", label: "Overview", icon: BookOpen },
@@ -90,7 +94,8 @@ const ASSIGNMENT_FILE_TYPES = [
   ".zip",
 ];
 
-function ReadOnlyQuizPreview({ lesson, courseId, classId }) {
+/** Hiển thị câu hỏi quiz an toàn, chọn API public hoặc staff theo chế độ preview. */
+function ReadOnlyQuizPreview({ lesson, courseId, classId, adminMode = false }) {
   const lessonId = getLessonId(lesson);
 
   const [questions, setQuestions] = useState([]);
@@ -106,11 +111,17 @@ function ReadOnlyQuizPreview({ lesson, courseId, classId }) {
 
     async function loadPreviewQuestions() {
       try {
-        const result = await learningService.getPreviewTestQuestions(
-          courseId,
-          lessonId,
-          classId,
-        );
+        const result = adminMode
+          ? await learningService.getAdminPreviewTestQuestions(
+              courseId,
+              lessonId,
+              classId,
+            )
+          : await learningService.getPreviewTestQuestions(
+              courseId,
+              lessonId,
+              classId,
+            );
 
         if (cancelled) return;
 
@@ -144,7 +155,7 @@ function ReadOnlyQuizPreview({ lesson, courseId, classId }) {
     return () => {
       cancelled = true;
     };
-  }, [classId, courseId, lessonId]);
+  }, [adminMode, classId, courseId, lessonId]);
 
   if (loading) {
     return (
@@ -217,14 +228,20 @@ function ReadOnlyQuizPreview({ lesson, courseId, classId }) {
                 <div className="learning-quiz-preview__question-title">
                   <span>Question {questionIndex + 1}</span>
 
-                  <h3>{question.questionText}</h3>
+                  <div
+                    className="learning-quiz-preview__question-text"
+                    dangerouslySetInnerHTML={{
+                      __html: sanitizeQuestionHtml(question.questionText),
+                    }}
+                  />
                 </div>
 
                 {question.imageUrl && (
                   <img
                     className="learning-quiz-preview__question-image"
                     src={question.imageUrl}
-                    alt=""
+                    alt={`Illustration for question ${questionIndex + 1}`}
+                    loading="lazy"
                   />
                 )}
 
@@ -261,9 +278,12 @@ function ReadOnlyQuizPreview({ lesson, courseId, classId }) {
                         {String.fromCharCode(65 + answerIndex)}
                       </span>
 
-                      <span className="learning-quiz-preview__answer-text">
-                        {answer.answerText}
-                      </span>
+                      <div
+                        className="learning-quiz-preview__answer-text"
+                        dangerouslySetInnerHTML={{
+                          __html: sanitizeAnswerHtml(answer.answerText),
+                        }}
+                      />
                     </label>
                   ))}
                 </div>
@@ -514,6 +534,7 @@ function OverviewContent({
           lesson={lesson}
           courseId={courseId}
           classId={classId}
+          adminMode={workspaceMode === "admin-preview"}
         />
       );
     }

@@ -2,8 +2,7 @@ import { z } from "zod";
 
 const slugRule = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
-export const courseSchema = z
-  .object({
+export const courseSchema = z.object({
     categoryId: z
       .string({ message: "Category is required" })
       .trim()
@@ -53,44 +52,5 @@ export const courseSchema = z
       .url("Thumbnail URL is invalid")
       .or(z.literal(""))
       .optional(),
-    price: z.preprocess(
-      (val) =>
-        val === "" ||
-        val === null ||
-        val === undefined ||
-        (typeof val === "number" && Number.isNaN(val))
-          ? undefined
-          : val,
-      z.coerce
-        .number({ message: "Price must be a number" })
-        .min(0, "Price must be >= 0")
-        .optional(),
-    ),
-    discountedPrice: z.preprocess(
-      (val) =>
-        val === "" ||
-        val === null ||
-        val === undefined ||
-        (typeof val === "number" && Number.isNaN(val))
-          ? undefined
-          : val,
-      z.coerce
-        .number({ message: "Discounted price must be a number" })
-        .min(0, "Discounted price must be >= 0")
-        .optional(),
-    ),
     status: z.enum(["draft", "published", "inactive"]).optional(),
-  })
-  .superRefine((course, context) => {
-    if (
-      course.price != null &&
-      course.discountedPrice != null &&
-      course.discountedPrice >= course.price
-    ) {
-      context.addIssue({
-        code: "custom",
-        path: ["discountedPrice"],
-        message: "Discounted price must not exceed the course price",
-      });
-    }
   });
