@@ -59,7 +59,7 @@ function formatImportCorrectAnswer(row) {
 }
 
 /** Dieu phoi import question tu file Excel/CSV va preview truoc khi luu. */
-export function QuestionImportModal({ open, variant = 'modal', bank, courseId, moduleId, existingQuestions = [], onClose, onImported }) {
+export function QuestionImportModal({ open, variant = 'modal', bank, courseId, existingQuestions = [], onClose, onImported }) {
   const toast = useToast()
   const isCourseQuestionsMode = Boolean(courseId)
   const fileInputRef = useRef(null)
@@ -190,12 +190,10 @@ export function QuestionImportModal({ open, variant = 'modal', bank, courseId, m
     setSubmitting(true)
     try {
       const payload = buildImportPayload(bankId, validRows)
-      const response = moduleId && courseId
-        ? await questionBankService.importModuleQuestionsBatch(courseId, moduleId, payload.rows, 'excel_import')
-        : courseId
-          ? await questionBankService.importCourseQuestionsBatch(courseId, payload.rows, 'excel_import')
-          : await questionBankService.importQuestionsBatch(bankId, payload.rows, 'excel_import')
-      const importedCount = Number(response?.createdCount ?? response?.importedCount ?? validRows.length)
+      const response = courseId
+        ? await questionBankService.importCourseQuestionsBatch(courseId, payload.rows, 'excel_import')
+        : await questionBankService.importQuestionsBatch(payload.bankId, payload.rows, 'excel_import')
+      const importedCount = Number(response?.created ?? response?.createdCount ?? response?.importedCount ?? validRows.length)
       setParseSuccess(`Imported ${importedCount} question${importedCount === 1 ? '' : 's'}.`)
       toast.success(`Imported ${importedCount} question${importedCount === 1 ? '' : 's'}.`)
       onImported?.()
@@ -389,7 +387,6 @@ export function QuestionImportModal({ open, variant = 'modal', bank, courseId, m
       title={`Edit imported question - row ${parsedRows[editRowIndex]?.rowNumber || editRowIndex + 1}`}
       bankId={bank?.bankId || bank?.id}
       courseId={courseId}
-      moduleId={moduleId}
       initialValues={editQuestionFormState?.values}
       initialMedia={editQuestionFormState?.media}
       draftMode

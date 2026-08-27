@@ -33,7 +33,7 @@ function flashcardCacheKey(lessonId) {
     return `flashcard-set:${lessonId}`;
 }
 
-const STAGING_ROLES = [ROLES.SME, ROLES.TRAINER];
+const STAGING_ROLES = [ROLES.TMO, ROLES.SME, ROLES.TRAINER];
 const CURRENT_FLASHCARD_PAGE_SIZE = 40;
 const CARD_EDITOR_FIELDS = [
     "frontText",

@@ -13,7 +13,7 @@ import {
   useToast,
 } from "@/shared/components/ui";
 import { questionBankService } from "@/features/admin/question-bank";
-import { courseAdminService, courseContentService } from "@/features/course";
+import { courseAdminService } from "@/features/course";
 import { isEmptyQuestionHtml, sanitizeQuestionHtml } from "@/shared/utils/htmlSanitizer";
 import { AnswerMediaRow } from "../components/AnswerMediaRow";
 import { QuestionMediaManager } from "../components/QuestionMediaManager";
@@ -27,7 +27,6 @@ import {
   mediaId,
   normalizeAnswerMediaFromResponse,
   normalizeAnswers,
-  normalizeModules,
   normalizeQuestionMedia,
   parseAnswerContent,
   pendingMediaItem,
@@ -43,7 +42,6 @@ const EMPTY_QUESTION_FORM_VALUES = {
   status: "draft",
   explanation: "",
   answers: [],
-  moduleId: "",
 };
 
 /** Chuẩn hóa initial values để cùng một AdminQuestionForm dùng được cho API và import draft. */
@@ -59,12 +57,13 @@ function createInitialQuestionFormValues(initialValues) {
 export function AdminQuestionForm({
   bankId: bankIdProp,
   courseId: courseIdProp,
-  moduleId: moduleIdProp,
-  modules: modulesProp,
   questionId: questionIdProp,
   initialValues,
   initialMedia,
   draftMode = false,
+  allowDraftMediaEdits = false,
+  questionTypeOptions = QUESTION_TYPE_OPTIONS,
+  showStatus = true,
   submitLabel,
   onCancel,
   onSaved,
@@ -75,7 +74,6 @@ export function AdminQuestionForm({
   const location = useLocation();
   const bankId = bankIdProp ?? params.bankId;
   const courseId = courseIdProp ?? params.courseId;
-  const lockedModuleId = moduleIdProp ?? params.moduleId;
   const questionId = questionIdProp ?? params.questionId;
   const navigate = useNavigate();
   const toast = useToast();
@@ -85,14 +83,12 @@ export function AdminQuestionForm({
     ? "/staff/courses"
     : "/admin/courses";
   const [bank, setBank] = useState(null);
-  const [modules, setModules] = useState(() => modulesProp || []);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!draftMode);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
   const [values, setValues] = useState(() =>
     createInitialQuestionFormValues({
       ...initialValues,
-      moduleId: initialValues?.moduleId || lockedModuleId || "",
     }),
   );
   const pendingPreviewUrls = useRef(new Set());
@@ -101,30 +97,20 @@ export function AdminQuestionForm({
   const [videoMedia, setVideoMedia] = useState(() => initialMedia?.videos || []);
   const [removedAttachmentIds, setRemovedAttachmentIds] = useState([]);
   const [activeMediaTab, setActiveMediaTab] = useState("image");
-  const needsModulePicker =
-    Boolean(courseId) && !lockedModuleId && !editing && !draftMode;
-
-  useEffect(() => {
-    if (modulesProp?.length) {
-      setModules(modulesProp);
-    }
-  }, [modulesProp]);
-
   useEffect(() => {
     let cancelled = false;
+    if (draftMode) {
+      return () => {
+        cancelled = true;
+      };
+    }
     (async () => {
       setLoading(true);
       setError(null);
       try {
         if (editing) {
           const question = courseId
-            ? lockedModuleId
-              ? await questionBankService.getModuleQuestion(
-                  courseId,
-                  lockedModuleId,
-                  questionId,
-                )
-              : await questionBankService.getCourseQuestion(courseId, questionId)
+            ? await questionBankService.getCourseQuestion(courseId, questionId)
             : await questionBankService.getQuestion(questionId);
           if (cancelled) return;
           const normalizedMedia = normalizeQuestionMedia(question);
@@ -137,10 +123,6 @@ export function AdminQuestionForm({
             questionType: question.questionType || "single_choice",
             status: question.status || "draft",
             explanation: question.explanation || "",
-            moduleId:
-              question.moduleId ||
-              lockedModuleId ||
-              "",
             answers: normalizeAnswers(
               question.questionType || "single_choice",
               (question.answers || []).map((answer, index) => ({
@@ -182,20 +164,9 @@ export function AdminQuestionForm({
                 courseId,
                 name: `${bankData?.title || "Course"} Questions`,
               });
-              setValues((current) => ({
-                ...current,
-                moduleId: lockedModuleId || current.moduleId || "",
-              }));
             } else {
               setBank(bankData);
             }
-          }
-        }
-
-        if (courseId && !modulesProp?.length) {
-          const moduleData = await courseContentService.getCourseContent(courseId);
-          if (!cancelled) {
-            setModules(normalizeModules(moduleData));
           }
         }
       } catch (err) {
@@ -208,16 +179,14 @@ export function AdminQuestionForm({
     return () => {
       cancelled = true;
     };
-  }, [bankId, courseId, editing, lockedModuleId, modulesProp, questionId]);
+  }, [bankId, courseId, draftMode, editing, questionId]);
 
   const returnBankId = useMemo(
     () => bank?.bankId || bank?.id || bankId,
     [bank, bankId],
   );
   const returnPath = courseId
-    ? lockedModuleId
-      ? `${courseBasePath}/${courseId}/modules/${lockedModuleId}/questions`
-      : `${courseBasePath}/${courseId}/questions`
+    ? `${courseBasePath}/${courseId}/questions`
     : `/admin/question-banks/${returnBankId}`;
 
   /** Bọc nội dung bằng admin page khi form không nằm trong modal. */
@@ -560,11 +529,6 @@ export function AdminQuestionForm({
       setError(validationError);
       return;
     }
-    const resolvedModuleId = lockedModuleId || values.moduleId || "";
-    if (courseId && !editing && !resolvedModuleId) {
-      setError("Module is required.");
-      return;
-    }
     setSubmitting(true);
     setError(null);
     const cleanExplanation = sanitizeQuestionHtml(values.explanation).trim();
@@ -575,7 +539,6 @@ export function AdminQuestionForm({
     const payload = {
       bankId: courseId ? undefined : returnBankId,
       courseId,
-      moduleId: courseId ? resolvedModuleId || undefined : undefined,
       questionText: sanitizeQuestionHtml(values.questionText).trim(),
       questionType: values.questionType,
       status: values.status,
@@ -595,13 +558,6 @@ export function AdminQuestionForm({
             questionId,
             payload,
           );
-        } else if (lockedModuleId) {
-          savedQuestion = await questionBankService.updateModuleQuestion(
-            courseId,
-            lockedModuleId,
-            questionId,
-            payload,
-          );
         } else {
           savedQuestion = await questionBankService.updateCourseQuestion(
             courseId,
@@ -611,12 +567,6 @@ export function AdminQuestionForm({
         }
       } else if (!courseId) {
         savedQuestion = await questionBankService.createQuestion(payload);
-      } else if (lockedModuleId) {
-        savedQuestion = await questionBankService.createModuleQuestion(
-          courseId,
-          lockedModuleId,
-          payload,
-        );
       } else {
         savedQuestion = await questionBankService.createCourseQuestion(
           courseId,
@@ -757,27 +707,6 @@ export function AdminQuestionForm({
         <form className="question-authoring-form" onSubmit={handleSubmit}>
           <section className="question-authoring-block question-authoring-block--metadata">
             <div className="question-authoring-meta-grid">
-              {needsModulePicker && (
-                <Select
-                  id="question-module"
-                  label="Module"
-                  required
-                  value={values.moduleId || ""}
-                  onChange={(event) =>
-                    setValues((current) => ({
-                      ...current,
-                      moduleId: event.target.value,
-                    }))
-                  }
-                >
-                  <option value="">Select module</option>
-                  {modules.map((module) => (
-                    <option key={module.id} value={String(module.id)}>
-                      {module.title}
-                    </option>
-                  ))}
-                </Select>
-              )}
               <Select
                   id="question-type"
                   label="Question type"
@@ -785,13 +714,13 @@ export function AdminQuestionForm({
                   value={values.questionType}
                   onChange={(event) => setType(event.target.value)}
                 >
-                  {QUESTION_TYPE_OPTIONS.map((option) => (
+                  {questionTypeOptions.map((option) => (
                     <option key={option.value} value={option.value}>
                       {option.label}
                     </option>
                   ))}
               </Select>
-              <Select
+              {showStatus && <Select
                   id="question-status"
                   label="Status"
                   value={values.status}
@@ -805,7 +734,7 @@ export function AdminQuestionForm({
                 >
                   <option value="draft">Draft</option>
                   <option value="approved">Approved</option>
-              </Select>
+              </Select>}
             </div>
           </section>
           <section className="question-authoring-block">
@@ -849,10 +778,10 @@ export function AdminQuestionForm({
               {normalizeAnswers(values.questionType, values.answers).map(
                 (answer, index) => (
                   <div
-                    className={`question-authoring-answer ${answer.correct ? "question-authoring-answer--correct" : ""}`}
+                    className={`question-authoring-answer ${answer.correct && values.questionType !== "fill_in_the_blank" ? "question-authoring-answer--correct" : ""} ${values.questionType === "fill_in_the_blank" ? "question-authoring-answer--fill" : ""}`}
                     key={`${values.questionType}-${index}`}
                   >
-                    <label className="question-authoring-answer__choice">
+                    {values.questionType !== "fill_in_the_blank" && <label className="question-authoring-answer__choice">
                       <input
                         type={values.questionType === "multiple_choice" ? "checkbox" : "radio"}
                         name="correct-answer"
@@ -860,7 +789,7 @@ export function AdminQuestionForm({
                         onChange={() => setCorrect(index)}
                         aria-label={`Mark answer ${index + 1} correct`}
                       />
-                    </label>
+                    </label>}
                     <div className="question-authoring-answer__content">
                       <FormField
                         value={answer.answerText}
@@ -870,16 +799,16 @@ export function AdminQuestionForm({
                         }
                         placeholder={`Answer ${index + 1}`}
                       />
-                      <AnswerMediaRow
+                      {values.questionType !== "fill_in_the_blank" && <AnswerMediaRow
                         media={answer.answerMedia || { image: null, audio: null, video: null }}
-                        disabled={draftMode || submitting || values.status === "archived"}
+                        disabled={(draftMode && !allowDraftMediaEdits) || submitting || values.status === "archived"}
                         onUpload={(mediaType, file) =>
                           handleAnswerMediaUpload(index, mediaType, file)
                         }
                         onRemove={(mediaType) =>
                           handleAnswerMediaRemove(index, mediaType)
                         }
-                      />
+                      />}
                       {answer.answerImage && !answer.answerMedia?.image ? (
                         <div className="question-authoring-answer__image">
                           <img
@@ -952,7 +881,7 @@ export function AdminQuestionForm({
                   mediaType="image"
                   items={imageMedia}
                   disabled={submitting || values.status === "archived"}
-                  addDisabled={draftMode}
+                  addDisabled={draftMode && !allowDraftMediaEdits}
                   onAddFiles={(files) => addMediaFiles("image", files)}
                   onRemove={(item) => removeMedia("image", item)}
                   onMoveTo={(from, to) => moveMediaTo("image", from, to)}
@@ -962,7 +891,7 @@ export function AdminQuestionForm({
                   mediaType="audio"
                   items={audioMedia}
                   disabled={submitting || values.status === "archived"}
-                  addDisabled={draftMode}
+                  addDisabled={draftMode && !allowDraftMediaEdits}
                   onAddFiles={(files) => addMediaFiles("audio", files)}
                   onRemove={(item) => removeMedia("audio", item)}
                   onMoveTo={(from, to) => moveMediaTo("audio", from, to)}
@@ -972,7 +901,7 @@ export function AdminQuestionForm({
                   mediaType="video"
                   items={videoMedia}
                   disabled={submitting || values.status === "archived"}
-                  addDisabled={draftMode}
+                  addDisabled={draftMode && !allowDraftMediaEdits}
                   onAddFiles={(files) => addMediaFiles("video", files)}
                   onRemove={(item) => removeMedia("video", item)}
                   onMoveTo={(from, to) => moveMediaTo("video", from, to)}
@@ -1024,12 +953,13 @@ export function AdminQuestionFormModal({
   title,
   bankId,
   courseId,
-  moduleId,
-  modules,
   questionId,
   initialValues,
   initialMedia,
   draftMode = false,
+  allowDraftMediaEdits = false,
+  questionTypeOptions = QUESTION_TYPE_OPTIONS,
+  showStatus = true,
   submitLabel,
   onClose,
   onSaved,
@@ -1048,12 +978,13 @@ export function AdminQuestionFormModal({
       <AdminQuestionForm
         bankId={bankId}
         courseId={courseId}
-        moduleId={moduleId}
-        modules={modules}
         questionId={questionId}
         initialValues={initialValues}
         initialMedia={initialMedia}
         draftMode={draftMode}
+        allowDraftMediaEdits={allowDraftMediaEdits}
+        questionTypeOptions={questionTypeOptions}
+        showStatus={showStatus}
         submitLabel={submitLabel}
         framed={false}
         onCancel={onClose}

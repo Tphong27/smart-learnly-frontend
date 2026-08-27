@@ -13,6 +13,8 @@ import {
   AdminCoursesPage,
   AdminCourseFormPage,
   AdminQuestionBankDetailPage,
+  AdminAiQuestionDraftCreatePage,
+  AdminAiQuestionDraftReviewPage,
 } from "@/features/admin";
 import AdminCourseContentPage from "@/features/course/pages/AdminCourseContentPage";
 import AdminLessonDetailPage from "@/features/course/pages/AdminLessonDetailPage";
@@ -21,8 +23,9 @@ import {
   EditionClassPage,
   ClassDetailPage,
   TrainerLessonDetailPage,
-  ClassAnalyticsRedirect
+  ClassAnalyticsRedirect,
 } from "@/features/classroom";
+import { CourseQuestionLegacyRedirect } from "./CourseQuestionLegacyRedirect";
 
 /** Khai báo route staff theo từng nhóm quyền Trainer, TMO và SME. */
 function getStaffRoutes() {
@@ -50,7 +53,7 @@ function getStaffRoutes() {
         },
         // Trainer và SME giữ các công cụ authoring và assignment mutation.
         {
-          element: <RoleGuard allowedRoles={[ROLES.TRAINER, ROLES.SME]} />,
+          element: <RoleGuard allowedRoles={[ROLES.TRAINER, ROLES.TMO, ROLES.SME]} />,
           children: [
             {
               path: "courses/:courseId",
@@ -62,7 +65,33 @@ function getStaffRoutes() {
             },
             {
               path: "courses/:courseId/modules/:moduleId/questions",
-              element: <AdminQuestionBankDetailPage />,
+              element: <CourseQuestionLegacyRedirect basePath="/staff" />,
+            },
+            {
+              path: "courses/:courseId/questions/ai-drafts/new",
+              element: <AdminAiQuestionDraftCreatePage />,
+            },
+            {
+              path: "courses/:courseId/questions/ai-drafts/:batchId",
+              element: <AdminAiQuestionDraftReviewPage />,
+            },
+            {
+              path: "courses/:courseId/modules/:moduleId/questions/ai-drafts/new",
+              element: (
+                <CourseQuestionLegacyRedirect
+                  basePath="/staff"
+                  destination="ai-create"
+                />
+              ),
+            },
+            {
+              path: "courses/:courseId/modules/:moduleId/questions/ai-drafts/:batchId",
+              element: (
+                <CourseQuestionLegacyRedirect
+                  basePath="/staff"
+                  destination="ai-review"
+                />
+              ),
             },
             {
               path: "courses/:courseId/edit",
@@ -104,9 +133,9 @@ function getStaffRoutes() {
             },
           ],
         },
-        // Master course curriculum chỉ do SME author; Trainer chỉnh theo từng lớp.
+        // Master curriculum: SME và TMO cùng author; Trainer chỉ chỉnh curriculum theo lớp.
         {
-          element: <RoleGuard allowedRoles={[ROLES.SME]} />,
+          element: <RoleGuard allowedRoles={[ROLES.SME, ROLES.TMO]} />,
           children: [
             {
               path: "courses/:courseId/content",
@@ -175,9 +204,7 @@ function getStaffRoutes() {
       element: <TrainerLayout />,
       children: [
         {
-          element: (
-            <RoleGuard allowedRoles={[ROLES.TRAINER]} />
-          ),
+          element: <RoleGuard allowedRoles={[ROLES.TRAINER]} />,
           children: [
             {
               path: "classes/:classId/curriculum/lessons/:lessonId",

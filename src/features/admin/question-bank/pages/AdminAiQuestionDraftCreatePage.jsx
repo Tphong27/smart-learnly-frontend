@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, Edit2, FileText, Sparkles, Upload, X } from "lucide-react";
 import {
     Alert,
@@ -78,11 +78,16 @@ function mergeDraftBatches(batches) {
 
 /** Trang tạo AI question draft và chỉ hiển thị draft được generate trong phiên hiện tại. */
 export function AdminAiQuestionDraftCreatePage() {
-    const { bankId, courseId, moduleId: routeModuleId } = useParams();
+    const { bankId, courseId } = useParams();
+    const location = useLocation();
     const navigate = useNavigate();
     const toast = useToast();
     const writable = canWriteQuestionBank();
     const isCourseQuestionsMode = Boolean(courseId);
+    const courseBasePath = location.pathname.startsWith("/staff/")
+        ? "/staff/courses"
+        : "/admin/courses";
+    const courseQuestionsPath = `${courseBasePath}/${courseId}/questions`;
     const fileInputRef = useRef(null);
     const [bank, setBank] = useState(null);
     const [capabilities, setCapabilities] = useState(DEFAULT_CAPABILITIES);
@@ -96,7 +101,6 @@ export function AdminAiQuestionDraftCreatePage() {
         "true_false",
     ]);
     const [requestedCount, setRequestedCount] = useState(10);
-    const moduleId = routeModuleId || "";
     const [language, setLanguage] = useState("en");
     const [generationInstruction, setGenerationInstruction] = useState("");
     const [loading, setLoading] = useState(true);
@@ -187,6 +191,7 @@ export function AdminAiQuestionDraftCreatePage() {
     );
 
     const selectedSourcesCount = files.length;
+    const hasSourceMaterial = selectedSourcesCount > 0;
     const trimmedInstruction = generationInstruction.trim();
     const instructionTooLong = trimmedInstruction.length > 2000;
     const sourceCountExceeded =
@@ -196,9 +201,9 @@ export function AdminAiQuestionDraftCreatePage() {
         !loading &&
         !submitting &&
         !sourceCountExceeded &&
+        hasSourceMaterial &&
         fileErrors.length === 0 &&
         questionTypes.length > 0 &&
-        Boolean(moduleId) &&
         Number.isInteger(requestedCount) &&
         requestedCount >= 1 &&
         requestedCount <= MAX_REQUESTED_COUNT &&
@@ -298,6 +303,12 @@ export function AdminAiQuestionDraftCreatePage() {
     /** Tao batch AI moi va giu nguoi dung o lai man hinh danh sach draft. */
     async function handleSubmit(event) {
         event.preventDefault();
+        if (!hasSourceMaterial) {
+            setError(
+                "Add at least one source material file before generating questions.",
+            );
+            return;
+        }
         if (!canSubmit) {
             setError(
                 "Complete the generation setup before creating draft questions.",
@@ -313,7 +324,6 @@ export function AdminAiQuestionDraftCreatePage() {
                 files,
                 questionTypes,
                 requestedCount,
-                moduleId,
                 language,
                 generationInstruction: trimmedInstruction || null,
                 idempotencyKey,
@@ -438,13 +448,13 @@ export function AdminAiQuestionDraftCreatePage() {
                 <section className="admin-card">
                     <h1 className="admin-page__title">Unauthorized</h1>
                     <p className="ai-drafts-muted">
-                        Only Admin and SME users can generate AI question
+                        Only SME and Trainer users can generate AI question
                         drafts.
                     </p>
                     <Button
                         to={
                             isCourseQuestionsMode
-                                ? `/admin/courses/${courseId}/modules/${routeModuleId}/questions`
+                                ? courseQuestionsPath
                                 : "/admin/question-banks"
                         }
                         variant="secondary"
@@ -466,7 +476,7 @@ export function AdminAiQuestionDraftCreatePage() {
 
     const bankArchived = !isCourseQuestionsMode && bank?.status === "archived";
     const backPath = isCourseQuestionsMode
-        ? `/admin/courses/${courseId}/modules/${routeModuleId}/questions`
+        ? courseQuestionsPath
         : `/admin/question-banks/${bankId}`;
     const allSelectableSelected =
         selectableDraftRows.length > 0 &&
@@ -539,9 +549,17 @@ export function AdminAiQuestionDraftCreatePage() {
 
                 <details className="admin-card ai-source-collapsible">
                     <summary>
-                        <span>Source material</span>
+                        <span>
+                            Source material
+                            <span
+                                className="input-field__required"
+                                aria-hidden="true"
+                            >
+                                *
+                            </span>
+                        </span>
                         <strong>
-                            Optional - {selectedSourcesCount}/
+                            Required - {selectedSourcesCount}/
                             {capabilities.maxSourcesPerBatch} selected
                         </strong>
                     </summary>
@@ -634,9 +652,10 @@ export function AdminAiQuestionDraftCreatePage() {
                         )}
 
                         <Alert tone="info">
-                            Source material is optional. Uploaded document
-                            originals are stored for audit and can be downloaded
-                            after review authorization.
+                            Add at least one source material file to enable AI
+                            Generate. Uploaded document originals are stored for
+                            audit and can be downloaded after review
+                            authorization.
                         </Alert>
                     </div>
                 </details>

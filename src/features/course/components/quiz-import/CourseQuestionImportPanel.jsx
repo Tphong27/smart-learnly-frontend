@@ -78,7 +78,6 @@ function isQuestionAlreadyInQuiz(existingQuestions, question) {
 /** Hiển thị và xử lý danh sách câu hỏi course có thể import vào quiz hiện tại. */
 export function CourseQuestionImportPanel({
     courseId,
-    moduleId,
     existingQuestions = [],
     onImport,
     onClose,
@@ -175,16 +174,10 @@ export function CourseQuestionImportPanel({
                     size: DEFAULT_PAGE_SIZE,
                     ...buildFilterParams(debouncedFilters),
                 };
-                const response = moduleId
-                    ? await questionBankService.listModuleQuestions(
-                          courseId,
-                          moduleId,
-                          params,
-                      )
-                    : await questionBankService.listCourseQuestions(
-                          courseId,
-                          params,
-                      );
+                const response = await questionBankService.listCourseQuestions(
+                    courseId,
+                    params,
+                );
                 if (cancelled) return;
                 const responseItems = Array.isArray(response.items)
                     ? response.items
@@ -213,7 +206,7 @@ export function CourseQuestionImportPanel({
         return () => {
             cancelled = true;
         };
-    }, [courseId, debouncedFilters, moduleId, pageInfo.page]);
+    }, [courseId, debouncedFilters, pageInfo.page]);
 
     /** Cập nhật một filter, quay về trang đầu và xóa lỗi import cũ. */
     const updateFilter = (name, value) => {
@@ -345,16 +338,10 @@ export function CourseQuestionImportPanel({
             const latestQuestions = await Promise.all(
                 rawQuestions.map((question) => {
                     const questionId = getQuestionId(question);
-                    return moduleId
-                        ? questionBankService.getModuleQuestion(
-                              courseId,
-                              moduleId,
-                              questionId,
-                          )
-                        : questionBankService.getCourseQuestion(
-                              courseId,
-                              questionId,
-                          );
+                    return questionBankService.getCourseQuestion(
+                        courseId,
+                        questionId,
+                    );
                 }),
             );
             const unapprovedIds = new Set(

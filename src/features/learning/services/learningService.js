@@ -11,11 +11,25 @@ export const learningService = {
   },
 
   /** Lấy nội dung xem trước công khai của khóa học. */
-  async getPreviewContent(courseId) {
+  // async getPreviewContent(courseId) {
+  //   const response = await apiClient.get(`/courses/${courseId}/preview`, {
+  //     skipAuthorization: true,
+  //     skipAuthRedirect: true,
+  //   });
+  //   return unwrap(response);
+  // },
+
+  /**
+   * Lấy curriculum preview công khai.
+   * Có classId thì backend sẽ ưu tiên curriculum đã publish của class.
+   */
+  async getPreviewContent(courseId, classId = null) {
     const response = await apiClient.get(`/courses/${courseId}/preview`, {
+      params: classId ? { classId } : {},
       skipAuthorization: true,
       skipAuthRedirect: true,
     });
+
     return unwrap(response);
   },
 
@@ -43,7 +57,6 @@ export const learningService = {
     return unwrap(response);
   },
 
-
   async getLessonFlashcards(courseId, lessonId, classId) {
     const response = await apiClient.get(
       `/learning/courses/${courseId}/lessons/${lessonId}/flashcards`,
@@ -54,13 +67,46 @@ export const learningService = {
     return unwrap(response);
   },
 
-
   async submitFlashcardProgress(cardId, result, classId) {
     const response = await apiClient.post(
       `/learning/flashcards/${cardId}/progress`,
       { result },
       { params: classId ? { classId } : {} },
     );
+    return unwrap(response);
+  },
+
+  /**
+   * Lấy danh sách câu hỏi chỉ đọc của lesson QUIZ được phép preview.
+   *
+   * Response không có đáp án đúng và không tạo attempt.
+   */
+  async getPreviewTestQuestions(courseId, lessonId, classId = null) {
+    const response = await apiClient.get(
+      `/courses/${courseId}/preview-lessons/${lessonId}/questions`,
+      {
+        params: classId ? { classId } : {},
+        skipAuthorization: true,
+        skipAuthRedirect: true,
+      },
+    );
+
+    return unwrap(response) || [];
+  },
+
+  /**
+   * Lấy bộ flashcard chỉ đọc của lesson được phép preview.
+   */
+  async getPreviewLessonFlashcards(courseId, lessonId, classId = null) {
+    const response = await apiClient.get(
+      `/courses/${courseId}/preview-lessons/${lessonId}/flashcards`,
+      {
+        params: classId ? { classId } : {},
+        skipAuthorization: true,
+        skipAuthRedirect: true,
+      },
+    );
+
     return unwrap(response);
   },
 };

@@ -38,6 +38,7 @@ import {
 import getTraineeRoutes from "./routes/traineeRoutes";
 import getStaffRoutes from "./routes/staffRoutes";
 import getAdminRoutes from "./routes/adminRoutes";
+import { getDashboardPathByRole } from "./routes/dashboard-path";
 import { NotFoundPage } from "./pages/error/NotFoundPage";
 import { ForbiddenPage } from "./pages/error/ForbiddenPage";
 import { ServerErrorPage } from "./pages/error/ServerErrorPage";
@@ -48,6 +49,22 @@ import {
     PersonalFlashcardStudyPage,
 } from "@/features/personal-flashcards";
 import { NotificationProvider } from "@/features/notification";
+
+/** Hiển thị homepage cho khách và chuyển tài khoản đã đăng nhập tới trang mặc định theo role. */
+function RootRoute() {
+    const user = getCurrentUser();
+    const roleLandingPath = getDashboardPathByRole(user?.role);
+
+    if (user && roleLandingPath !== "/") {
+        return <Navigate to={roleLandingPath} replace />;
+    }
+
+    return (
+        <AuthAwareLayout>
+            <HomePage />
+        </AuthAwareLayout>
+    );
+}
 
 /** Chọn layout flashcard cá nhân theo role hiện tại của người dùng. */
 function PersonalFlashcardLayoutBoundary() {
@@ -68,11 +85,7 @@ function PersonalFlashcardLayoutBoundary() {
 const appRoutes = [
     {
         path: "/",
-        element: (
-            <AuthAwareLayout>
-                <HomePage />
-            </AuthAwareLayout>
-        ),
+        element: <RootRoute />,
     },
     {
         path: "/login",

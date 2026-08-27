@@ -4,9 +4,7 @@ import { CourseQuestionImportPanel } from "./CourseQuestionImportPanel";
 
 const questionBankMocks = vi.hoisted(() => ({
   listCourseQuestions: vi.fn(),
-  listModuleQuestions: vi.fn(),
   getCourseQuestion: vi.fn(),
-  getModuleQuestion: vi.fn(),
 }));
 
 vi.mock("@/features/admin/question-bank", () => ({
@@ -16,7 +14,7 @@ vi.mock("@/features/admin/question-bank", () => ({
 describe("Course question import panel integration", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    questionBankMocks.listModuleQuestions.mockResolvedValue({
+    questionBankMocks.listCourseQuestions.mockResolvedValue({
       items: [
         {
           questionId: "approved-question",
@@ -50,9 +48,8 @@ describe("Course question import panel integration", () => {
     );
 
     await waitFor(() =>
-      expect(questionBankMocks.listModuleQuestions).toHaveBeenCalledWith(
+      expect(questionBankMocks.listCourseQuestions).toHaveBeenCalledWith(
         "course-1",
-        "module-1",
         expect.objectContaining({
           includeArchived: false,
           status: "approved",
@@ -64,7 +61,7 @@ describe("Course question import panel integration", () => {
     expect(screen.queryByText("Draft question")).not.toBeInTheDocument();
   });
 
-  it("FE-IT-COURSE-QUESTION-002 - falls back to the course pool for a class-only module", async () => {
+  it("FE-IT-COURSE-QUESTION-002 - uses the course pool without a module context", async () => {
     questionBankMocks.listCourseQuestions.mockResolvedValue({
       items: [],
       page: 0,
@@ -87,7 +84,6 @@ describe("Course question import panel integration", () => {
         expect.objectContaining({ status: "approved" }),
       ),
     );
-    expect(questionBankMocks.listModuleQuestions).not.toHaveBeenCalled();
   });
 
   it("FE-IT-COURSE-QUESTION-003 - hides attached questions and shows them again after detach", async () => {

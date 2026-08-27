@@ -25,10 +25,12 @@ function getTraineeRoutes() {
     {
       // Learning workspace - fullscreen, outside TraineeLayout (giống admin "view as user")
       // để màn hình học bài hiển thị y hệt chế độ admin-preview.
-      // SME/TRAINER cũng vào được khi preview quiz từ admin-preview.
+      // TMO/SME/TRAINER cũng vào được khi preview quiz từ staff preview.
       path: "/learning/courses/:courseId",
       element: (
-        <RoleGuard allowedRoles={[ROLES.TRAINEE, ROLES.SME, ROLES.TRAINER]} />
+        <RoleGuard
+          allowedRoles={[ROLES.TRAINEE, ROLES.TMO, ROLES.SME, ROLES.TRAINER]}
+        />
       ),
       children: [{ index: true, element: <LearningWorkspacePage /> }],
     },
@@ -40,16 +42,20 @@ function getTraineeRoutes() {
     {
       path: "/learning/course-quizzes/:id",
       element: (
-        <RoleGuard allowedRoles={[ROLES.TRAINEE, ROLES.SME, ROLES.TRAINER]} />
+        <RoleGuard
+          allowedRoles={[ROLES.TRAINEE, ROLES.TMO, ROLES.SME, ROLES.TRAINER]}
+        />
       ),
       children: [{ index: true, element: <TraineeTestTakePage /> }],
     },
-    // Attempt detail must allow SME/TRAINER (view-as-trainee submit flow).
+    // Attempt detail must allow TMO/SME/TRAINER (view-as-trainee submit flow).
     // Lifted out of TRAINEE-only /learning parent so staff do not hit FE 403.
     {
       path: "/learning/course-quizzes/attempts/:testId/:attemptId",
       element: (
-        <RoleGuard allowedRoles={[ROLES.TRAINEE, ROLES.SME, ROLES.TRAINER]} />
+        <RoleGuard
+          allowedRoles={[ROLES.TRAINEE, ROLES.TMO, ROLES.SME, ROLES.TRAINER]}
+        />
       ),
       children: [
         {

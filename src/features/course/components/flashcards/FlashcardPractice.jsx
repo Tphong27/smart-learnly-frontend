@@ -61,7 +61,8 @@ function cardKey(id) {
 function normalizeLearningStatus(value) {
   const status = String(value || "").toLowerCase();
   if (status === "known") return "known";
-  if (status === "learning" || status === "still_learning") return "still_learning";
+  if (status === "learning" || status === "still_learning")
+    return "still_learning";
   return "new";
 }
 
@@ -80,7 +81,8 @@ function progressStatus(card) {
   for (const candidate of candidates) {
     const status = String(candidate || "").toLowerCase();
     if (status === "known") return "known";
-    if (status === "learning" || status === "still_learning") return "still_learning";
+    if (status === "learning" || status === "still_learning")
+      return "still_learning";
     if (status === "new" || status === "not_studied") return "new";
   }
 
@@ -89,7 +91,9 @@ function progressStatus(card) {
 
 /** Tạo nhãn tóm tắt số card đã biết. */
 function progressLabel(cards) {
-  const knownCount = cards.filter((card) => progressStatus(card) === "known").length;
+  const knownCount = cards.filter(
+    (card) => progressStatus(card) === "known",
+  ).length;
   return `${knownCount}/${cards.length} known`;
 }
 
@@ -98,28 +102,35 @@ function buildQueues(cards) {
   return {
     all: cards,
     new: cards.filter((card) => progressStatus(card) === "new"),
-    still_learning: cards.filter((card) => progressStatus(card) === "still_learning"),
+    still_learning: cards.filter(
+      (card) => progressStatus(card) === "still_learning",
+    ),
     known: cards.filter((card) => progressStatus(card) === "known"),
   };
 }
 
 /** Tạo thông báo rỗng phù hợp với filter đang chọn. */
 function filterEmptyMessage(selectedFilter) {
-  if (selectedFilter === "all") return "No flashcards are available for this lesson.";
+  if (selectedFilter === "all")
+    return "No flashcards are available for this lesson.";
   const label = STATUS_META[selectedFilter]?.label.toLowerCase() || "matching";
   return `No ${label} cards in this set.`;
 }
 
 /** Lấy nhãn hiển thị của filter tiến độ. */
 function filterLabel(selectedFilter) {
-  return FILTERS.find((filter) => filter.key === selectedFilter)?.label || "All";
+  return (
+    FILTERS.find((filter) => filter.key === selectedFilter)?.label || "All"
+  );
 }
 
 /** Áp dụng thứ tự ID đã lưu và giữ lại card mới ở cuối. */
 function orderCardsByIds(cards, orderedIds) {
   if (!orderedIds?.length) return cards;
   const cardById = new Map(cards.map((card) => [cardKey(card.id), card]));
-  const orderedCards = orderedIds.map((id) => cardById.get(cardKey(id))).filter(Boolean);
+  const orderedCards = orderedIds
+    .map((id) => cardById.get(cardKey(id)))
+    .filter(Boolean);
   const orderedCardKeys = new Set(orderedCards.map((card) => cardKey(card.id)));
   return [
     ...orderedCards,
@@ -155,7 +166,13 @@ function getPracticeSetId(flashcardSet, explicitSetId, cards = []) {
 }
 
 /** Tạo localStorage key lưu vị trí card theo đúng ngữ cảnh học. */
-function cardPositionStorageKey({ userKey, courseId, classId, lessonId, setId }) {
+function cardPositionStorageKey({
+  userKey,
+  courseId,
+  classId,
+  lessonId,
+  setId,
+}) {
   if (!userKey || !courseId || !setId) return null;
   const classPart = classId ? `class:${classId}` : "online";
   const lessonPart = lessonId == null ? "lesson:none" : `lesson:${lessonId}`;
@@ -217,7 +234,9 @@ function getResumeCardId(cards, savedCardId) {
 function normalizeProgressPayload(payload, fallbackResult) {
   const data = payload?.data ?? payload ?? {};
   return {
-    learningStatus: normalizeLearningStatus(data.learningStatus ?? data.status ?? fallbackResult),
+    learningStatus: normalizeLearningStatus(
+      data.learningStatus ?? data.status ?? fallbackResult,
+    ),
     lastReviewResult: data.lastReviewResult ?? data.result ?? fallbackResult,
     repetitions: data.repetitions,
     intervalDays: data.intervalDays,
@@ -246,10 +265,17 @@ function findNextCardAfterAction(cardId, previousQueue, nextQueue) {
   const previousIndex = previousQueue.findIndex(
     (card) => cardKey(card.id) === cardKey(cardId),
   );
-  if (previousIndex < 0 || previousIndex >= previousQueue.length - 1) return null;
+  if (previousIndex < 0 || previousIndex >= previousQueue.length - 1)
+    return null;
 
-  const nextCardsById = new Map(nextQueue.map((card) => [cardKey(card.id), card]));
-  for (let index = previousIndex + 1; index < previousQueue.length; index += 1) {
+  const nextCardsById = new Map(
+    nextQueue.map((card) => [cardKey(card.id), card]),
+  );
+  for (
+    let index = previousIndex + 1;
+    index < previousQueue.length;
+    index += 1
+  ) {
     const nextCard = nextCardsById.get(cardKey(previousQueue[index].id));
     if (nextCard) return nextCard;
   }
@@ -313,8 +339,8 @@ function resolvedStudyControls(controls, navigationLocked) {
     ...controls,
     canGoPrevious: navigationLocked ? false : controls.canGoPrevious,
     canGoNext: navigationLocked ? false : controls.canGoNext,
-    goPrevious: navigationLocked ? () => { } : controls.goPrevious,
-    goNext: navigationLocked ? () => { } : controls.goNext,
+    goPrevious: navigationLocked ? () => {} : controls.goPrevious,
+    goNext: navigationLocked ? () => {} : controls.goNext,
   };
 }
 
@@ -385,7 +411,9 @@ function FlashcardPracticeControls({
     canGoNext: studyControls.canGoNext,
     onPrevious: studyControls.goPrevious,
     onNext: studyControls.goNext,
-    onArrowLeft: classificationKeyboardEnabled ? handleMarkStillLearning : undefined,
+    onArrowLeft: classificationKeyboardEnabled
+      ? handleMarkStillLearning
+      : undefined,
     onArrowRight: classificationKeyboardEnabled ? handleMarkKnown : undefined,
     onFlip: studyControls.flipCard,
   });
@@ -403,13 +431,14 @@ function FlashcardPracticeControls({
       trailingAction={
         canOpenFocusMode
           ? {
-            ariaLabel: "Open focus mode",
-            className: "flashcard-btn flashcard-btn--icon flashcard-focus-toggle",
-            disabled: navigationLocked,
-            icon: <Maximize2 size={16} />,
-            onClick: navigationLocked ? undefined : onOpenFocusMode,
-            title: "Open focus mode",
-          }
+              ariaLabel: "Open focus mode",
+              className:
+                "flashcard-btn flashcard-btn--icon flashcard-focus-toggle",
+              disabled: navigationLocked,
+              icon: <Maximize2 size={16} />,
+              onClick: navigationLocked ? undefined : onOpenFocusMode,
+              title: "Open focus mode",
+            }
           : null
       }
     />
@@ -456,7 +485,9 @@ function FlashcardFocusControls({
     canGoNext: studyControls.canGoNext,
     onPrevious: studyControls.goPrevious,
     onNext: studyControls.goNext,
-    onArrowLeft: classificationKeyboardEnabled ? handleMarkStillLearning : undefined,
+    onArrowLeft: classificationKeyboardEnabled
+      ? handleMarkStillLearning
+      : undefined,
     onArrowRight: classificationKeyboardEnabled ? handleMarkKnown : undefined,
     onFlip: studyControls.flipCard,
     onExitFocus: onClose,
@@ -501,10 +532,12 @@ export function FlashcardPractice({
   );
   const [flashcardSet, setFlashcardSet] = useState(null);
   const [selectedFilter, setSelectedFilter] = useState("all");
-  const [trackProgressPreference, setTrackProgressPreference] = useState(() => ({
-    storageKey: trackingPreferenceKey,
-    enabled: readStoredTrackProgress(trackingPreferenceKey),
-  }));
+  const [trackProgressPreference, setTrackProgressPreference] = useState(
+    () => ({
+      storageKey: trackingPreferenceKey,
+      enabled: readStoredTrackProgress(trackingPreferenceKey),
+    }),
+  );
   const [activeCardId, setActiveCardId] = useState(null);
   const [lastActiveCardByFilter, setLastActiveCardByFilter] = useState({});
   const [orderedIdsByFilter, setOrderedIdsByFilter] = useState({});
@@ -534,10 +567,21 @@ export function FlashcardPractice({
     setProgressError(null);
     try {
       let payload;
+
       if (adminMode && lessonId) {
         payload = await flashcardAuthoringService.getAdminSetByLesson(lessonId);
+      } else if (readOnly && lessonId && courseId) {
+        payload = await learningService.getPreviewLessonFlashcards(
+          courseId,
+          lessonId,
+          classId,
+        );
       } else if (lessonId && courseId) {
-        payload = await learningService.getLessonFlashcards(courseId, lessonId, classId);
+        payload = await learningService.getLessonFlashcards(
+          courseId,
+          lessonId,
+          classId,
+        );
       } else {
         throw new Error("Flashcard lesson was not found.");
       }
@@ -549,8 +593,8 @@ export function FlashcardPractice({
     } finally {
       setLoading(false);
     }
-  }, [adminMode, classId, courseId, lessonId]);
-
+  }, [adminMode, classId, courseId, lessonId, readOnly]);
+  
   useEffect(() => {
     if (lessonId && (adminMode || courseId)) {
       loadPractice();
@@ -611,7 +655,10 @@ export function FlashcardPractice({
     setOrderedIdsByFilter({});
     setCompletionNotified(false);
 
-    const initialCardId = getResumeCardId(cards, readStoredCardId(cardResumeStorageKey));
+    const initialCardId = getResumeCardId(
+      cards,
+      readStoredCardId(cardResumeStorageKey),
+    );
     if (initialCardId != null) {
       setActiveCardForFilter(initialCardId, "all");
     }
@@ -634,7 +681,10 @@ export function FlashcardPractice({
       return;
     }
     if (!findCardById(currentQueue, activeCardId)) {
-      const rememberedCard = findCardById(currentQueue, lastActiveCardByFilter[activeFilter]);
+      const rememberedCard = findCardById(
+        currentQueue,
+        lastActiveCardByFilter[activeFilter],
+      );
       const nextCard = rememberedCard || currentQueue[0];
       setActiveCardForFilter(nextCard.id, activeFilter);
     }
@@ -667,8 +717,15 @@ export function FlashcardPractice({
   /** Chuyển filter và phục hồi card gần nhất còn hợp lệ trong queue. */
   const handleFilterChange = useCallback(
     (filterKey) => {
-      const targetQueue = getQueueForFilter(queues, filterKey, orderedIdsByFilter);
-      const rememberedCard = findCardById(targetQueue, lastActiveCardByFilter[filterKey]);
+      const targetQueue = getQueueForFilter(
+        queues,
+        filterKey,
+        orderedIdsByFilter,
+      );
+      const rememberedCard = findCardById(
+        targetQueue,
+        lastActiveCardByFilter[filterKey],
+      );
       const currentCard = findCardById(targetQueue, activeCardId);
       const nextCard = rememberedCard || currentCard || targetQueue[0] || null;
 
@@ -691,7 +748,10 @@ export function FlashcardPractice({
   /** Lưu lựa chọn theo dõi tiến độ và reset filter khi tắt. */
   const handleTrackProgressChange = useCallback(
     (enabled) => {
-      setTrackProgressPreference({ storageKey: trackingPreferenceKey, enabled });
+      setTrackProgressPreference({
+        storageKey: trackingPreferenceKey,
+        enabled,
+      });
       writeStoredTrackProgress(trackingPreferenceKey, enabled);
       if (!enabled) setSelectedFilter("all");
     },
@@ -701,7 +761,9 @@ export function FlashcardPractice({
   /** Trộn queue hiện tại và đưa card đầu tiên của thứ tự mới lên active. */
   const handleShuffle = useCallback(
     (controls) => {
-      const sourceCards = controls?.orderedCards?.length ? controls.orderedCards : currentQueue;
+      const sourceCards = controls?.orderedCards?.length
+        ? controls.orderedCards
+        : currentQueue;
       const nextIds = shuffledIds(sourceCards);
       setOrderedIdsByFilter((currentOrders) => ({
         ...currentOrders,
@@ -732,7 +794,11 @@ export function FlashcardPractice({
   /** Lưu phân loại card theo optimistic update và rollback khi lỗi. */
   const handleSubmitProgress = useCallback(
     async (card, result) => {
-      if (card?.id == null || !canTrackProgress || submittingCardIdRef.current != null) {
+      if (
+        card?.id == null ||
+        !canTrackProgress ||
+        submittingCardIdRef.current != null
+      ) {
         return;
       }
 
@@ -755,13 +821,13 @@ export function FlashcardPractice({
       setFlashcardSet((currentSet) =>
         currentSet
           ? {
-            ...currentSet,
-            cards: applyProgressToCards(
-              currentSet.cards || [],
-              card.id,
-              optimisticProgress,
-            ),
-          }
+              ...currentSet,
+              cards: applyProgressToCards(
+                currentSet.cards || [],
+                card.id,
+                optimisticProgress,
+              ),
+            }
           : currentSet,
       );
 
@@ -772,18 +838,34 @@ export function FlashcardPractice({
           classId,
         );
         const savedProgress = normalizeProgressPayload(response, result);
-        const nextCards = applyProgressToCards(cardsRef.current, card.id, savedProgress);
+        const nextCards = applyProgressToCards(
+          cardsRef.current,
+          card.id,
+          savedProgress,
+        );
         const nextQueues = buildQueues(nextCards);
-        const nextQueue = getQueueForFilter(nextQueues, activeFilter, orderedIdsByFilter);
-        const nextCard = findNextCardAfterAction(card.id, previousQueue, nextQueue);
+        const nextQueue = getQueueForFilter(
+          nextQueues,
+          activeFilter,
+          orderedIdsByFilter,
+        );
+        const nextCard = findNextCardAfterAction(
+          card.id,
+          previousQueue,
+          nextQueue,
+        );
 
         cardsRef.current = nextCards;
         setFlashcardSet((currentSet) =>
           currentSet
             ? {
-              ...currentSet,
-              cards: applyProgressToCards(currentSet.cards || [], card.id, savedProgress),
-            }
+                ...currentSet,
+                cards: applyProgressToCards(
+                  currentSet.cards || [],
+                  card.id,
+                  savedProgress,
+                ),
+              }
             : currentSet,
         );
 
@@ -791,7 +873,8 @@ export function FlashcardPractice({
           setActiveCardForFilter(nextCard.id, activeFilter);
         } else {
           const currentCardAfterUpdate = findCardById(nextQueue, card.id);
-          const stableCard = currentCardAfterUpdate || nextQueue[nextQueue.length - 1] || null;
+          const stableCard =
+            currentCardAfterUpdate || nextQueue[nextQueue.length - 1] || null;
           if (stableCard) {
             setActiveCardForFilter(stableCard.id, activeFilter);
           } else {
@@ -809,7 +892,9 @@ export function FlashcardPractice({
         setFlashcardSet((currentSet) =>
           currentSet ? { ...currentSet, cards: previousCards } : currentSet,
         );
-        setProgressError(getErrorMessage(error, "Failed to save flashcard progress."));
+        setProgressError(
+          getErrorMessage(error, "Failed to save flashcard progress."),
+        );
       } finally {
         submittingCardIdRef.current = null;
         setSubmittingCardId(null);
@@ -859,7 +944,9 @@ export function FlashcardPractice({
             {flashcardSet?.title || "Flashcards"}
           </h2>
           {flashcardSet?.description && (
-            <p className="flashcard-practice__description">{flashcardSet.description}</p>
+            <p className="flashcard-practice__description">
+              {flashcardSet.description}
+            </p>
           )}
         </div>
         {(trackingAvailable || (canTrackProgress && cards.length > 0)) && (
@@ -950,15 +1037,15 @@ export function FlashcardPractice({
         renderItemMeta={
           canTrackProgress
             ? (card) => {
-              const status = progressStatus(card);
-              return (
-                <StatusBadge
-                  status={status}
-                  label={STATUS_META[status].label}
-                  tone={STATUS_TONE[status]}
-                />
-              );
-            }
+                const status = progressStatus(card);
+                return (
+                  <StatusBadge
+                    status={status}
+                    label={STATUS_META[status].label}
+                    tone={STATUS_TONE[status]}
+                  />
+                );
+              }
             : undefined
         }
       />

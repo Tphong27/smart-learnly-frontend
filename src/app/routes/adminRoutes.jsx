@@ -15,6 +15,7 @@ import {
 import { TransactionsPage } from "@/features/checkout";
 import AdminCourseContentPage from "@/features/course/pages/AdminCourseContentPage";
 import AdminLessonDetailPage from "@/features/course/pages/AdminLessonDetailPage";
+import { CourseQuestionLegacyRedirect } from "./CourseQuestionLegacyRedirect";
 
 /** Khai báo route quản trị: ADMIN = hệ thống; TMO/SME = tài nguyên. */
 function getAdminRoutes() {
@@ -71,7 +72,7 @@ function getAdminRoutes() {
             },
             {
               path: "courses/:courseId/modules/:moduleId/questions",
-              element: <AdminQuestionBankDetailPage />,
+              element: <CourseQuestionLegacyRedirect basePath="/admin" />,
             },
             {
               path: "courses/:courseId/lessons/:lessonId",
@@ -95,11 +96,21 @@ function getAdminRoutes() {
             },
             {
               path: "courses/:courseId/modules/:moduleId/questions/ai-drafts/new",
-              element: <AdminAiQuestionDraftCreatePage />,
+              element: (
+                <CourseQuestionLegacyRedirect
+                  basePath="/admin"
+                  destination="ai-create"
+                />
+              ),
             },
             {
               path: "courses/:courseId/modules/:moduleId/questions/ai-drafts/:batchId",
-              element: <AdminAiQuestionDraftReviewPage />,
+              element: (
+                <CourseQuestionLegacyRedirect
+                  basePath="/admin"
+                  destination="ai-review"
+                />
+              ),
             },
           ],
         },

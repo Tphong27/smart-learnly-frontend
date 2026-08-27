@@ -10,6 +10,7 @@ export const ROLES = {
 export const PERSONAL_FLASHCARD_ROLES = Object.freeze([
   ROLES.TRAINEE,
   ROLES.TRAINER,
+  ROLES.TMO,
   ROLES.SME,
 ]);
 
@@ -22,6 +23,7 @@ export const PROFILE_ROLES = Object.freeze([
 
 export const PERSONAL_FLASHCARD_STAFF_LAYOUT_ROLES = Object.freeze([
   ROLES.TRAINER,
+  ROLES.TMO,
   ROLES.SME,
 ]);
 

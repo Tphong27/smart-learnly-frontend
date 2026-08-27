@@ -18,7 +18,7 @@ export function questionTypeLabel(type) {
 export function canWriteQuestionBank() {
   const role = String(getCurrentUser()?.role || "").toLowerCase();
   // Khớp BE question write: SME và TRAINER (không TMO/ADMIN).
-  return role === "sme" || role === "trainer";
+  return role === "sme" || role === "trainer" || role === "tmo";
 }
 
 /** Tạo một answer rỗng với thứ tự và trạng thái đúng mặc định. */
@@ -87,20 +87,6 @@ export function normalizeQuestionMedia(question) {
     audios: byType("audio"),
     videos: byType("video"),
   };
-}
-
-/** Chuẩn hóa nhiều dạng response curriculum thành danh sách module dùng cho select. */
-export function normalizeModules(payload) {
-  const root = payload?.data ?? payload;
-  const items = Array.isArray(root)
-    ? root
-    : (root?.items ?? root?.content ?? root?.sections ?? []);
-  return items
-    .map((item, index) => ({
-      id: item.moduleId || item.sectionId || item.id,
-      title: item.title || item.name || `Module ${index + 1}`,
-    }))
-    .filter((item) => item.id);
 }
 
 /** Tạo media item tạm thời cho file chưa upload. */

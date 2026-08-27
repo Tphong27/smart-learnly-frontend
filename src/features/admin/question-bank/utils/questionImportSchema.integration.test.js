@@ -22,6 +22,18 @@ function createTemplateImportFile(rows) {
   });
 }
 
+/** Tao file Excel co them cot ngoai template (vd module_id legacy) de kiem tra parser bo qua. */
+function createSheetWithExtraColumns(headerRow, valueRows) {
+  const matrix = [headerRow, ...valueRows];
+  const worksheet = XLSX.utils.aoa_to_sheet(matrix);
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, "Questions");
+  const content = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
+  return new File([content], "questions.xlsx", {
+    type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  });
+}
+
 describe("question import schema", () => {
   it("accepts Excel rows without fake media URLs", async () => {
     const file = createTemplateImportFile([
@@ -98,22 +110,32 @@ describe("question import schema", () => {
     expect(rows[0].data.moduleId).toBeNull();
   });
 
-  it("accepts optional module fields from imported Excel rows", async () => {
-    const parsed = await parseImportFile(createTemplateImportFile([{
-      question_text: "Question for the active module",
-      question_type: "single_choice",
-      option_a: "A",
-      option_b: "B",
-      correct_answer: "A",
-      module_id: "11111111-1111-1111-1111-111111111111",
-    }]));
+  it("ignores legacy module fields when building a course-wide payload", async () => {
+    const parsed = await parseImportFile(createSheetWithExtraColumns(
+      [
+        "Question text",
+        "Question type",
+        "Option A",
+        "Option B",
+        "Correct answer",
+        "module_id",
+      ],
+      [[
+        "Question for the active module",
+        "single_choice",
+        "A",
+        "B",
+        "A",
+        "11111111-1111-1111-1111-111111111111",
+      ]],
+    ));
 
     const rows = revalidateImportRows(parsed.rows, []);
     const payload = buildImportPayload(null, rows);
 
     expect(rows[0].data.moduleId).toBe("11111111-1111-1111-1111-111111111111");
     expect(rows[0].raw.module_id).toBe("11111111-1111-1111-1111-111111111111");
-    expect(payload.rows[0].moduleId).toBe("11111111-1111-1111-1111-111111111111");
+    expect(payload.rows[0]).not.toHaveProperty("moduleId");
     expect(rows[0].errors).toEqual([]);
   });
 

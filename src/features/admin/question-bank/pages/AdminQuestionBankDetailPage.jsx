@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useLocation, useParams, useSearchParams } from "react-router-dom";
 import {
   Archive,
@@ -28,15 +28,16 @@ import {
   sanitizeQuestionHtml,
 } from "@/shared/utils/htmlSanitizer";
 import { questionBankService } from "@/features/admin/question-bank";
-import { courseAdminService, courseContentService } from "@/features/course";
+import { courseAdminService } from "@/features/course";
 import { formatDate } from "@/shared/utils/formatters";
 import { DEFAULT_PAGE_SIZE } from "@/shared/constants/pagination";
+import { ROLES } from "@/shared/constants/roles";
+import { getCurrentRole } from "@/shared/utils/auth";
 import "../../admin-shared.css";
 import "./question-bank.css";
 import { QuestionImportModal } from "../components/QuestionImportModal";
 import {
   canWriteQuestionBank,
-  normalizeModules,
   questionTypeLabel,
 } from "../utils/questionFormUtils";
 import { AdminQuestionFormModal } from "./AdminQuestionFormPage";
@@ -53,14 +54,14 @@ import {
 
 /** Điều phối Question List course-wide (filter module) hoặc legacy bank. */
 export function AdminQuestionBankDetailPage() {
-  const { bankId, courseId, moduleId: routeModuleId } = useParams();
+  const { bankId, courseId } = useParams();
   const location = useLocation();
   const [searchParams] = useSearchParams();
   const toast = useToast();
   const writable = canWriteQuestionBank();
+  const currentRole = getCurrentRole();
   const isCourseQuestionsMode = Boolean(courseId);
   const [bank, setBank] = useState(null);
-  const [modules, setModules] = useState([]);
   const [items, setItems] = useState([]);
   const [pageInfo, setPageInfo] = useState({
     page: 0,
@@ -72,8 +73,6 @@ export function AdminQuestionBankDetailPage() {
   const [search, setSearch] = useState("");
   const [type, setType] = useState("all");
   const [status, setStatus] = useState("all");
-  // Route module khóa filter; route course-wide mặc định All.
-  const [moduleFilter, setModuleFilter] = useState(routeModuleId || "all");
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -84,25 +83,13 @@ export function AdminQuestionBankDetailPage() {
   const [imagePreview, setImagePreview] = useState(null);
   const [restoreModalOpen, setRestoreModalOpen] = useState(false);
 
-  const effectiveModuleId =
-    moduleFilter && moduleFilter !== "all" ? moduleFilter : undefined;
-  const isAllModulesView = isCourseQuestionsMode && !effectiveModuleId;
-
   /** Đặt lại toàn bộ bộ lọc câu hỏi và quay về trang đầu. */
   function clearQuestionFilters() {
     setSearch("");
     setType("all");
     setStatus("all");
-    if (!routeModuleId) {
-      setModuleFilter("all");
-    }
     setPage(0);
   }
-
-  useEffect(() => {
-    setModuleFilter(routeModuleId || "all");
-    setPage(0);
-  }, [routeModuleId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -110,35 +97,28 @@ export function AdminQuestionBankDetailPage() {
       setLoading(true);
       setError(null);
       try {
-        const [scopeData, moduleData, questionPage] = isCourseQuestionsMode
+        const [scopeData, questionPage] = isCourseQuestionsMode
           ? await Promise.all([
               courseAdminService.get(courseId),
-              courseContentService.getCourseContent(courseId),
               questionBankService.listCourseQuestions(courseId, {
                 search: search.trim() || undefined,
                 type: type === "all" ? undefined : type,
                 status: status === "all" ? undefined : status,
-                moduleId: effectiveModuleId,
                 page,
                 size: pageSize,
               }),
             ])
           : await (async () => {
               const bankData = await questionBankService.getBank(bankId);
-              const [legacyModules, legacyQuestions] = await Promise.all([
-                bankData?.courseId
-                  ? courseContentService.getCourseContent(bankData.courseId)
-                  : Promise.resolve([]),
-                questionBankService.listQuestions({
-                  bankId,
-                  search: search.trim() || undefined,
-                  type: type === "all" ? undefined : type,
-                  status: status === "all" ? undefined : status,
-                  page,
-                  size: pageSize,
-                }),
-              ]);
-              return [bankData, legacyModules, legacyQuestions];
+              const legacyQuestions = await questionBankService.listQuestions({
+                bankId,
+                search: search.trim() || undefined,
+                type: type === "all" ? undefined : type,
+                status: status === "all" ? undefined : status,
+                page,
+                size: pageSize,
+              });
+              return [bankData, legacyQuestions];
             })();
         if (cancelled) return;
         if (isCourseQuestionsMode) {
@@ -151,7 +131,6 @@ export function AdminQuestionBankDetailPage() {
         } else {
           setBank(scopeData);
         }
-        setModules(normalizeModules(moduleData));
         setItems(questionPage.items || []);
         setPageInfo({
           page: questionPage.page,
@@ -174,7 +153,6 @@ export function AdminQuestionBankDetailPage() {
   }, [
     bankId,
     courseId,
-    effectiveModuleId,
     isCourseQuestionsMode,
     page,
     pageSize,
@@ -185,17 +163,6 @@ export function AdminQuestionBankDetailPage() {
     toast,
     type,
   ]);
-
-  const activeModule = useMemo(
-    () =>
-      modules.find(
-        (module) => String(module.id) === String(effectiveModuleId || ""),
-      ),
-    [modules, effectiveModuleId],
-  );
-
-  // Form create cần module UUID thật (DB NOT NULL). Khi All: form tự chọn; khi filter: khóa module.
-  const formModuleId = routeModuleId || effectiveModuleId || undefined;
 
   /** Mở modal tạo câu hỏi mới trong scope hiện tại. */
   function openCreateQuestionModal() {
@@ -223,18 +190,10 @@ export function AdminQuestionBankDetailPage() {
     setArchivingId(question.questionId);
     try {
       if (isCourseQuestionsMode) {
-        if (effectiveModuleId) {
-          await questionBankService.archiveModuleQuestion(
-            courseId,
-            effectiveModuleId,
-            question.questionId,
-          );
-        } else {
-          await questionBankService.archiveCourseQuestion(
-            courseId,
-            question.questionId,
-          );
-        }
+        await questionBankService.archiveCourseQuestion(
+          courseId,
+          question.questionId,
+        );
       } else {
         await questionBankService.archiveQuestion(question.questionId);
       }
@@ -248,23 +207,17 @@ export function AdminQuestionBankDetailPage() {
     }
   }
 
-  /** Xuất danh sách câu hỏi đã lọc (course-wide hoặc theo module) thành CSV. */
+  /** Xuất danh sách câu hỏi course-wide đã lọc thành CSV. */
   async function handleExport() {
     if (!isCourseQuestionsMode || !courseId) return;
     try {
       const exportParams = {
         search: search.trim() || undefined,
       };
-      const response = effectiveModuleId
-        ? await questionBankService.exportModuleQuestions(
-            courseId,
-            effectiveModuleId,
-            exportParams,
-          )
-        : await questionBankService.exportCourseQuestions(
-            courseId,
-            exportParams,
-          );
+      const response = await questionBankService.exportCourseQuestions(
+        courseId,
+        exportParams,
+      );
       const blob = response instanceof Blob ? response : response?.data;
       if (!blob) throw new Error("No export file returned.");
       const url = URL.createObjectURL(blob);
@@ -303,6 +256,7 @@ export function AdminQuestionBankDetailPage() {
     ? "/staff/courses"
     : "/admin/courses";
   // Trainer mở bank từ class curriculum qua ?returnTo=...; chỉ nhận path nội bộ.
+  // Khi thiếu class context, quay về danh sách lớp thay vì master curriculum bị cấm.
   const rawReturnTo = searchParams.get("returnTo");
   const safeReturnTo =
     rawReturnTo &&
@@ -314,17 +268,15 @@ export function AdminQuestionBankDetailPage() {
   const backPath = safeReturnTo
     ? safeReturnTo
     : isCourseQuestionsMode
-      ? `${courseBasePath}/${courseId}/content`
+      ? currentRole === ROLES.TRAINER
+        ? "/staff/classrooms"
+        : `${courseBasePath}/${courseId}/content`
       : "/admin/question-banks";
   const title = isCourseQuestionsMode
-    ? isAllModulesView
-      ? "Course questions"
-      : `${activeModule?.title || "Module"} - Questions`
+    ? "Course questions"
     : bank?.name || "Question bank";
   const aiDraftPath = isCourseQuestionsMode
-    ? isAllModulesView
-      ? `${courseBasePath}/${courseId}/questions/ai-drafts/new`
-      : `${courseBasePath}/${courseId}/modules/${effectiveModuleId}/questions/ai-drafts/new`
+    ? `${courseBasePath}/${courseId}/questions/ai-drafts/new`
     : `/admin/question-banks/${bankId}/ai-drafts/new`;
 
   return (
@@ -428,7 +380,6 @@ export function AdminQuestionBankDetailPage() {
           variant="inline"
           bank={bank}
           courseId={isCourseQuestionsMode ? courseId : undefined}
-          moduleId={isCourseQuestionsMode ? formModuleId : undefined}
           existingQuestions={items}
           onClose={() => setImportOpen(false)}
           onImported={() => setRefreshKey((key) => key + 1)}
@@ -440,9 +391,9 @@ export function AdminQuestionBankDetailPage() {
           search={search}
           type={type}
           status={status}
-          moduleFilter={moduleFilter}
-          modules={modules}
-          showModuleFilter={isCourseQuestionsMode && !routeModuleId}
+          moduleFilter="all"
+          modules={[]}
+          showModuleFilter={false}
           onSearchChange={(nextSearch) => {
             setSearch(nextSearch);
             setPage(0);
@@ -450,13 +401,6 @@ export function AdminQuestionBankDetailPage() {
           onApply={(nextFilters) => {
             setType(nextFilters.type);
             setStatus(nextFilters.status);
-            if (
-              isCourseQuestionsMode &&
-              !routeModuleId &&
-              nextFilters.moduleFilter != null
-            ) {
-              setModuleFilter(nextFilters.moduleFilter);
-            }
             setPage(0);
           }}
           onClear={clearQuestionFilters}
@@ -781,8 +725,6 @@ export function AdminQuestionBankDetailPage() {
         open={Boolean(questionFormModal)}
         bankId={bankId}
         courseId={isCourseQuestionsMode ? courseId : undefined}
-        moduleId={isCourseQuestionsMode ? formModuleId : undefined}
-        modules={isCourseQuestionsMode ? modules : undefined}
         questionId={questionFormModal?.questionId}
         onClose={closeQuestionFormModal}
         onSaved={handleQuestionSaved}

@@ -8,7 +8,7 @@ import "../course-admin.css";
  */
 export function CurriculumAuthoringLayout({
   title = "Curriculum",
-  subtitle = "Organise sections and lessons so learners can follow a logical flow.",
+  subtitle = "",
   context,
   headerActions,
   backLabel,
@@ -82,7 +82,9 @@ export function CurriculumAuthoringLayout({
             </button>
           )}
           <h1 className="sl-cm-header__title">{title}</h1>
-          <p className="sl-cm-header__subtitle">{subtitle}</p>
+
+          {subtitle && <p className="sl-cm-header__subtitle">{subtitle}</p>}
+
           {context && <p className="sl-cm-header__context">{context}</p>}
         </div>
         {headerActions && (

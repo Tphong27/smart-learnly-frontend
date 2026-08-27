@@ -49,7 +49,7 @@ function renderQuestionForm(onSaved, values = initialValues, props = {}) {
 
 describe("Admin question answer media integration", () => {
   beforeEach(() => {
-    setAuthSession({ accessToken: "admin-token", user: { role: "ADMIN" } });
+    setAuthSession({ accessToken: "sme-token", user: { role: "SME" } });
     Object.defineProperty(URL, "createObjectURL", {
       configurable: true,
       value: vi.fn(() => "blob:answer-media-preview"),

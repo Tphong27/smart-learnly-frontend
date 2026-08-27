@@ -360,3 +360,47 @@
     background: #0f172a;
     box-shadow: 0 8px 22px rgba(15, 23, 42, 0.12);
 }
+
+.preview-section__item--locked {
+    cursor: not-allowed;
+    opacity: 0.72;
+    background: #f7f7f8;
+    color: #6b7280;
+}
+
+.preview-section__item--locked:hover {
+    background: #f7f7f8;
+    transform: none;
+}
+
+.preview-section__item--locked .preview-section__icon {
+    color: #6b7280;
+}
+
+.preview-section__item--locked .preview-section__title {
+    color: #4b5563;
+}
+
+.preview-locked-message {
+    min-height: 320px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 32px;
+    text-align: center;
+    color: #64708a;
+}
+
+.preview-locked-message h2 {
+    margin: 0;
+    color: #2d2f31;
+    font-size: 20px;
+}
+
+.preview-locked-message p {
+    max-width: 520px;
+    margin: 0;
+    line-height: 1.6;
+}
