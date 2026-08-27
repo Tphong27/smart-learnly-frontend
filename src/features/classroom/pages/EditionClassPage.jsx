@@ -201,7 +201,11 @@ function EditionClassForm({ mode, initialData, classId, routeBase }) {
         </div>
       </div>
 
-      <form onSubmit={form.onSubmit} className="class-form class-form--page">
+      <form
+        onSubmit={form.onSubmit}
+        className="class-form class-form--page"
+        noValidate
+      >
         {(form.submitError || referenceDataError) && (
           <div className="form-error">
             <AlertCircle size={20} />
@@ -246,7 +250,7 @@ function EditionClassForm({ mode, initialData, classId, routeBase }) {
 
           <div className="form-group">
             <label htmlFor="courseId">
-              Course{" "}
+              Course
               <span className="input-field__required" aria-hidden="true">
                 *
               </span>
@@ -276,7 +280,7 @@ function EditionClassForm({ mode, initialData, classId, routeBase }) {
 
           <div className="form-group">
             <label htmlFor="trainerId">
-              Trainer{" "}
+              Trainer
               <span className="input-field__required" aria-hidden="true">
                 *
               </span>
@@ -363,7 +367,7 @@ function EditionClassForm({ mode, initialData, classId, routeBase }) {
           <div className="form-row">
             <div className="form-group">
               <label htmlFor="startDate">
-                Start Date{" "}
+                Start Date
                 <span className="input-field__required" aria-hidden="true">
                   *
                 </span>
@@ -385,7 +389,7 @@ function EditionClassForm({ mode, initialData, classId, routeBase }) {
 
             <div className="form-group">
               <label htmlFor="endDate">
-                End Date{" "}
+                End Date
                 <span className="input-field__required" aria-hidden="true">
                   *
                 </span>
@@ -409,7 +413,7 @@ function EditionClassForm({ mode, initialData, classId, routeBase }) {
           <div className="form-row form-row--three-columns">
             <div className="form-group">
               <label htmlFor="price">
-                Class price (VND){" "}
+                Class price (VND)
                 <span className="input-field__required" aria-hidden="true">
                   *
                 </span>
@@ -418,9 +422,8 @@ function EditionClassForm({ mode, initialData, classId, routeBase }) {
               <input
                 id="price"
                 type="number"
-                min="10000"
-                max="9999999999.99"
-                inputMode="decimal"
+                step="1"
+                inputMode="numeric"
                 readOnly={editPolicy.lockPrice}
                 className={form.errors.price ? "input-error" : ""}
                 aria-invalid={Boolean(form.errors.price)}
@@ -439,7 +442,7 @@ function EditionClassForm({ mode, initialData, classId, routeBase }) {
 
             <div className="form-group">
               <label htmlFor="maxStudents">
-                Capacity{" "}
+                Capacity
                 <span className="input-field__required" aria-hidden="true">
                   *
                 </span>
@@ -472,7 +475,7 @@ function EditionClassForm({ mode, initialData, classId, routeBase }) {
 
           <div className="form-group">
             <label>
-              Schedule{" "}
+              Schedule 
               <span className="input-field__required" aria-hidden="true">
                 *
               </span>
