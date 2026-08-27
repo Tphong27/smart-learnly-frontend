@@ -407,42 +407,6 @@ export function AdminCourseFormPage() {
                                     error={errors.description}
                                     {...register("description")}
                                 />
-
-                                <div className="sl-course-field sl-course-field--full">
-                                    <label htmlFor="course-slug">
-                                        Course URL slug
-                                    </label>
-                                    <div className="sl-course-field__prefix-control">
-                                        <span aria-hidden="true">
-                                            /courses/
-                                        </span>
-                                        <input
-                                            id="course-slug"
-                                            type="text"
-                                            placeholder="react-from-zero"
-                                            disabled={isReadOnly}
-                                            {...register("slug")}
-                                            aria-invalid={
-                                                Boolean(errors.slug) ||
-                                                undefined
-                                            }
-                                            aria-describedby={
-                                                errors.slug
-                                                    ? "course-slug-help course-slug-error"
-                                                    : "course-slug-help"
-                                            }
-                                        />
-                                    </div>
-                                    {errors.slug && (
-                                        <p
-                                            id="course-slug-error"
-                                            className="sl-course-field__error"
-                                            role="alert"
-                                        >
-                                            {errors.slug.message}
-                                        </p>
-                                    )}
-                                </div>
                             </div>
                         </section>
 
