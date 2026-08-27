@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { ChevronDown } from "lucide-react";
 import { Button } from "@/shared/components/ui";
 import { SmartLearnlyMark } from "./SmartLearnlyMark";
 import { HeaderCourseSearch } from "./HeaderCourseSearch";
@@ -51,11 +50,6 @@ export function SiteHeader() {
         
         {/* Navigation */}
         <nav className="header-nav">
-          <button className="header-categories-btn">
-            <span>Categories</span>
-            <ChevronDown size={16} />
-          </button>
-
           <Button to="/login" variant="outline">
             Log in
           </Button>
