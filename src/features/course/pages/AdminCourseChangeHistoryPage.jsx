@@ -5,7 +5,7 @@ import {
   useParams,
   useSearchParams,
 } from "react-router-dom";
-import { ArrowLeft, Eye, History } from "lucide-react";
+import { ArrowLeft, Eye } from "lucide-react";
 import {
   DataTable,
   ErrorState,
@@ -21,7 +21,7 @@ import Pagination from "@/shared/components/Pagination";
 import {
   COURSE_CHANGE_ACTIONS,
   COURSE_CHANGE_ACTOR_ROLES,
-  COURSE_CHANGE_RESULTS,
+  // COURSE_CHANGE_RESULTS,
   courseChangeHistoryService,
 } from "../services/courseChangeHistoryService";
 import {
@@ -516,11 +516,6 @@ export default function AdminCourseChangeHistoryPage() {
           </div>
           <div>
             <h1 className="admin-page__title">
-              <History
-                size={22}
-                aria-hidden="true"
-                style={{ marginRight: 8, verticalAlign: "text-bottom" }}
-              />
               Change history
             </h1>
             <p style={{ margin: "6px 0 0", color: "#64748b", fontSize: 14 }}>
