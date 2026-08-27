@@ -17,6 +17,7 @@ import {
   AdminAiQuestionDraftReviewPage,
 } from "@/features/admin";
 import AdminCourseContentPage from "@/features/course/pages/AdminCourseContentPage";
+import AdminCourseChangeHistoryPage from "@/features/course/pages/AdminCourseChangeHistoryPage";
 import AdminLessonDetailPage from "@/features/course/pages/AdminLessonDetailPage";
 import {
   StaffClassListPage,
@@ -134,6 +135,7 @@ function getStaffRoutes() {
           ],
         },
         // Master curriculum: SME và TMO cùng author; Trainer chỉ chỉnh curriculum theo lớp.
+        // Lịch sử thay đổi course: chỉ SME/TMO (Trainer không đọc).
         {
           element: <RoleGuard allowedRoles={[ROLES.SME, ROLES.TMO]} />,
           children: [
@@ -144,6 +146,10 @@ function getStaffRoutes() {
             {
               path: "courses/:courseId/lessons/:lessonId",
               element: <AdminLessonDetailPage />,
+            },
+            {
+              path: "courses/:courseId/history",
+              element: <AdminCourseChangeHistoryPage />,
             },
           ],
         },

@@ -4,12 +4,13 @@ import {
     useParams,
     useNavigate,
 } from "react-router-dom";
-import { Eye, HelpCircle } from "lucide-react";
+import { Eye, HelpCircle, History } from "lucide-react";
 import { courseContentService } from "../services/courseContentService";
 import { flashcardAuthoringService as flashcardService } from "@/features/flashcard";
 import { useToast } from "../../../shared/components/ui/Toast/useToast";
 import { CurriculumAuthoringLayout } from "../components/CurriculumAuthoringLayout";
 import { CurriculumStructureEditor } from "../components/CurriculumStructureEditor";
+import { getCurrentUser } from "@/services/api-client";
 import "../course-admin.css";
 
 /** Lấy thông báo API dễ hiểu và dùng fallback khi backend không trả message. */
@@ -26,12 +27,17 @@ export default function AdminCourseContentPage() {
     const { showToast: emitToast } = useToast();
     const isStaffRoute = location.pathname.startsWith("/staff/");
     const courseBasePath = isStaffRoute ? "/staff/courses" : "/admin/courses";
+    const currentRole = String(getCurrentUser()?.role || "").toLowerCase();
+    // Timeline change-history chỉ TMO/SME — ẩn CTA với Trainer (admin content route vẫn cho TRAINER).
+    const canViewChangeHistory =
+        currentRole === "tmo" || currentRole === "sme";
 
     const courseListPath = courseBasePath;
 
     const courseContentPath = `${courseBasePath}/${courseId}/content`;
     const coursePreviewPath = `${courseBasePath}/${courseId}/preview`;
     const courseQuestionsPath = `${courseBasePath}/${courseId}/questions`;
+    const courseHistoryPath = `${courseBasePath}/${courseId}/history`;
     const lessonBasePath = `${courseBasePath}/${courseId}/lessons`;
     /** Chuẩn hóa cả hai cách gọi toast đang tồn tại trong feature course. */
     const showToast = useCallback(
@@ -442,6 +448,15 @@ export default function AdminCourseContentPage() {
                     >
                         <HelpCircle size={16} aria-hidden="true" /> All questions
                     </button>
+                    {canViewChangeHistory && (
+                        <button
+                            type="button"
+                            className="sl-cm-btn sl-cm-btn--secondary"
+                            onClick={() => navigate(courseHistoryPath)}
+                        >
+                            <History size={16} aria-hidden="true" /> Change history
+                        </button>
+                    )}
                     <a
                         className="sl-cm-btn sl-cm-btn--secondary"
                         href={`${coursePreviewPath}?returnTo=${encodeURIComponent(courseContentPath)}`}

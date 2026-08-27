@@ -110,6 +110,10 @@ export function AdminCourseFormPage() {
     ? `/staff/courses/${courseId}/content`
     : `/admin/courses/${courseId}/content`;
 
+  const courseHistoryPath = isStaffRoute
+    ? `/staff/courses/${courseId}/history`
+    : `/admin/courses/${courseId}/history`;
+
   const defaultValues = useMemo(
     () => ({
       categoryId: "",
@@ -298,13 +302,24 @@ export function AdminCourseFormPage() {
             </h1>
           </div>
           {isEdit && (
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => navigate(courseContentPath)}
-            >
-              Course structure
-            </Button>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => navigate(courseContentPath)}
+              >
+                Course structure
+              </Button>
+              {!isTrainer && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => navigate(courseHistoryPath)}
+                >
+                  Change history
+                </Button>
+              )}
+            </div>
           )}
         </div>
       </header>

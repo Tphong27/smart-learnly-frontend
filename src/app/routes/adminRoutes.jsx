@@ -14,6 +14,7 @@ import {
 } from "@/features/admin";
 import { TransactionsPage } from "@/features/checkout";
 import AdminCourseContentPage from "@/features/course/pages/AdminCourseContentPage";
+import AdminCourseChangeHistoryPage from "@/features/course/pages/AdminCourseChangeHistoryPage";
 import AdminLessonDetailPage from "@/features/course/pages/AdminLessonDetailPage";
 import { CourseQuestionLegacyRedirect } from "./CourseQuestionLegacyRedirect";
 
@@ -46,13 +47,17 @@ function getAdminRoutes() {
             },
           ],
         },
-        // TMO + SME: form chi tiết khóa học (SME read-only ở page)
+        // TMO + SME: form chi tiết khóa học (SME read-only ở page) + lịch sử thay đổi
         {
           element: <RoleGuard allowedRoles={[ROLES.TMO, ROLES.SME]} />,
           children: [
             {
               path: "courses/:courseId",
               element: <AdminCourseFormPage />,
+            },
+            {
+              path: "courses/:courseId/history",
+              element: <AdminCourseChangeHistoryPage />,
             },
           ],
         },
