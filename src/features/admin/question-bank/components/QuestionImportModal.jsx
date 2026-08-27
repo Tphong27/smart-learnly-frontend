@@ -1,17 +1,12 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
-import { ArrowDown, ArrowUp, CheckCircle2, Download, FileImage, FileSpreadsheet, Pencil, Trash2, Upload } from 'lucide-react'
+import { useMemo, useRef, useState } from 'react'
+import { CheckCircle2, Download, FileSpreadsheet, Pencil, Trash2, Upload } from 'lucide-react'
 import {
   Alert,
   Button,
-  EmptyState,
   IconButton,
-  Input,
   LoadingState,
   Modal,
-  Select,
   Table,
-  Tabs,
-  Textarea,
   useToast,
 } from '@/shared/components/ui'
 import { StatusBadge } from '@/shared/components/status'
@@ -21,26 +16,12 @@ import {
   buildImportPayload,
   downloadTemplate,
   IMPORT_COLUMNS,
-  ALLOWED_TYPES,
   parseImportFile,
   revalidateImportRows,
 } from '../utils/questionImportSchema'
 import {
   applyImportQuestionFormEdit,
-  formatImportMediaSize,
-  getImageImportErrorMessage,
   getImportQuestionFormState,
-  IMAGE_IMPORT_ENABLED,
-  IMAGE_TYPES,
-  IMPORT_MEDIA_CONFIG,
-  IMPORT_MODES,
-  importMediaName,
-  MAX_IMAGE_FILES,
-  MAX_IMAGE_SIZE,
-  normalizeImageQuestion,
-  toImageConfirmPayload,
-  validateImageImportMedia,
-  validateImageQuestion,
 } from '../utils/questionImportModalUtils'
 import {
   QuestionImportStatusBadge,
@@ -49,7 +30,7 @@ import {
 import { AdminQuestionFormModal } from '../pages/AdminQuestionFormPage'
 import './question-import-modal.css'
 
-/** Tách lỗi media theo row từ backend để phản ánh trực tiếp vào bảng preview. */
+/** Tach loi media theo row tu backend de phan anh truc tiep vao bang preview. */
 function parseBackendImportRowError(message) {
   const match = String(message || '').match(/Row\s+(\d+)\s+media import failed:\s*(.+)/i)
   if (!match) return null
@@ -82,26 +63,14 @@ export function QuestionImportModal({ open, variant = 'modal', bank, courseId, m
   const toast = useToast()
   const isCourseQuestionsMode = Boolean(courseId)
   const fileInputRef = useRef(null)
-  const imageInputRef = useRef(null)
-  const importMediaPreviewUrls = useRef(new Set())
   const [step, setStep] = useState('upload')
-  const [importMode, setImportMode] = useState(IMPORT_MODES.FILE)
   const [parsing, setParsing] = useState(false)
   const [parsedRows, setParsedRows] = useState([])
   const [editRowIndex, setEditRowIndex] = useState(null)
   const [parseError, setParseError] = useState(null)
   const [parseSuccess, setParseSuccess] = useState(null)
   const [fileName, setFileName] = useState(null)
-  const [imageFiles, setImageFiles] = useState([])
-  const [imageQuestions, setImageQuestions] = useState([])
-  const [imageOcrText, setImageOcrText] = useState('')
-  const [imageWarnings, setImageWarnings] = useState([])
   const [submitting, setSubmitting] = useState(false)
-
-  useEffect(() => () => {
-    importMediaPreviewUrls.current.forEach((url) => URL.revokeObjectURL(url))
-    importMediaPreviewUrls.current.clear()
-  }, [])
 
   const validRows = useMemo(() => parsedRows.filter((row) => !row.errors?.length), [parsedRows])
   const editQuestionFormState = useMemo(
@@ -109,84 +78,43 @@ export function QuestionImportModal({ open, variant = 'modal', bank, courseId, m
     [editRowIndex, parsedRows],
   )
   const isEditingImportRow = Boolean(editQuestionFormState)
-  const imageRows = useMemo(() => imageQuestions.map((question, index) => {
-    const errors = [
-      ...validateImageQuestion(question),
-      ...validateImageImportMedia(question),
-    ]
-    return {
-      ...question,
-      rowNumber: index + 1,
-      errors,
-      status: errors.length ? 'error' : question.warnings?.length ? 'warning' : 'valid',
-    }
-  }), [imageQuestions])
-  const validImageRows = useMemo(() => imageRows.filter((row) => !row.errors?.length), [imageRows])
-  const importModeOptions = useMemo(() => [
-    { value: IMPORT_MODES.FILE, label: 'Excel/CSV', disabled: parsing || submitting },
-    ...(IMAGE_IMPORT_ENABLED && !isCourseQuestionsMode
-      ? [{ value: IMPORT_MODES.IMAGE, label: 'Image/OCR', disabled: parsing || submitting }]
-      : []),
-  ], [isCourseQuestionsMode, parsing, submitting])
   const isArchived = !isCourseQuestionsMode && bank?.status === 'archived'
-  const sourceLabel = importMode === IMPORT_MODES.IMAGE
-      ? imageFiles.length ? `${imageFiles.length} image${imageFiles.length === 1 ? '' : 's'} selected` : 'No image selected'
-      : fileName || 'No file selected'
+  const sourceLabel = fileName || 'No file selected'
 
-  /** Reset toàn bộ state import và giá trị file input. */
+  /** Reset toan bo state import va gia tri file input. */
   function resetModal() {
     setStep('upload')
-    setImportMode(IMPORT_MODES.FILE)
     setParsedRows([])
     setEditRowIndex(null)
     setParseError(null)
     setParseSuccess(null)
     setFileName(null)
-    setImageFiles([])
-    revokeImageQuestionMedia(imageQuestions)
-    setImageQuestions([])
-    setImageOcrText('')
-    setImageWarnings([])
     setParsing(false)
     setSubmitting(false)
     if (fileInputRef.current) fileInputRef.current.value = ''
-    if (imageInputRef.current) imageInputRef.current.value = ''
   }
 
-  /** Reset import rồi thông báo đóng cho component cha. */
+  /** Reset import roi thong bao dong cho component cha. */
   function handleClose() {
     resetModal()
     onClose?.()
   }
 
-  /** Tải file template của question import. */
+  /** Tai file template cua question import. */
   function handleTemplate() {
     downloadTemplate()
   }
 
-  /** Xóa dữ liệu preview khi đổi nguồn import. */
+  /** Xoa du lieu preview de quay lai buoc upload. */
   function clearPreviewState() {
     setStep('upload')
     setParsedRows([])
     setEditRowIndex(null)
-    setImageQuestions([])
-    setImageOcrText('')
-    setImageWarnings([])
     setParseError(null)
     setParseSuccess(null)
   }
 
-  /** Chuyển mode import và dọn state của mode trước. */
-  function handleModeChange(nextMode) {
-    setImportMode(nextMode)
-    clearPreviewState()
-    setFileName(null)
-    setImageFiles([])
-    if (fileInputRef.current) fileInputRef.current.value = ''
-    if (imageInputRef.current) imageInputRef.current.value = ''
-  }
-
-  /** Parse file Excel/CSV và đưa các row đã validate sang preview. */
+  /** Parse file Excel/CSV va dua cac row da validate sang preview. */
   async function handleFileChange(event) {
     const file = event.target.files?.[0]
     if (!file) return
@@ -207,92 +135,26 @@ export function QuestionImportModal({ open, variant = 'modal', bank, courseId, m
     }
   }
 
-  /** Validate số lượng, định dạng và dung lượng ảnh trước OCR. */
-  function handleImageFileChange(event) {
-    const files = Array.from(event.target.files || [])
-    setParseError(null)
-    setParseSuccess(null)
-    if (!files.length) {
-      setImageFiles([])
-      return
-    }
-    if (files.length > MAX_IMAGE_FILES) {
-      setImageFiles([])
-      setParseError(`Select up to ${MAX_IMAGE_FILES} images per import.`)
-      return
-    }
-    const invalidType = files.find((file) => !IMAGE_TYPES.includes(file.type))
-    if (invalidType) {
-      setImageFiles([])
-      setParseError('Only png, jpg, jpeg, and webp images are accepted.')
-      return
-    }
-    const tooLarge = files.find((file) => file.size > MAX_IMAGE_SIZE)
-    if (tooLarge) {
-      setImageFiles([])
-      setParseError('Each image must not exceed 10MB.')
-      return
-    }
-    setImageFiles(files)
-  }
-
-  /** Gửi ảnh lên OCR và chuẩn hóa question cho màn preview. */
-  async function handleImagePreview() {
-    if (courseId) {
-      toast.error('Image import is not available in course/module mode yet.')
-      return
-    }
-    const bankId = bank?.bankId || bank?.id
-    if (!bankId) {
-      toast.error('Question bank is missing.')
-      return
-    }
-    if (!imageFiles.length) {
-      toast.error('Select at least one image.')
-      return
-    }
-    setParseError(null)
-    setParseSuccess(null)
-    setParsing(true)
-    try {
-      const result = await questionBankService.previewImageImport(bankId, imageFiles, 'vi')
-      setImageOcrText(result?.ocrText || '')
-      setImageWarnings(Array.isArray(result?.warnings) ? result.warnings : [])
-      revokeImageQuestionMedia(imageQuestions)
-      setImageQuestions((result?.questions || []).map(normalizeImageQuestion))
-      setStep('preview')
-    } catch (err) {
-      setParseError(getImageImportErrorMessage(err))
-      setImageQuestions([])
-      setImageOcrText('')
-      setImageWarnings([])
-    } finally {
-      setParsing(false)
-    }
-  }
-
-  /** Quay lại bước chọn nguồn và dọn preview hiện tại. */
+  /** Quay lai buoc chon file va don preview hien tai. */
   function handleBackToUpload() {
     clearPreviewState()
-    if (importMode === IMPORT_MODES.FILE) {
-      setFileName(null)
-      if (fileInputRef.current) fileInputRef.current.value = ''
-    }
+    setFileName(null)
+    if (fileInputRef.current) fileInputRef.current.value = ''
   }
 
-  /** Mở chính AdminQuestionForm với dữ liệu của import row được chọn. */
+  /** Mo AdminQuestionForm voi du lieu cua import row duoc chon. */
   function openImportRowEdit(index) {
     const row = parsedRows[index]
     if (!row) return
     setEditRowIndex(index)
   }
 
-  /** Đóng form dùng chung và quay lại bảng preview mà không đổi import row. */
+  /** Dong form dung chung va quay lai bang preview ma khong doi import row. */
   function cancelImportRowEdit() {
     setEditRowIndex(null)
   }
 
-  /** Nhận kết quả từ AdminQuestionForm, map lại import row rồi chạy validation toàn batch. */
+  /** Nhan ket qua tu AdminQuestionForm, map lai import row roi chay validation toan batch. */
   function saveImportRowEdit(formState) {
     if (editRowIndex == null || !formState) return
     const editedRow = parsedRows[editRowIndex]
@@ -304,7 +166,7 @@ export function QuestionImportModal({ open, variant = 'modal', bank, courseId, m
     toast.success(`Row ${editedRow?.rowNumber || editRowIndex + 1} updated.`)
   }
 
-  /** Xóa một row khỏi preview và validate lại batch. */
+  /** Xoa mot row khoi preview va validate lai batch. */
   function deleteImportRow(index) {
     const row = parsedRows[index]
     const nextRows = parsedRows.filter((_, rowIndex) => rowIndex !== index)
@@ -313,242 +175,29 @@ export function QuestionImportModal({ open, variant = 'modal', bank, courseId, m
     toast.success(`Row ${row?.rowNumber || index + 1} removed from preview.`)
   }
 
-  /** Cập nhật một question OCR và xóa provider errors cũ. */
-  function updateImageQuestion(index, patch) {
-    setImageQuestions((current) => current.map((question, questionIndex) => (
-      questionIndex === index ? { ...question, ...patch, providerErrors: [] } : question
-    )))
-  }
-
-  /** Thu hồi object URL của media local không còn dùng. */
-  function revokeImportMediaItem(item) {
-    if (item?.previewUrl) {
-      URL.revokeObjectURL(item.previewUrl)
-      importMediaPreviewUrls.current.delete(item.previewUrl)
-    }
-  }
-
-  /** Thu hồi toàn bộ object URL media thuộc các question OCR. */
-  function revokeImageQuestionMedia(questions) {
-    questions.forEach((question) => {
-      ;[...(question.imageMedia || []), ...(question.audioMedia || [])].forEach(revokeImportMediaItem)
-    })
-  }
-
-
-  /** Validate file media theo cấu hình loại và giới hạn số lượng. */
-  function validateImportMediaFiles(mediaType, currentItems, files) {
-    const config = IMPORT_MEDIA_CONFIG[mediaType]
-    if (!files.length) return []
-    if (currentItems.length + files.length > config.maxCount) {
-      toast.error(config.label + ' cannot exceed ' + config.maxCount + ' files per question.')
-      return []
-    }
-    for (const file of files) {
-      if (!config.allowedTypes.includes(file.type)) {
-        toast.error((file.name || 'Attachment') + ' is not supported. ' + config.typeLabel + ' only.')
-        return []
-      }
-      if (file.size > config.maxSize) {
-        toast.error((file.name || 'Attachment') + ' exceeds ' + config.maxSizeLabel + '.')
-        return []
-      }
-    }
-    return files
-  }
-
-  /** Thêm media local vào question OCR và tạo preview URL. */
-  function addImageImportMedia(questionIndex, mediaType, files) {
-    setImageQuestions((current) => current.map((question, currentQuestionIndex) => {
-      if (currentQuestionIndex !== questionIndex) return question
-      const key = mediaType === 'image' ? 'imageMedia' : 'audioMedia'
-      const currentItems = Array.isArray(question[key]) ? question[key] : []
-      const validFiles = validateImportMediaFiles(mediaType, currentItems, files)
-      if (!validFiles.length) return question
-      const nextItems = validFiles.map((file) => {
-        const previewUrl = URL.createObjectURL(file)
-        importMediaPreviewUrls.current.add(previewUrl)
-        return {
-          localId: mediaType + '-' + Date.now() + '-' + Math.random().toString(36).slice(2),
-          mediaType,
-          file,
-          fileName: file.name,
-          previewUrl,
-          source: 'pending',
-        }
-      })
-      return { ...question, [key]: [...currentItems, ...nextItems], providerErrors: [] }
-    }))
-  }
-
-  /** Gỡ một media local khỏi question OCR. */
-  function removeImageImportMedia(questionIndex, mediaType, item) {
-    revokeImportMediaItem(item)
-    setImageQuestions((current) => current.map((question, currentQuestionIndex) => {
-      if (currentQuestionIndex !== questionIndex) return question
-      const key = mediaType === 'image' ? 'imageMedia' : 'audioMedia'
-      return {
-        ...question,
-        [key]: (question[key] || []).filter((candidate) => candidate.localId !== item.localId),
-        providerErrors: [],
-      }
-    }))
-  }
-
-  /** Di chuyển media OCR một bước trong danh sách. */
-  function moveImageImportMedia(questionIndex, mediaType, index, direction) {
-    setImageQuestions((current) => current.map((question, currentQuestionIndex) => {
-      if (currentQuestionIndex !== questionIndex) return question
-      const key = mediaType === 'image' ? 'imageMedia' : 'audioMedia'
-      const nextItems = [...(question[key] || [])]
-      const targetIndex = index + direction
-      if (targetIndex < 0 || targetIndex >= nextItems.length) return question
-      const [item] = nextItems.splice(index, 1)
-      nextItems.splice(targetIndex, 0, item)
-      return { ...question, [key]: nextItems, providerErrors: [] }
-    }))
-  }
-
-  /** Cập nhật nội dung một đáp án của question OCR. */
-  function updateImageAnswer(questionIndex, answerIndex, patch) {
-    setImageQuestions((current) => current.map((question, currentQuestionIndex) => {
-      if (currentQuestionIndex !== questionIndex) return question
-      return {
-        ...question,
-        providerErrors: [],
-        answers: question.answers.map((answer, currentAnswerIndex) => (
-          currentAnswerIndex === answerIndex ? { ...answer, ...patch } : answer
-        )),
-      }
-    }))
-  }
-
-  /** Đánh dấu đáp án đúng theo loại question OCR. */
-  function setImageCorrect(questionIndex, answerIndex) {
-    setImageQuestions((current) => current.map((question, currentQuestionIndex) => {
-      if (currentQuestionIndex !== questionIndex) return question
-      return {
-        ...question,
-        providerErrors: [],
-        answers: question.answers.map((answer, currentAnswerIndex) => ({
-          ...answer,
-          correct: question.questionType === 'multiple_choice'
-            ? currentAnswerIndex === answerIndex ? !answer.correct : answer.correct
-            : currentAnswerIndex === answerIndex,
-        })),
-      }
-    }))
-  }
-
-  /** Đổi loại question OCR và reset đáp án true/false khi cần. */
-  function setImageType(questionIndex, nextType) {
-    setImageQuestions((current) => current.map((question, currentQuestionIndex) => {
-      if (currentQuestionIndex !== questionIndex) return question
-      if (nextType === 'true_false') {
-        return {
-          ...question,
-          questionType: nextType,
-          providerErrors: [],
-          answers: [
-            { answerText: 'True', correct: true, displayOrder: 1 },
-            { answerText: 'False', correct: false, displayOrder: 2 },
-          ],
-        }
-      }
-      return { ...question, questionType: nextType, providerErrors: [] }
-    }))
-  }
-
-  /** Thêm đáp án vào question OCR khi chưa đạt giới hạn. */
-  function addImageAnswer(questionIndex) {
-    setImageQuestions((current) => current.map((question, currentQuestionIndex) => {
-      if (currentQuestionIndex !== questionIndex || question.answers.length >= 6) return question
-      return {
-        ...question,
-        providerErrors: [],
-        answers: [...question.answers, { answerText: '', correct: false, displayOrder: question.answers.length + 1 }],
-      }
-    }))
-  }
-
-  /** Xóa đáp án OCR và bảo đảm còn đáp án đúng. */
-  function removeImageAnswer(questionIndex, answerIndex) {
-    setImageQuestions((current) => current.map((question, currentQuestionIndex) => {
-      if (currentQuestionIndex !== questionIndex || question.answers.length <= 2) return question
-      const answers = question.answers.filter((_, index) => index !== answerIndex)
-      if (!answers.some((answer) => answer.correct)) answers[0] = { ...answers[0], correct: true }
-      return {
-        ...question,
-        providerErrors: [],
-        answers: answers.map((answer, index) => ({ ...answer, displayOrder: index + 1 })),
-      }
-    }))
-  }
-
-  /** Xác nhận batch hợp lệ và gửi đúng API theo mode import. */
+  /** Xac nhan batch hop le va gui import Excel/CSV len backend. */
   async function handleCommit() {
     const bankId = bank?.bankId || bank?.id
     if (!courseId && !bankId) {
       toast.error('Question bank is missing.')
       return
     }
-    if (importMode === IMPORT_MODES.IMAGE) {
-      if (courseId) {
-        toast.error('Image import is not available in course/module mode yet.')
-        return
-      }
-      if (!validImageRows.length || validImageRows.length !== imageRows.length) {
-        toast.error('Fix invalid image-imported questions before confirming.')
-        return
-      }
-      setSubmitting(true)
-      try {
-        const imageAttachmentFiles = []
-        const audioAttachmentFiles = []
-        const payload = imageRows.map((question) => {
-          const imageFileIndexes = (question.imageMedia || []).map((item) => {
-            imageAttachmentFiles.push(item.file)
-            return imageAttachmentFiles.length - 1
-          })
-          const audioFileIndexes = (question.audioMedia || []).map((item) => {
-            audioAttachmentFiles.push(item.file)
-            return audioAttachmentFiles.length - 1
-          })
-          return toImageConfirmPayload(question, imageFileIndexes, audioFileIndexes)
-        })
-        const response = await questionBankService.confirmImageImport(bankId, payload, {
-          imageFiles: imageAttachmentFiles,
-          audioFiles: audioAttachmentFiles,
-        })
-        const created = response?.createdCount ?? payload.length
-        toast.success(`Imported ${created} image question${created === 1 ? '' : 's'}.`)
-        onImported?.()
-        handleClose()
-      } catch (err) {
-        toast.error(err?.message || 'Could not import image questions.')
-      } finally {
-        setSubmitting(false)
-      }
-      return
-    }
     if (!validRows.length) {
-      toast.error('No valid rows to import.')
+      toast.error('No valid questions to import.')
       return
     }
+
     setSubmitting(true)
     try {
       const payload = buildImportPayload(bankId, validRows)
-      const importSource = 'excel_import'
-      const response = courseId
-        ? await questionBankService.importModuleQuestionsBatch(
-            courseId,
-            moduleId,
-            payload.rows,
-            importSource,
-          )
-        : await questionBankService.importQuestionsBatch(payload.bankId, payload.rows, importSource)
-      const created = response?.created ?? validRows.length
-      toast.success(`Imported ${created} question${created === 1 ? '' : 's'}.`)
+      const response = moduleId && courseId
+        ? await questionBankService.importModuleQuestionsBatch(courseId, moduleId, payload.rows, 'excel_import')
+        : courseId
+          ? await questionBankService.importCourseQuestionsBatch(courseId, payload.rows, 'excel_import')
+          : await questionBankService.importQuestionsBatch(bankId, payload.rows, 'excel_import')
+      const importedCount = Number(response?.createdCount ?? response?.importedCount ?? validRows.length)
+      setParseSuccess(`Imported ${importedCount} question${importedCount === 1 ? '' : 's'}.`)
+      toast.success(`Imported ${importedCount} question${importedCount === 1 ? '' : 's'}.`)
       onImported?.()
       handleClose()
     } catch (err) {
@@ -567,165 +216,6 @@ export function QuestionImportModal({ open, variant = 'modal', bank, courseId, m
     }
   }
 
-  /** Render trình quản lý media cho một question OCR. */
-  function renderImageImportMedia(question, questionIndex, mediaType) {
-    const config = IMPORT_MEDIA_CONFIG[mediaType]
-    const items = mediaType === 'image' ? (question.imageMedia || []) : (question.audioMedia || [])
-    const Icon = config.Icon
-    return (
-      <div className="question-import__media-manager">
-        <div className="question-import__media-toolbar">
-          <div>
-            <div className="question-import__media-title">{config.label}</div>
-            <div className="question-import__media-hint">{config.typeLabel}. Max {config.maxSizeLabel}. {items.length}/{config.maxCount} used.</div>
-          </div>
-          <Button
-            as="label"
-            variant="secondary"
-            size="sm"
-            leftIcon={<Upload size={14} />}
-            disabled={items.length >= config.maxCount}
-          >
-            Add
-            <input
-              type="file"
-              accept={config.accept}
-              multiple
-              hidden
-              disabled={items.length >= config.maxCount}
-              onChange={(event) => {
-                addImageImportMedia(questionIndex, mediaType, Array.from(event.target.files || []))
-                event.target.value = ''
-              }}
-            />
-          </Button>
-        </div>
-        {items.length ? (
-          <div className="question-import__media-list">
-            {items.map((item, mediaIndex) => (
-              <div className="question-import__media-item" key={item.localId}>
-                <div className="question-import__media-preview">
-                  {mediaType === 'image' ? <img src={item.previewUrl} alt={importMediaName(item)} /> : <audio controls preload="metadata" src={item.previewUrl}><track kind="captions" /></audio>}
-                </div>
-                <div className="question-import__media-meta">
-                  <strong>{mediaIndex + 1}. {importMediaName(item)}</strong>
-                  <span>{formatImportMediaSize(item.file)}</span>
-                </div>
-                <div className="question-import__media-actions">
-                  <IconButton icon={<ArrowUp size={15} />} label="Move media up" disabled={mediaIndex === 0} onClick={() => moveImageImportMedia(questionIndex, mediaType, mediaIndex, -1)} />
-                  <IconButton icon={<ArrowDown size={15} />} label="Move media down" disabled={mediaIndex === items.length - 1} onClick={() => moveImageImportMedia(questionIndex, mediaType, mediaIndex, 1)} />
-                  <IconButton icon={<Trash2 size={15} />} label="Remove media" variant="danger" onClick={() => removeImageImportMedia(questionIndex, mediaType, item)} />
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="question-import__media-empty"><Icon size={18} /> {config.empty}</div>
-        )}
-      </div>
-    )
-  }
-
-  /** Render form review toàn bộ question được parse từ ảnh. */
-  function renderImagePreview() {
-    return (
-      <div className="question-import">
-        <QuestionImportSummary parsedRows={imageRows} />
-        {imageWarnings.length > 0 && (
-          <Alert tone="warning" title="Image import warnings">
-            {imageWarnings.map((warning, index) => <div key={index}>{warning}</div>)}
-          </Alert>
-        )}
-        {imageOcrText && (
-          <div className="question-import__ocr">
-            <h4>OCR text preview</h4>
-            <pre>{imageOcrText}</pre>
-          </div>
-        )}
-        {imageRows.length === 0 && (
-          <EmptyState title="No questions parsed" description="No questions were parsed from the uploaded images." />
-        )}
-        <div className="question-import__cards">
-          {imageRows.map((question, questionIndex) => (
-            <div className="question-import__question-card" key={question.clientImportId || questionIndex}>
-              <div className="question-import__question-head">
-                <strong>Question {questionIndex + 1}</strong>
-                <QuestionImportStatusBadge row={question} />
-              </div>
-              <Textarea
-                label="Question text"
-                required
-                value={question.questionText}
-                onChange={(event) => updateImageQuestion(questionIndex, { questionText: event.target.value })}
-              />
-              <div className="question-import__grid">
-                  <Select
-                    label="Type"
-                    required
-                    value={question.questionType}
-                    onChange={(event) => setImageType(questionIndex, event.target.value)}
-                  >
-                    {ALLOWED_TYPES.map((type) => (
-                      <option key={type} value={type}>
-                        {type === 'single_choice' ? 'Single choice' : type === 'true_false' ? 'True/False' : 'Multiple choice'}
-                      </option>
-                    ))}
-                  </Select>
-              </div>
-              <div className="question-import__answers">
-                {question.answers.map((answer, answerIndex) => (
-                  <div className="question-import__answer-row" key={answerIndex}>
-                    <input
-                      type={question.questionType === 'multiple_choice' ? 'checkbox' : 'radio'}
-                      checked={Boolean(answer.correct)}
-                      onChange={() => setImageCorrect(questionIndex, answerIndex)}
-                      aria-label={`Mark answer ${answerIndex + 1} correct`}
-                    />
-                    <Input
-                      value={answer.answerText}
-                      onChange={(event) => updateImageAnswer(questionIndex, answerIndex, { answerText: event.target.value })}
-                      placeholder={`Answer ${answerIndex + 1}`}
-                    />
-                    {question.questionType !== 'true_false' && question.answers.length > 2 && (
-                      <Button type="button" variant="ghost" size="sm" onClick={() => removeImageAnswer(questionIndex, answerIndex)}>
-                        Remove
-                      </Button>
-                    )}
-                  </div>
-                ))}
-                {question.questionType !== 'true_false' && question.answers.length < 6 && (
-                  <Button type="button" variant="secondary" size="sm" onClick={() => addImageAnswer(questionIndex)}>
-                    Add answer
-                  </Button>
-                )}
-              </div>
-              <Textarea
-                label="Explanation"
-                value={question.explanation}
-                onChange={(event) => updateImageQuestion(questionIndex, { explanation: event.target.value })}
-                placeholder="Only keep explanation if it was present in the image"
-              />
-              <div className="question-import__media-grid">
-                {renderImageImportMedia(question, questionIndex, 'image')}
-                {renderImageImportMedia(question, questionIndex, 'audio')}
-              </div>
-              {question.errors?.length > 0 && (
-                <ul className="question-import__errors">
-                  {question.errors.map((error, index) => <li key={index}>{error}</li>)}
-                </ul>
-              )}
-              {question.warnings?.length > 0 && (
-                <ul className="question-import__warnings">
-                  {question.warnings.map((warning, index) => <li key={index}>{warning}</li>)}
-                </ul>
-              )}
-            </div>
-          ))}
-        </div>
-      </div>
-    )
-  }
-
   const importContent = (
     <>
       {isArchived && (
@@ -736,79 +226,42 @@ export function QuestionImportModal({ open, variant = 'modal', bank, courseId, m
 
       {step === 'upload' && (
         <div className="question-import">
-          {importModeOptions.length > 1 && (
-            <Tabs
-              variant="compact"
-              ariaLabel="Choose import format"
-              value={importMode}
-              onChange={handleModeChange}
-              items={importModeOptions}
+          <p className="question-import__intro">
+            Upload an Excel (.xlsx) or CSV file with the supported columns. Each row will be validated before saving.
+            Use the template to see the expected format.
+          </p>
+
+          <div className="question-import__columns">
+            <h4>Supported columns</h4>
+            <ul>
+              {IMPORT_COLUMNS.map((column) => (
+                <li key={column.key}>
+                  <strong>{column.label}</strong>
+                  {column.required ? <span className="question-import__required"> required</span> : <span className="question-import__optional"> optional</span>}
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div className="question-import__upload-row">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".xlsx,.csv"
+              disabled={isArchived || parsing}
+              onChange={handleFileChange}
+              className="question-import__file-input"
+              aria-label="Select Excel or CSV file"
             />
-          )}
+            <Button type="button" variant="secondary" leftIcon={<Download size={16} />} onClick={handleTemplate}>
+              Download template
+            </Button>
+          </div>
 
-          {importMode === IMPORT_MODES.FILE ? (
-            <>
-              <p className="question-import__intro">
-                Upload an Excel (.xlsx) or CSV file with the supported columns. Each row will be validated before saving.
-                Use the template to see the expected format.
-              </p>
-
-              <div className="question-import__columns">
-                <h4>Supported columns</h4>
-                <ul>
-                  {IMPORT_COLUMNS.map((column) => (
-                    <li key={column.key}>
-                      <strong>{column.label}</strong>
-                      {column.required ? <span className="question-import__required"> required</span> : <span className="question-import__optional"> optional</span>}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-
-              <div className="question-import__upload-row">
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept=".xlsx,.csv"
-                  disabled={isArchived || parsing}
-                  onChange={handleFileChange}
-                  className="question-import__file-input"
-                  aria-label="Select Excel or CSV file"
-                />
-                <Button type="button" variant="secondary" leftIcon={<Download size={16} />} onClick={handleTemplate}>
-                  Download template
-                </Button>
-              </div>
-            </>
-          ) : IMAGE_IMPORT_ENABLED && importMode === IMPORT_MODES.IMAGE ? (
-            <>
-              <p className="question-import__intro">
-                Upload up to 5 images. The system will OCR and parse questions into a preview batch; review and edit every question before confirming.
-              </p>
-              <div className="question-import__upload-row">
-                <input
-                  ref={imageInputRef}
-                  type="file"
-                  accept="image/png,image/jpeg,image/webp"
-                  multiple
-                  disabled={isArchived || parsing}
-                  onChange={handleImageFileChange}
-                  className="question-import__file-input"
-                  aria-label="Select image files"
-                />
-              </div>
-              {imageFiles.length > 0 && (
-                <ul className="question-import__file-list">
-                  {imageFiles.map((file) => <li key={`${file.name}-${file.size}`}>{file.name} ({Math.round(file.size / 1024)} KB)</li>)}
-                </ul>
-              )}
-            </>
-          ) : null}
-
-          {parsing && <LoadingState compact label={IMAGE_IMPORT_ENABLED && importMode === IMPORT_MODES.IMAGE ? 'Generating image preview...' : 'Parsing file...'} />}
+          {parsing && <LoadingState compact label="Parsing file..." />}
           {parseError && <Alert tone="danger">{parseError}</Alert>}
           {parseSuccess && <Alert tone="success">{parseSuccess}</Alert>}
-          {!parsing && fileName && !parseError && importMode === IMPORT_MODES.FILE && (
+          {!parsing && fileName && !parseError && (
             <div className="admin-empty question-import__selection-summary">
               Selected: <strong>{fileName}</strong>
             </div>
@@ -816,9 +269,7 @@ export function QuestionImportModal({ open, variant = 'modal', bank, courseId, m
         </div>
       )}
 
-      {IMAGE_IMPORT_ENABLED && step === 'preview' && importMode === IMPORT_MODES.IMAGE && renderImagePreview()}
-
-      {step === 'preview' && importMode !== IMPORT_MODES.IMAGE && (
+      {step === 'preview' && (
         <div className="question-import">
           <QuestionImportSummary parsedRows={parsedRows} />
           {parsedRows.length > 0 && validRows.length === 0 && (
@@ -832,11 +283,11 @@ export function QuestionImportModal({ open, variant = 'modal', bank, courseId, m
             </div>
           )}
           {parsedRows.length > 0 && (
-          <Table
-            ariaLabel="Question import preview"
-            className="question-import__table-wrap"
-            tableClassName="admin-table question-import__table"
-          >
+            <Table
+              ariaLabel="Question import preview"
+              className="question-import__table-wrap"
+              tableClassName="admin-table question-import__table"
+            >
               <thead>
                 <tr>
                   <th className="question-import__column--row">Row</th>
@@ -900,7 +351,7 @@ export function QuestionImportModal({ open, variant = 'modal', bank, courseId, m
                   </tr>
                 ))}
               </tbody>
-          </Table>
+            </Table>
           )}
         </div>
       )}
@@ -915,21 +366,16 @@ export function QuestionImportModal({ open, variant = 'modal', bank, courseId, m
               type="button"
               onClick={handleCommit}
               loading={submitting}
-              disabled={IMAGE_IMPORT_ENABLED && importMode === IMPORT_MODES.IMAGE ? (!validImageRows.length || validImageRows.length !== imageRows.length || isArchived) : (!validRows.length || isArchived)}
+              disabled={!validRows.length || isArchived}
               leftIcon={<Upload size={16} />}
             >
-              Import {IMAGE_IMPORT_ENABLED && importMode === IMPORT_MODES.IMAGE ? validImageRows.length : validRows.length} question{(IMAGE_IMPORT_ENABLED && importMode === IMPORT_MODES.IMAGE ? validImageRows.length : validRows.length) === 1 ? '' : 's'}
+              Import {validRows.length} question{validRows.length === 1 ? '' : 's'}
             </Button>
           </>
         ) : (
           <>
             <Button type="button" variant="ghost" onClick={handleClose} disabled={parsing}>Close</Button>
-            {IMAGE_IMPORT_ENABLED && importMode === IMPORT_MODES.IMAGE && (
-              <Button type="button" onClick={handleImagePreview} disabled={isArchived || parsing || !imageFiles.length} leftIcon={<FileImage size={16} />}>
-                Generate preview
-              </Button>
-            )}
-            <StatusBadge status="source" tone="neutral" label={sourceLabel} icon={IMAGE_IMPORT_ENABLED && importMode === IMPORT_MODES.IMAGE ? <FileImage size={14} /> : <FileSpreadsheet size={14} />} />
+            <StatusBadge status="source" tone="neutral" label={sourceLabel} icon={<FileSpreadsheet size={14} />} />
           </>
         )}
       </div>

@@ -17,7 +17,7 @@ import { assignmentAiSettingsSchema } from '../schemas/settings-schemas'
 
 const SECRET_PLACEHOLDER = '********'
 
-/** Một form AI model dùng chung cho assignment draft và question image import. */
+/** Quan ly cau hinh AI model dung cho assignment draft. */
 export function AiIntegrationsSettingsSection() {
   const toast = useToast()
   const [loading, setLoading] = useState(true)
@@ -105,7 +105,7 @@ export function AiIntegrationsSettingsSection() {
   return (
     <>
       <p className="admin-settings-section__lead">
-        Configure one shared AI model for assignment drafting and question image import.
+        Configure the AI model for assignment drafting.
         Changes take effect immediately without restarting the application.
       </p>
 
