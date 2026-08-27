@@ -74,18 +74,6 @@ export const systemSettingsService = {
     return unwrap(response)
   },
 
-  /** Tải cấu hình AI dùng khi nhập câu hỏi từ ảnh. */
-  async getQuestionImageImportSettings() {
-    const response = await apiClient.get('/admin/settings/ai/question-image-import')
-    return unwrap(response)
-  },
-
-  /** Cập nhật cấu hình AI dùng khi nhập câu hỏi từ ảnh. */
-  async updateQuestionImageImportSettings(payload) {
-    const response = await apiClient.put('/admin/settings/ai/question-image-import', payload)
-    return unwrap(response)
-  },
-
   /** Tải cấu hình AI dùng để tạo bản nháp bài tập. */
   async getAssignmentAiSettings() {
     const response = await apiClient.get('/admin/settings/ai/assignment-draft')

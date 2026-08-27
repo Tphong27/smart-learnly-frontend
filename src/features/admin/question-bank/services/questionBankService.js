@@ -381,41 +381,4 @@ export const questionBankService = {
     )
     return unwrap(response)
   },
-  async previewImageImport(bankId, files, language = 'vi') {
-    const formData = new FormData()
-    formData.append('bankId', bankId)
-    formData.append('language', language)
-    files.forEach((file) => formData.append('files', file))
-    const response = await apiClient.post('/admin/question-imports/image/preview', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-      timeout: 90000,
-    })
-    return unwrap(response)
-  },
-
-  async confirmImageImport(bankId, questions, mediaFiles = {}) {
-    const imageFiles = Array.isArray(mediaFiles.imageFiles) ? mediaFiles.imageFiles : []
-    const audioFiles = Array.isArray(mediaFiles.audioFiles) ? mediaFiles.audioFiles : []
-    const hasMediaMappings = questions.some((question) => (
-      (Array.isArray(question.imageFileIndexes) && question.imageFileIndexes.length > 0)
-      || (Array.isArray(question.audioFileIndexes) && question.audioFileIndexes.length > 0)
-    ))
-    if (hasMediaMappings) {
-      const formData = new FormData()
-      formData.append('request', new Blob([JSON.stringify({ bankId, questions })], { type: 'application/json' }))
-      imageFiles.forEach((file) => formData.append('imageFiles', file))
-      audioFiles.forEach((file) => formData.append('audioFiles', file))
-      const response = await apiClient.post('/admin/question-imports/image/confirm', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-        timeout: 90000,
-      })
-      return unwrap(response)
-    }
-
-    const response = await apiClient.post('/admin/question-imports/image/confirm', {
-      bankId,
-      questions,
-    })
-    return unwrap(response)
-  },
 }
