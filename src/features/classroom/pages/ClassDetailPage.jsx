@@ -268,6 +268,7 @@ export function ClassDetailPage({
 
   function openAssignments() {
     const params = new URLSearchParams();
+    params.set("returnTo", `${routeBase}/${classId}/workspace`);
     if (classData.courseId) {
       params.set("courseId", classData.courseId);
     }
@@ -280,6 +281,7 @@ export function ClassDetailPage({
 
   function openTests() {
     const params = new URLSearchParams();
+    params.set("returnTo", `${routeBase}/${classId}/workspace`);
     if (classData.courseId) {
       params.set("courseId", classData.courseId);
     }
