@@ -33,7 +33,7 @@ import { AiQuestionDraftTableRow } from "../components/AiQuestionDraftTableRow";
 import "../../admin-shared.css";
 import "./question-bank.css";
 
-const MAX_REQUESTED_COUNT = 20;
+const MAX_REQUESTED_COUNT = 10;
 const DEFAULT_CAPABILITIES = {
     minTextCharacters: 100,
     maxPastedTextCharacters: 50000,
@@ -680,7 +680,7 @@ export function AdminAiQuestionDraftCreatePage() {
                     <div className="ai-generating-control">
                         <Input
                             id="ai-draft-count"
-                            label="Number of Questions (max 20)"
+                            label="Number of Questions (max 10)"
                             required
                             type="number"
                             min="1"
