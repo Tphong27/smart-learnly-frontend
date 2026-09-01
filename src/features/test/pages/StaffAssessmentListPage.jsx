@@ -146,6 +146,7 @@ export function StaffAssessmentListPage({ variant = "assignment" }) {
   const currentRole = normalizeRole(currentUser?.role);
   const isAssignmentMode = variant !== "test";
   const canManageItems = currentRole !== ROLES.TMO;
+  const showDeleteAction = false;
   const courseId = searchParams.get("courseId") || "";
   const classId = searchParams.get("classId") || "";
   const returnTo = searchParams.get("returnTo") || "";
@@ -626,7 +627,8 @@ export function StaffAssessmentListPage({ variant = "assignment" }) {
                               label="Monitor progress"
                               to={`${basePath}/monitor/${item.id}/${type}${pathQuery}`}
                             />
-                            {isAssignmentMode &&
+                            {showDeleteAction &&
+                              isAssignmentMode &&
                               !showCurriculumEssays && (
                                 <IconButton
                                   icon={<Trash2 size={16} />}

@@ -32,6 +32,14 @@ export const attemptService = {
     return unwrap(response);
   },
 
+  /** Mở quyền tạo một attempt mới từ attempt đã kết thúc. */
+  async reopen(attemptId) {
+    const response = await apiClient.put(
+      `/course-quiz-attempts/${attemptId}/reopen`,
+    );
+    return unwrap(response);
+  },
+
   /** Lấy lịch sử làm một đề của một học viên. */
   async getHistory(testId, studentId, params = {}) {
     const response = await apiClient.get(

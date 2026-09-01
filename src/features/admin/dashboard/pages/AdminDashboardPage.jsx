@@ -148,6 +148,8 @@ export function AdminDashboardPage() {
     const configItems = overview?.configurationStatus?.items || [];
     const accounts = overview?.accountStatus || {};
     const services = systemHealth.services || [];
+    const visibleConfigItems = configItems.filter((item) => item.id !== "email");
+    const visibleServices = services.filter((service) => service.id !== "email");
 
     return (
         <section className="admin-page dashboard-page">
@@ -242,7 +244,7 @@ export function AdminDashboardPage() {
                                             : "Connection check failed"
                                     }
                                 />
-                                {services.map((service) => (
+                                {visibleServices.map((service) => (
                                     <HealthRow
                                         key={service.id || service.name}
                                         icon={
@@ -267,19 +269,19 @@ export function AdminDashboardPage() {
                                     <h2>Configuration Status</h2>
                                     <p>
                                         Live values from system settings (AI,
-                                        email, payment, Google).
+                                        payment, Google).
                                     </p>
                                 </div>
                                 <KeyRound size={18} aria-hidden="true" />
                             </div>
 
                             <div className="dashboard-health-list">
-                                {configItems.length === 0 ? (
+                                {visibleConfigItems.length === 0 ? (
                                     <p className="dashboard-empty-text">
                                         No configuration items available.
                                     </p>
                                 ) : (
-                                    configItems.map((item) => (
+                                    visibleConfigItems.map((item) => (
                                         <ConfigRow key={item.id || item.name} item={item} />
                                     ))
                                 )}

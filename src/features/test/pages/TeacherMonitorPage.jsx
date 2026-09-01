@@ -382,6 +382,7 @@ export function TeacherMonitorPage({ variant = "test" }) {
             totalQuestions: getQuestionTotal(item),
           };
           mergeAttemptHistory(normalizedAttempt);
+          if (item.retakeAllowed) return;
           mergeEvent({
             targetId: item.testId,
             attemptId: item.id,
@@ -629,10 +630,10 @@ export function TeacherMonitorPage({ variant = "test" }) {
 
   /** Mở lại attempt để trainee có thể làm lại. */
   const handleReopen = async (row) => {
-    if (!row.studentId || normalizedType !== "mcq") return;
+    if (!row.attemptId || !row.studentId || normalizedType !== "mcq") return;
     setReopeningId(row.studentId);
     try {
-      await attemptService.reopen(id, row.studentId);
+      await attemptService.reopen(row.attemptId);
       setRows((current) => {
         const next = { ...current };
         delete next[row.studentId];
@@ -1023,7 +1024,7 @@ export function TeacherMonitorPage({ variant = "test" }) {
       <ConfirmDialog
         open={Boolean(pendingReopen)}
         title="Reopen this MCQ attempt?"
-        description="The trainee's previous answers and score will be cleared."
+        description="The trainee can start a new attempt. Previous answers and score remain in history."
         confirmLabel="Reopen attempt"
         tone="danger"
         loading={Boolean(reopeningId)}

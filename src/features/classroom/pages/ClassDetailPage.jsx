@@ -41,7 +41,6 @@ export function ClassDetailPage({
 
   const userRole = getCurrentRole();
   const isTrainer = userRole === ROLES.TRAINER;
-  const isTmo = userRole === ROLES.TMO;
   const isClassManager = canManageClasses(userRole);
   const canOpenClassCurriculum = isTrainer || isClassManager;
   const canEditClassCurriculum = isTrainer;
@@ -355,14 +354,14 @@ export function ClassDetailPage({
               View as trainee
             </Button>
 
-            {(isTrainer || isTmo) && (
+            {isTrainer && (
               <>
                 <Button
                   type="button"
                   leftIcon={<ClipboardList size={17} />}
                   onClick={openAssignments}
                 >
-                  {isTmo ? "View assignments" : "Assignment"}
+                  Assignment
                 </Button>
                 <Button
                   type="button"
